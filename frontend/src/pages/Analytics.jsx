@@ -5,7 +5,7 @@ import {
   PieChart, Pie, Cell, Legend, LineChart, Line, CartesianGrid
 } from 'recharts'
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 
 const COLORS = ['#38bdf8', '#34d399', '#a78bfa', '#fb923c', '#f87171', '#facc15']
 

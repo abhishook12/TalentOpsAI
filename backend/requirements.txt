@@ -1,8 +1,9 @@
 fastapi==0.111.0
 uvicorn==0.29.0
 sqlalchemy==2.0.38
-psycopg[binary]
-
-openpyxl==3.1.2
+psycopg[binary]==3.3.4
+pydantic==2.13.4
 python-dotenv==1.0.1
 python-multipart==0.0.9
+openpyxl==3.1.2
+email-validator==2.3.0

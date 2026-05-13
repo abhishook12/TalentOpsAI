@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, Numeric, Date, Text, ARRAY, ForeignKey, TIMESTAMP
+from sqlalchemy import Column, Integer, String, Boolean, Numeric, Date, Text, ForeignKey, TIMESTAMP
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -55,7 +55,7 @@ class Candidate(Base):
     phone            = Column(String(30))
     linkedin         = Column(String(255))
     visa_status      = Column(String(50))
-    skills           = Column(ARRAY(Text))
+    skills           = Column(Text)
     experience_years = Column(Numeric(4, 1))
     location         = Column(String(150))
     rate_per_hour    = Column(Numeric(8, 2))

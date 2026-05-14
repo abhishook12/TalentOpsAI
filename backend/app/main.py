@@ -45,7 +45,7 @@ def auto_import_recruiters():
 
     db = next(get_db())
     count = db.query(Recruiter).count()
-    if count > 0:
+    if count > 100:
         print(f"Recruiters already in DB ({count}), skipping import.")
         return
 

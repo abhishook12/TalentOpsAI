@@ -1,12 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import recruiters, candidates, companies, vendors, submissions, analytics, upload
+from .routes import recruiters, candidates, companies, vendors, submissions, analytics, upload
 
 app = FastAPI(
     title="TalentOps AI",
     description="Recruitment Operations Intelligence Platform",
     version="1.0.0"
-)
+)   
 
 app.add_middleware(
     CORSMiddleware,

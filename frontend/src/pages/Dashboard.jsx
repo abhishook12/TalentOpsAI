@@ -12,7 +12,7 @@ function StatCard({ title, value, color }) {
       borderLeft: `4px solid ${color}`
     }}>
       <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '8px' }}>{title}</p>
-      <h2 style={{ color: '#f1f5f9', fontSize: '32px', fontWeight: 'bold' }}>{value}</h2>
+      <h2 style={{ color: '#f1f5f9', fontSize: '32px', fontWeight: 'bold' }}>{value.toLocaleString()}</h2>
     </div>
   )
 }
@@ -22,10 +22,10 @@ function Dashboard() {
 
   useEffect(() => {
     Promise.all([
-      axios.get(`${API}/recruiters`),
-      axios.get(`${API}/candidates`),
-      axios.get(`${API}/submissions`),
-      axios.get(`${API}/companies`),
+      axios.get(`${API}/recruiters?limit=50000`),
+      axios.get(`${API}/candidates?limit=50000`),
+      axios.get(`${API}/submissions?limit=50000`),
+      axios.get(`${API}/companies?limit=50000`),
     ]).then(([r, c, s, co]) => {
       setStats({
         recruiters: r.data.length,

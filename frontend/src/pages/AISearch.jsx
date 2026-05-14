@@ -20,7 +20,7 @@ const visaColors = {
   TN:  { bg: '#1e3a5f', color: '#7dd3fc' },
 }
 
-function Badge({ text, type }) {
+function Badge({ text }) {
   const style = visaColors[text] || { bg: '#1e293b', color: '#94a3b8' }
   return (
     <span style={{
@@ -77,89 +77,96 @@ function RecruiterCard({ r }) {
     }}>
       <div>
         <p style={{ color: '#f1f5f9', fontWeight: '600', marginBottom: '4px' }}>{r.recruiter_name}</p>
-        <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '6px' }}>{r.email}</p>
-        <span style={{ background: '#1e293b', color: '#94a3b8', padding: '2px 8px', borderRadius: '4px', fontSize: '11px' }}>{r.specialization}</span>
+        <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '6px' }}>
+          {r.email}{r.company ? ` · ${r.company}` : ''}
+        </p>
+        {r.phone && (
+          <span style={{ background: '#1e293b', color: '#94a3b8', padding: '2px 8px', borderRadius: '4px', fontSize: '11px' }}>
+            📞 {r.phone}
+          </span>
+        )}
+        {r.location && (
+          <span style={{ background: '#1e293b', color: '#94a3b8', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', marginLeft: '6px' }}>
+            {r.location}
+          </span>
+        )}
       </div>
       <div style={{ textAlign: 'right' }}>
         <span style={{
-          background: r.is_active ? '#064e3b' : '#450a0a',
-          color: r.is_active ? '#34d399' : '#f87171',
+          background: '#064e3b',
+          color: '#34d399',
           padding: '3px 10px', borderRadius: '999px', fontSize: '12px'
         }}>
-          {r.is_active ? 'Active' : 'Inactive'}
+          Active
         </span>
       </div>
     </div>
   )
 }
 
-// Smart local search — no API key needed
 function smartSearch(query, candidates, recruiters) {
-  const q = query.toLowerCase()
+  const q = query.toLowerCase().trim()
   const results = { candidates: [], recruiters: [], summary: '' }
 
-  // Visa filter
   const visaMatch = q.match(/\b(h1b|gc|usc|opt|cpt|tn)\b/i)
   const visa = visaMatch ? visaMatch[1].toUpperCase() : null
-
-  // Experience filter
   const expMatch = q.match(/(\d+)\+?\s*year/i)
   const minExp = expMatch ? parseInt(expMatch[1]) : null
-
-  // Rate filter
   const rateMatch = q.match(/under\s*\$?(\d+)/i)
   const maxRate = rateMatch ? parseInt(rateMatch[1]) : null
-
-  // Location filter
   const cities = ['austin', 'chicago', 'new york', 'seattle', 'boston', 'san jose', 'san francisco']
   const cityMatch = cities.find(c => q.includes(c))
-
-  // Skill keywords
   const skillKeywords = ['java', 'python', 'react', 'sql', 'devops', 'data', 'ml', 'cloud', 'node', 'django', 'spring', 'kubernetes', 'docker']
   const matchedSkills = skillKeywords.filter(s => q.includes(s))
-
-  // Availability
   const immediate = q.includes('immediate') || q.includes('available now')
-
-  // Search candidates
   const isRecruiterQuery = q.includes('recruiter') || q.includes('specialist') || q.includes('specializ')
 
-  if (!isRecruiterQuery) {
-    results.candidates = candidates.filter(c => {
-      let match = true
-      if (visa && c.visa_status !== visa) match = false
-      if (minExp && c.experience_years < minExp) match = false
-      if (maxRate && c.rate_per_hour > maxRate) match = false
-      if (cityMatch && !c.location?.toLowerCase().includes(cityMatch)) match = false
-      if (immediate && c.availability !== 'immediate') match = false
-      if (matchedSkills.length > 0) {
-        const hasSkill = matchedSkills.some(skill =>
-          (c.skills || []).some(s => s.toLowerCase().includes(skill))
-        )
-        if (!hasSkill) match = false
-      }
-      return match
-    })
-  }
+  // Name search — check if query looks like a name (no skill/visa keywords)
+  const hasFilters = visa || minExp || maxRate || cityMatch || matchedSkills.length > 0 || immediate || isRecruiterQuery
+  const looksLikeName = !hasFilters && q.length > 1
 
-  // Search recruiters
-  if (isRecruiterQuery || q.includes('recruiter')) {
-    results.recruiters = recruiters.filter(r => {
-      let match = true
-      if (matchedSkills.length > 0) {
-        const hasSkill = matchedSkills.some(skill =>
-          r.specialization?.toLowerCase().includes(skill)
-        )
-        if (!hasSkill) match = false
-      }
-      return match
-    })
+  if (looksLikeName) {
+    // Search recruiters by name
+    results.recruiters = recruiters.filter(r =>
+      r.recruiter_name?.toLowerCase().includes(q) ||
+      r.company?.toLowerCase().includes(q) ||
+      r.email?.toLowerCase().includes(q)
+    ).slice(0, 50)
+  } else {
+    if (!isRecruiterQuery) {
+      results.candidates = candidates.filter(c => {
+        let match = true
+        if (visa && c.visa_status !== visa) match = false
+        if (minExp && c.experience_years < minExp) match = false
+        if (maxRate && c.rate_per_hour > maxRate) match = false
+        if (cityMatch && !c.location?.toLowerCase().includes(cityMatch)) match = false
+        if (immediate && c.availability !== 'immediate') match = false
+        if (matchedSkills.length > 0) {
+          const hasSkill = matchedSkills.some(skill =>
+            (c.skills || []).some(s => s.toLowerCase().includes(skill))
+          )
+          if (!hasSkill) match = false
+        }
+        return match
+      })
+    }
+
+    if (isRecruiterQuery || q.includes('recruiter')) {
+      results.recruiters = recruiters.filter(r => {
+        if (matchedSkills.length > 0) {
+          return matchedSkills.some(skill =>
+            r.specialization?.toLowerCase().includes(skill)
+          )
+        }
+        return true
+      }).slice(0, 50)
+    }
   }
 
   const total = results.candidates.length + results.recruiters.length
   results.summary = total > 0
     ? `Found ${results.candidates.length > 0 ? `${results.candidates.length} candidate${results.candidates.length !== 1 ? 's' : ''}` : ''}${results.candidates.length > 0 && results.recruiters.length > 0 ? ' and ' : ''}${results.recruiters.length > 0 ? `${results.recruiters.length} recruiter${results.recruiters.length !== 1 ? 's' : ''}` : ''} matching your query.`
-    : 'No results found. Try different keywords like a skill, visa type, or location.'
+    : 'No results found. Try a name, company, skill, visa type, or location.'
 
   return results
 }
@@ -177,8 +184,8 @@ function AISearch() {
 
     try {
       const [candRes, recRes] = await Promise.all([
-        axios.get(`${API}/candidates?limit=100`),
-        axios.get(`${API}/recruiters?limit=100`),
+        axios.get(`${API}/candidates?limit=500`).catch(() => ({ data: [] })),
+        axios.get(`${API}/recruiters?limit=500`).catch(() => ({ data: [] })),
       ])
       const found = smartSearch(query, candRes.data, recRes.data)
       setResults(found)
@@ -194,10 +201,9 @@ function AISearch() {
         <h1 style={{ color: '#f1f5f9', fontSize: '24px', fontWeight: 'bold', marginBottom: '6px' }}>
           ⚡ AI Search
         </h1>
-        <p style={{ color: '#64748b' }}>Search recruiters and candidates using natural language</p>
+        <p style={{ color: '#64748b' }}>Search recruiters by name, or candidates using natural language</p>
       </div>
 
-      {/* Search Box */}
       <div style={{
         background: '#1e293b',
         borderRadius: '12px',
@@ -209,7 +215,7 @@ function AISearch() {
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSearch()}
-            placeholder='Try: "Find Java developers with H1B visa in Austin"'
+            placeholder='Search by name (e.g. "Justin") or skill/visa (e.g. "Java H1B")'
             style={{
               flex: 1,
               background: '#0f172a',
@@ -240,14 +246,13 @@ function AISearch() {
           </button>
         </div>
 
-        {/* Example queries */}
         <div>
           <p style={{ color: '#475569', fontSize: '12px', marginBottom: '8px' }}>Try these:</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             {EXAMPLE_QUERIES.map(q => (
               <button
                 key={q}
-                onClick={() => { setQuery(q); }}
+                onClick={() => setQuery(q)}
                 style={{
                   background: '#0f172a',
                   border: '1px solid #334155',
@@ -265,7 +270,6 @@ function AISearch() {
         </div>
       </div>
 
-      {/* Results */}
       {searched && results && (
         <div>
           <div style={{
@@ -276,7 +280,7 @@ function AISearch() {
             borderLeft: '3px solid #38bdf8'
           }}>
             <p style={{ color: '#94a3b8', fontSize: '14px' }}>
-              <span style={{ color: '#38bdf8', fontWeight: '600' }}>AI Result: </span>
+              <span style={{ color: '#38bdf8', fontWeight: '600' }}>Result: </span>
               {results.summary}
             </p>
           </div>
@@ -310,8 +314,8 @@ function AISearch() {
               padding: '40px',
               textAlign: 'center'
             }}>
-              <p style={{ color: '#64748b', fontSize: '16px' }}>No results found for your query.</p>
-              <p style={{ color: '#475569', fontSize: '13px', marginTop: '8px' }}>Try different keywords — skill names, visa types, or locations work best.</p>
+              <p style={{ color: '#64748b', fontSize: '16px' }}>No results found.</p>
+              <p style={{ color: '#475569', fontSize: '13px', marginTop: '8px' }}>Try a name, company name, email, or skill keyword.</p>
             </div>
           )}
         </div>

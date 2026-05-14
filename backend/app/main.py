@@ -1,12 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routes import recruiters, candidates, companies, vendors, submissions, analytics, upload
+from app.routes import recruiters, candidates, companies, vendors, submissions, analytics, upload
 
 app = FastAPI(
     title="TalentOps AI",
     description="Recruitment Operations Intelligence Platform",
     version="1.0.0"
-)   
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -31,3 +31,43 @@ app.include_router(upload.router, prefix="/upload", tags=["Upload"])
 @app.get("/")
 def root():
     return {"message": "TalentOps AI is running", "docs": "/docs"}
+
+@app.on_event("startup")
+def auto_import_recruiters():
+    import json, os
+    from app.database import get_db
+    from app.models.models import Recruiter
+
+    json_path = os.path.join(os.path.dirname(__file__), "recruiters.json")
+    if not os.path.exists(json_path):
+        print("No recruiters.json found, skipping import.")
+        return
+
+    db = next(get_db())
+    count = db.query(Recruiter).count()
+    if count > 0:
+        print(f"Recruiters already in DB ({count}), skipping import.")
+        return
+
+    with open(json_path, "r") as f:
+        data = json.load(f)
+
+    added = 0
+    for r in data:
+        name = r.get("recruiter_name", "").strip()[:150]
+        email = r.get("email", "").strip()[:150]
+        if not name:
+            continue
+        db.add(Recruiter(
+            recruiter_name=name,
+            email=email if email else f"unknown_{added}@noemail.com",
+            phone=r.get("phone", "").strip()[:50],
+            specialization=r.get("location", "").strip()[:150],
+            is_active=True,
+        ))
+        added += 1
+        if added % 500 == 0:
+            db.commit()
+
+    db.commit()
+    print(f"Auto-imported {added} recruiters.")

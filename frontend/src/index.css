@@ -5,7 +5,25 @@
 }
 
 body {
-  font-family: sans-serif;
-  background-color: #0f172a;
-  color: #f1f5f9;
+  background: #F8FAFC;
+  color: #111827;
+  font-family: 'Inter', sans-serif;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+}
+
+.sidebar-link {
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.sidebar-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateX(2px);
 }

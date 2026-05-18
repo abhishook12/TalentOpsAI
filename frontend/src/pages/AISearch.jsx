@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import axios from 'axios'
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
@@ -8,24 +8,39 @@ const EXAMPLES = [
   'Insight Global', 'finance recruiter', 'DevOps specialist',
 ]
 
+// Extract company hint from email domain: john@brooksource.com → 'brooksource'
+function emailDomain(email) {
+  if (!email) return ''
+  const at = email.indexOf('@')
+  if (at < 0) return ''
+  const domain = email.slice(at + 1).toLowerCase()
+  // strip common personal email domains
+  const personal = ['gmail', 'yahoo', 'hotmail', 'outlook', 'icloud', 'aol', 'noemail']
+  const company = domain.split('.')[0]
+  return personal.includes(company) ? '' : company
+}
+
 function scoreRecruiter(r, words) {
   let score = 0
+  // Use company_name (from API) AND derive a company hint from email domain
+  const companyHint = emailDomain(r.email)
   const fields = [
-    { val: r.recruiter_name, weight: 10 },
-    { val: r.company, weight: 8 },
-    { val: r.email, weight: 5 },
-    { val: r.specialization, weight: 6 },
-    { val: r.location, weight: 4 },
-    { val: r.phone, weight: 2 },
+    { val: r.recruiter_name,  weight: 10 },
+    { val: r.company_name,    weight: 8  },  // fixed: was r.company (undefined)
+    { val: companyHint,       weight: 8  },  // email domain as company signal
+    { val: r.email,           weight: 3  },
+    { val: r.specialization,  weight: 6  },
+    { val: r.location,        weight: 4  },
+    { val: r.phone,           weight: 2  },
   ]
   for (const word of words) {
     if (word.length < 2) continue
     for (const { val, weight } of fields) {
       if (!val) continue
       const v = val.toLowerCase()
-      if (v === word) score += weight * 3
-      else if (v.startsWith(word)) score += weight * 2
-      else if (v.includes(word)) score += weight
+      if (v === word)           score += weight * 4  // exact match
+      else if (v.startsWith(word)) score += weight * 2  // prefix match
+      else if (v.includes(word))   score += weight       // partial match
     }
   }
   return score
@@ -40,7 +55,7 @@ function smartSearch(query, candidates, recruiters) {
     .map(r => ({ r, score: scoreRecruiter(r, words) }))
     .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, 50)
+    .slice(0, 100)
     .map(({ r }) => r)
 
   const isRecruiterQuery = q.includes('recruiter') || q.includes('specialist') || q.includes('staffing') || q.includes('hiring')
@@ -101,7 +116,9 @@ function RecruiterCard({ r }) {
         <p style={{ fontSize: 13.5, fontWeight: 500, color: '#0f172a', marginBottom: 2 }}>{r.recruiter_name}</p>
         <p style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {r.email}
-          {r.company ? <span style={{ color: '#94a3b8' }}> · {r.company}</span> : null}
+          {(r.company_name || emailDomain(r.email)) ? (
+            <span style={{ color: '#94a3b8' }}> · {r.company_name || emailDomain(r.email)}</span>
+          ) : null}
         </p>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>

@@ -7,6 +7,7 @@ import Candidates from './pages/Candidates'
 import Submissions from './pages/Submissions'
 import Analytics from './pages/Analytics'
 import AISearch from './pages/AISearch'
+import Upload from './pages/Upload'
 
 const globalStyles = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
@@ -162,6 +163,7 @@ function App() {
             <Route path="/submissions" element={<Submissions />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/ai-search" element={<AISearch />} />
+            <Route path="/upload" element={<Upload />} />
           </Routes>
         </main>
       </div>

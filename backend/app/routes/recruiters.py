@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from typing import Optional, List
 from app.database import get_db
-from app.models.models import Recruiter
+from app.models.models import Recruiter, Company
 
 router = APIRouter()
 
@@ -25,27 +25,49 @@ class RecruiterUpdate(BaseModel):
     company_id: Optional[int] = None
     is_active: Optional[bool] = None
 
+def serialize_recruiter(r):
+    return {
+        "recruiter_id": r.recruiter_id,
+        "recruiter_name": r.recruiter_name,
+        "email": r.email,
+        "phone": r.phone,
+        "linkedin": r.linkedin,
+        "specialization": r.specialization,
+        "company_id": r.company_id,
+        "company_name": r.company.company_name if r.company else None,
+        "is_active": r.is_active,
+        "created_at": str(r.created_at) if r.created_at else None,
+    }
+
 @router.get("/")
 def get_recruiters(
     skip: int = 0,
     limit: int = 100,
+    search: Optional[str] = None,
     specialization: Optional[str] = None,
     is_active: Optional[bool] = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(Recruiter)
+    if search:
+        query = query.filter(
+            Recruiter.recruiter_name.ilike(f"%{search}%") |
+            Recruiter.email.ilike(f"%{search}%") |
+            Recruiter.specialization.ilike(f"%{search}%")
+        )
     if specialization:
         query = query.filter(Recruiter.specialization.ilike(f"%{specialization}%"))
     if is_active is not None:
         query = query.filter(Recruiter.is_active == is_active)
-    return query.offset(skip).limit(limit).all()
+    results = query.offset(skip).limit(limit).all()
+    return [serialize_recruiter(r) for r in results]
 
 @router.get("/{recruiter_id}")
 def get_recruiter(recruiter_id: int, db: Session = Depends(get_db)):
     r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
-    return r
+    return serialize_recruiter(r)
 
 @router.post("/", status_code=201)
 def create_recruiter(data: RecruiterCreate, db: Session = Depends(get_db)):
@@ -56,7 +78,7 @@ def create_recruiter(data: RecruiterCreate, db: Session = Depends(get_db)):
     db.add(r)
     db.commit()
     db.refresh(r)
-    return r
+    return serialize_recruiter(r)
 
 @router.put("/{recruiter_id}")
 def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Depends(get_db)):
@@ -67,7 +89,7 @@ def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Dep
         setattr(r, key, value)
     db.commit()
     db.refresh(r)
-    return r
+    return serialize_recruiter(r)
 
 @router.delete("/{recruiter_id}")
 def delete_recruiter(recruiter_id: int, db: Session = Depends(get_db)):

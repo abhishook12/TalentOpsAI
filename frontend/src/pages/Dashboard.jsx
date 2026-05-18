@@ -4,23 +4,16 @@ import { useNavigate } from 'react-router-dom'
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 
-function StatCard({ title, value, icon, color, sub }) {
+function StatCard({ title, value, sub, icon, color }) {
   return (
     <div style={{
-      background: '#fff',
-      border: '1px solid #e8edf4',
-      borderRadius: '10px',
-      padding: '18px 20px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+      background: '#fff', border: '1px solid #e8edf4', borderRadius: 10,
+      padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <span style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>{title}</span>
-        <div style={{
-          width: 32, height: 32, borderRadius: '8px',
-          background: color + '18',
-          display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>
-          <i className={`ti ${icon}`} style={{ fontSize: 16, color }} aria-hidden="true" />
+        <div style={{ width: 32, height: 32, borderRadius: 8, background: color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <i className={`ti ${icon}`} style={{ fontSize: 16, color }} />
         </div>
       </div>
       <p style={{ fontSize: 26, fontWeight: 500, color: '#0f172a', letterSpacing: '-0.02em', margin: 0 }}>
@@ -32,89 +25,103 @@ function StatCard({ title, value, icon, color, sub }) {
 }
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({ recruiters: 0, candidates: 0, submissions: 0, companies: 0 })
+  const [kpi, setKpi] = useState(null)
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
 
   useEffect(() => {
-    Promise.all([
-      axios.get(`${API}/recruiters?limit=50000`),
-      axios.get(`${API}/candidates?limit=50000`),
-      axios.get(`${API}/submissions?limit=50000`),
-      axios.get(`${API}/companies?limit=50000`),
-    ]).then(([r, c, s, co]) => {
-      setStats({
-        recruiters: r.data.length,
-        candidates: c.data.length,
-        submissions: s.data.length,
-        companies: co.data.length,
-      })
-      setLoading(false)
-    }).catch(() => setLoading(false))
+    axios.get(`${API}/analytics/dashboard`)
+      .then(r => { setKpi(r.data); setLoading(false) })
+      .catch(() => setLoading(false))
   }, [])
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+  const v = (n) => loading ? '...' : n
 
   return (
     <div className="page-enter">
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 500, color: '#0f172a', letterSpacing: '-0.02em', marginBottom: 4 }}>Dashboard</h1>
           <p style={{ fontSize: 13, color: '#94a3b8' }}>{today}</p>
         </div>
         <button className="btn-primary" onClick={() => navigate('/ai-search')}>
-          <i className="ti ti-search" style={{ fontSize: 14 }} aria-hidden="true" />
-          AI Search
+          <i className="ti ti-search" style={{ fontSize: 14 }} /> AI Search
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: '12px', marginBottom: '24px' }}>
-        <StatCard title="Total Recruiters" value={loading ? '...' : stats.recruiters} icon="ti-users" color="#185FA5" sub="Active database" />
-        <StatCard title="Candidates" value={loading ? '...' : stats.candidates} icon="ti-user-check" color="#0F6E56" sub="In pipeline" />
-        <StatCard title="Submissions" value={loading ? '...' : stats.submissions} icon="ti-file-text" color="#534AB7" sub="Total tracked" />
-        <StatCard title="Companies" value={loading ? '...' : stats.companies} icon="ti-building" color="#BA7517" sub="Partner firms" />
+      {/* KPI Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 12, marginBottom: 24 }}>
+        <StatCard title="Total Recruiters" value={v(kpi?.recruiters?.total)} sub={`${kpi?.recruiters?.active ?? '...'} active`} icon="ti-users" color="#185FA5" />
+        <StatCard title="Candidates" value={v(kpi?.candidates?.total)} sub={`${kpi?.candidates?.duplicates ?? '...'} duplicates`} icon="ti-user-check" color="#0F6E56" />
+        <StatCard title="Submissions" value={v(kpi?.submissions?.total)} sub={`${kpi?.submissions?.placement_rate_percent ?? '...'}% placement rate`} icon="ti-file-text" color="#534AB7" />
+        <StatCard title="Companies" value={v(kpi?.companies?.total)} sub="Partner firms" icon="ti-building" color="#BA7517" />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-        <div style={{ background: '#fff', border: '1px solid #e8edf4', borderRadius: '10px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          <p style={{ fontSize: 13, fontWeight: 500, color: '#0f172a', marginBottom: '14px' }}>Quick actions</p>
+      {/* Second row — pipeline + quick actions */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+        {/* Pipeline status */}
+        <div style={{ background: '#fff', border: '1px solid #e8edf4', borderRadius: 10, padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          <p style={{ fontSize: 13, fontWeight: 500, color: '#0f172a', marginBottom: 16 }}>Submission Pipeline</p>
+          {[
+            { label: 'Placed', value: kpi?.submissions?.placed, color: '#0F6E56', bg: '#dcfce7' },
+            { label: 'Offers', value: kpi?.submissions?.offers, color: '#534AB7', bg: '#ede9fe' },
+            { label: 'Interviews', value: kpi?.submissions?.interviews, color: '#BA7517', bg: '#fef9c3' },
+          ].map(({ label, value, color, bg }) => (
+            <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid #f1f5f9' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 28, height: 28, borderRadius: 6, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
+                </div>
+                <span style={{ fontSize: 13, color: '#64748b' }}>{label}</span>
+              </div>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{loading ? '...' : (value ?? 0)}</span>
+            </div>
+          ))}
+          <div style={{ marginTop: 14, padding: '10px 14px', background: '#f8fafc', borderRadius: 8 }}>
+            <span style={{ fontSize: 11, color: '#94a3b8' }}>Placement rate — </span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#0F6E56' }}>{loading ? '...' : `${kpi?.submissions?.placement_rate_percent ?? 0}%`}</span>
+          </div>
+        </div>
+
+        {/* Quick actions */}
+        <div style={{ background: '#fff', border: '1px solid #e8edf4', borderRadius: 10, padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          <p style={{ fontSize: 13, fontWeight: 500, color: '#0f172a', marginBottom: 14 }}>Quick Actions</p>
           {[
             { label: 'Search recruiters by name', icon: 'ti-search', color: '#185FA5', path: '/ai-search' },
             { label: 'View all recruiters', icon: 'ti-users', color: '#0F6E56', path: '/recruiters' },
             { label: 'Add new candidate', icon: 'ti-user-plus', color: '#534AB7', path: '/candidates' },
-            { label: 'View submissions', icon: 'ti-file-text', color: '#BA7517', path: '/submissions' },
+            { label: 'Track submissions', icon: 'ti-file-text', color: '#BA7517', path: '/submissions' },
+            { label: 'View analytics', icon: 'ti-chart-bar', color: '#64748b', path: '/analytics' },
           ].map(({ label, icon, color, path }) => (
             <div key={label} onClick={() => navigate(path)}
-              style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderRadius: '8px', cursor: 'pointer', marginBottom: '4px', transition: 'background 0.12s' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', marginBottom: 2, transition: 'background 0.12s' }}
               onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >
-              <div style={{ width: 28, height: 28, borderRadius: '6px', background: color + '15', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <i className={`ti ${icon}`} style={{ fontSize: 14, color }} aria-hidden="true" />
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              <div style={{ width: 28, height: 28, borderRadius: 6, background: color + '15', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <i className={`ti ${icon}`} style={{ fontSize: 14, color }} />
               </div>
               <span style={{ fontSize: 13, color: '#334155' }}>{label}</span>
-              <i className="ti ti-arrow-right" style={{ marginLeft: 'auto', fontSize: 13, color: '#cbd5e1' }} aria-hidden="true" />
+              <i className="ti ti-arrow-right" style={{ marginLeft: 'auto', fontSize: 13, color: '#cbd5e1' }} />
             </div>
           ))}
         </div>
+      </div>
 
-        <div style={{ background: '#fff', border: '1px solid #e8edf4', borderRadius: '10px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          <p style={{ fontSize: 13, fontWeight: 500, color: '#0f172a', marginBottom: '14px' }}>Platform overview</p>
+      {/* Candidate data quality row */}
+      <div style={{ background: '#fff', border: '1px solid #e8edf4', borderRadius: 10, padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+        <p style={{ fontSize: 13, fontWeight: 500, color: '#0f172a', marginBottom: 14 }}>Data Quality</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
           {[
-            { label: 'Recruiter database', value: loading ? '...' : stats.recruiters.toLocaleString(), color: '#185FA5' },
-            { label: 'Active candidates', value: loading ? '...' : stats.candidates.toLocaleString(), color: '#0F6E56' },
-            { label: 'Total submissions', value: loading ? '...' : stats.submissions.toLocaleString(), color: '#534AB7' },
-            { label: 'Partner companies', value: loading ? '...' : stats.companies.toLocaleString(), color: '#BA7517' },
+            { label: 'Total Candidates', value: kpi?.candidates?.total, color: '#185FA5' },
+            { label: 'Duplicate Candidates', value: kpi?.candidates?.duplicates, color: '#dc2626' },
+            { label: 'Duplicate Rate', value: `${kpi?.candidates?.duplicate_rate_percent ?? 0}%`, color: '#BA7517' },
           ].map(({ label, value, color }) => (
-            <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid #f1f5f9' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                <span style={{ fontSize: 13, color: '#64748b' }}>{label}</span>
-              </div>
-              <span style={{ fontSize: 13, fontWeight: 500, color: '#0f172a' }}>{value}</span>
+            <div key={label} style={{ padding: '14px 16px', borderRadius: 8, background: '#f8fafc', border: '1px solid #f1f5f9' }}>
+              <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 6 }}>{label}</p>
+              <p style={{ fontSize: 20, fontWeight: 600, color }}>{loading ? '...' : (value ?? 0)}</p>
             </div>
           ))}
-          <p style={{ fontSize: 11, color: '#cbd5e1', marginTop: '12px', textAlign: 'right' }}>Last updated just now</p>
         </div>
       </div>
     </div>

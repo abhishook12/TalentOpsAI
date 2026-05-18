@@ -123,7 +123,7 @@ function avatarColor(name) {
 function RecruiterCard({ r }) {
   return (
     <div style={{
-      background: '#fff', border: '1px solid #e8edf4', borderRadius: '10px',
+      background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '10px',
       padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '14px',
       boxShadow: '0 1px 3px rgba(0,0,0,0.04)', transition: 'box-shadow 0.12s',
     }}
@@ -136,18 +136,18 @@ function RecruiterCard({ r }) {
         fontSize: 13, fontWeight: 500, color: '#fff', flexShrink: 0,
       }}>{initials(r.recruiter_name)}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 13.5, fontWeight: 500, color: '#0f172a', marginBottom: 2 }}>{r.recruiter_name}</p>
-        <p style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <p style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 2 }}>{r.recruiter_name}</p>
+        <p style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {r.email}
           {(r.company_name || emailDomain(r.email)) ? (
-            <span style={{ color: '#94a3b8' }}> · {r.company_name || emailDomain(r.email)}</span>
+            <span style={{ color: 'var(--text-muted)' }}> · {r.company_name || emailDomain(r.email)}</span>
           ) : null}
         </p>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
-        {r.phone && <span style={{ fontSize: 11, color: '#94a3b8' }}>{r.phone}</span>}
+        {r.phone && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.phone}</span>}
         {r.specialization && (
-          <span style={{ fontSize: 11, background: '#f1f5f9', color: '#475569', padding: '2px 8px', borderRadius: '4px' }}>
+          <span style={{ fontSize: 11, background: 'var(--bg-hover)', color: 'var(--text-secondary)', padding: '2px 8px', borderRadius: '4px' }}>
             {r.specialization.length > 30 ? r.specialization.slice(0, 30) + '…' : r.specialization}
           </span>
         )}
@@ -159,7 +159,7 @@ function RecruiterCard({ r }) {
 function CandidateCard({ c }) {
   return (
     <div style={{
-      background: '#fff', border: '1px solid #e8edf4', borderRadius: '10px',
+      background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '10px',
       padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '14px',
       boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
     }}>
@@ -169,18 +169,18 @@ function CandidateCard({ c }) {
         fontSize: 13, fontWeight: 500, color: '#7dd3fc', flexShrink: 0,
       }}>{initials(c.candidate_name)}</div>
       <div style={{ flex: 1 }}>
-        <p style={{ fontSize: 13.5, fontWeight: 500, color: '#0f172a', marginBottom: 2 }}>{c.candidate_name}</p>
-        <p style={{ fontSize: 12, color: '#64748b' }}>{c.email} · {c.location}</p>
+        <p style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 2 }}>{c.candidate_name}</p>
+        <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{c.email} · {c.location}</p>
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 5 }}>
-          {c.visa_status && <span style={{ fontSize: 11, background: '#dbeafe', color: '#1e40af', padding: '2px 8px', borderRadius: '999px' }}>{c.visa_status}</span>}
+          {c.visa_status && <span className="badge badge-blue">{c.visa_status}</span>}
           {(typeof c.skills === 'string' ? c.skills.split(',').map(s => s.trim()) : (c.skills || [])).slice(0, 3).map(s => (
-            <span key={s} style={{ fontSize: 11, background: '#f1f5f9', color: '#475569', padding: '2px 8px', borderRadius: '4px' }}>{s}</span>
+            <span key={s} style={{ fontSize: 11, background: 'var(--bg-hover)', color: 'var(--text-secondary)', padding: '2px 8px', borderRadius: '4px' }}>{s}</span>
           ))}
         </div>
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-        <p style={{ fontSize: 13, fontWeight: 500, color: '#0F6E56' }}>${c.rate_per_hour}/hr</p>
-        <p style={{ fontSize: 11, color: '#94a3b8' }}>{c.experience_years} yrs exp</p>
+        <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--accent-hover)' }}>${c.rate_per_hour}/hr</p>
+        <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.experience_years} yrs exp</p>
       </div>
     </div>
   )
@@ -219,14 +219,14 @@ export default function AISearch() {
   return (
     <div className="page-enter">
       <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: 20, fontWeight: 500, color: '#0f172a', letterSpacing: '-0.02em', marginBottom: 4 }}>AI Search</h1>
-        <p style={{ fontSize: 13, color: '#94a3b8' }}>Search 12,000+ recruiters by name, company, location, or keyword</p>
+        <h1 style={{ fontSize: 20, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 4 }}>AI Search</h1>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Search 12,000+ recruiters by name, company, location, or keyword</p>
       </div>
 
-      <div style={{ background: '#fff', border: '1px solid #e8edf4', borderRadius: '12px', padding: '20px', marginBottom: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+      <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '12px', padding: '20px', marginBottom: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
         <div style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>
           <div style={{ flex: 1, position: 'relative' }}>
-            <i className="ti ti-search" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 16, color: '#94a3b8' }} aria-hidden="true" />
+            <i className="ti ti-search" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 16, color: 'var(--text-muted)' }} aria-hidden="true" />
             <input
               value={query}
               onChange={e => setQuery(e.target.value)}
@@ -240,11 +240,11 @@ export default function AISearch() {
           </button>
         </div>
         <div>
-          <p style={{ fontSize: 11, color: '#cbd5e1', marginBottom: 8 }}>Quick searches:</p>
+          <p style={{ fontSize: 11, color: 'var(--border-input)', marginBottom: 8 }}>Quick searches:</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {EXAMPLES.map(ex => (
               <button key={ex} onClick={() => handleSearch(ex)}
-                style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '5px 12px', color: '#64748b', fontSize: 12, cursor: 'pointer' }}>
+                style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', borderRadius: '6px', padding: '5px 12px', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}>
                 {ex}
               </button>
             ))}
@@ -254,14 +254,14 @@ export default function AISearch() {
 
       {searched && results && (
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '10px 14px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px' }}>
-            <i className="ti ti-info-circle" style={{ fontSize: 15, color: '#0284c7', flexShrink: 0 }} aria-hidden="true" />
-            <p style={{ fontSize: 13, color: '#0369a1', margin: 0 }}>{results.summary}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '10px 14px', background: 'var(--accent-bg)', border: '1px solid var(--accent)', borderRadius: '8px' }}>
+            <i className="ti ti-info-circle" style={{ fontSize: 15, color: 'var(--accent)', flexShrink: 0 }} aria-hidden="true" />
+            <p style={{ fontSize: 13, color: 'var(--accent-hover)', margin: 0 }}>{results.summary}</p>
           </div>
 
           {results.recruiters.length > 0 && (
             <div style={{ marginBottom: 24 }}>
-              <p style={{ fontSize: 12, fontWeight: 500, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+              <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
                 Recruiters · {results.recruiters.length} results
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -272,7 +272,7 @@ export default function AISearch() {
 
           {results.candidates.length > 0 && (
             <div>
-              <p style={{ fontSize: 12, fontWeight: 500, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+              <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
                 Candidates · {results.candidates.length} results
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -282,10 +282,10 @@ export default function AISearch() {
           )}
 
           {results.recruiters.length === 0 && results.candidates.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '48px 20px', background: '#fff', border: '1px solid #e8edf4', borderRadius: '12px' }}>
-              <i className="ti ti-search-off" style={{ fontSize: 32, color: '#cbd5e1', display: 'block', marginBottom: 12 }} aria-hidden="true" />
-              <p style={{ fontSize: 14, color: '#64748b', marginBottom: 6 }}>No results found</p>
-              <p style={{ fontSize: 12, color: '#94a3b8' }}>Try a different name, company, or keyword</p>
+            <div style={{ textAlign: 'center', padding: '48px 20px', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '12px' }}>
+              <i className="ti ti-search-off" style={{ fontSize: 32, color: 'var(--border-input)', display: 'block', marginBottom: 12 }} aria-hidden="true" />
+              <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 6 }}>No results found</p>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Try a different name, company, or keyword</p>
             </div>
           )}
         </div>

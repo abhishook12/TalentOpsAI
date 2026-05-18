@@ -33,14 +33,14 @@ function UploadZone({ type, label, icon, color, accept }) {
   }
 
   return (
-    <div style={{ background: '#fff', border: '1px solid #e8edf4', borderRadius: 12, padding: 28, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+    <div className="card" style={{ padding: 28 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <div style={{ width: 40, height: 40, borderRadius: 10, background: color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <i className={`ti ${icon}`} style={{ fontSize: 20, color }} />
         </div>
         <div>
-          <h2 style={{ fontSize: 15, fontWeight: 600, color: '#0f172a' }}>Upload {label}</h2>
-          <p style={{ fontSize: 12, color: '#94a3b8' }}>CSV or Excel (.xlsx)</p>
+          <h2 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Upload {label}</h2>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>CSV or Excel (.xlsx)</p>
         </div>
       </div>
 
@@ -51,17 +51,17 @@ function UploadZone({ type, label, icon, color, accept }) {
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
         style={{
-          border: `2px dashed ${dragging ? color : '#e2e8f0'}`,
+          border: `2px dashed ${dragging ? color : 'var(--border-input)'}`,
           borderRadius: 10, padding: '36px 24px', textAlign: 'center',
           cursor: 'pointer', transition: 'all 0.15s',
-          background: dragging ? color + '06' : '#fafafa',
+          background: dragging ? color + '06' : 'var(--bg-hover)',
           marginBottom: 16,
         }}>
-        <i className="ti ti-cloud-upload" style={{ fontSize: 32, color: dragging ? color : '#cbd5e1', display: 'block', marginBottom: 10 }} />
-        <p style={{ fontSize: 14, color: '#64748b', marginBottom: 4 }}>
+        <i className="ti ti-cloud-upload" style={{ fontSize: 32, color: dragging ? color : 'var(--border-input)', display: 'block', marginBottom: 10 }} />
+        <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 4 }}>
           {uploading ? 'Uploading...' : 'Drop file here or click to browse'}
         </p>
-        <p style={{ fontSize: 12, color: '#94a3b8' }}>Supports .csv and .xlsx</p>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Supports .csv and .xlsx</p>
         <input ref={inputRef} type="file" accept={accept} style={{ display: 'none' }} onChange={e => doUpload(e.target.files[0])} />
       </div>
 
@@ -78,9 +78,9 @@ function UploadZone({ type, label, icon, color, accept }) {
               { label: 'Inserted', value: result.inserted },
               { label: 'Duplicates Skipped', value: result.duplicates_skipped },
             ].map(({ label, value }) => (
-              <div key={label} style={{ background: '#fff', borderRadius: 6, padding: '10px 12px', textAlign: 'center' }}>
-                <p style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>{value}</p>
-                <p style={{ fontSize: 11, color: '#64748b' }}>{label}</p>
+              <div key={label} style={{ background: 'var(--card-bg)', borderRadius: 6, padding: '10px 12px', textAlign: 'center' }}>
+                <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>{value}</p>
+                <p style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{label}</p>
               </div>
             ))}
           </div>
@@ -95,9 +95,9 @@ function UploadZone({ type, label, icon, color, accept }) {
       )}
 
       {/* Format guide */}
-      <div style={{ marginTop: 16, padding: '12px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #f1f5f9' }}>
-        <p style={{ fontSize: 11, fontWeight: 500, color: '#64748b', marginBottom: 6 }}>Required columns:</p>
-        <p style={{ fontSize: 11, color: '#94a3b8', fontFamily: 'monospace' }}>
+      <div style={{ marginTop: 16, padding: '12px 14px', background: 'var(--bg-hover)', borderRadius: 8, border: '1px solid var(--card-border)' }}>
+        <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Required columns:</p>
+        <p style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
           {type === 'candidates'
             ? 'candidate_name, email, phone, visa_status, skills, experience_years, location, rate_per_hour, availability'
             : 'recruiter_name, email, phone, specialization'}
@@ -111,8 +111,8 @@ export default function Upload() {
   return (
     <div className="page-enter">
       <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 500, color: '#0f172a', letterSpacing: '-0.02em', marginBottom: 4 }}>ETL Upload</h1>
-        <p style={{ fontSize: 13, color: '#94a3b8' }}>Bulk import candidates or recruiters from CSV / Excel files</p>
+        <h1 style={{ fontSize: 20, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 4 }}>ETL Upload</h1>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Bulk import candidates or recruiters from CSV / Excel files</p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>

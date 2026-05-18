@@ -71,7 +71,7 @@ function smartSearch(query, candidates, recruiters) {
       return words.some(w =>
         c.candidate_name?.toLowerCase().includes(w) ||
         c.location?.toLowerCase().includes(w) ||
-        (c.skills || []).some(s => s.toLowerCase().includes(w))
+        (typeof c.skills === 'string' ? c.skills.toLowerCase().includes(w) : (c.skills || []).some(s => s.toLowerCase().includes(w)))
       )
     }).slice(0, 30)
   }
@@ -150,7 +150,7 @@ function CandidateCard({ c }) {
         <p style={{ fontSize: 12, color: '#64748b' }}>{c.email} · {c.location}</p>
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 5 }}>
           {c.visa_status && <span style={{ fontSize: 11, background: '#dbeafe', color: '#1e40af', padding: '2px 8px', borderRadius: '999px' }}>{c.visa_status}</span>}
-          {(c.skills || []).slice(0, 3).map(s => (
+          {(typeof c.skills === 'string' ? c.skills.split(',').map(s => s.trim()) : (c.skills || [])).slice(0, 3).map(s => (
             <span key={s} style={{ fontSize: 11, background: '#f1f5f9', color: '#475569', padding: '2px 8px', borderRadius: '4px' }}>{s}</span>
           ))}
         </div>

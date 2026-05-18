@@ -62,6 +62,47 @@ function Modal({ title, onClose, onSave, form, setForm, saving }) {
   )
 }
 
+function LockScreen({ onUnlock }) {
+  const [pin, setPin] = useState('')
+  const [error, setError] = useState(false)
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (pin === '1012') {
+      onUnlock()
+    } else {
+      setError(true)
+      setPin('')
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '60vh' }}>
+      <form onSubmit={handleSubmit} className="card page-enter" style={{ padding: 40, width: 360, textAlign: 'center' }}>
+        <div style={{ width: 48, height: 48, background: 'var(--accent)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+          <i className="ti ti-lock" style={{ fontSize: 24, color: '#fff' }} />
+        </div>
+        <h2 style={{ fontSize: 20, marginBottom: 8, color: 'var(--text-primary)' }}>Recruiters Database</h2>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 24 }}>Enter your PIN to access this page</p>
+        
+        <input 
+          type="password" 
+          value={pin}
+          onChange={e => { setPin(e.target.value); setError(false) }}
+          placeholder="Enter PIN..."
+          style={{ width: '100%', textAlign: 'center', letterSpacing: '0.2em', fontSize: 18, padding: '12px', marginBottom: 12, borderColor: error ? '#ef4444' : 'var(--card-border)' }}
+          autoFocus
+        />
+        {error && <p style={{ color: '#ef4444', fontSize: 12, marginBottom: 12 }}>Incorrect PIN</p>}
+        
+        <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '12px' }}>
+          Unlock
+        </button>
+      </form>
+    </div>
+  )
+}
+
 export default function Recruiters() {
   const [recruiters, setRecruiters] = useState([])
   const [loading, setLoading] = useState(true)
@@ -70,8 +111,8 @@ export default function Recruiters() {
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
-
   const [page, setPage] = useState(0)
+  const [unlocked, setUnlocked] = useState(localStorage.getItem('recruiters_unlocked') === 'true')
 
   const fetchRecruiters = useCallback(() => {
     setLoading(true)
@@ -130,6 +171,10 @@ export default function Recruiters() {
   }
 
   const paginated = filtered.slice(page * 100, (page + 1) * 100)
+
+  if (!unlocked) {
+    return <LockScreen onUnlock={() => { setUnlocked(true); localStorage.setItem('recruiters_unlocked', 'true') }} />
+  }
 
   return (
     <div className="page-enter">

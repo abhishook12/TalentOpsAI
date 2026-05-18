@@ -43,8 +43,10 @@ def health():
 @app.on_event("startup")
 def auto_import_recruiters():
     import json, os
-    from app.database import get_db
+    from app.database import engine, Base, get_db
     from app.models.models import Recruiter
+
+    Base.metadata.create_all(bind=engine)
 
     json_path = os.path.join(os.path.dirname(__file__), "recruiters.json")
     if not os.path.exists(json_path):

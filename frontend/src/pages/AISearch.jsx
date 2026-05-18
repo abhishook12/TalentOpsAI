@@ -9,6 +9,7 @@ const EXAMPLES = [
 ]
 
 const RECENT_KEY = 'talentops_recent_searches'
+const RATINGS_KEY = 'talentops_ratings'
 const MAX_RECENT = 6
 
 function getRecent() {
@@ -17,6 +18,14 @@ function getRecent() {
 function addRecent(q) {
   const prev = getRecent().filter(s => s !== q)
   localStorage.setItem(RECENT_KEY, JSON.stringify([q, ...prev].slice(0, MAX_RECENT)))
+}
+function getRatings() {
+  try { return JSON.parse(localStorage.getItem(RATINGS_KEY) || '{}') } catch { return {} }
+}
+function saveRating(recruiterId, stars) {
+  const all = getRatings()
+  all[recruiterId] = stars
+  localStorage.setItem(RATINGS_KEY, JSON.stringify(all))
 }
 
 // Highlight matched text
@@ -57,6 +66,54 @@ function ScoreBadge({ score }) {
       fontSize: 10, fontWeight: 600, padding: '3px 7px', borderRadius: 4,
       background: color + '18', color, letterSpacing: '0.03em', whiteSpace: 'nowrap',
     }}>{label}</span>
+  )
+}
+
+// 5-star data quality rating
+const STAR_LABELS = ['', 'Wrong data', 'Mostly wrong', 'Partially correct', 'Mostly correct', 'All correct']
+function StarRating({ recruiterId }) {
+  const stored = getRatings()[recruiterId] || 0
+  const [rating, setRating] = useState(stored)
+  const [hover, setHover] = useState(0)
+  const [saved, setSaved] = useState(stored > 0)
+
+  const handleRate = (stars) => {
+    setRating(stars)
+    setSaved(true)
+    saveRating(recruiterId, stars)
+  }
+
+  const display = hover || rating
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}
+      title={display ? STAR_LABELS[display] : 'Rate data accuracy'}
+    >
+      {[1, 2, 3, 4, 5].map(star => (
+        <button
+          key={star}
+          onClick={e => { e.stopPropagation(); handleRate(star) }}
+          onMouseEnter={() => setHover(star)}
+          onMouseLeave={() => setHover(0)}
+          style={{
+            background: 'none', border: 'none', padding: '1px', cursor: 'pointer',
+            fontSize: 13, lineHeight: 1,
+            color: star <= display
+              ? (display <= 2 ? '#ef4444' : display === 3 ? '#f59e0b' : '#22c55e')
+              : 'var(--card-border)',
+            transition: 'color 0.1s, transform 0.1s',
+            transform: star <= hover ? 'scale(1.2)' : 'scale(1)',
+          }}
+        >
+          ★
+        </button>
+      ))}
+      {saved && rating > 0 && (
+        <span style={{ fontSize: 9, color: 'var(--text-muted)', marginLeft: 2, whiteSpace: 'nowrap' }}>
+          {STAR_LABELS[rating]}
+        </span>
+      )}
+    </div>
   )
 }
 
@@ -106,9 +163,10 @@ function RecruiterRow({ r, query, focused }) {
         </p>
       </div>
 
-      {/* Score badge */}
-      <div style={{ flexShrink: 0 }}>
+      {/* Score badge + Star rating */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0, minWidth: 120 }}>
         <ScoreBadge score={r.relevance_score} />
+        <StarRating recruiterId={r.recruiter_id} />
       </div>
     </div>
   )

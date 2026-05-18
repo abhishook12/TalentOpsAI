@@ -98,9 +98,7 @@ function UploadZone({ type, label, icon, color, accept }) {
       <div style={{ marginTop: 16, padding: '12px 14px', background: 'var(--bg-hover)', borderRadius: 8, border: '1px solid var(--card-border)' }}>
         <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Required columns:</p>
         <p style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
-          {type === 'candidates'
-            ? 'candidate_name, email, phone, visa_status, skills, experience_years, location, rate_per_hour, availability'
-            : 'recruiter_name, email, phone, specialization'}
+          recruiter_name, email, phone, specialization, company, location
         </p>
       </div>
     </div>
@@ -112,17 +110,10 @@ export default function Upload() {
     <div className="page-enter">
       <div style={{ marginBottom: 28 }}>
         <h1 style={{ fontSize: 20, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 4 }}>ETL Upload</h1>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Bulk import candidates or recruiters from CSV / Excel files</p>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Bulk import recruiters from CSV / Excel files</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-        <UploadZone
-          type="candidates"
-          label="Candidates"
-          icon="ti-user-check"
-          color="#0F6E56"
-          accept=".csv,.xlsx"
-        />
+      <div style={{ maxWidth: 600 }}>
         <UploadZone
           type="recruiters"
           label="Recruiters"

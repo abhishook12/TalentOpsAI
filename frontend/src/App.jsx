@@ -3,8 +3,6 @@ import { useEffect, useState } from 'react'
 import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
 import Recruiters from './pages/Recruiters'
-import Candidates from './pages/Candidates'
-import Submissions from './pages/Submissions'
 import Analytics from './pages/Analytics'
 import AISearch from './pages/AISearch'
 import Upload from './pages/Upload'
@@ -214,8 +212,6 @@ function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/recruiters" element={<Recruiters />} />
-            <Route path="/candidates" element={<Candidates />} />
-            <Route path="/submissions" element={<Submissions />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/ai-search" element={<AISearch />} />
             <Route path="/upload" element={<Upload />} />

@@ -69,10 +69,10 @@ function scoreRecruiter(r, words, fullQuery) {
   return score
 }
 
-function smartSearch(query, candidates, recruiters) {
+function smartSearch(query, recruiters) {
   const q = query.toLowerCase().trim()
   const words = q.split(/\s+/).filter(w => w.length >= 2)
-  if (!words.length) return { candidates: [], recruiters: [], summary: 'Type something to search.' }
+  if (!words.length) return { recruiters: [], summary: 'Type something to search.' }
 
   const scored = recruiters
     .map(r => ({ r, score: scoreRecruiter(r, words, q) }))
@@ -81,30 +81,11 @@ function smartSearch(query, candidates, recruiters) {
     .slice(0, 100)
     .map(({ r }) => r)
 
-  const isRecruiterQuery = q.includes('recruiter') || q.includes('specialist') || q.includes('staffing') || q.includes('hiring')
-  let filteredCandidates = []
-  if (!isRecruiterQuery) {
-    const visa = q.match(/\b(h1b|gc|usc|opt|cpt|tn)\b/i)?.[1]?.toUpperCase()
-    const minExp = q.match(/(\d+)\+?\s*year/i) ? parseInt(q.match(/(\d+)\+?\s*year/i)[1]) : null
-    const maxRate = q.match(/under\s*\$?(\d+)/i) ? parseInt(q.match(/under\s*\$?(\d+)/i)[1]) : null
-    filteredCandidates = candidates.filter(c => {
-      if (visa && c.visa_status !== visa) return false
-      if (minExp && c.experience_years < minExp) return false
-      if (maxRate && c.rate_per_hour > maxRate) return false
-      return words.some(w =>
-        c.candidate_name?.toLowerCase().includes(w) ||
-        c.location?.toLowerCase().includes(w) ||
-        (typeof c.skills === 'string' ? c.skills.toLowerCase().includes(w) : (c.skills || []).some(s => s.toLowerCase().includes(w)))
-      )
-    }).slice(0, 30)
-  }
-
-  const total = scored.length + filteredCandidates.length
-  const summary = total > 0
-    ? `Found ${scored.length > 0 ? `${scored.length} recruiter${scored.length !== 1 ? 's' : ''}` : ''}${scored.length > 0 && filteredCandidates.length > 0 ? ' and ' : ''}${filteredCandidates.length > 0 ? `${filteredCandidates.length} candidate${filteredCandidates.length !== 1 ? 's' : ''}` : ''} for "${query}"`
+  const summary = scored.length > 0
+    ? `Found ${scored.length} recruiter${scored.length !== 1 ? 's' : ''} for "${query}"`
     : `No results for "${query}". Try a different name, company, or keyword.`
 
-  return { candidates: filteredCandidates, recruiters: scored, summary }
+  return { recruiters: scored, summary }
 }
 
 function initials(name) {
@@ -121,6 +102,9 @@ function avatarColor(name) {
 }
 
 function RecruiterCard({ r }) {
+  const firstName = r.recruiter_name?.split(' ')[0] || ''
+  const company = r.company_name || emailDomain(r.email)
+
   return (
     <div style={{
       background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '10px',
@@ -135,52 +119,23 @@ function RecruiterCard({ r }) {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 13, fontWeight: 500, color: '#fff', flexShrink: 0,
       }}>{initials(r.recruiter_name)}</div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 2 }}>{r.recruiter_name}</p>
-        <p style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {r.email}
-          {(r.company_name || emailDomain(r.email)) ? (
-            <span style={{ color: 'var(--text-muted)' }}> · {r.company_name || emailDomain(r.email)}</span>
-          ) : null}
+      
+      <div style={{ flex: 1, minWidth: 0, display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, alignItems: 'center' }}>
+        <p style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text-primary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {firstName || '—'}
         </p>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
-        {r.phone && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.phone}</span>}
-        {r.specialization && (
-          <span style={{ fontSize: 11, background: 'var(--bg-hover)', color: 'var(--text-secondary)', padding: '2px 8px', borderRadius: '4px' }}>
-            {r.specialization.length > 30 ? r.specialization.slice(0, 30) + '…' : r.specialization}
-          </span>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function CandidateCard({ c }) {
-  return (
-    <div style={{
-      background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '10px',
-      padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '14px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-    }}>
-      <div style={{
-        width: 38, height: 38, borderRadius: '50%', background: '#1e3a5f',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 13, fontWeight: 500, color: '#7dd3fc', flexShrink: 0,
-      }}>{initials(c.candidate_name)}</div>
-      <div style={{ flex: 1 }}>
-        <p style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 2 }}>{c.candidate_name}</p>
-        <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{c.email} · {c.location}</p>
-        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 5 }}>
-          {c.visa_status && <span className="badge badge-blue">{c.visa_status}</span>}
-          {(typeof c.skills === 'string' ? c.skills.split(',').map(s => s.trim()) : (c.skills || [])).slice(0, 3).map(s => (
-            <span key={s} style={{ fontSize: 11, background: 'var(--bg-hover)', color: 'var(--text-secondary)', padding: '2px 8px', borderRadius: '4px' }}>{s}</span>
-          ))}
-        </div>
-      </div>
-      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-        <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--accent-hover)' }}>${c.rate_per_hour}/hr</p>
-        <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.experience_years} yrs exp</p>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {r.email || '—'}
+        </p>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {r.phone || '—'}
+        </p>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {company || '—'}
+        </p>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {r.location || 'Location TBA'}
+        </p>
       </div>
     </div>
   )
@@ -205,13 +160,10 @@ export default function AISearch() {
     setLoading(true)
     setSearched(true)
     try {
-      const [candRes, recRes] = await Promise.all([
-        axios.get(`${API}/candidates?limit=500`).catch(() => ({ data: [] })),
-        axios.get(`${API}/recruiters?limit=50000`).catch(() => ({ data: [] })),
-      ])
-      setResults(smartSearch(q, candRes.data, recRes.data))
+      const recRes = await axios.get(`${API}/recruiters?limit=50000`).catch(() => ({ data: [] }))
+      setResults(smartSearch(q, recRes.data))
     } catch {
-      setResults({ candidates: [], recruiters: [], summary: 'Could not connect to backend. Please try again in a moment.' })
+      setResults({ recruiters: [], summary: 'Could not connect to backend. Please try again in a moment.' })
     }
     setLoading(false)
   }
@@ -261,27 +213,21 @@ export default function AISearch() {
 
           {results.recruiters.length > 0 && (
             <div style={{ marginBottom: 24 }}>
-              <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
-                Recruiters · {results.recruiters.length} results
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', marginBottom: 12 }}>
+                 <div style={{ width: 52 }} /> {/* Avatar spacing */}
+                 <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
+                   {['First Name', 'Email', 'Phone', 'Company', 'Location'].map(h => (
+                     <span key={h} style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</span>
+                   ))}
+                 </div>
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {results.recruiters.map(r => <RecruiterCard key={r.recruiter_id} r={r} />)}
               </div>
             </div>
           )}
 
-          {results.candidates.length > 0 && (
-            <div>
-              <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
-                Candidates · {results.candidates.length} results
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {results.candidates.map(c => <CandidateCard key={c.candidate_id} c={c} />)}
-              </div>
-            </div>
-          )}
-
-          {results.recruiters.length === 0 && results.candidates.length === 0 && (
+          {results.recruiters.length === 0 && (
             <div style={{ textAlign: 'center', padding: '48px 20px', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '12px' }}>
               <i className="ti ti-search-off" style={{ fontSize: 32, color: 'var(--border-input)', display: 'block', marginBottom: 12 }} aria-hidden="true" />
               <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 6 }}>No results found</p>

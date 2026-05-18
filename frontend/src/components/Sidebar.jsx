@@ -3,8 +3,6 @@ import { NavLink, useLocation } from 'react-router-dom'
 const nav = [
   { to: '/', label: 'Dashboard', icon: 'ti-layout-dashboard' },
   { to: '/recruiters', label: 'Recruiters', icon: 'ti-users' },
-  { to: '/candidates', label: 'Candidates', icon: 'ti-user-check' },
-  { to: '/submissions', label: 'Submissions', icon: 'ti-file-text' },
   { to: '/analytics', label: 'Analytics', icon: 'ti-chart-bar' },
   { to: '/upload', label: 'ETL Upload', icon: 'ti-upload' },
   { to: '/ai-search', label: 'AI Search', icon: 'ti-search', accent: true },

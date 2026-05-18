@@ -131,7 +131,6 @@ export default function Recruiters() {
     r.company_name?.toLowerCase().includes(search.toLowerCase())
   )
 
-  const openAdd = () => { setForm(emptyForm); setModal('add') }
   const openEdit = (r) => {
     setForm({
       recruiter_name: r.recruiter_name || '', email: r.email || '', phone: r.phone || '',
@@ -184,9 +183,6 @@ export default function Recruiters() {
           <h1 style={{ fontSize: 20, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 3 }}>Recruiters</h1>
           <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{filtered.length} recruiter{filtered.length !== 1 ? 's' : ''} in database</p>
         </div>
-        <button className="btn-primary" onClick={openAdd} id="add-recruiter-btn">
-          <i className="ti ti-user-plus" style={{ fontSize: 14 }} /> Add Recruiter
-        </button>
       </div>
 
       {/* Filters */}

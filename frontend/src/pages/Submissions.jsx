@@ -115,8 +115,8 @@ export default function Submissions() {
       axios.get(url),
       axios.get(`${API}/candidates?limit=500`),
       axios.get(`${API}/recruiters?limit=500`),
-      axios.get(`${API}/companies`),
-      axios.get(`${API}/vendors`),
+      axios.get(`${API}/companies/`),
+      axios.get(`${API}/vendors/`),
     ]).then(([s, c, r, co, v]) => {
       setSubmissions(s.data)
       setCandidates(c.data)

@@ -20,29 +20,52 @@ function emailDomain(email) {
   return personal.includes(company) ? '' : company
 }
 
-function scoreRecruiter(r, words) {
+function scoreRecruiter(r, words, fullQuery) {
   let score = 0
-  // Use company_name (from API) AND derive a company hint from email domain
+  let wordsMatched = 0
+  
   const companyHint = emailDomain(r.email)
   const fields = [
     { val: r.recruiter_name,  weight: 10 },
-    { val: r.company_name,    weight: 8  },  // fixed: was r.company (undefined)
-    { val: companyHint,       weight: 8  },  // email domain as company signal
+    { val: r.company_name,    weight: 8  },  
+    { val: companyHint,       weight: 8  },  
     { val: r.email,           weight: 3  },
     { val: r.specialization,  weight: 6  },
     { val: r.location,        weight: 4  },
     { val: r.phone,           weight: 2  },
   ]
+
+  let hasFullMatch = false
+  if (r.recruiter_name?.toLowerCase().includes(fullQuery)) { score += 200; hasFullMatch = true }
+  if (r.company_name?.toLowerCase().includes(fullQuery)) { score += 150; hasFullMatch = true }
+
   for (const word of words) {
-    if (word.length < 2) continue
+    let wordMatched = false
+    let bestWordScore = 0
     for (const { val, weight } of fields) {
       if (!val) continue
       const v = val.toLowerCase()
-      if (v === word)           score += weight * 4  // exact match
-      else if (v.startsWith(word)) score += weight * 2  // prefix match
-      else if (v.includes(word))   score += weight       // partial match
+      if (v === word) {
+        bestWordScore = Math.max(bestWordScore, weight * 4)
+        wordMatched = true
+      } else if (v.startsWith(word)) {
+        bestWordScore = Math.max(bestWordScore, weight * 2)
+        wordMatched = true
+      } else if (v.includes(word)) {
+        bestWordScore = Math.max(bestWordScore, weight)
+        wordMatched = true
+      }
     }
+    score += bestWordScore
+    if (wordMatched) wordsMatched++
   }
+
+  // Strict filtering: If 2 words (like First Last name), require BOTH words to match somewhere
+  if (words.length === 2 && wordsMatched < 2 && !hasFullMatch) return 0
+  
+  // Strict filtering: If 3+ words, require at least half of the words to match
+  if (words.length > 2 && (wordsMatched / words.length) < 0.5 && !hasFullMatch) return 0
+
   return score
 }
 
@@ -52,7 +75,7 @@ function smartSearch(query, candidates, recruiters) {
   if (!words.length) return { candidates: [], recruiters: [], summary: 'Type something to search.' }
 
   const scored = recruiters
-    .map(r => ({ r, score: scoreRecruiter(r, words) }))
+    .map(r => ({ r, score: scoreRecruiter(r, words, q) }))
     .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, 100)

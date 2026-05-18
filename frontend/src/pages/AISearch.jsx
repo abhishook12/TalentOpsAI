@@ -1,142 +1,130 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import axios from 'axios'
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 
 const EXAMPLES = [
-  'Brooksource', 'IT staffing New York', 'Java recruiter',
-  'Insight Global', 'finance recruiter', 'DevOps specialist',
+  'Brooksource', 'Insight Global', 'Java recruiter',
+  'IT staffing New York', 'finance recruiter', 'DevOps specialist',
 ]
 
-// Extract company hint from email domain: john@brooksource.com → 'brooksource'
-function emailDomain(email) {
-  if (!email) return ''
-  const at = email.indexOf('@')
-  if (at < 0) return ''
-  const domain = email.slice(at + 1).toLowerCase()
-  // strip common personal email domains
-  const personal = ['gmail', 'yahoo', 'hotmail', 'outlook', 'icloud', 'aol', 'noemail']
-  const company = domain.split('.')[0]
-  return personal.includes(company) ? '' : company
+const RECENT_KEY = 'talentops_recent_searches'
+const MAX_RECENT = 6
+
+function getRecent() {
+  try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]') } catch { return [] }
+}
+function addRecent(q) {
+  const prev = getRecent().filter(s => s !== q)
+  localStorage.setItem(RECENT_KEY, JSON.stringify([q, ...prev].slice(0, MAX_RECENT)))
 }
 
-function scoreRecruiter(r, words, fullQuery) {
-  let score = 0
-  let wordsMatched = 0
-  
-  const companyHint = emailDomain(r.email)
-  const fields = [
-    { val: r.recruiter_name,  weight: 10 },
-    { val: r.company_name,    weight: 8  },  
-    { val: companyHint,       weight: 8  },  
-    { val: r.email,           weight: 3  },
-    { val: r.specialization,  weight: 6  },
-    { val: r.location,        weight: 4  },
-    { val: r.phone,           weight: 2  },
-  ]
-
-  let hasFullMatch = false
-  if (r.recruiter_name?.toLowerCase().includes(fullQuery)) { score += 200; hasFullMatch = true }
-  if (r.company_name?.toLowerCase().includes(fullQuery)) { score += 150; hasFullMatch = true }
-
-  for (const word of words) {
-    let wordMatched = false
-    let bestWordScore = 0
-    for (const { val, weight } of fields) {
-      if (!val) continue
-      const v = val.toLowerCase()
-      if (v === word) {
-        bestWordScore = Math.max(bestWordScore, weight * 4)
-        wordMatched = true
-      } else if (v.startsWith(word)) {
-        bestWordScore = Math.max(bestWordScore, weight * 2)
-        wordMatched = true
-      } else if (v.includes(word)) {
-        bestWordScore = Math.max(bestWordScore, weight)
-        wordMatched = true
-      }
-    }
-    score += bestWordScore
-    if (wordMatched) wordsMatched++
-  }
-
-  // Strict filtering: If 2 words (like First Last name), require BOTH words to match somewhere
-  if (words.length === 2 && wordsMatched < 2 && !hasFullMatch) return 0
-  
-  // Strict filtering: If 3+ words, require at least half of the words to match
-  if (words.length > 2 && (wordsMatched / words.length) < 0.5 && !hasFullMatch) return 0
-
-  return score
+// Highlight matched text
+function Highlight({ text, query }) {
+  if (!text || !query) return <span>{text || '—'}</span>
+  const idx = text.toLowerCase().indexOf(query.toLowerCase())
+  if (idx === -1) return <span>{text}</span>
+  return (
+    <span>
+      {text.slice(0, idx)}
+      <mark style={{ background: 'rgba(24,95,165,0.18)', color: 'var(--accent)', borderRadius: 3, padding: '0 1px' }}>
+        {text.slice(idx, idx + query.length)}
+      </mark>
+      {text.slice(idx + query.length)}
+    </span>
+  )
 }
 
-function smartSearch(query, recruiters) {
-  const q = query.toLowerCase().trim()
-  const words = q.split(/\s+/).filter(w => w.length >= 2)
-  if (!words.length) return { recruiters: [], summary: 'Type something to search.' }
-
-  const scored = recruiters
-    .map(r => ({ r, score: scoreRecruiter(r, words, q) }))
-    .filter(({ score }) => score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 100)
-    .map(({ r }) => r)
-
-  const summary = scored.length > 0
-    ? `Found ${scored.length} recruiter${scored.length !== 1 ? 's' : ''} for "${query}"`
-    : `No results for "${query}". Try a different name, company, or keyword.`
-
-  return { recruiters: scored, summary }
-}
-
-function initials(name) {
-  if (!name) return '?'
-  const parts = name.trim().split(' ')
-  return (parts[0]?.[0] || '') + (parts[1]?.[0] || '')
-}
-
-const avatarColors = ['#1e3a5f', '#064e3b', '#3b1f6e', '#3b1f00', '#1e293b', '#172033', '#1a3a4a']
+// Avatar
+const AVATAR_COLORS = ['#1e3a5f', '#064e3b', '#3b1f6e', '#5b2d00', '#1e293b', '#172033', '#1a3a4a', '#4a1942']
 function avatarColor(name) {
   let h = 0
-  for (let i = 0; i < (name?.length || 0); i++) h = (h + name.charCodeAt(i)) % avatarColors.length
-  return avatarColors[h]
+  for (let i = 0; i < (name?.length || 0); i++) h = (h + name.charCodeAt(i)) % AVATAR_COLORS.length
+  return AVATAR_COLORS[h]
+}
+function initials(name) {
+  if (!name) return '?'
+  const p = name.trim().split(' ')
+  return (p[0]?.[0] || '') + (p[1]?.[0] || '')
 }
 
-function RecruiterCard({ r }) {
+// Score badge
+function ScoreBadge({ score }) {
+  const color = score >= 150 ? '#0F6E56' : score >= 80 ? '#185FA5' : score >= 40 ? '#BA7517' : '#94a3b8'
+  const label = score >= 150 ? 'Exact' : score >= 80 ? 'Strong' : score >= 40 ? 'Partial' : 'Fuzzy'
+  return (
+    <span style={{
+      fontSize: 10, fontWeight: 600, padding: '3px 7px', borderRadius: 4,
+      background: color + '18', color, letterSpacing: '0.03em', whiteSpace: 'nowrap',
+    }}>{label}</span>
+  )
+}
+
+// Result Row
+function RecruiterRow({ r, query, focused }) {
   const firstName = r.recruiter_name?.split(' ')[0] || ''
-  const company = r.company_name || emailDomain(r.email)
+  const company = r.company_name || (() => {
+    const at = r.email?.indexOf('@')
+    if (at < 0) return ''
+    const domain = r.email?.slice(at + 1).split('.')[0] || ''
+    return ['gmail', 'yahoo', 'hotmail', 'outlook', 'icloud', 'aol'].includes(domain) ? '' : domain
+  })()
 
   return (
     <div style={{
-      background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '10px',
-      padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '14px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.04)', transition: 'box-shadow 0.12s',
-    }}
-      onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)'}
-      onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'}
-    >
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '11px 16px',
+      background: focused ? 'var(--main-bg)' : 'transparent',
+      borderBottom: '1px solid var(--card-border)',
+      transition: 'background 0.1s',
+      cursor: 'default',
+    }}>
+      {/* Avatar */}
       <div style={{
-        width: 38, height: 38, borderRadius: '50%', background: avatarColor(r.recruiter_name),
+        width: 34, height: 34, borderRadius: '50%',
+        background: avatarColor(r.recruiter_name),
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 13, fontWeight: 500, color: '#fff', flexShrink: 0,
+        fontSize: 12, fontWeight: 600, color: '#fff', flexShrink: 0, letterSpacing: '0.03em',
       }}>{initials(r.recruiter_name)}</div>
-      
-      <div style={{ flex: 1, minWidth: 0, display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, alignItems: 'center' }}>
-        <p style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text-primary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {firstName || '—'}
+
+      {/* Data columns */}
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1.4fr 2fr 1.2fr 1.4fr 1.2fr', gap: 8, minWidth: 0 }}>
+        <p style={{ margin: 0, fontSize: 13.5, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <Highlight text={firstName} query={query} />
         </p>
-        <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {r.email || '—'}
+        <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <Highlight text={r.email} query={query} />
         </p>
-        <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {r.phone || '—'}
         </p>
-        <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {company || '—'}
+        <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <Highlight text={company || null} query={query} />
         </p>
-        <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {r.location || 'Location TBA'}
+        <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {r.location || '—'}
         </p>
       </div>
+
+      {/* Score badge */}
+      <div style={{ flexShrink: 0 }}>
+        <ScoreBadge score={r.relevance_score} />
+      </div>
+    </div>
+  )
+}
+
+// Skeleton loading row
+function SkeletonRow() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', borderBottom: '1px solid var(--card-border)' }}>
+      <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--card-border)', flexShrink: 0 }} />
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1.4fr 2fr 1.2fr 1.4fr 1.2fr', gap: 8 }}>
+        {[80, 160, 90, 120, 70].map((w, i) => (
+          <div key={i} style={{ height: 12, width: w, borderRadius: 4, background: 'var(--card-border)', animation: 'pulse 1.4s ease-in-out infinite' }} />
+        ))}
+      </div>
+      <div style={{ width: 50, height: 20, borderRadius: 4, background: 'var(--card-border)', animation: 'pulse 1.4s ease-in-out infinite' }} />
     </div>
   )
 }
@@ -145,97 +133,212 @@ export default function AISearch() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [searched, setSearched] = useState(false)
-  const [warming, setWarming] = useState(false)
+  const [error, setError] = useState(null)
+  const [focused, setFocused] = useState(false)
+  const [focusedIdx, setFocusedIdx] = useState(-1)
+  const [recent, setRecent] = useState(getRecent())
 
-  // Ping backend on mount to wake up Render free instance
-  useState(() => {
-    setWarming(true)
-    axios.get(`${API}/ping`).finally(() => setWarming(false))
-  })
+  const inputRef = useRef()
+  const debounceRef = useRef()
 
-  const handleSearch = async (q = query) => {
-    if (!q.trim()) return
-    setQuery(q)
+  // Debounced search — fires 300ms after user stops typing
+  const doSearch = useCallback(async (q) => {
+    if (!q.trim()) { setResults(null); setError(null); setLoading(false); return }
     setLoading(true)
-    setSearched(true)
+    setError(null)
     try {
-      const recRes = await axios.get(`${API}/recruiters?limit=50000`).catch(() => ({ data: [] }))
-      setResults(smartSearch(q, recRes.data))
-    } catch {
-      setResults({ recruiters: [], summary: 'Could not connect to backend. Please try again in a moment.' })
+      const res = await axios.get(`${API}/recruiters/search`, { params: { q: q.trim(), limit: 100 } })
+      setResults(res.data)
+    } catch (e) {
+      setError(e.response?.status === 422 ? 'Query too short.' : 'Could not connect to backend. Please try again.')
+      setResults(null)
     }
     setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    clearTimeout(debounceRef.current)
+    if (!query.trim()) { setResults(null); setLoading(false); return }
+    setLoading(true)
+    debounceRef.current = setTimeout(() => doSearch(query), 300)
+    return () => clearTimeout(debounceRef.current)
+  }, [query, doSearch])
+
+  const handleSelect = (q) => {
+    setQuery(q)
+    addRecent(q)
+    setRecent(getRecent())
+    setFocused(false)
+    inputRef.current?.blur()
   }
+
+  const handleKeyDown = (e) => {
+    const list = results || []
+    if (e.key === 'ArrowDown') { e.preventDefault(); setFocusedIdx(i => Math.min(i + 1, list.length - 1)) }
+    if (e.key === 'ArrowUp') { e.preventDefault(); setFocusedIdx(i => Math.max(i - 1, -1)) }
+    if (e.key === 'Escape') { setFocused(false); inputRef.current?.blur() }
+    if (e.key === 'Enter' && query.trim()) {
+      addRecent(query.trim())
+      setRecent(getRecent())
+      setFocused(false)
+    }
+  }
+
+  const showDropdown = focused && !query.trim() && (recent.length > 0 || EXAMPLES.length > 0)
+  const showResults = results !== null && query.trim()
 
   return (
     <div className="page-enter">
-      <div style={{ marginBottom: '24px' }}>
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+      `}</style>
+
+      {/* Header */}
+      <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 20, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 4 }}>AI Search</h1>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Search 12,000+ recruiters by name, company, location, or keyword</p>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Smart ranked search across 12,000+ recruiters — exact matches first, fuzzy matches last</p>
       </div>
 
-      <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '12px', padding: '20px', marginBottom: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>
-          <div style={{ flex: 1, position: 'relative' }}>
-            <i className="ti ti-search" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 16, color: 'var(--text-muted)' }} aria-hidden="true" />
-            <input
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSearch()}
-              placeholder='Try "Brooksource", "IT staffing NY", "finance recruiter"...'
-              style={{ width: '100%', paddingLeft: 38 }}
-            />
-          </div>
-          <button className="btn-primary" onClick={() => handleSearch()} disabled={loading} style={{ opacity: loading ? 0.7 : 1 }}>
-            {loading ? 'Searching...' : 'Search'}
-          </button>
+      {/* Search Box */}
+      <div style={{ position: 'relative', marginBottom: 20 }}>
+        <div style={{
+          background: 'var(--card-bg)', border: `1.5px solid ${focused ? 'var(--accent)' : 'var(--card-border)'}`,
+          borderRadius: 12, padding: '0 16px', display: 'flex', alignItems: 'center', gap: 10,
+          boxShadow: focused ? '0 0 0 3px rgba(24,95,165,0.1)' : '0 1px 3px rgba(0,0,0,0.05)',
+          transition: 'border-color 0.15s, box-shadow 0.15s',
+        }}>
+          {loading
+            ? <i className="ti ti-loader" style={{ fontSize: 18, color: 'var(--accent)', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
+            : <i className="ti ti-search" style={{ fontSize: 18, color: focused ? 'var(--accent)' : 'var(--text-muted)', flexShrink: 0, transition: 'color 0.15s' }} />
+          }
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={e => { setQuery(e.target.value); setFocusedIdx(-1) }}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setTimeout(() => setFocused(false), 150)}
+            onKeyDown={handleKeyDown}
+            placeholder='Search by name, email, company, specialization...'
+            autoComplete="off"
+            style={{
+              flex: 1, border: 'none', background: 'transparent', outline: 'none',
+              fontSize: 15, color: 'var(--text-primary)', padding: '14px 0',
+            }}
+          />
+          {query && (
+            <button onClick={() => { setQuery(''); setResults(null); inputRef.current?.focus() }}
+              style={{ background: 'none', border: 'none', padding: 4, color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18, lineHeight: 1, display: 'flex' }}>
+              <i className="ti ti-x" />
+            </button>
+          )}
         </div>
-        <div>
-          <p style={{ fontSize: 11, color: 'var(--border-input)', marginBottom: 8 }}>Quick searches:</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {EXAMPLES.map(ex => (
-              <button key={ex} onClick={() => handleSearch(ex)}
-                style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', borderRadius: '6px', padding: '5px 12px', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}>
-                {ex}
-              </button>
-            ))}
+
+        {/* Dropdown: recent + quick searches */}
+        {showDropdown && (
+          <div style={{
+            position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 100,
+            background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 10,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.12)', overflow: 'hidden',
+          }}>
+            {recent.length > 0 && (
+              <div>
+                <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '10px 14px 6px' }}>Recent Searches</p>
+                {recent.map(r => (
+                  <div key={r} onClick={() => handleSelect(r)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', cursor: 'pointer', transition: 'background 0.1s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--main-bg)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    <i className="ti ti-history" style={{ fontSize: 14, color: 'var(--text-muted)' }} />
+                    <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{r}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ borderTop: recent.length > 0 ? '1px solid var(--card-border)' : 'none' }}>
+              <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '10px 14px 6px' }}>Quick Searches</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '0 14px 12px' }}>
+                {EXAMPLES.map(ex => (
+                  <button key={ex} onClick={() => handleSelect(ex)}
+                    style={{ background: 'var(--main-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: '5px 12px', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}>
+                    {ex}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {searched && results && (
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '10px 14px', background: 'var(--accent-bg)', border: '1px solid var(--accent)', borderRadius: '8px' }}>
-            <i className="ti ti-info-circle" style={{ fontSize: 15, color: 'var(--accent)', flexShrink: 0 }} aria-hidden="true" />
-            <p style={{ fontSize: 13, color: 'var(--accent-hover)', margin: 0 }}>{results.summary}</p>
+      {/* Results */}
+      {showResults && (
+        <div className="card" style={{ overflow: 'hidden' }}>
+          {/* Column headers */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', background: 'var(--main-bg)', borderBottom: '1px solid var(--card-border)' }}>
+            <div style={{ width: 34, flexShrink: 0 }} />
+            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1.4fr 2fr 1.2fr 1.4fr 1.2fr', gap: 8 }}>
+              {['First Name', 'Email', 'Phone', 'Company', 'Location'].map(h => (
+                <span key={h} style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</span>
+              ))}
+            </div>
+            <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>Match</span>
           </div>
 
-          {results.recruiters.length > 0 && (
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', marginBottom: 12 }}>
-                 <div style={{ width: 52 }} /> {/* Avatar spacing */}
-                 <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
-                   {['First Name', 'Email', 'Phone', 'Company', 'Location'].map(h => (
-                     <span key={h} style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</span>
-                   ))}
-                 </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {results.recruiters.map(r => <RecruiterCard key={r.recruiter_id} r={r} />)}
-              </div>
+          {/* Loading skeletons */}
+          {loading && Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)}
+
+          {/* Error */}
+          {error && !loading && (
+            <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+              <i className="ti ti-wifi-off" style={{ fontSize: 28, color: 'var(--text-muted)', display: 'block', marginBottom: 10 }} />
+              <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{error}</p>
             </div>
           )}
 
-          {results.recruiters.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '48px 20px', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '12px' }}>
-              <i className="ti ti-search-off" style={{ fontSize: 32, color: 'var(--border-input)', display: 'block', marginBottom: 12 }} aria-hidden="true" />
-              <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 6 }}>No results found</p>
-              <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Try a different name, company, or keyword</p>
+          {/* Results */}
+          {!loading && !error && results.length > 0 && (
+            <>
+              <div style={{ padding: '8px 16px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  {results.length} result{results.length !== 1 ? 's' : ''} for <strong style={{ color: 'var(--text-primary)' }}>"{query}"</strong>
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Sorted by relevance</span>
+              </div>
+              {results.map((r, i) => (
+                <RecruiterRow key={r.recruiter_id} r={r} query={query} focused={i === focusedIdx} />
+              ))}
+            </>
+          )}
+
+          {/* No results */}
+          {!loading && !error && results.length === 0 && (
+            <div style={{ padding: '52px 20px', textAlign: 'center' }}>
+              <i className="ti ti-search-off" style={{ fontSize: 32, color: 'var(--text-muted)', display: 'block', marginBottom: 12 }} />
+              <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 6 }}>No recruiters found for "{query}"</p>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Try a different name, email, company, or keyword</p>
             </div>
           )}
         </div>
       )}
+
+      {/* Empty state — no query yet */}
+      {!showResults && !loading && (
+        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+          <div style={{ width: 56, height: 56, borderRadius: 14, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            <i className="ti ti-search" style={{ fontSize: 26, color: '#fff' }} />
+          </div>
+          <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 8 }}>Smart Ranked Search</p>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 340, margin: '0 auto' }}>
+            Type a name, email, company, or keyword. Exact matches rank first, fuzzy matches last.
+          </p>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   )
 }

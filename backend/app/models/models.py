@@ -22,7 +22,6 @@ class Vendor(Base):
     vendor_id    = Column(Integer, primary_key=True, index=True)
     vendor_name  = Column(String(255), nullable=False)
     contact_name = Column(String(150))
-    email        = Column(String(150), unique=True)
     phone        = Column(String(30))
     location     = Column(String(150))
     created_at   = Column(TIMESTAMP, server_default=func.now())

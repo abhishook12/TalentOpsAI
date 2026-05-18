@@ -168,6 +168,13 @@ export default function AISearch() {
   const [results, setResults] = useState(null)
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
+  const [warming, setWarming] = useState(false)
+
+  // Ping backend on mount to wake up Render free instance
+  useState(() => {
+    setWarming(true)
+    axios.get(`${API}/ping`).finally(() => setWarming(false))
+  })
 
   const handleSearch = async (q = query) => {
     if (!q.trim()) return
@@ -181,7 +188,7 @@ export default function AISearch() {
       ])
       setResults(smartSearch(q, candRes.data, recRes.data))
     } catch {
-      setResults({ candidates: [], recruiters: [], summary: 'Could not connect to backend.' })
+      setResults({ candidates: [], recruiters: [], summary: 'Could not connect to backend. Please try again in a moment.' })
     }
     setLoading(false)
   }

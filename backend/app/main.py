@@ -32,6 +32,14 @@ app.include_router(upload.router, prefix="/upload", tags=["Upload"])
 def root():
     return {"message": "TalentOps AI is running", "docs": "/docs"}
 
+@app.get("/ping")
+def ping():
+    return {"status": "ok"}
+
+@app.get("/health")
+def health():
+    return {"status": "healthy"}
+
 @app.on_event("startup")
 def auto_import_recruiters():
     import json, os

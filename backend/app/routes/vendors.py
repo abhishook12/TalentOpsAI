@@ -10,14 +10,12 @@ router = APIRouter()
 class VendorCreate(BaseModel):
     vendor_name: str
     contact_name: Optional[str] = None
-    email: Optional[str] = None
     phone: Optional[str] = None
     location: Optional[str] = None
 
 class VendorUpdate(BaseModel):
     vendor_name: Optional[str] = None
     contact_name: Optional[str] = None
-    email: Optional[str] = None
     phone: Optional[str] = None
     location: Optional[str] = None
 

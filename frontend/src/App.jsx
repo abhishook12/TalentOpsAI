@@ -1,11 +1,12 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, lazy, Suspense } from 'react'
 import Sidebar from './components/Sidebar'
-import Dashboard from './pages/Dashboard'
-import Recruiters from './pages/Recruiters'
-import Analytics from './pages/Analytics'
-import AISearch from './pages/AISearch'
-import Upload from './pages/Upload'
+
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Recruiters = lazy(() => import('./pages/Recruiters'))
+const Analytics  = lazy(() => import('./pages/Analytics'))
+const AISearch   = lazy(() => import('./pages/AISearch'))
+const Upload     = lazy(() => import('./pages/Upload'))
 
 const globalStyles = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
@@ -124,6 +125,7 @@ const globalStyles = `
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
   }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   .page-enter { animation: fadeUp 0.25s ease forwards; }
 
   .card {
@@ -202,21 +204,48 @@ function App() {
     <Router>
       <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--main-bg)' }}>
         <Sidebar />
-        <main style={{
-          flex: 1,
-          padding: '28px 32px',
-          overflowY: 'auto',
-          background: 'var(--main-bg)',
-          minHeight: '100vh',
-        }}>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/recruiters" element={<Recruiters />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/ai-search" element={<AISearch />} />
-            <Route path="/upload" element={<Upload />} />
-          </Routes>
-        </main>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--main-bg)' }}>
+          <main style={{ flex: 1, padding: '28px 32px', overflowY: 'auto' }}>
+            <Suspense fallback={
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 12 }}>
+                <i className="ti ti-loader" style={{ fontSize: 22, color: 'var(--accent)', animation: 'spin 0.8s linear infinite' }} />
+                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading...</span>
+              </div>
+            }>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/recruiters" element={<Recruiters />} />
+                <Route path="/analytics" element={<Analytics />} />
+                <Route path="/ai-search" element={<AISearch />} />
+                <Route path="/upload" element={<Upload />} />
+              </Routes>
+            </Suspense>
+          </main>
+
+          {/* Footer */}
+          <footer style={{
+            borderTop: '1px solid var(--card-border)',
+            padding: '14px 32px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: 'var(--card-bg)',
+            flexShrink: 0,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 22, height: 22, background: 'var(--accent)', borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <i className="ti ti-bolt" style={{ color: '#fff', fontSize: 13 }} />
+              </div>
+              <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' }}>TalentOps AI</span>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>— Recruitment Intelligence Platform</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Built by <strong style={{ color: 'var(--text-secondary)' }}>Abhishek</strong></span>
+              <span style={{ fontSize: 11, color: 'var(--card-border)' }}>|</span>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>© {new Date().getFullYear()}</span>
+            </div>
+          </footer>
+        </div>
         <ThemeSwitcher />
       </div>
     </Router>

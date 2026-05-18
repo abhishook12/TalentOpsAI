@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import axios from 'axios'
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
@@ -123,13 +123,16 @@ export default function Recruiters() {
 
   useEffect(() => { fetchRecruiters(); setPage(0) }, [fetchRecruiters])
 
-  const filtered = recruiters.filter(r =>
-    !search ||
-    r.recruiter_name?.toLowerCase().includes(search.toLowerCase()) ||
-    r.email?.toLowerCase().includes(search.toLowerCase()) ||
-    r.specialization?.toLowerCase().includes(search.toLowerCase()) ||
-    r.company_name?.toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = useMemo(() => {
+    if (!search) return recruiters
+    const q = search.toLowerCase()
+    return recruiters.filter(r =>
+      r.recruiter_name?.toLowerCase().includes(q) ||
+      r.email?.toLowerCase().includes(q) ||
+      r.specialization?.toLowerCase().includes(q) ||
+      r.company_name?.toLowerCase().includes(q)
+    )
+  }, [recruiters, search])
 
   const openEdit = (r) => {
     setForm({

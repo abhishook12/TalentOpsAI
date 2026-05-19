@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, contains_eager
 from sqlalchemy import text
 from pydantic import BaseModel
 from typing import Optional, List
@@ -183,10 +183,12 @@ def get_recruiters(
     limit: int = 100,
     search: Optional[str] = None,
     specialization: Optional[str] = None,
+    location: Optional[str] = None,
+    company: Optional[str] = None,
     is_active: Optional[bool] = None,
     db: Session = Depends(get_db)
 ):
-    query = db.query(Recruiter).options(joinedload(Recruiter.company))
+    query = db.query(Recruiter).join(Recruiter.company, isouter=True).options(contains_eager(Recruiter.company))
     if search:
         query = query.filter(
             Recruiter.recruiter_name.ilike(f"%{search}%") |
@@ -195,6 +197,10 @@ def get_recruiters(
         )
     if specialization:
         query = query.filter(Recruiter.specialization.ilike(f"%{specialization}%"))
+    if location:
+        query = query.filter(Company.location.ilike(f"%{location}%"))
+    if company:
+        query = query.filter(Company.company_name.ilike(f"%{company}%"))
     if is_active is not None:
         query = query.filter(Recruiter.is_active == is_active)
     results = query.offset(skip).limit(limit).all()

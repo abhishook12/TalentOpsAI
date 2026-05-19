@@ -12,8 +12,11 @@ class RecruiterCreate(BaseModel):
     recruiter_name: str
     email: str
     phone: Optional[str] = None
+    email2: Optional[str] = None
+    phone2: Optional[str] = None
     linkedin: Optional[str] = None
     specialization: Optional[str] = None
+    notes: Optional[str] = None
     company_id: Optional[int] = None
     is_active: Optional[bool] = True
 
@@ -21,8 +24,11 @@ class RecruiterUpdate(BaseModel):
     recruiter_name: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
+    email2: Optional[str] = None
+    phone2: Optional[str] = None
     linkedin: Optional[str] = None
     specialization: Optional[str] = None
+    notes: Optional[str] = None
     company_id: Optional[int] = None
     is_active: Optional[bool] = None
 
@@ -32,8 +38,11 @@ def serialize_recruiter(r):
         "recruiter_name": r.recruiter_name,
         "email": r.email,
         "phone": r.phone,
+        "email2": r.email2,
+        "phone2": r.phone2,
         "linkedin": r.linkedin,
         "specialization": r.specialization,
+        "notes": r.notes,
         "company_id": r.company_id,
         "company_name": r.company.company_name if r.company else None,
         "is_active": r.is_active,
@@ -130,8 +139,11 @@ def search_recruiters(
             "recruiter_name": row["recruiter_name"],
             "email": row["email"],
             "phone": row["phone"],
+            "email2": row["email2"],
+            "phone2": row["phone2"],
             "linkedin": row["linkedin"],
             "specialization": row["specialization"],
+            "notes": row["notes"],
             "company_id": row["company_id"],
             "company_name": row["company_name"],
             "is_active": row["is_active"],

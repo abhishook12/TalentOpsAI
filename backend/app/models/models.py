@@ -35,8 +35,11 @@ class Recruiter(Base):
     recruiter_name   = Column(String(150), nullable=False)
     email            = Column(String(150), unique=True, nullable=False)
     phone            = Column(String(30))
+    email2           = Column(String(150))          # secondary / personal email
+    phone2           = Column(String(30))           # secondary phone
     linkedin         = Column(String(255))
     specialization   = Column(String(150))
+    notes            = Column(Text)                 # any extra info from messages etc.
     company_id       = Column(Integer, ForeignKey("companies.company_id", ondelete="SET NULL"), nullable=True)
     is_active        = Column(Boolean, default=True)
     created_at       = Column(TIMESTAMP, server_default=func.now())

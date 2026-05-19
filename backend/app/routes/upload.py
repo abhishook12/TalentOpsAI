@@ -69,7 +69,11 @@ async def upload_recruiters(file: UploadFile = File(...), db: Session = Depends(
             recruiter_name=clean_name(row.get("recruiter_name","")),
             email=email,
             phone=clean_phone(row.get("phone","")) or None,
+            email2=str(row["email2"]).lower().strip() if row.get("email2") else None,
+            phone2=clean_phone(row.get("phone2","")) or None,
+            linkedin=str(row["linkedin"]).strip() if row.get("linkedin") else None,
             specialization=str(row["specialization"]).strip() if row.get("specialization") else None,
+            notes=str(row["notes"]).strip() if row.get("notes") else None,
             is_active=True,
         )
         db.add(recruiter); inserted += 1

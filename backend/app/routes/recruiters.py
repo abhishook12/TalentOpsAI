@@ -18,6 +18,7 @@ class RecruiterCreate(BaseModel):
     specialization: Optional[str] = None
     notes: Optional[str] = None
     company_id: Optional[int] = None
+    location: Optional[str] = None
     is_active: Optional[bool] = True
 
 class RecruiterUpdate(BaseModel):
@@ -30,6 +31,7 @@ class RecruiterUpdate(BaseModel):
     specialization: Optional[str] = None
     notes: Optional[str] = None
     company_id: Optional[int] = None
+    location: Optional[str] = None
     is_active: Optional[bool] = None
 
 def serialize_recruiter(r):
@@ -45,6 +47,7 @@ def serialize_recruiter(r):
         "notes": r.notes,
         "company_id": r.company_id,
         "company_name": r.company.company_name if r.company else None,
+        "location": r.location if r.location else (r.company.location if r.company else None),
         "is_active": r.is_active,
         "created_at": str(r.created_at) if r.created_at else None,
     }
@@ -62,16 +65,6 @@ def search_recruiters(
     """
     Smart weighted search using pg_trgm similarity + ILIKE scoring.
     Results are ranked by relevance_score descending.
-
-    Scoring breakdown:
-      +200  exact name match
-      +130  name starts with query
-      +100  name contains query
-      +80   email contains query
-      +60   company contains query
-      +40   specialization contains query
-      +0-30 fuzzy name similarity (pg_trgm)
-      +0-15 fuzzy email similarity (pg_trgm)
     """
     try:
         db.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
@@ -93,7 +86,7 @@ def search_recruiters(
             r.is_active,
             r.company_id,
             c.company_name,
-            c.location,
+            COALESCE(r.location, c.location) AS location,
             (
                 CASE
                     WHEN LOWER(r.recruiter_name) = LOWER(:q)
@@ -198,7 +191,7 @@ def get_recruiters(
     if specialization:
         query = query.filter(Recruiter.specialization.ilike(f"%{specialization}%"))
     if location:
-        query = query.filter(Company.location.ilike(f"%{location}%"))
+        query = query.filter(Recruiter.location.ilike(f"%{location}%") | Company.location.ilike(f"%{location}%"))
     if company:
         query = query.filter(Company.company_name.ilike(f"%{company}%"))
     if is_active is not None:

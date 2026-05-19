@@ -41,6 +41,7 @@ class Recruiter(Base):
     specialization   = Column(String(150))
     notes            = Column(Text)                 # any extra info from messages etc.
     company_id       = Column(Integer, ForeignKey("companies.company_id", ondelete="SET NULL"), nullable=True)
+    location         = Column(String(255))
     is_active        = Column(Boolean, default=True)
     created_at       = Column(TIMESTAMP, server_default=func.now())
     updated_at       = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())

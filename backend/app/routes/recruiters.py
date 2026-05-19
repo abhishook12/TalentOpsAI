@@ -106,6 +106,8 @@ def search_recruiters(
                 END
                 +
                 CASE
+                    WHEN LOWER(r.email) = LOWER(:q)
+                        THEN 200
                     WHEN LOWER(r.email) LIKE '%' || LOWER(:q) || '%'
                         THEN 80
                     ELSE 0
@@ -133,8 +135,8 @@ def search_recruiters(
                 OR r.email ILIKE '%' || :q || '%'
                 OR COALESCE(c.company_name, '') ILIKE '%' || :q || '%'
                 OR COALESCE(r.specialization, '') ILIKE '%' || :q || '%'
-                OR similarity(r.recruiter_name, :q) > 0.15
-                OR similarity(r.email, :q) > 0.15
+                OR similarity(r.recruiter_name, :q) > 0.3
+                OR similarity(r.email, :q) > 0.3
             )
     """
 

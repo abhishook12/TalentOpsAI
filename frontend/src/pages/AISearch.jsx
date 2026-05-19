@@ -5,7 +5,7 @@ import axios from 'axios'
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 
 // Admin password for editing records
-const ADMIN_PASSWORD = 'abhishek@talentops'
+const ADMIN_PASSWORD = '1012'
 
 const EXAMPLES = [
   'Brooksource', 'Insight Global', 'Java recruiter',
@@ -288,6 +288,7 @@ const EDIT_FIELDS = [
   { key: 'phone',          label: 'Primary Phone',  placeholder: '9171234567' },
   { key: 'phone2',         label: 'Alt Phone',      placeholder: 'alternate number' },
   { key: 'linkedin',       label: 'LinkedIn',       placeholder: 'https://linkedin.com/in/...' },
+  { key: 'location',       label: 'Location',       placeholder: 'Grand Rapids, MI' },
   { key: 'specialization', label: 'Specialization', placeholder: 'IT Staffing, Java, DevOps...' },
   { key: 'notes',          label: 'Notes',          placeholder: 'Any extra info...', multiline: true },
 ]
@@ -310,6 +311,7 @@ function EditModal({ recruiter, onClose, onSaved }) {
         phone:            form.phone  || null,
         phone2:           form.phone2 || null,
         linkedin:         form.linkedin || null,
+        location:         form.location || null,
         specialization:   form.specialization || null,
         notes:            form.notes || null,
       })

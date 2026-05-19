@@ -325,16 +325,26 @@ export default function AISearch() {
   const [recent, setRecent] = useState(getRecent())
   const [selectedRecruiter, setSelectedRecruiter] = useState(null)
 
+  const [filterCompany, setFilterCompany] = useState('')
+  const [filterLocation, setFilterLocation] = useState('')
+  const [filterSpecialization, setFilterSpecialization] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
+
   const inputRef = useRef()
   const debounceRef = useRef()
 
   // Debounced search — fires 300ms after user stops typing
-  const doSearch = useCallback(async (q) => {
+  const doSearch = useCallback(async (q, comp, loc, spec) => {
     if (!q.trim()) { setResults(null); setError(null); setLoading(false); return }
     setLoading(true)
     setError(null)
     try {
-      const res = await axios.get(`${API}/recruiters/search`, { params: { q: q.trim(), limit: 100 } })
+      const params = { q: q.trim(), limit: 100 }
+      if (comp.trim()) params.company = comp.trim()
+      if (loc.trim()) params.location = loc.trim()
+      if (spec.trim()) params.specialization = spec.trim()
+
+      const res = await axios.get(`${API}/recruiters/search`, { params })
       setResults(res.data)
     } catch (e) {
       setError(e.response?.status === 422 ? 'Query too short.' : 'Could not connect to backend. Please try again.')
@@ -347,9 +357,9 @@ export default function AISearch() {
     clearTimeout(debounceRef.current)
     if (!query.trim()) { setResults(null); setLoading(false); return }
     setLoading(true)
-    debounceRef.current = setTimeout(() => doSearch(query), 300)
+    debounceRef.current = setTimeout(() => doSearch(query, filterCompany, filterLocation, filterSpecialization), 300)
     return () => clearTimeout(debounceRef.current)
-  }, [query, doSearch])
+  }, [query, filterCompany, filterLocation, filterSpecialization, doSearch])
 
   const handleSelect = (q) => {
     setQuery(q)
@@ -415,6 +425,9 @@ export default function AISearch() {
               fontSize: 15, color: 'var(--text-primary)', padding: '14px 0',
             }}
           />
+          <button onClick={() => setShowFilters(!showFilters)} style={{ background: 'none', border: 'none', padding: 4, color: showFilters ? 'var(--accent)' : 'var(--text-muted)', cursor: 'pointer', fontSize: 18, lineHeight: 1, display: 'flex' }} title="Toggle Filters">
+            <i className="ti ti-adjustments-horizontal" />
+          </button>
           {query && (
             <button onClick={() => { setQuery(''); setResults(null); inputRef.current?.focus() }}
               style={{ background: 'none', border: 'none', padding: 4, color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18, lineHeight: 1, display: 'flex' }}>
@@ -422,6 +435,19 @@ export default function AISearch() {
             </button>
           )}
         </div>
+
+        {/* Filters */}
+        {showFilters && (
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12,
+            marginTop: 12, padding: '12px 16px', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 12,
+            animation: 'fadeIn 0.2s ease',
+          }}>
+            <input placeholder="Filter by Company..." value={filterCompany} onChange={e => setFilterCompany(e.target.value)} style={{ fontSize: 13, padding: '8px 12px', background: 'var(--main-bg)', border: '1px solid var(--card-border)', borderRadius: 8, outline: 'none', color: 'var(--text-primary)' }} />
+            <input placeholder="Filter by Location..." value={filterLocation} onChange={e => setFilterLocation(e.target.value)} style={{ fontSize: 13, padding: '8px 12px', background: 'var(--main-bg)', border: '1px solid var(--card-border)', borderRadius: 8, outline: 'none', color: 'var(--text-primary)' }} />
+            <input placeholder="Filter by Specialization..." value={filterSpecialization} onChange={e => setFilterSpecialization(e.target.value)} style={{ fontSize: 13, padding: '8px 12px', background: 'var(--main-bg)', border: '1px solid var(--card-border)', borderRadius: 8, outline: 'none', color: 'var(--text-primary)' }} />
+          </div>
+        )}
 
         {/* Dropdown: recent + quick searches */}
         {showDropdown && (

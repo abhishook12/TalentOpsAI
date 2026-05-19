@@ -7,6 +7,7 @@ const Recruiters = lazy(() => import('./pages/Recruiters'))
 const Analytics  = lazy(() => import('./pages/Analytics'))
 const AISearch   = lazy(() => import('./pages/AISearch'))
 const Upload     = lazy(() => import('./pages/Upload'))
+const StateDirectory = lazy(() => import('./pages/StateDirectory'))
 
 const globalStyles = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
@@ -217,6 +218,7 @@ function App() {
                 <Route path="/recruiters" element={<Recruiters />} />
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/ai-search" element={<AISearch />} />
+                <Route path="/directory" element={<StateDirectory />} />
                 <Route path="/upload" element={<Upload />} />
               </Routes>
             </Suspense>

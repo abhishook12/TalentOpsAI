@@ -258,8 +258,9 @@ function RecruiterRow({ r, query, focused, onClick }) {
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '11px 16px',
-        background: focused ? 'var(--main-bg)' : 'transparent',
+        background: focused ? 'var(--main-bg)' : (r.relevance_score >= 150 ? 'rgba(234, 179, 8, 0.08)' : 'transparent'),
         borderBottom: '1px solid var(--card-border)',
+        borderLeft: r.relevance_score >= 150 ? '3px solid #eab308' : '3px solid transparent',
         transition: 'background 0.1s',
         cursor: 'pointer',
       }}
@@ -519,6 +520,13 @@ export default function AISearch() {
                 </span>
                 <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Sorted by relevance</span>
               </div>
+              
+              {!results.some(r => r.relevance_score >= 150) && query.trim() && (
+                <div style={{ padding: '10px 16px', background: 'rgba(234, 179, 8, 0.08)', borderBottom: '1px solid rgba(234, 179, 8, 0.2)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <i className="ti ti-info-circle" style={{ color: '#ca8a04', fontSize: 16 }} />
+                  <span style={{ fontSize: 13, color: '#a16207', fontWeight: 500 }}>Person not found, but likely matches these:</span>
+                </div>
+              )}
               {results.map((r, i) => (
                 <RecruiterRow key={r.recruiter_id} r={r} query={query} focused={i === focusedIdx} onClick={() => setSelectedRecruiter(r)} />
               ))}

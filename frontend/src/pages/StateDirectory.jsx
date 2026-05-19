@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { ComposableMap, Geographies, Geography } from 'react-simple-maps'
 import axios from 'axios'
-import { API } from '../App'
+const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 
 const geoUrl = "https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json"
 

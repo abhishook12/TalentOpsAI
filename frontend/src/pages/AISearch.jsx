@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import axios from 'axios'
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
@@ -120,7 +121,7 @@ function StarRating({ recruiterId }) {
 function ProfileModal({ recruiter, onClose }) {
   if (!recruiter) return null
 
-  return (
+  return createPortal(
     <div style={{
       position: 'fixed', inset: 0, zIndex: 1000,
       background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)',
@@ -236,7 +237,8 @@ function ProfileModal({ recruiter, onClose }) {
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
       `}</style>
-    </div>
+    </div>,
+    document.body
   )
 }
 

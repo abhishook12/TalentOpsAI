@@ -1,34 +1,45 @@
-import React, { useState, useEffect, useMemo } from 'react'
-import { ComposableMap, Geographies, Geography } from 'react-simple-maps'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
+
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 
-const geoUrl = "https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json"
-
-const STATE_ABBR = {
-  "Alabama": "AL", "Alaska": "AK", "Arizona": "AZ", "Arkansas": "AR", "California": "CA",
-  "Colorado": "CO", "Connecticut": "CT", "Delaware": "DE", "Florida": "FL", "Georgia": "GA",
-  "Hawaii": "HI", "Idaho": "ID", "Illinois": "IL", "Indiana": "IN", "Iowa": "IA",
-  "Kansas": "KS", "Kentucky": "KY", "Louisiana": "LA", "Maine": "ME", "Maryland": "MD",
-  "Massachusetts": "MA", "Michigan": "MI", "Minnesota": "MN", "Mississippi": "MS", "Missouri": "MO",
-  "Montana": "MT", "Nebraska": "NE", "Nevada": "NV", "New Hampshire": "NH", "New Jersey": "NJ",
-  "New Mexico": "NM", "New York": "NY", "North Carolina": "NC", "North Dakota": "ND", "Ohio": "OH",
-  "Oklahoma": "OK", "Oregon": "OR", "Pennsylvania": "PA", "Rhode Island": "RI", "South Carolina": "SC",
-  "South Dakota": "SD", "Tennessee": "TN", "Texas": "TX", "Utah": "UT", "Vermont": "VT",
-  "Virginia": "VA", "Washington": "WA", "West Virginia": "WV", "Wisconsin": "WI", "Wyoming": "WY"
-}
+const STATES = [
+  { abbr: 'AL', name: 'Alabama' }, { abbr: 'AK', name: 'Alaska' },
+  { abbr: 'AZ', name: 'Arizona' }, { abbr: 'AR', name: 'Arkansas' },
+  { abbr: 'CA', name: 'California' }, { abbr: 'CO', name: 'Colorado' },
+  { abbr: 'CT', name: 'Connecticut' }, { abbr: 'DE', name: 'Delaware' },
+  { abbr: 'FL', name: 'Florida' }, { abbr: 'GA', name: 'Georgia' },
+  { abbr: 'HI', name: 'Hawaii' }, { abbr: 'ID', name: 'Idaho' },
+  { abbr: 'IL', name: 'Illinois' }, { abbr: 'IN', name: 'Indiana' },
+  { abbr: 'IA', name: 'Iowa' }, { abbr: 'KS', name: 'Kansas' },
+  { abbr: 'KY', name: 'Kentucky' }, { abbr: 'LA', name: 'Louisiana' },
+  { abbr: 'ME', name: 'Maine' }, { abbr: 'MD', name: 'Maryland' },
+  { abbr: 'MA', name: 'Massachusetts' }, { abbr: 'MI', name: 'Michigan' },
+  { abbr: 'MN', name: 'Minnesota' }, { abbr: 'MS', name: 'Mississippi' },
+  { abbr: 'MO', name: 'Missouri' }, { abbr: 'MT', name: 'Montana' },
+  { abbr: 'NE', name: 'Nebraska' }, { abbr: 'NV', name: 'Nevada' },
+  { abbr: 'NH', name: 'New Hampshire' }, { abbr: 'NJ', name: 'New Jersey' },
+  { abbr: 'NM', name: 'New Mexico' }, { abbr: 'NY', name: 'New York' },
+  { abbr: 'NC', name: 'North Carolina' }, { abbr: 'ND', name: 'North Dakota' },
+  { abbr: 'OH', name: 'Ohio' }, { abbr: 'OK', name: 'Oklahoma' },
+  { abbr: 'OR', name: 'Oregon' }, { abbr: 'PA', name: 'Pennsylvania' },
+  { abbr: 'RI', name: 'Rhode Island' }, { abbr: 'SC', name: 'South Carolina' },
+  { abbr: 'SD', name: 'South Dakota' }, { abbr: 'TN', name: 'Tennessee' },
+  { abbr: 'TX', name: 'Texas' }, { abbr: 'UT', name: 'Utah' },
+  { abbr: 'VT', name: 'Vermont' }, { abbr: 'VA', name: 'Virginia' },
+  { abbr: 'WA', name: 'Washington' }, { abbr: 'WV', name: 'West Virginia' },
+  { abbr: 'WI', name: 'Wisconsin' }, { abbr: 'WY', name: 'Wyoming' },
+]
 
 export default function StateDirectory() {
   const [selectedState, setSelectedState] = useState(null)
   const [companyQuery, setCompanyQuery] = useState('')
+  const [debouncedCompany, setDebouncedCompany] = useState('')
   const [recruiters, setRecruiters] = useState([])
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
 
-  // Debounce the company search
-  const [debouncedCompany, setDebouncedCompany] = useState('')
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedCompany(companyQuery), 300)
+    const t = setTimeout(() => setDebouncedCompany(companyQuery), 350)
     return () => clearTimeout(t)
   }, [companyQuery])
 
@@ -37,165 +48,197 @@ export default function StateDirectory() {
       setRecruiters([])
       return
     }
-
     setLoading(true)
-    setError(null)
-    const abbr = STATE_ABBR[selectedState] || ''
-    
-    // We only need to filter by state if one is selected
-    // Note: the backend looks for ILIKE '%TX%'. This matches "Austin, TX".
     let url = `${API}/recruiters/?limit=200`
-    if (abbr) url += `&location=${abbr}`
-    if (debouncedCompany) url += `&company=${debouncedCompany}`
+    if (selectedState) url += `&location=${selectedState}`
+    if (debouncedCompany) url += `&company=${encodeURIComponent(debouncedCompany)}`
 
     axios.get(url)
-      .then(res => {
-        setRecruiters(res.data)
-        setLoading(false)
-      })
-      .catch(err => {
-        setError(err.message)
-        setLoading(false)
-      })
+      .then(res => { setRecruiters(res.data); setLoading(false) })
+      .catch(() => setLoading(false))
   }, [selectedState, debouncedCompany])
 
+  const selectedName = STATES.find(s => s.abbr === selectedState)?.name || ''
+
   return (
-    <div className="page-enter" style={{ display: 'flex', gap: 32, minHeight: 'calc(100vh - 64px)' }}>
-      {/* Left side: Controls and Map */}
-      <div style={{ flex: '1 1 50%', display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div className="page-enter" style={{ display: 'flex', gap: 28, minHeight: 'calc(100vh - 120px)' }}>
+      {/* Left: Selector + Map grid */}
+      <div style={{ flex: '0 0 420px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 8 }}>State Directory</h1>
-          <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Select a state on the map to view recruiters located there. Filter further by company name.</p>
+          <h1 style={{ fontSize: 22, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 4 }}>
+            State Directory
+          </h1>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
+            Select a state to browse recruiters by location. Combine with a company name to narrow down.
+          </p>
         </div>
 
         {/* Company Filter */}
         <div style={{
           background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-          borderRadius: 12, padding: '0 16px', display: 'flex', alignItems: 'center', gap: 10,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          borderRadius: 10, padding: '0 14px', display: 'flex', alignItems: 'center', gap: 10,
         }}>
-          <i className="ti ti-building" style={{ fontSize: 18, color: 'var(--text-muted)' }} />
+          <i className="ti ti-building" style={{ fontSize: 17, color: 'var(--text-muted)' }} />
           <input
             value={companyQuery}
             onChange={e => setCompanyQuery(e.target.value)}
             placeholder="Filter by company name..."
             style={{
               flex: 1, border: 'none', background: 'transparent', outline: 'none',
-              fontSize: 15, color: 'var(--text-primary)', padding: '14px 0',
+              fontSize: 14, color: 'var(--text-primary)', padding: '12px 0',
             }}
           />
+          {companyQuery && (
+            <button onClick={() => setCompanyQuery('')}
+              style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer', color: 'var(--text-muted)', fontSize: 16, lineHeight: 1 }}>
+              <i className="ti ti-x" />
+            </button>
+          )}
         </div>
 
-        {/* US Map */}
-        <div className="card" style={{ padding: 16, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <ComposableMap projection="geoAlbersUsa" style={{ width: '100%', height: '100%' }}>
-            <Geographies geography={geoUrl}>
-              {({ geographies }) =>
-                geographies.map(geo => {
-                  const stateName = geo.properties.name
-                  const isSelected = selectedState === stateName
-                  return (
-                    <Geography
-                      key={geo.rsmKey}
-                      geography={geo}
-                      onClick={() => setSelectedState(isSelected ? null : stateName)}
-                      style={{
-                        default: {
-                          fill: isSelected ? 'var(--accent)' : 'var(--main-bg)',
-                          stroke: isSelected ? 'var(--accent)' : 'var(--card-border)',
-                          strokeWidth: 1,
-                          outline: 'none',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s'
-                        },
-                        hover: {
-                          fill: isSelected ? 'var(--accent)' : 'rgba(24,95,165,0.2)',
-                          stroke: 'var(--accent)',
-                          strokeWidth: 1,
-                          outline: 'none',
-                          cursor: 'pointer',
-                        },
-                        pressed: {
-                          fill: 'var(--accent)',
-                          outline: 'none',
-                        }
-                      }}
-                    />
-                  )
-                })
-              }
-            </Geographies>
-          </ComposableMap>
+        {/* State Grid */}
+        <div className="card" style={{ padding: 16, flex: 1 }}>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12 }}>
+            Select a State
+          </p>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(6, 1fr)',
+            gap: 6,
+          }}>
+            {STATES.map(({ abbr, name }) => {
+              const isSelected = selectedState === abbr
+              return (
+                <button
+                  key={abbr}
+                  title={name}
+                  onClick={() => setSelectedState(isSelected ? null : abbr)}
+                  style={{
+                    padding: '8px 4px',
+                    borderRadius: 7,
+                    fontSize: 12,
+                    fontWeight: isSelected ? 600 : 400,
+                    border: isSelected ? '2px solid var(--accent)' : '1px solid var(--card-border)',
+                    background: isSelected ? 'var(--accent)' : 'var(--main-bg)',
+                    color: isSelected ? '#fff' : 'var(--text-secondary)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    letterSpacing: '0.02em',
+                  }}
+                  onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)' } }}
+                  onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.borderColor = 'var(--card-border)'; e.currentTarget.style.color = 'var(--text-secondary)' } }}
+                >
+                  {abbr}
+                </button>
+              )
+            })}
+          </div>
+
+          {selectedState && (
+            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                Selected: <strong style={{ color: 'var(--accent)' }}>{selectedName}</strong>
+              </span>
+              <button onClick={() => setSelectedState(null)}
+                style={{ fontSize: 11, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                Clear
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Right side: Results */}
-      <div style={{ flex: '1 1 50%', display: 'flex', flexDirection: 'column' }}>
+      {/* Right: Results */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--card-border)', background: 'var(--main-bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ fontSize: 16, fontWeight: 500, margin: 0, color: 'var(--text-primary)' }}>
-              {selectedState ? `${selectedState} Recruiters` : 'Select a State'}
-            </h2>
+          {/* Header */}
+          <div style={{
+            padding: '14px 20px', borderBottom: '1px solid var(--card-border)',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0,
+          }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>
+                {selectedState ? `${selectedName} Recruiters` : 'Directory Results'}
+              </h2>
+              {(selectedState || debouncedCompany) && !loading && (
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
+                  {recruiters.length} recruiter{recruiters.length !== 1 ? 's' : ''} found
+                  {debouncedCompany ? ` at "${debouncedCompany}"` : ''}
+                </p>
+              )}
+            </div>
             {selectedState && (
-              <span style={{ fontSize: 12, color: 'var(--text-muted)', background: 'var(--card-bg)', padding: '4px 8px', borderRadius: 6, border: '1px solid var(--card-border)' }}>
-                {STATE_ABBR[selectedState]}
+              <span style={{
+                fontSize: 13, fontWeight: 600, color: 'var(--accent)',
+                background: 'rgba(24,95,165,0.08)', padding: '4px 10px',
+                borderRadius: 6, border: '1px solid rgba(24,95,165,0.2)',
+              }}>
+                {selectedState}
               </span>
             )}
           </div>
 
+          {/* Content */}
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {loading ? (
-              <div style={{ padding: 40, textAlign: 'center' }}>
-                <i className="ti ti-loader" style={{ fontSize: 24, color: 'var(--accent)', animation: 'spin 1s linear infinite' }} />
+              <div style={{ padding: 48, textAlign: 'center' }}>
+                <i className="ti ti-loader" style={{ fontSize: 28, color: 'var(--accent)', animation: 'spin 1s linear infinite' }} />
+                <p style={{ marginTop: 12, fontSize: 13, color: 'var(--text-muted)' }}>Fetching recruiters...</p>
               </div>
-            ) : error ? (
-              <div style={{ padding: 40, textAlign: 'center', color: '#ef4444' }}>{error}</div>
             ) : (!selectedState && !debouncedCompany) ? (
-              <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-muted)' }}>
-                <i className="ti ti-map-2" style={{ fontSize: 48, marginBottom: 16, opacity: 0.5, display: 'block' }} />
-                <p>Click on any state to view its directory.</p>
+              <div style={{ padding: 64, textAlign: 'center', color: 'var(--text-muted)' }}>
+                <i className="ti ti-map-pin" style={{ fontSize: 52, marginBottom: 16, opacity: 0.35, display: 'block' }} />
+                <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 6 }}>No state selected</p>
+                <p style={{ fontSize: 13 }}>Pick a state from the grid on the left to browse its recruiters.</p>
               </div>
             ) : recruiters.length === 0 ? (
-              <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-muted)' }}>
-                <i className="ti ti-users-minus" style={{ fontSize: 48, marginBottom: 16, opacity: 0.5, display: 'block' }} />
-                <p>No recruiters found matching the selected criteria.</p>
+              <div style={{ padding: 64, textAlign: 'center', color: 'var(--text-muted)' }}>
+                <i className="ti ti-users-minus" style={{ fontSize: 52, marginBottom: 16, opacity: 0.35, display: 'block' }} />
+                <p style={{ fontSize: 14, fontWeight: 500 }}>No recruiters found</p>
+                <p style={{ fontSize: 13 }}>Try selecting a different state or clearing the company filter.</p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {recruiters.map(r => (
-                  <div key={r.recruiter_id} style={{
-                    padding: '16px 20px', borderBottom: '1px solid var(--card-border)',
-                    display: 'flex', flexDirection: 'column', gap: 6,
-                    transition: 'background 0.2s', cursor: 'default'
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--main-bg)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div>
-                        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>{r.recruiter_name}</h3>
-                        <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>{r.company_name || 'Independent'}</p>
-                      </div>
-                      <span style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--main-bg)', padding: '2px 6px', borderRadius: 4, border: '1px solid var(--card-border)' }}>
-                        {r.location || 'Unknown'}
+              recruiters.map(r => (
+                <div key={r.recruiter_id} style={{
+                  padding: '14px 20px', borderBottom: '1px solid var(--card-border)',
+                  transition: 'background 0.15s', cursor: 'default',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--main-bg)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{r.recruiter_name}</p>
+                      <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>{r.company_name || 'Independent'}</p>
+                    </div>
+                    {r.location && (
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', marginLeft: 12 }}>
+                        <i className="ti ti-map-pin" style={{ marginRight: 3 }} />
+                        {r.location}
                       </span>
-                    </div>
-                    
-                    <div style={{ display: 'flex', gap: 16, marginTop: 4 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)' }}>
-                        <i className="ti ti-mail" />
-                        <a href={`mailto:${r.email}`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>{r.email}</a>
-                      </div>
-                      {r.phone && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)' }}>
-                          <i className="ti ti-phone" />
-                          <span>{r.phone}</span>
-                        </div>
-                      )}
-                    </div>
+                    )}
                   </div>
-                ))}
-              </div>
+
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 18px', marginTop: 8 }}>
+                    <a href={`mailto:${r.email}`} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--accent)', textDecoration: 'none' }}>
+                      <i className="ti ti-mail" />
+                      {r.email}
+                    </a>
+                    {r.phone && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)' }}>
+                        <i className="ti ti-phone" />
+                        {r.phone}
+                      </span>
+                    )}
+                    {r.specialization && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)' }}>
+                        <i className="ti ti-tag" />
+                        {r.specialization}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </div>

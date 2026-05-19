@@ -4,6 +4,12 @@ import axios from 'axios'
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 
+// ── Admin access: only shows edit button if YOUR browser has the secret key set ──
+// To enable: open browser console and run:
+//   localStorage.setItem('talentops_admin_key', 'abhishek@talentops')
+// To disable: localStorage.removeItem('talentops_admin_key')
+const IS_ADMIN = localStorage.getItem('talentops_admin_key') === 'abhishek@talentops'
+
 const EXAMPLES = [
   'Brooksource', 'Insight Global', 'Java recruiter',
   'IT staffing New York', 'finance recruiter', 'DevOps specialist',
@@ -242,8 +248,137 @@ function ProfileModal({ recruiter, onClose }) {
   )
 }
 
+// ─── Edit Modal (localhost only) ─────────────────────────────────────────────
+const EDIT_FIELDS = [
+  { key: 'recruiter_name', label: 'Full Name',      placeholder: 'John Smith' },
+  { key: 'email',          label: 'Primary Email',  placeholder: 'john@company.com' },
+  { key: 'email2',         label: 'Alt Email',      placeholder: 'john@gmail.com' },
+  { key: 'phone',          label: 'Primary Phone',  placeholder: '9171234567' },
+  { key: 'phone2',         label: 'Alt Phone',      placeholder: 'alternate number' },
+  { key: 'linkedin',       label: 'LinkedIn',       placeholder: 'https://linkedin.com/in/...' },
+  { key: 'specialization', label: 'Specialization', placeholder: 'IT Staffing, Java, DevOps...' },
+  { key: 'notes',          label: 'Notes',          placeholder: 'Any extra info...', multiline: true },
+]
+
+function EditModal({ recruiter, onClose, onSaved }) {
+  const [form, setForm] = useState({ ...recruiter })
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [err, setErr] = useState(null)
+
+  if (!recruiter) return null
+
+  const handleSave = async () => {
+    setSaving(true); setErr(null)
+    try {
+      await axios.put(`${API}/recruiters/${recruiter.recruiter_id}`, {
+        recruiter_name:   form.recruiter_name,
+        email:            form.email,
+        email2:           form.email2 || null,
+        phone:            form.phone  || null,
+        phone2:           form.phone2 || null,
+        linkedin:         form.linkedin || null,
+        specialization:   form.specialization || null,
+        notes:            form.notes || null,
+      })
+      setSaved(true)
+      setTimeout(() => { onSaved(form); onClose() }, 800)
+    } catch (e) {
+      setErr(e.response?.data?.detail || 'Save failed.')
+    }
+    setSaving(false)
+  }
+
+  return createPortal(
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 2000,
+      background: 'rgba(15,23,42,0.7)', backdropFilter: 'blur(5px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      animation: 'fadeIn 0.15s ease',
+    }} onClick={onClose}>
+      <div style={{
+        width: '100%', maxWidth: 560, background: 'var(--card-bg)',
+        borderRadius: 16, overflow: 'hidden',
+        boxShadow: '0 32px 64px rgba(0,0,0,0.3)',
+        animation: 'slideUp 0.25s cubic-bezier(0.16,1,0.3,1)',
+        border: '1px solid var(--card-border)',
+      }} onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div style={{
+          padding: '20px 24px 16px',
+          borderBottom: '1px solid var(--card-border)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(245,158,11,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="ti ti-pencil" style={{ fontSize: 16, color: '#f59e0b' }} />
+            </div>
+            <div>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Edit Recruiter</p>
+              <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>🔒 Admin only — localhost access</p>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'var(--main-bg)', border: '1px solid var(--card-border)', borderRadius: '50%', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-muted)' }}>
+            <i className="ti ti-x" style={{ fontSize: 14 }} />
+          </button>
+        </div>
+
+        {/* Fields */}
+        <div style={{ padding: '20px 24px', maxHeight: '65vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {EDIT_FIELDS.filter(f => !f.multiline).map(({ key, label, placeholder }) => (
+              <div key={key}>
+                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>{label}</label>
+                <input
+                  value={form[key] || ''}
+                  onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                  placeholder={placeholder}
+                  style={{ width: '100%', padding: '8px 10px', fontSize: 12.5, borderRadius: 7, border: '1px solid var(--card-border)', background: 'var(--main-bg)', color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+            ))}
+          </div>
+          {/* Notes full width */}
+          <div>
+            <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>Notes</label>
+            <textarea
+              value={form.notes || ''}
+              onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+              placeholder="Any extra info..."
+              rows={3}
+              style={{ width: '100%', padding: '8px 10px', fontSize: 12.5, borderRadius: 7, border: '1px solid var(--card-border)', background: 'var(--main-bg)', color: 'var(--text-primary)', outline: 'none', resize: 'vertical', fontFamily: 'var(--font)', boxSizing: 'border-box' }}
+            />
+          </div>
+
+          {err && (
+            <div style={{ padding: '8px 12px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 7, fontSize: 12, color: '#ef4444' }}>
+              {err}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '14px 24px', borderTop: '1px solid var(--card-border)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button onClick={onClose} style={{ padding: '8px 16px', borderRadius: 7, border: '1px solid var(--card-border)', background: 'var(--main-bg)', color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+          <button onClick={handleSave} disabled={saving || saved} style={{
+            padding: '8px 20px', borderRadius: 7, border: 'none', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+            background: saved ? '#22c55e' : '#f59e0b',
+            color: '#fff', display: 'flex', alignItems: 'center', gap: 6,
+            transition: 'background 0.2s', opacity: saving ? 0.7 : 1,
+          }}>
+            <i className={`ti ${saved ? 'ti-check' : saving ? 'ti-loader' : 'ti-device-floppy'}`} style={{ fontSize: 14, animation: saving ? 'spin 0.8s linear infinite' : 'none' }} />
+            {saved ? 'Saved!' : saving ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 // Result Row
-function RecruiterRow({ r, query, focused, onClick }) {
+function RecruiterRow({ r, query, focused, onClick, onEdit }) {
   const firstName = r.recruiter_name?.split(' ')[0] || ''
   const company = r.company_name || (() => {
     const at = r.email?.indexOf('@')
@@ -253,7 +388,7 @@ function RecruiterRow({ r, query, focused, onClick }) {
   })()
 
   return (
-    <div 
+    <div
       onClick={onClick}
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
@@ -265,41 +400,62 @@ function RecruiterRow({ r, query, focused, onClick }) {
         cursor: 'pointer',
       }}
     >
-        {/* Avatar */}
-        <div style={{
-          width: 34, height: 34, borderRadius: '50%',
-          background: avatarColor(r.recruiter_name),
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 12, fontWeight: 600, color: '#fff', flexShrink: 0, letterSpacing: '0.03em',
-        }}>{initials(r.recruiter_name)}</div>
+      {/* Avatar */}
+      <div style={{
+        width: 34, height: 34, borderRadius: '50%',
+        background: avatarColor(r.recruiter_name),
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 12, fontWeight: 600, color: '#fff', flexShrink: 0, letterSpacing: '0.03em',
+      }}>{initials(r.recruiter_name)}</div>
 
-        {/* Data columns */}
-        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1.4fr 2fr 1.2fr 1.4fr 1.2fr', gap: 8, minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: 13.5, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            <Highlight text={firstName} query={query} />
-          </p>
-          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            <Highlight text={r.email} query={query} />
-          </p>
-          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {r.phone || '—'}
-          </p>
-          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            <Highlight text={company || null} query={query} />
-          </p>
-          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {r.location || '—'}
-          </p>
+      {/* Data columns */}
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1.4fr 2fr 1.2fr 1.4fr 1.2fr', gap: 8, minWidth: 0 }}>
+        <p style={{ margin: 0, fontSize: 13.5, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <Highlight text={firstName} query={query} />
+        </p>
+        <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <Highlight text={r.email} query={query} />
+        </p>
+        <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {r.phone || '—'}
+        </p>
+        <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <Highlight text={company || null} query={query} />
+        </p>
+        <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {r.location || '—'}
+        </p>
+      </div>
+
+      {/* Score + Stars + Edit button */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, minWidth: 80 }}>
+          <ScoreBadge score={r.relevance_score} />
+          <StarRating recruiterId={r.recruiter_id} />
         </div>
-
-      {/* Score badge + Star rating */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0, minWidth: 120 }}>
-        <ScoreBadge score={r.relevance_score} />
-        <StarRating recruiterId={r.recruiter_id} />
+        {IS_ADMIN && (
+          <button
+            onClick={e => { e.stopPropagation(); onEdit() }}
+            title="Edit recruiter (admin only)"
+            style={{
+              background: 'rgba(245,158,11,0.1)',
+              border: '1px solid rgba(245,158,11,0.25)',
+              borderRadius: 7, width: 30, height: 30,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', color: '#f59e0b', flexShrink: 0,
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(245,158,11,0.22)'; e.currentTarget.style.transform = 'scale(1.12)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(245,158,11,0.1)';  e.currentTarget.style.transform = 'scale(1)' }}
+          >
+            <i className="ti ti-pencil" style={{ fontSize: 14 }} />
+          </button>
+        )}
       </div>
     </div>
   )
 }
+
 
 // Skeleton loading row
 function SkeletonRow() {
@@ -330,6 +486,7 @@ export default function AISearch() {
   const [filterLocation, setFilterLocation] = useState('')
   const [filterSpecialization, setFilterSpecialization] = useState('')
   const [showFilters, setShowFilters] = useState(false)
+  const [editingRecruiter, setEditingRecruiter] = useState(null)
 
   const inputRef = useRef()
   const debounceRef = useRef()
@@ -528,7 +685,11 @@ export default function AISearch() {
                 </div>
               )}
               {results.map((r, i) => (
-                <RecruiterRow key={r.recruiter_id} r={r} query={query} focused={i === focusedIdx} onClick={() => setSelectedRecruiter(r)} />
+                <RecruiterRow
+                  key={r.recruiter_id} r={r} query={query} focused={i === focusedIdx}
+                  onClick={() => setSelectedRecruiter(r)}
+                  onEdit={() => setEditingRecruiter(r)}
+                />
               ))}
             </>
           )}
@@ -559,6 +720,18 @@ export default function AISearch() {
 
       {/* Full Profile Modal */}
       <ProfileModal recruiter={selectedRecruiter} onClose={() => setSelectedRecruiter(null)} />
+
+      {/* Edit Modal — localhost only */}
+      {IS_ADMIN && (
+        <EditModal
+          recruiter={editingRecruiter}
+          onClose={() => setEditingRecruiter(null)}
+          onSaved={(updated) => {
+            setResults(prev => prev.map(r => r.recruiter_id === updated.recruiter_id ? { ...r, ...updated } : r))
+            setEditingRecruiter(null)
+          }}
+        />
+      )}
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, case
+from sqlalchemy import func, case, text
+from typing import Optional
 from app.database import get_db
 from app.models.models import Recruiter, Candidate, Submission, Company, Vendor
 
@@ -84,3 +85,110 @@ def submissions_trend(db: Session = Depends(get_db)):
         func.count(Submission.submission_id).label("count")
     ).group_by("month").order_by("month").all()
     return [{"month": str(r.month)[:7], "count": r.count} for r in results]
+
+
+@router.get("/companies-by-state")
+def companies_by_state(db: Session = Depends(get_db)):
+    """
+    Returns companies grouped by state, each with recruiter count.
+    State is extracted from the company location field (last word / 2-letter abbr).
+    """
+    sql = text("""
+        SELECT
+            c.company_id,
+            c.company_name,
+            c.location,
+            c.industry,
+            c.website,
+            COUNT(r.recruiter_id) AS recruiter_count,
+            -- Extract state abbreviation: last token of location if 2 chars, else full location
+            CASE
+                WHEN location IS NULL OR TRIM(location) = '' THEN 'Unknown'
+                WHEN LENGTH(TRIM(SPLIT_PART(location, ',', -1))) = 2
+                    THEN UPPER(TRIM(SPLIT_PART(location, ',', -1)))
+                WHEN LENGTH(TRIM(SPLIT_PART(location, ' ', -1))) = 2
+                    THEN UPPER(TRIM(SPLIT_PART(location, ' ', -1)))
+                ELSE TRIM(location)
+            END AS state_abbr
+        FROM companies c
+        LEFT JOIN recruiters r ON r.company_id = c.company_id
+        GROUP BY c.company_id, c.company_name, c.location, c.industry, c.website
+        ORDER BY recruiter_count DESC, c.company_name ASC
+    """)
+    rows = db.execute(sql).mappings().all()
+    return [
+        {
+            "company_id": row["company_id"],
+            "company_name": row["company_name"],
+            "location": row["location"],
+            "industry": row["industry"],
+            "website": row["website"],
+            "recruiter_count": int(row["recruiter_count"]),
+            "state_abbr": row["state_abbr"],
+        }
+        for row in rows
+    ]
+
+
+@router.get("/companies-search")
+def companies_search(
+    q: Optional[str] = Query(None, description="Search company name"),
+    state: Optional[str] = Query(None, description="Filter by state abbreviation"),
+    min_recruiters: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+    db: Session = Depends(get_db)
+):
+    """
+    Searchable + filterable company directory with recruiter counts.
+    """
+    sql = """
+        SELECT
+            c.company_id,
+            c.company_name,
+            c.location,
+            c.industry,
+            c.website,
+            COUNT(r.recruiter_id) AS recruiter_count,
+            CASE
+                WHEN location IS NULL OR TRIM(location) = '' THEN 'Unknown'
+                WHEN LENGTH(TRIM(SPLIT_PART(location, ',', -1))) = 2
+                    THEN UPPER(TRIM(SPLIT_PART(location, ',', -1)))
+                WHEN LENGTH(TRIM(SPLIT_PART(location, ' ', -1))) = 2
+                    THEN UPPER(TRIM(SPLIT_PART(location, ' ', -1)))
+                ELSE TRIM(location)
+            END AS state_abbr
+        FROM companies c
+        LEFT JOIN recruiters r ON r.company_id = c.company_id
+        WHERE 1=1
+    """
+    params = {"limit": limit, "min_recruiters": min_recruiters}
+
+    if q:
+        sql += " AND c.company_name ILIKE '%' || :q || '%'"
+        params["q"] = q
+    if state and state.upper() != "ALL":
+        sql += """ AND (
+            UPPER(TRIM(SPLIT_PART(c.location, ',', -1))) = :state
+            OR UPPER(TRIM(SPLIT_PART(c.location, ' ', -1))) = :state
+        )"""
+        params["state"] = state.upper()
+
+    sql += """
+        GROUP BY c.company_id, c.company_name, c.location, c.industry, c.website
+        HAVING COUNT(r.recruiter_id) >= :min_recruiters
+        ORDER BY recruiter_count DESC, c.company_name ASC
+        LIMIT :limit
+    """
+    rows = db.execute(text(sql), params).mappings().all()
+    return [
+        {
+            "company_id": row["company_id"],
+            "company_name": row["company_name"],
+            "location": row["location"],
+            "industry": row["industry"],
+            "website": row["website"],
+            "recruiter_count": int(row["recruiter_count"]),
+            "state_abbr": row["state_abbr"],
+        }
+        for row in rows
+    ]

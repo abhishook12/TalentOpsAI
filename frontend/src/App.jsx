@@ -8,6 +8,7 @@ const Analytics  = lazy(() => import('./pages/Analytics'))
 const AISearch   = lazy(() => import('./pages/AISearch'))
 const Upload     = lazy(() => import('./pages/Upload'))
 const StateDirectory = lazy(() => import('./pages/StateDirectory'))
+const CompanyDirectory = lazy(() => import('./pages/CompanyDirectory'))
 
 const globalStyles = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
@@ -213,38 +214,50 @@ function App() {
                 <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading...</span>
               </div>
             }>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/recruiters" element={<Recruiters />} />
-                <Route path="/analytics" element={<Analytics />} />
-                <Route path="/ai-search" element={<AISearch />} />
-                <Route path="/directory" element={<StateDirectory />} />
-                <Route path="/upload" element={<Upload />} />
-              </Routes>
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/recruiters" element={<Recruiters />} />
+                  <Route path="/analytics" element={<Analytics />} />
+                  <Route path="/ai-search" element={<AISearch />} />
+                  <Route path="/directory" element={<StateDirectory />} />
+                  <Route path="/companies" element={<CompanyDirectory />} />
+                  <Route path="/upload" element={<Upload />} />
+                </Routes>
             </Suspense>
           </main>
 
           {/* Footer */}
           <footer style={{
             borderTop: '1px solid var(--card-border)',
-            padding: '14px 32px',
+            padding: '22px 36px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             background: 'var(--card-bg)',
             flexShrink: 0,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 22, height: 22, background: 'var(--accent)', borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <i className="ti ti-bolt" style={{ color: '#fff', fontSize: 13 }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 26, height: 26, background: 'var(--accent)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <i className="ti ti-bolt" style={{ color: '#fff', fontSize: 14 }} />
               </div>
-              <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' }}>TalentOps AI</span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>— Recruitment Intelligence Platform</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>TalentOps AI</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>— Recruitment Intelligence Platform</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Built by <strong style={{ color: 'var(--text-secondary)' }}>Abhishek</strong></span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Built by</span>
+              <span style={{
+                fontSize: 17,
+                fontWeight: 700,
+                fontStyle: 'italic',
+                color: '#ffffff',
+                transform: 'rotate(2deg)',
+                display: 'inline-block',
+                letterSpacing: '-0.01em',
+              }}>
+                Abhishek Jadon
+              </span>
               <span style={{ fontSize: 11, color: 'var(--card-border)' }}>|</span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>© {new Date().getFullYear()}</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>© {new Date().getFullYear()}</span>
             </div>
           </footer>
         </div>

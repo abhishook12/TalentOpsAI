@@ -6,6 +6,7 @@ const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\
 const emptyForm = {
   recruiter_name: '', email: '', phone: '', linkedin: '',
   specialization: '', company_id: '', is_active: true,
+  email2: '', phone2: '', notes: ''
 }
 
 function Modal({ title, onClose, onSave, form, setForm, saving }) {
@@ -29,17 +30,28 @@ function Modal({ title, onClose, onSave, form, setForm, saving }) {
             { key: 'recruiter_name', label: 'Full Name *', span: 2 },
             { key: 'email', label: 'Email *', type: 'email' },
             { key: 'phone', label: 'Phone' },
+            { key: 'email2', label: 'Alt Email', type: 'email' },
+            { key: 'phone2', label: 'Alt Phone' },
             { key: 'specialization', label: 'Specialization', span: 2 },
             { key: 'linkedin', label: 'LinkedIn URL', span: 2 },
+            { key: 'notes', label: 'Notes', span: 2, type: 'textarea' },
           ].map(({ key, label, type = 'text', span = 1 }) => (
             <div key={key} style={{ gridColumn: `span ${span}` }}>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 5 }}>{label}</label>
-              <input
-                type={type}
-                value={form[key]}
-                onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--card-border)', borderRadius: 8, fontSize: 13.5, outline: 'none' }}
-              />
+              {type === 'textarea' ? (
+                <textarea
+                  value={form[key]}
+                  onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                  style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--card-border)', borderRadius: 8, fontSize: 13.5, outline: 'none', resize: 'vertical', minHeight: 60 }}
+                />
+              ) : (
+                <input
+                  type={type}
+                  value={form[key]}
+                  onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                  style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--card-border)', borderRadius: 8, fontSize: 13.5, outline: 'none' }}
+                />
+              )}
             </div>
           ))}
           <div style={{ gridColumn: 'span 2' }}>
@@ -59,6 +71,65 @@ function Modal({ title, onClose, onSave, form, setForm, saving }) {
         </div>
       </div>
     </div>
+  )
+}
+
+function RecruiterTableRow({ r, toggleActive, openEdit, handleDelete }) {
+  const [expanded, setExpanded] = useState(false)
+  const hasExtra = !!(r.email2 || r.phone2 || r.notes)
+  return (
+    <>
+      <tr style={{ background: expanded ? 'var(--main-bg)' : 'transparent' }}>
+        <td>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {hasExtra ? (
+              <button onClick={() => setExpanded(!expanded)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--text-muted)' }}>
+                <i className={`ti ti-chevron-${expanded ? 'up' : 'down'}`} />
+              </button>
+            ) : <div style={{ width: 14 }} />}
+            <div style={{
+              width: 32, height: 32, borderRadius: '50%', background: 'var(--accent-bg)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, color: 'var(--accent)', fontWeight: 600, flexShrink: 0,
+            }}>
+              {r.recruiter_name?.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}
+            </div>
+            <span style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: 13.5 }}>{r.recruiter_name}</span>
+          </div>
+        </td>
+        <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{r.email}</td>
+        <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{r.phone || '—'}</td>
+        <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{r.specialization || '—'}</td>
+        <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{r.company_name || '—'}</td>
+        <td>
+          <span className={r.is_active ? "badge badge-green" : "badge badge-red"}>
+            {r.is_active ? 'Active' : 'Inactive'}
+          </span>
+        </td>
+        <td>
+          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+            <button onClick={() => toggleActive(r)} style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--card-bg)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}>
+              <i className={r.is_active ? "ti ti-toggle-right" : "ti ti-toggle-left"} style={{ fontSize: 16 }} />
+            </button>
+            <button onClick={() => openEdit(r)} style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--card-bg)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}>
+              <i className="ti ti-edit" style={{ fontSize: 14 }} />
+            </button>
+            <button onClick={() => handleDelete(r.recruiter_id)} style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(239,68,68,0.2)', background: 'var(--card-bg)', color: '#ef4444', fontSize: 12, cursor: 'pointer' }}>
+              <i className="ti ti-trash" style={{ fontSize: 14 }} />
+            </button>
+          </div>
+        </td>
+      </tr>
+      {expanded && hasExtra && (
+        <tr>
+          <td colSpan="7" style={{ background: 'var(--main-bg)', padding: '12px 16px 12px 64px', borderBottom: '1px solid var(--card-border)', fontSize: 13, color: 'var(--text-secondary)' }}>
+            {r.email2 && <div style={{ marginBottom: 6 }}><i className="ti ti-mail" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Alt Email:</strong> {r.email2}</div>}
+            {r.phone2 && <div style={{ marginBottom: 6 }}><i className="ti ti-phone" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Alt Phone:</strong> {r.phone2}</div>}
+            {r.notes && <div><i className="ti ti-notes" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Notes:</strong> {r.notes}</div>}
+          </td>
+        </tr>
+      )}
+    </>
   )
 }
 
@@ -139,6 +210,7 @@ export default function Recruiters() {
       recruiter_name: r.recruiter_name || '', email: r.email || '', phone: r.phone || '',
       linkedin: r.linkedin || '', specialization: r.specialization || '',
       company_id: r.company_id || '', is_active: r.is_active !== false,
+      email2: r.email2 || '', phone2: r.phone2 || '', notes: r.notes || ''
     })
     setModal(r)
   }
@@ -228,42 +300,7 @@ export default function Recruiters() {
               </thead>
               <tbody>
                 {paginated.map(r => (
-                  <tr key={r.recruiter_id}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{
-                          width: 32, height: 32, borderRadius: '50%', background: 'var(--accent-bg)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 11, color: 'var(--accent)', fontWeight: 600, flexShrink: 0,
-                        }}>
-                          {r.recruiter_name?.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}
-                        </div>
-                        <span style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: 13.5 }}>{r.recruiter_name}</span>
-                      </div>
-                    </td>
-                    <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{r.email}</td>
-                    <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{r.phone || '—'}</td>
-                    <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{r.specialization || '—'}</td>
-                    <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{r.company_name || '—'}</td>
-                    <td>
-                      <span className={r.is_active ? "badge badge-green" : "badge badge-red"}>
-                        {r.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                        <button onClick={() => toggleActive(r)} style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--card-bg)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}>
-                          <i className={r.is_active ? "ti ti-toggle-right" : "ti ti-toggle-left"} style={{ fontSize: 16 }} />
-                        </button>
-                        <button onClick={() => openEdit(r)} style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--card-bg)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}>
-                          <i className="ti ti-edit" style={{ fontSize: 14 }} />
-                        </button>
-                        <button onClick={() => handleDelete(r.recruiter_id)} style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(239,68,68,0.2)', background: 'var(--card-bg)', color: '#ef4444', fontSize: 12, cursor: 'pointer' }}>
-                          <i className="ti ti-trash" style={{ fontSize: 14 }} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  <RecruiterTableRow key={r.recruiter_id} r={r} toggleActive={toggleActive} openEdit={openEdit} handleDelete={handleDelete} />
                 ))}
               </tbody>
             </table>

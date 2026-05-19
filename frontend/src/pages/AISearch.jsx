@@ -119,6 +119,9 @@ function StarRating({ recruiterId }) {
 
 // Result Row
 function RecruiterRow({ r, query, focused }) {
+  const [expanded, setExpanded] = useState(false)
+  const hasExtra = !!(r.email2 || r.phone2 || r.notes)
+
   const firstName = r.recruiter_name?.split(' ')[0] || ''
   const company = r.company_name || (() => {
     const at = r.email?.indexOf('@')
@@ -128,46 +131,64 @@ function RecruiterRow({ r, query, focused }) {
   })()
 
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 12,
-      padding: '11px 16px',
-      background: focused ? 'var(--main-bg)' : 'transparent',
-      borderBottom: '1px solid var(--card-border)',
-      transition: 'background 0.1s',
-      cursor: 'default',
-    }}>
-      {/* Avatar */}
-      <div style={{
-        width: 34, height: 34, borderRadius: '50%',
-        background: avatarColor(r.recruiter_name),
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 12, fontWeight: 600, color: '#fff', flexShrink: 0, letterSpacing: '0.03em',
-      }}>{initials(r.recruiter_name)}</div>
+    <div style={{ borderBottom: '1px solid var(--card-border)' }}>
+      <div 
+        onClick={() => hasExtra && setExpanded(!expanded)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: '11px 16px',
+          background: focused ? 'var(--main-bg)' : 'transparent',
+          transition: 'background 0.1s',
+          cursor: hasExtra ? 'pointer' : 'default',
+        }}
+      >
+        {/* Avatar */}
+        <div style={{
+          width: 34, height: 34, borderRadius: '50%',
+          background: avatarColor(r.recruiter_name),
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 12, fontWeight: 600, color: '#fff', flexShrink: 0, letterSpacing: '0.03em',
+        }}>{initials(r.recruiter_name)}</div>
 
-      {/* Data columns */}
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1.4fr 2fr 1.2fr 1.4fr 1.2fr', gap: 8, minWidth: 0 }}>
-        <p style={{ margin: 0, fontSize: 13.5, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          <Highlight text={firstName} query={query} />
-        </p>
-        <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          <Highlight text={r.email} query={query} />
-        </p>
-        <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {r.phone || '—'}
-        </p>
-        <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          <Highlight text={company || null} query={query} />
-        </p>
-        <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {r.location || '—'}
-        </p>
-      </div>
+        {/* Data columns */}
+        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1.4fr 2fr 1.2fr 1.4fr 1.2fr', gap: 8, minWidth: 0 }}>
+          <p style={{ margin: 0, fontSize: 13.5, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <Highlight text={firstName} query={query} />
+          </p>
+          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <Highlight text={r.email} query={query} />
+          </p>
+          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {r.phone || '—'}
+          </p>
+          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <Highlight text={company || null} query={query} />
+          </p>
+          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {r.location || '—'}
+          </p>
+        </div>
 
-      {/* Score badge + Star rating */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0, minWidth: 120 }}>
-        <ScoreBadge score={r.relevance_score} />
-        <StarRating recruiterId={r.recruiter_id} />
+        {/* Score badge + Star rating */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0, minWidth: 120 }}>
+          <ScoreBadge score={r.relevance_score} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <StarRating recruiterId={r.recruiter_id} />
+            {hasExtra && (
+              <i className={`ti ti-chevron-${expanded ? 'up' : 'down'}`} style={{ color: 'var(--text-muted)', fontSize: 14 }} />
+            )}
+          </div>
+        </div>
       </div>
+      
+      {/* Expanded Extra Info */}
+      {expanded && hasExtra && (
+        <div style={{ padding: '12px 16px 12px 62px', background: 'var(--main-bg)', borderTop: '1px dashed var(--card-border)', fontSize: 13, color: 'var(--text-secondary)' }}>
+          {r.email2 && <div style={{ marginBottom: 6 }}><i className="ti ti-mail" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Alt Email:</strong> {r.email2}</div>}
+          {r.phone2 && <div style={{ marginBottom: 6 }}><i className="ti ti-phone" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Alt Phone:</strong> {r.phone2}</div>}
+          {r.notes && <div><i className="ti ti-notes" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Notes:</strong> {r.notes}</div>}
+        </div>
+      )}
     </div>
   )
 }

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import text
 from pydantic import BaseModel
 from typing import Optional, List
@@ -184,7 +184,7 @@ def get_recruiters(
     is_active: Optional[bool] = None,
     db: Session = Depends(get_db)
 ):
-    query = db.query(Recruiter)
+    query = db.query(Recruiter).options(joinedload(Recruiter.company))
     if search:
         query = query.filter(
             Recruiter.recruiter_name.ilike(f"%{search}%") |

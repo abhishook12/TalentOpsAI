@@ -117,11 +117,131 @@ function StarRating({ recruiterId }) {
   )
 }
 
-// Result Row
-function RecruiterRow({ r, query, focused }) {
-  const [expanded, setExpanded] = useState(false)
-  const hasExtra = !!(r.email2 || r.phone2 || r.notes)
+function ProfileModal({ recruiter, onClose }) {
+  if (!recruiter) return null
 
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      animation: 'fadeIn 0.2s ease',
+    }} onClick={onClose}>
+      <div style={{
+        width: '100%', maxWidth: 500, background: 'var(--card-bg)',
+        borderRadius: 16, overflow: 'hidden', boxShadow: '0 24px 48px rgba(0,0,0,0.2)',
+        animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+      }} onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div style={{ padding: '32px 24px 24px', textAlign: 'center', position: 'relative', borderBottom: '1px solid var(--card-border)' }}>
+          <button onClick={onClose} style={{ position: 'absolute', top: 16, right: 16, background: 'var(--main-bg)', border: '1px solid var(--card-border)', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}><i className="ti ti-x" style={{ fontSize: 16 }}/></button>
+          <div style={{
+            width: 72, height: 72, borderRadius: '50%', margin: '0 auto 16px',
+            background: avatarColor(recruiter.recruiter_name),
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 24, fontWeight: 600, color: '#fff', letterSpacing: '0.03em',
+          }}>{initials(recruiter.recruiter_name)}</div>
+          <h2 style={{ fontSize: 22, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>{recruiter.recruiter_name}</h2>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{recruiter.specialization || 'Recruiter'} {recruiter.company_name ? `at ${recruiter.company_name}` : ''}</p>
+          <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', gap: 12, alignItems: 'center' }}>
+             <ScoreBadge score={recruiter.relevance_score} />
+             <div style={{ height: 16, width: 1, background: 'var(--card-border)' }} />
+             <StarRating recruiterId={recruiter.recruiter_id} />
+          </div>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: 24, maxHeight: '60vh', overflowY: 'auto' }}>
+          
+          {/* Contact Section */}
+          <h3 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Contact Information</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(24,95,165,0.1)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><i className="ti ti-mail" style={{ fontSize: 18 }} /></div>
+              <div>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Primary Email</p>
+                <p style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>{recruiter.email}</p>
+              </div>
+            </div>
+            {recruiter.email2 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(24,95,165,0.05)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><i className="ti ti-mail" style={{ fontSize: 18 }} /></div>
+                <div>
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Alt Email</p>
+                  <p style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>{recruiter.email2}</p>
+                </div>
+              </div>
+            )}
+            {recruiter.phone && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(15,110,86,0.1)', color: '#0F6E56', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><i className="ti ti-phone" style={{ fontSize: 18 }} /></div>
+                <div>
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Primary Phone</p>
+                  <p style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>{recruiter.phone}</p>
+                </div>
+              </div>
+            )}
+            {recruiter.phone2 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(15,110,86,0.05)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><i className="ti ti-phone" style={{ fontSize: 18 }} /></div>
+                <div>
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Alt Phone</p>
+                  <p style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>{recruiter.phone2}</p>
+                </div>
+              </div>
+            )}
+            {recruiter.linkedin && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0,119,181,0.1)', color: '#0077b5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><i className="ti ti-brand-linkedin" style={{ fontSize: 18 }} /></div>
+                <div>
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>LinkedIn</p>
+                  <a href={recruiter.linkedin.startsWith('http') ? recruiter.linkedin : `https://${recruiter.linkedin}`} target="_blank" rel="noreferrer" style={{ fontSize: 14, color: 'var(--accent)', fontWeight: 500, textDecoration: 'none' }}>View Profile <i className="ti ti-external-link" style={{ fontSize: 12 }}/></a>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* About Section */}
+          <h3 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Details</h3>
+          <div style={{ background: 'var(--main-bg)', borderRadius: 12, padding: 16, marginBottom: 24, border: '1px solid var(--card-border)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Location</p>
+                <p style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>{recruiter.location || 'Unknown'}</p>
+              </div>
+              <div>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Company</p>
+                <p style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>{recruiter.company_name || 'Independent'}</p>
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Specialization</p>
+                <p style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>{recruiter.specialization || 'General'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Notes */}
+          {recruiter.notes && (
+            <>
+              <h3 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Notes</h3>
+              <div style={{ background: 'rgba(186,117,23,0.06)', border: '1px solid rgba(186,117,23,0.15)', borderRadius: 12, padding: 16 }}>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, whiteSpace: 'pre-wrap', margin: 0 }}>{recruiter.notes}</p>
+              </div>
+            </>
+          )}
+
+        </div>
+      </div>
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+      `}</style>
+    </div>
+  )
+}
+
+// Result Row
+function RecruiterRow({ r, query, focused, onClick }) {
   const firstName = r.recruiter_name?.split(' ')[0] || ''
   const company = r.company_name || (() => {
     const at = r.email?.indexOf('@')
@@ -131,17 +251,17 @@ function RecruiterRow({ r, query, focused }) {
   })()
 
   return (
-    <div style={{ borderBottom: '1px solid var(--card-border)' }}>
-      <div 
-        onClick={() => hasExtra && setExpanded(!expanded)}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 12,
-          padding: '11px 16px',
-          background: focused ? 'var(--main-bg)' : 'transparent',
-          transition: 'background 0.1s',
-          cursor: hasExtra ? 'pointer' : 'default',
-        }}
-      >
+    <div 
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '11px 16px',
+        background: focused ? 'var(--main-bg)' : 'transparent',
+        borderBottom: '1px solid var(--card-border)',
+        transition: 'background 0.1s',
+        cursor: 'pointer',
+      }}
+    >
         {/* Avatar */}
         <div style={{
           width: 34, height: 34, borderRadius: '50%',
@@ -169,26 +289,11 @@ function RecruiterRow({ r, query, focused }) {
           </p>
         </div>
 
-        {/* Score badge + Star rating */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0, minWidth: 120 }}>
-          <ScoreBadge score={r.relevance_score} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <StarRating recruiterId={r.recruiter_id} />
-            {hasExtra && (
-              <i className={`ti ti-chevron-${expanded ? 'up' : 'down'}`} style={{ color: 'var(--text-muted)', fontSize: 14 }} />
-            )}
-          </div>
-        </div>
+      {/* Score badge + Star rating */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0, minWidth: 120 }}>
+        <ScoreBadge score={r.relevance_score} />
+        <StarRating recruiterId={r.recruiter_id} />
       </div>
-      
-      {/* Expanded Extra Info */}
-      {expanded && hasExtra && (
-        <div style={{ padding: '12px 16px 12px 62px', background: 'var(--main-bg)', borderTop: '1px dashed var(--card-border)', fontSize: 13, color: 'var(--text-secondary)' }}>
-          {r.email2 && <div style={{ marginBottom: 6 }}><i className="ti ti-mail" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Alt Email:</strong> {r.email2}</div>}
-          {r.phone2 && <div style={{ marginBottom: 6 }}><i className="ti ti-phone" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Alt Phone:</strong> {r.phone2}</div>}
-          {r.notes && <div><i className="ti ti-notes" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Notes:</strong> {r.notes}</div>}
-        </div>
-      )}
     </div>
   )
 }
@@ -216,6 +321,7 @@ export default function AISearch() {
   const [focused, setFocused] = useState(false)
   const [focusedIdx, setFocusedIdx] = useState(-1)
   const [recent, setRecent] = useState(getRecent())
+  const [selectedRecruiter, setSelectedRecruiter] = useState(null)
 
   const inputRef = useRef()
   const debounceRef = useRef()
@@ -386,7 +492,7 @@ export default function AISearch() {
                 <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Sorted by relevance</span>
               </div>
               {results.map((r, i) => (
-                <RecruiterRow key={r.recruiter_id} r={r} query={query} focused={i === focusedIdx} />
+                <RecruiterRow key={r.recruiter_id} r={r} query={query} focused={i === focusedIdx} onClick={() => setSelectedRecruiter(r)} />
               ))}
             </>
           )}
@@ -414,6 +520,9 @@ export default function AISearch() {
           </p>
         </div>
       )}
+
+      {/* Full Profile Modal */}
+      <ProfileModal recruiter={selectedRecruiter} onClose={() => setSelectedRecruiter(null)} />
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

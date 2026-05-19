@@ -124,7 +124,7 @@ function StarRating({ recruiterId }) {
   )
 }
 
-function ProfileModal({ recruiter, onClose }) {
+function ProfileModal({ recruiter, onClose, onEdit }) {
   if (!recruiter) return null
 
   return createPortal(
@@ -141,7 +141,32 @@ function ProfileModal({ recruiter, onClose }) {
       }} onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div style={{ padding: '32px 24px 24px', textAlign: 'center', position: 'relative', borderBottom: '1px solid var(--card-border)' }}>
-          <button onClick={onClose} style={{ position: 'absolute', top: 16, right: 16, background: 'var(--main-bg)', border: '1px solid var(--card-border)', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}><i className="ti ti-x" style={{ fontSize: 16 }}/></button>
+          <div style={{ position: 'absolute', top: 16, right: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
+            {IS_ADMIN && (
+              <button
+                onClick={() => { onEdit(); onClose() }}
+                title="Edit recruiter"
+                style={{
+                  background: 'rgba(245,158,11,0.1)',
+                  border: '1px solid rgba(245,158,11,0.25)',
+                  borderRadius: '50%',
+                  width: 32,
+                  height: 32,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: '#f59e0b',
+                  transition: 'transform 0.15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                <i className="ti ti-pencil" style={{ fontSize: 15 }} />
+              </button>
+            )}
+            <button onClick={onClose} style={{ background: 'var(--main-bg)', border: '1px solid var(--card-border)', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}><i className="ti ti-x" style={{ fontSize: 16 }}/></button>
+          </div>
           <div style={{
             width: 72, height: 72, borderRadius: '50%', margin: '0 auto 16px',
             background: avatarColor(recruiter.recruiter_name),
@@ -153,7 +178,9 @@ function ProfileModal({ recruiter, onClose }) {
           <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', gap: 12, alignItems: 'center' }}>
              <ScoreBadge score={recruiter.relevance_score} />
              <div style={{ height: 16, width: 1, background: 'var(--card-border)' }} />
-             <StarRating recruiterId={recruiter.recruiter_id} />
+             <div style={{ display: 'flex', alignItems: 'center' }}>
+               <StarRating recruiterId={recruiter.recruiter_id} />
+             </div>
           </div>
         </div>
 
@@ -719,7 +746,7 @@ export default function AISearch() {
       )}
 
       {/* Full Profile Modal */}
-      <ProfileModal recruiter={selectedRecruiter} onClose={() => setSelectedRecruiter(null)} />
+      <ProfileModal recruiter={selectedRecruiter} onClose={() => setSelectedRecruiter(null)} onEdit={() => setEditingRecruiter(selectedRecruiter)} />
 
       {/* Edit Modal — localhost only */}
       {IS_ADMIN && (

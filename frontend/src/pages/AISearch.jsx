@@ -4,11 +4,8 @@ import axios from 'axios'
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 
-// ── Admin access: only shows edit button if YOUR browser has the secret key set ──
-// To enable: open browser console and run:
-//   localStorage.setItem('talentops_admin_key', 'abhishek@talentops')
-// To disable: localStorage.removeItem('talentops_admin_key')
-const IS_ADMIN = localStorage.getItem('talentops_admin_key') === 'abhishek@talentops'
+// Admin password for editing records
+const ADMIN_PASSWORD = 'abhishek@talentops'
 
 const EXAMPLES = [
   'Brooksource', 'Insight Global', 'Java recruiter',
@@ -127,6 +124,16 @@ function StarRating({ recruiterId }) {
 function ProfileModal({ recruiter, onClose, onEdit }) {
   if (!recruiter) return null
 
+  const handleEditClick = () => {
+    const pw = prompt("Enter Admin Password to Edit:")
+    if (pw === ADMIN_PASSWORD) {
+      onEdit()
+      onClose()
+    } else if (pw !== null) {
+      alert("Incorrect Password!")
+    }
+  }
+
   return createPortal(
     <div style={{
       position: 'fixed', inset: 0, zIndex: 1000,
@@ -142,29 +149,27 @@ function ProfileModal({ recruiter, onClose, onEdit }) {
         {/* Header */}
         <div style={{ padding: '32px 24px 24px', textAlign: 'center', position: 'relative', borderBottom: '1px solid var(--card-border)' }}>
           <div style={{ position: 'absolute', top: 16, right: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
-            {IS_ADMIN && (
-              <button
-                onClick={() => { onEdit(); onClose() }}
-                title="Edit recruiter"
-                style={{
-                  background: 'rgba(245,158,11,0.1)',
-                  border: '1px solid rgba(245,158,11,0.25)',
-                  borderRadius: '50%',
-                  width: 32,
-                  height: 32,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  color: '#f59e0b',
-                  transition: 'transform 0.15s',
-                }}
-                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
-                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-              >
-                <i className="ti ti-pencil" style={{ fontSize: 15 }} />
-              </button>
-            )}
+            <button
+              onClick={handleEditClick}
+              title="Edit recruiter"
+              style={{
+                background: 'rgba(245,158,11,0.1)',
+                border: '1px solid rgba(245,158,11,0.25)',
+                borderRadius: '50%',
+                width: 32,
+                height: 32,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: '#f59e0b',
+                transition: 'transform 0.15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              <i className="ti ti-pencil" style={{ fontSize: 15 }} />
+            </button>
             <button onClick={onClose} style={{ background: 'var(--main-bg)', border: '1px solid var(--card-border)', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}><i className="ti ti-x" style={{ fontSize: 16 }}/></button>
           </div>
           <div style={{
@@ -405,7 +410,7 @@ function EditModal({ recruiter, onClose, onSaved }) {
 }
 
 // Result Row
-function RecruiterRow({ r, query, focused, onClick, onEdit }) {
+function RecruiterRow({ r, query, focused, onClick }) {
   const firstName = r.recruiter_name?.split(' ')[0] || ''
   const company = r.company_name || (() => {
     const at = r.email?.indexOf('@')
@@ -454,30 +459,12 @@ function RecruiterRow({ r, query, focused, onClick, onEdit }) {
         </p>
       </div>
 
-      {/* Score + Stars + Edit button */}
+      {/* Score + Stars */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, minWidth: 80 }}>
           <ScoreBadge score={r.relevance_score} />
           <StarRating recruiterId={r.recruiter_id} />
         </div>
-        {IS_ADMIN && (
-          <button
-            onClick={e => { e.stopPropagation(); onEdit() }}
-            title="Edit recruiter (admin only)"
-            style={{
-              background: 'rgba(245,158,11,0.1)',
-              border: '1px solid rgba(245,158,11,0.25)',
-              borderRadius: 7, width: 30, height: 30,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', color: '#f59e0b', flexShrink: 0,
-              transition: 'all 0.15s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(245,158,11,0.22)'; e.currentTarget.style.transform = 'scale(1.12)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(245,158,11,0.1)';  e.currentTarget.style.transform = 'scale(1)' }}
-          >
-            <i className="ti ti-pencil" style={{ fontSize: 14 }} />
-          </button>
-        )}
       </div>
     </div>
   )
@@ -748,8 +735,8 @@ export default function AISearch() {
       {/* Full Profile Modal */}
       <ProfileModal recruiter={selectedRecruiter} onClose={() => setSelectedRecruiter(null)} onEdit={() => setEditingRecruiter(selectedRecruiter)} />
 
-      {/* Edit Modal — localhost only */}
-      {IS_ADMIN && (
+      {/* Edit Modal — visible if editingRecruiter is selected */}
+      {editingRecruiter && (
         <EditModal
           recruiter={editingRecruiter}
           onClose={() => setEditingRecruiter(null)}

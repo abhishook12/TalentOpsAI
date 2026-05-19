@@ -53,6 +53,9 @@ def serialize_recruiter(r):
 @router.get("/search")
 def search_recruiters(
     q: str = Query(..., min_length=1, description="Search query"),
+    company: Optional[str] = Query(None, description="Filter by company"),
+    location: Optional[str] = Query(None, description="Filter by location"),
+    specialization: Optional[str] = Query(None, description="Filter by specialization"),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db)
 ):
@@ -76,7 +79,7 @@ def search_recruiters(
     except Exception:
         db.rollback()
 
-    sql = text("""
+    base_sql = """
         SELECT
             r.recruiter_id,
             r.recruiter_name,
@@ -90,6 +93,7 @@ def search_recruiters(
             r.is_active,
             r.company_id,
             c.company_name,
+            c.location,
             (
                 CASE
                     WHEN LOWER(r.recruiter_name) = LOWER(:q)
@@ -124,17 +128,31 @@ def search_recruiters(
         FROM recruiters r
         LEFT JOIN companies c ON r.company_id = c.company_id
         WHERE
-            r.recruiter_name ILIKE '%' || :q || '%'
-            OR r.email ILIKE '%' || :q || '%'
-            OR COALESCE(c.company_name, '') ILIKE '%' || :q || '%'
-            OR COALESCE(r.specialization, '') ILIKE '%' || :q || '%'
-            OR similarity(r.recruiter_name, :q) > 0.15
-            OR similarity(r.email, :q) > 0.15
-        ORDER BY relevance_score DESC
-        LIMIT :limit
-    """)
+            (
+                r.recruiter_name ILIKE '%' || :q || '%'
+                OR r.email ILIKE '%' || :q || '%'
+                OR COALESCE(c.company_name, '') ILIKE '%' || :q || '%'
+                OR COALESCE(r.specialization, '') ILIKE '%' || :q || '%'
+                OR similarity(r.recruiter_name, :q) > 0.15
+                OR similarity(r.email, :q) > 0.15
+            )
+    """
 
-    rows = db.execute(sql, {"q": q, "limit": limit}).mappings().all()
+    params = {"q": q, "limit": limit}
+
+    if company:
+        base_sql += " AND c.company_name ILIKE '%' || :company || '%'"
+        params["company"] = company
+    if location:
+        base_sql += " AND c.location ILIKE '%' || :location || '%'"
+        params["location"] = location
+    if specialization:
+        base_sql += " AND r.specialization ILIKE '%' || :specialization || '%'"
+        params["specialization"] = specialization
+
+    base_sql += " ORDER BY relevance_score DESC LIMIT :limit"
+
+    rows = db.execute(text(base_sql), params).mappings().all()
 
     return [
         {
@@ -149,6 +167,7 @@ def search_recruiters(
             "notes": row["notes"],
             "company_id": row["company_id"],
             "company_name": row["company_name"],
+            "location": row.get("location"),
             "is_active": row["is_active"],
             "relevance_score": int(row["relevance_score"]),
         }

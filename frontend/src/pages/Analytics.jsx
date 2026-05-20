@@ -9,6 +9,16 @@ const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\
 
 const PAGE_COLORS = ['#185FA5', '#0F6E56', '#534AB7', '#BA7517', '#C4394A', '#1695A3', '#7C3AED', '#D97706']
 
+const STATE_FULL_NAMES = {
+  AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',CT:'Connecticut',
+  DE:'Delaware',FL:'Florida',GA:'Georgia',HI:'Hawaii',ID:'Idaho',IL:'Illinois',IN:'Indiana',IA:'Iowa',
+  KS:'Kansas',KY:'Kentucky',LA:'Louisiana',ME:'Maine',MD:'Maryland',MA:'Massachusetts',MI:'Michigan',
+  MN:'Minnesota',MS:'Mississippi',MO:'Missouri',MT:'Montana',NE:'Nebraska',NV:'Nevada',NH:'New Hampshire',
+  NJ:'New Jersey',NM:'New Mexico',NY:'New York',NC:'North Carolina',ND:'North Dakota',OH:'Ohio',OK:'Oklahoma',
+  OR:'Oregon',PA:'Pennsylvania',RI:'Rhode Island',SC:'South Carolina',SD:'South Dakota',TN:'Tennessee',
+  TX:'Texas',UT:'Utah',VT:'Vermont',VA:'Virginia',WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming',
+}
+
 const customTooltipStyle = {
   contentStyle: { background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 12 },
   labelStyle: { color: 'var(--text-primary)', fontWeight: 500 },
@@ -52,18 +62,52 @@ function formatWeek(dateStr) {
   return `W of ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
 }
 
+/* Custom tooltip for the state chart */
+function StateTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null
+  const d = payload[0]?.payload
+  return (
+    <div style={{
+      background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+      borderRadius: 10, padding: '12px 16px', boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+      minWidth: 180,
+    }}>
+      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
+        {STATE_FULL_NAMES[d?.state] || d?.state}
+      </p>
+      <div style={{ display: 'flex', gap: 16 }}>
+        <div>
+          <p style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Companies</p>
+          <p style={{ fontSize: 16, fontWeight: 700, color: '#185FA5' }}>{d?.companies?.toLocaleString()}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Analytics() {
   const [dashboard, setDashboard] = useState(null)
   const [visits, setVisits]       = useState(null)
+  const [stateData, setStateData] = useState([])
   const [loading, setLoading]     = useState(true)
 
   useEffect(() => {
     Promise.all([
       axios.get(`${API}/analytics/dashboard`),
       axios.get(`${API}/analytics/visit-stats`),
-    ]).then(([d, v]) => {
+      axios.get(`${API}/analytics/companies-count-by-state`),
+    ]).then(([d, v, s]) => {
       setDashboard(d.data)
       setVisits(v.data)
+
+      // Transform { "NC": 45, "TX": 32, ... } → sorted array for chart
+      const raw = s.data || {}
+      const arr = Object.entries(raw)
+        .map(([abbr, count]) => ({ state: abbr, companies: count }))
+        .sort((a, b) => b.companies - a.companies)
+        .slice(0, 20) // top 20 states for readability
+      setStateData(arr)
+
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [])
@@ -74,11 +118,6 @@ export default function Analytics() {
       Loading analytics...
     </div>
   )
-
-  const activityData = [
-    { name: 'Active', count: dashboard?.recruiters?.active || 0 },
-    { name: 'Inactive', count: (dashboard?.recruiters?.total || 0) - (dashboard?.recruiters?.active || 0) }
-  ]
 
   const dailyData = (visits?.daily || []).map(r => ({
     day: formatDay(r.day), visits: r.visits
@@ -111,20 +150,33 @@ export default function Analytics() {
         </div>
       )}
 
+      {/* ── State‑wise Companies Distribution ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16, marginBottom: 28 }}>
-        <SectionCard title="Recruiter Status Breakdown" icon="ti-chart-bar">
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={activityData} barSize={48}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
-              <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <Tooltip {...customTooltipStyle} />
-              <Bar dataKey="count" radius={[6, 6, 0, 0]}>
-                <Cell fill="#185FA5" />
-                <Cell fill="#64748b" />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+        <SectionCard title="State‑wise Companies Distribution" icon="ti-map">
+          {stateData.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 13 }}>
+              <i className="ti ti-map-off" style={{ fontSize: 28, display: 'block', marginBottom: 8 }} />
+              No state data available yet.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={Math.max(300, stateData.length * 32)}>
+              <BarChart data={stateData} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" horizontal={false} />
+                <XAxis type="number" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis
+                  dataKey="state" type="category"
+                  tick={{ fill: 'var(--text-secondary)', fontSize: 11, fontWeight: 500 }}
+                  axisLine={false} tickLine={false} width={50}
+                />
+                <Tooltip content={<StateTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+                <Bar dataKey="companies" radius={[0, 6, 6, 0]} barSize={20}>
+                  {stateData.map((entry, i) => (
+                    <Cell key={entry.state} fill={PAGE_COLORS[i % PAGE_COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </SectionCard>
       </div>
 

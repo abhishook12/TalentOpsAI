@@ -1,9 +1,9 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import axios from 'axios'
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 
-// ─── Regex Parsers ────────────────────────────────────────────────────────────
+// ─── Regex Parsers (for Paste & Parse) ────────────────────────────────────────
 const EMAIL_RE   = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g
 const PHONE_RE   = /(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/g
 const LINKEDIN_RE = /https?:\/\/(?:www\.)?linkedin\.com\/in\/[^\s,<>"')]+/gi
@@ -19,7 +19,6 @@ function parseText(raw) {
   const linkedins= [...new Set([...(raw.match(LINKEDIN_RE) || [])])]
   const rawNames = [...new Set([...(raw.match(NAME_RE) || [])])]
 
-  // Skip generic words that match name pattern
   const SKIP = new Set(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
     'January', 'February', 'March', 'April', 'June', 'July', 'August', 'September', 'October',
     'November', 'December', 'Hi', 'Dear', 'Hello', 'Please', 'Thank', 'Best', 'Regards',
@@ -29,29 +28,19 @@ function parseText(raw) {
     return parts.length >= 2 && parts.every(p => !SKIP.has(p))
   })
 
-  // Build recruiter objects — try to pair emails with nearby names
   const recruiters = []
-  const lines = raw.split('\n')
-
-  // Try line-by-line grouping
   const used = { emails: new Set(), phones: new Set() }
 
   emails.forEach((email, i) => {
     if (used.emails.has(email)) return
     used.emails.add(email)
 
-    // Find line containing this email
-    const lineIdx = lines.findIndex(l => l.toLowerCase().includes(email))
-    const context = lines.slice(Math.max(0, lineIdx - 3), lineIdx + 3).join(' ')
-
-    // Try to find a name near this email
     const nearbyName = names.find(n => {
       const ni = raw.toLowerCase().indexOf(n.toLowerCase())
       const ei = raw.toLowerCase().indexOf(email)
       return Math.abs(ni - ei) < 200
     }) || ''
 
-    // Try to find a phone near this email
     const nearbyPhone = phones.find(p => {
       const pi = raw.indexOf(p.slice(0, 6))
       const ei = raw.indexOf(email)
@@ -59,7 +48,6 @@ function parseText(raw) {
     }) || ''
     if (nearbyPhone) used.phones.add(nearbyPhone)
 
-    // LinkedIn near email
     const nearbyLinkedin = linkedins.find(l => {
       const li = raw.indexOf(l)
       const ei = raw.indexOf(email)
@@ -83,8 +71,445 @@ function parseText(raw) {
   return recruiters
 }
 
-// ─── CSV Upload Zone ──────────────────────────────────────────────────────────
-function UploadZone() {
+// ─── Logical Field Labels ─────────────────────────────────────────────────────
+const FIELD_LABELS = {
+  name: 'Name', email: 'Email', email2: 'Alt Email', phone: 'Phone',
+  phone2: 'Alt Phone', company: 'Company', location: 'Location', state: 'State',
+  linkedin: 'LinkedIn', title: 'Title / Role', specialization: 'Specialization', notes: 'Notes',
+}
+const ALL_LOGICAL_FIELDS = Object.keys(FIELD_LABELS)
+
+// ─── Smart Upload Zone ────────────────────────────────────────────────────────
+function SmartUploadZone() {
+  const inputRef = useRef()
+  const [dragging, setDragging] = useState(false)
+  const [step, setStep] = useState('idle')       // idle | uploading | analyzing | preview | importing | done | error
+  const [progress, setProgress] = useState(0)
+  const [analysis, setAnalysis] = useState(null)  // AnalyzeResponse
+  const [columnMap, setColumnMap] = useState({})  // editable mapping: logical → original
+  const [importResult, setImportResult] = useState(null)
+  const [error, setError] = useState(null)
+  const [fileName, setFileName] = useState('')
+  const [fileRef, setFileRef] = useState(null)    // keep file for re-upload on import
+
+  const doAnalyze = useCallback(async (file) => {
+    if (!file) return
+    setFileName(file.name)
+    setFileRef(file)
+    setStep('uploading')
+    setProgress(0)
+    setError(null)
+    setAnalysis(null)
+    setImportResult(null)
+
+    const fd = new FormData()
+    fd.append('file', file)
+    try {
+      const res = await axios.post(`${API}/upload/analyze`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (e) => {
+          if (e.total) setProgress(Math.round((e.loaded / e.total) * 100))
+        },
+      })
+      setAnalysis(res.data)
+      setColumnMap(res.data.column_map || {})
+      setStep('preview')
+    } catch (e) {
+      setError(e.response?.data?.detail || 'Analysis failed. Check file format.')
+      setStep('error')
+    }
+  }, [])
+
+  const doImport = useCallback(async () => {
+    if (!fileRef) return
+    setStep('importing')
+    setProgress(0)
+
+    const fd = new FormData()
+    fd.append('file', fileRef)
+    try {
+      const res = await axios.post(`${API}/upload/smart-import`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (e) => {
+          if (e.total) setProgress(Math.round((e.loaded / e.total) * 100))
+        },
+      })
+      setImportResult(res.data)
+      setStep('done')
+    } catch (e) {
+      setError(e.response?.data?.detail || 'Import failed.')
+      setStep('error')
+    }
+  }, [fileRef])
+
+  const reset = () => {
+    setStep('idle'); setProgress(0); setAnalysis(null); setColumnMap({});
+    setImportResult(null); setError(null); setFileName(''); setFileRef(null);
+    if (inputRef.current) inputRef.current.value = ''
+  }
+
+  const updateMapping = (logical, newCol) => {
+    setColumnMap(prev => ({ ...prev, [logical]: newCol }))
+  }
+
+  // ── Render ──
+  return (
+    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      {/* Header */}
+      <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--card-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: 10,
+            background: 'linear-gradient(135deg, #185FA520, #534AB720)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <i className="ti ti-brain" style={{ fontSize: 20, color: '#534AB7' }} />
+          </div>
+          <div>
+            <h2 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Smart Upload</h2>
+            <p style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
+              AI‑assisted column detection • auto‑mapping • validation
+            </p>
+          </div>
+        </div>
+        {step !== 'idle' && (
+          <button onClick={reset} style={{
+            padding: '6px 14px', fontSize: 11, borderRadius: 7,
+            background: 'var(--main-bg)', border: '1px solid var(--card-border)',
+            color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+          }}>
+            <i className="ti ti-refresh" style={{ fontSize: 13 }} /> Reset
+          </button>
+        )}
+      </div>
+
+      <div style={{ padding: '20px 24px 24px' }}>
+        {/* ── STEP: Idle – Drag & Drop ── */}
+        {step === 'idle' && (
+          <div
+            onClick={() => inputRef.current?.click()}
+            onDragOver={e => { e.preventDefault(); setDragging(true) }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={e => { e.preventDefault(); setDragging(false); doAnalyze(e.dataTransfer.files[0]) }}
+            style={{
+              border: `2px dashed ${dragging ? '#534AB7' : 'var(--card-border)'}`,
+              borderRadius: 14, padding: '48px 24px', textAlign: 'center', cursor: 'pointer',
+              background: dragging ? 'rgba(83,74,183,0.04)' : 'var(--main-bg)',
+              transition: 'all 0.2s',
+            }}
+          >
+            <div style={{
+              width: 56, height: 56, borderRadius: 16, margin: '0 auto 16px',
+              background: 'linear-gradient(135deg, #185FA518, #534AB718)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <i className="ti ti-cloud-upload" style={{ fontSize: 26, color: dragging ? '#534AB7' : 'var(--text-muted)' }} />
+            </div>
+            <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 4 }}>
+              Drop your recruiter sheet here
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+              or click to browse • Supports .csv, .xlsx, .xls
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {['Auto column detection', 'Duplicate check', 'Validation', 'Preview before import'].map(tag => (
+                <span key={tag} style={{
+                  padding: '4px 10px', fontSize: 10, borderRadius: 20,
+                  background: 'rgba(83,74,183,0.08)', color: '#534AB7', fontWeight: 500,
+                }}>{tag}</span>
+              ))}
+            </div>
+            <input ref={inputRef} type="file" accept=".csv,.xlsx,.xls" style={{ display: 'none' }}
+              onChange={e => doAnalyze(e.target.files[0])} />
+          </div>
+        )}
+
+        {/* ── STEP: Uploading / Analyzing ── */}
+        {(step === 'uploading' || step === 'analyzing') && (
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <div style={{ position: 'relative', width: 64, height: 64, margin: '0 auto 20px' }}>
+              <div style={{
+                width: 64, height: 64, borderRadius: '50%',
+                border: '3px solid var(--card-border)', borderTopColor: '#534AB7',
+                animation: 'spin 1s linear infinite',
+              }} />
+              <i className="ti ti-file-analytics" style={{
+                position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                fontSize: 22, color: '#534AB7',
+              }} />
+            </div>
+            <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 6 }}>
+              {step === 'uploading' ? 'Uploading file...' : 'Analyzing data...'}
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>{fileName}</p>
+            {/* Progress bar */}
+            <div style={{ maxWidth: 320, margin: '0 auto', height: 6, background: 'var(--card-border)', borderRadius: 99, overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', width: `${progress}%`,
+                background: 'linear-gradient(90deg, #185FA5, #534AB7)',
+                borderRadius: 99, transition: 'width 0.3s ease',
+              }} />
+            </div>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>{progress}%</p>
+          </div>
+        )}
+
+        {/* ── STEP: Importing ── */}
+        {step === 'importing' && (
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <div style={{ position: 'relative', width: 64, height: 64, margin: '0 auto 20px' }}>
+              <div style={{
+                width: 64, height: 64, borderRadius: '50%',
+                border: '3px solid var(--card-border)', borderTopColor: '#0F6E56',
+                animation: 'spin 1s linear infinite',
+              }} />
+              <i className="ti ti-database-import" style={{
+                position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                fontSize: 22, color: '#0F6E56',
+              }} />
+            </div>
+            <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 6 }}>
+              Importing to database...
+            </p>
+            <div style={{ maxWidth: 320, margin: '0 auto', height: 6, background: 'var(--card-border)', borderRadius: 99, overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', width: `${progress}%`,
+                background: 'linear-gradient(90deg, #0F6E56, #185FA5)',
+                borderRadius: 99, transition: 'width 0.3s ease',
+              }} />
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP: Preview ── */}
+        {step === 'preview' && analysis && (
+          <div>
+            {/* Summary Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+              {[
+                { label: 'Total Rows', value: analysis.total_rows, icon: 'ti-table', color: '#185FA5' },
+                { label: 'Duplicates', value: analysis.duplicates, icon: 'ti-copy', color: '#BA7517' },
+                { label: 'Invalid Emails', value: analysis.invalid_emails, icon: 'ti-mail-off', color: '#C4394A' },
+                { label: 'Missing Email', value: analysis.missing_fields, icon: 'ti-alert-triangle', color: '#D97706' },
+              ].map(c => (
+                <div key={c.label} style={{
+                  background: 'var(--main-bg)', border: '1px solid var(--card-border)', borderRadius: 10,
+                  padding: '14px 14px', borderLeft: `3px solid ${c.color}`,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
+                    <i className={`ti ${c.icon}`} style={{ fontSize: 13, color: c.color }} />
+                    <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{c.label}</span>
+                  </div>
+                  <p style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1 }}>{c.value?.toLocaleString()}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Extra info pills */}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+              {analysis.invalid_phones > 0 && (
+                <span style={{ padding: '4px 10px', fontSize: 11, borderRadius: 20, background: 'rgba(196,57,74,0.1)', color: '#C4394A', fontWeight: 500 }}>
+                  <i className="ti ti-phone-off" style={{ fontSize: 12, marginRight: 4 }} />{analysis.invalid_phones} invalid phones
+                </span>
+              )}
+              {(analysis.empty_columns?.length || 0) > 0 && (
+                <span style={{ padding: '4px 10px', fontSize: 11, borderRadius: 20, background: 'rgba(186,117,23,0.1)', color: '#BA7517', fontWeight: 500 }}>
+                  <i className="ti ti-column-remove" style={{ fontSize: 12, marginRight: 4 }} />{analysis.empty_columns.length} empty columns
+                </span>
+              )}
+              {analysis.corrupted_rows > 0 && (
+                <span style={{ padding: '4px 10px', fontSize: 11, borderRadius: 20, background: 'rgba(196,57,74,0.1)', color: '#C4394A', fontWeight: 500 }}>
+                  <i className="ti ti-alert-circle" style={{ fontSize: 12, marginRight: 4 }} />{analysis.corrupted_rows} blank rows
+                </span>
+              )}
+            </div>
+
+            {/* Column Mapping Table */}
+            <div style={{ marginBottom: 20 }}>
+              <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <i className="ti ti-arrows-exchange" style={{ fontSize: 15, color: '#534AB7' }} />
+                Detected Column Mapping
+              </h3>
+              <div style={{ border: '1px solid var(--card-border)', borderRadius: 10, overflow: 'hidden' }}>
+                <div style={{
+                  display: 'grid', gridTemplateColumns: '1fr 1fr 40px', gap: 0,
+                  padding: '8px 14px', background: 'var(--main-bg)',
+                  borderBottom: '1px solid var(--card-border)',
+                  fontSize: 10, fontWeight: 600, color: 'var(--text-muted)',
+                  textTransform: 'uppercase', letterSpacing: '0.05em',
+                }}>
+                  <span>Database Field</span>
+                  <span>Mapped Column</span>
+                  <span></span>
+                </div>
+                {ALL_LOGICAL_FIELDS.map(logical => {
+                  const mapped = columnMap[logical]
+                  const headers = analysis.original_headers || []
+                  return (
+                    <div key={logical} style={{
+                      display: 'grid', gridTemplateColumns: '1fr 1fr 40px', gap: 0,
+                      padding: '8px 14px', borderBottom: '1px solid var(--card-border)',
+                      alignItems: 'center',
+                    }}>
+                      <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)' }}>
+                        {FIELD_LABELS[logical]}
+                      </span>
+                      <select
+                        value={mapped || ''}
+                        onChange={e => updateMapping(logical, e.target.value || undefined)}
+                        style={{
+                          padding: '5px 8px', fontSize: 12, borderRadius: 6,
+                          border: '1px solid var(--card-border)', background: 'var(--card-bg)',
+                          color: mapped ? 'var(--text-primary)' : 'var(--text-muted)',
+                          cursor: 'pointer', width: '100%',
+                        }}
+                      >
+                        <option value="">— Not mapped —</option>
+                        {headers.map(h => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
+                      {mapped ? (
+                        <i className="ti ti-circle-check" style={{ fontSize: 16, color: '#0F6E56', textAlign: 'center' }} />
+                      ) : (
+                        <i className="ti ti-circle-minus" style={{ fontSize: 16, color: 'var(--text-muted)', textAlign: 'center', opacity: 0.4 }} />
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Preview Table */}
+            <div style={{ marginBottom: 20 }}>
+              <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <i className="ti ti-eye" style={{ fontSize: 15, color: '#185FA5' }} />
+                Data Preview
+                <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)', marginLeft: 4 }}>(first 10 rows)</span>
+              </h3>
+              <div style={{ overflowX: 'auto', border: '1px solid var(--card-border)', borderRadius: 10 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5 }}>
+                  <thead>
+                    <tr style={{ background: 'var(--main-bg)' }}>
+                      <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid var(--card-border)' }}>#</th>
+                      {(analysis.original_headers || []).slice(0, 8).map(h => (
+                        <th key={h} style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid var(--card-border)', whiteSpace: 'nowrap' }}>
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(analysis.preview || []).map((row, i) => (
+                      <tr key={i} style={{ borderBottom: '1px solid var(--card-border)' }}>
+                        <td style={{ padding: '7px 10px', color: 'var(--text-muted)', fontWeight: 500 }}>{i + 1}</td>
+                        {(analysis.original_headers || []).slice(0, 8).map(h => (
+                          <td key={h} style={{ padding: '7px 10px', color: 'var(--text-primary)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {row[h] || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>—</span>}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Import Button */}
+            <button onClick={doImport} className="btn-primary" style={{
+              width: '100%', justifyContent: 'center', padding: '12px',
+              background: 'linear-gradient(135deg, #185FA5, #534AB7)',
+              fontSize: 14, fontWeight: 600, borderRadius: 10,
+            }}>
+              <i className="ti ti-database-import" style={{ fontSize: 16, marginRight: 6 }} />
+              Confirm & Import {analysis.total_rows?.toLocaleString()} Rows
+            </button>
+          </div>
+        )}
+
+        {/* ── STEP: Done ── */}
+        {step === 'done' && importResult && (
+          <div style={{ textAlign: 'center', padding: '32px 0' }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: '50%', margin: '0 auto 16px',
+              background: 'rgba(15,110,86,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <i className="ti ti-circle-check" style={{ fontSize: 32, color: '#0F6E56' }} />
+            </div>
+            <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 16 }}>
+              Import Complete!
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, maxWidth: 560, margin: '0 auto 20px' }}>
+              {[
+                { label: 'Total Rows', value: importResult.total_rows, color: '#185FA5' },
+                { label: 'Inserted', value: importResult.inserted, color: '#0F6E56' },
+                { label: 'Duplicates', value: importResult.duplicates_skipped, color: '#BA7517' },
+                { label: 'Errors', value: importResult.errors, color: '#C4394A' },
+              ].map(c => (
+                <div key={c.label} style={{
+                  background: 'var(--main-bg)', border: '1px solid var(--card-border)', borderRadius: 10,
+                  padding: '12px', textAlign: 'center', borderTop: `3px solid ${c.color}`,
+                }}>
+                  <p style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1, marginBottom: 4 }}>{c.value?.toLocaleString()}</p>
+                  <p style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase' }}>{c.label}</p>
+                </div>
+              ))}
+            </div>
+            {importResult.column_map_used && (
+              <details style={{ textAlign: 'left', maxWidth: 480, margin: '0 auto' }}>
+                <summary style={{ fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer', marginBottom: 8 }}>
+                  <i className="ti ti-arrows-exchange" style={{ marginRight: 4 }} />Column mapping used
+                </summary>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, fontSize: 11 }}>
+                  {Object.entries(importResult.column_map_used).map(([k, v]) => (
+                    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 8px', background: 'var(--main-bg)', borderRadius: 4 }}>
+                      <span style={{ color: 'var(--text-muted)' }}>{FIELD_LABELS[k] || k}</span>
+                      <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>→ {v}</span>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )}
+            <button onClick={reset} className="btn-primary" style={{
+              marginTop: 16, padding: '10px 28px', background: 'var(--main-bg)',
+              color: 'var(--text-primary)', border: '1px solid var(--card-border)',
+            }}>
+              <i className="ti ti-upload" style={{ fontSize: 14, marginRight: 5 }} />Upload Another File
+            </button>
+          </div>
+        )}
+
+        {/* ── STEP: Error ── */}
+        {step === 'error' && (
+          <div style={{ textAlign: 'center', padding: '32px 0' }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: '50%', margin: '0 auto 16px',
+              background: 'rgba(196,57,74,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <i className="ti ti-alert-circle" style={{ fontSize: 28, color: '#C4394A' }} />
+            </div>
+            <p style={{ fontSize: 14, fontWeight: 500, color: '#C4394A', marginBottom: 8 }}>
+              {error}
+            </p>
+            <button onClick={reset} style={{
+              padding: '8px 20px', fontSize: 12, borderRadius: 8,
+              background: 'var(--main-bg)', border: '1px solid var(--card-border)',
+              color: 'var(--text-secondary)', cursor: 'pointer',
+            }}>
+              Try Again
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Spinner keyframe (inline) */}
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+    </div>
+  )
+}
+
+// ─── Legacy CSV Upload Zone ───────────────────────────────────────────────────
+function LegacyUploadZone() {
   const inputRef = useRef()
   const [dragging, setDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -112,8 +537,8 @@ function UploadZone() {
           <i className="ti ti-file-spreadsheet" style={{ fontSize: 18, color: '#185FA5' }} />
         </div>
         <div>
-          <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>CSV / Excel Upload</h2>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>recruiter_name, email, phone, email2, phone2, linkedin, specialization, notes</p>
+          <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Legacy CSV / Excel Upload</h2>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Requires exact headers: recruiter_name, email, phone, email2, phone2, linkedin, specialization, notes</p>
         </div>
       </div>
 
@@ -133,10 +558,10 @@ function UploadZone() {
       </div>
 
       {result && (
-        <div style={{ padding: '12px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8 }}>
+        <div style={{ padding: '12px 16px', background: 'rgba(15,110,86,0.08)', border: '1px solid rgba(15,110,86,0.2)', borderRadius: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <i className="ti ti-circle-check" style={{ color: '#16a34a', fontSize: 16 }} />
-            <span style={{ fontSize: 13, fontWeight: 500, color: '#15803d' }}>Upload successful!</span>
+            <i className="ti ti-circle-check" style={{ color: '#0F6E56', fontSize: 16 }} />
+            <span style={{ fontSize: 13, fontWeight: 500, color: '#0F6E56' }}>Upload successful!</span>
           </div>
           <div style={{ display: 'flex', gap: 16 }}>
             {[['Total Rows', result.total_rows], ['Inserted', result.inserted], ['Skipped', result.duplicates_skipped]].map(([l, v]) => (
@@ -149,9 +574,9 @@ function UploadZone() {
         </div>
       )}
       {error && (
-        <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
-          <i className="ti ti-alert-circle" style={{ color: '#dc2626', fontSize: 15 }} />
-          <span style={{ fontSize: 13, color: '#991b1b' }}>{error}</span>
+        <div style={{ padding: '10px 14px', background: 'rgba(196,57,74,0.08)', border: '1px solid rgba(196,57,74,0.2)', borderRadius: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+          <i className="ti ti-alert-circle" style={{ color: '#C4394A', fontSize: 15 }} />
+          <span style={{ fontSize: 13, color: '#C4394A' }}>{error}</span>
         </div>
       )}
     </div>
@@ -306,11 +731,11 @@ function PasteParser() {
               </button>
 
               {saveResult && (
-                <div style={{ marginTop: 12, padding: '12px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, display: 'flex', gap: 20, alignItems: 'center' }}>
-                  <i className="ti ti-circle-check" style={{ color: '#16a34a', fontSize: 18 }} />
+                <div style={{ marginTop: 12, padding: '12px 16px', background: 'rgba(15,110,86,0.08)', border: '1px solid rgba(15,110,86,0.2)', borderRadius: 8, display: 'flex', gap: 20, alignItems: 'center' }}>
+                  <i className="ti ti-circle-check" style={{ color: '#0F6E56', fontSize: 18 }} />
                   <div>
-                    <p style={{ fontSize: 13, fontWeight: 500, color: '#15803d' }}>Saved {saveResult.inserted} recruiter{saveResult.inserted !== 1 ? 's' : ''}!</p>
-                    {saveResult.skipped > 0 && <p style={{ fontSize: 12, color: '#6b7280' }}>{saveResult.skipped} skipped (duplicate email)</p>}
+                    <p style={{ fontSize: 13, fontWeight: 500, color: '#0F6E56' }}>Saved {saveResult.inserted} recruiter{saveResult.inserted !== 1 ? 's' : ''}!</p>
+                    {saveResult.skipped > 0 && <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{saveResult.skipped} skipped (duplicate email)</p>}
                   </div>
                 </div>
               )}
@@ -324,20 +749,21 @@ function PasteParser() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function Upload() {
-  const [tab, setTab] = useState('paste')
+  const [tab, setTab] = useState('smart')
 
   return (
     <div className="page-enter">
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 20, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 4 }}>Add Recruiters</h1>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Paste raw text or upload a CSV / Excel file</p>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Smart upload with AI column detection, paste & parse, or legacy CSV upload</p>
       </div>
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: 'var(--main-bg)', padding: 4, borderRadius: 10, width: 'fit-content', border: '1px solid var(--card-border)' }}>
         {[
-          { id: 'paste', label: 'Paste & Parse', icon: 'ti-clipboard-text' },
-          { id: 'csv',   label: 'CSV / Excel',   icon: 'ti-file-spreadsheet' },
+          { id: 'smart',  label: 'Smart Upload',   icon: 'ti-brain' },
+          { id: 'paste',  label: 'Paste & Parse',   icon: 'ti-clipboard-text' },
+          { id: 'csv',    label: 'Legacy Upload',    icon: 'ti-file-spreadsheet' },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             style={{
@@ -347,14 +773,17 @@ export default function Upload() {
               border: tab === t.id ? '1px solid var(--card-border)' : '1px solid transparent',
               boxShadow: tab === t.id ? 'var(--shadow)' : 'none',
               display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.15s',
+              cursor: 'pointer',
             }}>
             <i className={`ti ${t.icon}`} style={{ fontSize: 14 }} /> {t.label}
           </button>
         ))}
       </div>
 
-      <div style={{ maxWidth: 780 }}>
-        {tab === 'paste' ? <PasteParser /> : <UploadZone />}
+      <div style={{ maxWidth: 880 }}>
+        {tab === 'smart' && <SmartUploadZone />}
+        {tab === 'paste' && <PasteParser />}
+        {tab === 'csv'   && <LegacyUploadZone />}
       </div>
     </div>
   )

@@ -251,6 +251,7 @@ def admin_visitor_logs(
             SUM(COALESCE(time_on_page, 0)) AS total_seconds
         FROM page_visits
         WHERE visited_at >= NOW() - INTERVAL '1 day' * :days
+          AND session_id IS NOT NULL
         GROUP BY session_id, user_email, ip_address, user_agent
         ORDER BY session_start DESC
         LIMIT :limit

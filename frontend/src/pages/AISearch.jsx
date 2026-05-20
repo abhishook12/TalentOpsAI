@@ -90,36 +90,43 @@ function StarRating({ recruiterId }) {
   const display = hover || rating
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}
-      title={display ? STAR_LABELS[display] : 'Rate data accuracy'}
-    >
-      {[1, 2, 3, 4, 5].map(star => (
-        <button
-          key={star}
-          onClick={e => { e.stopPropagation(); handleRate(star) }}
-          onMouseEnter={() => setHover(star)}
-          onMouseLeave={() => setHover(0)}
-          style={{
-            background: 'none', border: 'none', padding: '1px', cursor: 'pointer',
-            fontSize: 13, lineHeight: 1,
-            color: star <= display
-              ? (display <= 2 ? '#ef4444' : display === 3 ? '#f59e0b' : '#22c55e')
-              : 'var(--card-border)',
-            transition: 'color 0.1s, transform 0.1s',
-            transform: star <= hover ? 'scale(1.2)' : 'scale(1)',
-          }}
-        >
-          ★
-        </button>
-      ))}
-      {saved && rating > 0 && (
-        <span style={{ fontSize: 9, color: 'var(--text-muted)', marginLeft: 2, whiteSpace: 'nowrap' }}>
-          {STAR_LABELS[rating]}
-        </span>
-      )}
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}
+        title={display ? STAR_LABELS[display] : 'Rate data accuracy'}
+      >
+        {[1, 2, 3, 4, 5].map(star => (
+          <button
+            key={star}
+            onClick={e => { e.stopPropagation(); handleRate(star) }}
+            onMouseEnter={() => setHover(star)}
+            onMouseLeave={() => setHover(0)}
+            style={{
+              background: 'none', border: 'none', padding: '1px', cursor: 'pointer',
+              fontSize: 16, lineHeight: 1,
+              color: star <= display
+                ? (display <= 2 ? '#ef4444' : display === 3 ? '#f59e0b' : '#22c55e')
+                : 'var(--card-border)',
+              transition: 'color 0.1s, transform 0.1s',
+              transform: star <= hover ? 'scale(1.25)' : 'scale(1)',
+            }}
+          >
+            ★
+          </button>
+        ))}
+      </div>
+      <span style={{ 
+        fontSize: 9, 
+        fontWeight: 600, 
+        color: saved ? 'var(--text-muted)' : '#f59e0b', 
+        letterSpacing: '0.02em', 
+        whiteSpace: 'nowrap' 
+      }}>
+        {saved && rating > 0 ? `✓ ${STAR_LABELS[rating]}` : 'Legit? Rate accuracy!'}
+      </span>
     </div>
   )
 }
+
 
 function ProfileModal({ recruiter, onClose, onEdit }) {
   if (!recruiter) return null
@@ -427,9 +434,9 @@ function RecruiterRow({ r, query, focused, onClick }) {
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '11px 16px',
-        background: focused ? 'var(--main-bg)' : (r.relevance_score >= 150 ? 'rgba(234, 179, 8, 0.08)' : 'transparent'),
+        background: focused ? 'var(--main-bg)' : (r.relevance_score >= 150 ? 'rgba(250, 204, 21, 0.2)' : 'transparent'),
         borderBottom: '1px solid var(--card-border)',
-        borderLeft: r.relevance_score >= 150 ? '3px solid #eab308' : '3px solid transparent',
+        borderLeft: r.relevance_score >= 150 ? '4px solid #facc15' : '4px solid transparent',
         transition: 'background 0.1s',
         cursor: 'pointer',
       }}
@@ -695,9 +702,9 @@ export default function AISearch() {
               </div>
               
               {!results.some(r => r.relevance_score >= 150) && query.trim() && (
-                <div style={{ padding: '10px 16px', background: 'rgba(234, 179, 8, 0.08)', borderBottom: '1px solid rgba(234, 179, 8, 0.2)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <i className="ti ti-info-circle" style={{ color: '#ca8a04', fontSize: 16 }} />
-                  <span style={{ fontSize: 13, color: '#a16207', fontWeight: 500 }}>Person not found, but likely matches these:</span>
+                <div style={{ padding: '10px 16px', background: 'rgba(250, 204, 21, 0.18)', borderBottom: '1px solid rgba(250, 204, 21, 0.35)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <i className="ti ti-info-circle" style={{ color: '#facc15', fontSize: 16 }} />
+                  <span style={{ fontSize: 13, color: '#eab308', fontWeight: 600 }}>Person not found, but likely matches these:</span>
                 </div>
               )}
               {results.map((r, i) => (

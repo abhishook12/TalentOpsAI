@@ -1,9 +1,44 @@
+import re
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case, text
 from typing import Optional
 from app.database import get_db
 from app.models.models import Recruiter, Candidate, Submission, Company, Vendor
+
+STATE_MAP = {
+    'ALABAMA': 'AL', 'ALASKA': 'AK', 'ARIZONA': 'AZ', 'ARKANSAS': 'AR', 'CALIFORNIA': 'CA',
+    'COLORADO': 'CO', 'CONNECTICUT': 'CT', 'DELAWARE': 'DE', 'FLORIDA': 'FL', 'GEORGIA': 'GA',
+    'HAWAII': 'HI', 'IDAHO': 'ID', 'ILLINOIS': 'IL', 'INDIANA': 'IN', 'IOWA': 'IA',
+    'KANSAS': 'KS', 'KENTUCKY': 'KY', 'LOUISIANA': 'LA', 'MAINE': 'ME', 'MARYLAND': 'MD',
+    'MASSACHUSETTS': 'MA', 'MICHIGAN': 'MI', 'MINNESOTA': 'MN', 'MISSISSIPPI': 'MS', 'MISSOURI': 'MO',
+    'MONTANA': 'MT', 'NEBRASKA': 'NE', 'NEVADA': 'NV', 'NEW HAMPSHIRE': 'NH', 'NEW JERSEY': 'NJ',
+    'NEW MEXICO': 'NM', 'NEW YORK': 'NY', 'NORTH CAROLINA': 'NC', 'NORTH DAKOTA': 'ND', 'OHIO': 'OH',
+    'OKLAHOMA': 'OK', 'OREGON': 'OR', 'PENNSYLVANIA': 'PA', 'RHODE ISLAND': 'RI', 'SOUTH CAROLINA': 'SC',
+    'SOUTH DAKOTA': 'SD', 'TENNESSEE': 'TN', 'TEXAS': 'TX', 'UTAH': 'UT', 'VERMONT': 'VT',
+    'VIRGINIA': 'VA', 'WASHINGTON': 'WA', 'WEST VIRGINIA': 'WV', 'WISCONSIN': 'WI', 'WYOMING': 'WY'
+}
+ABBR_TO_NAME = {v: k for k, v in STATE_MAP.items()}
+
+def get_state_abbr(location: Optional[str]) -> str:
+    if not location:
+        return 'Unknown'
+    loc_upper = location.upper()
+    for state_name, abbr in STATE_MAP.items():
+        if re.search(r'\b' + re.escape(state_name) + r'\b', loc_upper):
+            return abbr
+    
+    tokens = re.findall(r'\b[A-Z]{2}\b', loc_upper)
+    for token in tokens:
+        if token in ABBR_TO_NAME:
+            return token
+            
+    parts = [p.strip() for p in re.split(r'[,\s]+', loc_upper) if p.strip()]
+    for p in reversed(parts):
+        if p in ABBR_TO_NAME:
+            return p
+            
+    return 'Unknown'
 
 router = APIRouter()
 
@@ -103,12 +138,12 @@ def companies_by_state(db: Session = Depends(get_db)):
             COUNT(r.recruiter_id) AS recruiter_count,
             -- Extract state abbreviation: last token of location if 2 chars, else full location
             CASE
-                WHEN location IS NULL OR TRIM(location) = '' THEN 'Unknown'
-                WHEN LENGTH(TRIM(SPLIT_PART(location, ',', -1))) = 2
-                    THEN UPPER(TRIM(SPLIT_PART(location, ',', -1)))
-                WHEN LENGTH(TRIM(SPLIT_PART(location, ' ', -1))) = 2
-                    THEN UPPER(TRIM(SPLIT_PART(location, ' ', -1)))
-                ELSE TRIM(location)
+                WHEN c.location IS NULL OR TRIM(c.location) = '' THEN 'Unknown'
+                WHEN LENGTH(TRIM(SPLIT_PART(c.location, ',', -1))) = 2
+                    THEN UPPER(TRIM(SPLIT_PART(c.location, ',', -1)))
+                WHEN LENGTH(TRIM(SPLIT_PART(c.location, ' ', -1))) = 2
+                    THEN UPPER(TRIM(SPLIT_PART(c.location, ' ', -1)))
+                ELSE TRIM(c.location)
             END AS state_abbr
         FROM companies c
         LEFT JOIN recruiters r ON r.company_id = c.company_id
@@ -116,18 +151,21 @@ def companies_by_state(db: Session = Depends(get_db)):
         ORDER BY recruiter_count DESC, c.company_name ASC
     """)
     rows = db.execute(sql).mappings().all()
-    return [
-        {
+    res = []
+    for row in rows:
+        abbr = get_state_abbr(row["location"])
+        if abbr == 'Unknown' and row["state_abbr"] and len(row["state_abbr"]) == 2:
+            abbr = row["state_abbr"]
+        res.append({
             "company_id": row["company_id"],
             "company_name": row["company_name"],
             "location": row["location"],
             "industry": row["industry"],
             "website": row["website"],
             "recruiter_count": int(row["recruiter_count"]),
-            "state_abbr": row["state_abbr"],
-        }
-        for row in rows
-    ]
+            "state_abbr": abbr,
+        })
+    return res
 
 
 @router.get("/companies-search")
@@ -150,12 +188,12 @@ def companies_search(
             c.website,
             COUNT(r.recruiter_id) AS recruiter_count,
             CASE
-                WHEN location IS NULL OR TRIM(location) = '' THEN 'Unknown'
-                WHEN LENGTH(TRIM(SPLIT_PART(location, ',', -1))) = 2
-                    THEN UPPER(TRIM(SPLIT_PART(location, ',', -1)))
-                WHEN LENGTH(TRIM(SPLIT_PART(location, ' ', -1))) = 2
-                    THEN UPPER(TRIM(SPLIT_PART(location, ' ', -1)))
-                ELSE TRIM(location)
+                WHEN c.location IS NULL OR TRIM(c.location) = '' THEN 'Unknown'
+                WHEN LENGTH(TRIM(SPLIT_PART(c.location, ',', -1))) = 2
+                    THEN UPPER(TRIM(SPLIT_PART(c.location, ',', -1)))
+                WHEN LENGTH(TRIM(SPLIT_PART(c.location, ' ', -1))) = 2
+                    THEN UPPER(TRIM(SPLIT_PART(c.location, ' ', -1)))
+                ELSE TRIM(c.location)
             END AS state_abbr
         FROM companies c
         LEFT JOIN recruiters r ON r.company_id = c.company_id
@@ -167,11 +205,24 @@ def companies_search(
         sql += " AND c.company_name ILIKE '%' || :q || '%'"
         params["q"] = q
     if state and state.upper() != "ALL":
+        state_upper = state.upper()
+        state_name = ABBR_TO_NAME.get(state_upper)
         sql += """ AND (
-            UPPER(TRIM(SPLIT_PART(c.location, ',', -1))) = :state
-            OR UPPER(TRIM(SPLIT_PART(c.location, ' ', -1))) = :state
-        )"""
-        params["state"] = state.upper()
+            c.location ILIKE :state_pattern_1
+            OR c.location ILIKE :state_pattern_2
+            OR c.location ILIKE :state_pattern_3
+            OR c.location ILIKE :state_pattern_4
+            OR c.location ILIKE :state_pattern_5
+        """
+        if state_name:
+            sql += " OR c.location ILIKE :name_pattern"
+            params["name_pattern"] = f"%{state_name}%"
+        sql += " )"
+        params["state_pattern_1"] = f"% {state_upper}"
+        params["state_pattern_2"] = f"% {state_upper},%"
+        params["state_pattern_3"] = f"% {state_upper} %"
+        params["state_pattern_4"] = f"{state_upper} %"
+        params["state_pattern_5"] = state_upper
 
     sql += """
         GROUP BY c.company_id, c.company_name, c.location, c.industry, c.website
@@ -180,15 +231,18 @@ def companies_search(
         LIMIT :limit
     """
     rows = db.execute(text(sql), params).mappings().all()
-    return [
-        {
+    res = []
+    for row in rows:
+        abbr = get_state_abbr(row["location"])
+        if abbr == 'Unknown' and row["state_abbr"] and len(row["state_abbr"]) == 2:
+            abbr = row["state_abbr"]
+        res.append({
             "company_id": row["company_id"],
             "company_name": row["company_name"],
             "location": row["location"],
             "industry": row["industry"],
             "website": row["website"],
             "recruiter_count": int(row["recruiter_count"]),
-            "state_abbr": row["state_abbr"],
-        }
-        for row in rows
-    ]
+            "state_abbr": abbr,
+        })
+    return res

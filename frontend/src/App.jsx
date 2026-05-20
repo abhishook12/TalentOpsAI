@@ -194,13 +194,173 @@ function ThemeSwitcher() {
   )
 }
 
+function LoginScreen({ onLoginSuccess }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (!email.trim() || !password.trim()) {
+      setError('Please fill in all fields.')
+      return
+    }
+    // Basic email format check
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      setError('Please enter a valid email address.')
+      return
+    }
+    if (password !== '1012') {
+      setError('Incorrect password.')
+      return
+    }
+    setError('')
+    onLoginSuccess(email)
+  }
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      minHeight: '100vh', width: '100vw', background: '#0b1329',
+      fontFamily: 'var(--font)', color: '#fff', padding: 20,
+      position: 'fixed', top: 0, left: 0, zIndex: 100000,
+    }}>
+      <div className="card" style={{
+        width: '100%', maxWidth: 400, padding: 36,
+        background: '#131c35', border: '1px solid #232e52',
+        borderRadius: 16, boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+        display: 'flex', flexDirection: 'column', gap: 24,
+      }}>
+        {/* Logo / Header */}
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: 48, height: 48, background: '#185FA5', borderRadius: 12,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 16px', boxShadow: '0 0 16px rgba(24, 95, 165, 0.4)'
+          }}>
+            <i className="ti ti-lock" style={{ color: '#fff', fontSize: 24 }} />
+          </div>
+          <h2 style={{ fontSize: 22, fontWeight: 600, color: '#fff', marginBottom: 6 }}>Authentication Required</h2>
+          <p style={{ fontSize: 13, color: '#94a3b8' }}>Please enter your credentials to access the platform</p>
+        </div>
+
+        {/* Error message */}
+        {error && (
+          <div style={{
+            background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)',
+            color: '#f87171', padding: '10px 14px', borderRadius: 8, fontSize: 12.5,
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <i className="ti ti-alert-circle" style={{ fontSize: 16 }} />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email Address</label>
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="e.g. admin@talentops.ai"
+              style={{
+                background: '#0b1329', border: '1px solid #232e52',
+                color: '#fff', outline: 'none', borderRadius: 8, padding: 12, fontSize: 13.5
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="••••••••"
+              style={{
+                background: '#0b1329', border: '1px solid #232e52',
+                color: '#fff', outline: 'none', borderRadius: 8, padding: 12, fontSize: 13.5
+              }}
+            />
+          </div>
+
+          <button
+            type="submit"
+            style={{
+              background: '#185FA5', color: '#fff', fontWeight: 600,
+              padding: 12, borderRadius: 8, border: 'none', cursor: 'pointer',
+              fontSize: 13.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              marginTop: 6, transition: 'background 0.2s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = '#1b6dbd'}
+            onMouseLeave={e => e.currentTarget.style.background = '#185FA5'}
+          >
+            <span>Unlock Platform</span>
+            <i className="ti ti-arrow-right" style={{ fontSize: 14 }} />
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+  // Verify session on mount + periodic check
+  useEffect(() => {
+    const checkSession = () => {
+      const sessionStr = localStorage.getItem('auth_session')
+      if (sessionStr) {
+        try {
+          const session = JSON.parse(sessionStr)
+          const isExpired = Date.now() - session.loginTime >= 24 * 60 * 60 * 1000 // 24 hours
+          if (isExpired) {
+            localStorage.removeItem('auth_session')
+            setIsAuthenticated(false)
+          } else {
+            setIsAuthenticated(true)
+          }
+        } catch {
+          localStorage.removeItem('auth_session')
+          setIsAuthenticated(false)
+        }
+      } else {
+        setIsAuthenticated(false)
+      }
+    }
+
+    checkSession()
+    // Run periodic validation check every 10 seconds to catch timeout in real time
+    const interval = setInterval(checkSession, 10000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const handleLoginSuccess = (email) => {
+    localStorage.setItem('auth_session', JSON.stringify({
+      email: email,
+      loginTime: Date.now()
+    }))
+    setIsAuthenticated(true)
+  }
+
   useEffect(() => {
     const style = document.createElement('style')
     style.textContent = globalStyles
     document.head.appendChild(style)
     return () => document.head.removeChild(style)
   }, [])
+
+  if (!isAuthenticated) {
+    return (
+      <>
+        <LoginScreen onLoginSuccess={handleLoginSuccess} />
+        <ThemeSwitcher />
+      </>
+    )
+  }
 
   return (
     <Router>
@@ -243,20 +403,18 @@ function App() {
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>TalentOps AI</span>
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>— Recruitment Intelligence Platform</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Built by</span>
               <span style={{
-                fontSize: 17,
+                fontSize: 15,
                 fontWeight: 700,
                 fontStyle: 'italic',
-                color: '#ffffff',
-                transform: 'rotate(2deg)',
-                display: 'inline-block',
+                color: 'var(--text-primary)',
                 letterSpacing: '-0.01em',
               }}>
                 Abhishek Jadon
               </span>
-              <span style={{ fontSize: 11, color: 'var(--card-border)' }}>|</span>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 10, marginRight: 10 }}>|</span>
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>© {new Date().getFullYear()}</span>
             </div>
           </footer>

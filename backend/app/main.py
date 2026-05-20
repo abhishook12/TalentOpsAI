@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from app.routes import recruiters, candidates, companies, vendors, submissions, analytics, upload
+from app.routes import recruiters, candidates, companies, vendors, submissions, analytics, upload, admin
 from app.database import engine
 from app.models import models
 from app.create_indexes import create_performance_indexes
@@ -40,6 +40,7 @@ app.include_router(vendors.router, prefix="/vendors", tags=["Vendors"])
 app.include_router(submissions.router, prefix="/submissions", tags=["Submissions"])
 app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
 app.include_router(upload.router, prefix="/upload", tags=["Upload"])
+app.include_router(admin.router, prefix="/admin", tags=["Admin"])
 
 @app.get("/")
 def root():

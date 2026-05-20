@@ -9,6 +9,7 @@ const AISearch   = lazy(() => import('./pages/AISearch'))
 const Upload     = lazy(() => import('./pages/Upload'))
 const StateDirectory = lazy(() => import('./pages/StateDirectory'))
 const CompanyDirectory = lazy(() => import('./pages/CompanyDirectory'))
+const AdminTerminal = lazy(() => import('./pages/AdminTerminal'))
 
 const globalStyles = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
@@ -408,6 +409,7 @@ function App() {
                   <Route path="/directory" element={<StateDirectory />} />
                   <Route path="/companies" element={<CompanyDirectory />} />
                   <Route path="/upload" element={<Upload />} />
+                  <Route path="/admin" element={<AdminTerminal />} />
                 </Routes>
             </Suspense>
           </main>

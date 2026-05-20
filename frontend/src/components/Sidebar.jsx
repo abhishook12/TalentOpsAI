@@ -8,6 +8,7 @@ const nav = [
   { to: '/analytics', label: 'Analytics', icon: 'ti-chart-bar' },
   { to: '/upload', label: 'ETL Upload', icon: 'ti-upload' },
   { to: '/ai-search', label: 'AI Search', icon: 'ti-search', accent: true },
+  { to: '/admin', label: 'Admin Terminal', icon: 'ti-terminal-2', admin: true },
 ]
 
 export default function Sidebar() {
@@ -54,7 +55,7 @@ export default function Sidebar() {
         <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.08em', color: 'var(--text-secondary)', padding: '0 8px 8px', textTransform: 'uppercase' }}>
           Navigation
         </div>
-        {nav.map(({ to, label, icon, accent }) => {
+        {nav.map(({ to, label, icon, accent, admin }) => {
           const active = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to)
           return (
             <NavLink
@@ -70,11 +71,13 @@ export default function Sidebar() {
                 textDecoration: 'none',
                 fontSize: '13px',
                 fontWeight: active ? 500 : 400,
-                color: active ? 'var(--text-inverse)' : accent ? 'var(--accent-hover)' : 'var(--text-muted)',
-                background: active ? 'var(--accent)' : 'transparent',
+                color: active ? '#fff' : admin ? '#f87171' : accent ? 'var(--accent-hover)' : 'var(--text-muted)',
+                background: active ? (admin ? '#7f1d1d' : 'var(--accent)') : 'transparent',
                 transition: 'all 0.12s ease',
+                borderTop: admin ? '1px solid var(--sidebar-border)' : 'none',
+                marginTop: admin ? '8px' : '0',
               }}
-              onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--bg-hover)' }}
+              onMouseEnter={e => { if (!active) e.currentTarget.style.background = admin ? '#2d0a0a' : 'var(--bg-hover)' }}
               onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
             >
               <i className={`ti ${icon}`} style={{ fontSize: 16, flexShrink: 0 }} aria-hidden="true" />
@@ -85,6 +88,13 @@ export default function Sidebar() {
                   background: 'var(--accent-bg)', color: 'var(--accent)',
                   padding: '2px 7px', borderRadius: '4px',
                 }}>AI</span>
+              )}
+              {admin && !active && (
+                <span style={{
+                  marginLeft: 'auto', fontSize: 9.5, fontWeight: 700,
+                  background: 'rgba(239,68,68,0.15)', color: '#f87171',
+                  padding: '2px 7px', borderRadius: '4px', letterSpacing: '0.05em',
+                }}>ADMIN</span>
               )}
             </NavLink>
           )

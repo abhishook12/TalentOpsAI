@@ -227,6 +227,46 @@ def companies_by_state(db: Session = Depends(get_db)):
     analytics_cache.set("companies_by_state", res, ttl=30)
     return res
 
+@router.get("/companies-count-by-state")
+def companies_count_by_state(db: Session = Depends(get_db)):
+    cached = analytics_cache.get("companies_count_by_state")
+    if cached is not None:
+        return cached
+
+    sql = text("""
+        SELECT
+            c.company_id,
+            c.location AS company_location,
+            string_agg(DISTINCT r.location, '|||') AS recruiter_locations
+        FROM companies c
+        LEFT JOIN recruiters r ON r.company_id = c.company_id
+        GROUP BY c.company_id, c.location
+    """)
+    rows = db.execute(sql).mappings().all()
+
+    counts = {}
+    for row in rows:
+        resolved_abbrs = set()
+        c_loc = row["company_location"]
+        if c_loc:
+            abbr = get_state_abbr(c_loc)
+            if abbr and abbr != 'Unknown':
+                resolved_abbrs.add(abbr)
+
+        rec_locs_str = row["recruiter_locations"]
+        if rec_locs_str:
+            for p in rec_locs_str.split('|||'):
+                if p:
+                    abbr = get_state_abbr(p)
+                    if abbr and abbr != 'Unknown':
+                        resolved_abbrs.add(abbr)
+
+        for abbr in resolved_abbrs:
+            counts[abbr] = counts.get(abbr, 0) + 1
+
+    analytics_cache.set("companies_count_by_state", counts, ttl=30)
+    return counts
+
 
 @router.get("/companies-search")
 def companies_search(

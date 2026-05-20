@@ -1,3 +1,4 @@
+import re
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload, contains_eager
 from sqlalchemy import text
@@ -5,6 +6,35 @@ from pydantic import BaseModel
 from typing import Optional, List
 from app.database import get_db
 from app.models.models import Recruiter, Company
+
+STATE_MAP = {
+    'ALABAMA': 'AL', 'ALASKA': 'AK', 'ARIZONA': 'AZ', 'ARKANSAS': 'AR', 'CALIFORNIA': 'CA',
+    'COLORADO': 'CO', 'CONNECTICUT': 'CT', 'DELAWARE': 'DE', 'FLORIDA': 'FL', 'GEORGIA': 'GA',
+    'HAWAII': 'HI', 'IDAHO': 'ID', 'ILLINOIS': 'IL', 'INDIANA': 'IN', 'IOWA': 'IA',
+    'KANSAS': 'KS', 'KENTUCKY': 'KY', 'LOUISIANA': 'LA', 'MAINE': 'ME', 'MARYLAND': 'MD',
+    'MASSACHUSETTS': 'MA', 'MICHIGAN': 'MI', 'MINNESOTA': 'MN', 'MISSISSIPPI': 'MS', 'MISSOURI': 'MO',
+    'MONTANA': 'MT', 'NEBRASKA': 'NE', 'NEVADA': 'NV', 'NEW HAMPSHIRE': 'NH', 'NEW JERSEY': 'NJ',
+    'NEW MEXICO': 'NM', 'NEW YORK': 'NY', 'NORTH CAROLINA': 'NC', 'NORTH DAKOTA': 'ND', 'OHIO': 'OH',
+    'OKLAHOMA': 'OK', 'OREGON': 'OR', 'PENNSYLVANIA': 'PA', 'RHODE ISLAND': 'RI', 'SOUTH CAROLINA': 'SC',
+    'SOUTH DAKOTA': 'SD', 'TENNESSEE': 'TN', 'TEXAS': 'TX', 'UTAH': 'UT', 'VERMONT': 'VT',
+    'VIRGINIA': 'VA', 'WASHINGTON': 'WA', 'WEST VIRGINIA': 'WV', 'WISCONSIN': 'WI', 'WYOMING': 'WY'
+}
+ABBR_TO_NAME = {v: k for k, v in STATE_MAP.items()}
+
+def build_state_filters(location_abbr: str):
+    """Return a list of precise ILIKE patterns for a 2-letter state abbreviation."""
+    abbr = location_abbr.upper().strip()
+    state_name = ABBR_TO_NAME.get(abbr)
+    patterns = [
+        f"% {abbr}",       # ends with " TX"
+        f"% {abbr},%",     # has ", TX,"
+        f"% {abbr} %",     # has " TX "
+        f"{abbr} %",       # starts with "TX "
+        abbr,              # exact match
+    ]
+    if state_name:
+        patterns.append(f"%{state_name.title()}%")  # e.g. %Indiana%
+    return patterns
 
 router = APIRouter()
 
@@ -191,7 +221,14 @@ def get_recruiters(
     if specialization:
         query = query.filter(Recruiter.specialization.ilike(f"%{specialization}%"))
     if location:
-        query = query.filter(Recruiter.location.ilike(f"%{location}%") | Company.location.ilike(f"%{location}%"))
+        # Use precise word-boundary patterns — prevents "IN" matching "Minnesota", "Virginia" etc.
+        patterns = build_state_filters(location)
+        from sqlalchemy import or_
+        conditions = []
+        for pat in patterns:
+            conditions.append(Recruiter.location.ilike(pat))
+            conditions.append(Company.location.ilike(pat))
+        query = query.filter(or_(*conditions))
     if company:
         query = query.filter(Company.company_name.ilike(f"%{company}%"))
     if is_active is not None:

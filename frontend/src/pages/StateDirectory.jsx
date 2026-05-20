@@ -37,6 +37,8 @@ export default function StateDirectory() {
   const [debouncedCompany, setDebouncedCompany] = useState('')
   const [recruiters, setRecruiters] = useState([])
   const [loading, setLoading] = useState(false)
+  const [totalCount, setTotalCount] = useState(0)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedCompany(companyQuery), 350)
@@ -46,17 +48,40 @@ export default function StateDirectory() {
   useEffect(() => {
     if (!selectedState && !debouncedCompany) {
       setRecruiters([])
+      setTotalCount(0)
       return
     }
     setLoading(true)
-    let url = `${API}/recruiters/?limit=200`
+    let url = `${API}/recruiters/?limit=200&skip=0`
     if (selectedState) url += `&location=${selectedState}`
     if (debouncedCompany) url += `&company=${encodeURIComponent(debouncedCompany)}`
 
     axios.get(url)
-      .then(res => { setRecruiters(res.data); setLoading(false) })
+      .then(res => {
+        setRecruiters(res.data)
+        const count = parseInt(res.headers['x-total-count'] || res.data.length, 10)
+        setTotalCount(count)
+        setLoading(false)
+      })
       .catch(() => setLoading(false))
   }, [selectedState, debouncedCompany])
+
+  const handleLoadMore = () => {
+    if (loadingMore) return
+    setLoadingMore(true)
+    let url = `${API}/recruiters/?limit=200&skip=${recruiters.length}`
+    if (selectedState) url += `&location=${selectedState}`
+    if (debouncedCompany) url += `&company=${encodeURIComponent(debouncedCompany)}`
+
+    axios.get(url)
+      .then(res => {
+        setRecruiters(prev => [...prev, ...res.data])
+        const count = parseInt(res.headers['x-total-count'] || totalCount, 10)
+        setTotalCount(count)
+        setLoadingMore(false)
+      })
+      .catch(() => setLoadingMore(false))
+  }
 
   const selectedName = STATES.find(s => s.abbr === selectedState)?.name || ''
 
@@ -162,7 +187,7 @@ export default function StateDirectory() {
               </h2>
               {(selectedState || debouncedCompany) && !loading && (
                 <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
-                  {recruiters.length} recruiter{recruiters.length !== 1 ? 's' : ''} found
+                  {totalCount.toLocaleString()} recruiter{totalCount !== 1 ? 's' : ''} found
                   {debouncedCompany ? ` at "${debouncedCompany}"` : ''}
                 </p>
               )}
@@ -198,49 +223,88 @@ export default function StateDirectory() {
                 <p style={{ fontSize: 13 }}>Try selecting a different state or clearing the company filter.</p>
               </div>
             ) : (
-              recruiters.map(r => (
-                <div key={r.recruiter_id} style={{
-                  padding: '14px 20px', borderBottom: '1px solid var(--card-border)',
-                  transition: 'background 0.15s', cursor: 'default',
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--main-bg)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{r.recruiter_name}</p>
-                      <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>{r.company_name || 'Independent'}</p>
+              <>
+                {recruiters.map(r => (
+                  <div key={r.recruiter_id} style={{
+                    padding: '14px 20px', borderBottom: '1px solid var(--card-border)',
+                    transition: 'background 0.15s', cursor: 'default',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--main-bg)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{r.recruiter_name}</p>
+                        <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>{r.company_name || 'Independent'}</p>
+                      </div>
+                      {r.location && (
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', marginLeft: 12 }}>
+                          <i className="ti ti-map-pin" style={{ marginRight: 3 }} />
+                          {r.location}
+                        </span>
+                      )}
                     </div>
-                    {r.location && (
-                      <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', marginLeft: 12 }}>
-                        <i className="ti ti-map-pin" style={{ marginRight: 3 }} />
-                        {r.location}
-                      </span>
-                    )}
-                  </div>
 
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 18px', marginTop: 8 }}>
-                    <a href={`mailto:${r.email}`} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--accent)', textDecoration: 'none' }}>
-                      <i className="ti ti-mail" />
-                      {r.email}
-                    </a>
-                    {r.phone && (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)' }}>
-                        <i className="ti ti-phone" />
-                        {r.phone}
-                      </span>
-                    )}
-                    {r.specialization && (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)' }}>
-                        <i className="ti ti-tag" />
-                        {r.specialization}
-                      </span>
-                    )}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 18px', marginTop: 8 }}>
+                      <a href={`mailto:${r.email}`} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--accent)', textDecoration: 'none' }}>
+                        <i className="ti ti-mail" />
+                        {r.email}
+                      </a>
+                      {r.phone && (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)' }}>
+                          <i className="ti ti-phone" />
+                          {r.phone}
+                        </span>
+                      )}
+                      {r.specialization && (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)' }}>
+                          <i className="ti ti-tag" />
+                          {r.specialization}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
-            )}
-          </div>
+                ))}
+
+                {recruiters.length < totalCount && (
+                  <div style={{ padding: '18px 20px', textAlign: 'center' }}>
+                    <button
+                      onClick={handleLoadMore}
+                      disabled={loadingMore}
+                      style={{
+                        padding: '8px 18px',
+                        borderRadius: 8,
+                        background: 'var(--accent)',
+                        color: '#fff',
+                        border: 'none',
+                        fontSize: 13,
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        boxShadow: '0 2px 4px rgba(24,95,165,0.15)',
+                        transition: 'opacity 0.15s',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.opacity = 0.9}
+                      onMouseLeave={e => e.currentTarget.style.opacity = 1}
+                    >
+                      {loadingMore ? (
+                        <>
+                          <i className="ti ti-loader" style={{ animation: 'spin 1s linear infinite' }} />
+                          Loading more...
+                        </>
+                      ) : (
+                        <>
+                          <i className="ti ti-chevron-down" />
+                          Load More ({totalCount - recruiters.length} remaining)
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}</div>
         </div>
       </div>
     </div>

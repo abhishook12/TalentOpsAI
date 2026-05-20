@@ -1,5 +1,5 @@
 import re
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session, joinedload, contains_eager
 from sqlalchemy import text
 from pydantic import BaseModel
@@ -202,6 +202,7 @@ def search_recruiters(
 # --- Standard CRUD ---
 @router.get("/")
 def get_recruiters(
+    response: Response,
     skip: int = 0,
     limit: int = 100,
     search: Optional[str] = None,
@@ -233,6 +234,10 @@ def get_recruiters(
         query = query.filter(Company.company_name.ilike(f"%{company}%"))
     if is_active is not None:
         query = query.filter(Recruiter.is_active == is_active)
+    
+    total_count = query.count()
+    response.headers["X-Total-Count"] = str(total_count)
+    
     results = query.offset(skip).limit(limit).all()
     return [serialize_recruiter(r) for r in results]
 

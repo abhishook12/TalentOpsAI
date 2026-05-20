@@ -1,5 +1,5 @@
 import re
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case, text
 from typing import Optional
@@ -230,10 +230,12 @@ def companies_by_state(db: Session = Depends(get_db)):
 
 @router.get("/companies-search")
 def companies_search(
+    response: Response,
     q: Optional[str] = Query(None, description="Search company name"),
     state: Optional[str] = Query(None, description="Filter by state abbreviation"),
     min_recruiters: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
+    skip: int = Query(0, ge=0),
     db: Session = Depends(get_db)
 ):
     """
@@ -246,7 +248,9 @@ def companies_search(
             c.location,
             c.industry,
             c.website,
-            COUNT(r.recruiter_id) AS recruiter_count,
+            COUNT(DISTINCT r.recruiter_id) AS recruiter_count,
+            string_agg(DISTINCT r.location, '|||') AS recruiter_locations,
+            COUNT(*) OVER() AS full_count,
             CASE
                 WHEN c.location IS NULL OR TRIM(c.location) = '' THEN 'Unknown'
                 WHEN LENGTH(TRIM(SPLIT_PART(c.location, ',', -1))) = 2
@@ -259,7 +263,7 @@ def companies_search(
         LEFT JOIN recruiters r ON r.company_id = c.company_id
         WHERE 1=1
     """
-    params = {"limit": limit, "min_recruiters": min_recruiters}
+    params = {"limit": limit, "min_recruiters": min_recruiters, "skip": skip}
 
     if q:
         sql += " AND c.company_name ILIKE '%' || :q || '%'"
@@ -268,34 +272,77 @@ def companies_search(
         state_upper = state.upper()
         state_name = ABBR_TO_NAME.get(state_upper)
         sql += """ AND (
-            c.location ILIKE :state_pattern_1
-            OR c.location ILIKE :state_pattern_2
-            OR c.location ILIKE :state_pattern_3
-            OR c.location ILIKE :state_pattern_4
-            OR c.location ILIKE :state_pattern_5
-        """
+            (
+                c.location ILIKE :state_pattern_1
+                OR c.location ILIKE :state_pattern_2
+                OR c.location ILIKE :state_pattern_3
+                OR c.location ILIKE :state_pattern_4
+                OR c.location ILIKE :state_pattern_5
+            """
         if state_name:
             sql += " OR c.location ILIKE :name_pattern"
-            params["name_pattern"] = f"%{state_name}%"
-        sql += " )"
+        sql += """
+            )
+            OR EXISTS (
+                SELECT 1 FROM recruiters r2
+                WHERE r2.company_id = c.company_id
+                  AND (
+                    r2.location ILIKE :state_pattern_1
+                    OR r2.location ILIKE :state_pattern_2
+                    OR r2.location ILIKE :state_pattern_3
+                    OR r2.location ILIKE :state_pattern_4
+                    OR r2.location ILIKE :state_pattern_5
+                    """
+        if state_name:
+            sql += " OR r2.location ILIKE :name_pattern"
+        sql += """
+                  )
+            )
+        )"""
         params["state_pattern_1"] = f"% {state_upper}"
         params["state_pattern_2"] = f"% {state_upper},%"
         params["state_pattern_3"] = f"% {state_upper} %"
         params["state_pattern_4"] = f"{state_upper} %"
         params["state_pattern_5"] = state_upper
+        if state_name:
+            params["name_pattern"] = f"%{state_name}%"
 
     sql += """
         GROUP BY c.company_id, c.company_name, c.location, c.industry, c.website
-        HAVING COUNT(r.recruiter_id) >= :min_recruiters
+        HAVING COUNT(DISTINCT r.recruiter_id) >= :min_recruiters
         ORDER BY recruiter_count DESC, c.company_name ASC
-        LIMIT :limit
+        LIMIT :limit OFFSET :skip
     """
     rows = db.execute(text(sql), params).mappings().all()
+    
+    total_count = rows[0]["full_count"] if rows and "full_count" in rows[0] else 0
+    response.headers["X-Total-Count"] = str(total_count)
+    
     res = []
     for row in rows:
         abbr = get_state_abbr(row["location"])
-        if abbr == 'Unknown' and row["state_abbr"] and len(row["state_abbr"]) == 2:
-            abbr = row["state_abbr"]
+        if not abbr or abbr == 'Unknown':
+            if row["state_abbr"] and len(row["state_abbr"]) == 2:
+                abbr = row["state_abbr"]
+        
+        if not abbr or abbr == 'Unknown':
+            rec_locs = row["recruiter_locations"]
+            if rec_locs:
+                parts = rec_locs.split('|||')
+                resolved_abbrs = []
+                for p in parts:
+                    a = get_state_abbr(p)
+                    if a and a != 'Unknown':
+                        resolved_abbrs.append(a)
+                if resolved_abbrs:
+                    if state and state.upper() in resolved_abbrs:
+                        abbr = state.upper()
+                    else:
+                        abbr = resolved_abbrs[0]
+                        
+        if (not abbr or abbr == 'Unknown') and state and state.upper() != "ALL":
+            abbr = state.upper()
+            
         res.append({
             "company_id": row["company_id"],
             "company_name": row["company_name"],
@@ -303,7 +350,7 @@ def companies_search(
             "industry": row["industry"],
             "website": row["website"],
             "recruiter_count": int(row["recruiter_count"]),
-            "state_abbr": abbr,
+            "state_abbr": abbr or 'Unknown',
         })
     return res
 

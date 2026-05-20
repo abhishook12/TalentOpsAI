@@ -101,6 +101,8 @@ export default function CompanyDirectory() {
   const [selectedState, setSelectedState] = useState(null)
   const [companies, setCompanies]   = useState([])
   const [loading, setLoading]       = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [totalCount, setTotalCount] = useState(0)
   const [error, setError]           = useState(null)
   const [stateSearch, setStateSearch] = useState('')
   const [sortBy, setSortBy]         = useState('recruiters') // 'recruiters' | 'name'
@@ -110,17 +112,38 @@ export default function CompanyDirectory() {
     setLoading(true)
     setError(null)
     try {
-      const params = { limit: 200 }
+      const params = { limit: 200, skip: 0 }
       if (q?.trim()) params.q = q.trim()
       if (state) params.state = state
       const res = await axios.get(`${API}/analytics/companies-search`, { params })
       setCompanies(res.data)
+      const count = parseInt(res.headers['x-total-count'] || res.data.length, 10)
+      setTotalCount(count)
     } catch {
       setError('Could not connect to backend.')
       setCompanies([])
+      setTotalCount(0)
     }
     setLoading(false)
   }, [])
+
+  const handleLoadMore = async () => {
+    if (loadingMore) return
+    setLoadingMore(true)
+    setError(null)
+    try {
+      const params = { limit: 200, skip: companies.length }
+      if (query?.trim()) params.q = query.trim()
+      if (selectedState) params.state = selectedState
+      const res = await axios.get(`${API}/analytics/companies-search`, { params })
+      setCompanies(prev => [...prev, ...res.data])
+      const count = parseInt(res.headers['x-total-count'] || totalCount, 10)
+      setTotalCount(count)
+    } catch {
+      setError('Could not connect to backend.')
+    }
+    setLoadingMore(false)
+  }
 
   // Initial load + on filter change
   useEffect(() => {
@@ -352,11 +375,11 @@ export default function CompanyDirectory() {
               <>
                 <div style={{ padding: '8px 16px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                    <strong style={{ color: 'var(--text-primary)' }}>{sorted.length}</strong> compan{sorted.length !== 1 ? 'ies' : 'y'}
+                    <strong style={{ color: 'var(--text-primary)' }}>{totalCount.toLocaleString()}</strong> compan{totalCount !== 1 ? 'ies' : 'y'}
                     {selectedState ? ` in ${selectedState}` : ''}{query ? ` matching "${query}"` : ''}
                   </span>
                   <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                    Total recruiters: <strong style={{ color: 'var(--text-primary)' }}>
+                    Loaded recruiters: <strong style={{ color: 'var(--text-primary)' }}>
                       {sorted.reduce((s, c) => s + c.recruiter_count, 0).toLocaleString()}
                     </strong>
                   </span>
@@ -369,77 +392,117 @@ export default function CompanyDirectory() {
                     <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Try a different state or search term</p>
                   </div>
                 ) : (
-                  sorted.map((c, idx) => (
-                    <div
-                      key={c.company_id}
-                      style={{
-                        display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1.2fr 2fr',
-                        padding: '12px 16px', alignItems: 'center',
-                        borderBottom: '1px solid var(--card-border)',
-                        transition: 'background 0.1s', cursor: 'default',
-                        borderLeft: idx === 0 && !query && !selectedState ? '3px solid #eab308' : '3px solid transparent',
-                        background: idx === 0 && !query && !selectedState ? 'rgba(234,179,8,0.04)' : 'transparent',
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--main-bg)'}
-                      onMouseLeave={e => e.currentTarget.style.background = idx === 0 && !query && !selectedState ? 'rgba(234,179,8,0.04)' : 'transparent'}
-                    >
-                      {/* Company name + avatar */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                        <div style={{
-                          width: 34, height: 34, borderRadius: 8, flexShrink: 0,
-                          background: avatarColor(c.company_name),
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 12, fontWeight: 700, color: '#fff', letterSpacing: '0.03em',
-                        }}>
-                          {initials(c.company_name)}
+                  <>
+                    {sorted.map((c, idx) => (
+                      <div
+                        key={c.company_id}
+                        style={{
+                          display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1.2fr 2fr',
+                          padding: '12px 16px', alignItems: 'center',
+                          borderBottom: '1px solid var(--card-border)',
+                          transition: 'background 0.1s', cursor: 'default',
+                          borderLeft: idx === 0 && !query && !selectedState ? '3px solid #eab308' : '3px solid transparent',
+                          background: idx === 0 && !query && !selectedState ? 'rgba(234,179,8,0.04)' : 'transparent',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--main-bg)'}
+                        onMouseLeave={e => e.currentTarget.style.background = idx === 0 && !query && !selectedState ? 'rgba(234,179,8,0.04)' : 'transparent'}
+                      >
+                        {/* Company name + avatar */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                          <div style={{
+                            width: 34, height: 34, borderRadius: 8, flexShrink: 0,
+                            background: avatarColor(c.company_name),
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 12, fontWeight: 700, color: '#fff', letterSpacing: '0.03em',
+                          }}>
+                            {initials(c.company_name)}
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <p style={{ margin: 0, fontSize: 13.5, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <Highlight text={c.company_name} query={query} />
+                            </p>
+                            {c.website && (
+                              <a href={c.website.startsWith('http') ? c.website : `https://${c.website}`}
+                                target="_blank" rel="noreferrer"
+                                style={{ fontSize: 11, color: 'var(--accent)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}
+                                onClick={e => e.stopPropagation()}
+                              >
+                                {c.website.replace(/^https?:\/\//, '').slice(0, 28)}
+                              </a>
+                            )}
+                          </div>
                         </div>
-                        <div style={{ minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: 13.5, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            <Highlight text={c.company_name} query={query} />
-                          </p>
-                          {c.website && (
-                            <a href={c.website.startsWith('http') ? c.website : `https://${c.website}`}
-                              target="_blank" rel="noreferrer"
-                              style={{ fontSize: 11, color: 'var(--accent)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}
-                              onClick={e => e.stopPropagation()}
-                            >
-                              {c.website.replace(/^https?:\/\//, '').slice(0, 28)}
-                            </a>
-                          )}
-                        </div>
-                      </div>
 
-                      {/* State badge */}
-                      <div>
-                        <span
-                          onClick={() => setSelectedState(c.state_abbr === selectedState ? null : c.state_abbr)}
+                        {/* State badge */}
+                        <div>
+                          <span
+                            onClick={() => setSelectedState(c.state_abbr === selectedState ? null : c.state_abbr)}
+                            style={{
+                              fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 5,
+                              background: c.state_abbr === selectedState ? 'var(--accent)' : 'rgba(24,95,165,0.08)',
+                              color: c.state_abbr === selectedState ? '#fff' : 'var(--accent)',
+                              cursor: 'pointer', whiteSpace: 'nowrap',
+                              border: '1px solid rgba(24,95,165,0.2)',
+                              transition: 'all 0.12s',
+                            }}
+                          >
+                            {c.state_abbr}
+                          </span>
+                        </div>
+
+                        {/* Industry */}
+                        <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {c.industry || '—'}
+                        </p>
+
+                        {/* Location */}
+                        <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {c.location || '—'}
+                        </p>
+
+                        {/* Recruiter bar */}
+                        <RecruiterBar count={c.recruiter_count} max={maxRecruiters} />
+                      </div>
+                    ))}
+
+                    {sorted.length < totalCount && (
+                      <div style={{ padding: '18px 20px', textAlign: 'center' }}>
+                        <button
+                          onClick={handleLoadMore}
+                          disabled={loadingMore}
                           style={{
-                            fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 5,
-                            background: c.state_abbr === selectedState ? 'var(--accent)' : 'rgba(24,95,165,0.08)',
-                            color: c.state_abbr === selectedState ? '#fff' : 'var(--accent)',
-                            cursor: 'pointer', whiteSpace: 'nowrap',
-                            border: '1px solid rgba(24,95,165,0.2)',
-                            transition: 'all 0.12s',
+                            padding: '8px 18px',
+                            borderRadius: 8,
+                            background: 'var(--accent)',
+                            color: '#fff',
+                            border: 'none',
+                            fontSize: 13,
+                            fontWeight: 500,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            boxShadow: '0 2px 4px rgba(24,95,165,0.15)',
+                            transition: 'opacity 0.15s',
                           }}
+                          onMouseEnter={e => e.currentTarget.style.opacity = 0.9}
+                          onMouseLeave={e => e.currentTarget.style.opacity = 1}
                         >
-                          {c.state_abbr}
-                        </span>
+                          {loadingMore ? (
+                            <>
+                              <i className="ti ti-loader" style={{ animation: 'spin 1s linear infinite' }} />
+                              Loading more...
+                            </>
+                          ) : (
+                            <>
+                              <i className="ti ti-chevron-down" />
+                              Load More ({totalCount - sorted.length} remaining)
+                            </>
+                          )}
+                        </button>
                       </div>
-
-                      {/* Industry */}
-                      <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {c.industry || '—'}
-                      </p>
-
-                      {/* Location */}
-                      <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {c.location || '—'}
-                      </p>
-
-                      {/* Recruiter bar */}
-                      <RecruiterBar count={c.recruiter_count} max={maxRecruiters} />
-                    </div>
-                  ))
+                    )}
+                  </>
                 )}
               </>
             )}

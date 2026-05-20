@@ -273,6 +273,11 @@ export default function AdminTerminal() {
   const [activeTab, setActiveTab] = useState('overview')
   const [logLines, setLogLines] = useState([])
   const logRef = useRef()
+  const [visitorLogs, setVisitorLogs] = useState(null)
+  const [visitorSummary, setVisitorSummary] = useState(null)
+  const [logDays, setLogDays] = useState(7)
+  const [expandedSession, setExpandedSession] = useState(null)
+  const [loadingLogs, setLoadingLogs] = useState(false)
 
   const log = (msg, type = 'info') => {
     const ts = new Date().toLocaleTimeString('en-US', { hour12: false })
@@ -331,11 +336,29 @@ export default function AdminTerminal() {
     } catch { log('✗ Failed to clear cache', 'error') }
   }
 
+  const loadVisitorLogs = async (days = logDays) => {
+    setLoadingLogs(true)
+    log(`Loading visitor logs for last ${days} days…`)
+    try {
+      const [logsRes, summRes] = await Promise.all([
+        adminAxios.get(`/admin/visitor-logs?days=${days}&limit=300`),
+        adminAxios.get(`/admin/visitor-summary?days=${days}`),
+      ])
+      setVisitorLogs(logsRes.data)
+      setVisitorSummary(summRes.data)
+      log(`✓ Loaded ${logsRes.data.total} sessions`, 'ok')
+    } catch (e) {
+      log('✗ Failed to load visitor logs: ' + e.message, 'error')
+    }
+    setLoadingLogs(false)
+  }
+
   if (!unlocked) return <AdminLock onUnlock={unlock} />
 
   const TABS = [
     { id: 'overview',  icon: 'ti-layout-dashboard', label: 'Overview' },
     { id: 'data',      icon: 'ti-database',          label: 'Data Health' },
+    { id: 'logbook',   icon: 'ti-book',              label: 'Visitor Log Book' },
     { id: 'sql',       icon: 'ti-code',              label: 'SQL Console' },
     { id: 'system',    icon: 'ti-server',            label: 'System' },
     { id: 'logs',      icon: 'ti-terminal',          label: 'Activity Log' },
@@ -557,6 +580,182 @@ export default function AdminTerminal() {
                 ))}
               </div>
             </Section>
+          </div>
+        )}
+
+        {/* ── VISITOR LOG BOOK TAB ── */}
+        {activeTab === 'logbook' && (
+          <div style={{ animation: 'fadeUp 0.25s ease' }}>
+            {/* Controls */}
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 20, flexWrap: 'wrap' }}>
+              {[1, 7, 14, 30].map(d => (
+                <button key={d} onClick={() => { setLogDays(d); loadVisitorLogs(d) }} style={{
+                  background: logDays === d ? 'linear-gradient(135deg, #0ea5e9, #1d4ed8)' : '#0d1829',
+                  border: '1px solid', borderColor: logDays === d ? '#0ea5e9' : '#1e3a5f',
+                  color: logDays === d ? '#fff' : '#64748b', padding: '7px 18px', borderRadius: 8,
+                  fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+                }}>Last {d} day{d > 1 ? 's' : ''}</button>
+              ))}
+              <button onClick={() => loadVisitorLogs(logDays)} style={{
+                marginLeft: 'auto', background: '#0d1829', border: '1px solid #1e3a5f',
+                color: '#38bdf8', padding: '7px 16px', borderRadius: 8, fontSize: 12.5, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}>
+                {loadingLogs
+                  ? <><i className="ti ti-loader" style={{ animation: 'spin 0.8s linear infinite' }} /> Loading…</>
+                  : <><i className="ti ti-refresh" /> Load Logs</>}
+              </button>
+            </div>
+
+            {!visitorLogs && !loadingLogs && (
+              <div style={{ background: '#0d1829', border: '1px dashed #1e3a5f', borderRadius: 14, padding: 40, textAlign: 'center' }}>
+                <i className="ti ti-book" style={{ fontSize: 40, color: '#1e3a5f', marginBottom: 12, display: 'block' }} />
+                <div style={{ color: '#475569', fontSize: 13 }}>Click <strong style={{ color: '#38bdf8' }}>Load Logs</strong> or select a time range to view the visitor log book.</div>
+              </div>
+            )}
+
+            {visitorSummary && (
+              <>
+                {/* Summary KPIs */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, marginBottom: 20 }}>
+                  <StatCard icon="ti-users" label="Unique Sessions" value={fmt(visitorLogs?.total)} color="#38bdf8" />
+                  <StatCard icon="ti-eye" label="Total Page Views"
+                    value={fmt(visitorSummary.daily.reduce((s, d) => s + Number(d.page_views), 0))} color="#a78bfa" />
+                  <StatCard icon="ti-mail" label="Unique Users"
+                    value={fmt(visitorSummary.top_users.length)} color="#34d399" />
+                  <StatCard icon="ti-chart-bar" label="Top Page"
+                    value={visitorSummary.top_pages[0]?.page || '—'} color="#f472b6" />
+                </div>
+
+                {/* Daily chart + Top Pages */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+                  <Section title="Daily Activity" icon="ti-calendar">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {[...visitorSummary.daily].reverse().map((d, i) => {
+                        const max = Math.max(...visitorSummary.daily.map(x => Number(x.page_views)), 1)
+                        const w = Math.round(Number(d.page_views) / max * 100)
+                        return (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ fontSize: 11, color: '#475569', minWidth: 80, fontFamily: "'DM Mono', monospace" }}>{String(d.day).slice(0, 10)}</span>
+                            <div style={{ flex: 1, height: 6, background: '#111c30', borderRadius: 99, overflow: 'hidden' }}>
+                              <div style={{ width: `${w}%`, height: '100%', background: 'linear-gradient(90deg, #1d4ed8, #38bdf8)', borderRadius: 99 }} />
+                            </div>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: '#38bdf8', minWidth: 30, textAlign: 'right', fontFamily: "'DM Mono', monospace" }}>{d.page_views}</span>
+                            <span style={{ fontSize: 10, color: '#475569', minWidth: 28 }}>{d.unique_sessions}s</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </Section>
+
+                  <Section title="Top Pages" icon="ti-map">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {visitorSummary.top_pages.map((p, i) => {
+                        const max = visitorSummary.top_pages[0]?.views || 1
+                        return (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ fontSize: 11, color: '#475569', minWidth: 16, textAlign: 'right' }}>{i + 1}</span>
+                            <span style={{ fontSize: 12, color: '#94a3b8', minWidth: 110 }}>{p.page}</span>
+                            <div style={{ flex: 1, height: 5, background: '#111c30', borderRadius: 99, overflow: 'hidden' }}>
+                              <div style={{ width: `${Math.round(p.views / max * 100)}%`, height: '100%', background: 'linear-gradient(90deg, #7c3aed, #a78bfa)', borderRadius: 99 }} />
+                            </div>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: '#a78bfa', minWidth: 30, textAlign: 'right', fontFamily: "'DM Mono', monospace" }}>{p.views}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </Section>
+                </div>
+              </>
+            )}
+
+            {/* Session list */}
+            {visitorLogs && (
+              <Section title={`Session Log (${visitorLogs.total} sessions)`} icon="ti-list">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 600, overflowY: 'auto' }}>
+                  {visitorLogs.sessions.map((s, i) => {
+                    const isOpen = expandedSession === s.session_id
+                    const mins = Math.floor(s.total_seconds / 60)
+                    const secs = s.total_seconds % 60
+                    const duration = s.total_seconds > 0
+                      ? (mins > 0 ? `${mins}m ${secs}s` : `${secs}s`)
+                      : `${s.page_count} pages`
+                    const browserIcon = s.browser === 'Chrome' ? 'ti-brand-chrome'
+                      : s.browser === 'Firefox' ? 'ti-brand-firefox'
+                      : s.browser === 'Edge' ? 'ti-brand-edge'
+                      : s.browser === 'Safari' ? 'ti-brand-safari'
+                      : 'ti-browser'
+                    return (
+                      <div key={i} style={{ background: '#0b1525', border: `1px solid ${isOpen ? '#1e3a5f' : '#111c30'}`, borderRadius: 10, overflow: 'hidden', transition: 'border-color 0.15s' }}>
+                        {/* Row header */}
+                        <div
+                          onClick={() => setExpandedSession(isOpen ? null : s.session_id)}
+                          style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
+                        >
+                          {/* Browser icon */}
+                          <div style={{ width: 32, height: 32, borderRadius: 8, background: '#111c30', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <i className={`ti ${browserIcon}`} style={{ fontSize: 16, color: '#38bdf8' }} />
+                          </div>
+                          {/* User */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 600, color: s.user_email === 'Anonymous' ? '#475569' : '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {s.user_email}
+                            </div>
+                            <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>
+                              {String(s.session_start).slice(0, 16).replace('T', ' ')} · {s.ip_address} · {s.browser}
+                            </div>
+                          </div>
+                          {/* Pages visited */}
+                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end', flex: '0 0 auto', maxWidth: 240 }}>
+                            {s.pages.slice(0, 4).map((p, pi) => (
+                              <span key={pi} style={{ background: '#111c30', border: '1px solid #1e2d45', color: '#64748b', fontSize: 10, padding: '2px 7px', borderRadius: 99 }}>{p}</span>
+                            ))}
+                            {s.pages.length > 4 && <span style={{ color: '#475569', fontSize: 10 }}>+{s.pages.length - 4} more</span>}
+                          </div>
+                          {/* Stats */}
+                          <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 8 }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 600, color: '#38bdf8', fontFamily: "'DM Mono', monospace" }}>{duration}</div>
+                            <div style={{ fontSize: 10.5, color: '#475569' }}>{s.page_count} page{s.page_count !== 1 ? 's' : ''}</div>
+                          </div>
+                          <i className={`ti ${isOpen ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ color: '#475569', fontSize: 13, flexShrink: 0 }} />
+                        </div>
+
+                        {/* Expanded detail */}
+                        {isOpen && (
+                          <div style={{ borderTop: '1px solid #111c30', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {/* User agent */}
+                            <div style={{ fontSize: 11, color: '#334155', fontFamily: "'DM Mono', monospace", marginBottom: 4 }}>
+                              UA: {s.user_agent || '—'}
+                            </div>
+                            {/* Page trail */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                              {s.pages.map((p, pi) => (
+                                <div key={pi} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                  <span style={{ fontSize: 10, color: '#475569', minWidth: 18, textAlign: 'right', fontFamily: "'DM Mono', monospace" }}>{pi + 1}</span>
+                                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#1e3a5f', flexShrink: 0 }} />
+                                  <span style={{ fontSize: 12, color: '#94a3b8', flex: 1 }}>{p}</span>
+                                  <span style={{ fontSize: 11, color: '#475569', fontFamily: "'DM Mono', monospace" }}>
+                                    {String(s.timestamps[pi] || '').slice(11, 19)}
+                                  </span>
+                                  {s.times_on_page[pi] > 0 && (
+                                    <span style={{ fontSize: 10.5, color: '#38bdf8', background: '#0d1829', padding: '1px 7px', borderRadius: 99, fontFamily: "'DM Mono', monospace" }}>
+                                      {s.times_on_page[pi]}s
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                  {visitorLogs.sessions.length === 0 && (
+                    <div style={{ color: '#475569', fontSize: 12.5, textAlign: 'center', padding: 24 }}>No sessions found in this time range.</div>
+                  )}
+                </div>
+              </Section>
+            )}
           </div>
         )}
 

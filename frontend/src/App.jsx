@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
-import { useEffect, useState, lazy, Suspense } from 'react'
+import { useEffect, useState, lazy, Suspense, useRef } from 'react'
 import Sidebar from './components/Sidebar'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -204,17 +204,46 @@ const PAGE_NAMES = {
   '/ai-search': 'AI Search',
   '/directory': 'State Directory',
   '/companies': 'Company Directory',
-  '/upload': 'Upload',
+  '/upload': 'ETL Upload',
+  '/admin': 'Admin Terminal',
+}
+
+// Ensure a stable session ID for this browser tab session
+function getSessionId() {
+  let sid = sessionStorage.getItem('talentops_sid')
+  if (!sid) {
+    sid = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now()
+    sessionStorage.setItem('talentops_sid', sid)
+  }
+  return sid
 }
 
 function PageTracker() {
   const location = useLocation()
+  const entryTimeRef = useRef(Date.now())
+
   useEffect(() => {
+    const prevPath  = entryTimeRef._prevPath
+    const enteredAt = entryTimeRef.current
+    const timeOnPage = prevPath ? Math.round((Date.now() - enteredAt) / 1000) : null
+
+    // Reset for the new page
+    entryTimeRef.current   = Date.now()
+    entryTimeRef._prevPath = location.pathname
+
     const page = PAGE_NAMES[location.pathname] || location.pathname
+    const session = (() => { try { return JSON.parse(localStorage.getItem('auth_session') || '{}') } catch { return {} } })()
+
     fetch(`${API}/analytics/log-visit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ page, path: location.pathname }),
+      body: JSON.stringify({
+        page,
+        path: location.pathname,
+        user_email:   session.email   || null,
+        session_id:   getSessionId(),
+        time_on_page: timeOnPage,
+      }),
     }).catch(() => {})
   }, [location.pathname])
   return null

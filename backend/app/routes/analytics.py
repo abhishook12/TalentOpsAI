@@ -1,5 +1,5 @@
 import re
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, Query, Response, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case, text
 from typing import Optional
@@ -400,13 +400,28 @@ def companies_search(
 class VisitPayload(BaseModel):
     page: str
     path: str
+    user_email: Optional[str] = None
+    session_id: Optional[str] = None
+    time_on_page: Optional[int] = None   # seconds on previous page
 
 @router.post("/log-visit")
-def log_visit(payload: VisitPayload, db: Session = Depends(get_db)):
-    visit = PageVisit(page=payload.page, path=payload.path)
+def log_visit(payload: VisitPayload, request: Request, db: Session = Depends(get_db)):
+    ua = request.headers.get("user-agent", "")[:300]
+    # Try to get real IP behind proxy
+    forwarded = request.headers.get("x-forwarded-for")
+    ip = (forwarded.split(",")[0].strip() if forwarded else None) or str(request.client.host)
+
+    visit = PageVisit(
+        page=payload.page,
+        path=payload.path,
+        user_email=payload.user_email,
+        session_id=payload.session_id,
+        time_on_page=payload.time_on_page,
+        user_agent=ua,
+        ip_address=ip,
+    )
     db.add(visit)
     db.commit()
-    # Invalidate cache for visit stats so it updates immediately
     analytics_cache.invalidate("visit_stats")
     return {"ok": True}
 

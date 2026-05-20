@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from app.routes import recruiters, candidates, companies, vendors, submissions, analytics, upload, admin
-from app.database import engine
+from app.database import get_db, engine
 from app.models import models
 from app.create_indexes import create_performance_indexes
 
@@ -11,6 +11,14 @@ try:
     create_performance_indexes()
 except Exception as e:
     print("Error creating indexes at startup:", e)
+
+# Run DB migration for page_visits new columns
+try:
+    from sqlalchemy.orm import Session
+    with Session(engine) as _db:
+        admin.migrate_page_visits(_db)
+except Exception as e:
+    print("Migration warning:", e)
 
 app = FastAPI(
     title="TalentOps AI",

@@ -220,3 +220,135 @@ def admin_system_info(db: Session = Depends(get_db), _=Depends(verify_admin)):
         "active_connections": connections,
         "slow_queries": slow_queries,
     }
+
+
+# ── 11. Visitor Log Book ──────────────────────────────────────────────────────
+
+@router.get("/visitor-logs")
+def admin_visitor_logs(
+    days: int = 7,
+    limit: int = 200,
+    db: Session = Depends(get_db),
+    _=Depends(verify_admin)
+):
+    """
+    Returns paginated visitor log with session grouping.
+    Each session: email, ip, browser, pages visited (list), total time, first/last seen.
+    """
+    rows = db.execute(text("""
+        SELECT
+            session_id,
+            user_email,
+            ip_address,
+            user_agent,
+            array_agg(page ORDER BY visited_at)        AS pages,
+            array_agg(path ORDER BY visited_at)        AS paths,
+            array_agg(visited_at ORDER BY visited_at)  AS timestamps,
+            array_agg(COALESCE(time_on_page, 0) ORDER BY visited_at) AS times,
+            MIN(visited_at)  AS session_start,
+            MAX(visited_at)  AS session_end,
+            COUNT(*)         AS page_count,
+            SUM(COALESCE(time_on_page, 0)) AS total_seconds
+        FROM page_visits
+        WHERE visited_at >= NOW() - INTERVAL '1 day' * :days
+        GROUP BY session_id, user_email, ip_address, user_agent
+        ORDER BY session_start DESC
+        LIMIT :limit
+    """), {"days": days, "limit": limit}).mappings().all()
+
+    sessions = []
+    for r in rows:
+        # Parse UA to simple browser name
+        ua = r["user_agent"] or ""
+        browser = "Unknown"
+        if "Edg/" in ua:       browser = "Edge"
+        elif "Chrome/" in ua:  browser = "Chrome"
+        elif "Firefox/" in ua: browser = "Firefox"
+        elif "Safari/" in ua:  browser = "Safari"
+        elif "curl" in ua:     browser = "cURL"
+        elif "python" in ua.lower(): browser = "Python"
+
+        pages_list = list(r["pages"]) if r["pages"] else []
+        paths_list = list(r["paths"]) if r["paths"] else []
+        times_list = list(r["times"]) if r["times"] else []
+        ts_list    = [str(t) for t in r["timestamps"]] if r["timestamps"] else []
+
+        sessions.append({
+            "session_id":    r["session_id"],
+            "user_email":    r["user_email"] or "Anonymous",
+            "ip_address":    r["ip_address"] or "—",
+            "browser":       browser,
+            "user_agent":    ua[:120],
+            "pages":         pages_list,
+            "paths":         paths_list,
+            "timestamps":    ts_list,
+            "times_on_page": times_list,
+            "page_count":    int(r["page_count"]),
+            "total_seconds": int(r["total_seconds"] or 0),
+            "session_start": str(r["session_start"]),
+            "session_end":   str(r["session_end"]),
+        })
+    return {"sessions": sessions, "total": len(sessions)}
+
+
+@router.get("/visitor-summary")
+def admin_visitor_summary(days: int = 30, db: Session = Depends(get_db), _=Depends(verify_admin)):
+    """Daily unique visitors, total page views, avg session length."""
+    rows = db.execute(text("""
+        SELECT
+            DATE(visited_at) AS day,
+            COUNT(DISTINCT session_id) AS unique_sessions,
+            COUNT(DISTINCT user_email) FILTER (WHERE user_email IS NOT NULL) AS unique_users,
+            COUNT(*) AS page_views,
+            ROUND(AVG(time_on_page) FILTER (WHERE time_on_page IS NOT NULL AND time_on_page > 0)) AS avg_page_seconds
+        FROM page_visits
+        WHERE visited_at >= NOW() - INTERVAL '1 day' * :days
+        GROUP BY DATE(visited_at)
+        ORDER BY day DESC
+        LIMIT :days
+    """), {"days": days}).mappings().all()
+
+    top_pages = db.execute(text("""
+        SELECT page, COUNT(*) AS views
+        FROM page_visits
+        WHERE visited_at >= NOW() - INTERVAL '1 day' * :days
+        GROUP BY page
+        ORDER BY views DESC
+        LIMIT 10
+    """), {"days": days}).mappings().all()
+
+    top_users = db.execute(text("""
+        SELECT
+            user_email,
+            COUNT(*) AS page_views,
+            COUNT(DISTINCT session_id) AS sessions,
+            MAX(visited_at) AS last_seen
+        FROM page_visits
+        WHERE user_email IS NOT NULL AND visited_at >= NOW() - INTERVAL '1 day' * :days
+        GROUP BY user_email
+        ORDER BY page_views DESC
+        LIMIT 10
+    """), {"days": days}).mappings().all()
+
+    return {
+        "daily": [dict(r) for r in rows],
+        "top_pages": [dict(r) for r in top_pages],
+        "top_users": [dict(r) for r in top_users],
+    }
+
+
+# ── DB Migration: add new columns to page_visits if not present ───────────────
+def migrate_page_visits(db: Session):
+    existing = db.execute(text("""
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name = 'page_visits'
+    """)).scalars().all()
+    adds = []
+    if "user_email"   not in existing: adds.append("ADD COLUMN user_email   VARCHAR(150)")
+    if "session_id"   not in existing: adds.append("ADD COLUMN session_id   VARCHAR(64)")
+    if "time_on_page" not in existing: adds.append("ADD COLUMN time_on_page INTEGER")
+    if "user_agent"   not in existing: adds.append("ADD COLUMN user_agent   VARCHAR(300)")
+    if "ip_address"   not in existing: adds.append("ADD COLUMN ip_address   VARCHAR(60)")
+    if adds:
+        db.execute(text(f"ALTER TABLE page_visits {', '.join(adds)}"))
+        db.commit()

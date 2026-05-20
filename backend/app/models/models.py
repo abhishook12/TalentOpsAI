@@ -6,10 +6,15 @@ from app.database import Base
 
 class PageVisit(Base):
     __tablename__ = "page_visits"
-    id         = Column(Integer, primary_key=True, index=True)
-    page       = Column(String(100), nullable=False)    # e.g. "Dashboard", "AI Search"
-    path       = Column(String(100), nullable=False)    # e.g. "/", "/ai-search"
-    visited_at = Column(TIMESTAMP, server_default=func.now(), index=True)
+    id            = Column(Integer, primary_key=True, index=True)
+    page          = Column(String(100), nullable=False)    # e.g. "Dashboard"
+    path          = Column(String(100), nullable=False)    # e.g. "/"
+    user_email    = Column(String(150), nullable=True)     # logged-in user email
+    session_id    = Column(String(64),  nullable=True)     # browser session UUID
+    time_on_page  = Column(Integer,     nullable=True)     # seconds spent on previous page
+    user_agent    = Column(String(300), nullable=True)     # browser UA string
+    ip_address    = Column(String(60),  nullable=True)     # client IP from request
+    visited_at    = Column(TIMESTAMP, server_default=func.now(), index=True)
 
 
 

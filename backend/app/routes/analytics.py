@@ -4,7 +4,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, case, text
 from typing import Optional
 from app.database import get_db
-from app.models.models import Recruiter, Candidate, Submission, Company, Vendor
+from app.models.models import Recruiter, Candidate, Submission, Company, Vendor, PageVisit
+from pydantic import BaseModel
+from datetime import datetime, timedelta
 
 STATE_MAP = {
     'ALABAMA': 'AL', 'ALASKA': 'AK', 'ARIZONA': 'AZ', 'ARKANSAS': 'AR', 'CALIFORNIA': 'CA',
@@ -246,3 +248,70 @@ def companies_search(
             "state_abbr": abbr,
         })
     return res
+
+
+# ─── Visit Tracking ────────────────────────────────────────────────────────────
+
+class VisitPayload(BaseModel):
+    page: str
+    path: str
+
+@router.post("/log-visit")
+def log_visit(payload: VisitPayload, db: Session = Depends(get_db)):
+    visit = PageVisit(page=payload.page, path=payload.path)
+    db.add(visit)
+    db.commit()
+    return {"ok": True}
+
+
+@router.get("/visit-stats")
+def visit_stats(db: Session = Depends(get_db)):
+    now = datetime.utcnow()
+
+    # Last 7 days — visits per day
+    seven_days_ago = now - timedelta(days=7)
+    daily = db.execute(text("""
+        SELECT DATE(visited_at) AS day, COUNT(*) AS visits
+        FROM page_visits
+        WHERE visited_at >= :since
+        GROUP BY day ORDER BY day ASC
+    """), {"since": seven_days_ago}).mappings().all()
+
+    # Last 30 days — visits per week bucket
+    thirty_days_ago = now - timedelta(days=30)
+    weekly = db.execute(text("""
+        SELECT
+            DATE_TRUNC('week', visited_at)::date AS week_start,
+            COUNT(*) AS visits
+        FROM page_visits
+        WHERE visited_at >= :since
+        GROUP BY week_start ORDER BY week_start ASC
+    """), {"since": thirty_days_ago}).mappings().all()
+
+    # Top pages all-time
+    top_pages = db.execute(text("""
+        SELECT page, COUNT(*) AS visits
+        FROM page_visits
+        GROUP BY page ORDER BY visits DESC
+        LIMIT 10
+    """)).mappings().all()
+
+    # Today vs yesterday totals
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    yesterday_start = today_start - timedelta(days=1)
+    today_count = db.execute(text("""
+        SELECT COUNT(*) FROM page_visits WHERE visited_at >= :s
+    """), {"s": today_start}).scalar()
+    yesterday_count = db.execute(text("""
+        SELECT COUNT(*) FROM page_visits WHERE visited_at >= :s AND visited_at < :e
+    """), {"s": yesterday_start, "e": today_start}).scalar()
+    total_count = db.execute(text("SELECT COUNT(*) FROM page_visits")).scalar()
+
+    return {
+        "total_visits": total_count,
+        "today": today_count,
+        "yesterday": yesterday_count,
+        "daily": [{"day": str(r["day"]), "visits": r["visits"]} for r in daily],
+        "weekly": [{"week": str(r["week_start"]), "visits": r["visits"]} for r in weekly],
+        "top_pages": [{"page": r["page"], "visits": r["visits"]} for r in top_pages],
+    }

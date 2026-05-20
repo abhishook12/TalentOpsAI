@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
 import { useEffect, useState, lazy, Suspense } from 'react'
 import Sidebar from './components/Sidebar'
 
@@ -194,6 +194,31 @@ function ThemeSwitcher() {
   )
 }
 
+const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
+
+const PAGE_NAMES = {
+  '/': 'Dashboard',
+  '/recruiters': 'Recruiters',
+  '/analytics': 'Analytics',
+  '/ai-search': 'AI Search',
+  '/directory': 'State Directory',
+  '/companies': 'Company Directory',
+  '/upload': 'Upload',
+}
+
+function PageTracker() {
+  const location = useLocation()
+  useEffect(() => {
+    const page = PAGE_NAMES[location.pathname] || location.pathname
+    fetch(`${API}/analytics/log-visit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ page, path: location.pathname }),
+    }).catch(() => {})
+  }, [location.pathname])
+  return null
+}
+
 function LoginScreen({ onLoginSuccess }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -364,6 +389,7 @@ function App() {
 
   return (
     <Router>
+      <PageTracker />
       <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--main-bg)' }}>
         <Sidebar />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--main-bg)' }}>

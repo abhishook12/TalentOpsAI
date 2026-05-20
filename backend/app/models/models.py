@@ -4,6 +4,15 @@ from sqlalchemy.sql import func
 from app.database import Base
 
 
+class PageVisit(Base):
+    __tablename__ = "page_visits"
+    id         = Column(Integer, primary_key=True, index=True)
+    page       = Column(String(100), nullable=False)    # e.g. "Dashboard", "AI Search"
+    path       = Column(String(100), nullable=False)    # e.g. "/", "/ai-search"
+    visited_at = Column(TIMESTAMP, server_default=func.now(), index=True)
+
+
+
 class Company(Base):
     __tablename__ = "companies"
     company_id   = Column(Integer, primary_key=True, index=True)

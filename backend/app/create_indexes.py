@@ -1,0 +1,43 @@
+import os
+from sqlalchemy import create_engine, text
+
+def create_performance_indexes():
+    env_path = r"C:\TalentOpsAI\backend\.env"
+    db_url = None
+    if os.path.exists(env_path):
+        with open(env_path, "r") as f:
+            for line in f:
+                if line.startswith("DATABASE_URL="):
+                    db_url = line.split("=", 1)[1].strip()
+
+    if not db_url:
+        print("DATABASE_URL not found")
+        return
+
+    if db_url.startswith("postgresql://"):
+        db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
+
+    print("Connecting to DB to install performance indexes...")
+    engine = create_engine(db_url)
+    
+    with engine.begin() as conn:
+        # 1. Enable pg_trgm extension for fast string matching
+        print("Enabling pg_trgm extension...")
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+        
+        # 2. Standard location and specialization indexes
+        print("Creating location and specialization indexes...")
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_recruiters_location ON recruiters (location)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_companies_location ON companies (location)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_recruiters_specialization ON recruiters (specialization)"))
+        
+        # 3. Trigram GIN indexes for fast fuzzy searching / ILIKE matching
+        print("Creating GIN trigram indexes for name and company search...")
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_recruiters_trgm_name ON recruiters USING gin (recruiter_name gin_trgm_ops)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_companies_trgm_name ON companies USING gin (company_name gin_trgm_ops)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_recruiters_trgm_spec ON recruiters USING gin (specialization gin_trgm_ops)"))
+        
+        print("All indexes created successfully!")
+
+if __name__ == "__main__":
+    create_performance_indexes()

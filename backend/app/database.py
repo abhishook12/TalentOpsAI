@@ -13,8 +13,8 @@ engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,       # detects dead connections before using them
     pool_recycle=300,         # recycle connections every 5 mins
-    pool_size=5,              # max 5 persistent connections
-    max_overflow=2,           # allow 2 extra under load
+    pool_size=15,             # max 15 persistent connections
+    max_overflow=10,          # allow 10 extra under load
     connect_args={
         "connect_timeout": 10
     }

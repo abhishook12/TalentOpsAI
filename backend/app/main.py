@@ -1,16 +1,24 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from app.routes import recruiters, candidates, companies, vendors, submissions, analytics, upload
 from app.database import engine
 from app.models import models
+from app.create_indexes import create_performance_indexes
 
 models.Base.metadata.create_all(bind=engine)
+try:
+    create_performance_indexes()
+except Exception as e:
+    print("Error creating indexes at startup:", e)
 
 app = FastAPI(
     title="TalentOps AI",
     description="Recruitment Operations Intelligence Platform",
     version="1.0.0"
 )
+
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 app.add_middleware(
     CORSMiddleware,

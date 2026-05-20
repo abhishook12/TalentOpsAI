@@ -42,10 +42,42 @@ def get_state_abbr(location: Optional[str]) -> str:
             
     return 'Unknown'
 
+import time
+from threading import Lock
+
+class SimpleCache:
+    def __init__(self):
+        self._cache = {}
+        self._lock = Lock()
+        
+    def get(self, key):
+        with self._lock:
+            if key in self._cache:
+                value, expiry = self._cache[key]
+                if time.time() < expiry:
+                    return value
+                else:
+                    del self._cache[key]
+            return None
+            
+    def set(self, key, value, ttl=30):
+        with self._lock:
+            self._cache[key] = (value, time.time() + ttl)
+            
+    def invalidate(self, key):
+        with self._lock:
+            if key in self._cache:
+                del self._cache[key]
+
+analytics_cache = SimpleCache()
+
 router = APIRouter()
 
 @router.get("/dashboard")
 def get_dashboard_kpis(db: Session = Depends(get_db)):
+    cached = analytics_cache.get("dashboard_kpis")
+    if cached is not None:
+        return cached
     total_recruiters    = db.query(Recruiter).count()
     active_recruiters   = db.query(Recruiter).filter(Recruiter.is_active == True).count()
     total_candidates    = db.query(Candidate).count()
@@ -60,7 +92,7 @@ def get_dashboard_kpis(db: Session = Depends(get_db)):
     placement_rate = round((placed / total_submissions * 100), 1) if total_submissions > 0 else 0
     duplicate_rate = round((duplicate_candidates / total_candidates * 100), 1) if total_candidates > 0 else 0
 
-    return {
+    result = {
         "recruiters": {
             "total": total_recruiters,
             "active": active_recruiters,
@@ -81,25 +113,40 @@ def get_dashboard_kpis(db: Session = Depends(get_db)):
         "companies": {"total": total_companies},
         "vendors": {"total": total_vendors}
     }
+    analytics_cache.set("dashboard_kpis", result, ttl=30)
+    return result
 
 @router.get("/submissions-by-status")
 def submissions_by_status(db: Session = Depends(get_db)):
+    cached = analytics_cache.get("submissions_by_status")
+    if cached is not None:
+        return cached
     results = db.query(
         Submission.status,
         func.count(Submission.submission_id).label("count")
     ).group_by(Submission.status).all()
-    return [{"status": r.status, "count": r.count} for r in results]
+    res_list = [{"status": r.status, "count": r.count} for r in results]
+    analytics_cache.set("submissions_by_status", res_list, ttl=30)
+    return res_list
 
 @router.get("/candidates-by-visa")
 def candidates_by_visa(db: Session = Depends(get_db)):
+    cached = analytics_cache.get("candidates_by_visa")
+    if cached is not None:
+        return cached
     results = db.query(
         Candidate.visa_status,
         func.count(Candidate.candidate_id).label("count")
     ).group_by(Candidate.visa_status).all()
-    return [{"visa_status": r.visa_status, "count": r.count} for r in results]
+    res_list = [{"visa_status": r.visa_status, "count": r.count} for r in results]
+    analytics_cache.set("candidates_by_visa", res_list, ttl=30)
+    return res_list
 
 @router.get("/recruiter-productivity")
 def recruiter_productivity(db: Session = Depends(get_db)):
+    cached = analytics_cache.get("recruiter_productivity")
+    if cached is not None:
+        return cached
     results = db.query(
         Recruiter.recruiter_name,
         func.count(Submission.submission_id).label("total_submissions"),
@@ -108,24 +155,34 @@ def recruiter_productivity(db: Session = Depends(get_db)):
     ).join(Submission, Submission.recruiter_id == Recruiter.recruiter_id, isouter=True)\
      .group_by(Recruiter.recruiter_id, Recruiter.recruiter_name).all()
 
-    return [{
+    res_list = [{
         "recruiter": r.recruiter_name,
         "total_submissions": r.total_submissions or 0,
         "placements": r.placements or 0,
         "interviews": r.interviews or 0
     } for r in results]
+    analytics_cache.set("recruiter_productivity", res_list, ttl=30)
+    return res_list
 
 @router.get("/submissions-trend")
 def submissions_trend(db: Session = Depends(get_db)):
+    cached = analytics_cache.get("submissions_trend")
+    if cached is not None:
+        return cached
     results = db.query(
         func.date_trunc("month", Submission.submission_date).label("month"),
         func.count(Submission.submission_id).label("count")
     ).group_by("month").order_by("month").all()
-    return [{"month": str(r.month)[:7], "count": r.count} for r in results]
+    res_list = [{"month": str(r.month)[:7], "count": r.count} for r in results]
+    analytics_cache.set("submissions_trend", res_list, ttl=30)
+    return res_list
 
 
 @router.get("/companies-by-state")
 def companies_by_state(db: Session = Depends(get_db)):
+    cached = analytics_cache.get("companies_by_state")
+    if cached is not None:
+        return cached
     """
     Returns companies grouped by state, each with recruiter count.
     State is extracted from the company location field (last word / 2-letter abbr).
@@ -167,6 +224,7 @@ def companies_by_state(db: Session = Depends(get_db)):
             "recruiter_count": int(row["recruiter_count"]),
             "state_abbr": abbr,
         })
+    analytics_cache.set("companies_by_state", res, ttl=30)
     return res
 
 
@@ -261,11 +319,16 @@ def log_visit(payload: VisitPayload, db: Session = Depends(get_db)):
     visit = PageVisit(page=payload.page, path=payload.path)
     db.add(visit)
     db.commit()
+    # Invalidate cache for visit stats so it updates immediately
+    analytics_cache.invalidate("visit_stats")
     return {"ok": True}
 
 
 @router.get("/visit-stats")
 def visit_stats(db: Session = Depends(get_db)):
+    cached = analytics_cache.get("visit_stats")
+    if cached is not None:
+        return cached
     now = datetime.utcnow()
 
     # Last 7 days — visits per day
@@ -307,7 +370,7 @@ def visit_stats(db: Session = Depends(get_db)):
     """), {"s": yesterday_start, "e": today_start}).scalar()
     total_count = db.execute(text("SELECT COUNT(*) FROM page_visits")).scalar()
 
-    return {
+    result = {
         "total_visits": total_count,
         "today": today_count,
         "yesterday": yesterday_count,
@@ -315,3 +378,5 @@ def visit_stats(db: Session = Depends(get_db)):
         "weekly": [{"week": str(r["week_start"]), "visits": r["visits"]} for r in weekly],
         "top_pages": [{"page": r["page"], "visits": r["visits"]} for r in top_pages],
     }
+    analytics_cache.set("visit_stats", result, ttl=30)
+    return result

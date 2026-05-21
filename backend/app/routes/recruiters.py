@@ -7,34 +7,8 @@ from typing import Optional, List
 from app.database import get_db
 from app.models.models import Recruiter, Company
 
-STATE_MAP = {
-    'ALABAMA': 'AL', 'ALASKA': 'AK', 'ARIZONA': 'AZ', 'ARKANSAS': 'AR', 'CALIFORNIA': 'CA',
-    'COLORADO': 'CO', 'CONNECTICUT': 'CT', 'DELAWARE': 'DE', 'FLORIDA': 'FL', 'GEORGIA': 'GA',
-    'HAWAII': 'HI', 'IDAHO': 'ID', 'ILLINOIS': 'IL', 'INDIANA': 'IN', 'IOWA': 'IA',
-    'KANSAS': 'KS', 'KENTUCKY': 'KY', 'LOUISIANA': 'LA', 'MAINE': 'ME', 'MARYLAND': 'MD',
-    'MASSACHUSETTS': 'MA', 'MICHIGAN': 'MI', 'MINNESOTA': 'MN', 'MISSISSIPPI': 'MS', 'MISSOURI': 'MO',
-    'MONTANA': 'MT', 'NEBRASKA': 'NE', 'NEVADA': 'NV', 'NEW HAMPSHIRE': 'NH', 'NEW JERSEY': 'NJ',
-    'NEW MEXICO': 'NM', 'NEW YORK': 'NY', 'NORTH CAROLINA': 'NC', 'NORTH DAKOTA': 'ND', 'OHIO': 'OH',
-    'OKLAHOMA': 'OK', 'OREGON': 'OR', 'PENNSYLVANIA': 'PA', 'RHODE ISLAND': 'RI', 'SOUTH CAROLINA': 'SC',
-    'SOUTH DAKOTA': 'SD', 'TENNESSEE': 'TN', 'TEXAS': 'TX', 'UTAH': 'UT', 'VERMONT': 'VT',
-    'VIRGINIA': 'VA', 'WASHINGTON': 'WA', 'WEST VIRGINIA': 'WV', 'WISCONSIN': 'WI', 'WYOMING': 'WY'
-}
-ABBR_TO_NAME = {v: k for k, v in STATE_MAP.items()}
+from app.utils.state_mapper import normalize_state
 
-def build_state_filters(location_abbr: str):
-    """Return a list of precise ILIKE patterns for a 2-letter state abbreviation."""
-    abbr = location_abbr.upper().strip()
-    state_name = ABBR_TO_NAME.get(abbr)
-    patterns = [
-        f"% {abbr}",       # ends with " TX"
-        f"% {abbr},%",     # has ", TX,"
-        f"% {abbr} %",     # has " TX "
-        f"{abbr} %",       # starts with "TX "
-        abbr,              # exact match
-    ]
-    if state_name:
-        patterns.append(f"%{state_name.title()}%")  # e.g. %Indiana%
-    return patterns
 
 router = APIRouter()
 
@@ -169,8 +143,10 @@ def search_recruiters(
         base_sql += " AND c.company_name ILIKE '%' || :company || '%'"
         params["company"] = company
     if location:
-        base_sql += " AND c.location ILIKE '%' || :location || '%'"
-        params["location"] = location
+        abbr = normalize_state(location)
+        if abbr:
+            base_sql += " AND COALESCE(r.state, c.state) = :location"
+            params["location"] = abbr
     if specialization:
         base_sql += " AND r.specialization ILIKE '%' || :specialization || '%'"
         params["specialization"] = specialization
@@ -222,14 +198,13 @@ def get_recruiters(
     if specialization:
         query = query.filter(Recruiter.specialization.ilike(f"%{specialization}%"))
     if location:
-        # Use precise word-boundary patterns — prevents "IN" matching "Minnesota", "Virginia" etc.
-        patterns = build_state_filters(location)
-        from sqlalchemy import or_
-        conditions = []
-        for pat in patterns:
-            conditions.append(Recruiter.location.ilike(pat))
-            conditions.append(Company.location.ilike(pat))
-        query = query.filter(or_(*conditions))
+        abbr = normalize_state(location)
+        if abbr:
+            from sqlalchemy import or_
+            query = query.filter(or_(
+                Recruiter.state == abbr,
+                Company.state == abbr
+            ))
     if company:
         query = query.filter(Company.company_name.ilike(f"%{company}%"))
     if is_active is not None:
@@ -253,7 +228,15 @@ def create_recruiter(data: RecruiterCreate, db: Session = Depends(get_db)):
     existing = db.query(Recruiter).filter(Recruiter.email == data.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already exists")
-    r = Recruiter(**data.dict())
+        
+    r_data = data.dict()
+    state = normalize_state(r_data.get('location'))
+    if not state and r_data.get('company_id'):
+        company = db.query(Company).filter(Company.company_id == r_data['company_id']).first()
+        if company and company.location:
+            state = normalize_state(company.location)
+            
+    r = Recruiter(**r_data, state=state)
     db.add(r)
     db.commit()
     db.refresh(r)
@@ -264,8 +247,20 @@ def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Dep
     r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
-    for key, value in data.dict(exclude_unset=True).items():
+        
+    update_data = data.dict(exclude_unset=True)
+    for key, value in update_data.items():
         setattr(r, key, value)
+        
+    # Re-evaluate state if location or company changed
+    if 'location' in update_data or 'company_id' in update_data:
+        loc = r.location
+        if not loc and r.company_id:
+            comp = db.query(Company).filter(Company.company_id == r.company_id).first()
+            if comp:
+                loc = comp.location
+        r.state = normalize_state(loc) if loc else None
+        
     db.commit()
     db.refresh(r)
     return serialize_recruiter(r)

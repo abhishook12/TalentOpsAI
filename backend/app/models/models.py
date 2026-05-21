@@ -24,6 +24,7 @@ class Company(Base):
     company_name = Column(String(255), nullable=False)
     industry     = Column(String(100))
     location     = Column(String(150))
+    state        = Column(String(2), index=True)
     website      = Column(String(255))
     created_at   = Column(TIMESTAMP, server_default=func.now())
     updated_at   = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
@@ -56,6 +57,7 @@ class Recruiter(Base):
     notes            = Column(Text)                 # any extra info from messages etc.
     company_id       = Column(Integer, ForeignKey("companies.company_id", ondelete="SET NULL"), nullable=True)
     location         = Column(String(255))
+    state            = Column(String(2), index=True)
     is_active        = Column(Boolean, default=True)
     created_at       = Column(TIMESTAMP, server_default=func.now())
     updated_at       = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())

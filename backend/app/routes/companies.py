@@ -20,8 +20,18 @@ class CompanyUpdate(BaseModel):
     website: Optional[str] = None
 
 @router.get("/")
-def get_companies(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return db.query(Company).offset(skip).limit(limit).all()
+def get_companies(
+    skip: int = 0, 
+    limit: int = 100, 
+    state: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(Company)
+    if state:
+        abbr = normalize_state(state)
+        if abbr:
+            query = query.filter(Company.state == abbr)
+    return query.offset(skip).limit(limit).all()
 
 @router.get("/{company_id}")
 def get_company(company_id: int, db: Session = Depends(get_db)):
@@ -30,9 +40,13 @@ def get_company(company_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Company not found")
     return c
 
+from app.utils.state_mapper import normalize_state
+
 @router.post("/", status_code=201)
 def create_company(data: CompanyCreate, db: Session = Depends(get_db)):
-    c = Company(**data.dict())
+    c_data = data.dict()
+    state = normalize_state(c_data.get('location'))
+    c = Company(**c_data, state=state)
     db.add(c)
     db.commit()
     db.refresh(c)
@@ -43,8 +57,14 @@ def update_company(company_id: int, data: CompanyUpdate, db: Session = Depends(g
     c = db.query(Company).filter(Company.company_id == company_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Company not found")
-    for key, value in data.dict(exclude_unset=True).items():
+        
+    update_data = data.dict(exclude_unset=True)
+    for key, value in update_data.items():
         setattr(c, key, value)
+        
+    if 'location' in update_data:
+        c.state = normalize_state(c.location) if c.location else None
+        
     db.commit()
     db.refresh(c)
     return c

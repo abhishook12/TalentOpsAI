@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import Optional
 from app.database import get_db
-from app.models.models import Recruiter, Company, Candidate, Submission, Vendor
+from app.models.models import Recruiter, Company, Candidate, Submission, Vendor, PageVisit
+from datetime import datetime, timedelta
+from collections import defaultdict
 import time
 
 router = APIRouter()
@@ -224,6 +226,24 @@ def admin_system_info(db: Session = Depends(get_db), _=Depends(verify_admin)):
 
 # ── 11. Visitor Log Book ──────────────────────────────────────────────────────
 
+def _browser_from_ua(ua: str) -> str:
+    if not ua:
+        return "Unknown"
+    if "Edg/" in ua:
+        return "Edge"
+    if "Chrome/" in ua:
+        return "Chrome"
+    if "Firefox/" in ua:
+        return "Firefox"
+    if "Safari/" in ua:
+        return "Safari"
+    if "curl" in ua:
+        return "cURL"
+    if "python" in ua.lower():
+        return "Python"
+    return "Unknown"
+
+
 @router.get("/visitor-logs")
 def admin_visitor_logs(
     days: int = 7,
@@ -232,64 +252,64 @@ def admin_visitor_logs(
     _=Depends(verify_admin)
 ):
     """
-    Returns paginated visitor log with session grouping.
-    Each session: email, ip, browser, pages visited (list), total time, first/last seen.
+    Returns visitor sessions grouped in Python (reliable across all visit rows).
     """
-    rows = db.execute(text("""
-        SELECT
-            session_id,
-            user_email,
-            ip_address,
-            user_agent,
-            array_agg(page ORDER BY visited_at)        AS pages,
-            array_agg(path ORDER BY visited_at)        AS paths,
-            array_agg(visited_at ORDER BY visited_at)  AS timestamps,
-            array_agg(COALESCE(time_on_page, 0) ORDER BY visited_at) AS times,
-            MIN(visited_at)  AS session_start,
-            MAX(visited_at)  AS session_end,
-            COUNT(*)         AS page_count,
-            SUM(COALESCE(time_on_page, 0)) AS total_seconds
-        FROM page_visits
-        WHERE visited_at >= NOW() - INTERVAL '1 day' * :days
-          AND session_id IS NOT NULL
-        GROUP BY session_id, user_email, ip_address, user_agent
-        ORDER BY session_start DESC
-        LIMIT :limit
-    """), {"days": days, "limit": limit}).mappings().all()
+    since = datetime.utcnow() - timedelta(days=max(1, days))
+    visits = (
+        db.query(PageVisit)
+        .filter(PageVisit.visited_at >= since)
+        .order_by(PageVisit.visited_at.asc())
+        .limit(5000)
+        .all()
+    )
 
-    sessions = []
-    for r in rows:
-        # Parse UA to simple browser name
-        ua = r["user_agent"] or ""
-        browser = "Unknown"
-        if "Edg/" in ua:       browser = "Edge"
-        elif "Chrome/" in ua:  browser = "Chrome"
-        elif "Firefox/" in ua: browser = "Firefox"
-        elif "Safari/" in ua:  browser = "Safari"
-        elif "curl" in ua:     browser = "cURL"
-        elif "python" in ua.lower(): browser = "Python"
+    groups = {}
+    for v in visits:
+        sid = (v.session_id or "").strip()
+        if not sid:
+            day = v.visited_at.date().isoformat() if v.visited_at else "unknown"
+            sid = f"legacy-{v.ip_address or 'unknown'}-{day}"
+        if sid not in groups:
+            ua = v.user_agent or ""
+            groups[sid] = {
+                "session_id": sid,
+                "user_email": v.user_email or "Anonymous",
+                "ip_address": v.ip_address or "—",
+                "browser": _browser_from_ua(ua),
+                "user_agent": ua[:120],
+                "pages": [],
+                "paths": [],
+                "timestamps": [],
+                "times_on_page": [],
+                "page_count": 0,
+                "total_seconds": 0,
+                "session_start": v.visited_at,
+                "session_end": v.visited_at,
+            }
+        g = groups[sid]
+        g["pages"].append(v.page)
+        g["paths"].append(v.path)
+        g["timestamps"].append(str(v.visited_at) if v.visited_at else "")
+        g["times_on_page"].append(int(v.time_on_page or 0))
+        g["page_count"] += 1
+        g["total_seconds"] += int(v.time_on_page or 0)
+        if v.visited_at and (not g["session_start"] or v.visited_at < g["session_start"]):
+            g["session_start"] = v.visited_at
+        if v.visited_at and (not g["session_end"] or v.visited_at > g["session_end"]):
+            g["session_end"] = v.visited_at
+        if v.user_email:
+            g["user_email"] = v.user_email
 
-        pages_list = list(r["pages"]) if r["pages"] else []
-        paths_list = list(r["paths"]) if r["paths"] else []
-        times_list = list(r["times"]) if r["times"] else []
-        ts_list    = [str(t) for t in r["timestamps"]] if r["timestamps"] else []
+    sessions = sorted(groups.values(), key=lambda x: x["session_end"] or datetime.min, reverse=True)[:limit]
+    for s in sessions:
+        s["session_start"] = str(s["session_start"])
+        s["session_end"] = str(s["session_end"])
 
-        sessions.append({
-            "session_id":    r["session_id"],
-            "user_email":    r["user_email"] or "Anonymous",
-            "ip_address":    r["ip_address"] or "—",
-            "browser":       browser,
-            "user_agent":    ua[:120],
-            "pages":         pages_list,
-            "paths":         paths_list,
-            "timestamps":    ts_list,
-            "times_on_page": times_list,
-            "page_count":    int(r["page_count"]),
-            "total_seconds": int(r["total_seconds"] or 0),
-            "session_start": str(r["session_start"]),
-            "session_end":   str(r["session_end"]),
-        })
-    return {"sessions": sessions, "total": len(sessions)}
+    return {
+        "sessions": sessions,
+        "total": len(sessions),
+        "total_visits": len(visits),
+    }
 
 
 @router.get("/visitor-summary")

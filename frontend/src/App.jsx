@@ -117,6 +117,7 @@ const globalStyles = `
 
   html, body, #root {
     height: 100%;
+    overflow: hidden;
     font-family: var(--font);
     background: var(--main-bg);
     color: var(--text-primary);
@@ -261,14 +262,23 @@ function ThemeSwitcher() {
     setTheme(next)
   }
 
+  const idx = themes.indexOf(theme)
+
   return (
-    <button onClick={toggle} style={{
-      position: 'fixed', bottom: 24, right: 24, width: 48, height: 48,
-      borderRadius: '50%', background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-      boxShadow: '0 4px 12px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 9999, color: 'var(--text-primary)', fontSize: 22, transition: 'transform 0.2s'
-    }} onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
-      <i className={`ti ${icons[themes.indexOf(theme)]}`} />
+    <button
+      onClick={toggle}
+      title={`Theme: ${labels[idx]} — click to switch`}
+      style={{
+        width: 36, height: 36, borderRadius: 8,
+        background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: 'var(--text-primary)', fontSize: 18, cursor: 'pointer',
+        transition: 'background 0.15s, transform 0.15s', flexShrink: 0,
+      }}
+      onMouseEnter={e => { e.currentTarget.style.background = 'var(--card-bg-hover)'; e.currentTarget.style.transform = 'scale(1.05)' }}
+      onMouseLeave={e => { e.currentTarget.style.background = 'var(--card-bg)'; e.currentTarget.style.transform = 'scale(1)' }}
+    >
+      <i className={`ti ${icons[idx]}`} />
     </button>
   )
 }
@@ -283,7 +293,7 @@ const PAGE_NAMES = {
   '/directory': 'State Directory',
   '/companies': 'Company Directory',
   '/upload': 'ETL Upload',
-  '/admin': 'Admin Terminal',
+  '/admin': 'Admin',
 }
 
 // Ensure a stable session ID for this browser tab session
@@ -315,6 +325,7 @@ function PageTracker() {
     fetch(`${API}/analytics/log-visit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
       body: JSON.stringify({
         page,
         path: location.pathname,
@@ -488,26 +499,63 @@ function App() {
 
   if (!isAuthenticated) {
     return (
-      <>
+      <div style={{ position: 'relative', minHeight: '100vh' }}>
+        <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 100001 }}>
+          <ThemeSwitcher />
+        </div>
         <LoginScreen onLoginSuccess={handleLoginSuccess} />
-        <ThemeSwitcher />
-      </>
+      </div>
     )
   }
 
   return (
     <Router>
+      <AppLayout />
+    </Router>
+  )
+}
+
+function AppLayout() {
+  const location = useLocation()
+  const isAnalytics = location.pathname === '/analytics'
+  const isAdmin = location.pathname.startsWith('/admin')
+  const isFullHeightPage = isAnalytics || isAdmin
+
+  return (
+    <>
       <PageTracker />
-      <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--main-bg)' }}>
+      <div style={{ display: 'flex', height: '100dvh', maxHeight: '100dvh', overflow: 'hidden', background: 'var(--main-bg)' }}>
         <Sidebar />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--main-bg)' }}>
-          <main style={{ flex: 1, padding: '28px 32px', overflowY: 'auto' }}>
-            <Suspense fallback={
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 12 }}>
-                <i className="ti ti-loader" style={{ fontSize: 22, color: 'var(--accent)', animation: 'spin 0.8s linear infinite' }} />
-                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading...</span>
-              </div>
-            }>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0, background: 'var(--main-bg)' }}>
+          <header style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+            padding: isFullHeightPage ? (isAdmin ? '6px 16px' : '6px 16px') : '12px 32px',
+            borderBottom: '1px solid var(--card-border)',
+            background: 'var(--panel-bg)', flexShrink: 0,
+          }}>
+            <ThemeSwitcher />
+          </header>
+          <main style={{
+            flex: 1,
+            minHeight: 0,
+            padding: isFullHeightPage ? (isAdmin ? 0 : '8px 12px') : '16px 24px',
+            overflow: isAnalytics ? 'hidden' : 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
+            <div style={{
+              flex: '1 1 0',
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: isAnalytics ? 'hidden' : (isAdmin ? 'hidden' : 'visible'),
+            }}>
+              <Suspense fallback={
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 12 }}>
+                  <i className="ti ti-loader" style={{ fontSize: 22, color: 'var(--accent)', animation: 'spin 0.8s linear infinite' }} />
+                  <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading...</span>
+                </div>
+              }>
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/recruiters" element={<Recruiters />} />
@@ -518,45 +566,46 @@ function App() {
                   <Route path="/upload" element={<Upload />} />
                   <Route path="/admin" element={<AdminTerminal />} />
                 </Routes>
-            </Suspense>
+              </Suspense>
+            </div>
           </main>
 
-          {/* Footer */}
-          <footer style={{
-            borderTop: '1px solid var(--card-border)',
-            padding: '22px 36px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: 'var(--card-bg)',
-            flexShrink: 0,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 26, height: 26, background: 'var(--accent)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <i className="ti ti-bolt" style={{ color: '#fff', fontSize: 14 }} />
+          {!isFullHeightPage && (
+            <footer style={{
+              borderTop: '1px solid var(--card-border)',
+              padding: '22px 36px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'var(--card-bg)',
+              flexShrink: 0,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 26, height: 26, background: 'var(--accent)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <i className="ti ti-bolt" style={{ color: '#fff', fontSize: 14 }} />
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>TalentOps AI</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>— Recruitment Intelligence Platform</span>
               </div>
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>TalentOps AI</span>
-              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>— Recruitment Intelligence Platform</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Built by</span>
-              <span style={{
-                fontSize: 15,
-                fontWeight: 700,
-                fontStyle: 'italic',
-                color: 'var(--text-primary)',
-                letterSpacing: '-0.01em',
-              }}>
-                Abhishek Jadon
-              </span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 10, marginRight: 10 }}>|</span>
-              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>© {new Date().getFullYear()}</span>
-            </div>
-          </footer>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Built by</span>
+                <span style={{
+                  fontSize: 15,
+                  fontWeight: 700,
+                  fontStyle: 'italic',
+                  color: 'var(--text-primary)',
+                  letterSpacing: '-0.01em',
+                }}>
+                  Abhishek Jadon
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 10, marginRight: 10 }}>|</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>© {new Date().getFullYear()}</span>
+              </div>
+            </footer>
+          )}
         </div>
-        <ThemeSwitcher />
       </div>
-    </Router>
+    </>
   )
 }
 

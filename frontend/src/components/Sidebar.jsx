@@ -8,11 +8,11 @@ const nav = [
   { to: '/analytics', label: 'Analytics', icon: 'ti-chart-bar' },
   { to: '/upload', label: 'ETL Upload', icon: 'ti-upload' },
   { to: '/ai-search', label: 'AI Search', icon: 'ti-search', accent: true },
-  { to: '/admin', label: 'Admin Terminal', icon: 'ti-terminal-2', admin: true },
 ]
 
 export default function Sidebar() {
   const location = useLocation()
+  const adminActive = location.pathname.startsWith('/admin')
 
   return (
     <aside style={{
@@ -52,31 +52,8 @@ export default function Sidebar() {
         <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.1em', color: '#2d3f55', padding: '0 8px 8px', textTransform: 'uppercase' }}>
           Navigation
         </div>
-        {nav.map(({ to, label, icon, accent, admin }) => {
+        {nav.map(({ to, label, icon, accent }) => {
           const active = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to)
-          if (admin) {
-            return (
-              <div key={to} style={{ borderTop: '1px solid #1e2d3d', marginTop: 8, paddingTop: 8 }}>
-                <NavLink
-                  to={to}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 9,
-                    padding: '7px 10px', borderRadius: 7, marginBottom: 1,
-                    textDecoration: 'none', fontSize: 13, fontWeight: active ? 500 : 400,
-                    color: active ? '#f85149' : '#f85149aa',
-                    background: active ? 'rgba(248,81,73,0.12)' : 'transparent',
-                    transition: 'all 0.12s ease',
-                  }}
-                  onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(248,81,73,0.08)' }}
-                  onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
-                >
-                  <i className={`ti ${icon}`} style={{ fontSize: 15, flexShrink: 0 }} aria-hidden="true" />
-                  {label}
-                  <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 700, background: 'rgba(248,81,73,0.15)', color: '#f85149', padding: '2px 6px', borderRadius: 4, letterSpacing: '0.05em' }}>ROOT</span>
-                </NavLink>
-              </div>
-            )
-          }
           return (
             <NavLink
               key={to}
@@ -107,21 +84,40 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Footer */}
+      {/* Admin — opens Admin Terminal */}
       <div style={{ padding: '12px 14px', borderTop: '1px solid #1e2d3d' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <NavLink
+          to="/admin"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '8px 10px', borderRadius: 8, textDecoration: 'none',
+            background: adminActive ? 'rgba(59,130,246,0.18)' : 'transparent',
+            border: adminActive ? '1px solid rgba(59,130,246,0.35)' : '1px solid transparent',
+            transition: 'all 0.12s ease',
+          }}
+          onMouseEnter={e => { if (!adminActive) e.currentTarget.style.background = 'rgba(59,130,246,0.1)' }}
+          onMouseLeave={e => { if (!adminActive) e.currentTarget.style.background = 'transparent' }}
+        >
           <div style={{
             width: 30, height: 30, borderRadius: 8,
             background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 13, color: '#fff', fontWeight: 600, flexShrink: 0,
-          }}>A</div>
+            color: '#fff', flexShrink: 0,
+            boxShadow: adminActive ? '0 0 12px rgba(59,130,246,0.4)' : 'none',
+          }}>
+            <i className="ti ti-terminal-2" style={{ fontSize: 15 }} aria-hidden="true" />
+          </div>
           <div>
             <div style={{ color: '#e6edf3', fontSize: 12, fontWeight: 500 }}>Admin</div>
-            <div style={{ color: '#4d5869', fontSize: 10.5 }}>TalentOps AI</div>
+            <div style={{ color: '#4d5869', fontSize: 10.5 }}>Admin Terminal</div>
           </div>
-          <div style={{ marginLeft: 'auto', width: 7, height: 7, borderRadius: '50%', background: '#3fb950', boxShadow: '0 0 6px #3fb950' }} title="Online" />
-        </div>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+            {adminActive && (
+              <span style={{ fontSize: 9, fontWeight: 700, background: 'rgba(59,130,246,0.15)', color: '#60a5fa', padding: '2px 6px', borderRadius: 4, letterSpacing: '0.05em' }}>OPEN</span>
+            )}
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#3fb950', boxShadow: '0 0 6px #3fb950' }} title="Online" />
+          </div>
+        </NavLink>
       </div>
     </aside>
   )

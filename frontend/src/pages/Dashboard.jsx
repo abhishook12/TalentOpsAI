@@ -43,23 +43,23 @@ export default function Dashboard() {
           <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{today}</p>
         </div>
         <button className="btn-primary" onClick={() => navigate('/ai-search')}>
-          <i className="ti ti-search" style={{ fontSize: 14 }} /> AI Search
+          <i className="ti ti-search" style={{ fontSize: 14 }} /> Smart Search
         </button>
       </div>
 
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 16, marginBottom: 24 }}>
-        <StatCard title="Total Recruiters" value={v(kpi?.recruiters?.total)} sub={`${kpi?.recruiters?.active ?? '...'} active`} icon="ti-users" color="#185FA5" />
-        <StatCard title="Companies" value={v(kpi?.companies?.total)} sub="Partner firms" icon="ti-building" color="#BA7517" />
+        <StatCard title="Total Recruiters" value={v(kpi?.recruiters?.total)} sub={`${kpi?.recruiters?.active ?? '...'} active`} icon="ti-users" color="#2dd4bf" />
+        <StatCard title="Companies" value={v(kpi?.companies?.total)} sub="Partner firms" icon="ti-building" color="#a78bfa" />
       </div>
 
       {/* Quick actions */}
       <div className="card" style={{ padding: 20 }}>
         <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 14 }}>Quick Actions</p>
         {[
-          { label: 'Search recruiters by name', icon: 'ti-search', color: '#185FA5', path: '/ai-search' },
-          { label: 'View all recruiters', icon: 'ti-users', color: '#0F6E56', path: '/recruiters' },
-          { label: 'Upload recruiters list', icon: 'ti-upload', color: '#534AB7', path: '/upload' },
+          { label: 'Smart search recruiters', icon: 'ti-search', color: '#2dd4bf', path: '/ai-search' },
+          { label: 'View all recruiters', icon: 'ti-users', color: '#34d399', path: '/recruiters' },
+          { label: 'Upload recruiters list', icon: 'ti-upload', color: '#818cf8', path: '/upload' },
           { label: 'View analytics', icon: 'ti-chart-bar', color: 'var(--text-secondary)', path: '/analytics' },
         ].map(({ label, icon, color, path }) => (
           <div key={label} onClick={() => navigate(path)}

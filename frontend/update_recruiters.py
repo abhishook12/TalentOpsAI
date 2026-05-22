@@ -1,5 +1,11 @@
-import { useEffect, useState, useCallback } from 'react'
-import api from '../services/api'
+import os
+
+path = 'C:/TalentOpsAI/frontend/src/pages/Recruiters.jsx'
+
+content = """import { useEffect, useState, useCallback } from 'react'
+import axios from 'axios'
+
+const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\\/$/, '')
 
 const emptyForm = {
   recruiter_name: '', email: '', phone: '', linkedin: '',
@@ -145,9 +151,51 @@ function RecruiterTableRow({ r, toggleActive, openEdit, handleDelete }) {
   )
 }
 
+function LockScreen({ onUnlock }) {
+  const [pin, setPin] = useState('')
+  const [error, setError] = useState(false)
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (pin === '1012') {
+      onUnlock()
+    } else {
+      setError(true)
+      setPin('')
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '60vh' }}>
+      <form onSubmit={handleSubmit} className="card page-enter" style={{ padding: 40, width: 360, textAlign: 'center' }}>
+        <div style={{ width: 48, height: 48, background: 'var(--accent)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+          <i className="ti ti-lock" style={{ fontSize: 24, color: '#fff' }} />
+        </div>
+        <h2 style={{ fontSize: 20, marginBottom: 8, color: 'var(--text-primary)' }}>Recruiters Database</h2>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 24 }}>Enter your PIN to access this page</p>
+        
+        <input 
+          type="password" 
+          value={pin}
+          onChange={e => { setPin(e.target.value); setError(false) }}
+          placeholder="Enter PIN..."
+          style={{ width: '100%', textAlign: 'center', letterSpacing: '0.2em', fontSize: 18, padding: '12px', marginBottom: 12, borderColor: error ? '#ef4444' : 'var(--card-border)' }}
+          autoFocus
+        />
+        {error && <p style={{ color: '#ef4444', fontSize: 12, marginBottom: 12 }}>Incorrect PIN</p>}
+        
+        <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '12px' }}>
+          Unlock
+        </button>
+      </form>
+    </div>
+  )
+}
+
 export default function Recruiters() {
   const [recruiters, setRecruiters] = useState([])
   const [loading, setLoading] = useState(true)
+  const [unlocked, setUnlocked] = useState(localStorage.getItem('recruiters_unlocked') === 'true')
   
   // Pagination
   const [page, setPage] = useState(1)
@@ -157,22 +205,18 @@ export default function Recruiters() {
   // Advanced Filters
   const [search, setSearch] = useState('')
   const [filters, setFilters] = useState({
-      state: '', city: '', company: '', title: '',
-      has_phone: '', missing_email: '', status: '',
-      needs_review: '', sort_by: 'created_at', sort_desc: 'true'
+      state: '',
+      city: '',
+      company: '',
+      title: '',
+      has_phone: '',
+      missing_email: '',
+      status: '',
+      needs_review: '',
+      sort_by: 'created_at',
+      sort_desc: 'true'
   })
   
-  const [debouncedSearch, setDebouncedSearch] = useState(search)
-  const [debouncedFilters, setDebouncedFilters] = useState(filters)
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-        setDebouncedSearch(search)
-        setDebouncedFilters(filters)
-    }, 350)
-    return () => clearTimeout(t)
-  }, [search, filters])
-
   const [showFilters, setShowFilters] = useState(false)
 
   const [modal, setModal] = useState(null)
@@ -185,35 +229,35 @@ export default function Recruiters() {
     params.append('page', page)
     params.append('limit', 100)
     
-    if (debouncedSearch) params.append('search', debouncedSearch)
-    if (debouncedFilters.state) params.append('state', debouncedFilters.state)
-    if (debouncedFilters.city) params.append('city', debouncedFilters.city)
-    if (debouncedFilters.company) params.append('company', debouncedFilters.company)
-    if (debouncedFilters.title) params.append('title', debouncedFilters.title)
+    if (search) params.append('search', search)
+    if (filters.state) params.append('state', filters.state)
+    if (filters.city) params.append('city', filters.city)
+    if (filters.company) params.append('company', filters.company)
+    if (filters.title) params.append('title', filters.title)
     
-    if (debouncedFilters.has_phone === 'yes') params.append('has_phone', 'true')
-    if (debouncedFilters.has_phone === 'no') params.append('has_phone', 'false')
+    if (filters.has_phone === 'yes') params.append('has_phone', 'true')
+    if (filters.has_phone === 'no') params.append('has_phone', 'false')
     
-    if (debouncedFilters.missing_email === 'yes') params.append('missing_email', 'true')
-    if (debouncedFilters.missing_email === 'no') params.append('missing_email', 'false')
+    if (filters.missing_email === 'yes') params.append('missing_email', 'true')
+    if (filters.missing_email === 'no') params.append('missing_email', 'false')
     
-    if (debouncedFilters.status === 'active') params.append('is_active', 'true')
-    if (debouncedFilters.status === 'inactive') params.append('is_active', 'false')
+    if (filters.status === 'active') params.append('is_active', 'true')
+    if (filters.status === 'inactive') params.append('is_active', 'false')
     
-    if (debouncedFilters.needs_review === 'yes') params.append('needs_review', 'true')
+    if (filters.needs_review === 'yes') params.append('needs_review', 'true')
     
-    params.append('sort_by', debouncedFilters.sort_by)
-    params.append('sort_desc', debouncedFilters.sort_desc === 'true' ? 'true' : 'false')
+    params.append('sort_by', filters.sort_by)
+    params.append('sort_desc', filters.sort_desc === 'true' ? 'true' : 'false')
 
-    api.get(`/recruiters/?${params.toString()}`).then(r => { 
+    axios.get(`${API}/recruiters/?${params.toString()}`).then(r => { 
         setRecruiters(r.data.results)
         setTotalCount(r.data.total_count)
         setTotalPages(r.data.total_pages)
         setLoading(false) 
     }).catch(() => setLoading(false))
-  }, [page, debouncedSearch, debouncedFilters])
+  }, [page, search, filters])
 
-  useEffect(() => { fetchRecruiters() }, [fetchRecruiters])
+  useEffect(() => { if (unlocked) fetchRecruiters() }, [fetchRecruiters, unlocked])
 
   const openEdit = (r) => {
     setForm({
@@ -231,9 +275,9 @@ export default function Recruiters() {
     const payload = { ...form, company_id: form.company_id ? parseInt(form.company_id) : null }
     try {
       if (modal === 'add') {
-        await api.post(`/recruiters/`, payload)
+        await axios.post(`${API}/recruiters/`, payload)
       } else {
-        await api.put(`/recruiters/${modal.recruiter_id}`, payload)
+        await axios.put(`${API}/recruiters/${modal.recruiter_id}`, payload)
       }
       setModal(null)
       fetchRecruiters()
@@ -245,12 +289,12 @@ export default function Recruiters() {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this recruiter?')) return
-    await api.delete(`/recruiters/${id}`).catch(() => {})
+    await axios.delete(`${API}/recruiters/${id}`).catch(() => {})
     fetchRecruiters()
   }
 
   const toggleActive = async (r) => {
-    await api.put(`/recruiters/${r.recruiter_id}`, { is_active: !r.is_active }).catch(() => {})
+    await axios.put(`${API}/recruiters/${r.recruiter_id}`, { is_active: !r.is_active }).catch(() => {})
     fetchRecruiters()
   }
   
@@ -267,6 +311,10 @@ export default function Recruiters() {
           sort_by: 'created_at', sort_desc: 'true'
       })
       setPage(1)
+  }
+
+  if (!unlocked) {
+    return <LockScreen onUnlock={() => { setUnlocked(true); localStorage.setItem('recruiters_unlocked', 'true') }} />
   }
 
   return (
@@ -437,3 +485,9 @@ export default function Recruiters() {
     </div>
   )
 }
+"""
+
+with open(path, "w", encoding="utf-8") as f:
+    f.write(content)
+
+print("Updated Recruiters.jsx with advanced backend filters.")

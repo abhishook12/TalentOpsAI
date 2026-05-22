@@ -1,0 +1,38 @@
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env
+frontend/.env.local
+
+# Dependencies
+node_modules/
+frontend/node_modules/
+__pycache__/
+*.py[cod]
+.Python
+venv/
+.venv/
+
+# Data & uploads (may contain PII)
+backend/uploads/
+backend/recruiters.json
+backend/app/recruiters.json
+*.xlsx
+*.xls
+!backend/uploads/.gitkeep
+
+# Build
+frontend/dist/
+dist/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+
+# Misc
+backend/preview.txt

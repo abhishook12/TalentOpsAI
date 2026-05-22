@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import axios from 'axios'
+import CompanyModal from '../components/CompanyModal'
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 
@@ -109,6 +110,9 @@ export default function CompanyDirectory() {
   const [sortBy, setSortBy]         = useState('recruiters') // 'recruiters' | 'name'
   const debounceRef = useRef()
   const [stateCounts, setStateCounts] = useState({})
+  
+  const [editingCompany, setEditingCompany] = useState(null)
+  const [showModal, setShowModal] = useState(false)
 
   useEffect(() => {
     const fetchCounts = async () => {
@@ -193,13 +197,19 @@ export default function CompanyDirectory() {
       `}</style>
 
       {/* Header */}
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 4 }}>
-          Company Directory
-        </h1>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-          Browse staffing companies by state — sorted by recruiter headcount
-        </p>
+      <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1 style={{ fontSize: 20, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 4 }}>
+            Company Directory
+          </h1>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+            Browse staffing companies by state — sorted by recruiter headcount
+          </p>
+        </div>
+        <button className="btn-primary" onClick={() => { setEditingCompany(null); setShowModal(true); }}>
+          <i className="ti ti-plus" />
+          Add Company
+        </button>
       </div>
 
       <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
@@ -478,7 +488,23 @@ export default function CompanyDirectory() {
                         </p>
 
                         {/* Recruiter bar */}
-                        <RecruiterBar count={c.recruiter_count} max={maxRecruiters} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between' }}>
+                          <div style={{ flex: 1 }}>
+                            <RecruiterBar count={c.recruiter_count} max={maxRecruiters} />
+                          </div>
+                          <button
+                            onClick={() => { setEditingCompany(c); setShowModal(true); }}
+                            title="Edit Company"
+                            style={{
+                              background: 'transparent', border: '1px solid var(--card-border)', borderRadius: 6,
+                              padding: '4px 6px', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex'
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.borderColor = 'var(--accent)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--card-border)'; }}
+                          >
+                            <i className="ti ti-pencil" style={{ fontSize: 14 }} />
+                          </button>
+                        </div>
                       </div>
                     ))}
 
@@ -526,6 +552,21 @@ export default function CompanyDirectory() {
           </div>
         </div>
       </div>
+
+      {showModal && (
+        <CompanyModal
+          company={editingCompany}
+          onClose={() => setShowModal(false)}
+          onSave={(savedCompany) => {
+            setShowModal(false);
+            if (editingCompany) {
+              setCompanies(prev => prev.map(c => c.company_id === savedCompany.company_id ? { ...c, ...savedCompany } : c));
+            } else {
+              setCompanies(prev => [savedCompany, ...prev]);
+            }
+          }}
+        />
+      )}
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

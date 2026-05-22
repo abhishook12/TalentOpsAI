@@ -53,7 +53,7 @@ export default function StateDirectory() {
     }
     setLoading(true)
     let url = `${API}/recruiters/?limit=200&skip=0`
-    if (selectedState) url += `&location=${selectedState}`
+    if (selectedState) url += `&state=${selectedState}`
     if (debouncedCompany) url += `&company=${encodeURIComponent(debouncedCompany)}`
 
     axios.get(url)
@@ -70,7 +70,7 @@ export default function StateDirectory() {
     if (loadingMore) return
     setLoadingMore(true)
     let url = `${API}/recruiters/?limit=200&skip=${recruiters.length}`
-    if (selectedState) url += `&location=${selectedState}`
+    if (selectedState) url += `&state=${selectedState}`
     if (debouncedCompany) url += `&company=${encodeURIComponent(debouncedCompany)}`
 
     axios.get(url)

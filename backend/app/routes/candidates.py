@@ -4,6 +4,7 @@ from sqlalchemy import or_
 from pydantic import BaseModel
 from typing import Optional, List
 from app.database import get_db
+from app.routes.auth import verify_admin
 from app.models.models import Candidate
 
 router = APIRouter()
@@ -73,29 +74,29 @@ def get_candidate(candidate_id: int, db: Session = Depends(get_db)):
     return c
 
 @router.post("/", status_code=201)
-def create_candidate(data: CandidateCreate, db: Session = Depends(get_db)):
+def create_candidate(data: CandidateCreate, db: Session = Depends(get_db), _=Depends(verify_admin)):
     existing = db.query(Candidate).filter(Candidate.email == data.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Candidate with this email already exists")
-    c = Candidate(**data.dict())
-    db.add(c)
+    candidate = Candidate(**data.dict())
+    db.add(candidate)
     db.commit()
-    db.refresh(c)
-    return c
+    db.refresh(candidate)
+    return candidate
 
 @router.put("/{candidate_id}")
-def update_candidate(candidate_id: int, data: CandidateUpdate, db: Session = Depends(get_db)):
-    c = db.query(Candidate).filter(Candidate.candidate_id == candidate_id).first()
-    if not c:
+def update_candidate(candidate_id: int, data: CandidateUpdate, db: Session = Depends(get_db), _=Depends(verify_admin)):
+    candidate = db.query(Candidate).filter(Candidate.candidate_id == candidate_id).first()
+    if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
     for key, value in data.dict(exclude_unset=True).items():
-        setattr(c, key, value)
+        setattr(candidate, key, value)
     db.commit()
-    db.refresh(c)
-    return c
+    db.refresh(candidate)
+    return candidate
 
 @router.delete("/{candidate_id}")
-def delete_candidate(candidate_id: int, db: Session = Depends(get_db)):
+def delete_candidate(candidate_id: int, db: Session = Depends(get_db), _=Depends(verify_admin)):
     c = db.query(Candidate).filter(Candidate.candidate_id == candidate_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Candidate not found")

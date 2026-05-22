@@ -1,56 +1,18 @@
-:root {
-  --bg-main: #F8FAFC;
-  --card-bg: #ffffff;
-  --text-primary: #0f172a;
-  --text-secondary: #64748b;
-  --text-muted: #94a3b8;
-  --text-inverse: #ffffff;
-  --card-border: #e8edf4;
-  --border-input: #e2e8f0;
-  --bg-hover: #f1f5f9;
-  --bg-input: #ffffff;
-  --accent: #185FA5;
-  --accent-hover: #0F6E56;
-  --accent-bg: rgba(24, 95, 165, 0.08);
-  --sidebar-width: 240px;
-  --sidebar-bg: #ffffff;
-  --sidebar-border: #e8edf4;
-}
-
+/* TalentOps — Obsidian Aurora (dark only) */
+:root,
 [data-theme="dark"] {
-  --bg-main: #0f172a;
-  --card-bg: #1e293b;
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --text-inverse: #0f172a;
-  --card-border: #334155;
-  --border-input: #475569;
-  --bg-hover: #334155;
-  --bg-input: #0f172a;
-  --accent: #38bdf8;
-  --accent-hover: #7dd3fc;
-  --accent-bg: #0c4a6e;
-  --sidebar-bg: #1e293b;
-  --sidebar-border: #334155;
-}
-
-[data-theme="sepia"] {
-  --bg-main: #fbf0d9;
-  --card-bg: #fdf6e3;
-  --text-primary: #5c4b37;
-  --text-secondary: #8a7b66;
-  --text-muted: #b5a691;
-  --text-inverse: #fbf0d9;
-  --card-border: #e6d5b8;
-  --border-input: #d9c8aa;
-  --bg-hover: #f3e5c8;
-  --bg-input: #fbf0d9;
-  --accent: #d08770;
-  --accent-hover: #bf616a;
-  --accent-bg: #ebd4cb;
-  --sidebar-bg: #fdf6e3;
-  --sidebar-border: #e6d5b8;
+  --main-bg: #0a0d12;
+  --panel-bg: #0f131a;
+  --card-bg: #141b26;
+  --card-border: #243044;
+  --text-primary: #eef1f6;
+  --text-secondary: #9aa8bc;
+  --text-muted: #5c6b7f;
+  --accent: #2dd4bf;
+  --accent-hover: #5eead4;
+  --accent-bg: rgba(45, 212, 191, 0.12);
+  --sidebar-bg: #06090e;
+  --sidebar-border: #1a2433;
 }
 
 * {
@@ -60,22 +22,21 @@
 }
 
 body {
-  background: var(--bg-main);
+  background: var(--main-bg);
   color: var(--text-primary);
   font-family: 'Inter', sans-serif;
-  transition: background 0.3s ease, color 0.3s ease;
 }
 
 input, select, textarea {
-  background: var(--bg-input) !important;
+  background: var(--panel-bg) !important;
   color: var(--text-primary) !important;
-  border-color: var(--border-input) !important;
+  border-color: var(--card-border) !important;
 }
 
 .card {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   border-radius: 10px;
 }
 
@@ -88,38 +49,12 @@ button {
   font-family: inherit;
 }
 
-.sidebar-link {
-  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
-}
-
-.sidebar-link:hover {
-  background: rgba(255, 255, 255, 0.08);
-  transform: translateX(2px);
-}
-
-.badge {
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.badge-blue {
-  background: var(--accent-bg);
-  color: var(--accent);
-}
-
 .badge-green {
-  background: rgba(15, 110, 86, 0.1);
-  color: #0F6E56;
-}
-
-[data-theme="dark"] .badge-green {
-  background: rgba(15, 110, 86, 0.3);
+  background: rgba(52, 211, 153, 0.14);
   color: #34d399;
 }
 
 .badge-gray {
-  background: var(--bg-hover);
+  background: rgba(154, 168, 188, 0.1);
   color: var(--text-secondary);
 }

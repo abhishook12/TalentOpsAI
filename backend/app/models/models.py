@@ -16,16 +16,30 @@ class PageVisit(Base):
     ip_address    = Column(String(60),  nullable=True)     # client IP from request
     visited_at    = Column(TIMESTAMP, server_default=func.now(), index=True)
 
+class ActionLog(Base):
+    __tablename__ = "action_logs"
+    id             = Column(Integer, primary_key=True, index=True)
+    user_email     = Column(String(150), nullable=True)
+    session_id     = Column(String(64), nullable=True, index=True)
+    action_type    = Column(String(100), nullable=False)
+    details        = Column(Text, nullable=True)
+    status         = Column(String(50), default="success") # success, failed
+    ip_address     = Column(String(60), nullable=True)
+    created_at     = Column(TIMESTAMP, server_default=func.now(), index=True)
 
 
 class Company(Base):
     __tablename__ = "companies"
     company_id   = Column(Integer, primary_key=True, index=True)
     company_name = Column(String(255), nullable=False)
+    normalized_company_name = Column(String(255), index=True, nullable=True)
     industry     = Column(String(100))
     location     = Column(String(150))
     state        = Column(String(2), index=True)
     website      = Column(String(255))
+    email_pattern= Column(String(150))
+    notes        = Column(Text)
+    is_active    = Column(Boolean, default=True)
     created_at   = Column(TIMESTAMP, server_default=func.now())
     updated_at   = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
     recruiters   = relationship("Recruiter", back_populates="company")
@@ -48,6 +62,7 @@ class Recruiter(Base):
     __tablename__ = "recruiters"
     recruiter_id     = Column(Integer, primary_key=True, index=True)
     recruiter_name   = Column(String(150), nullable=False)
+    normalized_recruiter_name = Column(String(150), index=True, nullable=True)
     email            = Column(String(150), unique=True, nullable=False)
     phone            = Column(String(30))
     email2           = Column(String(150))          # secondary / personal email
@@ -57,7 +72,11 @@ class Recruiter(Base):
     notes            = Column(Text)                 # any extra info from messages etc.
     company_id       = Column(Integer, ForeignKey("companies.company_id", ondelete="SET NULL"), nullable=True)
     location         = Column(String(255))
-    state            = Column(String(2), index=True)
+    state            = Column(String(2), index=True) # Normalized state
+    normalized_city  = Column(String(150), index=True)
+    location_confidence = Column(String(20), default="high") # high, low, manual_review
+    completeness_score = Column(Integer, default=0, index=True)
+    needs_review     = Column(Boolean, default=False, index=True)
     is_active        = Column(Boolean, default=True)
     created_at       = Column(TIMESTAMP, server_default=func.now())
     updated_at       = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
@@ -106,3 +125,18 @@ class Submission(Base):
     recruiter       = relationship("Recruiter", back_populates="submissions")
     company         = relationship("Company", back_populates="submissions")
     vendor          = relationship("Vendor", back_populates="submissions")
+
+class UploadJob(Base):
+    __tablename__ = "upload_jobs"
+    job_id          = Column(String(36), primary_key=True, index=True)
+    filename        = Column(String(255), nullable=False)
+    status          = Column(String(50), default="queued") # queued, processing, completed, failed
+    total_rows      = Column(Integer, default=0)
+    processed_rows  = Column(Integer, default=0)
+    inserted_rows   = Column(Integer, default=0)
+    skipped_rows    = Column(Integer, default=0)
+    error_count     = Column(Integer, default=0)
+    errors          = Column(Text, nullable=True) # JSON string of errors
+    started_at      = Column(TIMESTAMP, server_default=func.now())
+    completed_at    = Column(TIMESTAMP, nullable=True)
+

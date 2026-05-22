@@ -1,64 +1,75 @@
-from fastapi import FastAPI
+import logging
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from app.routes import recruiters, candidates, companies, vendors, submissions, analytics, upload, admin
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
+from app.config import CORS_ORIGINS, IS_PRODUCTION
+from app.routes import recruiters, companies, vendors, analytics, upload, admin, auth
 from app.database import get_db, engine
 from app.models import models
 from app.create_indexes import create_performance_indexes
+
+logging.basicConfig(
+    level=logging.INFO if IS_PRODUCTION else logging.DEBUG,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logger = logging.getLogger("talentops")
 
 models.Base.metadata.create_all(bind=engine)
 try:
     create_performance_indexes()
 except Exception as e:
-    print("Error creating indexes at startup:", e)
+    logger.warning("Error creating indexes at startup: %s", e)
 
-# Run DB migration for page_visits new columns
 try:
-    from sqlalchemy.orm import Session
-    with Session(engine) as _db:
+    from sqlalchemy.orm import Session as OrmSession
+    with OrmSession(engine) as _db:
         admin.migrate_page_visits(_db)
 except Exception as e:
-    print("Migration warning:", e)
+    logger.warning("Migration warning: %s", e)
 
 app = FastAPI(
     title="TalentOps AI",
     description="Recruitment Operations Intelligence Platform",
-    version="1.0.0"
+    version="1.1.0",
 )
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://talent-ops-ai.vercel.app",
-        "http://localhost:5173",
-        "*"
-    ],
-    allow_credentials=False,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["X-Total-Count"],
 )
 
 app.include_router(recruiters.router, prefix="/recruiters", tags=["Recruiters"])
-app.include_router(candidates.router, prefix="/candidates", tags=["Candidates"])
 app.include_router(companies.router, prefix="/companies", tags=["Companies"])
 app.include_router(vendors.router, prefix="/vendors", tags=["Vendors"])
-app.include_router(submissions.router, prefix="/submissions", tags=["Submissions"])
 app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
 app.include_router(upload.router, prefix="/upload", tags=["Upload"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
+app.include_router(auth.router, prefix="/auth", tags=["Auth"])
+
 
 @app.get("/")
 def root():
     return {"message": "TalentOps AI is running", "docs": "/docs"}
 
+
 @app.get("/ping")
 def ping():
     return {"status": "ok"}
 
-@app.get("/health")
-def health():
-    return {"status": "healthy"}
 
+@app.get("/health")
+def health(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("SELECT 1"))
+        return {"status": "healthy", "database": "connected"}
+    except Exception as e:
+        logger.error("Health check failed: %s", e)
+        return {"status": "degraded", "database": "disconnected", "detail": str(e)}

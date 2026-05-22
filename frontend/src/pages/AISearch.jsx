@@ -1,11 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import axios from 'axios'
-
-const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
-
-// Admin password for editing records
-const ADMIN_PASSWORD = '1012'
+import api, { API, checkAuth, login } from '../services/api'
 
 const EXAMPLES = [
   'Brooksource', 'Insight Global', 'Java recruiter',
@@ -63,7 +59,7 @@ function initials(name) {
 
 // Score badge
 function ScoreBadge({ score }) {
-  const color = score >= 150 ? '#0F6E56' : score >= 80 ? '#185FA5' : score >= 40 ? '#BA7517' : '#94a3b8'
+  const color = score >= 150 ? '#34d399' : score >= 80 ? '#2dd4bf' : score >= 40 ? '#fbbf24' : '#5c6b7f'
   const label = score >= 150 ? 'Exact' : score >= 80 ? 'Strong' : score >= 40 ? 'Partial' : 'Fuzzy'
   return (
     <span style={{
@@ -131,13 +127,20 @@ function StarRating({ recruiterId }) {
 function ProfileModal({ recruiter, onClose, onEdit }) {
   if (!recruiter) return null
 
-  const handleEditClick = () => {
-    const pw = prompt("Enter Admin Password to Edit:")
-    if (pw === ADMIN_PASSWORD) {
+  const handleEditClick = async () => {
+    if (await checkAuth()) {
       onEdit()
       onClose()
-    } else if (pw !== null) {
-      alert("Incorrect Password!")
+      return
+    }
+    const pw = prompt('Enter admin password to edit:')
+    if (!pw) return
+    try {
+      await login(pw)
+      onEdit()
+      onClose()
+    } catch {
+      alert('Incorrect password.')
     }
   }
 
@@ -576,7 +579,7 @@ export default function AISearch() {
 
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 4 }}>AI Search</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 4 }}>Smart Search</h1>
         <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Smart ranked search across 12,000+ recruiters — exact matches first, fuzzy matches last</p>
       </div>
 
@@ -585,7 +588,7 @@ export default function AISearch() {
         <div style={{
           background: 'var(--card-bg)', border: `1.5px solid ${focused ? 'var(--accent)' : 'var(--card-border)'}`,
           borderRadius: 12, padding: '0 16px', display: 'flex', alignItems: 'center', gap: 10,
-          boxShadow: focused ? '0 0 0 3px rgba(24,95,165,0.1)' : '0 1px 3px rgba(0,0,0,0.05)',
+          boxShadow: focused ? '0 0 0 3px var(--accent-glow)' : 'var(--shadow)',
           transition: 'border-color 0.15s, box-shadow 0.15s',
         }}>
           {loading

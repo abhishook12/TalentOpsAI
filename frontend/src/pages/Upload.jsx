@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import axios from 'axios'
+import JobsHistory from '../components/JobsHistory'
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 
@@ -91,6 +92,8 @@ function SmartUploadZone() {
   const [error, setError] = useState(null)
   const [fileName, setFileName] = useState('')
   const [fileRef, setFileRef] = useState(null)    // keep file for re-upload on import
+  const [activeJobId, setActiveJobId] = useState(null)
+  const [activeJob, setActiveJob] = useState(null)
 
   const doAnalyze = useCallback(async (file) => {
     if (!file) return
@@ -128,14 +131,15 @@ function SmartUploadZone() {
     const fd = new FormData()
     fd.append('file', fileRef)
     try {
-      const res = await axios.post(`${API}/upload/smart-import`, fd, {
+      const res = await axios.post(`${API}/upload/smart-import-async`, fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (e) => {
           if (e.total) setProgress(Math.round((e.loaded / e.total) * 100))
         },
       })
-      setImportResult(res.data)
-      setStep('done')
+      setImportResult({ message: 'Job Queued!', job_id: res.data.job_id })
+      setActiveJobId(res.data.job_id)
+      setStep('tracking')
     } catch (e) {
       setError(e.response?.data?.detail || 'Import failed.')
       setStep('error')
@@ -145,8 +149,29 @@ function SmartUploadZone() {
   const reset = () => {
     setStep('idle'); setProgress(0); setAnalysis(null); setColumnMap({});
     setImportResult(null); setError(null); setFileName(''); setFileRef(null);
+    setActiveJobId(null); setActiveJob(null);
     if (inputRef.current) inputRef.current.value = ''
   }
+
+  useEffect(() => {
+    let interval;
+    if (step === 'tracking' && activeJobId) {
+      const poll = async () => {
+        try {
+          const res = await axios.get(`${API}/upload/jobs/${activeJobId}`);
+          setActiveJob(res.data);
+          if (res.data.status === 'completed' || res.data.status === 'failed') {
+            clearInterval(interval);
+          }
+        } catch (err) {
+          console.error('Failed to poll job status', err);
+        }
+      };
+      poll(); // initial
+      interval = setInterval(poll, 1500);
+    }
+    return () => clearInterval(interval);
+  }, [step, activeJobId]);
 
   const updateMapping = (logical, newCol) => {
     setColumnMap(prev => ({ ...prev, [logical]: newCol }))
@@ -427,55 +452,92 @@ function SmartUploadZone() {
           </div>
         )}
 
-        {/* ── STEP: Done ── */}
-        {step === 'done' && importResult && (
+        {/* ── STEP: Tracking ── */}
+        {step === 'tracking' && activeJob && (
           <div style={{ textAlign: 'center', padding: '32px 0' }}>
-            <div style={{
-              width: 64, height: 64, borderRadius: '50%', margin: '0 auto 16px',
-              background: 'rgba(15,110,86,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <i className="ti ti-circle-check" style={{ fontSize: 32, color: '#0F6E56' }} />
-            </div>
-            <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 16 }}>
-              Import Complete!
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, maxWidth: 560, margin: '0 auto 20px' }}>
-              {[
-                { label: 'Total Rows', value: importResult.total_rows, color: '#185FA5' },
-                { label: 'Inserted', value: importResult.inserted, color: '#0F6E56' },
-                { label: 'Duplicates', value: importResult.duplicates_skipped, color: '#BA7517' },
-                { label: 'Errors', value: importResult.errors, color: '#C4394A' },
-              ].map(c => (
-                <div key={c.label} style={{
-                  background: 'var(--main-bg)', border: '1px solid var(--card-border)', borderRadius: 10,
-                  padding: '12px', textAlign: 'center', borderTop: `3px solid ${c.color}`,
-                }}>
-                  <p style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1, marginBottom: 4 }}>{c.value?.toLocaleString()}</p>
-                  <p style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase' }}>{c.label}</p>
-                </div>
-              ))}
-            </div>
-            {importResult.column_map_used && (
-              <details style={{ textAlign: 'left', maxWidth: 480, margin: '0 auto' }}>
-                <summary style={{ fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer', marginBottom: 8 }}>
-                  <i className="ti ti-arrows-exchange" style={{ marginRight: 4 }} />Column mapping used
-                </summary>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, fontSize: 11 }}>
-                  {Object.entries(importResult.column_map_used).map(([k, v]) => (
-                    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 8px', background: 'var(--main-bg)', borderRadius: 4 }}>
-                      <span style={{ color: 'var(--text-muted)' }}>{FIELD_LABELS[k] || k}</span>
-                      <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>→ {v}</span>
-                    </div>
-                  ))}
-                </div>
-              </details>
+            {activeJob.status === 'processing' || activeJob.status === 'queued' ? (
+              <div style={{ position: 'relative', width: 64, height: 64, margin: '0 auto 20px' }}>
+                <div style={{
+                  width: 64, height: 64, borderRadius: '50%',
+                  border: '3px solid var(--card-border)', borderTopColor: '#0F6E56',
+                  animation: 'spin 1s linear infinite',
+                }} />
+                <i className="ti ti-loader" style={{
+                  position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                  fontSize: 22, color: '#0F6E56',
+                }} />
+              </div>
+            ) : activeJob.status === 'failed' ? (
+              <div style={{
+                width: 64, height: 64, borderRadius: '50%', margin: '0 auto 16px',
+                background: 'rgba(196,57,74,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <i className="ti ti-x" style={{ fontSize: 32, color: '#C4394A' }} />
+              </div>
+            ) : (
+              <div style={{
+                width: 64, height: 64, borderRadius: '50%', margin: '0 auto 16px',
+                background: 'rgba(15,110,86,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <i className="ti ti-check" style={{ fontSize: 32, color: '#0F6E56' }} />
+              </div>
             )}
-            <button onClick={reset} className="btn-primary" style={{
-              marginTop: 16, padding: '10px 28px', background: 'var(--main-bg)',
-              color: 'var(--text-primary)', border: '1px solid var(--card-border)',
-            }}>
-              <i className="ti ti-upload" style={{ fontSize: 14, marginRight: 5 }} />Upload Another File
-            </button>
+            
+            <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8, textTransform: 'capitalize' }}>
+              Import {activeJob.status}
+            </p>
+            
+            <div style={{ maxWidth: 360, margin: '0 auto 20px', textAlign: 'left', background: 'var(--main-bg)', padding: 16, borderRadius: 12, border: '1px solid var(--card-border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Progress</span>
+                <span style={{ fontSize: 13, fontWeight: 600 }}>
+                  {activeJob.total_rows > 0 ? Math.round((activeJob.processed_rows / activeJob.total_rows) * 100) : 0}%
+                </span>
+              </div>
+              <div style={{ height: 6, background: 'var(--card-border)', borderRadius: 99, overflow: 'hidden', marginBottom: 16 }}>
+                <div style={{
+                  height: '100%', width: `${activeJob.total_rows > 0 ? (activeJob.processed_rows / activeJob.total_rows) * 100 : 0}%`,
+                  background: activeJob.status === 'failed' ? '#C4394A' : 'linear-gradient(90deg, #0F6E56, #185FA5)',
+                  borderRadius: 99, transition: 'width 0.3s ease',
+                }} />
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Processed</div>
+                  <div style={{ fontSize: 16, fontWeight: 600 }}>{activeJob.processed_rows} / {activeJob.total_rows}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Inserted</div>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: '#0F6E56' }}>{activeJob.inserted_rows}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Skipped (Dupes)</div>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: '#BA7517' }}>{activeJob.skipped_rows}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Errors</div>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: '#C4394A' }}>{activeJob.error_count}</div>
+                </div>
+              </div>
+            </div>
+
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
+              {activeJob.status === 'completed' 
+                ? 'Your data has been successfully imported into the database.' 
+                : activeJob.status === 'failed'
+                  ? 'There was an issue processing the file.'
+                  : 'Your file is currently processing. You can safely navigate away.'}
+            </p>
+            
+            {(activeJob.status === 'completed' || activeJob.status === 'failed') && (
+              <button onClick={reset} className="btn-primary" style={{
+                marginTop: 16, padding: '10px 28px', background: 'var(--main-bg)',
+                color: 'var(--text-primary)', border: '1px solid var(--card-border)',
+              }}>
+                <i className="ti ti-upload" style={{ fontSize: 14, marginRight: 5 }} />Upload Another File
+              </button>
+            )}
           </div>
         )}
 
@@ -761,9 +823,10 @@ export default function Upload() {
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: 'var(--main-bg)', padding: 4, borderRadius: 10, width: 'fit-content', border: '1px solid var(--card-border)' }}>
         {[
-          { id: 'smart',  label: 'Smart Upload',   icon: 'ti-brain' },
-          { id: 'paste',  label: 'Paste & Parse',   icon: 'ti-clipboard-text' },
-          { id: 'csv',    label: 'Legacy Upload',    icon: 'ti-file-spreadsheet' },
+          { id: 'smart',   label: 'Smart Upload',   icon: 'ti-brain' },
+          { id: 'history', label: 'Import History', icon: 'ti-history' },
+          { id: 'paste',   label: 'Paste & Parse',  icon: 'ti-clipboard-text' },
+          { id: 'csv',     label: 'Legacy Upload',  icon: 'ti-file-spreadsheet' },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             style={{
@@ -782,6 +845,7 @@ export default function Upload() {
 
       <div style={{ maxWidth: 880 }}>
         {tab === 'smart' && <SmartUploadZone />}
+        {tab === 'history' && <JobsHistory />}
         {tab === 'paste' && <PasteParser />}
         {tab === 'csv'   && <LegacyUploadZone />}
       </div>

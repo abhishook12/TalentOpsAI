@@ -3,8 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session, joinedload, contains_eager
 from sqlalchemy import text
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import List, Optional
 from app.database import get_db
+from app.routes.auth import verify_admin
 from app.models.models import Recruiter, Company
 
 from app.utils.state_mapper import normalize_state
@@ -52,6 +53,11 @@ def serialize_recruiter(r):
         "company_id": r.company_id,
         "company_name": r.company.company_name if r.company else None,
         "location": r.location if r.location else (r.company.location if r.company else None),
+        "state": r.state,
+        "normalized_city": getattr(r, "normalized_city", None),
+        "completeness_score": getattr(r, "completeness_score", 0),
+        "needs_review": getattr(r, "needs_review", False),
+        "location_confidence": getattr(r, "location_confidence", "high"),
         "is_active": r.is_active,
         "created_at": str(r.created_at) if r.created_at else None,
     }
@@ -175,46 +181,103 @@ def search_recruiters(
         for row in rows
     ]
 
-# --- Standard CRUD ---
 @router.get("/")
 def get_recruiters(
     response: Response,
-    skip: int = 0,
+    page: int = 1,
     limit: int = 100,
     search: Optional[str] = None,
-    specialization: Optional[str] = None,
-    location: Optional[str] = None,
+    state: Optional[str] = None,
+    city: Optional[str] = None,
     company: Optional[str] = None,
+    title: Optional[str] = None,
+    has_phone: Optional[bool] = None,
+    missing_email: Optional[bool] = None,
     is_active: Optional[bool] = None,
+    min_completeness: Optional[int] = None,
+    needs_review: Optional[bool] = None,
+    sort_by: Optional[str] = "created_at",
+    sort_desc: Optional[bool] = True,
     db: Session = Depends(get_db)
 ):
     query = db.query(Recruiter).join(Recruiter.company, isouter=True).options(contains_eager(Recruiter.company))
+    
+    from app.utils.normalizer import normalize_text
+    
     if search:
+        clean_search = normalize_text(search)
         query = query.filter(
-            Recruiter.recruiter_name.ilike(f"%{search}%") |
+            Recruiter.normalized_recruiter_name.ilike(f"%{clean_search}%") |
             Recruiter.email.ilike(f"%{search}%") |
-            Recruiter.specialization.ilike(f"%{search}%")
+            Recruiter.specialization.ilike(f"%{search}%") |
+            Company.normalized_company_name.ilike(f"%{clean_search}%")
         )
-    if specialization:
-        query = query.filter(Recruiter.specialization.ilike(f"%{specialization}%"))
-    if location:
-        abbr = normalize_state(location)
-        if abbr:
-            from sqlalchemy import or_
-            query = query.filter(or_(
-                Recruiter.state == abbr,
-                Company.state == abbr
-            ))
+    
+    if state:
+        # State filter now perfectly uses normalized state
+        query = query.filter(Recruiter.state == state)
+        
+    if city:
+        query = query.filter(Recruiter.normalized_city.ilike(f"%{city}%"))
+        
     if company:
-        query = query.filter(Company.company_name.ilike(f"%{company}%"))
+        clean_company = normalize_text(company)
+        query = query.filter(Company.normalized_company_name.ilike(f"%{clean_company}%"))
+        
+    if title:
+        query = query.filter(Recruiter.specialization.ilike(f"%{title}%"))
+        
+    if has_phone is True:
+        query = query.filter(Recruiter.phone.isnot(None), Recruiter.phone != "")
+    elif has_phone is False:
+        query = query.filter((Recruiter.phone.is_(None)) | (Recruiter.phone == ""))
+        
+    if missing_email is True:
+        query = query.filter((Recruiter.email.is_(None)) | (Recruiter.email == ""))
+    elif missing_email is False:
+        query = query.filter(Recruiter.email.isnot(None), Recruiter.email != "")
+        
     if is_active is not None:
         query = query.filter(Recruiter.is_active == is_active)
-    
+        
+    if min_completeness is not None:
+        query = query.filter(Recruiter.completeness_score >= min_completeness)
+        
+    if needs_review is not None:
+        query = query.filter(Recruiter.needs_review == needs_review)
+        
     total_count = query.count()
     response.headers["X-Total-Count"] = str(total_count)
     
+    # Sorting
+    if sort_by == "name":
+        order_col = Recruiter.recruiter_name
+    elif sort_by == "company":
+        order_col = Company.company_name
+    elif sort_by == "state":
+        order_col = Recruiter.state
+    elif sort_by == "completeness":
+        order_col = Recruiter.completeness_score
+    else:
+        order_col = Recruiter.created_at
+        
+    if sort_desc:
+        query = query.order_by(order_col.desc().nullslast())
+    else:
+        query = query.order_by(order_col.asc().nullslast())
+    
+    skip = (page - 1) * limit
     results = query.offset(skip).limit(limit).all()
-    return [serialize_recruiter(r) for r in results]
+    
+    import math
+    total_pages = math.ceil(total_count / limit) if limit else 1
+    
+    return {
+        "total_count": total_count,
+        "page": page,
+        "total_pages": total_pages,
+        "results": [serialize_recruiter(r) for r in results]
+    }
 
 @router.get("/{recruiter_id}")
 def get_recruiter(recruiter_id: int, db: Session = Depends(get_db)):
@@ -243,7 +306,7 @@ def create_recruiter(data: RecruiterCreate, db: Session = Depends(get_db)):
     return serialize_recruiter(r)
 
 @router.put("/{recruiter_id}")
-def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Depends(get_db)):
+def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Depends(get_db), _=Depends(verify_admin)):
     r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")

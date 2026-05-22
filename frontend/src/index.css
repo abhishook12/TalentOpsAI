@@ -58,3 +58,11 @@ button {
   background: rgba(154, 168, 188, 0.1);
   color: var(--text-secondary);
 }
+
+/* Recharts — white axis & bar labels on dark cards */
+.recharts-cartesian-axis-tick-value tspan,
+.recharts-label-list text tspan {
+  fill: #ffffff !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+}

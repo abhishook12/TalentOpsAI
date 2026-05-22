@@ -2,8 +2,12 @@ import { useEffect, useState } from 'react'
 import axios from 'axios'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  CartesianGrid, AreaChart, Area, Cell
+  CartesianGrid, AreaChart, Area, Cell, LabelList
 } from 'recharts'
+
+const CHART_TICK = { fill: '#ffffff', fontSize: 12, fontWeight: 700 }
+
+const BAR_LABEL_PROPS = { fill: '#ffffff', fontSize: 12, fontWeight: 700 }
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 
@@ -198,12 +202,13 @@ export default function Analytics() {
         ) : (
           <div style={{ position: 'relative', flex: 1, minHeight: 0, width: '100%' }}>
             <ChartBox>
-              <BarChart data={stateData} margin={{ top: 2, right: 4, left: -10, bottom: 2 }} barCategoryGap="18%">
+              <BarChart data={stateData} margin={{ top: 16, right: 8, left: 0, bottom: 4 }} barCategoryGap="18%">
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
-                <XAxis dataKey="state" tick={{ fill: 'var(--text-secondary)', fontSize: 9, fontWeight: 500 }} axisLine={false} tickLine={false} interval={0} />
-                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} tickLine={false} width={26} allowDecimals={false} />
+                <XAxis dataKey="state" tick={CHART_TICK} axisLine={false} tickLine={false} interval={0} />
+                <YAxis tick={CHART_TICK} axisLine={false} tickLine={false} width={36} allowDecimals={false} />
                 <Tooltip content={<StateTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
                 <Bar dataKey="companies" radius={[3, 3, 0, 0]} maxBarSize={24}>
+                  <LabelList dataKey="companies" position="top" {...BAR_LABEL_PROPS} />
                   {stateData.map((entry, i) => (
                     <Cell key={entry.state} fill={PAGE_COLORS[i % PAGE_COLORS.length]} />
                   ))}
@@ -221,7 +226,7 @@ export default function Analytics() {
         ) : (
           <div style={{ position: 'relative', flex: 1, minHeight: 0, width: '100%' }}>
             <ChartBox>
-              <AreaChart data={dailyData} margin={{ top: 2, right: 4, left: -10, bottom: 2 }}>
+              <AreaChart data={dailyData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
                 <defs>
                   <linearGradient id="visitGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#185FA5" stopOpacity={0.25} />
@@ -229,8 +234,8 @@ export default function Analytics() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
-                <XAxis dataKey="day" tick={{ fill: 'var(--text-muted)', fontSize: 8 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 8 }} axisLine={false} tickLine={false} width={24} allowDecimals={false} />
+                <XAxis dataKey="day" tick={CHART_TICK} axisLine={false} tickLine={false} />
+                <YAxis tick={CHART_TICK} axisLine={false} tickLine={false} width={36} allowDecimals={false} />
                 <Tooltip {...customTooltipStyle} />
                 <Area type="monotone" dataKey="visits" stroke="#185FA5" strokeWidth={1.5} fill="url(#visitGrad)" dot={false} />
               </AreaChart>
@@ -245,12 +250,14 @@ export default function Analytics() {
         ) : (
           <div style={{ position: 'relative', flex: 1, minHeight: 0, width: '100%' }}>
             <ChartBox>
-              <BarChart data={weeklyData} margin={{ top: 2, right: 4, left: -10, bottom: 2 }} maxBarSize={28}>
+              <BarChart data={weeklyData} margin={{ top: 16, right: 8, left: 0, bottom: 4 }} maxBarSize={28}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
-                <XAxis dataKey="week" tick={{ fill: 'var(--text-muted)', fontSize: 8 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 8 }} axisLine={false} tickLine={false} width={24} allowDecimals={false} />
+                <XAxis dataKey="week" tick={CHART_TICK} axisLine={false} tickLine={false} />
+                <YAxis tick={CHART_TICK} axisLine={false} tickLine={false} width={36} allowDecimals={false} />
                 <Tooltip {...customTooltipStyle} />
-                <Bar dataKey="visits" fill="#534AB7" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="visits" fill="#534AB7" radius={[3, 3, 0, 0]}>
+                  <LabelList dataKey="visits" position="top" {...BAR_LABEL_PROPS} />
+                </Bar>
               </BarChart>
             </ChartBox>
           </div>
@@ -272,7 +279,7 @@ export default function Analytics() {
                       <span style={{ color: PAGE_COLORS[i % PAGE_COLORS.length], marginRight: 3 }}>●</span>
                       {p.page}
                     </span>
-                    <span style={{ fontSize: 9.5, color: 'var(--text-muted)', fontWeight: 500 }}>{p.visits.toLocaleString()}</span>
+                    <span style={{ fontSize: 12, color: '#ffffff', fontWeight: 700 }}>{p.visits.toLocaleString()}</span>
                   </div>
                   <div style={{ height: 3, background: 'var(--card-border)', borderRadius: 99 }}>
                     <div style={{ height: '100%', width: `${pct}%`, background: PAGE_COLORS[i % PAGE_COLORS.length], borderRadius: 99 }} />

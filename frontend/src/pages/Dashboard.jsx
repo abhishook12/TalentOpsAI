@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 
@@ -22,15 +22,15 @@ function StatCard({ title, value, sub, icon, color }) {
 }
 
 export default function Dashboard() {
-  const [kpi, setKpi] = useState(null)
-  const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
 
-  useEffect(() => {
-    axios.get(`${API}/analytics/dashboard`)
-      .then(r => { setKpi(r.data); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [])
+  const { data: kpi, isLoading: loading } = useQuery({
+    queryKey: ['dashboard-kpi'],
+    queryFn: async () => {
+      const { data } = await axios.get(`${API}/analytics/dashboard`)
+      return data
+    }
+  })
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
   const v = (n) => loading ? '...' : n

@@ -40,6 +40,8 @@ class Company(Base):
     email_pattern= Column(String(150))
     notes        = Column(Text)
     is_active    = Column(Boolean, default=True)
+    data_source  = Column(String(100), default="manual")
+    trust_score  = Column(Integer, default=100)
     created_at   = Column(TIMESTAMP, server_default=func.now())
     updated_at   = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
     recruiters   = relationship("Recruiter", back_populates="company")
@@ -78,6 +80,8 @@ class Recruiter(Base):
     completeness_score = Column(Integer, default=0, index=True)
     needs_review     = Column(Boolean, default=False, index=True)
     is_active        = Column(Boolean, default=True)
+    data_source      = Column(String(100), default="manual")
+    trust_score      = Column(Integer, default=100)
     created_at       = Column(TIMESTAMP, server_default=func.now())
     updated_at       = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
     company          = relationship("Company", back_populates="recruiters")
@@ -139,4 +143,39 @@ class UploadJob(Base):
     errors          = Column(Text, nullable=True) # JSON string of errors
     started_at      = Column(TIMESTAMP, server_default=func.now())
     completed_at    = Column(TIMESTAMP, nullable=True)
+
+
+class RawUpload(Base):
+    __tablename__ = "raw_uploads"
+    id            = Column(Integer, primary_key=True, index=True)
+    job_id        = Column(String(36), ForeignKey("upload_jobs.job_id", ondelete="CASCADE"), index=True)
+    raw_data      = Column(Text) # JSON string of the exact raw row
+    source_filename = Column(String(255))
+    created_at    = Column(TIMESTAMP, server_default=func.now())
+
+class StagingRecruiter(Base):
+    __tablename__ = "staging_recruiters"
+    id            = Column(Integer, primary_key=True, index=True)
+    job_id        = Column(String(36), ForeignKey("upload_jobs.job_id", ondelete="CASCADE"), index=True)
+    raw_upload_id = Column(Integer, ForeignKey("raw_uploads.id", ondelete="CASCADE"), nullable=True)
+    recruiter_name= Column(String(255))
+    email         = Column(String(255), index=True)
+    phone         = Column(String(100))
+    company_name  = Column(String(255))
+    location      = Column(String(255))
+    status        = Column(String(50), default="pending") # pending, processing, approved, rejected, duplicate, suspicious
+    confidence_score = Column(Integer, default=0)
+    errors        = Column(Text, nullable=True) # JSON list of validation errors
+    created_at    = Column(TIMESTAMP, server_default=func.now())
+
+class StagingCompany(Base):
+    __tablename__ = "staging_companies"
+    id            = Column(Integer, primary_key=True, index=True)
+    job_id        = Column(String(36), ForeignKey("upload_jobs.job_id", ondelete="CASCADE"), index=True)
+    company_name  = Column(String(255), index=True)
+    location      = Column(String(255))
+    industry      = Column(String(255))
+    status        = Column(String(50), default="pending")
+    confidence_score = Column(Integer, default=0)
+    created_at    = Column(TIMESTAMP, server_default=func.now())
 

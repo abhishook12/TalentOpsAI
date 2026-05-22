@@ -86,15 +86,8 @@ def recruiters_by_state(db: Session = Depends(get_db)):
     cached = analytics_cache.get("recruiters_by_state")
     if cached is not None:
         return cached
-    results = (
-        db.query(Recruiter.state, func.count(Recruiter.recruiter_id).label("count"))
-        .filter(Recruiter.state.isnot(None), Recruiter.state != "")
-        .group_by(Recruiter.state)
-        .order_by(func.count(Recruiter.recruiter_id).desc())
-        .limit(20)
-        .all()
-    )
-    res_list = [{"state": r.state, "count": r.count} for r in results]
+    results = db.execute(text("SELECT state, count FROM mv_recruiters_by_state ORDER BY count DESC LIMIT 20")).mappings().all()
+    res_list = [{"state": r["state"], "count": r["count"]} for r in results]
     analytics_cache.set("recruiters_by_state", res_list, ttl=30)
     return res_list
 
@@ -143,13 +136,7 @@ def companies_count_by_state(db: Session = Depends(get_db)):
     if cached is not None:
         return cached
 
-    sql = text("""
-        SELECT COALESCE(c.state, r.state) as state, COUNT(DISTINCT c.company_id) as count 
-        FROM companies c
-        LEFT JOIN recruiters r ON r.company_id = c.company_id
-        WHERE COALESCE(c.state, r.state) IS NOT NULL 
-        GROUP BY COALESCE(c.state, r.state)
-    """)
+    sql = text("SELECT state, count FROM mv_state_company_counts")
     rows = db.execute(sql).mappings().all()
 
     counts = {row["state"]: row["count"] for row in rows}

@@ -533,6 +533,7 @@ function AppLayout() {
             borderBottom: '1px solid var(--card-border)',
             background: 'var(--panel-bg)', flexShrink: 0,
           }}>
+            <div id="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 16 }}></div>
             <ThemeSwitcher />
           </header>
           <main style={{

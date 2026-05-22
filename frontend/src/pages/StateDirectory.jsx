@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
+import * as XLSX from 'xlsx'
 import axios from 'axios'
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
@@ -85,10 +87,64 @@ export default function StateDirectory() {
       .catch(() => setLoadingMore(false))
   }
 
+  const [headerPortalElement, setHeaderPortalElement] = useState(null)
+  
+  useEffect(() => {
+    setHeaderPortalElement(document.getElementById('header-actions'))
+  }, [])
+
+  const handleDownloadFilteredResults = () => {
+    if (!selectedState || !debouncedCompany) {
+      alert("Please select a company and state before downloading.")
+      return
+    }
+    
+    let downloadData = recruiters
+    if (downloadData.length > 1000) {
+      downloadData = downloadData.slice(0, 1000)
+      alert("Only first 1000 rows were downloaded.")
+    }
+
+    const mappedData = downloadData.map(r => ({
+      Name: r.recruiter_name || '',
+      Email: r.email || '',
+      Company: r.company_name || '',
+      State: selectedState
+    }))
+
+    const worksheet = XLSX.utils.json_to_sheet(mappedData)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Recruiters")
+    
+    const cleanCompany = debouncedCompany.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase()
+    const filename = `recruiters_${selectedState}_${cleanCompany}.xlsx`
+    
+    XLSX.writeFile(workbook, filename)
+  }
+
   const selectedName = STATES.find(s => s.abbr === selectedState)?.name || ''
 
   return (
-    <div className="page-enter" style={{ display: 'flex', gap: 28, minHeight: 'calc(100vh - 120px)' }}>
+    <>
+      {headerPortalElement && createPortal(
+        <button
+          onClick={handleDownloadFilteredResults}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+            padding: '6px 12px', borderRadius: 8, fontSize: 13,
+            color: 'var(--text-primary)', cursor: 'pointer',
+            transition: 'background 0.15s', height: 36
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--card-bg-hover)'; e.currentTarget.style.transform = 'scale(1.03)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'var(--card-bg)'; e.currentTarget.style.transform = 'scale(1)' }}
+        >
+          <i className="ti ti-download" style={{ fontSize: 16 }} />
+          <span style={{ fontWeight: 500 }}>Download</span>
+        </button>,
+        headerPortalElement
+      )}
+      <div className="page-enter" style={{ display: 'flex', gap: 28, minHeight: 'calc(100vh - 120px)' }}>
       {/* Left: Selector + Map grid */}
       <div style={{ flex: '0 0 420px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div>
@@ -310,5 +366,6 @@ export default function StateDirectory() {
         </div>
       </div>
     </div>
+    </>
   )
 }

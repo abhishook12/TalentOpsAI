@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -127,28 +127,26 @@ function StateTooltip({ active, payload, label }) {
 }
 
 export default function Analytics() {
-  const [visits, setVisits]       = useState(null)
-  const [stateData, setStateData] = useState([])
-  const [loading, setLoading]     = useState(true)
-
-  useEffect(() => {
-    Promise.all([
-      axios.get(`${API}/analytics/visit-stats`),
-      axios.get(`${API}/analytics/companies-count-by-state`),
-    ]).then(([v, s]) => {
-      setVisits(v.data)
-
-      // Transform { "NC": 45, "TX": 32, ... } → sorted array for chart
+  const { data: analyticsData, isLoading: loading } = useQuery({
+    queryKey: ['analytics-dashboard'],
+    queryFn: async () => {
+      const [v, s] = await Promise.all([
+        axios.get(`${API}/analytics/visit-stats`),
+        axios.get(`${API}/analytics/companies-count-by-state`),
+      ])
+      
       const raw = s.data || {}
-      const arr = Object.entries(raw)
+      const stateData = Object.entries(raw)
         .map(([abbr, count]) => ({ state: abbr, companies: count }))
         .sort((a, b) => b.companies - a.companies)
-        .slice(0, 10) // top 10 states — compact chart
-      setStateData(arr)
+        .slice(0, 10)
+        
+      return { visits: v.data, stateData }
+    }
+  })
 
-      setLoading(false)
-    }).catch(() => setLoading(false))
-  }, [])
+  const visits = analyticsData?.visits
+  const stateData = analyticsData?.stateData || []
 
   if (loading) return (
     <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>

@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
-import { useEffect, useState, lazy, Suspense, useRef } from 'react'
+import React, { useEffect, useState, lazy, Suspense, useRef, Component } from 'react'
 import Sidebar from './components/Sidebar'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -10,6 +10,36 @@ const Upload     = lazy(() => import('./pages/Upload'))
 const StateDirectory = lazy(() => import('./pages/StateDirectory'))
 const CompanyDirectory = lazy(() => import('./pages/CompanyDirectory'))
 const AdminTerminal = lazy(() => import('./pages/AdminTerminal'))
+
+class GlobalErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false }
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true }
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error("Caught by GlobalErrorBoundary:", error, errorInfo)
+    if (error.name === 'ChunkLoadError' || error.message.includes('dynamically imported module')) {
+      window.location.reload()
+    }
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 50, textAlign: 'center', color: 'var(--text-primary)' }}>
+          <h2 style={{ marginBottom: 16 }}>Oops, something went wrong.</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: 24 }}>A new version of the app may have been deployed.</p>
+          <button onClick={() => window.location.reload()} style={{ padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
+            Reload Page
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 const globalStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -557,16 +587,18 @@ function AppLayout() {
                   <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading...</span>
                 </div>
               }>
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/recruiters" element={<Recruiters />} />
-                  <Route path="/analytics" element={<Analytics />} />
-                  <Route path="/ai-search" element={<AISearch />} />
-                  <Route path="/directory" element={<StateDirectory />} />
-                  <Route path="/companies" element={<CompanyDirectory />} />
-                  <Route path="/upload" element={<Upload />} />
-                  <Route path="/admin" element={<AdminTerminal />} />
-                </Routes>
+                <GlobalErrorBoundary>
+                  <Routes>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/recruiters" element={<Recruiters />} />
+                    <Route path="/analytics" element={<Analytics />} />
+                    <Route path="/ai-search" element={<AISearch />} />
+                    <Route path="/directory" element={<StateDirectory />} />
+                    <Route path="/companies" element={<CompanyDirectory />} />
+                    <Route path="/upload" element={<Upload />} />
+                    <Route path="/admin" element={<AdminTerminal />} />
+                  </Routes>
+                </GlobalErrorBoundary>
               </Suspense>
             </div>
           </main>

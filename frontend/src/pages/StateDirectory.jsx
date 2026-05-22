@@ -58,8 +58,9 @@ export default function StateDirectory() {
 
     axios.get(url)
       .then(res => {
-        setRecruiters(res.data)
-        const count = parseInt(res.headers['x-total-count'] || res.data.length, 10)
+        const results = Array.isArray(res.data) ? res.data : (res.data.results || [])
+        setRecruiters(results)
+        const count = res.data.total_count ?? parseInt(res.headers['x-total-count'] || results.length, 10)
         setTotalCount(count)
         setLoading(false)
       })
@@ -75,8 +76,9 @@ export default function StateDirectory() {
 
     axios.get(url)
       .then(res => {
-        setRecruiters(prev => [...prev, ...res.data])
-        const count = parseInt(res.headers['x-total-count'] || totalCount, 10)
+        const results = Array.isArray(res.data) ? res.data : (res.data.results || [])
+        setRecruiters(prev => [...prev, ...results])
+        const count = res.data.total_count ?? parseInt(res.headers['x-total-count'] || totalCount, 10)
         setTotalCount(count)
         setLoadingMore(false)
       })

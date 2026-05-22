@@ -284,6 +284,58 @@ function SqlConsole() {
   )
 }
 
+// ── Session Row Component ──────────────────────────────────────────────────────
+function SessionRow({ session, isOpen, onToggle, index }) {
+  const mins = Math.floor(session.total_seconds / 60)
+  const secs = session.total_seconds % 60
+  const duration = session.total_seconds > 0
+    ? (mins > 0 ? `${mins}m ${secs}s` : `${secs}s`)
+    : `${session.page_count} pages`
+  const browserIcon = session.browser === 'Chrome' ? 'ti-brand-chrome'
+    : session.browser === 'Firefox' ? 'ti-brand-firefox'
+    : session.browser === 'Edge' ? 'ti-brand-edge'
+    : session.browser === 'Safari' ? 'ti-brand-safari'
+    : 'ti-browser'
+
+  return (
+    <div style={{ flexShrink: 0, background: '#0b1525', border: `1px solid ${isOpen ? '#1e3a5f' : '#111c30'}`, borderRadius: 10, overflow: 'hidden' }}>
+      <div
+        onClick={onToggle}
+        style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
+      >
+        <div style={{ width: 28, height: 28, borderRadius: 7, background: '#111c30', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <i className={`ti ${browserIcon}`} style={{ fontSize: 14, color: '#38bdf8' }} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: session.user_email === 'Anonymous' ? '#94a3b8' : '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {session.user_email}
+          </div>
+          <div style={{ fontSize: 10.5, color: '#64748b', marginTop: 2 }}>
+            {String(session.session_start).slice(0, 16).replace('T', ' ')} · {session.browser}
+          </div>
+        </div>
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#38bdf8', fontFamily: "'DM Mono', monospace" }}>{duration}</div>
+          <div style={{ fontSize: 10, color: '#64748b' }}>{session.page_count} pg</div>
+        </div>
+        <i className={`ti ${isOpen ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ color: '#64748b', fontSize: 12 }} />
+      </div>
+      {isOpen && (
+        <div style={{ borderTop: '1px solid #111c30', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 5 }}>
+          <div style={{ fontSize: 10, color: '#475569', fontFamily: "'DM Mono', monospace" }}>{session.ip_address}</div>
+          {session.pages.map((p, pi) => (
+            <div key={pi} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: '#94a3b8' }}>
+              <span style={{ color: '#475569', minWidth: 16 }}>{pi + 1}.</span>
+              <span style={{ flex: 1 }}>{p}</span>
+              <span style={{ color: '#64748b', fontFamily: "'DM Mono', monospace" }}>{String(session.timestamps[pi] || '').slice(11, 19)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main Terminal ─────────────────────────────────────────────────────────────
 export default function AdminTerminal() {
   const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem('admin_unlocked') === 'yes')
@@ -631,62 +683,7 @@ export default function AdminTerminal() {
         )}
 
         {/* ── VISITOR LOG BOOK TAB ── */}
-        {activeTab === 'logbook' && (() => {
-          const panelH = 280
-          const panelScroll = { height: panelH, overflowY: 'auto' }
-
-          const renderSessionRow = (s, i) => {
-            const isOpen = expandedSession === s.session_id
-            const mins = Math.floor(s.total_seconds / 60)
-            const secs = s.total_seconds % 60
-            const duration = s.total_seconds > 0
-              ? (mins > 0 ? `${mins}m ${secs}s` : `${secs}s`)
-              : `${s.page_count} pages`
-            const browserIcon = s.browser === 'Chrome' ? 'ti-brand-chrome'
-              : s.browser === 'Firefox' ? 'ti-brand-firefox'
-              : s.browser === 'Edge' ? 'ti-brand-edge'
-              : s.browser === 'Safari' ? 'ti-brand-safari'
-              : 'ti-browser'
-            return (
-              <div key={s.session_id || i} style={{ background: '#0b1525', border: `1px solid ${isOpen ? '#1e3a5f' : '#111c30'}`, borderRadius: 10, overflow: 'hidden' }}>
-                <div
-                  onClick={() => setExpandedSession(isOpen ? null : s.session_id)}
-                  style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
-                >
-                  <div style={{ width: 28, height: 28, borderRadius: 7, background: '#111c30', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <i className={`ti ${browserIcon}`} style={{ fontSize: 14, color: '#38bdf8' }} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: s.user_email === 'Anonymous' ? '#94a3b8' : '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {s.user_email}
-                    </div>
-                    <div style={{ fontSize: 10.5, color: '#64748b', marginTop: 2 }}>
-                      {String(s.session_start).slice(0, 16).replace('T', ' ')} · {s.browser}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#38bdf8', fontFamily: "'DM Mono', monospace" }}>{duration}</div>
-                    <div style={{ fontSize: 10, color: '#64748b' }}>{s.page_count} pg</div>
-                  </div>
-                  <i className={`ti ${isOpen ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ color: '#64748b', fontSize: 12 }} />
-                </div>
-                {isOpen && (
-                  <div style={{ borderTop: '1px solid #111c30', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <div style={{ fontSize: 10, color: '#475569', fontFamily: "'DM Mono', monospace" }}>{s.ip_address}</div>
-                    {s.pages.map((p, pi) => (
-                      <div key={pi} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: '#94a3b8' }}>
-                        <span style={{ color: '#475569', minWidth: 16 }}>{pi + 1}.</span>
-                        <span style={{ flex: 1 }}>{p}</span>
-                        <span style={{ color: '#64748b', fontFamily: "'DM Mono', monospace" }}>{String(s.timestamps[pi] || '').slice(11, 19)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )
-          }
-
-          return (
+        {activeTab === 'logbook' && (
           <div style={{ animation: 'fadeUp 0.25s ease' }}>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
               {[1, 7, 14, 30].map(d => (
@@ -736,12 +733,12 @@ export default function AdminTerminal() {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
                   <Section title="Daily Activity" icon="ti-calendar" style={{ marginBottom: 0 }}>
-                    <div style={{ ...panelScroll, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ height: 280, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {(visitorSummary.daily?.length ? [...visitorSummary.daily].reverse() : []).map((d, i) => {
                         const max = Math.max(...(visitorSummary.daily || []).map(x => Number(x.page_views)), 1)
                         const w = Math.round(Number(d.page_views) / max * 100)
                         return (
-                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                             <span style={{ fontSize: 11, color: '#475569', minWidth: 80, fontFamily: "'DM Mono', monospace" }}>{String(d.day).slice(0, 10)}</span>
                             <div style={{ flex: 1, height: 6, background: '#111c30', borderRadius: 99, overflow: 'hidden' }}>
                               <div style={{ width: `${w}%`, height: '100%', background: 'linear-gradient(90deg, #1d4ed8, #38bdf8)', borderRadius: 99 }} />
@@ -757,11 +754,11 @@ export default function AdminTerminal() {
                   </Section>
 
                   <Section title="Top Pages" icon="ti-map" style={{ marginBottom: 0 }}>
-                    <div style={{ ...panelScroll, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ height: 280, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {(visitorSummary.top_pages || []).map((p, i) => {
                         const max = visitorSummary.top_pages[0]?.views || 1
                         return (
-                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                             <span style={{ fontSize: 11, color: '#475569', minWidth: 16, textAlign: 'right' }}>{i + 1}</span>
                             <span style={{ fontSize: 12, color: '#94a3b8', minWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.page}</span>
                             <div style={{ flex: 1, height: 5, background: '#111c30', borderRadius: 99, overflow: 'hidden' }}>
@@ -782,9 +779,17 @@ export default function AdminTerminal() {
 
             {visitorLogs && (
               <Section title={`Session Log (${visitorLogs.total} sessions)`} icon="ti-list" style={{ marginBottom: 0 }}>
-                <div style={{ ...panelScroll, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ maxHeight: 550, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {visitorLogs.sessions.length > 0
-                    ? visitorLogs.sessions.map(renderSessionRow)
+                    ? visitorLogs.sessions.map((s, i) => (
+                      <SessionRow
+                        key={s.session_id || i}
+                        session={s}
+                        index={i}
+                        isOpen={expandedSession === s.session_id}
+                        onToggle={() => setExpandedSession(expandedSession === s.session_id ? null : s.session_id)}
+                      />
+                    ))
                     : (
                       <div style={{ color: '#94a3b8', fontSize: 12.5, textAlign: 'center', padding: '48px 16px', lineHeight: 1.6 }}>
                         <i className="ti ti-users" style={{ fontSize: 32, color: '#1e3a5f', display: 'block', marginBottom: 12 }} />
@@ -798,8 +803,7 @@ export default function AdminTerminal() {
               </Section>
             )}
           </div>
-          )
-        })()}
+        )}
 
         {/* ── ACTIVITY LOG TAB ── */}
         {activeTab === 'logs' && (

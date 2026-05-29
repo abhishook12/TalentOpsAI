@@ -1,6 +1,10 @@
 import axios from 'axios'
 
-export const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
+const PROD_HOST_OVERRIDE = typeof window !== 'undefined' && window.location.hostname === 'talent-ops-ai.vercel.app'
+  ? 'https://talentopsai-1.onrender.com'
+  : null
+
+export const API = (PROD_HOST_OVERRIDE || import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 
 const api = axios.create({
   baseURL: API,

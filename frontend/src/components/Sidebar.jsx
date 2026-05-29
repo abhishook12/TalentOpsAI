@@ -42,8 +42,8 @@ export default function Sidebar() {
             <i className="ti ti-bolt" style={{ color: '#fff', fontSize: 16 }} />
           </div>
           <div>
-            <div style={{ color: 'var(--text-primary)', fontSize: 13.5, fontWeight: 600, letterSpacing: '-0.01em' }}>TalentOps AI</div>
-            <div style={{ color: 'var(--text-muted)', fontSize: 10.5, marginTop: 1 }}>Recruitment Intelligence</div>
+            <div style={{ color: 'var(--text-primary)', fontSize: 13.5, fontWeight: 600, letterSpacing: '-0.01em' }}>TalentOps AI LIVE</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: 10.5, marginTop: 1 }}>Deployment Sync Check</div>
           </div>
         </div>
       </div>

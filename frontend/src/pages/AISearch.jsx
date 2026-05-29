@@ -59,7 +59,8 @@ export default function AISearch() {
           return (b.relevance_score || 0) - (a.relevance_score || 0)
         })
         setResults(sorted)
-        setSelectedId(prev => prev && sorted.some(x => x.recruiter_id === prev) ? prev : (sorted[0]?.recruiter_id || null))
+        // Keep details panel empty until user explicitly clicks a recruiter row.
+        setSelectedId(prev => (prev && sorted.some(x => x.recruiter_id === prev) ? prev : null))
       } catch {
         setError('Could not load recruiter search results.')
         setResults([])

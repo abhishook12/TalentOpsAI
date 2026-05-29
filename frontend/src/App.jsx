@@ -47,112 +47,45 @@ const globalStyles = `
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  /* ── Default is DARK ── */
+  /* ── Default light editorial shell ── */
   :root {
-    --sidebar-bg: #141619;
-    --sidebar-border: #2a2d33;
+    --sidebar-bg: #efefec;
+    --sidebar-border: #d8d8d8;
     --sidebar-width: 248px;
-    --accent: #7f8794;
-    --accent-glow: rgba(127,135,148,0.16);
-    --accent-light: #9aa2ad;
-    --main-bg: #101214;
-    --panel-bg: #16191d;
-    --card-bg: #1b1f24;
-    --card-bg-hover: #21262d;
-    --card-border: #2c323a;
-    --card-border-hover: #3a424d;
-    --text-primary: #e8ebef;
-    --text-secondary: #b2b8c0;
-    --text-muted: #7f8793;
+    --accent: #15171b;
+    --accent-glow: rgba(0,0,0,0.08);
+    --accent-light: #20252b;
+    --main-bg: #f7f7f5;
+    --panel-bg: #ffffff;
+    --card-bg: #ffffff;
+    --card-bg-hover: #fafaf9;
+    --card-border: #d8d8d8;
+    --card-border-hover: #c7c7c7;
+    --text-primary: #17191d;
+    --text-secondary: #3f454f;
+    --text-muted: #727a85;
     --font: 'Inter', system-ui, sans-serif;
     --mono: 'JetBrains Mono', monospace;
     --radius: 10px;
     --radius-lg: 14px;
-    --shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 16px 36px rgba(0, 0, 0, 0.4);
-    --bg-hover: rgba(255,255,255,0.04);
-    --accent-bg: rgba(59,130,246,0.12);
-    --accent-hover: #60a5fa;
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.08);
+    --bg-hover: rgba(0,0,0,0.04);
+    --accent-bg: rgba(0,0,0,0.06);
+    --accent-hover: #0f1114;
     --text-inverse: #ffffff;
     --green: #3fb950;
     --red: #f85149;
     --amber: #d29922;
   }
 
-  [data-theme="dark"] {
-    --sidebar-bg: #141619;
-    --sidebar-border: #2a2d33;
-    --accent: #7f8794;
-    --accent-glow: rgba(127,135,148,0.16);
-    --accent-light: #9aa2ad;
-    --main-bg: #101214;
-    --panel-bg: #16191d;
-    --card-bg: #1b1f24;
-    --card-bg-hover: #21262d;
-    --card-border: #2c323a;
-    --card-border-hover: #3a424d;
-    --text-primary: #e8ebef;
-    --text-secondary: #b2b8c0;
-    --text-muted: #7f8793;
-    --shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-    --bg-hover: rgba(255,255,255,0.04);
-    --accent-bg: rgba(59,130,246,0.12);
-    --accent-hover: #60a5fa;
-    --text-inverse: #ffffff;
-  }
-
-  [data-theme="light"] {
-    --sidebar-bg: #0d1117;
-    --sidebar-border: #1e2d3d;
-    --accent: #2563eb;
-    --accent-glow: rgba(37,99,235,0.14);
-    --accent-light: #3b82f6;
-    --main-bg: #f0f4f8;
-    --panel-bg: #f8fafc;
-    --card-bg: #ffffff;
-    --card-bg-hover: #f8fafc;
-    --card-border: #e2e8f0;
-    --card-border-hover: #cbd5e1;
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-muted: #94a3b8;
-    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04);
-    --bg-hover: rgba(0,0,0,0.04);
-    --accent-bg: rgba(37,99,235,0.08);
-    --accent-hover: #1d4ed8;
-    --text-inverse: #ffffff;
-  }
-
-  [data-theme="sepia"] {
-    --sidebar-bg: #1a1208;
-    --sidebar-border: #2d200f;
-    --accent: #c98a2e;
-    --accent-glow: rgba(201,138,46,0.15);
-    --accent-light: #e0a84a;
-    --main-bg: #1a1208;
-    --panel-bg: #1f1710;
-    --card-bg: #251c12;
-    --card-bg-hover: #2a2015;
-    --card-border: #362a18;
-    --card-border-hover: #4a3c28;
-    --text-primary: #d9c8a8;
-    --text-secondary: #a08060;
-    --text-muted: #5c4830;
-    --shadow: 0 2px 8px rgba(0,0,0,0.4);
-    --bg-hover: rgba(255,200,100,0.05);
-    --accent-bg: rgba(201,138,46,0.12);
-    --accent-hover: #e0a84a;
-    --text-inverse: #fffef0;
-  }
+  [data-theme="dark"], [data-theme="light"], [data-theme="sepia"] {}
 
   html, body, #root {
     height: 100%;
     overflow: hidden;
     font-family: var(--font);
-    background:
-      radial-gradient(1200px 600px at 90% -10%, rgba(255,255,255,0.03), transparent 60%),
-      radial-gradient(900px 500px at -10% 20%, rgba(255,255,255,0.02), transparent 55%),
-      var(--main-bg);
+    background: var(--main-bg);
     color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -203,7 +136,7 @@ const globalStyles = `
   input::placeholder, textarea::placeholder { color: var(--text-muted); }
   input:focus, select:focus, textarea:focus {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-glow), 0 6px 18px rgba(2, 8, 24, 0.35);
+    box-shadow: 0 0 0 3px var(--accent-glow);
   }
 
   button {
@@ -232,7 +165,7 @@ const globalStyles = `
     border-radius: 16px !important;
     box-shadow: var(--shadow) !important;
     transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s, background 0.2s;
-    backdrop-filter: blur(8px);
+    backdrop-filter: none;
   }
   .card:hover {
     border-color: var(--card-border-hover) !important;
@@ -240,7 +173,7 @@ const globalStyles = `
   }
 
   .btn-primary {
-    background: linear-gradient(135deg, #6f7783, #5f6670);
+    background: #15171b;
     color: #fff;
     padding: 9px 18px;
     font-size: 13px;
@@ -254,21 +187,17 @@ const globalStyles = `
     transition: all 0.15s;
     box-shadow: 0 0 0 0 var(--accent-glow);
   }
-  .btn-primary:hover { filter: brightness(1.1); box-shadow: 0 10px 20px var(--accent-glow); transform: translateY(-1px); }
+  .btn-primary:hover { filter: brightness(1.03); box-shadow: 0 6px 14px var(--accent-glow); transform: translateY(-1px); }
 
-  .shell-main {
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.02), transparent 15%),
-      var(--main-bg);
-  }
+  .shell-main { background: var(--main-bg); }
 
   .topbar-glass {
     margin: 10px 12px 0;
     border: 1px solid var(--card-border);
     border-radius: 14px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015));
-    box-shadow: 0 10px 24px rgba(2, 8, 24, 0.35);
-    backdrop-filter: blur(10px);
+    background: #ffffff;
+    box-shadow: var(--shadow);
+    backdrop-filter: none;
   }
 
   .badge {
@@ -297,40 +226,11 @@ const globalStyles = `
 `
 
 function ThemeSwitcher() {
-  const themes = ['dark', 'light', 'sepia']
-  const icons  = ['ti-moon', 'ti-sun', 'ti-eye']
-  const labels = ['Dark', 'Light', 'Sepia']
-  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark')
-
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-    localStorage.setItem('theme', theme)
-  }, [theme])
-
-  const toggle = () => {
-    const next = themes[(themes.indexOf(theme) + 1) % themes.length]
-    setTheme(next)
-  }
-
-  const idx = themes.indexOf(theme)
-
-  return (
-    <button
-      onClick={toggle}
-      title={`Theme: ${labels[idx]} — click to switch`}
-      style={{
-        width: 36, height: 36, borderRadius: 8,
-        background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: 'var(--text-primary)', fontSize: 18, cursor: 'pointer',
-        transition: 'background 0.15s, transform 0.15s', flexShrink: 0,
-      }}
-      onMouseEnter={e => { e.currentTarget.style.background = 'var(--card-bg-hover)'; e.currentTarget.style.transform = 'scale(1.05)' }}
-      onMouseLeave={e => { e.currentTarget.style.background = 'var(--card-bg)'; e.currentTarget.style.transform = 'scale(1)' }}
-    >
-      <i className={`ti ${icons[idx]}`} />
-    </button>
-  )
+    document.documentElement.setAttribute('data-theme', 'light')
+    localStorage.setItem('theme', 'light')
+  }, [])
+  return null
 }
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
@@ -578,10 +478,7 @@ function AppLayout() {
         <Sidebar />
         <div className="shell-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
           <header style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
-            padding: isFullHeightPage ? (isAdmin ? '6px 16px' : '6px 16px') : '12px 32px',
-            borderBottom: 'none',
-            background: 'transparent', flexShrink: 0,
+            display: 'none',
           }} className="topbar-glass">
             <div id="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 16 }}></div>
             <ThemeSwitcher />

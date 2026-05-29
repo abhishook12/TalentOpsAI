@@ -1,89 +1,181 @@
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 
-function StatCard({ title, value, sub, icon, color }) {
-  return (
-    <div className="card" style={{ padding: '18px 20px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>{title}</span>
-        <div style={{ width: 32, height: 32, borderRadius: 8, background: color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <i className={`ti ${icon}`} style={{ fontSize: 16, color }} />
-        </div>
-      </div>
-      <p style={{ fontSize: 26, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
-        {typeof value === 'number' ? value.toLocaleString() : value}
-      </p>
-      {sub && <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{sub}</p>}
-    </div>
-  )
+const pipelineRows = [
+  { source: 'LinkedIn Global Dump', type: 'JSON', count: 412083, status: 'Live Sync' },
+  { source: 'Apollo Integration v4', type: 'API', count: 82192, status: 'Completed' },
+  { source: 'Manpower Group Historical', type: 'CSV', count: 12500, status: 'Completed' },
+  { source: 'Crunchbase Pro Export', type: 'JSON', count: 4812, status: 'Schema Mismatch' },
+  { source: 'State-Level Directories', type: 'CSV', count: 189420, status: 'Queued' },
+]
+
+const marketLeaders = [
+  { code: 'KF', name: 'Korn Ferry', count: '8,421 Recruiters Identified' },
+  { code: 'SS', name: 'Spencer Stuart', count: '4,102 Recruiters Identified' },
+  { code: 'HS', name: 'Heidrick & Struggles', count: '3,890 Recruiters Identified' },
+  { code: 'EZ', name: 'Egon Zehnder', count: '2,554 Recruiters Identified' },
+]
+
+function statusPill(status) {
+  if (status === 'Live Sync') return { bg: 'rgba(22,163,74,0.1)', color: '#166534', icon: 'ti-point-filled' }
+  if (status === 'Schema Mismatch') return { bg: 'rgba(220,38,38,0.08)', color: '#b91c1c', icon: 'ti-alert-triangle' }
+  if (status === 'Queued') return { bg: 'rgba(180,83,9,0.1)', color: '#92400e', icon: 'ti-clock' }
+  return { bg: 'rgba(15,23,42,0.08)', color: '#334155', icon: 'ti-circle-check' }
 }
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const [activeTab, setActiveTab] = useState('Dashboard')
+  const [query, setQuery] = useState('')
+  const [toast, setToast] = useState('')
 
-  const { data: kpi, isLoading: loading } = useQuery({
+  const { data: kpi, isLoading } = useQuery({
     queryKey: ['dashboard-kpi'],
-    queryFn: async () => {
-      const { data } = await axios.get(`${API}/analytics/dashboard`)
-      return data
-    }
+    queryFn: async () => (await axios.get(`${API}/analytics/dashboard`)).data,
   })
 
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
-  const v = (n) => loading ? '...' : n
+  const stats = useMemo(() => ([
+    { label: 'Total Recruiters', icon: 'ti-users', value: isLoading ? '...' : (kpi?.recruiters?.total ?? 0).toLocaleString(), sub: isLoading ? 'Loading' : '~ +12.4% MoM' },
+    { label: 'Associated Companies', icon: 'ti-building', value: isLoading ? '...' : (kpi?.companies?.total ?? 0).toLocaleString(), sub: isLoading ? 'Loading' : '~ +3.1% MoM' },
+    { label: 'States Active', icon: 'ti-flag', value: '50', sub: 'Full Coverage REACH' },
+    { label: 'Data Quality', icon: 'ti-shield-check', value: '99.4%', sub: 'Verified recruiter records' },
+  ]), [kpi, isLoading])
+
+  const ping = (msg) => {
+    setToast(msg)
+    console.log(`[UI Action] ${msg}`)
+    setTimeout(() => setToast(''), 1800)
+  }
 
   return (
-    <div className="page-enter">
-      <div style={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between',
-        marginBottom: 24,
-        padding: '18px 20px',
-        borderRadius: 16,
-        border: '1px solid var(--card-border)',
-        background: 'linear-gradient(135deg, rgba(34,211,238,0.08), rgba(59,130,246,0.08) 45%, rgba(255,255,255,0.02))',
-        boxShadow: 'var(--shadow)',
-      }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 4 }}>Operations Command Center</h1>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{today}</p>
+    <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div className="card" style={{ padding: 14, borderRadius: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
+            <h1 style={{ fontSize: 16, fontWeight: 700, color: '#17191d' }}>Recruiter Intelligence</h1>
+            {['Dashboard', 'Staffing Firms'].map((tab) => (
+              <button key={tab} onClick={() => { setActiveTab(tab); ping(`${tab} tab selected`) }} style={{
+                background: 'transparent',
+                borderBottom: activeTab === tab ? '2px solid #16181c' : '2px solid transparent',
+                borderRadius: 0,
+                color: '#2a3038',
+                padding: '8px 2px',
+                fontSize: 12,
+                fontWeight: 600,
+              }}>
+                {tab}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => ping('Notifications opened')} title="Notifications" style={{ background: '#f7f7f5', border: '1px solid #d8d8d8', width: 30, height: 30 }}><i className="ti ti-bell" /></button>
+            <button onClick={() => ping('Settings opened')} title="Settings" style={{ background: '#f7f7f5', border: '1px solid #d8d8d8', width: 30, height: 30 }}><i className="ti ti-settings" /></button>
+            <button onClick={() => navigate('/admin')} title="Profile" style={{ background: '#f7f7f5', border: '1px solid #d8d8d8', width: 30, height: 30 }}><i className="ti ti-user-circle" /></button>
+          </div>
         </div>
-        <button className="btn-primary" onClick={() => navigate('/ai-search')}>
-          <i className="ti ti-search" style={{ fontSize: 14 }} /> Smart Search
-        </button>
       </div>
 
-      {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 16, marginBottom: 24 }}>
-        <StatCard title="Total Recruiters" value={v(kpi?.recruiters?.total)} sub={`${kpi?.recruiters?.active ?? '...'} active`} icon="ti-users" color="#2dd4bf" />
-        <StatCard title="Companies" value={v(kpi?.companies?.total)} sub="Partner firms" icon="ti-building" color="#a78bfa" />
-      </div>
-
-      {/* Quick actions */}
-      <div className="card" style={{ padding: 20 }}>
-        <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 14 }}>Quick Actions</p>
-        {[
-          { label: 'Smart search recruiters', icon: 'ti-search', color: '#2dd4bf', path: '/ai-search' },
-          { label: 'View all recruiters', icon: 'ti-users', color: '#34d399', path: '/recruiters' },
-          { label: 'Upload recruiters list', icon: 'ti-upload', color: '#818cf8', path: '/upload' },
-          { label: 'View analytics', icon: 'ti-chart-bar', color: 'var(--text-secondary)', path: '/analytics' },
-        ].map(({ label, icon, color, path }) => (
-          <div key={label} onClick={() => navigate(path)}
-            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, cursor: 'pointer', marginBottom: 4, transition: 'background 0.12s' }}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-            <div style={{ width: 32, height: 32, borderRadius: 6, background: color + '15', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <i className={`ti ${icon}`} style={{ fontSize: 16, color }} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 10 }}>
+        {stats.map((s) => (
+          <div key={s.label} className="card" style={{ padding: 12, borderRadius: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
+              <span style={{ fontSize: 10, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.08em', color: '#6f7781' }}>{s.label}</span>
+              <i className={`ti ${s.icon}`} style={{ color: '#6f7781' }} />
             </div>
-            <span style={{ fontSize: 13.5, color: 'var(--text-primary)' }}>{label}</span>
-            <i className="ti ti-arrow-right" style={{ marginLeft: 'auto', fontSize: 14, color: 'var(--text-muted)' }} />
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#17191d' }}>{s.value}</div>
+            <div style={{ fontSize: 11, color: '#6f7781', marginTop: 4 }}>{s.sub}</div>
           </div>
         ))}
       </div>
+
+      <div className="card" style={{ padding: 10, display: 'flex', alignItems: 'center', gap: 8, borderRadius: 8 }}>
+        <i className="ti ti-search" style={{ color: '#6f7781' }} />
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Ask TalentOps AI..." style={{ flex: 1, border: 'none', background: 'transparent', padding: '8px 4px' }} />
+        <kbd style={{ fontSize: 10, border: '1px solid #d8d8d8', borderRadius: 4, padding: '2px 6px', color: '#616975', background: '#f7f7f5' }}>⌘ K</kbd>
+        <button className="btn-primary" onClick={() => { ping(`Search submitted: ${query || '(empty)'}`); navigate('/ai-search') }}>Search</button>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
+        <div className="card" style={{ borderRadius: 8, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', borderBottom: '1px solid #d8d8d8' }}>
+            <strong style={{ fontSize: 12 }}>Intelligence Pipeline</strong>
+            <button onClick={() => ping('View ETL Logs clicked')} style={{ background: 'transparent', color: '#334155', fontSize: 11 }}>View ETL Logs <i className="ti ti-arrow-right" /></button>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Source</th><th>Type</th><th>Recruiter Count</th><th>Processed Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pipelineRows.map((row) => {
+                const s = statusPill(row.status)
+                return (
+                  <tr key={row.source} onClick={() => ping(`${row.source} clicked`)} style={{ cursor: 'pointer' }}>
+                    <td style={{ fontWeight: 600 }}>{row.source}</td>
+                    <td><span style={{ border: '1px solid #ddd', borderRadius: 4, fontSize: 10, padding: '2px 6px' }}>{row.type}</span></td>
+                    <td>{row.count.toLocaleString()}</td>
+                    <td>
+                      <span style={{ background: s.bg, color: s.color, padding: '4px 8px', borderRadius: 999, fontSize: 11 }}>
+                        <i className={`ti ${s.icon}`} /> {row.status}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div style={{ display: 'grid', gap: 10 }}>
+          <div className="card" style={{ borderRadius: 8, padding: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <strong style={{ fontSize: 12 }}>Market Leaders</strong>
+              <span style={{ fontSize: 11, color: '#6f7781' }}>By Count</span>
+            </div>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {marketLeaders.map((m) => (
+                <button key={m.code} onClick={() => ping(`${m.name} selected`)} style={{ display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left', background: '#fff', border: '1px solid #d8d8d8', padding: '8px 7px', borderRadius: 6 }}>
+                  <span style={{ width: 22, height: 22, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#f3f3f2', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>{m.code}</span>
+                  <span style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600 }}>{m.name}</div>
+                    <div style={{ fontSize: 10, color: '#6f7781' }}>{m.count}</div>
+                  </span>
+                  <i className="ti ti-arrow-up-right" />
+                </button>
+              ))}
+            </div>
+            <button onClick={() => ping('Explore Firms Database clicked')} style={{ marginTop: 10, width: '100%', border: '1px solid #d8d8d8', background: '#f7f7f5', padding: '8px', fontSize: 12 }}>Explore Firms Database</button>
+          </div>
+
+          <div className="card" style={{ borderRadius: 8, padding: 10 }}>
+            <strong style={{ fontSize: 12 }}>State Coverage</strong>
+            <div style={{ height: 90, border: '1px dashed #d0d0d0', borderRadius: 6, marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7b8189', fontSize: 11 }}>
+              US Map Placeholder
+            </div>
+            <p style={{ marginTop: 8, fontSize: 11, color: '#3f454f' }}>50/50 US States Synced</p>
+          </div>
+        </div>
+      </div>
+
+      <footer className="card" style={{ borderRadius: 8, padding: '10px 12px', display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+        <span>Recruiter Intelligence © 2026</span>
+        <div style={{ display: 'flex', gap: 14 }}>
+          <button onClick={() => ping('System Status clicked')} style={{ background: 'transparent' }}>System Status</button>
+          <button onClick={() => ping('Privacy Policy clicked')} style={{ background: 'transparent' }}>Privacy Policy</button>
+          <button onClick={() => ping('Terms clicked')} style={{ background: 'transparent' }}>Terms of Service</button>
+        </div>
+      </footer>
+
+      {toast && (
+        <div style={{ position: 'fixed', right: 20, bottom: 20, background: '#17191d', color: '#fff', padding: '10px 12px', borderRadius: 8, fontSize: 12 }}>
+          {toast}
+        </div>
+      )}
     </div>
   )
 }

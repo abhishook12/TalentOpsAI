@@ -79,7 +79,30 @@ const globalStyles = `
     --amber: #d29922;
   }
 
-  [data-theme="dark"], [data-theme="light"], [data-theme="sepia"] {}
+  [data-theme="light"], [data-theme="sepia"] {}
+
+  [data-theme="dark"] {
+    --sidebar-bg: #141619;
+    --sidebar-border: #2a2d33;
+    --accent: #7f8794;
+    --accent-glow: rgba(127,135,148,0.16);
+    --accent-light: #9aa2ad;
+    --main-bg: #101214;
+    --panel-bg: #16191d;
+    --card-bg: #1b1f24;
+    --card-bg-hover: #21262d;
+    --card-border: #2c323a;
+    --card-border-hover: #3a424d;
+    --text-primary: #e8ebef;
+    --text-secondary: #b2b8c0;
+    --text-muted: #7f8793;
+    --shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 16px 36px rgba(0, 0, 0, 0.4);
+    --bg-hover: rgba(255,255,255,0.04);
+    --accent-bg: rgba(255,255,255,0.08);
+    --accent-hover: #ffffff;
+    --text-inverse: #ffffff;
+  }
 
   html, body, #root {
     height: 100%;
@@ -226,11 +249,33 @@ const globalStyles = `
 `
 
 function ThemeSwitcher() {
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light')
+
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', 'light')
-    localStorage.setItem('theme', 'light')
-  }, [])
-  return null
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('theme', theme)
+  }, [theme])
+
+  return (
+    <button
+      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+      title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+      style={{
+        width: 36,
+        height: 36,
+        borderRadius: 8,
+        background: 'var(--card-bg)',
+        border: '1px solid var(--card-border)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'var(--text-primary)',
+        cursor: 'pointer',
+      }}
+    >
+      <i className={`ti ${theme === 'dark' ? 'ti-sun' : 'ti-moon'}`} />
+    </button>
+  )
 }
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
@@ -553,6 +598,9 @@ function AppLayout() {
               </div>
             </footer>
           )}
+        </div>
+        <div style={{ position: 'fixed', top: 14, right: 16, zIndex: 1200 }}>
+          <ThemeSwitcher />
         </div>
       </div>
     </>

@@ -20,6 +20,14 @@ const marketLeaders = [
   { code: 'EZ', name: 'Egon Zehnder', count: '2,554 Recruiters Identified' },
 ]
 
+const trafficSources = [
+  { city: 'New York, US', x: 23, y: 36, share: 31 },
+  { city: 'London, UK', x: 47, y: 29, share: 19 },
+  { city: 'Bengaluru, IN', x: 68, y: 50, share: 23 },
+  { city: 'Singapore, SG', x: 75, y: 57, share: 14 },
+  { city: 'Sydney, AU', x: 84, y: 76, share: 13 },
+]
+
 function statusPill(status) {
   if (status === 'Live Sync') return { bg: 'rgba(22,163,74,0.1)', color: '#166534', icon: 'ti-point-filled' }
   if (status === 'Schema Mismatch') return { bg: 'rgba(220,38,38,0.08)', color: '#b91c1c', icon: 'ti-alert-triangle' }
@@ -32,6 +40,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('Dashboard')
   const [query, setQuery] = useState('')
   const [toast, setToast] = useState('')
+  const [activeTraffic, setActiveTraffic] = useState(trafficSources[0])
 
   const { data: kpi, isLoading } = useQuery({
     queryKey: ['dashboard-kpi'],
@@ -164,10 +173,39 @@ export default function Dashboard() {
 
           <div className="card" style={{ borderRadius: 8, padding: 10 }}>
             <strong style={{ fontSize: 12 }}>State Coverage</strong>
-            <div style={{ height: 90, border: '1px dashed #d0d0d0', borderRadius: 6, marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7b8189', fontSize: 11 }}>
-              US Map Placeholder
+            <div style={{ height: 130, border: '1px solid #d8d8d8', borderRadius: 6, marginTop: 8, position: 'relative', background: 'linear-gradient(180deg, #f8f8f7, #f3f3f1)', overflow: 'hidden' }}>
+              <svg viewBox="0 0 800 360" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+                <path d="M44 160 L110 130 L170 145 L190 178 L165 210 L100 220 L60 194 Z" fill="#d7d9dc" />
+                <path d="M230 145 L270 118 L325 122 L362 150 L332 182 L277 190 L240 175 Z" fill="#d7d9dc" />
+                <path d="M370 115 L430 98 L500 116 L560 150 L550 198 L485 216 L420 196 L392 160 Z" fill="#d7d9dc" />
+                <path d="M515 220 L555 236 L582 270 L560 305 L520 292 L500 250 Z" fill="#d7d9dc" />
+                <path d="M600 175 L655 170 L715 192 L735 226 L692 242 L630 230 L596 203 Z" fill="#d7d9dc" />
+              </svg>
+              {trafficSources.map((t) => (
+                <button
+                  key={t.city}
+                  onClick={() => { setActiveTraffic(t); ping(`Traffic source: ${t.city}`) }}
+                  title={`${t.city} (${t.share}%)`}
+                  style={{
+                    position: 'absolute',
+                    left: `${t.x}%`,
+                    top: `${t.y}%`,
+                    width: 10,
+                    height: 10,
+                    borderRadius: '50%',
+                    border: '1px solid #fff',
+                    background: '#111827',
+                    boxShadow: activeTraffic.city === t.city ? '0 0 0 5px rgba(0,0,0,0.12)' : '0 0 0 2px rgba(0,0,0,0.08)',
+                    transform: 'translate(-50%, -50%)',
+                    cursor: 'pointer',
+                  }}
+                />
+              ))}
+              <div style={{ position: 'absolute', left: 8, bottom: 8, fontSize: 10, color: '#59606a', background: 'rgba(255,255,255,0.75)', border: '1px solid #d8d8d8', borderRadius: 5, padding: '3px 6px' }}>
+                {activeTraffic.city} • {activeTraffic.share}% traffic
+              </div>
             </div>
-            <p style={{ marginTop: 8, fontSize: 11, color: '#3f454f' }}>50/50 US States Synced</p>
+            <p style={{ marginTop: 8, fontSize: 11, color: '#3f454f' }}>Live traffic origin map • 50/50 US States Synced</p>
           </div>
         </div>
       </div>

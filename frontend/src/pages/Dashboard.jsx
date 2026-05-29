@@ -38,9 +38,19 @@ export default function Dashboard() {
     queryFn: async () => (await axios.get(`${API}/analytics/dashboard`)).data,
   })
 
+  const { data: recruiterStats } = useQuery({
+    queryKey: ['dashboard-recruiter-total'],
+    queryFn: async () => (await axios.get(`${API}/recruiters?page=1&limit=1`)).data,
+  })
+
+  const { data: companyStats } = useQuery({
+    queryKey: ['dashboard-company-total'],
+    queryFn: async () => (await axios.get(`${API}/companies?page=1&limit=1`)).data,
+  })
+
   const stats = useMemo(() => ([
-    { label: 'Total Recruiters', icon: 'ti-users', value: isLoading ? '...' : (kpi?.recruiters?.total ?? 0).toLocaleString(), sub: isLoading ? 'Loading' : '~ +12.4% MoM' },
-    { label: 'Associated Companies', icon: 'ti-building', value: isLoading ? '...' : (kpi?.companies?.total ?? 0).toLocaleString(), sub: isLoading ? 'Loading' : '~ +3.1% MoM' },
+    { label: 'Total Recruiters', icon: 'ti-users', value: recruiterStats?.total_count?.toLocaleString?.() ?? (isLoading ? '...' : (kpi?.recruiters?.total ?? 0).toLocaleString()), sub: isLoading ? 'Loading' : '~ +12.4% MoM' },
+    { label: 'Associated Companies', icon: 'ti-building', value: companyStats?.total_count?.toLocaleString?.() ?? (isLoading ? '...' : (kpi?.companies?.total ?? 0).toLocaleString()), sub: isLoading ? 'Loading' : '~ +3.1% MoM' },
     { label: 'States Active', icon: 'ti-flag', value: '50', sub: 'Full Coverage REACH' },
     { label: 'Data Quality', icon: 'ti-shield-check', value: '99.4%', sub: 'Verified recruiter records' },
   ]), [kpi, isLoading])

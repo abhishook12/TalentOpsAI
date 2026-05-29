@@ -13,8 +13,10 @@ engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,       # detects dead connections before using them
     pool_recycle=300,         # recycle connections every 5 mins
-    pool_size=15,             # max 15 persistent connections
-    max_overflow=10,          # allow 10 extra under load
+    pool_size=2,              # keep small pool for free-tier instances
+    max_overflow=3,           # allow small burst under load
+    pool_timeout=15,          # fail fast instead of hanging too long on pool wait
+    pool_use_lifo=True,       # re-use warm connections first
     connect_args={
         "connect_timeout": 10
     }

@@ -1,4 +1,5 @@
 import logging
+import os
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -17,15 +18,25 @@ logging.basicConfig(
 )
 logger = logging.getLogger("talentops")
 
-models.Base.metadata.create_all(bind=engine)
-try:
-    create_performance_indexes()
-except Exception as e:
-    logger.warning("Error creating indexes at startup: %s", e)
+RUN_STARTUP_MIGRATIONS = os.getenv("RUN_STARTUP_MIGRATIONS", "false").lower() in ("1", "true", "yes")
+
+if RUN_STARTUP_MIGRATIONS:
+    models.Base.metadata.create_all(bind=engine)
+    try:
+        create_performance_indexes()
+    except Exception as e:
+        logger.warning("Error creating indexes at startup: %s", e)
+else:
+    logger.info("Skipping startup migrations/index creation (RUN_STARTUP_MIGRATIONS=false)")
 
 try:
     from sqlalchemy.orm import Session as OrmSession
     with OrmSession(engine) as _db:
+        try:
+            _db.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+            _db.commit()
+        except Exception:
+            _db.rollback()
         admin.migrate_page_visits(_db)
 except Exception as e:
     logger.warning("Migration warning: %s", e)

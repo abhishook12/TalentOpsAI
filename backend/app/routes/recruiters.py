@@ -76,12 +76,6 @@ def search_recruiters(
     Smart weighted search using pg_trgm similarity + ILIKE scoring.
     Results are ranked by relevance_score descending.
     """
-    try:
-        db.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
-        db.commit()
-    except Exception:
-        db.rollback()
-
     base_sql = """
         SELECT
             r.recruiter_id,

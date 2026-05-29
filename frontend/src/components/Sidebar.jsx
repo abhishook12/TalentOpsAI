@@ -13,6 +13,10 @@ const nav = [
 
 export default function Sidebar() {
   const location = useLocation()
+  const logoutSoon = () => {
+    console.log('[Coming soon] Logout')
+    alert('Logout: Coming soon')
+  }
 
   return (
     <aside style={{
@@ -63,7 +67,31 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div style={{ padding: '12px', borderTop: '1px solid var(--sidebar-border)' }}>
+      <div style={{ padding: '8px 10px 0', borderTop: '1px solid var(--sidebar-border)' }}>
+        <button
+          onClick={logoutSoon}
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '9px 10px',
+            borderRadius: 8,
+            marginBottom: 8,
+            border: '1px solid var(--card-border)',
+            background: 'transparent',
+            color: 'var(--text-secondary)',
+            fontSize: 13,
+            fontWeight: 500,
+            textAlign: 'left',
+          }}
+        >
+          <i className="ti ti-logout" style={{ fontSize: 14 }} />
+          Logout
+        </button>
+      </div>
+
+      <div style={{ padding: '0 12px 12px' }}>
         <div style={{
           border: '1px solid var(--card-border)',
           borderRadius: 8,

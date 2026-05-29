@@ -49,27 +49,27 @@ const globalStyles = `
 
   /* ── Default is DARK ── */
   :root {
-    --sidebar-bg: #0d1117;
-    --sidebar-border: #1e2d3d;
+    --sidebar-bg: #0a101b;
+    --sidebar-border: #1e2c42;
     --sidebar-width: 228px;
-    --accent: #3b82f6;
-    --accent-glow: rgba(59,130,246,0.18);
-    --accent-light: #60a5fa;
-    --main-bg: #0d1117;
-    --panel-bg: #111827;
-    --card-bg: #161f2e;
-    --card-bg-hover: #1a2538;
-    --card-border: #1e2d3d;
-    --card-border-hover: #2d4060;
-    --text-primary: #e6edf3;
-    --text-secondary: #8b949e;
-    --text-muted: #4d5869;
+    --accent: #22d3ee;
+    --accent-glow: rgba(34,211,238,0.2);
+    --accent-light: #67e8f9;
+    --main-bg: #060b14;
+    --panel-bg: #0b1220;
+    --card-bg: #111a2b;
+    --card-bg-hover: #152136;
+    --card-border: #22324a;
+    --card-border-hover: #335177;
+    --text-primary: #edf3ff;
+    --text-secondary: #a3b4cd;
+    --text-muted: #667a99;
     --font: 'Inter', system-ui, sans-serif;
     --mono: 'JetBrains Mono', monospace;
     --radius: 10px;
     --radius-lg: 14px;
-    --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.2);
-    --shadow-lg: 0 8px 30px rgba(0,0,0,0.4);
+    --shadow: 0 6px 20px rgba(2, 8, 24, 0.35);
+    --shadow-lg: 0 16px 40px rgba(2, 8, 24, 0.45);
     --bg-hover: rgba(255,255,255,0.04);
     --accent-bg: rgba(59,130,246,0.12);
     --accent-hover: #60a5fa;
@@ -80,21 +80,21 @@ const globalStyles = `
   }
 
   [data-theme="dark"] {
-    --sidebar-bg: #0d1117;
-    --sidebar-border: #1e2d3d;
-    --accent: #3b82f6;
-    --accent-glow: rgba(59,130,246,0.18);
-    --accent-light: #60a5fa;
-    --main-bg: #0d1117;
-    --panel-bg: #111827;
-    --card-bg: #161f2e;
-    --card-bg-hover: #1a2538;
-    --card-border: #1e2d3d;
-    --card-border-hover: #2d4060;
-    --text-primary: #e6edf3;
-    --text-secondary: #8b949e;
-    --text-muted: #4d5869;
-    --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.2);
+    --sidebar-bg: #0a101b;
+    --sidebar-border: #1e2c42;
+    --accent: #22d3ee;
+    --accent-glow: rgba(34,211,238,0.2);
+    --accent-light: #67e8f9;
+    --main-bg: #060b14;
+    --panel-bg: #0b1220;
+    --card-bg: #111a2b;
+    --card-bg-hover: #152136;
+    --card-border: #22324a;
+    --card-border-hover: #335177;
+    --text-primary: #edf3ff;
+    --text-secondary: #a3b4cd;
+    --text-muted: #667a99;
+    --shadow: 0 6px 20px rgba(2, 8, 24, 0.35);
     --bg-hover: rgba(255,255,255,0.04);
     --accent-bg: rgba(59,130,246,0.12);
     --accent-hover: #60a5fa;
@@ -149,7 +149,10 @@ const globalStyles = `
     height: 100%;
     overflow: hidden;
     font-family: var(--font);
-    background: var(--main-bg);
+    background:
+      radial-gradient(1200px 600px at 90% -10%, rgba(34,211,238,0.08), transparent 60%),
+      radial-gradient(900px 500px at -10% 20%, rgba(59,130,246,0.07), transparent 55%),
+      var(--main-bg);
     color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -200,7 +203,7 @@ const globalStyles = `
   input::placeholder, textarea::placeholder { color: var(--text-muted); }
   input:focus, select:focus, textarea:focus {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-glow);
+    box-shadow: 0 0 0 3px var(--accent-glow), 0 6px 18px rgba(2, 8, 24, 0.35);
   }
 
   button {
@@ -228,14 +231,16 @@ const globalStyles = `
     border: 1px solid var(--card-border) !important;
     border-radius: var(--radius-lg) !important;
     box-shadow: var(--shadow) !important;
-    transition: border-color 0.15s, box-shadow 0.15s;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s, background 0.2s;
+    backdrop-filter: blur(8px);
   }
   .card:hover {
     border-color: var(--card-border-hover) !important;
+    transform: translateY(-1px);
   }
 
   .btn-primary {
-    background: var(--accent);
+    background: linear-gradient(135deg, var(--accent), #3b82f6);
     color: #fff;
     padding: 9px 18px;
     font-size: 13px;
@@ -249,7 +254,7 @@ const globalStyles = `
     transition: all 0.15s;
     box-shadow: 0 0 0 0 var(--accent-glow);
   }
-  .btn-primary:hover { filter: brightness(1.15); box-shadow: 0 4px 12px var(--accent-glow); }
+  .btn-primary:hover { filter: brightness(1.1); box-shadow: 0 10px 20px var(--accent-glow); transform: translateY(-1px); }
 
   .badge {
     display: inline-flex;

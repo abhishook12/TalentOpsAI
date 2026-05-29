@@ -37,10 +37,20 @@ export default function Dashboard() {
 
   return (
     <div className="page-enter">
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        marginBottom: 24,
+        padding: '18px 20px',
+        borderRadius: 16,
+        border: '1px solid var(--card-border)',
+        background: 'linear-gradient(135deg, rgba(34,211,238,0.08), rgba(59,130,246,0.08) 45%, rgba(255,255,255,0.02))',
+        boxShadow: 'var(--shadow)',
+      }}>
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 4 }}>Dashboard</h1>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{today}</p>
+          <h1 style={{ fontSize: 22, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 4 }}>Operations Command Center</h1>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{today}</p>
         </div>
         <button className="btn-primary" onClick={() => navigate('/ai-search')}>
           <i className="ti ti-search" style={{ fontSize: 14 }} /> Smart Search

@@ -61,12 +61,13 @@ export default function Sidebar() {
               to={to}
               style={{
                 display: 'flex', alignItems: 'center', gap: 9,
-                padding: '7px 10px', borderRadius: 7, marginBottom: 1,
+                padding: '9px 12px', borderRadius: 10, marginBottom: 4,
                 textDecoration: 'none', fontSize: 13, fontWeight: active ? 500 : 400,
                 color: active ? 'var(--text-primary)' : accent ? 'var(--accent-light)' : 'var(--text-secondary)',
                 background: active ? (accent ? 'var(--accent-bg)' : 'rgba(255,255,255,0.05)') : 'transparent',
                 transition: 'all 0.2s ease',
                 borderLeft: active ? `2px solid ${accent ? 'var(--accent)' : '#3b82f6'}` : '2px solid transparent',
+                boxShadow: active ? '0 10px 20px rgba(2,8,24,0.25)' : 'none',
               }}
               onMouseEnter={e => { if (!active) { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'var(--text-primary)' } }}
               onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = accent ? 'var(--accent-light)' : 'var(--text-secondary)' } }}

@@ -51,7 +51,7 @@ const globalStyles = `
   :root {
     --sidebar-bg: #0a101b;
     --sidebar-border: #1e2c42;
-    --sidebar-width: 228px;
+    --sidebar-width: 248px;
     --accent: #22d3ee;
     --accent-glow: rgba(34,211,238,0.2);
     --accent-light: #67e8f9;
@@ -229,7 +229,7 @@ const globalStyles = `
   .card {
     background: var(--card-bg) !important;
     border: 1px solid var(--card-border) !important;
-    border-radius: var(--radius-lg) !important;
+    border-radius: 16px !important;
     box-shadow: var(--shadow) !important;
     transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s, background 0.2s;
     backdrop-filter: blur(8px);
@@ -255,6 +255,21 @@ const globalStyles = `
     box-shadow: 0 0 0 0 var(--accent-glow);
   }
   .btn-primary:hover { filter: brightness(1.1); box-shadow: 0 10px 20px var(--accent-glow); transform: translateY(-1px); }
+
+  .shell-main {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.02), transparent 15%),
+      var(--main-bg);
+  }
+
+  .topbar-glass {
+    margin: 10px 12px 0;
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015));
+    box-shadow: 0 10px 24px rgba(2, 8, 24, 0.35);
+    backdrop-filter: blur(10px);
+  }
 
   .badge {
     display: inline-flex;
@@ -561,13 +576,13 @@ function AppLayout() {
       <PageTracker />
       <div style={{ display: 'flex', height: '100dvh', maxHeight: '100dvh', overflow: 'hidden', background: 'var(--main-bg)' }}>
         <Sidebar />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0, background: 'var(--main-bg)' }}>
+        <div className="shell-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
           <header style={{
             display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
             padding: isFullHeightPage ? (isAdmin ? '6px 16px' : '6px 16px') : '12px 32px',
-            borderBottom: '1px solid var(--card-border)',
-            background: 'var(--panel-bg)', flexShrink: 0,
-          }}>
+            borderBottom: 'none',
+            background: 'transparent', flexShrink: 0,
+          }} className="topbar-glass">
             <div id="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 16 }}></div>
             <ThemeSwitcher />
           </header>

@@ -380,33 +380,41 @@ export default function AdminTerminal() {
     if (!unlocked) return
     setLoading(true)
     log('Connecting to TalentOps AI backend…')
-    try {
-      const [s, ok, ts, ri, fa, tbl, sys, orp, dop, uop, si, ei, al, feed, cov] = await Promise.all([
-        adminAxios.get('/admin/stats'),
-        adminAxios.get('/admin/ops-kpis'),
-        adminAxios.get('/admin/top-states'),
-        adminAxios.get('/admin/recent-imports'),
-        adminAxios.get('/admin/field-audit'),
-        adminAxios.get('/admin/table-sizes'),
-        adminAxios.get('/admin/system-info'),
-        adminAxios.get('/admin/orphan-companies'),
-        adminAxios.get('/admin/data-operations'),
-        adminAxios.get('/admin/upload-operations'),
-        adminAxios.get('/admin/search-activity'),
-        adminAxios.get('/admin/export-analytics'),
-        adminAxios.get('/admin/alerts'),
-        adminAxios.get('/admin/activity-feed'),
-        adminAxios.get('/admin/state-coverage'),
-      ])
-      setStats(s.data); setOpsKpis(ok.data); setTopStates(ts.data); setRecentImports(ri.data)
-      setFieldAudit(fa.data); setTableSizes(tbl.data); setSysInfo(sys.data); setOrphans(orp.data)
-      setDataOps(dop.data); setUploadOps(uop.data); setSearchIntel(si.data); setExportIntel(ei.data)
-      setAlerts(al.data?.alerts || []); setActivityFeed(feed.data); setStateCoverage(cov.data)
-      log(`✓ Stats loaded: ${s.data.total_recruiters?.toLocaleString()} recruiters, ${s.data.total_companies?.toLocaleString()} companies`, 'ok')
-      log(`✓ DB size: ${sys.data.database_size} · Uptime: ${sys.data.uptime}`, 'ok')
-    } catch (e) {
-      log('✗ Failed to load admin data: ' + getErrorMessage(e, e.message || 'unknown error'), 'error')
+    
+    const safeGet = async (url) => {
+      try { const res = await adminAxios.get(url); return res.data; }
+      catch (e) { log(`✗ Failed to load ${url}`, 'warn'); return null; }
     }
+
+    const [s, ok, ts, ri, fa, tbl, sys, orp, dq, dop, uop, si, ei, al, feed, cov] = await Promise.all([
+      safeGet('/admin/stats'),
+      safeGet('/admin/ops-kpis'),
+      safeGet('/admin/top-states'),
+      safeGet('/admin/recent-imports'),
+      safeGet('/admin/field-audit'),
+      safeGet('/admin/table-sizes'),
+      safeGet('/admin/system-info'),
+      safeGet('/admin/orphan-companies'),
+      safeGet('/admin/data-quality'),
+      safeGet('/admin/data-operations'),
+      safeGet('/admin/upload-operations'),
+      safeGet('/admin/search-activity'),
+      safeGet('/admin/export-analytics'),
+      safeGet('/admin/alerts'),
+      safeGet('/admin/activity-feed'),
+      safeGet('/admin/state-coverage'),
+    ])
+
+    if (s) setStats(s); if (ok) setOpsKpis(ok); if (ts) setTopStates(ts || []); if (ri) setRecentImports(ri || [])
+    if (fa) setFieldAudit(fa); if (tbl) setTableSizes(tbl || []); if (sys) setSysInfo(sys); if (orp) setOrphans(orp); if (dq) setDataQuality(dq)
+    if (dop) setDataOps(dop); if (uop) setUploadOps(uop); if (si) setSearchIntel(si); if (ei) setExportIntel(ei)
+    if (al) setAlerts(al.alerts || []); if (feed) setActivityFeed(feed); if (cov) setStateCoverage(cov)
+    
+    if (s && sys) {
+      log(`✓ Stats loaded: ${s.total_recruiters?.toLocaleString()} recruiters, ${s.total_companies?.toLocaleString()} companies`, 'ok')
+      log(`✓ DB size: ${sys.database_size} · Uptime: ${sys.uptime}`, 'ok')
+    }
+    
     setLoading(false)
   }, [unlocked])
 
@@ -495,9 +503,9 @@ export default function AdminTerminal() {
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
-    background: '#020917',
+    background: 'var(--main-bg)',
     fontFamily: "'DM Sans', sans-serif",
-    color: '#e2e8f0',
+    color: 'var(--text-primary)',
   }
 
   return (
@@ -508,20 +516,20 @@ export default function AdminTerminal() {
       `}</style>
 
       {/* Header */}
-      <div style={{ background: '#0b1525', borderBottom: '1px solid #1e2d45', padding: '14px 28px', display: 'flex', alignItems: 'center', gap: 14, position: 'sticky', top: 0, zIndex: 50 }}>
+      <div style={{ background: 'var(--panel-bg)', borderBottom: '1px solid #1e2d45', padding: '14px 28px', display: 'flex', alignItems: 'center', gap: 14, position: 'sticky', top: 0, zIndex: 50 }}>
         <div style={{ width: 36, height: 36, borderRadius: 8, background: 'linear-gradient(135deg, #0ea5e9, #1d4ed8)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 16px rgba(14,165,233,0.4)' }}>
           <i className="ti ti-terminal-2" style={{ color: '#fff', fontSize: 18 }} />
         </div>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#e2e8f0', letterSpacing: '-0.01em' }}>ADMIN TERMINAL</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>ADMIN TERMINAL</div>
           <div style={{ fontSize: 11, color: '#38bdf8', fontFamily: "'DM Mono', monospace" }}>TalentOps AI · Privileged Access</div>
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
           {loading && <span style={{ fontSize: 12, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}><i className="ti ti-loader" style={{ animation: 'spin 0.8s linear infinite' }} /> Loading…</span>}
-          <button onClick={loadAll} style={{ background: '#0d1829', border: '1px solid #1e3a5f', color: '#94a3b8', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={loadAll} style={{ background: 'var(--card-bg)', border: '1px solid #1e3a5f', color: 'var(--text-secondary)', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <i className="ti ti-refresh" /> Refresh
           </button>
-          <button onClick={clearCache} style={{ background: '#0d1829', border: '1px solid #1e3a5f', color: '#f59e0b', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={clearCache} style={{ background: 'var(--card-bg)', border: '1px solid #1e3a5f', color: '#f59e0b', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <i className="ti ti-trash" /> Clear Cache
           </button>
           {cacheMsg && <span style={{ fontSize: 12, color: '#22c55e' }}>{cacheMsg}</span>}
@@ -532,16 +540,16 @@ export default function AdminTerminal() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 2, padding: '0 28px', background: '#0b1525', borderBottom: '1px solid #1e2d45' }}>
+      <div style={{ display: 'flex', gap: 2, padding: '0 28px', background: 'var(--panel-bg)', borderBottom: '1px solid #1e2d45' }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
             background: 'none', border: 'none', padding: '12px 18px', fontSize: 12.5, fontWeight: 500,
-            color: activeTab === t.id ? '#38bdf8' : '#475569', cursor: 'pointer',
+            color: activeTab === t.id ? '#38bdf8' : 'var(--text-muted)', cursor: 'pointer',
             borderBottom: activeTab === t.id ? '2px solid #38bdf8' : '2px solid transparent',
             display: 'flex', alignItems: 'center', gap: 7, transition: 'all 0.15s',
           }}
-          onMouseEnter={e => { if (activeTab !== t.id) e.currentTarget.style.color = '#94a3b8' }}
-          onMouseLeave={e => { if (activeTab !== t.id) e.currentTarget.style.color = '#475569' }}
+          onMouseEnter={e => { if (activeTab !== t.id) e.currentTarget.style.color = 'var(--text-secondary)' }}
+          onMouseLeave={e => { if (activeTab !== t.id) e.currentTarget.style.color = 'var(--text-muted)' }}
           >
             <i className={`ti ${t.icon}`} style={{ fontSize: 14 }} />{t.label}
           </button>
@@ -582,9 +590,9 @@ export default function AdminTerminal() {
                     const w = Math.round(s.count / max * 100)
                     return (
                       <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: 11, color: '#475569', minWidth: 18, textAlign: 'right' }}>{i+1}</span>
-                        <span style={{ fontSize: 12, color: '#94a3b8', minWidth: 100, fontFamily: "'DM Mono', monospace" }}>{s.state || '(blank)'}</span>
-                        <div style={{ flex: 1, height: 6, background: '#111c30', borderRadius: 99, overflow: 'hidden' }}>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)', minWidth: 18, textAlign: 'right' }}>{i+1}</span>
+                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', minWidth: 100, fontFamily: "'DM Mono', monospace" }}>{s.state || '(blank)'}</span>
+                        <div style={{ flex: 1, height: 6, background: 'var(--bg-hover)', borderRadius: 99, overflow: 'hidden' }}>
                           <div style={{ width: `${w}%`, height: '100%', background: 'linear-gradient(90deg, #0ea5e9, #38bdf8)', borderRadius: 99, transition: 'width 0.6s ease' }} />
                         </div>
                         <span style={{ fontSize: 12, fontWeight: 600, color: '#38bdf8', minWidth: 50, textAlign: 'right', fontFamily: "'DM Mono', monospace" }}>{fmt(s.count)}</span>
@@ -597,12 +605,12 @@ export default function AdminTerminal() {
               <Section title="Recent Import Activity" icon="ti-calendar">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {recentImports.map((r, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: '#0b1525', borderRadius: 8, fontSize: 12 }}>
-                      <span style={{ color: '#64748b', fontFamily: "'DM Mono', monospace" }}>{r.import_date}</span>
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 8, fontSize: 12 }}>
+                      <span style={{ color: 'var(--text-muted)', fontFamily: "'DM Mono', monospace" }}>{r.import_date}</span>
                       <span style={{ fontWeight: 600, color: '#38bdf8' }}>+{fmt(r.count)} records</span>
                     </div>
                   ))}
-                  {recentImports.length === 0 && <span style={{ color: '#475569', fontSize: 12 }}>No import history found.</span>}
+                  {recentImports.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>No import history found.</span>}
                 </div>
               </Section>
             </div>
@@ -616,21 +624,21 @@ export default function AdminTerminal() {
                 style={{ marginBottom: 0 }}
               >
                 {(!alerts || alerts.length === 0) ? (
-                  <div style={{ color: '#64748b', fontSize: 12 }}>No alerts detected.</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No alerts detected.</div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {alerts.slice(0, 4).map((a, i) => (
-                      <div key={i} style={{ background: '#0b1525', border: '1px solid #1e2d45', borderRadius: 12, padding: 12, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                      <div key={i} style={{ background: 'var(--panel-bg)', border: '1px solid #1e2d45', borderRadius: 12, padding: 12, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                         <div style={{ width: 34, height: 34, borderRadius: 10, background: a.severity === 'critical' ? 'rgba(239,68,68,0.18)' : 'rgba(245,158,11,0.16)', border: `1px solid ${a.severity === 'critical' ? 'rgba(239,68,68,0.35)' : 'rgba(245,158,11,0.28)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <i className={`ti ${a.severity === 'critical' ? 'ti-alert-triangle' : 'ti-alert-circle'}`} style={{ color: a.severity === 'critical' ? '#f87171' : '#fbbf24' }} />
                         </div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 12.5, fontWeight: 700, color: '#e2e8f0' }}>{a.title}</div>
-                          <div style={{ marginTop: 4, fontSize: 11.5, color: '#94a3b8', lineHeight: 1.5 }}>{a.detail}</div>
+                          <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>{a.title}</div>
+                          <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{a.detail}</div>
                           {a.action?.tab && (
                             <button
                               onClick={() => setActiveTab(a.action.tab)}
-                              style={{ marginTop: 10, background: '#111c30', border: '1px solid #1e3a5f', color: '#38bdf8', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                              style={{ marginTop: 10, background: 'var(--bg-hover)', border: '1px solid #1e3a5f', color: '#38bdf8', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                             >
                               <i className="ti ti-arrow-right" /> {a.action.label || 'Open'}
                             </button>
@@ -646,39 +654,39 @@ export default function AdminTerminal() {
                 <Section title="Search Intelligence" icon="ti-sparkles" style={{ marginBottom: 0 }}>
                   <div style={{ display: 'grid', gap: 10 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'center' }}>
-                      <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Most Searched States</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Most Searched States</div>
                       <Badge color="#a78bfa">Last 24h</Badge>
                     </div>
                     {(searchIntel?.most_searched_states?.length ? searchIntel.most_searched_states : []).slice(0, 5).map((r, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: '#0b1525', borderRadius: 10, border: '1px solid #1e2d45' }}>
-                        <span style={{ fontSize: 12, color: '#94a3b8', fontFamily: "'DM Mono', monospace" }}>{r.key}</span>
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid #1e2d45' }}>
+                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: "'DM Mono', monospace" }}>{r.key}</span>
                         <span style={{ fontSize: 12, fontWeight: 700, color: '#a78bfa', fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
                       </div>
                     ))}
-                    {!(searchIntel?.most_searched_states?.length) && <div style={{ color: '#64748b', fontSize: 12 }}>No Data Available</div>}
+                    {!(searchIntel?.most_searched_states?.length) && <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No Data Available</div>}
                   </div>
                 </Section>
 
                 <Section title="Activity Feed" icon="ti-activity" style={{ marginBottom: 0 }}>
                   <div style={{ maxHeight: 210, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {(activityFeed?.items || []).slice(0, 10).map((it, i) => (
-                      <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 10px', background: '#0b1525', borderRadius: 10, border: '1px solid #1e2d45' }}>
-                        <div style={{ width: 28, height: 28, borderRadius: 9, background: '#111c30', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 10px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid #1e2d45' }}>
+                        <div style={{ width: 28, height: 28, borderRadius: 9, background: 'var(--bg-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <i className={`ti ${it.type === 'upload' ? 'ti-cloud-upload' : it.action_type?.startsWith('EXPORT_') ? 'ti-file-export' : it.action_type?.startsWith('SEARCH_') ? 'ti-search' : 'ti-bolt'}`} style={{ color: '#38bdf8', fontSize: 14 }} />
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 650, color: '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: 12, fontWeight: 650, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {it.type === 'upload'
                               ? `Import: ${it.filename || it.job_id}`
                               : `${it.action_type || 'ACTION'}`}
                           </div>
-                          <div style={{ fontSize: 10.5, color: '#64748b', marginTop: 2, fontFamily: "'DM Mono', monospace" }}>
+                          <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 2, fontFamily: "'DM Mono', monospace" }}>
                             {String(it.ts || '').replace('T', ' ').slice(0, 19)} · {it.status || ''}
                           </div>
                         </div>
                       </div>
                     ))}
-                    {!(activityFeed?.items?.length) && <div style={{ color: '#64748b', fontSize: 12 }}>No Data Available</div>}
+                    {!(activityFeed?.items?.length) && <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No Data Available</div>}
                   </div>
                 </Section>
               </div>
@@ -708,7 +716,7 @@ export default function AdminTerminal() {
                 }>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
                     <div>
-                      <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Quick Actions</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Quick Actions</div>
                       <div style={{ display: 'grid', gap: 10 }}>
                         {[
                           { label: 'Export Problem Records', icon: 'ti-file-export', disabled: true },
@@ -722,9 +730,9 @@ export default function AdminTerminal() {
                             disabled={b.disabled}
                             title={b.disabled ? 'Coming soon' : b.label}
                             style={{
-                              background: '#111c30',
+                              background: 'var(--bg-hover)',
                               border: '1px solid #1e3a5f',
-                              color: b.disabled ? '#475569' : '#38bdf8',
+                              color: b.disabled ? 'var(--text-muted)' : '#38bdf8',
                               padding: '9px 14px',
                               borderRadius: 10,
                               fontSize: 12.5,
@@ -743,22 +751,22 @@ export default function AdminTerminal() {
                     </div>
 
                     <div>
-                      <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>State Coverage Center</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>State Coverage Center</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 220, overflowY: 'auto' }}>
                         {(stateCoverage?.states || []).slice(0, 12).map((r, i) => (
-                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#0b1525', border: '1px solid #1e2d45', borderRadius: 10 }}>
-                            <span style={{ color: '#94a3b8', fontFamily: "'DM Mono', monospace" }}>{r.state}</span>
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'var(--panel-bg)', border: '1px solid #1e2d45', borderRadius: 10 }}>
+                            <span style={{ color: 'var(--text-secondary)', fontFamily: "'DM Mono', monospace" }}>{r.state}</span>
                             <span style={{ color: '#38bdf8', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.recruiters)} rec</span>
                           </div>
                         ))}
-                        {!(stateCoverage?.states?.length) && <div style={{ color: '#64748b', fontSize: 12 }}>No Data Available</div>}
+                        {!(stateCoverage?.states?.length) && <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No Data Available</div>}
                       </div>
                     </div>
                   </div>
                 </Section>
 
                 <Section title="Duplicate Resolution Center" icon="ti-git-merge" action={<Badge color="#64748b">Future-ready</Badge>}>
-                  <div style={{ color: '#64748b', fontSize: 12 }}>
+                  <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>
                     No Data Available. Duplicate merge suggestions and review queue will appear here when implemented.
                   </div>
                 </Section>
@@ -773,13 +781,13 @@ export default function AdminTerminal() {
                     const coverage = 100 - info.pct
                     const color = coverage > 80 ? '#22c55e' : coverage > 50 ? '#f59e0b' : '#ef4444'
                     return (
-                      <div key={field} style={{ background: '#0b1525', border: '1px solid #1e2d45', borderRadius: 10, padding: 16 }}>
-                        <div style={{ fontSize: 10.5, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>{field.replace('missing_', '')}</div>
+                      <div key={field} style={{ background: 'var(--panel-bg)', border: '1px solid #1e2d45', borderRadius: 10, padding: 16 }}>
+                        <div style={{ fontSize: 10.5, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>{field.replace('missing_', '')}</div>
                         <div style={{ fontSize: 22, fontWeight: 700, color, marginBottom: 4, fontFamily: "'DM Mono', monospace" }}>{coverage}%</div>
-                        <div style={{ height: 4, background: '#1e2d45', borderRadius: 99, overflow: 'hidden', marginBottom: 8 }}>
+                        <div style={{ height: 4, background: 'var(--card-border)', borderRadius: 99, overflow: 'hidden', marginBottom: 8 }}>
                           <div style={{ width: `${coverage}%`, height: '100%', background: color, borderRadius: 99, transition: 'width 0.6s' }} />
                         </div>
-                        <div style={{ fontSize: 11, color: '#475569' }}>{fmt(filled)} / {fmt(fieldAudit.total)} filled</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{fmt(filled)} / {fmt(fieldAudit.total)} filled</div>
                       </div>
                     )
                   })}
@@ -789,26 +797,26 @@ export default function AdminTerminal() {
 
             {/* Duplicates */}
             <Section title="Duplicate Email Detection" icon="ti-copy" action={
-              <button onClick={loadDupes} style={{ background: '#111c30', border: '1px solid #1e3a5f', color: '#38bdf8', padding: '6px 14px', borderRadius: 7, fontSize: 12, cursor: 'pointer' }}>
+              <button onClick={loadDupes} style={{ background: 'var(--bg-hover)', border: '1px solid #1e3a5f', color: '#38bdf8', padding: '6px 14px', borderRadius: 7, fontSize: 12, cursor: 'pointer' }}>
                 <i className="ti ti-search" /> Scan Duplicates
               </button>
             }>
-              {!dupes && <span style={{ fontSize: 12.5, color: '#475569' }}>Click "Scan Duplicates" to detect emails appearing more than once in the database.</span>}
+              {!dupes && <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>Click "Scan Duplicates" to detect emails appearing more than once in the database.</span>}
               {dupes && (
                 <>
                   <div style={{ marginBottom: 14, display: 'flex', gap: 14 }}>
-                    <div style={{ background: '#0b1525', borderRadius: 10, padding: '12px 20px', textAlign: 'center' }}>
+                    <div style={{ background: 'var(--panel-bg)', borderRadius: 10, padding: '12px 20px', textAlign: 'center' }}>
                       <div style={{ fontSize: 28, fontWeight: 700, color: dupes.total_duplicate_groups > 0 ? '#f87171' : '#22c55e', fontFamily: "'DM Mono', monospace" }}>{dupes.total_duplicate_groups}</div>
-                      <div style={{ fontSize: 11, color: '#64748b' }}>duplicate groups</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>duplicate groups</div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 400, overflowY: 'auto' }}>
                     {dupes.duplicates.slice(0, 30).map((d, i) => (
-                      <div key={i} style={{ background: '#0b1525', border: '1px solid #2d1a1a', borderRadius: 8, padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                      <div key={i} style={{ background: 'var(--panel-bg)', border: '1px solid #2d1a1a', borderRadius: 8, padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                         <span style={{ background: '#f8717122', color: '#f87171', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99, whiteSpace: 'nowrap' }}>×{d.count}</span>
                         <div>
-                          <div style={{ fontSize: 12, color: '#94a3b8', fontFamily: "'DM Mono', monospace", marginBottom: 4 }}>{d.email}</div>
-                          <div style={{ fontSize: 11, color: '#475569' }}>{d.names.join(' · ')}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: "'DM Mono', monospace", marginBottom: 4 }}>{d.email}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{d.names.join(' · ')}</div>
                         </div>
                       </div>
                     ))}
@@ -823,9 +831,9 @@ export default function AdminTerminal() {
               <Section title={`Companies with No Recruiters (${fmt(orphans.count)} found)`} icon="ti-building-off">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 300, overflowY: 'auto' }}>
                   {orphans.companies.slice(0, 30).map((c, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 12px', background: '#0b1525', borderRadius: 8, fontSize: 12 }}>
-                      <span style={{ color: '#94a3b8' }}>{c.company_name}</span>
-                      <span style={{ color: '#475569' }}>{c.location || '—'}</span>
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 8, fontSize: 12 }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>{c.company_name}</span>
+                      <span style={{ color: 'var(--text-muted)' }}>{c.location || '—'}</span>
                     </div>
                   ))}
                   {orphans.count === 0 && <span style={{ color: '#22c55e', fontSize: 12.5 }}>✓ All companies have linked recruiters.</span>}
@@ -841,12 +849,12 @@ export default function AdminTerminal() {
           <div style={{ animation: 'fadeUp 0.25s ease' }}>
             <Section title="Upload Operations Center" icon="ti-cloud-upload" action={<Badge color="#38bdf8">ETL History</Badge>}>
               {!(uploadOps?.jobs?.length) ? (
-                <div style={{ color: '#64748b', fontSize: 12 }}>No Data Available</div>
+                <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No Data Available</div>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                     <thead>
-                      <tr style={{ background: '#111c30' }}>
+                      <tr style={{ background: 'var(--bg-hover)' }}>
                         {['File Name', 'Rows', 'Status', 'Date', 'Source', 'Actions'].map(h => (
                           <th key={h} style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', fontSize: 10.5, letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: '1px solid #1e3a5f', whiteSpace: 'nowrap' }}>{h}</th>
                         ))}
@@ -855,24 +863,24 @@ export default function AdminTerminal() {
                     <tbody>
                       {uploadOps.jobs.slice(0, 30).map((j) => (
                         <tr key={j.job_id} style={{ borderBottom: '1px solid #0e1e30' }}
-                          onMouseEnter={e => { e.currentTarget.style.background = '#0b1525' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--panel-bg)' }}
                           onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                         >
-                          <td style={{ padding: '10px 12px', color: '#e2e8f0', maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.filename}</td>
-                          <td style={{ padding: '10px 12px', color: '#94a3b8', fontFamily: "'DM Mono', monospace" }}>{fmt(j.total_rows)}</td>
+                          <td style={{ padding: '10px 12px', color: 'var(--text-primary)', maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.filename}</td>
+                          <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', fontFamily: "'DM Mono', monospace" }}>{fmt(j.total_rows)}</td>
                           <td style={{ padding: '10px 12px' }}>
                             <Badge color={j.status === 'completed' ? '#22c55e' : j.status === 'failed' ? '#ef4444' : j.status === 'processing' ? '#f59e0b' : '#38bdf8'}>
                               {String(j.status || 'unknown').toUpperCase()}
                             </Badge>
                           </td>
-                          <td style={{ padding: '10px 12px', color: '#64748b', fontFamily: "'DM Mono', monospace", whiteSpace: 'nowrap' }}>{String(j.started_at || '').replace('T', ' ').slice(0, 16) || '—'}</td>
-                          <td style={{ padding: '10px 12px', color: '#64748b' }}>{j.source || 'No Data Available'}</td>
+                          <td style={{ padding: '10px 12px', color: 'var(--text-muted)', fontFamily: "'DM Mono', monospace", whiteSpace: 'nowrap' }}>{String(j.started_at || '').replace('T', ' ').slice(0, 16) || '—'}</td>
+                          <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>{j.source || 'No Data Available'}</td>
                           <td style={{ padding: '10px 12px' }}>
                             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                              <button disabled title="Coming soon" style={{ background: '#0d1829', border: '1px solid #1e3a5f', color: '#475569', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'not-allowed', opacity: 0.7 }}>
+                              <button disabled title="Coming soon" style={{ background: 'var(--card-bg)', border: '1px solid #1e3a5f', color: 'var(--text-muted)', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'not-allowed', opacity: 0.7 }}>
                                 View
                               </button>
-                              <button onClick={() => retryImport(j.job_id)} style={{ background: '#111c30', border: '1px solid #1e3a5f', color: '#38bdf8', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer' }}>
+                              <button onClick={() => retryImport(j.job_id)} style={{ background: 'var(--bg-hover)', border: '1px solid #1e3a5f', color: '#38bdf8', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer' }}>
                                 Retry
                               </button>
                               <button disabled title="Coming soon" style={{ background: '#2a0b0b', border: '1px solid #7f1d1d', color: '#f87171', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'not-allowed', opacity: 0.7 }}>
@@ -896,32 +904,32 @@ export default function AdminTerminal() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
               <Section title="Most Searched States" icon="ti-map-2" style={{ marginBottom: 0 }}>
                 {(searchIntel?.most_searched_states || []).slice(0, 12).map((r, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: '#0b1525', borderRadius: 10, border: '1px solid #1e2d45', marginBottom: 8 }}>
-                    <span style={{ color: '#94a3b8', fontFamily: "'DM Mono', monospace" }}>{r.key}</span>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid #1e2d45', marginBottom: 8 }}>
+                    <span style={{ color: 'var(--text-secondary)', fontFamily: "'DM Mono', monospace" }}>{r.key}</span>
                     <span style={{ color: '#38bdf8', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
                   </div>
                 ))}
-                {!(searchIntel?.most_searched_states?.length) && <div style={{ color: '#64748b', fontSize: 12 }}>No Data Available</div>}
+                {!(searchIntel?.most_searched_states?.length) && <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No Data Available</div>}
               </Section>
 
               <Section title="Most Searched Companies" icon="ti-building" style={{ marginBottom: 0 }}>
                 {(searchIntel?.most_searched_companies || []).slice(0, 12).map((r, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: '#0b1525', borderRadius: 10, border: '1px solid #1e2d45', marginBottom: 8 }}>
-                    <span style={{ color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.key}</span>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid #1e2d45', marginBottom: 8 }}>
+                    <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.key}</span>
                     <span style={{ color: '#a78bfa', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
                   </div>
                 ))}
-                {!(searchIntel?.most_searched_companies?.length) && <div style={{ color: '#64748b', fontSize: 12 }}>No Data Available</div>}
+                {!(searchIntel?.most_searched_companies?.length) && <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No Data Available</div>}
               </Section>
 
               <Section title="Most Searched Recruiters" icon="ti-users" style={{ marginBottom: 0 }}>
                 {(searchIntel?.most_searched_recruiters || []).slice(0, 12).map((r, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: '#0b1525', borderRadius: 10, border: '1px solid #1e2d45', marginBottom: 8 }}>
-                    <span style={{ color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.key}</span>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid #1e2d45', marginBottom: 8 }}>
+                    <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.key}</span>
                     <span style={{ color: '#22c55e', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
                   </div>
                 ))}
-                {!(searchIntel?.most_searched_recruiters?.length) && <div style={{ color: '#64748b', fontSize: 12 }}>No Data Available</div>}
+                {!(searchIntel?.most_searched_recruiters?.length) && <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No Data Available</div>}
               </Section>
             </div>
           </div>
@@ -938,21 +946,21 @@ export default function AdminTerminal() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
               <Section title="Most Exported States" icon="ti-map-2" style={{ marginBottom: 0 }}>
                 {(exportIntel?.most_exported_states || []).slice(0, 15).map((r, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: '#0b1525', borderRadius: 10, border: '1px solid #1e2d45', marginBottom: 8 }}>
-                    <span style={{ color: '#94a3b8', fontFamily: "'DM Mono', monospace" }}>{r.key}</span>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid #1e2d45', marginBottom: 8 }}>
+                    <span style={{ color: 'var(--text-secondary)', fontFamily: "'DM Mono', monospace" }}>{r.key}</span>
                     <span style={{ color: '#22c55e', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
                   </div>
                 ))}
-                {!(exportIntel?.most_exported_states?.length) && <div style={{ color: '#64748b', fontSize: 12 }}>No Data Available</div>}
+                {!(exportIntel?.most_exported_states?.length) && <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No Data Available</div>}
               </Section>
               <Section title="Most Exported Companies" icon="ti-building" style={{ marginBottom: 0 }}>
                 {(exportIntel?.most_exported_companies || []).slice(0, 15).map((r, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: '#0b1525', borderRadius: 10, border: '1px solid #1e2d45', marginBottom: 8 }}>
-                    <span style={{ color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.key}</span>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid #1e2d45', marginBottom: 8 }}>
+                    <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.key}</span>
                     <span style={{ color: '#a78bfa', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
                   </div>
                 ))}
-                {!(exportIntel?.most_exported_companies?.length) && <div style={{ color: '#64748b', fontSize: 12 }}>No Data Available</div>}
+                {!(exportIntel?.most_exported_companies?.length) && <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No Data Available</div>}
               </Section>
             </div>
           </div>
@@ -975,17 +983,17 @@ export default function AdminTerminal() {
             </div>
 
             <Section title="PostgreSQL Version" icon="ti-server">
-              <pre style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: '#64748b', whiteSpace: 'pre-wrap', margin: 0 }}>{sysInfo.postgres_version}</pre>
+              <pre style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'pre-wrap', margin: 0 }}>{sysInfo.postgres_version}</pre>
             </Section>
 
             <Section title="Table Storage Sizes" icon="ti-table">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {tableSizes.map((t, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 14px', background: '#0b1525', borderRadius: 8 }}>
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 14px', background: 'var(--panel-bg)', borderRadius: 8 }}>
                     <span style={{ fontSize: 12, color: '#38bdf8', minWidth: 160, fontFamily: "'DM Mono', monospace" }}>{t.table_name}</span>
-                    <span style={{ fontSize: 12, color: '#94a3b8', minWidth: 80 }}>{t.total_size}</span>
-                    <span style={{ fontSize: 11.5, color: '#475569' }}>{fmt(t.live_rows)} rows</span>
-                    <div style={{ flex: 1, height: 4, background: '#1e2d45', borderRadius: 99, overflow: 'hidden' }}>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)', minWidth: 80 }}>{t.total_size}</span>
+                    <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{fmt(t.live_rows)} rows</span>
+                    <div style={{ flex: 1, height: 4, background: 'var(--card-border)', borderRadius: 99, overflow: 'hidden' }}>
                       <div style={{ width: `${Math.round(t.size_bytes / (tableSizes[0]?.size_bytes || 1) * 100)}%`, height: '100%', background: 'linear-gradient(90deg, #1d4ed8, #38bdf8)', borderRadius: 99 }} />
                     </div>
                   </div>
@@ -1001,14 +1009,14 @@ export default function AdminTerminal() {
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
               {[1, 7, 14, 30].map(d => (
                 <button key={d} onClick={() => { setLogDays(d); loadVisitorLogs(d) }} style={{
-                  background: logDays === d ? 'linear-gradient(135deg, #0ea5e9, #1d4ed8)' : '#0d1829',
-                  border: '1px solid', borderColor: logDays === d ? '#0ea5e9' : '#1e3a5f',
-                  color: logDays === d ? '#fff' : '#64748b', padding: '7px 18px', borderRadius: 8,
+                  background: logDays === d ? 'linear-gradient(135deg, #0ea5e9, #1d4ed8)' : 'var(--card-bg)',
+                  border: '1px solid', borderColor: logDays === d ? '#0ea5e9' : 'var(--card-border)',
+                  color: logDays === d ? '#fff' : 'var(--text-muted)', padding: '7px 18px', borderRadius: 8,
                   fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
                 }}>Last {d} day{d > 1 ? 's' : ''}</button>
               ))}
               <button onClick={() => loadVisitorLogs(logDays)} style={{
-                marginLeft: 'auto', background: '#0d1829', border: '1px solid #1e3a5f',
+                marginLeft: 'auto', background: 'var(--card-bg)', border: '1px solid #1e3a5f',
                 color: '#38bdf8', padding: '7px 16px', borderRadius: 8, fontSize: 12.5, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: 6,
               }}>
@@ -1026,7 +1034,7 @@ export default function AdminTerminal() {
             )}
 
             {loadingLogs && !visitorSummary && (
-              <div style={{ background: '#0d1829', border: '1px solid #1e3a5f', borderRadius: 14, padding: 32, textAlign: 'center', color: '#64748b', fontSize: 13 }}>
+              <div style={{ background: 'var(--card-bg)', border: '1px solid #1e3a5f', borderRadius: 14, padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
                 <i className="ti ti-loader" style={{ fontSize: 28, animation: 'spin 0.8s linear infinite', display: 'block', marginBottom: 10 }} />
                 Loading visitor log book…
               </div>
@@ -1052,8 +1060,8 @@ export default function AdminTerminal() {
                         const w = Math.round(Number(d.page_views) / max * 100)
                         return (
                           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                            <span style={{ fontSize: 11, color: '#475569', minWidth: 80, fontFamily: "'DM Mono', monospace" }}>{String(d.day).slice(0, 10)}</span>
-                            <div style={{ flex: 1, height: 6, background: '#111c30', borderRadius: 99, overflow: 'hidden' }}>
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)', minWidth: 80, fontFamily: "'DM Mono', monospace" }}>{String(d.day).slice(0, 10)}</span>
+                            <div style={{ flex: 1, height: 6, background: 'var(--bg-hover)', borderRadius: 99, overflow: 'hidden' }}>
                               <div style={{ width: `${w}%`, height: '100%', background: 'linear-gradient(90deg, #1d4ed8, #38bdf8)', borderRadius: 99 }} />
                             </div>
                             <span style={{ fontSize: 11, fontWeight: 600, color: '#38bdf8', minWidth: 30, textAlign: 'right', fontFamily: "'DM Mono', monospace" }}>{d.page_views}</span>
@@ -1061,7 +1069,7 @@ export default function AdminTerminal() {
                         )
                       })}
                       {!(visitorSummary.daily?.length) && (
-                        <div style={{ color: '#64748b', fontSize: 12, textAlign: 'center', paddingTop: 40 }}>No daily data yet</div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: 12, textAlign: 'center', paddingTop: 40 }}>No daily data yet</div>
                       )}
                     </div>
                   </Section>
@@ -1072,9 +1080,9 @@ export default function AdminTerminal() {
                         const max = visitorSummary.top_pages[0]?.views || 1
                         return (
                           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                            <span style={{ fontSize: 11, color: '#475569', minWidth: 16, textAlign: 'right' }}>{i + 1}</span>
-                            <span style={{ fontSize: 12, color: '#94a3b8', minWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.page}</span>
-                            <div style={{ flex: 1, height: 5, background: '#111c30', borderRadius: 99, overflow: 'hidden' }}>
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)', minWidth: 16, textAlign: 'right' }}>{i + 1}</span>
+                            <span style={{ fontSize: 12, color: 'var(--text-secondary)', minWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.page}</span>
+                            <div style={{ flex: 1, height: 5, background: 'var(--bg-hover)', borderRadius: 99, overflow: 'hidden' }}>
                               <div style={{ width: `${Math.round(p.views / max * 100)}%`, height: '100%', background: 'linear-gradient(90deg, #7c3aed, #a78bfa)', borderRadius: 99 }} />
                             </div>
                             <span style={{ fontSize: 11, fontWeight: 600, color: '#a78bfa', minWidth: 28, textAlign: 'right', fontFamily: "'DM Mono', monospace" }}>{p.views}</span>
@@ -1082,7 +1090,7 @@ export default function AdminTerminal() {
                         )
                       })}
                       {!(visitorSummary.top_pages?.length) && (
-                        <div style={{ color: '#64748b', fontSize: 12, textAlign: 'center', paddingTop: 40 }}>No page data yet</div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: 12, textAlign: 'center', paddingTop: 40 }}>No page data yet</div>
                       )}
                     </div>
                   </Section>
@@ -1104,8 +1112,8 @@ export default function AdminTerminal() {
                       />
                     ))
                     : (
-                      <div style={{ color: '#94a3b8', fontSize: 12.5, textAlign: 'center', padding: '48px 16px', lineHeight: 1.6 }}>
-                        <i className="ti ti-users" style={{ fontSize: 32, color: '#1e3a5f', display: 'block', marginBottom: 12 }} />
+                      <div style={{ color: 'var(--text-secondary)', fontSize: 12.5, textAlign: 'center', padding: '48px 16px', lineHeight: 1.6 }}>
+                        <i className="ti ti-users" style={{ fontSize: 32, color: 'var(--card-border)', display: 'block', marginBottom: 12 }} />
                         No sessions in the last {logDays} day{logDays > 1 ? 's' : ''}.
                         {visitorLogs.total_visits > 0
                           ? <> ({visitorLogs.total_visits} raw visits found — try a longer range.)</>
@@ -1126,13 +1134,13 @@ export default function AdminTerminal() {
                 background: '#060e1a', borderRadius: 10, padding: 16, height: 420, overflowY: 'auto',
                 fontFamily: "'DM Mono', monospace", fontSize: 12.5, lineHeight: 1.9,
               }}>
-                {logLines.length === 0 && <span style={{ color: '#1e3a5f' }}>— No activity yet —</span>}
+                {logLines.length === 0 && <span style={{ color: 'var(--card-border)' }}>— No activity yet —</span>}
                 {logLines.map((l, i) => (
-                  <div key={i} style={{ color: l.type === 'error' ? '#f87171' : l.type === 'warn' ? '#fbbf24' : l.type === 'ok' ? '#4ade80' : '#64748b' }}>
-                    <span style={{ color: '#1e3a5f', userSelect: 'none' }}>[{l.ts}] </span>{l.msg}
+                  <div key={i} style={{ color: l.type === 'error' ? '#f87171' : l.type === 'warn' ? '#fbbf24' : l.type === 'ok' ? '#4ade80' : 'var(--text-muted)' }}>
+                    <span style={{ color: 'var(--card-border)', userSelect: 'none' }}>[{l.ts}] </span>{l.msg}
                   </div>
                 ))}
-                <span style={{ color: '#1e3a5f', animation: 'blink 1.2s step-end infinite' }}>▌</span>
+                <span style={{ color: 'var(--card-border)', animation: 'blink 1.2s step-end infinite' }}>▌</span>
               </div>
             </Section>
           </div>

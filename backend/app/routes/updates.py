@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
+from sqlalchemy.exc import ProgrammingError
 from typing import List
 from datetime import datetime
 
@@ -13,8 +14,12 @@ router = APIRouter(prefix="/updates", tags=["updates"])
 
 @router.post("/seed")
 def seed_initial_updates(db: Session = Depends(get_db)):
-    if db.query(PlatformUpdate).first():
-        return {"status": "already seeded"}
+    try:
+        if db.query(PlatformUpdate).first():
+            return {"status": "already seeded"}
+    except ProgrammingError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Updates tables not initialized. Enable RUN_STARTUP_MIGRATIONS once or run migrations.")
         
     u = PlatformUpdate(
         version="v2.8.4",
@@ -36,14 +41,19 @@ def seed_initial_updates(db: Session = Depends(get_db)):
 
 @router.get("/status")
 def get_current_status(db: Session = Depends(get_db)):
-    \"\"\"
+    """
     Gets the latest update and its overall status.
-    \"\"\"
-    latest_update = db.query(PlatformUpdate).order_by(desc(PlatformUpdate.created_at)).first()
-    if not latest_update:
-        return {"version": "v1.0.0", "status": "Operational", "date": datetime.utcnow().isoformat(), "features": []}
+    """
+    try:
+        latest_update = db.query(PlatformUpdate).order_by(desc(PlatformUpdate.created_at)).first()
+        if not latest_update:
+            return {"version": "v1.0.0", "status": "Operational", "date": datetime.utcnow().isoformat(), "features": []}
 
-    features = db.query(FeatureVerification).filter(FeatureVerification.update_id == latest_update.update_id).all()
+        features = db.query(FeatureVerification).filter(FeatureVerification.update_id == latest_update.update_id).all()
+    except ProgrammingError:
+        # Deployments may not have run migrations yet. Keep UI stable.
+        db.rollback()
+        return {"version": "v1.0.0", "status": "No Data Available", "date": None, "features": []}
     
     # Calculate overall status
     if not features:
@@ -66,10 +76,14 @@ def get_current_status(db: Session = Depends(get_db)):
 
 @router.get("/changelog")
 def get_changelog(db: Session = Depends(get_db)):
-    \"\"\"
+    """
     Gets all updates.
-    \"\"\"
-    updates = db.query(PlatformUpdate).order_by(desc(PlatformUpdate.created_at)).all()
+    """
+    try:
+        updates = db.query(PlatformUpdate).order_by(desc(PlatformUpdate.created_at)).all()
+    except ProgrammingError:
+        db.rollback()
+        return []
     result = []
     for u in updates:
         features = db.query(FeatureVerification).filter(FeatureVerification.update_id == u.update_id).all()
@@ -98,9 +112,9 @@ def get_changelog(db: Session = Depends(get_db)):
 
 @router.get("/features")
 def get_all_features(_=Depends(verify_admin), db: Session = Depends(get_db)):
-    \"\"\"
+    """
     Gets all features for the admin verification panel.
-    \"\"\"
+    """
     features = db.query(FeatureVerification).order_by(desc(FeatureVerification.feature_id)).all()
     return [{
         "id": f.feature_id,
@@ -113,9 +127,9 @@ def get_all_features(_=Depends(verify_admin), db: Session = Depends(get_db)):
 
 @router.post("/verify/{feature_id}")
 def verify_feature(feature_id: int, payload: dict, _=Depends(verify_admin), db: Session = Depends(get_db)):
-    \"\"\"
+    """
     Updates the status of a feature.
-    \"\"\"
+    """
     feature = db.query(FeatureVerification).filter(FeatureVerification.feature_id == feature_id).first()
     if not feature:
         raise HTTPException(status_code=404, detail="Feature not found")

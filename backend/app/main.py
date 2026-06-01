@@ -65,6 +65,7 @@ app.include_router(upload.router, prefix="/upload", tags=["Upload"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(actions.router, prefix="/actions", tags=["Actions"])
+app.include_router(updates.router)
 
 
 @app.get("/")

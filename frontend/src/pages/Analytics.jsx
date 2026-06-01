@@ -117,8 +117,8 @@ function StateTooltip({ active, payload, label }) {
       </p>
       <div style={{ display: 'flex', gap: 16 }}>
         <div>
-          <p style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Companies</p>
-          <p style={{ fontSize: 16, fontWeight: 700, color: '#185FA5' }}>{d?.companies?.toLocaleString()}</p>
+          <p style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Recruiters</p>
+          <p style={{ fontSize: 16, fontWeight: 700, color: '#185FA5' }}>{d?.recruiters?.toLocaleString()}</p>
         </div>
       </div>
     </div>
@@ -131,13 +131,14 @@ export default function Analytics() {
     queryFn: async () => {
       const [v, s] = await Promise.all([
         axios.get(`${API}/analytics/visit-stats`),
-        axios.get(`${API}/analytics/companies-count-by-state`),
+        axios.get(`${API}/analytics/recruiters-by-state`),
       ])
-      
-      const raw = s.data || {}
-      const stateData = Object.entries(raw)
-        .map(([abbr, count]) => ({ state: abbr, companies: count }))
-        .sort((a, b) => b.companies - a.companies)
+
+      const raw = Array.isArray(s.data) ? s.data : []
+      const stateData = raw
+        .map((r) => ({ state: r.state, recruiters: Number(r.count) || 0 }))
+        .filter((r) => r.state && r.recruiters > 0)
+        .sort((a, b) => b.recruiters - a.recruiters)
         .slice(0, 10)
         
       return { visits: v.data, stateData }
@@ -230,13 +231,13 @@ export default function Analytics() {
           </div>
         </SectionCard>
       ) : (
-        <SectionCard title="Stateâ€‘wise Companies Distribution" icon="ti-map" compact style={{ gridColumn: '1 / -1', minHeight: hasStateData ? 0 : 160 }}>
+        <SectionCard title="State-wise Recruiters Distribution" icon="ti-map" compact style={{ gridColumn: '1 / -1', minHeight: hasStateData ? 0 : 160 }}>
           {stateData.length === 0 ? (
             <div style={{ display: 'grid', placeItems: 'center', height: '100%', textAlign: 'center', color: 'var(--text-muted)', fontSize: 11, padding: 14 }}>
               <div>
                 <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>No state data yet</div>
                 <div style={{ marginTop: 6 }}>
-                  This chart needs company records grouped by state from the API.
+                  This chart needs recruiter records with a populated state field.
                 </div>
               </div>
             </div>
@@ -248,8 +249,8 @@ export default function Analytics() {
                   <XAxis dataKey="state" tick={CHART_TICK} axisLine={false} tickLine={false} interval={0} />
                   <YAxis tick={CHART_TICK} axisLine={false} tickLine={false} width={36} allowDecimals={false} />
                   <Tooltip content={<StateTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-                  <Bar dataKey="companies" radius={[3, 3, 0, 0]} maxBarSize={24}>
-                    <LabelList dataKey="companies" position="top" {...BAR_LABEL_PROPS} />
+                  <Bar dataKey="recruiters" radius={[3, 3, 0, 0]} maxBarSize={24}>
+                    <LabelList dataKey="recruiters" position="top" {...BAR_LABEL_PROPS} />
                     {stateData.map((entry, i) => (
                       <Cell key={entry.state} fill={PAGE_COLORS[i % PAGE_COLORS.length]} />
                     ))}

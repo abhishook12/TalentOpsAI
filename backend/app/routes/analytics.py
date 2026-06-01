@@ -160,15 +160,29 @@ def companies_count_by_state(db: Session = Depends(get_db)):
     except ProgrammingError as e:
         logger.warning("mv_state_company_counts missing; falling back to live aggregation: %s", e)
         db.rollback()
-        rows = db.execute(text("""
-            SELECT
-                COALESCE(c.state, r.state) AS state,
-                COUNT(DISTINCT c.company_id) AS count
-            FROM companies c
-            LEFT JOIN recruiters r ON r.company_id = c.company_id
-            WHERE COALESCE(c.state, r.state) IS NOT NULL
-            GROUP BY COALESCE(c.state, r.state)
-        """)).mappings().all()
+        try:
+            rows = db.execute(text("""
+                SELECT
+                    COALESCE(c.state, r.state) AS state,
+                    COUNT(DISTINCT c.company_id) AS count
+                FROM companies c
+                LEFT JOIN recruiters r ON r.company_id = c.company_id
+                WHERE COALESCE(c.state, r.state) IS NOT NULL
+                GROUP BY COALESCE(c.state, r.state)
+            """)).mappings().all()
+        except ProgrammingError as e2:
+            # Some environments may not have `companies.state` yet.
+            logger.warning("companies.state missing; using recruiters.state only: %s", e2)
+            db.rollback()
+            rows = db.execute(text("""
+                SELECT
+                    r.state AS state,
+                    COUNT(DISTINCT c.company_id) AS count
+                FROM companies c
+                JOIN recruiters r ON r.company_id = c.company_id
+                WHERE r.state IS NOT NULL AND r.state != ''
+                GROUP BY r.state
+            """)).mappings().all()
 
     counts = {row["state"]: row["count"] for row in rows}
 

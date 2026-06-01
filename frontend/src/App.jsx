@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
 import React, { useEffect, useState, lazy, Suspense, useRef, Component } from 'react'
 import Sidebar from './components/Sidebar'
+import { API } from './services/api'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Recruiters = lazy(() => import('./pages/Recruiters'))
@@ -277,8 +278,6 @@ function ThemeSwitcher() {
     </button>
   )
 }
-
-const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 
 const PAGE_NAMES = {
   '/': 'Dashboard',

@@ -4,12 +4,11 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, AreaChart, Area, Cell, LabelList
 } from 'recharts'
+import { API } from '../services/api'
 
 const CHART_TICK = { fill: '#ffffff', fontSize: 12, fontWeight: 700 }
 
 const BAR_LABEL_PROPS = { fill: '#ffffff', fontSize: 12, fontWeight: 700 }
-
-const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 
 const PAGE_COLORS = ['#185FA5', '#0F6E56', '#534AB7', '#BA7517', '#C4394A', '#1695A3', '#7C3AED', '#D97706']
 

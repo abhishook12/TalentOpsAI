@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
 import React, { useEffect, useState, lazy, Suspense, useRef, Component } from 'react'
 import Sidebar from './components/Sidebar'
+import UpdateCenter from './components/UpdateCenter'
 import { API } from './services/api'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -518,6 +519,7 @@ function AppLayout() {
   return (
     <>
       <PageTracker />
+      <UpdateCenter />
       <div style={{ display: 'flex', height: '100dvh', maxHeight: '100dvh', overflow: 'hidden', background: 'var(--main-bg)' }}>
         <Sidebar />
         <div className="shell-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>

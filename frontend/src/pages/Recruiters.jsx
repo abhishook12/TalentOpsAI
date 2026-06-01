@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { exportToExcel } from '../services/export'
 import api from '../services/api'
 
 const emptyForm = {
@@ -215,6 +216,12 @@ export default function Recruiters() {
 
   useEffect(() => { fetchRecruiters() }, [fetchRecruiters])
 
+
+  const exportRecruiters = () => {
+    if (!recruiters || recruiters.length === 0) return alert('No recruiters to export');
+    exportToExcel(recruiters, 'recruiters_export');
+  }
+
   const openEdit = (r) => {
     setForm({
       recruiter_name: r.recruiter_name || '', email: r.email || '', phone: r.phone || '',
@@ -355,9 +362,14 @@ export default function Recruiters() {
               </div>
             </div>
             
-            <button onClick={() => setModal('add')} className="btn-primary" style={{ padding: '8px 16px', fontSize: 13 }}>
-                <i className="ti ti-plus" style={{ marginRight: 6 }} /> Add Recruiter
-            </button>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={exportRecruiters} style={{ padding: '8px 16px', fontSize: 13, borderRadius: 8, background: 'transparent', border: '1px solid var(--card-border)', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                  <i className="ti ti-download" style={{ marginRight: 6 }} /> Export Page
+              </button>
+              <button onClick={() => setModal('add')} className="btn-primary" style={{ padding: '8px 16px', fontSize: 13 }}>
+                  <i className="ti ti-plus" style={{ marginRight: 6 }} /> Add Recruiter
+              </button>
+            </div>
           </div>
     
           {/* Main Top Filters */}

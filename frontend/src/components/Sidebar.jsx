@@ -14,8 +14,9 @@ const nav = [
 export default function Sidebar() {
   const location = useLocation()
   const logoutSoon = () => {
-    console.log('[Coming soon] Logout')
-    alert('Logout: Coming soon')
+    localStorage.removeItem('auth_session');
+    sessionStorage.removeItem('auth_session');
+    window.location.reload();
   }
 
   return (

@@ -744,3 +744,17 @@ def migrate_page_visits(db: Session):
     if adds:
         db.execute(text(f"ALTER TABLE page_visits {', '.join(adds)}"))
         db.commit()
+
+
+@router.post("/cleanup")
+def admin_cleanup(db: Session = Depends(get_db), _=Depends(verify_admin)):
+    """
+    Deletes recruiters that have neither an email nor a phone.
+    """
+    try:
+        result = db.execute(text("DELETE FROM recruiters WHERE (email IS NULL OR email = '') AND (phone IS NULL OR phone = '')"))
+        db.commit()
+        return {"status": "ok", "deleted_count": result.rowcount}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(500, f"Cleanup failed: {str(e)}")

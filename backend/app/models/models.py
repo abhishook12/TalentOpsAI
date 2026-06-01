@@ -179,3 +179,29 @@ class StagingCompany(Base):
     confidence_score = Column(Integer, default=0)
     created_at    = Column(TIMESTAMP, server_default=func.now())
 
+
+
+
+class PlatformUpdate(Base):
+    __tablename__ = "platform_updates"
+    
+    update_id = Column(Integer, primary_key=True, index=True)
+    version = Column(String(50), nullable=False)
+    title = Column(String(255), nullable=False)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    developer = Column(String(100), default="System")
+    
+    features = relationship("FeatureVerification", back_populates="update")
+
+class FeatureVerification(Base):
+    __tablename__ = "feature_verifications"
+    
+    feature_id = Column(Integer, primary_key=True, index=True)
+    update_id = Column(Integer, ForeignKey("platform_updates.update_id"))
+    feature_name = Column(String(255), nullable=False)
+    status = Column(String(50), default="Pending Verification") # Pending Verification, Verified, Failed Verification
+    last_tested = Column(TIMESTAMP, nullable=True)
+    tester = Column(String(100), nullable=True)
+    result = Column(Text, nullable=True)
+    
+    update = relationship("PlatformUpdate", back_populates="features")

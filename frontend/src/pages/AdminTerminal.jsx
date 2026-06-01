@@ -345,6 +345,7 @@ export default function AdminTerminal() {
   const [dupes, setDupes] = useState(null)
   const [dataOps, setDataOps] = useState(null)
   const [uploadOps, setUploadOps] = useState(null)
+  const [features, setFeatures] = useState([])
   const [searchIntel, setSearchIntel] = useState(null)
   const [exportIntel, setExportIntel] = useState(null)
   const [alerts, setAlerts] = useState([])
@@ -423,6 +424,38 @@ export default function AdminTerminal() {
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
   }, [logLines])
+
+
+
+  const verifyFeature = async (featureId, status) => {
+    try {
+      await adminAxios.post(`/updates/verify/${featureId}`, { status });
+      log(`✓ Feature ${featureId} marked as ${status}`, 'ok');
+      const res = await adminAxios.get('/updates/features');
+      setFeatures(res.data);
+    } catch(e) {
+      log(`✗ Failed to update feature: ` + getErrorMessage(e), 'error');
+    }
+  }
+
+  const runCleanup = async () => {
+    if (!window.confirm('This will permanently delete recruiters missing both email and phone. Continue?')) return;
+    setLoading(true);
+    try {
+      const res = await adminAxios.post('/admin/cleanup');
+      log(`✓ Cleanup complete: ${res.data.deleted_count} records removed.`, 'ok');
+      loadAll();
+    } catch (e) {
+      log('✗ Cleanup failed: ' + getErrorMessage(e), 'error');
+    }
+    setLoading(false);
+  }
+
+  const exportProblems = () => {
+    if (!dataOps) return;
+    const all = [...(dataOps.samples?.missing_emails || []), ...(dataOps.samples?.unmapped_states || [])];
+    exportToExcel(all, 'problem_records');
+  }
 
   const loadDupes = async () => {
     log('Scanning for duplicate emails…')
@@ -708,6 +741,44 @@ export default function AdminTerminal() {
                   <StatCard icon="ti-map-question" label="Unmapped States" value={fmt(dataOps.counts?.unmapped_states)} color="#38bdf8" glow={(dataOps.counts?.unmapped_states || 0) > 0} />
                 </div>
 
+                
+            <Section title="Feature Verification Center" icon="ti-checkbox" action={<Badge color="#38bdf8">Live Tracking</Badge>}>
+              {features.length === 0 ? (
+                <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No features found. DB might be empty.</div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: 'var(--bg-hover)' }}>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', fontSize: 10.5, borderBottom: '1px solid #1e3a5f' }}>Feature Name</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', fontSize: 10.5, borderBottom: '1px solid #1e3a5f' }}>Status</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', fontSize: 10.5, borderBottom: '1px solid #1e3a5f' }}>Last Tested</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', fontSize: 10.5, borderBottom: '1px solid #1e3a5f' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {features.map(f => (
+                      <tr key={f.id} style={{ borderBottom: '1px solid #0e1e30' }}>
+                        <td style={{ padding: '10px 12px', color: 'var(--text-primary)' }}>{f.name}</td>
+                        <td style={{ padding: '10px 12px' }}>
+                          <Badge color={f.status.includes('Verified') ? '#22c55e' : f.status.includes('Failed') ? '#ef4444' : '#fbbf24'}>
+                            {f.status.toUpperCase()}
+                          </Badge>
+                        </td>
+                        <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>{f.last_tested ? new Date(f.last_tested).toLocaleDateString() : 'Never'}</td>
+                        <td style={{ padding: '10px 12px' }}>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button onClick={() => verifyFeature(f.id, 'Verified')} style={{ background: 'var(--card-bg)', border: '1px solid #22c55e', color: '#22c55e', padding: '4px 8px', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>Verify</button>
+                            <button onClick={() => verifyFeature(f.id, 'Failed Verification')} style={{ background: 'var(--card-bg)', border: '1px solid #ef4444', color: '#ef4444', padding: '4px 8px', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>Fail</button>
+                            <button onClick={() => verifyFeature(f.id, 'Pending Verification')} style={{ background: 'var(--card-bg)', border: '1px solid #fbbf24', color: '#fbbf24', padding: '4px 8px', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>Retest</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </Section>
+
                 <Section title="Data Operations" icon="ti-tools" action={
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <Badge color="#38bdf8">DB-driven</Badge>
@@ -719,8 +790,8 @@ export default function AdminTerminal() {
                       <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Quick Actions</div>
                       <div style={{ display: 'grid', gap: 10 }}>
                         {[
-                          { label: 'Export Problem Records', icon: 'ti-file-export', disabled: true },
-                          { label: 'Run Cleanup', icon: 'ti-broom', disabled: true },
+                          { label: 'Export Problem Records', icon: 'ti-file-export', disabled: false, onClick: exportProblems },
+                          { label: 'Run Cleanup', icon: 'ti-broom', disabled: false, onClick: runCleanup },
                           { label: 'Run Duplicate Scan', icon: 'ti-scan', onClick: loadDupes, disabled: false },
                           { label: 'Refresh Analytics', icon: 'ti-refresh', onClick: clearCache, disabled: false },
                         ].map((b) => (
@@ -877,15 +948,11 @@ export default function AdminTerminal() {
                           <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>{j.source || 'No Data Available'}</td>
                           <td style={{ padding: '10px 12px' }}>
                             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                              <button disabled title="Coming soon" style={{ background: 'var(--card-bg)', border: '1px solid #1e3a5f', color: 'var(--text-muted)', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'not-allowed', opacity: 0.7 }}>
-                                View
-                              </button>
+                              
                               <button onClick={() => retryImport(j.job_id)} style={{ background: 'var(--bg-hover)', border: '1px solid #1e3a5f', color: '#38bdf8', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer' }}>
                                 Retry
                               </button>
-                              <button disabled title="Coming soon" style={{ background: '#2a0b0b', border: '1px solid #7f1d1d', color: '#f87171', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'not-allowed', opacity: 0.7 }}>
-                                Delete
-                              </button>
+                              
                             </div>
                           </td>
                         </tr>

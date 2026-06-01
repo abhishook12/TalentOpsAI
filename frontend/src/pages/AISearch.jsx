@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { exportToExcel } from '../services/export'
 import api, { logAction } from '../services/api'
 
 function initials(name) {
@@ -185,10 +186,10 @@ export default function AISearch() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button onClick={() => fireSoon('Share')} style={{ ...iconButtonStyle(false), width: 38 }} title="Share (Coming soon)">
-            <i className="ti ti-share-2" />
+          <button onClick={() => { navigator.clipboard.writeText(window.location.href); setToast('Link copied to clipboard') }} style={{ ...iconButtonStyle(false), width: 38 }} title="Copy Link">
+            <i className="ti ti-share" />
           </button>
-          <button onClick={() => fireSoon('Export')} style={{ ...iconButtonStyle(false), width: 38 }} title="Export (Coming soon)">
+          <button onClick={() => exportToExcel(results, 'ai_search_results')} style={{ ...iconButtonStyle(false), width: 38 }} title="Export to Excel">
             <i className="ti ti-download" />
           </button>
         </div>
@@ -561,12 +562,10 @@ export default function AISearch() {
           <div style={{ padding: 14, borderBottom: '1px solid var(--card-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-primary)' }}>Recruiter Details</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button onClick={() => (selected ? fireSoon('Copy profile') : null)} style={iconButtonStyle(!selected)} title="Copy (Coming soon)" disabled={!selected}>
+              <button onClick={() => { if(selected) { navigator.clipboard.writeText(`${selected.recruiter_name} - ${selected.email} - ${selected.phone}`); setToast('Profile copied to clipboard') } }} style={iconButtonStyle(!selected)} title="Copy Profile" disabled={!selected}>
                 <i className="ti ti-copy" />
               </button>
-              <button onClick={() => (selected ? fireSoon('Edit') : null)} style={iconButtonStyle(!selected)} title="Edit (Coming soon)" disabled={!selected}>
-                <i className="ti ti-pencil" />
-              </button>
+              
               <button onClick={() => setSelectedId(null)} style={iconButtonStyle(!selected)} title="Close" disabled={!selected}>
                 <i className="ti ti-x" />
               </button>

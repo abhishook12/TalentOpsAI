@@ -1,6 +1,7 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import axios from 'axios'
 import JobsHistory from '../components/JobsHistory'
+import { formatDistanceToNow } from 'date-fns'
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 
@@ -309,8 +310,10 @@ function SmartUploadZone() {
         {/* ── STEP: Preview ── */}
         {step === 'preview' && analysis && (
           <div>
-            {/* Summary Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.65fr 1fr', gap: 14, marginBottom: 18 }}>
+              <div>
+                {/* Summary Cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 14 }}>
               {[
                 { label: 'Total Rows', value: analysis.total_rows, icon: 'ti-table', color: '#185FA5' },
                 { label: 'Duplicates', value: analysis.duplicates, icon: 'ti-copy', color: '#BA7517' },
@@ -349,8 +352,87 @@ function SmartUploadZone() {
               )}
             </div>
 
+              </div>
+
+              {/* AI Analysis Panel */}
+              <div style={{ border: '1px solid var(--card-border)', borderRadius: 12, padding: 14, background: 'var(--main-bg)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <i className="ti ti-wand" style={{ color: 'var(--accent)' }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)' }}>AI Analysis</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Empty until real batch data is loaded</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gap: 10 }}>
+                  {[
+                    { label: 'Records detected', value: analysis.total_rows },
+                    { label: 'Duplicates detected', value: analysis.duplicates },
+                    { label: 'Mapping coverage', value: `${Object.values(columnMap || {}).filter(Boolean).length}/${ALL_LOGICAL_FIELDS.length}` },
+                    { label: 'Validation summary', value: `${analysis.invalid_emails || 0} invalid emails • ${analysis.invalid_phones || 0} invalid phones` },
+                  ].map(x => (
+                    <div key={x.label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                      <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>{x.label}</span>
+                      <span style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 800 }}>
+                        {typeof x.value === 'number' ? x.value.toLocaleString() : x.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--card-border)' }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
+                    Data Quality Center
+                  </div>
+
+                  {(() => {
+                    const total = analysis.total_rows || 0
+                    const dupRate = total > 0 ? Math.round(((analysis.duplicates || 0) / total) * 100) : null
+                    const emailCov = total > 0 && typeof analysis.missing_fields === 'number' ? Math.round(((total - analysis.missing_fields) / total) * 100) : null
+                    const phoneCov = total > 0 && typeof analysis.invalid_phones === 'number' ? Math.round(((total - analysis.invalid_phones) / total) * 100) : null
+                    const metrics = [
+                      { label: 'Duplicate Rate', value: dupRate, color: '#d29922' },
+                      { label: 'Email Coverage', value: emailCov, color: 'var(--accent)' },
+                      { label: 'Phone Coverage', value: phoneCov, color: 'var(--accent)' },
+                      { label: 'Company Matching', value: null, color: 'var(--accent)' },
+                      { label: 'Location Accuracy', value: null, color: 'var(--accent)' },
+                    ]
+                    return metrics.map(m => (
+                      <div key={m.label} style={{ marginBottom: 10 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{m.label}</span>
+                          <span style={{ fontSize: 12, color: m.value === null ? 'var(--text-muted)' : m.color, fontWeight: 800 }}>
+                            {m.value === null ? '—' : `${m.value}%`}
+                          </span>
+                        </div>
+                        <div style={{ height: 6, background: 'var(--card-border)', borderRadius: 99, overflow: 'hidden' }}>
+                          <div style={{ width: `${m.value || 0}%`, height: '100%', background: `linear-gradient(90deg, ${m.color}, #185FA5)`, borderRadius: 99 }} />
+                        </div>
+                      </div>
+                    ))
+                  })()}
+
+                  <button
+                    onClick={() => {
+                      const el = document.getElementById('etl-validation')
+                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                    }}
+                    className="btn-primary"
+                    style={{ width: '100%', justifyContent: 'center', padding: '12px', marginTop: 6 }}
+                  >
+                    Proceed to Validation
+                  </button>
+                  <div style={{ marginTop: 8, textAlign: 'center', fontSize: 11, color: 'var(--text-muted)' }}>
+                    {analysis.total_rows?.toLocaleString?.() || analysis.total_rows || 0} records ready
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Column Mapping Table */}
-            <div style={{ marginBottom: 20 }}>
+            <div id="etl-validation" style={{ marginBottom: 20 }}>
               <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <i className="ti ti-arrows-exchange" style={{ fontSize: 15, color: '#534AB7' }} />
                 Detected Column Mapping
@@ -812,43 +894,177 @@ function PasteParser() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function Upload() {
   const [tab, setTab] = useState('smart')
+  const [kpis, setKpis] = useState({ loading: true, error: null, data: null })
+  const [toast, setToast] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    const run = async () => {
+      try {
+        const [healthRes, recruitersRes, jobsRes] = await Promise.allSettled([
+          axios.get(`${API}/health`),
+          axios.get(`${API}/recruiters`, { params: { page: 1, limit: 1 } }),
+          axios.get(`${API}/upload/jobs`),
+        ])
+
+        const healthOk = healthRes.status === 'fulfilled' ? healthRes.value.data : null
+        const recruitersHeader = recruitersRes.status === 'fulfilled' ? recruitersRes.value.headers?.['x-total-count'] : null
+        const totalRecords = recruitersHeader ? Number(recruitersHeader) : null
+        const jobs = jobsRes.status === 'fulfilled' ? (jobsRes.value.data || []) : null
+
+        const active = Array.isArray(jobs) ? jobs.find(j => j.status === 'processing' || j.status === 'queued') : null
+        const lastJob = Array.isArray(jobs)
+          ? [...jobs].sort((a, b) => new Date(b.started_at || 0).getTime() - new Date(a.started_at || 0).getTime())[0]
+          : null
+
+        const processingQueue = Array.isArray(jobs)
+          ? {
+              activeStatus: active?.status || 'idle',
+              pending: jobs.filter(j => j.status === 'queued').length,
+              processing: jobs.filter(j => j.status === 'processing').length,
+            }
+          : null
+
+        const lastSync = lastJob?.started_at ? formatDistanceToNow(new Date(`${lastJob.started_at}Z`), { addSuffix: true }) : null
+
+        const payload = {
+          databaseHealth: healthOk?.database || null,
+          databaseStatus: healthOk?.status || null,
+          totalRecords,
+          processingQueue,
+          lastSync,
+        }
+
+        if (!cancelled) setKpis({ loading: false, error: null, data: payload })
+      } catch (e) {
+        if (!cancelled) setKpis({ loading: false, error: e, data: null })
+      }
+    }
+
+    setKpis({ loading: true, error: null, data: null })
+    run()
+    return () => { cancelled = true }
+  }, [])
+
+  const fireSoon = (label) => {
+    setToast(`${label}: Coming soon`)
+    setTimeout(() => setToast(''), 1400)
+  }
+
+  const KpiCard = ({ title, value, sub, tone = 'default' }) => (
+    <div className="card" style={{ padding: 16, background: 'var(--panel-bg)' }}>
+      <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+        {title}
+      </div>
+      <div style={{ marginTop: 10, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+        <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--text-primary)' }}>
+          {kpis.loading ? '…' : (value ?? '—')}
+        </div>
+        {tone === 'good' && <span className="badge badge-green">OK</span>}
+        {tone === 'warn' && <span className="badge badge-amber">ATTN</span>}
+        {tone === 'muted' && <span className="badge badge-gray">—</span>}
+      </div>
+      <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)' }}>{kpis.loading ? 'Loading…' : (sub ?? '')}</div>
+    </div>
+  )
+
+  const kpiData = kpis.data
 
   return (
-    <div className="page-enter">
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 4 }}>Add Recruiters</h1>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Smart upload with AI column detection, paste & parse, or legacy CSV upload</p>
+    <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>ETL Intelligence Center</h1>
+          <p style={{ marginTop: 6, fontSize: 13, color: 'var(--text-muted)' }}>
+            Automated data transformation & recruiter ingestion pipeline.
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={() => fireSoon('Manual Sync')} style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'transparent', color: 'var(--text-secondary)', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>
+            <i className="ti ti-refresh" style={{ marginRight: 8 }} />
+            Manual Sync
+          </button>
+          <button onClick={() => setTab('smart')} className="btn-primary" style={{ padding: '10px 14px', borderRadius: 12, fontWeight: 900 }}>
+            <i className="ti ti-cloud-upload" style={{ fontSize: 14 }} />
+            Start New Import
+          </button>
+        </div>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: 'var(--main-bg)', padding: 4, borderRadius: 10, width: 'fit-content', border: '1px solid var(--card-border)' }}>
+      {/* KPI bar */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        <KpiCard
+          title="Database Health"
+          value={kpiData?.databaseStatus ? (kpiData.databaseStatus === 'healthy' ? 'Healthy' : kpiData.databaseStatus) : null}
+          sub={kpiData?.databaseHealth ? `DB: ${kpiData.databaseHealth}` : '—'}
+          tone={kpiData?.databaseStatus === 'healthy' ? 'good' : (kpiData?.databaseStatus ? 'warn' : 'muted')}
+        />
+        <KpiCard
+          title="Total Records"
+          value={typeof kpiData?.totalRecords === 'number' && Number.isFinite(kpiData.totalRecords) ? kpiData.totalRecords.toLocaleString() : null}
+          sub="Recruiters (from API count)"
+          tone={typeof kpiData?.totalRecords === 'number' ? 'good' : 'muted'}
+        />
+        <KpiCard
+          title="Processing Queue"
+          value={kpiData?.processingQueue ? (kpiData.processingQueue.processing + kpiData.processingQueue.pending === 0 ? 'Idle' : `${kpiData.processingQueue.processing} processing / ${kpiData.processingQueue.pending} queued`) : null}
+          sub={kpiData?.processingQueue ? 'Live ETL job status' : '—'}
+          tone={kpiData?.processingQueue ? ((kpiData.processingQueue.processing + kpiData.processingQueue.pending) === 0 ? 'good' : 'warn') : 'muted'}
+        />
+        <KpiCard
+          title="Last Sync"
+          value={kpiData?.lastSync || null}
+          sub="Latest job activity"
+          tone={kpiData?.lastSync ? 'good' : 'muted'}
+        />
+      </div>
+
+      {/* Main tabs */}
+      <div style={{ display: 'flex', gap: 4, background: 'var(--panel-bg)', padding: 4, borderRadius: 12, width: 'fit-content', border: '1px solid var(--card-border)' }}>
         {[
-          { id: 'smart',   label: 'Smart Upload',   icon: 'ti-brain' },
+          { id: 'smart', label: 'Smart Upload', icon: 'ti-brain' },
+          { id: 'paste', label: 'Paste & Parse', icon: 'ti-clipboard-text' },
+          { id: 'csv', label: 'Legacy Upload', icon: 'ti-file-spreadsheet' },
           { id: 'history', label: 'Import History', icon: 'ti-history' },
-          { id: 'paste',   label: 'Paste & Parse',  icon: 'ti-clipboard-text' },
-          { id: 'csv',     label: 'Legacy Upload',  icon: 'ti-file-spreadsheet' },
         ].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
             style={{
-              padding: '7px 16px', borderRadius: 7, fontSize: 13, fontWeight: 500,
+              padding: '9px 14px',
+              borderRadius: 10,
+              fontSize: 13,
+              fontWeight: tab === t.id ? 900 : 700,
               background: tab === t.id ? 'var(--card-bg)' : 'transparent',
               color: tab === t.id ? 'var(--text-primary)' : 'var(--text-muted)',
               border: tab === t.id ? '1px solid var(--card-border)' : '1px solid transparent',
               boxShadow: tab === t.id ? 'var(--shadow)' : 'none',
-              display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.15s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              transition: 'all 0.15s',
               cursor: 'pointer',
-            }}>
+              minHeight: 38,
+            }}
+          >
             <i className={`ti ${t.icon}`} style={{ fontSize: 14 }} /> {t.label}
           </button>
         ))}
       </div>
 
-      <div style={{ maxWidth: 880 }}>
+      <div style={{ maxWidth: 1200 }}>
         {tab === 'smart' && <SmartUploadZone />}
         {tab === 'history' && <JobsHistory />}
         {tab === 'paste' && <PasteParser />}
-        {tab === 'csv'   && <LegacyUploadZone />}
+        {tab === 'csv' && <LegacyUploadZone />}
       </div>
+
+      {toast && (
+        <div style={{ position: 'fixed', right: 18, bottom: 18, background: 'var(--text-primary)', color: 'var(--text-inverse)', padding: '10px 12px', borderRadius: 12, fontSize: 12, zIndex: 1500, boxShadow: 'var(--shadow-lg)' }}>
+          {toast}
+        </div>
+      )}
     </div>
   )
 }

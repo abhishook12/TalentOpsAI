@@ -11,16 +11,43 @@ function initials(name) {
 function matchTypeFor(rec, q) {
   const s = (q || '').trim().toLowerCase()
   if (!s) return 'Fuzzy'
-  const name = (rec.recruiter_name || '').toLowerCase()
-  const email = (rec.email || '').toLowerCase()
-  const company = (rec.company_name || '').toLowerCase()
+  const name = (rec?.recruiter_name || '').toLowerCase()
+  const email = (rec?.email || '').toLowerCase()
+  const company = (rec?.company_name || '').toLowerCase()
   if (name === s || email === s || company === s) return 'Exact'
   if (name.startsWith(s) || email.startsWith(s) || company.startsWith(s)) return 'Exact'
   return 'Fuzzy'
 }
 
 function safe(v) {
-  return v && String(v).trim() ? v : 'Not available'
+  return v && String(v).trim() ? String(v).trim() : 'Not available'
+}
+
+function badgeForMatch(matchType) {
+  const exact = matchType === 'Exact'
+  return {
+    label: exact ? 'EXACT' : 'FUZZY',
+    bg: exact ? 'rgba(22, 163, 74, 0.14)' : 'rgba(245, 158, 11, 0.14)',
+    fg: exact ? '#2f8f53' : '#b07843',
+    border: exact ? 'rgba(22, 163, 74, 0.25)' : 'rgba(245, 158, 11, 0.28)',
+  }
+}
+
+function iconButtonStyle(disabled = false) {
+  return {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    border: '1px solid var(--card-border)',
+    background: 'var(--card-bg)',
+    color: 'var(--text-secondary)',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.5 : 1,
+    transition: 'all 0.15s ease',
+  }
 }
 
 export default function AISearch() {
@@ -44,6 +71,7 @@ export default function AISearch() {
         setError('')
         return
       }
+
       setLoading(true)
       setError('')
       try {
@@ -51,6 +79,7 @@ export default function AISearch() {
         if (filterCompany.trim()) params.company = filterCompany.trim()
         if (filterLocation.trim()) params.location = filterLocation.trim()
         if (filterSpecialization.trim()) params.specialization = filterSpecialization.trim()
+
         const res = await axios.get(`${API}/recruiters/search`, { params })
         const sorted = [...(res.data || [])].sort((a, b) => {
           const ma = matchTypeFor(a, query) === 'Exact' ? 0 : 1
@@ -58,9 +87,9 @@ export default function AISearch() {
           if (ma !== mb) return ma - mb
           return (b.relevance_score || 0) - (a.relevance_score || 0)
         })
+
         setResults(sorted)
-        // Keep details panel empty until user explicitly clicks a recruiter row.
-        setSelectedId(prev => (prev && sorted.some(x => x.recruiter_id === prev) ? prev : null))
+        setSelectedId((prev) => (prev && sorted.some((x) => x.recruiter_id === prev) ? prev : null))
       } catch {
         setError('Could not load recruiter search results.')
         setResults([])
@@ -69,13 +98,22 @@ export default function AISearch() {
         setLoading(false)
       }
     }, 260)
+
     return () => clearTimeout(t)
   }, [query, filterCompany, filterLocation, filterSpecialization])
 
   const selected = useMemo(
-    () => results.find(r => r.recruiter_id === selectedId) || null,
+    () => results.find((r) => r.recruiter_id === selectedId) || null,
     [results, selectedId]
   )
+
+  const activeFiltersCount = useMemo(() => {
+    let n = 0
+    if (filterCompany.trim()) n += 1
+    if (filterLocation.trim()) n += 1
+    if (filterSpecialization.trim()) n += 1
+    return n
+  }, [filterCompany, filterLocation, filterSpecialization])
 
   const fireSoon = (label) => {
     setToast(`${label}: Coming soon`)
@@ -83,185 +121,545 @@ export default function AISearch() {
     setTimeout(() => setToast(''), 1400)
   }
 
+  const clearAll = () => {
+    setQuery('')
+    setResults([])
+    setSelectedId(null)
+    setError('')
+    setLoading(false)
+    setFilterCompany('')
+    setFilterLocation('')
+    setFilterSpecialization('')
+    setShowFilters(false)
+  }
+
+  const matchTypeForSelected = selected ? matchTypeFor(selected, query) : 'Fuzzy'
+  const matchBadge = badgeForMatch(matchTypeForSelected)
+
   return (
-    <div className="page-enter" style={{ display: 'grid', gridTemplateColumns: '1.7fr 1fr', gap: 0, border: '1px solid var(--card-border)', borderRadius: 12, overflow: 'hidden', background: 'var(--panel-bg)', minHeight: 'calc(100vh - 170px)' }}>
-      <div style={{ borderRight: '1px solid var(--card-border)', padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 14,
+          padding: '12px 14px',
+          border: '1px solid var(--card-border)',
+          borderRadius: 14,
+          background: 'var(--panel-bg)',
+          boxShadow: 'var(--shadow)',
+        }}
+      >
         <div>
-          <h1 style={{ fontSize: 52? 0: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>Smart Search</h1>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Smart ranked search across recruiter records — exact matches first, fuzzy matches last</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: 12,
+                background: 'var(--accent)',
+                color: 'var(--text-inverse)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <i className="ti ti-sparkles" style={{ fontSize: 16 }} />
+            </div>
+            <div>
+              <h1 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Smart Search</h1>
+              <p style={{ marginTop: 2, fontSize: 12, color: 'var(--text-muted)' }}>
+                Ranked recruiter search — exact matches first, fuzzy matches after. No demo data.
+              </p>
+            </div>
+          </div>
         </div>
 
-        <div style={{ border: '1px solid var(--card-border)', borderRadius: 10, background: 'var(--card-bg)', padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <i className="ti ti-search" style={{ color: 'var(--text-muted)' }} />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search recruiters by name, email, company..."
-            style={{ flex: 1, border: 'none', background: 'transparent', padding: 8 }}
-          />
-          <button
-            onClick={() => setShowFilters(v => !v)}
-            title="Filters"
-            style={{ width: 30, height: 30, border: '1px solid var(--card-border)', background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
-          >
-            <i className="ti ti-adjustments-horizontal" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button onClick={() => fireSoon('Share')} style={{ ...iconButtonStyle(false), width: 38 }} title="Share (Coming soon)">
+            <i className="ti ti-share-2" />
           </button>
-          <button
-            onClick={() => { setQuery(''); setResults([]); setSelectedId(null) }}
-            title="Clear"
-            style={{ width: 30, height: 30, border: '1px solid var(--card-border)', background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
-          >
-            <i className="ti ti-x" />
+          <button onClick={() => fireSoon('Export')} style={{ ...iconButtonStyle(false), width: 38 }} title="Export (Coming soon)">
+            <i className="ti ti-download" />
           </button>
-        </div>
-
-        {showFilters && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-            <input value={filterCompany} onChange={(e) => setFilterCompany(e.target.value)} placeholder="Filter company" />
-            <input value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} placeholder="Filter location" />
-            <input value={filterSpecialization} onChange={(e) => setFilterSpecialization(e.target.value)} placeholder="Filter specialization" />
-          </div>
-        )}
-
-        <div style={{ border: '1px solid var(--card-border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 320, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 2fr 1.5fr 1.5fr 0.9fr', gap: 8, padding: '10px 12px', borderBottom: '1px solid var(--card-border)', background: 'var(--bg-hover)' }}>
-            {['Name', 'Email', 'Phone', 'Company', 'Match Type'].map(h => (
-              <span key={h} style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</span>
-            ))}
-          </div>
-
-          <div style={{ overflow: 'auto', flex: 1 }}>
-            {loading && (
-              <div style={{ padding: 26, color: 'var(--text-muted)', textAlign: 'center' }}>
-                <i className="ti ti-loader" style={{ animation: 'spin 0.8s linear infinite' }} /> Loading recruiters...
-              </div>
-            )}
-
-            {!loading && error && (
-              <div style={{ padding: 26, color: '#b91c1c', textAlign: 'center' }}>{error}</div>
-            )}
-
-            {!loading && !error && query.trim() && results.length === 0 && (
-              <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-muted)' }}>
-                <i className="ti ti-search-off" style={{ fontSize: 22, display: 'block', marginBottom: 8 }} />
-                No recruiter matches found.
-              </div>
-            )}
-
-            {!loading && !error && !query.trim() && (
-              <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-muted)' }}>
-                <i className="ti ti-database-search" style={{ fontSize: 22, display: 'block', marginBottom: 8 }} />
-                Start typing to search real recruiter data.
-              </div>
-            )}
-
-            {!loading && !error && results.map((r) => {
-              const isActive = selectedId === r.recruiter_id
-              const m = matchTypeFor(r, query)
-              return (
-                <button
-                  key={r.recruiter_id}
-                  onClick={() => setSelectedId(r.recruiter_id)}
-                  style={{
-                    width: '100%',
-                    border: 'none',
-                    borderBottom: '1px solid var(--card-border)',
-                    background: isActive ? 'var(--accent-bg)' : 'var(--card-bg)',
-                    textAlign: 'left',
-                    padding: 0,
-                    cursor: 'pointer',
-                  }}
-                >
-                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 2fr 1.5fr 1.5fr 0.9fr', gap: 8, padding: '10px 12px', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ width: 28, height: 28, borderRadius: 6, background: 'var(--text-primary)', color: 'var(--text-inverse)', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {initials(r.recruiter_name)}
-                      </span>
-                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{safe(r.recruiter_name)}</span>
-                    </div>
-                    <span style={{ color: 'var(--text-secondary)' }}>{safe(r.email)}</span>
-                    <span style={{ color: 'var(--text-secondary)' }}>{safe(r.phone)}</span>
-                    <span style={{ color: 'var(--text-secondary)' }}>{safe(r.company_name)}</span>
-                    <span style={{
-                      fontSize: 11, fontWeight: 700, padding: '4px 8px', borderRadius: 999,
-                      background: m === 'Exact' ? 'rgba(22,163,74,0.14)' : 'rgba(180,83,9,0.14)',
-                      color: m === 'Exact' ? '#2f8f53' : '#b07843',
-                      width: 'fit-content',
-                    }}>
-                      {m}
-                    </span>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
         </div>
       </div>
 
-      <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14, background: 'var(--panel-bg)' }}>
-        {selected ? (
-          <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div style={{ width: 74, height: 74, borderRadius: 12, background: 'var(--text-primary)', color: 'var(--text-inverse)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 28 }}>
-                {initials(selected.recruiter_name)}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.65fr 1fr', gap: 14, minHeight: 'calc(100vh - 210px)' }}>
+        <div
+          style={{
+            border: '1px solid var(--card-border)',
+            borderRadius: 14,
+            background: 'var(--panel-bg)',
+            boxShadow: 'var(--shadow)',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div
+            style={{
+              padding: 14,
+              borderBottom: '1px solid var(--card-border)',
+              background: 'linear-gradient(180deg, var(--panel-bg) 0%, rgba(0,0,0,0.00) 100%)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '10px 12px',
+                  borderRadius: 12,
+                  border: '1px solid var(--card-border)',
+                  background: 'var(--card-bg)',
+                }}
+              >
+                <i className="ti ti-search" style={{ color: 'var(--text-muted)' }} />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search by name, email, company…"
+                  style={{
+                    flex: 1,
+                    border: 'none',
+                    outline: 'none',
+                    background: 'transparent',
+                    color: 'var(--text-primary)',
+                    fontSize: 13,
+                  }}
+                />
+                {loading && (
+                  <i className="ti ti-loader-2" style={{ color: 'var(--text-muted)', animation: 'spin 0.8s linear infinite' }} />
+                )}
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => fireSoon('Edit')} style={{ width: 36, height: 36, border: '1px solid var(--card-border)', background: 'var(--bg-hover)' }}><i className="ti ti-pencil" /></button>
-                <button onClick={() => setSelectedId(null)} style={{ width: 36, height: 36, border: '1px solid var(--card-border)', background: 'var(--bg-hover)' }}><i className="ti ti-x" /></button>
+
+              <button
+                onClick={() => setShowFilters((v) => !v)}
+                title="Filters"
+                style={{ ...iconButtonStyle(false), width: 38, position: 'relative' }}
+              >
+                <i className="ti ti-adjustments-horizontal" />
+                {activeFiltersCount > 0 && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: -6,
+                      right: -6,
+                      width: 18,
+                      height: 18,
+                      borderRadius: 999,
+                      background: 'var(--accent)',
+                      color: 'var(--text-inverse)',
+                      fontSize: 10,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '2px solid var(--panel-bg)',
+                    }}
+                  >
+                    {activeFiltersCount}
+                  </span>
+                )}
+              </button>
+
+              <button onClick={clearAll} title="Clear" style={{ ...iconButtonStyle(false), width: 38 }}>
+                <i className="ti ti-x" />
+              </button>
+            </div>
+
+            {showFilters && (
+              <div
+                style={{
+                  marginTop: 10,
+                  padding: 12,
+                  borderRadius: 14,
+                  border: '1px solid var(--card-border)',
+                  background: 'var(--card-bg)',
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr 1fr',
+                  gap: 10,
+                }}
+              >
+                {[
+                  { label: 'Company', value: filterCompany, onChange: setFilterCompany, placeholder: 'e.g. Acme Staffing' },
+                  { label: 'Location', value: filterLocation, onChange: setFilterLocation, placeholder: 'State (e.g. TX) or name' },
+                  { label: 'Specialization', value: filterSpecialization, onChange: setFilterSpecialization, placeholder: 'e.g. Java / Data' },
+                ].map((f) => (
+                  <div key={f.label}>
+                    <div
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: 'var(--text-muted)',
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        marginBottom: 6,
+                      }}
+                    >
+                      {f.label}
+                    </div>
+                    <input
+                      value={f.value}
+                      onChange={(e) => f.onChange(e.target.value)}
+                      placeholder={f.placeholder}
+                      style={{
+                        width: '100%',
+                        padding: '9px 10px',
+                        borderRadius: 12,
+                        border: '1px solid var(--card-border)',
+                        background: 'var(--panel-bg)',
+                        color: 'var(--text-primary)',
+                        fontSize: 12,
+                        outline: 'none',
+                      }}
+                    />
+                  </div>
+                ))}
+
+                <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                  <button
+                    onClick={() => {
+                      setFilterCompany('')
+                      setFilterLocation('')
+                      setFilterSpecialization('')
+                    }}
+                    style={{
+                      padding: '9px 10px',
+                      borderRadius: 12,
+                      border: '1px solid var(--card-border)',
+                      background: 'transparent',
+                      color: 'var(--text-secondary)',
+                      fontSize: 12,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Reset filters
+                  </button>
+                  <button
+                    onClick={() => setShowFilters(false)}
+                    style={{
+                      padding: '9px 12px',
+                      borderRadius: 12,
+                      border: '1px solid var(--card-border)',
+                      background: 'var(--accent)',
+                      color: 'var(--text-inverse)',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Done
+                  </button>
+                </div>
               </div>
-            </div>
-
-            <div>
-              <h2 style={{ fontSize: 42?0:16, marginBottom: 4, color: 'var(--text-primary)' }}>{safe(selected.recruiter_name)}</h2>
-              <p style={{ color: 'var(--accent)', fontWeight: 600 }}>{safe(selected.specialization)}</p>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid var(--card-border)', borderRadius: 8, padding: 10 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, padding: '6px 8px', borderRadius: 6, background: matchTypeFor(selected, query) === 'Exact' ? 'rgba(22,163,74,0.14)' : 'rgba(180,83,9,0.14)', color: matchTypeFor(selected, query) === 'Exact' ? '#2f8f53' : '#b07843' }}>
-                {matchTypeFor(selected, query).toUpperCase()} MATCH
-              </span>
-              <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Accuracy: Not available</span>
-            </div>
-
-            <div style={{ borderTop: '1px solid var(--card-border)', paddingTop: 12 }}>
-              <h3 style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: 10 }}>Contact Intelligence</h3>
-              <div style={{ display: 'grid', gap: 9 }}>
-                <div><strong style={{ fontSize: 11 }}>Primary Email</strong><div>{safe(selected.email)}</div></div>
-                <div><strong style={{ fontSize: 11 }}>Primary Phone</strong><div>{safe(selected.phone)}</div></div>
-                <div><strong style={{ fontSize: 11 }}>LinkedIn</strong><div>{safe(selected.linkedin)}</div></div>
-              </div>
-            </div>
-
-            <div style={{ borderTop: '1px solid var(--card-border)', paddingTop: 12 }}>
-              <h3 style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: 10 }}>Firm Analysis</h3>
-              <div style={{ border: '1px solid var(--card-border)', borderRadius: 8, padding: 10, background: 'var(--bg-hover)' }}>
-                <div><strong>Company/Firm:</strong> {safe(selected.company_name)}</div>
-                <div><strong>Location:</strong> {safe(selected.location)}</div>
-                <div style={{ marginTop: 6, color: 'var(--text-muted)', fontSize: 12 }}>Engagement score: Not available (coming soon)</div>
-                <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Response time: Not available (coming soon)</div>
-              </div>
-            </div>
-
-            <div style={{ marginTop: 'auto', display: 'grid', gridTemplateColumns: '1fr 42px 42px', gap: 8 }}>
-              <button onClick={() => fireSoon('Share Profile')} style={{ border: '1px solid var(--card-border)', background: '#1c2aee', color: '#fff', fontWeight: 700, borderRadius: 10 }}>Share Profile</button>
-              <button onClick={() => fireSoon('Copy')} style={{ border: '1px solid var(--card-border)', background: 'var(--bg-hover)' }}><i className="ti ti-copy" /></button>
-              <button onClick={() => fireSoon('Link')} style={{ border: '1px solid var(--card-border)', background: 'var(--bg-hover)' }}><i className="ti ti-link" /></button>
-            </div>
-          </>
-        ) : (
-          <div style={{ margin: 'auto', textAlign: 'center', color: 'var(--text-muted)' }}>
-            <i className="ti ti-user-search" style={{ fontSize: 28, display: 'block', marginBottom: 8 }} />
-            <p>No recruiter selected</p>
-            <p style={{ fontSize: 12 }}>Select a recruiter from search results to view details.</p>
+            )}
           </div>
-        )}
+
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            {!query.trim() && !loading && !error && (
+              <div style={{ height: '100%', display: 'grid', placeItems: 'center', padding: 22, textAlign: 'center', color: 'var(--text-muted)' }}>
+                <div>
+                  <div
+                    style={{
+                      width: 52,
+                      height: 52,
+                      borderRadius: 16,
+                      background: 'var(--card-bg)',
+                      border: '1px solid var(--card-border)',
+                      display: 'grid',
+                      placeItems: 'center',
+                      margin: '0 auto 10px',
+                    }}
+                  >
+                    <i className="ti ti-search" style={{ fontSize: 18 }} />
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Search recruiters</div>
+                  <div style={{ marginTop: 6, fontSize: 12 }}>Start typing a name, email, or company. Results come only from your database.</div>
+                </div>
+              </div>
+            )}
+
+            {!!error && (
+              <div style={{ padding: 18, color: 'var(--text-muted)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <i className="ti ti-alert-triangle" style={{ color: 'var(--amber)', fontSize: 16 }} />
+                  <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Couldn’t load results</div>
+                </div>
+                <div style={{ marginTop: 6, fontSize: 12 }}>{error}</div>
+                <div style={{ marginTop: 10, fontSize: 11 }}>
+                  API: <span style={{ fontFamily: 'var(--mono)' }}>{API}</span>
+                </div>
+              </div>
+            )}
+
+            {query.trim() && !error && (
+              <>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '10px 14px',
+                    borderBottom: '1px solid var(--card-border)',
+                    background: 'var(--panel-bg)',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 3,
+                  }}
+                >
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    {loading ? 'Searching…' : `${results.length} result${results.length === 1 ? '' : 's'}`}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button onClick={() => fireSoon('Columns')} style={iconButtonStyle(false)} title="Columns (Coming soon)">
+                      <i className="ti ti-columns-3" />
+                    </button>
+                    <button onClick={() => fireSoon('Sort')} style={iconButtonStyle(false)} title="Sort (Coming soon)">
+                      <i className="ti ti-arrows-sort" />
+                    </button>
+                  </div>
+                </div>
+
+                {results.length === 0 && !loading ? (
+                  <div style={{ padding: 20, color: 'var(--text-muted)' }}>
+                    <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>No matches found</div>
+                    <div style={{ marginTop: 6, fontSize: 12 }}>Try adjusting filters or refining the query.</div>
+                  </div>
+                ) : (
+                  <div style={{ padding: 0 }}>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1.2fr 1.2fr 0.9fr 1.1fr 0.55fr',
+                        gap: 10,
+                        padding: '10px 14px',
+                        borderBottom: '1px solid var(--card-border)',
+                        background: 'var(--main-bg)',
+                        position: 'sticky',
+                        top: 44,
+                        zIndex: 2,
+                        fontSize: 10,
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        color: 'var(--text-muted)',
+                        fontWeight: 800,
+                      }}
+                    >
+                      <div>Name</div>
+                      <div>Email</div>
+                      <div>Phone</div>
+                      <div>Company</div>
+                      <div>Match Type</div>
+                    </div>
+
+                    <div>
+                      {results.map((r) => {
+                        const active = selectedId === r.recruiter_id
+                        const mt = matchTypeFor(r, query)
+                        const badge = badgeForMatch(mt)
+                        return (
+                          <button
+                            key={r.recruiter_id}
+                            onClick={() => setSelectedId(r.recruiter_id)}
+                            style={{
+                              width: '100%',
+                              textAlign: 'left',
+                              border: 'none',
+                              borderBottom: '1px solid var(--card-border)',
+                              background: active ? 'var(--accent-bg)' : 'transparent',
+                              padding: 0,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: '1.2fr 1.2fr 0.9fr 1.1fr 0.55fr',
+                                gap: 10,
+                                padding: '12px 14px',
+                                alignItems: 'center',
+                                fontSize: 12,
+                                color: 'var(--text-secondary)',
+                              }}
+                            >
+                              <div style={{ color: 'var(--text-primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div
+                                  style={{
+                                    width: 28,
+                                    height: 28,
+                                    borderRadius: 10,
+                                    border: '1px solid var(--card-border)',
+                                    background: 'var(--card-bg)',
+                                    display: 'grid',
+                                    placeItems: 'center',
+                                    fontSize: 11,
+                                    fontWeight: 900,
+                                    color: 'var(--text-primary)',
+                                  }}
+                                >
+                                  {initials(r.recruiter_name)}
+                                </div>
+                                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.recruiter_name)}</span>
+                              </div>
+                              <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.email)}</div>
+                              <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.phone)}</div>
+                              <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.company_name)}</div>
+                              <div>
+                                <span
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: '5px 8px',
+                                    borderRadius: 999,
+                                    border: `1px solid ${badge.border}`,
+                                    background: badge.bg,
+                                    color: badge.fg,
+                                    fontSize: 10,
+                                    fontWeight: 900,
+                                    letterSpacing: '0.03em',
+                                  }}
+                                >
+                                  {badge.label}
+                                </span>
+                              </div>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        <div
+          style={{
+            border: '1px solid var(--card-border)',
+            borderRadius: 14,
+            background: 'var(--panel-bg)',
+            boxShadow: 'var(--shadow)',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div style={{ padding: 14, borderBottom: '1px solid var(--card-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-primary)' }}>Recruiter Details</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button onClick={() => (selected ? fireSoon('Copy profile') : null)} style={iconButtonStyle(!selected)} title="Copy (Coming soon)" disabled={!selected}>
+                <i className="ti ti-copy" />
+              </button>
+              <button onClick={() => (selected ? fireSoon('Edit') : null)} style={iconButtonStyle(!selected)} title="Edit (Coming soon)" disabled={!selected}>
+                <i className="ti ti-pencil" />
+              </button>
+              <button onClick={() => setSelectedId(null)} style={iconButtonStyle(!selected)} title="Close" disabled={!selected}>
+                <i className="ti ti-x" />
+              </button>
+            </div>
+          </div>
+
+          {!selected ? (
+            <div style={{ flex: 1, display: 'grid', placeItems: 'center', padding: 22, textAlign: 'center', color: 'var(--text-muted)' }}>
+              <div>
+                <div style={{ width: 56, height: 56, borderRadius: 18, border: '1px solid var(--card-border)', background: 'var(--card-bg)', display: 'grid', placeItems: 'center', margin: '0 auto 10px' }}>
+                  <i className="ti ti-user-search" style={{ fontSize: 18 }} />
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)' }}>No recruiter selected</div>
+                <div style={{ marginTop: 6, fontSize: 12 }}>Click a row to open the detail panel.</div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ flex: 1, overflow: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                  <div style={{ width: 52, height: 52, borderRadius: 16, background: 'var(--text-primary)', color: 'var(--text-inverse)', display: 'grid', placeItems: 'center', fontSize: 18, fontWeight: 900 }}>
+                    {initials(selected.recruiter_name)}
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 16, fontWeight: 900, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {safe(selected.recruiter_name)}
+                    </div>
+                    <div style={{ marginTop: 3, fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {selected.specialization && String(selected.specialization).trim() ? String(selected.specialization).trim() : ''}
+                    </div>
+                  </div>
+                </div>
+
+                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '6px 10px', borderRadius: 999, border: `1px solid ${matchBadge.border}`, background: matchBadge.bg, color: matchBadge.fg, fontSize: 10, fontWeight: 900, letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
+                  {matchBadge.label} MATCH
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <button onClick={() => fireSoon('Share profile')} style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--accent)', color: 'var(--text-inverse)', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
+                  <i className="ti ti-share-2" style={{ marginRight: 8 }} />
+                  Share profile
+                </button>
+                <button onClick={() => fireSoon('Open timeline')} style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--card-bg)', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
+                  <i className="ti ti-activity" style={{ marginRight: 8 }} />
+                  Activity (soon)
+                </button>
+              </div>
+
+              <div style={{ border: '1px solid var(--card-border)', borderRadius: 14, padding: 12, background: 'var(--card-bg)' }}>
+                <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>Contact info</div>
+                <div style={{ display: 'grid', gap: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Email</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(selected.email)}</div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Phone</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(selected.phone)}</div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>LinkedIn</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(selected.linkedin)}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ border: '1px solid var(--card-border)', borderRadius: 14, padding: 12, background: 'var(--card-bg)' }}>
+                <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>Company / firm analysis</div>
+
+                <div style={{ display: 'grid', gap: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Company</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(selected.company_name)}</div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Location</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(selected.location)}</div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    {['Engagement score', 'Response time'].map((label) => (
+                      <div key={label} style={{ border: '1px dashed var(--card-border)', borderRadius: 12, padding: 10, background: 'var(--panel-bg)' }}>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
+                        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>Not available (coming soon)</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {toast && (
-        <div style={{ position: 'fixed', right: 20, bottom: 20, background: 'var(--text-primary)', color: 'var(--text-inverse)', padding: '10px 12px', borderRadius: 8, fontSize: 12, zIndex: 1500 }}>
+        <div style={{ position: 'fixed', right: 18, bottom: 18, background: 'var(--text-primary)', color: 'var(--text-inverse)', padding: '10px 12px', borderRadius: 12, fontSize: 12, zIndex: 1500, boxShadow: 'var(--shadow-lg)' }}>
           {toast}
         </div>
       )}
     </div>
   )
 }
+

@@ -16,8 +16,9 @@ const queryClient = new QueryClient({
   },
 })
 
-document.documentElement.setAttribute('data-theme', 'dark')
-localStorage.setItem('theme', 'dark')
+const savedTheme = localStorage.getItem('theme') || 'dark'
+document.documentElement.setAttribute('data-theme', savedTheme)
+localStorage.setItem('theme', savedTheme)
 axios.defaults.withCredentials = true
 
 ReactDOM.createRoot(document.getElementById('root')).render(

@@ -16,9 +16,9 @@ function pct(n, t) { return t ? Math.round(n / t * 100) : 0 }
 function StatCard({ icon, label, value, sub, color = '#185FA5', glow }) {
   return (
     <div style={{
-      background: '#0d1829', border: `1px solid ${glow ? color : '#1e2d45'}`,
+      background: 'var(--card-bg)', border: `1px solid ${glow ? color : 'var(--card-border)'}`,
       borderRadius: 12, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 8,
-      boxShadow: glow ? `0 0 20px ${color}33` : 'none',
+      boxShadow: glow ? `0 0 20px ${color}33` : 'var(--shadow)',
       transition: 'all 0.2s',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -35,8 +35,8 @@ function StatCard({ icon, label, value, sub, color = '#185FA5', glow }) {
 
 function Section({ title, icon, children, action, style }) {
   return (
-    <div style={{ background: '#0d1829', border: '1px solid #1e2d45', borderRadius: 14, overflow: 'hidden', marginBottom: 20, ...style }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid #1e2d45', background: '#0b1525' }}>
+    <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 14, overflow: 'hidden', marginBottom: 20, boxShadow: 'var(--shadow)', ...style }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid var(--card-border)', background: 'var(--panel-bg)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <i className={`ti ${icon}`} style={{ color: '#38bdf8', fontSize: 17 }} />
           <span style={{ fontSize: 13, fontWeight: 600, color: '#cbd5e1', letterSpacing: '-0.01em' }}>{title}</span>
@@ -115,7 +115,7 @@ function AdminLock({ onUnlock }) {
         <div style={{ position: 'absolute', top: -60, left: '50%', transform: 'translateX(-50%)', width: 80, height: 80, borderRadius: '50%', background: '#38bdf822', animation: 'pulse-ring 2s ease-out infinite' }} />
 
         <div style={{
-          background: '#0d1829', border: '1px solid #1e3a5f',
+          background: 'var(--card-bg)', border: '1px solid var(--card-border)',
           borderRadius: 20, padding: '40px 36px', backdropFilter: 'blur(12px)',
           boxShadow: '0 0 60px rgba(56,189,248,0.08), 0 24px 48px rgba(0,0,0,0.5)',
           display: 'flex', flexDirection: 'column', gap: 28, alignItems: 'center',
@@ -211,7 +211,7 @@ function SqlConsole() {
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
         {PRESET_QUERIES.map(q => (
           <button key={q.label} onClick={() => setSql(q.sql)} style={{
-            background: '#111c30', border: '1px solid #1e3a5f', color: '#94a3b8',
+            background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-secondary)',
             padding: '5px 12px', borderRadius: 6, fontSize: 11.5, cursor: 'pointer',
           }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = '#38bdf8'; e.currentTarget.style.color = '#38bdf8' }}
@@ -255,7 +255,7 @@ function SqlConsole() {
         <div style={{ marginTop: 14, overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
             <thead>
-              <tr style={{ background: '#111c30' }}>
+              <tr style={{ background: 'var(--panel-bg)' }}>
                 {result.columns.map(c => (
                   <th key={c} style={{ padding: '8px 14px', textAlign: 'left', color: '#38bdf8', fontSize: 10.5, letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: '1px solid #1e3a5f', whiteSpace: 'nowrap' }}>{c}</th>
                 ))}
@@ -297,12 +297,12 @@ function SessionRow({ session, isOpen, onToggle, index }) {
     : 'ti-browser'
 
   return (
-    <div style={{ flexShrink: 0, background: '#0b1525', border: `1px solid ${isOpen ? '#1e3a5f' : '#111c30'}`, borderRadius: 10, overflow: 'hidden' }}>
+    <div style={{ flexShrink: 0, background: 'var(--panel-bg)', border: `1px solid ${isOpen ? 'var(--card-border)' : 'var(--card-border)'}`, borderRadius: 10, overflow: 'hidden' }}>
       <div
         onClick={onToggle}
         style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
       >
-        <div style={{ width: 28, height: 28, borderRadius: 7, background: '#111c30', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--card-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <i className={`ti ${browserIcon}`} style={{ fontSize: 14, color: '#38bdf8' }} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -516,7 +516,7 @@ export default function AdminTerminal() {
       `}</style>
 
       {/* Header */}
-      <div style={{ background: 'var(--panel-bg)', borderBottom: '1px solid #1e2d45', padding: '14px 28px', display: 'flex', alignItems: 'center', gap: 14, position: 'sticky', top: 0, zIndex: 50 }}>
+      <div style={{ background: 'var(--panel-bg)', borderBottom: '1px solid var(--card-border)', padding: '14px 28px', display: 'flex', alignItems: 'center', gap: 14, position: 'sticky', top: 0, zIndex: 50 }}>
         <div style={{ width: 36, height: 36, borderRadius: 8, background: 'linear-gradient(135deg, #0ea5e9, #1d4ed8)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 16px rgba(14,165,233,0.4)' }}>
           <i className="ti ti-terminal-2" style={{ color: '#fff', fontSize: 18 }} />
         </div>
@@ -540,7 +540,7 @@ export default function AdminTerminal() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 2, padding: '0 28px', background: 'var(--panel-bg)', borderBottom: '1px solid #1e2d45' }}>
+      <div style={{ display: 'flex', gap: 2, padding: '0 28px', background: 'var(--panel-bg)', borderBottom: '1px solid var(--card-border)' }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
             background: 'none', border: 'none', padding: '12px 18px', fontSize: 12.5, fontWeight: 500,
@@ -560,7 +560,7 @@ export default function AdminTerminal() {
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px 24px 28px', maxWidth: 1300, margin: '0 auto', width: '100%' }}>
 
         {/* ── OVERVIEW TAB ── */}
-        {activeTab === 'overview' && (stats || opsKpis) && (
+        {activeTab === 'overview' && (
           <div style={{ animation: 'fadeUp 0.25s ease' }}>
             {/* KPI Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 16 }}>

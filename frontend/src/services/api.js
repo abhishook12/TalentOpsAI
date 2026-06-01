@@ -21,6 +21,15 @@ export async function checkAuth() {
   }
 }
 
+export async function checkAppAuth() {
+  try {
+    const { data } = await api.get('/auth/app-me')
+    return data.authenticated === true
+  } catch {
+    return false
+  }
+}
+
 export async function login(password, rememberDevice = false) {
   const { data } = await api.post('/auth/login', {
     password,
@@ -29,8 +38,20 @@ export async function login(password, rememberDevice = false) {
   return data
 }
 
+export async function appLogin(password, rememberDevice = false) {
+  const { data } = await api.post('/auth/app-login', {
+    password,
+    remember_device: rememberDevice,
+  })
+  return data
+}
+
 export async function logout() {
   await api.post('/auth/logout')
+}
+
+export async function appLogout() {
+  await api.post('/auth/app-logout')
 }
 
 export async function logAction(actionType, details = {}, status = 'success') {

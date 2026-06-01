@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 import React, { useEffect, useState, lazy, Suspense, useRef, Component } from 'react'
 import Sidebar from './components/Sidebar'
 import UpdateCenter from './components/UpdateCenter'
-import { API, checkAuth, login } from './services/api'
+import { API, checkAppAuth, appLogin } from './services/api'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Recruiters = lazy(() => import('./pages/Recruiters'))
@@ -354,7 +354,7 @@ function LoginScreen({ onLoginSuccess }) {
     setSubmitting(true)
     setError('')
     try {
-      await login(password, remember)
+      await appLogin(password, remember)
       onLoginSuccess(email)
     } catch (e) {
       setError(e?.response?.data?.detail || 'Authentication failed.')
@@ -465,7 +465,7 @@ function App() {
   useEffect(() => {
     let alive = true
     const run = async () => {
-      const ok = await checkAuth()
+      const ok = await checkAppAuth()
       if (!alive) return
       setIsAuthenticated(ok)
     }

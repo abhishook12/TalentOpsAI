@@ -3,7 +3,7 @@ from pydantic import BaseModel
 import jwt
 import time
 import logging
-from app.config import JWT_SECRET, ADMIN_PASSWORD, IS_PRODUCTION
+from app.config import JWT_SECRET, ADMIN_PASSWORD, APP_PASSWORD, IS_PRODUCTION
 from app.database import get_db
 from sqlalchemy.orm import Session
 from app.models.models import ActionLog
@@ -30,6 +30,13 @@ def create_access_token(data: dict, expires_delta_seconds: int):
 def _decode_admin_token(token: str):
     payload = jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM])
     if payload.get("role") != "admin":
+        raise HTTPException(status_code=401, detail="Invalid role.")
+    return payload
+
+
+def _decode_app_token(token: str):
+    payload = jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM])
+    if payload.get("role") != "user":
         raise HTTPException(status_code=401, detail="Invalid role.")
     return payload
 
@@ -124,6 +131,18 @@ def auth_me(request: Request):
         return {"authenticated": False}
 
 
+@router.get("/app-me")
+def app_me(request: Request):
+    token = request.cookies.get("app_session")
+    if not token:
+        return {"authenticated": False}
+    try:
+        _decode_app_token(token)
+        return {"authenticated": True, "role": "user"}
+    except jwt.InvalidTokenError:
+        return {"authenticated": False}
+
+
 @router.post("/login")
 def login(data: LoginRequest, response: Response, request: Request, db: Session = Depends(get_db)):
     """
@@ -164,6 +183,33 @@ def login(data: LoginRequest, response: Response, request: Request, db: Session 
     return {"message": "Logged in successfully", "role": "admin"}
 
 
+@router.post("/app-login")
+def app_login(data: LoginRequest, response: Response, request: Request):
+    """
+    Platform gateway login (non-admin). Uses APP_PASSWORD env var.
+    Sets app_session HttpOnly cookie.
+    """
+    if data.password != APP_PASSWORD:
+        raise HTTPException(status_code=401, detail="Invalid credentials.")
+
+    expires_in = 30 * 24 * 60 * 60 if data.remember_device else 24 * 60 * 60
+    token = create_access_token(
+        data={"sub": "user", "role": "user"},
+        expires_delta_seconds=expires_in,
+    )
+
+    response.set_cookie(
+        key="app_session",
+        value=token,
+        max_age=expires_in,
+        httponly=True,
+        secure=IS_PRODUCTION,
+        samesite="none" if IS_PRODUCTION else "lax",
+        path="/",
+    )
+    return {"message": "Logged in successfully", "role": "user"}
+
+
 @router.post("/logout")
 def logout(response: Response, request: Request, db: Session = Depends(get_db)):
     response.delete_cookie(
@@ -174,4 +220,16 @@ def logout(response: Response, request: Request, db: Session = Depends(get_db)):
         secure=IS_PRODUCTION,
     )
     _log_admin_event(db, request, "ADMIN_LOGOUT", "success")
+    return {"message": "Logged out successfully"}
+
+
+@router.post("/app-logout")
+def app_logout(response: Response):
+    response.delete_cookie(
+        key="app_session",
+        path="/",
+        httponly=True,
+        samesite="lax",
+        secure=IS_PRODUCTION,
+    )
     return {"message": "Logged out successfully"}

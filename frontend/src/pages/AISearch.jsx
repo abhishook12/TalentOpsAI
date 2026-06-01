@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { exportToExcel } from '../services/export'
-import api, { logAction } from '../services/api'
+import api, { checkAuth, getErrorMessage, login, logAction } from '../services/api'
 
 function initials(name) {
   const parts = (name || '').trim().split(' ').filter(Boolean)
@@ -62,6 +62,21 @@ export default function AISearch() {
   const [filterLocation, setFilterLocation] = useState('')
   const [filterSpecialization, setFilterSpecialization] = useState('')
 
+  const [editOpen, setEditOpen] = useState(false)
+  const [editAuthed, setEditAuthed] = useState(false)
+  const [editPin, setEditPin] = useState('')
+  const [editError, setEditError] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [editForm, setEditForm] = useState({
+    recruiter_name: '',
+    email: '',
+    phone: '',
+    linkedin: '',
+    location: '',
+    specialization: '',
+    notes: '',
+  })
+
   useEffect(() => {
     const t = setTimeout(async () => {
       if (!query.trim()) {
@@ -115,6 +130,30 @@ export default function AISearch() {
     () => results.find((r) => r.recruiter_id === selectedId) || null,
     [results, selectedId]
   )
+
+  useEffect(() => {
+    if (!editOpen) return
+    // Initialize edit state on open
+    setEditError('')
+    setEditPin('')
+    setEditSaving(false)
+    setEditAuthed(false)
+
+    ;(async () => {
+      const ok = await checkAuth()
+      setEditAuthed(ok)
+    })()
+
+    setEditForm({
+      recruiter_name: selected?.recruiter_name || '',
+      email: selected?.email || '',
+      phone: selected?.phone || '',
+      linkedin: selected?.linkedin || '',
+      location: selected?.location || '',
+      specialization: selected?.specialization || '',
+      notes: selected?.notes || '',
+    })
+  }, [editOpen, selected])
 
   const activeFiltersCount = useMemo(() => {
     let n = 0
@@ -562,6 +601,14 @@ export default function AISearch() {
           <div style={{ padding: 14, borderBottom: '1px solid var(--card-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-primary)' }}>Recruiter Details</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                onClick={() => setEditOpen(true)}
+                style={iconButtonStyle(!selected)}
+                title={!selected ? 'Select a recruiter to edit' : 'Edit recruiter (locked)'}
+                disabled={!selected}
+              >
+                <i className="ti ti-edit" />
+              </button>
               <button onClick={() => { if(selected) { navigator.clipboard.writeText(`${selected.recruiter_name} - ${selected.email} - ${selected.phone}`); setToast('Profile copied to clipboard') } }} style={iconButtonStyle(!selected)} title="Copy Profile" disabled={!selected}>
                 <i className="ti ti-copy" />
               </button>
@@ -664,6 +711,148 @@ export default function AISearch() {
       {toast && (
         <div style={{ position: 'fixed', right: 18, bottom: 18, background: 'var(--text-primary)', color: 'var(--text-inverse)', padding: '10px 12px', borderRadius: 12, fontSize: 12, zIndex: 1500, boxShadow: 'var(--shadow-lg)' }}>
           {toast}
+        </div>
+      )}
+
+      {editOpen && (
+        <div
+          onClick={() => setEditOpen(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 2000, display: 'grid', placeItems: 'center', padding: 16 }}
+        >
+          <div
+            className="card"
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 620, padding: 16, borderRadius: 18, background: 'var(--card-bg)', border: '1px solid var(--card-border)', boxShadow: 'var(--shadow-lg)' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--text-primary)' }}>
+                Edit Recruiter
+              </div>
+              <button onClick={() => setEditOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                <i className="ti ti-x" />
+              </button>
+            </div>
+
+            {!editAuthed ? (
+              <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
+                <div style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                  Editing is locked. Enter admin PIN to unlock editing.
+                </div>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <input
+                    value={editPin}
+                    onChange={(e) => setEditPin(e.target.value)}
+                    type="password"
+                    placeholder="Admin PIN"
+                    autoFocus
+                    style={{ flex: 1, padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', outline: 'none' }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        ;(async () => {
+                          setEditError('')
+                          try {
+                            await login(editPin, true)
+                            setEditAuthed(true)
+                          } catch (err) {
+                            setEditError(getErrorMessage(err, 'Invalid PIN'))
+                          }
+                        })()
+                      }
+                    }}
+                  />
+                  <button
+                    className="btn-primary"
+                    onClick={async () => {
+                      setEditError('')
+                      try {
+                        await login(editPin, true)
+                        setEditAuthed(true)
+                      } catch (err) {
+                        setEditError(getErrorMessage(err, 'Invalid PIN'))
+                      }
+                    }}
+                    style={{ borderRadius: 12, padding: '10px 12px', fontWeight: 900 }}
+                  >
+                    <i className="ti ti-lock-open" /> Unlock
+                  </button>
+                </div>
+                {editError && <div style={{ fontSize: 12, color: '#f87171' }}>{editError}</div>}
+              </div>
+            ) : (
+              <div style={{ marginTop: 14, display: 'grid', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {[
+                    ['Full name', 'recruiter_name'],
+                    ['Email', 'email'],
+                    ['Phone', 'phone'],
+                    ['LinkedIn', 'linkedin'],
+                    ['Location', 'location'],
+                    ['Specialization', 'specialization'],
+                  ].map(([label, key]) => (
+                    <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div style={{ fontSize: 10.5, fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{label}</div>
+                      <input
+                        value={editForm[key]}
+                        onChange={(e) => setEditForm((p) => ({ ...p, [key]: e.target.value }))}
+                        style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', outline: 'none' }}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ fontSize: 10.5, fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Notes</div>
+                  <textarea
+                    value={editForm.notes}
+                    onChange={(e) => setEditForm((p) => ({ ...p, notes: e.target.value }))}
+                    style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', outline: 'none', minHeight: 90, resize: 'vertical' }}
+                  />
+                </div>
+
+                {editError && <div style={{ fontSize: 12, color: '#f87171' }}>{editError}</div>}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                  <button onClick={() => setEditOpen(false)} style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--card-bg)', color: 'var(--text-secondary)', fontWeight: 900, cursor: 'pointer' }}>
+                    Cancel
+                  </button>
+                  <button
+                    className="btn-primary"
+                    disabled={editSaving || !selected?.recruiter_id}
+                    onClick={async () => {
+                      if (!selected?.recruiter_id) return
+                      setEditSaving(true)
+                      setEditError('')
+                      try {
+                        const payload = {
+                          recruiter_name: editForm.recruiter_name || null,
+                          email: editForm.email || null,
+                          phone: editForm.phone || null,
+                          linkedin: editForm.linkedin || null,
+                          location: editForm.location || null,
+                          specialization: editForm.specialization || null,
+                          notes: editForm.notes || null,
+                        }
+                        const { data } = await api.put(`/recruiters/${selected.recruiter_id}`, payload)
+                        // Update UI immediately
+                        setResults((prev) => prev.map((r) => (r.recruiter_id === selected.recruiter_id ? { ...r, ...data } : r)))
+                        setToast('Recruiter updated')
+                        setTimeout(() => setToast(''), 1400)
+                        setEditOpen(false)
+                      } catch (err) {
+                        setEditError(getErrorMessage(err, 'Update failed'))
+                      } finally {
+                        setEditSaving(false)
+                      }
+                    }}
+                    style={{ borderRadius: 12, padding: '10px 12px', fontWeight: 900, opacity: (editSaving || !selected?.recruiter_id) ? 0.75 : 1 }}
+                  >
+                    <i className="ti ti-device-floppy" /> {editSaving ? 'Saving…' : 'Save changes'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

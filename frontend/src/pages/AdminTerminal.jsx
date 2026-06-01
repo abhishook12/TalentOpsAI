@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import axios from 'axios'
-
-const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
+import { API, getErrorMessage } from '../services/api'
 const ADMIN_TOKEN = 'talentops-admin-1012'
 const ADMIN_PIN = '1012'
 
@@ -340,9 +339,17 @@ function SessionRow({ session, isOpen, onToggle, index }) {
 export default function AdminTerminal() {
   const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem('admin_unlocked') === 'yes')
   const [stats, setStats] = useState(null)
+  const [opsKpis, setOpsKpis] = useState(null)
   const [topStates, setTopStates] = useState([])
   const [recentImports, setRecentImports] = useState([])
   const [dupes, setDupes] = useState(null)
+  const [dataOps, setDataOps] = useState(null)
+  const [uploadOps, setUploadOps] = useState(null)
+  const [searchIntel, setSearchIntel] = useState(null)
+  const [exportIntel, setExportIntel] = useState(null)
+  const [alerts, setAlerts] = useState([])
+  const [activityFeed, setActivityFeed] = useState(null)
+  const [stateCoverage, setStateCoverage] = useState(null)
   const [fieldAudit, setFieldAudit] = useState(null)
   const [tableSizes, setTableSizes] = useState([])
   const [sysInfo, setSysInfo] = useState(null)
@@ -374,21 +381,31 @@ export default function AdminTerminal() {
     setLoading(true)
     log('Connecting to TalentOps AI backend…')
     try {
-      const [s, ts, ri, fa, tbl, sys, orp] = await Promise.all([
+      const [s, ok, ts, ri, fa, tbl, sys, orp, dop, uop, si, ei, al, feed, cov] = await Promise.all([
         adminAxios.get('/admin/stats'),
+        adminAxios.get('/admin/ops-kpis'),
         adminAxios.get('/admin/top-states'),
         adminAxios.get('/admin/recent-imports'),
         adminAxios.get('/admin/field-audit'),
         adminAxios.get('/admin/table-sizes'),
         adminAxios.get('/admin/system-info'),
         adminAxios.get('/admin/orphan-companies'),
+        adminAxios.get('/admin/data-operations'),
+        adminAxios.get('/admin/upload-operations'),
+        adminAxios.get('/admin/search-activity'),
+        adminAxios.get('/admin/export-analytics'),
+        adminAxios.get('/admin/alerts'),
+        adminAxios.get('/admin/activity-feed'),
+        adminAxios.get('/admin/state-coverage'),
       ])
-      setStats(s.data); setTopStates(ts.data); setRecentImports(ri.data)
+      setStats(s.data); setOpsKpis(ok.data); setTopStates(ts.data); setRecentImports(ri.data)
       setFieldAudit(fa.data); setTableSizes(tbl.data); setSysInfo(sys.data); setOrphans(orp.data)
+      setDataOps(dop.data); setUploadOps(uop.data); setSearchIntel(si.data); setExportIntel(ei.data)
+      setAlerts(al.data?.alerts || []); setActivityFeed(feed.data); setStateCoverage(cov.data)
       log(`✓ Stats loaded: ${s.data.total_recruiters?.toLocaleString()} recruiters, ${s.data.total_companies?.toLocaleString()} companies`, 'ok')
       log(`✓ DB size: ${sys.data.database_size} · Uptime: ${sys.data.uptime}`, 'ok')
     } catch (e) {
-      log('✗ Failed to load admin data: ' + (e.message || 'unknown error'), 'error')
+      log('✗ Failed to load admin data: ' + getErrorMessage(e, e.message || 'unknown error'), 'error')
     }
     setLoading(false)
   }, [unlocked])
@@ -406,6 +423,18 @@ export default function AdminTerminal() {
       setDupes(res.data)
       log(`✓ Found ${res.data.total_duplicate_groups} duplicate email groups`, res.data.total_duplicate_groups > 0 ? 'warn' : 'ok')
     } catch { log('✗ Failed to load duplicates', 'error') }
+  }
+
+  const retryImport = async (jobId) => {
+    if (!jobId) return
+    log(`Retrying import job ${jobId}...`)
+    try {
+      await adminAxios.post(`/upload/jobs/${jobId}/retry`)
+      log('✓ Retry triggered', 'ok')
+      await loadAll()
+    } catch (e) {
+      log('✗ Retry failed: ' + getErrorMessage(e, e.message || 'unknown error'), 'error')
+    }
   }
 
   const clearCache = async () => {
@@ -449,12 +478,15 @@ export default function AdminTerminal() {
   if (!unlocked) return <AdminLock onUnlock={unlock} />
 
   const TABS = [
-    { id: 'overview',  icon: 'ti-layout-dashboard', label: 'Overview' },
-    { id: 'data',      icon: 'ti-database',          label: 'Data Health' },
-    { id: 'logbook',   icon: 'ti-book',              label: 'Visitor Log Book' },
-    { id: 'sql',       icon: 'ti-code',              label: 'SQL Console' },
-    { id: 'system',    icon: 'ti-server',            label: 'System' },
-    { id: 'logs',      icon: 'ti-terminal',          label: 'Activity Log' },
+    { id: 'overview', icon: 'ti-layout-dashboard', label: 'Overview' },
+    { id: 'ops', icon: 'ti-database', label: 'Data Operations' },
+    { id: 'uploads', icon: 'ti-cloud-upload', label: 'Upload Ops' },
+    { id: 'intel', icon: 'ti-sparkles', label: 'Search Intelligence' },
+    { id: 'exports', icon: 'ti-file-export', label: 'Export Analytics' },
+    { id: 'system', icon: 'ti-server', label: 'System Health' },
+    { id: 'logbook', icon: 'ti-book', label: 'Visitor Log Book' },
+    { id: 'sql', icon: 'ti-code', label: 'SQL Console' },
+    { id: 'logs', icon: 'ti-terminal', label: 'Activity Log' },
   ]
 
   const baseStyle = {
@@ -520,19 +552,26 @@ export default function AdminTerminal() {
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px 24px 28px', maxWidth: 1300, margin: '0 auto', width: '100%' }}>
 
         {/* ── OVERVIEW TAB ── */}
-        {activeTab === 'overview' && stats && (
+        {activeTab === 'overview' && (stats || opsKpis) && (
           <div style={{ animation: 'fadeUp 0.25s ease' }}>
             {/* KPI Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
-              <StatCard icon="ti-users" label="Total Recruiters" value={fmt(stats.total_recruiters)} sub={`${fmt(stats.active_recruiters)} active`} color="#38bdf8" glow />
-              <StatCard icon="ti-building" label="Companies" value={fmt(stats.total_companies)} color="#a78bfa" />
-              <StatCard icon="ti-user-check" label="Candidates" value={fmt(stats.total_candidates)} color="#34d399" />
-              <StatCard icon="ti-briefcase" label="Submissions" value={fmt(stats.total_submissions)} color="#fb923c" />
-              <StatCard icon="ti-mail" label="With Email" value={fmt(stats.with_email)} sub={`${pct(stats.with_email, stats.total_recruiters)}% coverage`} color="#f472b6" />
-              <StatCard icon="ti-phone" label="With Phone" value={fmt(stats.with_phone)} sub={`${pct(stats.with_phone, stats.total_recruiters)}% coverage`} color="#fbbf24" />
-              <StatCard icon="ti-map-pin" label="Unique Locations" value={fmt(stats.unique_locations)} color="#60a5fa" />
-              <StatCard icon="ti-calendar-plus" label="Added Today" value={fmt(stats.added_today)} sub={`${fmt(stats.added_week)} this week`} color="#22c55e" glow={stats.added_today > 0} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 16 }}>
+              <StatCard icon="ti-users" label="Total Recruiters" value={opsKpis?.total_recruiters != null ? fmt(opsKpis.total_recruiters) : 'No Data Available'} color="#38bdf8" glow />
+              <StatCard icon="ti-building" label="Total Companies" value={opsKpis?.total_companies != null ? fmt(opsKpis.total_companies) : 'No Data Available'} color="#a78bfa" />
+              <StatCard icon="ti-map" label="Total States" value={opsKpis?.total_states != null ? fmt(opsKpis.total_states) : 'No Data Available'} color="#34d399" />
+              <StatCard icon="ti-search" label="Searches Today" value={opsKpis?.searches_today != null ? fmt(opsKpis.searches_today) : 'No Data Available'} color="#fb923c" />
+              <StatCard icon="ti-cloud-upload" label="New Uploads" value={opsKpis?.new_uploads != null ? fmt(opsKpis.new_uploads) : 'No Data Available'} color="#60a5fa" />
+              <StatCard icon="ti-database" label="Database Size" value={opsKpis?.database_size != null ? opsKpis.database_size : 'No Data Available'} color="#f472b6" glow />
             </div>
+
+            {stats && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
+                <StatCard icon="ti-mail" label="With Email" value={fmt(stats.with_email)} sub={`${pct(stats.with_email, stats.total_recruiters)}% coverage`} color="#fbbf24" />
+                <StatCard icon="ti-phone" label="With Phone" value={fmt(stats.with_phone)} sub={`${pct(stats.with_phone, stats.total_recruiters)}% coverage`} color="#22c55e" />
+                <StatCard icon="ti-map-pin" label="Unique Locations" value={fmt(stats.unique_locations)} color="#a78bfa" />
+                <StatCard icon="ti-calendar-plus" label="Added Today" value={fmt(stats.added_today)} sub={`${fmt(stats.added_week)} this week`} color="#38bdf8" glow={stats.added_today > 0} />
+              </div>
+            )}
 
             {/* Top States + Recent Imports */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
@@ -567,12 +606,164 @@ export default function AdminTerminal() {
                 </div>
               </Section>
             </div>
+
+            {/* Operational panels */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 20, marginTop: 20 }}>
+              <Section
+                title="System Alerts"
+                icon="ti-alert-triangle"
+                action={<Badge color={(alerts?.some(a => a.severity === 'critical') ? '#ef4444' : '#38bdf8')}>{alerts?.some(a => a.severity === 'critical') ? 'CRITICAL' : 'ACTIVE'}</Badge>}
+                style={{ marginBottom: 0 }}
+              >
+                {(!alerts || alerts.length === 0) ? (
+                  <div style={{ color: '#64748b', fontSize: 12 }}>No alerts detected.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {alerts.slice(0, 4).map((a, i) => (
+                      <div key={i} style={{ background: '#0b1525', border: '1px solid #1e2d45', borderRadius: 12, padding: 12, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                        <div style={{ width: 34, height: 34, borderRadius: 10, background: a.severity === 'critical' ? 'rgba(239,68,68,0.18)' : 'rgba(245,158,11,0.16)', border: `1px solid ${a.severity === 'critical' ? 'rgba(239,68,68,0.35)' : 'rgba(245,158,11,0.28)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <i className={`ti ${a.severity === 'critical' ? 'ti-alert-triangle' : 'ti-alert-circle'}`} style={{ color: a.severity === 'critical' ? '#f87171' : '#fbbf24' }} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 700, color: '#e2e8f0' }}>{a.title}</div>
+                          <div style={{ marginTop: 4, fontSize: 11.5, color: '#94a3b8', lineHeight: 1.5 }}>{a.detail}</div>
+                          {a.action?.tab && (
+                            <button
+                              onClick={() => setActiveTab(a.action.tab)}
+                              style={{ marginTop: 10, background: '#111c30', border: '1px solid #1e3a5f', color: '#38bdf8', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                            >
+                              <i className="ti ti-arrow-right" /> {a.action.label || 'Open'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Section>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <Section title="Search Intelligence" icon="ti-sparkles" style={{ marginBottom: 0 }}>
+                  <div style={{ display: 'grid', gap: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'center' }}>
+                      <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Most Searched States</div>
+                      <Badge color="#a78bfa">Last 24h</Badge>
+                    </div>
+                    {(searchIntel?.most_searched_states?.length ? searchIntel.most_searched_states : []).slice(0, 5).map((r, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: '#0b1525', borderRadius: 10, border: '1px solid #1e2d45' }}>
+                        <span style={{ fontSize: 12, color: '#94a3b8', fontFamily: "'DM Mono', monospace" }}>{r.key}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#a78bfa', fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
+                      </div>
+                    ))}
+                    {!(searchIntel?.most_searched_states?.length) && <div style={{ color: '#64748b', fontSize: 12 }}>No Data Available</div>}
+                  </div>
+                </Section>
+
+                <Section title="Activity Feed" icon="ti-activity" style={{ marginBottom: 0 }}>
+                  <div style={{ maxHeight: 210, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {(activityFeed?.items || []).slice(0, 10).map((it, i) => (
+                      <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 10px', background: '#0b1525', borderRadius: 10, border: '1px solid #1e2d45' }}>
+                        <div style={{ width: 28, height: 28, borderRadius: 9, background: '#111c30', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <i className={`ti ${it.type === 'upload' ? 'ti-cloud-upload' : it.action_type?.startsWith('EXPORT_') ? 'ti-file-export' : it.action_type?.startsWith('SEARCH_') ? 'ti-search' : 'ti-bolt'}`} style={{ color: '#38bdf8', fontSize: 14 }} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 650, color: '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {it.type === 'upload'
+                              ? `Import: ${it.filename || it.job_id}`
+                              : `${it.action_type || 'ACTION'}`}
+                          </div>
+                          <div style={{ fontSize: 10.5, color: '#64748b', marginTop: 2, fontFamily: "'DM Mono', monospace" }}>
+                            {String(it.ts || '').replace('T', ' ').slice(0, 19)} · {it.status || ''}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {!(activityFeed?.items?.length) && <div style={{ color: '#64748b', fontSize: 12 }}>No Data Available</div>}
+                  </div>
+                </Section>
+              </div>
+            </div>
           </div>
         )}
 
         {/* ── DATA HEALTH TAB ── */}
-        {activeTab === 'data' && (
+        {activeTab === 'ops' && (
           <div style={{ animation: 'fadeUp 0.25s ease' }}>
+            {dataOps && (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 20 }}>
+                  <StatCard icon="ti-copy" label="Duplicate Groups" value={fmt(dataOps.counts?.duplicate_email_groups)} sub={`${fmt(dataOps.counts?.duplicate_email_rows)} rows involved`} color="#f87171" glow={(dataOps.counts?.duplicate_email_groups || 0) > 0} />
+                  <StatCard icon="ti-mail-off" label="Missing Emails" value={fmt(dataOps.counts?.missing_emails)} color="#fbbf24" glow={(dataOps.counts?.missing_emails || 0) > 0} />
+                  <StatCard icon="ti-phone-off" label="Missing Phones" value={fmt(dataOps.counts?.missing_phones)} color="#fb923c" glow={(dataOps.counts?.missing_phones || 0) > 0} />
+                  <StatCard icon="ti-map-pin-off" label="Missing Locations" value={fmt(dataOps.counts?.missing_locations)} color="#a78bfa" glow={(dataOps.counts?.missing_locations || 0) > 0} />
+                  <StatCard icon="ti-building-off" label="Unknown Companies" value={fmt(dataOps.counts?.unknown_companies)} color="#60a5fa" glow={(dataOps.counts?.unknown_companies || 0) > 0} />
+                  <StatCard icon="ti-map-question" label="Unmapped States" value={fmt(dataOps.counts?.unmapped_states)} color="#38bdf8" glow={(dataOps.counts?.unmapped_states || 0) > 0} />
+                </div>
+
+                <Section title="Data Operations" icon="ti-tools" action={
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <Badge color="#38bdf8">DB-driven</Badge>
+                    <Badge color="#22c55e">No fake values</Badge>
+                  </div>
+                }>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+                    <div>
+                      <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Quick Actions</div>
+                      <div style={{ display: 'grid', gap: 10 }}>
+                        {[
+                          { label: 'Export Problem Records', icon: 'ti-file-export', disabled: true },
+                          { label: 'Run Cleanup', icon: 'ti-broom', disabled: true },
+                          { label: 'Run Duplicate Scan', icon: 'ti-scan', onClick: loadDupes, disabled: false },
+                          { label: 'Refresh Analytics', icon: 'ti-refresh', onClick: clearCache, disabled: false },
+                        ].map((b) => (
+                          <button
+                            key={b.label}
+                            onClick={b.onClick}
+                            disabled={b.disabled}
+                            title={b.disabled ? 'Coming soon' : b.label}
+                            style={{
+                              background: '#111c30',
+                              border: '1px solid #1e3a5f',
+                              color: b.disabled ? '#475569' : '#38bdf8',
+                              padding: '9px 14px',
+                              borderRadius: 10,
+                              fontSize: 12.5,
+                              cursor: b.disabled ? 'not-allowed' : 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              opacity: b.disabled ? 0.65 : 1,
+                            }}
+                          >
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><i className={`ti ${b.icon}`} /> {b.label}</span>
+                            <i className={`ti ${b.disabled ? 'ti-lock' : 'ti-arrow-right'}`} />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>State Coverage Center</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 220, overflowY: 'auto' }}>
+                        {(stateCoverage?.states || []).slice(0, 12).map((r, i) => (
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#0b1525', border: '1px solid #1e2d45', borderRadius: 10 }}>
+                            <span style={{ color: '#94a3b8', fontFamily: "'DM Mono', monospace" }}>{r.state}</span>
+                            <span style={{ color: '#38bdf8', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.recruiters)} rec</span>
+                          </div>
+                        ))}
+                        {!(stateCoverage?.states?.length) && <div style={{ color: '#64748b', fontSize: 12 }}>No Data Available</div>}
+                      </div>
+                    </div>
+                  </div>
+                </Section>
+
+                <Section title="Duplicate Resolution Center" icon="ti-git-merge" action={<Badge color="#64748b">Future-ready</Badge>}>
+                  <div style={{ color: '#64748b', fontSize: 12 }}>
+                    No Data Available. Duplicate merge suggestions and review queue will appear here when implemented.
+                  </div>
+                </Section>
+              </>
+            )}
             {/* Field Audit */}
             {fieldAudit && (
               <Section title="Field Coverage Audit" icon="ti-clipboard-check">
@@ -645,6 +836,128 @@ export default function AdminTerminal() {
         )}
 
         {/* ── SQL TAB ── */}
+        {/* Upload Ops */}
+        {activeTab === 'uploads' && (
+          <div style={{ animation: 'fadeUp 0.25s ease' }}>
+            <Section title="Upload Operations Center" icon="ti-cloud-upload" action={<Badge color="#38bdf8">ETL History</Badge>}>
+              {!(uploadOps?.jobs?.length) ? (
+                <div style={{ color: '#64748b', fontSize: 12 }}>No Data Available</div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: '#111c30' }}>
+                        {['File Name', 'Rows', 'Status', 'Date', 'Source', 'Actions'].map(h => (
+                          <th key={h} style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', fontSize: 10.5, letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: '1px solid #1e3a5f', whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {uploadOps.jobs.slice(0, 30).map((j) => (
+                        <tr key={j.job_id} style={{ borderBottom: '1px solid #0e1e30' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#0b1525' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                        >
+                          <td style={{ padding: '10px 12px', color: '#e2e8f0', maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.filename}</td>
+                          <td style={{ padding: '10px 12px', color: '#94a3b8', fontFamily: "'DM Mono', monospace" }}>{fmt(j.total_rows)}</td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <Badge color={j.status === 'completed' ? '#22c55e' : j.status === 'failed' ? '#ef4444' : j.status === 'processing' ? '#f59e0b' : '#38bdf8'}>
+                              {String(j.status || 'unknown').toUpperCase()}
+                            </Badge>
+                          </td>
+                          <td style={{ padding: '10px 12px', color: '#64748b', fontFamily: "'DM Mono', monospace", whiteSpace: 'nowrap' }}>{String(j.started_at || '').replace('T', ' ').slice(0, 16) || '—'}</td>
+                          <td style={{ padding: '10px 12px', color: '#64748b' }}>{j.source || 'No Data Available'}</td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                              <button disabled title="Coming soon" style={{ background: '#0d1829', border: '1px solid #1e3a5f', color: '#475569', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'not-allowed', opacity: 0.7 }}>
+                                View
+                              </button>
+                              <button onClick={() => retryImport(j.job_id)} style={{ background: '#111c30', border: '1px solid #1e3a5f', color: '#38bdf8', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer' }}>
+                                Retry
+                              </button>
+                              <button disabled title="Coming soon" style={{ background: '#2a0b0b', border: '1px solid #7f1d1d', color: '#f87171', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'not-allowed', opacity: 0.7 }}>
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Section>
+          </div>
+        )}
+
+        {/* Search Intelligence */}
+        {activeTab === 'intel' && (
+          <div style={{ animation: 'fadeUp 0.25s ease' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
+              <Section title="Most Searched States" icon="ti-map-2" style={{ marginBottom: 0 }}>
+                {(searchIntel?.most_searched_states || []).slice(0, 12).map((r, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: '#0b1525', borderRadius: 10, border: '1px solid #1e2d45', marginBottom: 8 }}>
+                    <span style={{ color: '#94a3b8', fontFamily: "'DM Mono', monospace" }}>{r.key}</span>
+                    <span style={{ color: '#38bdf8', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
+                  </div>
+                ))}
+                {!(searchIntel?.most_searched_states?.length) && <div style={{ color: '#64748b', fontSize: 12 }}>No Data Available</div>}
+              </Section>
+
+              <Section title="Most Searched Companies" icon="ti-building" style={{ marginBottom: 0 }}>
+                {(searchIntel?.most_searched_companies || []).slice(0, 12).map((r, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: '#0b1525', borderRadius: 10, border: '1px solid #1e2d45', marginBottom: 8 }}>
+                    <span style={{ color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.key}</span>
+                    <span style={{ color: '#a78bfa', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
+                  </div>
+                ))}
+                {!(searchIntel?.most_searched_companies?.length) && <div style={{ color: '#64748b', fontSize: 12 }}>No Data Available</div>}
+              </Section>
+
+              <Section title="Most Searched Recruiters" icon="ti-users" style={{ marginBottom: 0 }}>
+                {(searchIntel?.most_searched_recruiters || []).slice(0, 12).map((r, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: '#0b1525', borderRadius: 10, border: '1px solid #1e2d45', marginBottom: 8 }}>
+                    <span style={{ color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.key}</span>
+                    <span style={{ color: '#22c55e', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
+                  </div>
+                ))}
+                {!(searchIntel?.most_searched_recruiters?.length) && <div style={{ color: '#64748b', fontSize: 12 }}>No Data Available</div>}
+              </Section>
+            </div>
+          </div>
+        )}
+
+        {/* Export Analytics */}
+        {activeTab === 'exports' && (
+          <div style={{ animation: 'fadeUp 0.25s ease' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14, marginBottom: 20 }}>
+              <StatCard icon="ti-file-export" label="Exports (Last 24h)" value={exportIntel?.exports != null ? fmt(exportIntel.exports) : 'No Data Available'} color="#38bdf8" glow />
+              <StatCard icon="ti-building" label="Top Exported Company" value={exportIntel?.most_exported_companies?.[0]?.key || 'No Data Available'} sub={exportIntel?.most_exported_companies?.[0] ? `${fmt(exportIntel.most_exported_companies[0].count)} exports` : null} color="#a78bfa" />
+              <StatCard icon="ti-map" label="Top Exported State" value={exportIntel?.most_exported_states?.[0]?.key || 'No Data Available'} sub={exportIntel?.most_exported_states?.[0] ? `${fmt(exportIntel.most_exported_states[0].count)} exports` : null} color="#22c55e" />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              <Section title="Most Exported States" icon="ti-map-2" style={{ marginBottom: 0 }}>
+                {(exportIntel?.most_exported_states || []).slice(0, 15).map((r, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: '#0b1525', borderRadius: 10, border: '1px solid #1e2d45', marginBottom: 8 }}>
+                    <span style={{ color: '#94a3b8', fontFamily: "'DM Mono', monospace" }}>{r.key}</span>
+                    <span style={{ color: '#22c55e', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
+                  </div>
+                ))}
+                {!(exportIntel?.most_exported_states?.length) && <div style={{ color: '#64748b', fontSize: 12 }}>No Data Available</div>}
+              </Section>
+              <Section title="Most Exported Companies" icon="ti-building" style={{ marginBottom: 0 }}>
+                {(exportIntel?.most_exported_companies || []).slice(0, 15).map((r, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: '#0b1525', borderRadius: 10, border: '1px solid #1e2d45', marginBottom: 8 }}>
+                    <span style={{ color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.key}</span>
+                    <span style={{ color: '#a78bfa', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
+                  </div>
+                ))}
+                {!(exportIntel?.most_exported_companies?.length) && <div style={{ color: '#64748b', fontSize: 12 }}>No Data Available</div>}
+              </Section>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'sql' && (
           <div style={{ animation: 'fadeUp 0.25s ease' }}>
             <SqlConsole />

@@ -204,7 +204,9 @@ def get_recruiters(
             Recruiter.normalized_recruiter_name.ilike(f"%{clean_search}%") |
             Recruiter.email.ilike(f"%{search}%") |
             Recruiter.specialization.ilike(f"%{search}%") |
-            Company.normalized_company_name.ilike(f"%{clean_search}%")
+            Company.normalized_company_name.ilike(f"%{clean_search}%") |
+            Recruiter.location.ilike(f"%{search}%") |
+            Company.location.ilike(f"%{search}%")
         )
     
     if state:

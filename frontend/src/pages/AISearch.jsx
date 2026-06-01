@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import axios from 'axios'
-import { API } from '../services/api'
+import api, { logAction } from '../services/api'
 
 function initials(name) {
   const parts = (name || '').trim().split(' ').filter(Boolean)
@@ -80,7 +79,7 @@ export default function AISearch() {
         if (filterLocation.trim()) params.location = filterLocation.trim()
         if (filterSpecialization.trim()) params.specialization = filterSpecialization.trim()
 
-        const res = await axios.get(`${API}/recruiters/search`, { params })
+        const res = await api.get('/recruiters/search', { params })
         const sorted = [...(res.data || [])].sort((a, b) => {
           const ma = matchTypeFor(a, query) === 'Exact' ? 0 : 1
           const mb = matchTypeFor(b, query) === 'Exact' ? 0 : 1
@@ -90,6 +89,15 @@ export default function AISearch() {
 
         setResults(sorted)
         setSelectedId((prev) => (prev && sorted.some((x) => x.recruiter_id === prev) ? prev : null))
+
+        logAction('SEARCH_RECRUITERS', {
+          q: query.trim(),
+          company: filterCompany.trim() || null,
+          location: filterLocation.trim() || null,
+          specialization: filterSpecialization.trim() || null,
+          results: Array.isArray(sorted) ? sorted.length : 0,
+          context: 'ai_search',
+        })
       } catch {
         setError('Could not load recruiter search results.')
         setResults([])
@@ -662,4 +670,3 @@ export default function AISearch() {
     </div>
   )
 }
-

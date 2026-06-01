@@ -33,6 +33,18 @@ export async function logout() {
   await api.post('/auth/logout')
 }
 
+export async function logAction(actionType, details = {}, status = 'success') {
+  try {
+    await api.post('/actions/log', {
+      action_type: actionType,
+      details,
+      status,
+    })
+  } catch {
+    // Never block core UX on analytics logging.
+  }
+}
+
 export function getErrorMessage(err, fallback = 'Something went wrong') {
   if (err?.message === 'Network Error' || err?.code === 'ERR_NETWORK') {
     return `Cannot reach the API at ${API}. Start the backend (uvicorn) or check VITE_API_URL in frontend/.env`

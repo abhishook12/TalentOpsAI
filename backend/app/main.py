@@ -7,7 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.config import CORS_ORIGINS, IS_PRODUCTION
-from app.routes import recruiters, companies, vendors, analytics, upload, admin, auth
+from app.routes import recruiters, companies, vendors, analytics, upload, admin, auth, actions
 from app.database import get_db, engine
 from app.models import models
 from app.create_indexes import create_performance_indexes
@@ -64,6 +64,7 @@ app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
 app.include_router(upload.router, prefix="/upload", tags=["Upload"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
+app.include_router(actions.router, prefix="/actions", tags=["Actions"])
 
 
 @app.get("/")

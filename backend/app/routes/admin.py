@@ -5,9 +5,11 @@ All endpoints require the X-Admin-Token header = ADMIN_SECRET_KEY (default: tale
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from sqlalchemy.exc import ProgrammingError
 from typing import Optional
 from app.database import get_db
 from app.models.models import Recruiter, Company, Candidate, Submission, Vendor, PageVisit
+from app.models.models import UploadJob, ActionLog
 from datetime import datetime, timedelta
 from collections import defaultdict
 import time
@@ -46,6 +48,375 @@ def admin_stats(db: Session = Depends(get_db), _=Depends(verify_admin)):
     """)).mappings().one()
     elapsed = round((time.time() - t0) * 1000, 1)
     return {**dict(rows), "query_ms": elapsed}
+
+
+@router.get("/ops-kpis")
+def admin_ops_kpis(db: Session = Depends(get_db), _=Depends(verify_admin)):
+    """
+    Operational KPIs for the command center.
+    Uses real DB values; if a metric can't be computed, returns null for that field.
+    """
+    stats = admin_stats(db)
+
+    try:
+        total_states = db.execute(text("""
+            SELECT COUNT(DISTINCT state)
+            FROM recruiters
+            WHERE state IS NOT NULL AND state != ''
+        """)).scalar()
+    except Exception:
+        total_states = None
+
+    try:
+        db_size = db.execute(text("SELECT pg_size_pretty(pg_database_size(current_database()))")).scalar()
+    except Exception:
+        db_size = None
+
+    try:
+        searches_today = db.execute(text("""
+            SELECT COUNT(*)
+            FROM action_logs
+            WHERE created_at >= date_trunc('day', now())
+              AND action_type LIKE 'SEARCH_%'
+        """)).scalar()
+    except Exception:
+        searches_today = None
+
+    try:
+        exports_today = db.execute(text("""
+            SELECT COUNT(*)
+            FROM action_logs
+            WHERE created_at >= date_trunc('day', now())
+              AND action_type LIKE 'EXPORT_%'
+        """)).scalar()
+    except Exception:
+        exports_today = None
+
+    new_uploads = None
+    try:
+        new_uploads = db.execute(text("""
+            SELECT COUNT(*)
+            FROM upload_jobs
+            WHERE started_at >= date_trunc('day', now())
+        """)).scalar()
+    except ProgrammingError:
+        db.rollback()
+        try:
+            new_uploads = db.execute(text("""
+                SELECT COUNT(*)
+                FROM action_logs
+                WHERE created_at >= date_trunc('day', now())
+                  AND action_type = 'UPLOAD_ETL'
+            """)).scalar()
+        except Exception:
+            new_uploads = None
+
+    return {
+        "total_recruiters": stats.get("total_recruiters"),
+        "total_companies": stats.get("total_companies"),
+        "total_states": total_states,
+        "searches_today": searches_today,
+        "exports_today": exports_today,
+        "new_uploads": new_uploads,
+        "database_size": db_size,
+    }
+
+
+@router.get("/data-operations")
+def admin_data_operations(db: Session = Depends(get_db), _=Depends(verify_admin)):
+    """
+    Data operations summary (counts) + small samples for operational workflows.
+    """
+    missing_email = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE email IS NULL OR email = ''")).scalar()
+    missing_phone = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE phone IS NULL OR phone = ''")).scalar()
+    missing_location = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE location IS NULL OR location = ''")).scalar()
+
+    unknown_companies = db.execute(text("""
+        SELECT COUNT(*)
+        FROM recruiters r
+        LEFT JOIN companies c ON c.company_id = r.company_id
+        WHERE r.company_id IS NULL OR c.company_id IS NULL
+    """)).scalar()
+
+    unmapped_states = db.execute(text("""
+        SELECT COUNT(*)
+        FROM recruiters
+        WHERE (state IS NULL OR state = '')
+          AND (location IS NOT NULL AND location != '')
+    """)).scalar()
+
+    dup_groups = db.execute(text("""
+        SELECT COUNT(*) FROM (
+            SELECT LOWER(TRIM(email)) AS e
+            FROM recruiters
+            WHERE email IS NOT NULL AND email != ''
+            GROUP BY LOWER(TRIM(email))
+            HAVING COUNT(*) > 1
+        ) t
+    """)).scalar()
+
+    dup_rows = db.execute(text("""
+        SELECT COALESCE(SUM(n), 0) FROM (
+            SELECT COUNT(*) AS n
+            FROM recruiters
+            WHERE email IS NOT NULL AND email != ''
+            GROUP BY LOWER(TRIM(email))
+            HAVING COUNT(*) > 1
+        ) t
+    """)).scalar()
+
+    sample_missing_email = db.execute(text("""
+        SELECT recruiter_id, recruiter_name, phone, COALESCE(location, '') AS location
+        FROM recruiters
+        WHERE email IS NULL OR email = ''
+        ORDER BY created_at DESC NULLS LAST
+        LIMIT 25
+    """)).mappings().all()
+
+    sample_unmapped_states = db.execute(text("""
+        SELECT recruiter_id, recruiter_name, email, COALESCE(location, '') AS location
+        FROM recruiters
+        WHERE (state IS NULL OR state = '')
+          AND (location IS NOT NULL AND location != '')
+        ORDER BY created_at DESC NULLS LAST
+        LIMIT 25
+    """)).mappings().all()
+
+    return {
+        "counts": {
+            "duplicate_email_groups": int(dup_groups or 0),
+            "duplicate_email_rows": int(dup_rows or 0),
+            "missing_emails": int(missing_email or 0),
+            "missing_phones": int(missing_phone or 0),
+            "missing_locations": int(missing_location or 0),
+            "unknown_companies": int(unknown_companies or 0),
+            "unmapped_states": int(unmapped_states or 0),
+        },
+        "samples": {
+            "missing_emails": [dict(r) for r in sample_missing_email],
+            "unmapped_states": [dict(r) for r in sample_unmapped_states],
+        },
+    }
+
+
+@router.get("/upload-operations")
+def admin_upload_operations(limit: int = 25, db: Session = Depends(get_db), _=Depends(verify_admin)):
+    """
+    Recent upload jobs (ETL history) from UploadJob table.
+    """
+    try:
+        jobs = db.query(UploadJob).order_by(UploadJob.started_at.desc()).limit(limit).all()
+    except Exception:
+        return {"jobs": [], "detail": "No Data Available"}
+
+    def _job(j: UploadJob):
+        return {
+            "job_id": j.job_id,
+            "filename": j.filename,
+            "status": j.status,
+            "total_rows": j.total_rows,
+            "processed_rows": j.processed_rows,
+            "inserted_rows": j.inserted_rows,
+            "skipped_rows": j.skipped_rows,
+            "error_count": j.error_count,
+            "started_at": str(j.started_at) if j.started_at else None,
+            "completed_at": str(j.completed_at) if j.completed_at else None,
+        }
+
+    return {"jobs": [_job(j) for j in jobs]}
+
+
+@router.get("/search-activity")
+def admin_search_activity(days: int = 1, db: Session = Depends(get_db), _=Depends(verify_admin)):
+    """
+    Aggregates recent SEARCH_* action logs. Only counts events that stored JSON details.
+    """
+    since = datetime.utcnow() - timedelta(days=max(1, days))
+
+    def top(field: str, action_type: str, limit: int = 10):
+        try:
+            rows = db.execute(text("""
+                SELECT (details::jsonb ->> :field) AS key, COUNT(*) AS count
+                FROM action_logs
+                WHERE created_at >= :since
+                  AND action_type = :action_type
+                  AND details LIKE '{%'
+                  AND (details::jsonb ->> :field) IS NOT NULL
+                  AND (details::jsonb ->> :field) != ''
+                GROUP BY key
+                ORDER BY count DESC
+                LIMIT :limit
+            """), {"field": field, "since": since, "action_type": action_type, "limit": limit}).mappings().all()
+            return [{"key": r["key"], "count": int(r["count"])} for r in rows]
+        except Exception:
+            return []
+
+    return {
+        "since": str(since),
+        "most_searched_states": top("state", "SEARCH_STATE"),
+        "most_searched_companies": top("company", "SEARCH_COMPANY"),
+        "most_searched_recruiters": top("q", "SEARCH_RECRUITERS"),
+    }
+
+
+@router.get("/export-analytics")
+def admin_export_analytics(days: int = 1, db: Session = Depends(get_db), _=Depends(verify_admin)):
+    since = datetime.utcnow() - timedelta(days=max(1, days))
+
+    try:
+        exports = db.execute(text("""
+            SELECT COUNT(*)
+            FROM action_logs
+            WHERE created_at >= :since
+              AND action_type LIKE 'EXPORT_%'
+        """), {"since": since}).scalar()
+    except Exception:
+        exports = None
+
+    def top(field: str, limit: int = 10):
+        try:
+            rows = db.execute(text("""
+                SELECT (details::jsonb ->> :field) AS key, COUNT(*) AS count
+                FROM action_logs
+                WHERE created_at >= :since
+                  AND action_type LIKE 'EXPORT_%'
+                  AND details LIKE '{%'
+                  AND (details::jsonb ->> :field) IS NOT NULL
+                  AND (details::jsonb ->> :field) != ''
+                GROUP BY key
+                ORDER BY count DESC
+                LIMIT :limit
+            """), {"field": field, "since": since, "limit": limit}).mappings().all()
+            return [{"key": r["key"], "count": int(r["count"])} for r in rows]
+        except Exception:
+            return []
+
+    return {
+        "since": str(since),
+        "exports": exports,
+        "most_exported_states": top("state"),
+        "most_exported_companies": top("company"),
+    }
+
+
+@router.get("/alerts")
+def admin_alerts(db: Session = Depends(get_db), _=Depends(verify_admin)):
+    """
+    Actionable alerts derived from real DB state.
+    """
+    alerts = []
+
+    ops = admin_data_operations(db)
+    counts = ops.get("counts", {})
+    if counts.get("unmapped_states", 0) > 0:
+        alerts.append({
+            "severity": "critical",
+            "title": "Missing state mappings",
+            "detail": f"{counts['unmapped_states']} recruiters have location but no normalized state.",
+            "action": {"label": "Open Data Operations", "tab": "ops"},
+        })
+    if counts.get("duplicate_email_groups", 0) > 0:
+        alerts.append({
+            "severity": "warning",
+            "title": "Duplicate emails detected",
+            "detail": f"{counts['duplicate_email_groups']} duplicate email groups found.",
+            "action": {"label": "Open Duplicate Manager", "tab": "ops"},
+        })
+
+    try:
+        failed = db.execute(text("""
+            SELECT COUNT(*) FROM upload_jobs
+            WHERE status IN ('failed', 'error')
+              AND started_at >= NOW() - INTERVAL '7 days'
+        """)).scalar()
+        if failed and int(failed) > 0:
+            alerts.append({
+                "severity": "critical",
+                "title": "Failed uploads",
+                "detail": f"{int(failed)} import job(s) failed in the last 7 days.",
+                "action": {"label": "Open Upload Operations", "tab": "uploads"},
+            })
+    except Exception:
+        pass
+
+    return {"alerts": alerts}
+
+
+@router.get("/activity-feed")
+def admin_activity_feed(limit: int = 50, db: Session = Depends(get_db), _=Depends(verify_admin)):
+    """
+    Unified activity feed powered by ActionLog + UploadJob.
+    """
+    items = []
+
+    try:
+        logs = db.query(ActionLog).order_by(ActionLog.created_at.desc()).limit(limit).all()
+        for l in logs:
+            items.append({
+                "type": "action",
+                "ts": str(l.created_at) if l.created_at else None,
+                "action_type": l.action_type,
+                "status": l.status,
+                "user_email": l.user_email,
+                "details": l.details,
+            })
+    except Exception:
+        pass
+
+    try:
+        jobs = db.query(UploadJob).order_by(UploadJob.started_at.desc()).limit(limit).all()
+        for j in jobs:
+            items.append({
+                "type": "upload",
+                "ts": str(j.started_at) if j.started_at else None,
+                "job_id": j.job_id,
+                "filename": j.filename,
+                "status": j.status,
+                "total_rows": j.total_rows,
+                "inserted_rows": j.inserted_rows,
+                "error_count": j.error_count,
+            })
+    except Exception:
+        pass
+
+    items = [x for x in items if x.get("ts")]
+    items.sort(key=lambda x: x["ts"], reverse=True)
+    return {"items": items[:limit]}
+
+
+@router.get("/state-coverage")
+def admin_state_coverage(limit: int = 20, db: Session = Depends(get_db), _=Depends(verify_admin)):
+    """
+    Coverage centers: recruiters per state + companies per state.
+    """
+    recruiters = db.execute(text("""
+        SELECT state, COUNT(*) AS recruiters
+        FROM recruiters
+        WHERE state IS NOT NULL AND state != ''
+        GROUP BY state
+        ORDER BY recruiters DESC
+        LIMIT :limit
+    """), {"limit": limit}).mappings().all()
+
+    companies = db.execute(text("""
+        SELECT COALESCE(c.state, r.state) AS state, COUNT(DISTINCT c.company_id) AS companies
+        FROM companies c
+        LEFT JOIN recruiters r ON r.company_id = c.company_id
+        WHERE COALESCE(c.state, r.state) IS NOT NULL AND COALESCE(c.state, r.state) != ''
+        GROUP BY COALESCE(c.state, r.state)
+    """)).mappings().all()
+    companies_map = {row["state"]: int(row["companies"]) for row in companies}
+
+    rows = []
+    for r in recruiters:
+        st = r["state"]
+        rows.append({
+            "state": st,
+            "recruiters": int(r["recruiters"]),
+            "companies": int(companies_map.get(st, 0)),
+        })
+
+    return {"states": rows}
 
 
 # ── 2. Top states by recruiter count ─────────────────────────────────────────

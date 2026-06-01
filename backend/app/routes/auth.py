@@ -153,7 +153,10 @@ def login(data: LoginRequest, response: Response, request: Request, db: Session 
         max_age=expires_in,
         httponly=True,
         secure=IS_PRODUCTION,
-        samesite="lax",
+        # Frontend (Vercel) and API (Render) are different sites.
+        # To persist sessions across refreshes, the cookie must be sent on cross-site XHR requests.
+        # That requires SameSite=None + Secure in production.
+        samesite="none" if IS_PRODUCTION else "lax",
         path="/",
     )
     _clear_failures(ip)

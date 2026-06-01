@@ -57,6 +57,7 @@ function AdminLock({ onUnlock, errorMessage }) {
   const [healthLoading, setHealthLoading] = useState(false)
   const pinRef = useRef(pin)
   pinRef.current = pin
+  const inputRef = useRef(null)
 
   const submit = useCallback(async () => {
     if (verifying) return
@@ -81,26 +82,26 @@ function AdminLock({ onUnlock, errorMessage }) {
   }, [onUnlock, remember, verifying])
 
   const pressKey = useCallback((k) => {
-    if (k === '⌫') setPin(p => p.slice(0, -1))
-    else if (k === '↵') submit()
-    else setPin(p => (p.length < 4 ? p + k : p))
+    if (k === 'backspace') setPin(p => p.slice(0, -1))
+    else if (k === 'enter') submit()
+    else setPin(p => (p.length < 32 ? p + k : p))
   }, [submit])
 
   useEffect(() => {
     const onKeyDown = (e) => {
-      if (/^[0-9]$/.test(e.key)) {
-        e.preventDefault()
-        pressKey(e.key)
-        return
-      }
       if (e.key === 'Backspace' || e.key === 'Delete') {
         e.preventDefault()
-        pressKey('⌫')
+        pressKey('backspace')
         return
       }
       if (e.key === 'Enter') {
         e.preventDefault()
         submit()
+        return
+      }
+      // Allow typing any visible characters for non-numeric admin passwords.
+      if (e.key && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        pressKey(e.key)
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -109,14 +110,53 @@ function AdminLock({ onUnlock, errorMessage }) {
 
   return (
     <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'linear-gradient(135deg, #020817 0%, #0b1525 50%, #020817 100%)',
-      fontFamily: "'DM Mono', monospace",
+      position: 'fixed',
+      inset: 0,
+      zIndex: 100000,
+      display: 'grid',
+      gridTemplateColumns: '1.2fr 1fr',
+      background: 'linear-gradient(135deg, #0a0f1e 0%, #070a12 55%, #05060b 100%)',
+      color: '#e5e7eb',
+      fontFamily: 'var(--font)',
     }}>
-      {/* Animated grid background */}
-      <div style={{ position: 'fixed', inset: 0, opacity: 0.05, backgroundImage: 'linear-gradient(#38bdf8 1px, transparent 1px), linear-gradient(90deg, #38bdf8 1px, transparent 1px)', backgroundSize: '40px 40px', pointerEvents: 'none' }} />
+      {/* Left brand panel */}
+      <div style={{
+        padding: 44,
+        background: 'radial-gradient(1200px 800px at 30% 20%, rgba(99,102,241,0.22), transparent 55%), radial-gradient(900px 600px at 60% 70%, rgba(59,130,246,0.18), transparent 60%)',
+        borderRight: '1px solid rgba(255,255,255,0.06)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 22,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(99,102,241,0.22)', border: '1px solid rgba(99,102,241,0.28)', display: 'grid', placeItems: 'center' }}>
+            <i className="ti ti-terminal-2" style={{ fontSize: 22, color: '#c7d2fe' }} />
+          </div>
+          <div style={{ fontSize: 34, fontWeight: 900, letterSpacing: '-0.02em' }}>RECRUIT-INTEL</div>
+        </div>
+        <div style={{ fontSize: 14, color: 'rgba(229,231,235,0.85)' }}>Recruitment Intelligence Platform</div>
+        <div style={{ fontSize: 22, lineHeight: 1.55, color: 'rgba(229,231,235,0.62)', maxWidth: 620 }}>
+          Manage recruiter intelligence, company data, state directories, ETL operations, analytics, and platform administration within our unified operational command center.
+        </div>
+        <div style={{ marginTop: 'auto', display: 'flex', gap: 14, alignItems: 'center', opacity: 0.9 }}>
+          <div className="card" style={{ padding: 16, borderRadius: 18, width: 220, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ fontSize: 10, color: 'rgba(229,231,235,0.65)', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' }}>ETL Pipeline</div>
+            <div style={{ marginTop: 10, height: 6, borderRadius: 999, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+              <div style={{ width: '62%', height: '100%', background: 'rgba(99,102,241,0.75)' }} />
+            </div>
+            <div style={{ marginTop: 10, fontSize: 12, color: 'rgba(229,231,235,0.75)' }}>98.2% Accuracy Rate</div>
+          </div>
+          <div className="card" style={{ padding: 16, borderRadius: 18, width: 220, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ fontSize: 10, color: 'rgba(229,231,235,0.65)', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Active Clusters</div>
+            <div style={{ marginTop: 8, fontSize: 26, fontWeight: 900 }}>1,204</div>
+            <div style={{ marginTop: 2, fontSize: 12, color: '#34d399' }}>+12%</div>
+          </div>
+        </div>
+      </div>
 
-      <div style={{ position: 'relative', width: 360, animation: shake ? 'shake 0.5s' : 'none' }}>
+      {/* Right access panel */}
+      <div style={{ display: 'grid', placeItems: 'center', padding: 28 }}>
+        <div style={{ position: 'relative', width: 360, animation: shake ? 'shake 0.5s' : 'none' }}>
         <style>{`
           @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-8px)} 40%,80%{transform:translateX(8px)} }
           @keyframes pulse-ring { 0%{transform:scale(1);opacity:0.4} 100%{transform:scale(1.5);opacity:0} }
@@ -131,6 +171,7 @@ function AdminLock({ onUnlock, errorMessage }) {
           borderRadius: 20, padding: '40px 36px', backdropFilter: 'blur(12px)',
           boxShadow: '0 0 60px rgba(56,189,248,0.08), 0 24px 48px rgba(0,0,0,0.5)',
           display: 'flex', flexDirection: 'column', gap: 28, alignItems: 'center',
+          position: 'relative',
         }}>
           {/* Icon */}
           <div style={{ position: 'relative' }}>
@@ -150,6 +191,19 @@ function AdminLock({ onUnlock, errorMessage }) {
             </div>
           </div>
 
+          {/* Hidden input to support full keyboard passwords (not just numeric keypad). */}
+          <input
+            ref={inputRef}
+            type="password"
+            value={pin}
+            onChange={(e) => setPin(String(e.target.value || '').slice(0, 32))}
+            autoFocus
+            inputMode="text"
+            autoComplete="current-password"
+            aria-label="Admin password"
+            style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+          />
+
           {/* PIN dots */}
           <div style={{ display: 'flex', gap: 12 }}>
             {[0,1,2,3].map(i => (
@@ -159,19 +213,52 @@ function AdminLock({ onUnlock, errorMessage }) {
 
           {/* Keypad */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, width: '100%' }}>
-            {['1','2','3','4','5','6','7','8','9','⌫','0','↵'].map(k => (
-              <button key={k} type="button" onClick={() => pressKey(k)} style={{
-                height: 52, borderRadius: 10, fontSize: k.length > 1 ? 16 : 18, fontWeight: 600,
-                background: k === '↵' ? 'linear-gradient(135deg, #0ea5e9, #1d4ed8)' : '#111c30',
-                color: k === '↵' ? '#fff' : '#94a3b8',
-                border: '1px solid #1e3a5f',
-                cursor: verifying ? 'not-allowed' : 'pointer', transition: 'all 0.1s',
-                boxShadow: k === '↵' ? '0 0 16px rgba(14,165,233,0.3)' : 'none',
-                opacity: verifying ? 0.7 : 1,
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = k === '↵' ? 'linear-gradient(135deg, #38bdf8, #3b82f6)' : '#1a2840'; e.currentTarget.style.color = '#e2e8f0' }}
-              onMouseLeave={e => { e.currentTarget.style.background = k === '↵' ? 'linear-gradient(135deg, #0ea5e9, #1d4ed8)' : '#111c30'; e.currentTarget.style.color = k === '↵' ? '#fff' : '#94a3b8' }}
-              >{k}</button>
+            {[
+              { key: '1', label: '1' },
+              { key: '2', label: '2' },
+              { key: '3', label: '3' },
+              { key: '4', label: '4' },
+              { key: '5', label: '5' },
+              { key: '6', label: '6' },
+              { key: '7', label: '7' },
+              { key: '8', label: '8' },
+              { key: '9', label: '9' },
+              { key: 'backspace', label: <i className="ti ti-backspace" /> },
+              { key: '0', label: '0' },
+              { key: 'enter', label: <i className="ti ti-arrow-right" /> },
+            ].map((k) => (
+              <button
+                key={k.key}
+                type="button"
+                onClick={() => { inputRef.current?.focus(); pressKey(k.key) }}
+                disabled={verifying}
+                style={{
+                  height: 52,
+                  borderRadius: 10,
+                  fontSize: 18,
+                  fontWeight: 600,
+                  background: k.key === 'enter' ? 'linear-gradient(135deg, #0ea5e9, #1d4ed8)' : '#111c30',
+                  color: k.key === 'enter' ? '#fff' : '#94a3b8',
+                  border: '1px solid #1e3a5f',
+                  cursor: verifying ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.1s',
+                  boxShadow: k.key === 'enter' ? '0 0 16px rgba(14,165,233,0.3)' : 'none',
+                  opacity: verifying ? 0.7 : 1,
+                  display: 'grid',
+                  placeItems: 'center',
+                }}
+                onMouseEnter={(e) => {
+                  if (verifying) return
+                  e.currentTarget.style.background = k.key === 'enter' ? 'linear-gradient(135deg, #38bdf8, #3b82f6)' : '#1a2840'
+                  e.currentTarget.style.color = '#e2e8f0'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = k.key === 'enter' ? 'linear-gradient(135deg, #0ea5e9, #1d4ed8)' : '#111c30'
+                  e.currentTarget.style.color = k.key === 'enter' ? '#fff' : '#94a3b8'
+                }}
+              >
+                {k.label}
+              </button>
             ))}
           </div>
 
@@ -225,6 +312,7 @@ function AdminLock({ onUnlock, errorMessage }) {
             </div>
           )}
         </div>
+      </div>
       </div>
 
       {healthOpen && (
@@ -463,6 +551,17 @@ function SessionRow({ session, isOpen, onToggle, index }) {
 
 // ── Main Terminal ─────────────────────────────────────────────────────────────
 export default function AdminTerminal() {
+  // Admin Command Center is designed for dark mode; keep the theme consistent on this route.
+  const prevThemeRef = useRef(null)
+  useEffect(() => {
+    const prev = document.documentElement.getAttribute('data-theme') || 'dark'
+    prevThemeRef.current = prev
+    document.documentElement.setAttribute('data-theme', 'dark')
+    return () => {
+      if (prevThemeRef.current) document.documentElement.setAttribute('data-theme', prevThemeRef.current)
+    }
+  }, [])
+
   const [stats, setStats] = useState(null)
   const [opsKpis, setOpsKpis] = useState(null)
   const [topStates, setTopStates] = useState([])

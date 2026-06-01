@@ -5,7 +5,8 @@ import logging
 logger = logging.getLogger("talentops")
 
 ENV = os.getenv("ENV", "development").lower()
-IS_PRODUCTION = ENV in ("production", "prod")
+IS_RENDER = bool(os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID") or os.getenv("RENDER_EXTERNAL_URL"))
+IS_PRODUCTION = ENV in ("production", "prod") or IS_RENDER
 
 JWT_SECRET = os.getenv("JWT_SECRET", "super-secret-jwt-key-talentops")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "1012")

@@ -335,14 +335,24 @@ function PageTracker() {
 
 function LoginScreen({ onLoginSuccess }) {
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [pin, setPin] = useState('')
   const [error, setError] = useState('')
   const [remember, setRemember] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
+  const pinRef = useRef(pin)
+  pinRef.current = pin
+
+  const pressKey = (k) => {
+    if (submitting) return
+    if (k === 'backspace') setPin(p => p.slice(0, -1))
+    else if (k === 'enter') handleSubmit()
+    else setPin(p => (p.length < 12 ? p + k : p))
+  }
+
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (!email.trim() || !password.trim()) {
+    if (e?.preventDefault) e.preventDefault()
+    if (!email.trim() || !pinRef.current.trim()) {
       setError('Please fill in all fields.')
       return
     }
@@ -354,7 +364,7 @@ function LoginScreen({ onLoginSuccess }) {
     setSubmitting(true)
     setError('')
     try {
-      await appLogin(password, remember)
+      await appLogin(pinRef.current, remember)
       onLoginSuccess(email)
     } catch (e) {
       setError(e?.response?.data?.detail || 'Authentication failed.')
@@ -363,96 +373,166 @@ function LoginScreen({ onLoginSuccess }) {
     }
   }
 
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (submitting) return
+      if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault()
+        pressKey(e.key)
+        return
+      }
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault()
+        pressKey('backspace')
+        return
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        pressKey('enter')
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [pressKey, submitting])
+
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      minHeight: '100vh', width: '100vw', background: '#0b1329',
-      fontFamily: 'var(--font)', color: '#fff', padding: 20,
-      position: 'fixed', top: 0, left: 0, zIndex: 100000,
+      position: 'fixed', inset: 0, zIndex: 100000,
+      display: 'grid',
+      gridTemplateColumns: '1.2fr 1fr',
+      background: 'linear-gradient(135deg, #0a0f1e 0%, #070a12 55%, #05060b 100%)',
+      color: '#e5e7eb',
+      fontFamily: 'var(--font)',
     }}>
-      <div className="card" style={{
-        width: '100%', maxWidth: 400, padding: 36,
-        background: '#131c35', border: '1px solid #232e52',
-        borderRadius: 16, boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-        display: 'flex', flexDirection: 'column', gap: 24,
+      {/* Left brand panel */}
+      <div style={{
+        padding: 44,
+        background: 'radial-gradient(1200px 800px at 30% 20%, rgba(99,102,241,0.22), transparent 55%), radial-gradient(900px 600px at 60% 70%, rgba(59,130,246,0.18), transparent 60%)',
+        borderRight: '1px solid rgba(255,255,255,0.06)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 22,
       }}>
-        {/* Logo / Header */}
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: 48, height: 48, background: '#185FA5', borderRadius: 12,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 16px', boxShadow: '0 0 16px rgba(24, 95, 165, 0.4)'
-          }}>
-            <i className="ti ti-lock" style={{ color: '#fff', fontSize: 24 }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(99,102,241,0.22)', border: '1px solid rgba(99,102,241,0.28)', display: 'grid', placeItems: 'center' }}>
+            <i className="ti ti-terminal-2" style={{ fontSize: 22, color: '#c7d2fe' }} />
           </div>
-          <h2 style={{ fontSize: 22, fontWeight: 600, color: '#fff', marginBottom: 6 }}>Authentication Required</h2>
-          <p style={{ fontSize: 13, color: '#94a3b8' }}>Please enter your credentials to access the platform</p>
+          <div style={{ fontSize: 34, fontWeight: 900, letterSpacing: '-0.02em' }}>RECRUIT-INTEL</div>
         </div>
-
-        {/* Error message */}
-        {error && (
-          <div style={{
-            background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)',
-            color: '#f87171', padding: '10px 14px', borderRadius: 8, fontSize: 12.5,
-            display: 'flex', alignItems: 'center', gap: 8,
-          }}>
-            <i className="ti ti-alert-circle" style={{ fontSize: 16 }} />
-            <span>{error}</span>
+        <div style={{ fontSize: 14, color: 'rgba(229,231,235,0.85)' }}>Recruitment Intelligence Platform</div>
+        <div style={{ fontSize: 22, lineHeight: 1.55, color: 'rgba(229,231,235,0.62)', maxWidth: 620 }}>
+          Manage recruiter intelligence, company data, state directories, ETL operations, analytics, and platform administration within our unified operational command center.
+        </div>
+        <div style={{ marginTop: 'auto', display: 'flex', gap: 14, alignItems: 'center', opacity: 0.9 }}>
+          <div className="card" style={{ padding: 16, borderRadius: 18, width: 220, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ fontSize: 10, color: 'rgba(229,231,235,0.65)', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' }}>ETL Pipeline</div>
+            <div style={{ marginTop: 10, height: 6, borderRadius: 999, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+              <div style={{ width: '62%', height: '100%', background: 'rgba(99,102,241,0.75)' }} />
+            </div>
+            <div style={{ marginTop: 10, fontSize: 12, color: 'rgba(229,231,235,0.75)' }}>98.2% Accuracy Rate</div>
           </div>
-        )}
+          <div className="card" style={{ padding: 16, borderRadius: 18, width: 220, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ fontSize: 10, color: 'rgba(229,231,235,0.65)', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Active Clusters</div>
+            <div style={{ marginTop: 8, fontSize: 26, fontWeight: 900 }}>1,204</div>
+            <div style={{ marginTop: 2, fontSize: 12, color: '#34d399' }}>+12%</div>
+          </div>
+        </div>
+      </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email Address</label>
+      {/* Right access panel */}
+      <div style={{ display: 'grid', placeItems: 'center', padding: 28 }}>
+        <div className="card" style={{
+          width: '100%',
+          maxWidth: 440,
+          borderRadius: 22,
+          padding: '28px 26px',
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          boxShadow: '0 24px 60px rgba(0,0,0,0.55)',
+          backdropFilter: 'blur(14px)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 18,
+          alignItems: 'center',
+        }}>
+          <div style={{ fontSize: 14, fontWeight: 900, letterSpacing: '-0.01em' }}>Platform Access</div>
+          <div style={{ fontSize: 13, color: 'rgba(229,231,235,0.65)', textAlign: 'center', lineHeight: 1.5 }}>
+            Enter your secure credentials to access the platform.
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+            {[0,1,2,3].map(i => (
+              <div key={i} style={{ width: 12, height: 12, borderRadius: 999, border: '1px solid rgba(255,255,255,0.22)', background: pin.length > i ? 'rgba(99,102,241,0.9)' : 'transparent', boxShadow: pin.length > i ? '0 0 12px rgba(99,102,241,0.35)' : 'none' }} />
+            ))}
+          </div>
+
+          <div style={{ width: '100%', marginTop: 8, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+            {[
+              { key: '1', label: '1' },
+              { key: '2', label: '2' },
+              { key: '3', label: '3' },
+              { key: '4', label: '4' },
+              { key: '5', label: '5' },
+              { key: '6', label: '6' },
+              { key: '7', label: '7' },
+              { key: '8', label: '8' },
+              { key: '9', label: '9' },
+              { key: 'backspace', label: <i className="ti ti-backspace" /> },
+              { key: '0', label: '0' },
+              { key: 'enter', label: <i className="ti ti-arrow-right" /> },
+            ].map((k) => (
+              <button
+                key={k.key}
+                type="button"
+                onClick={() => pressKey(k.key)}
+                disabled={submitting}
+                style={{
+                  height: 58,
+                  borderRadius: 999,
+                  border: '1px solid rgba(255,255,255,0.10)',
+                  background: 'rgba(255,255,255,0.02)',
+                  color: '#e5e7eb',
+                  fontSize: 18,
+                  fontWeight: 800,
+                  cursor: submitting ? 'not-allowed' : 'pointer',
+                  opacity: submitting ? 0.65 : 1,
+                  display: 'grid',
+                  placeItems: 'center',
+                }}
+              >
+                {k.label}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ width: '100%', display: 'grid', gap: 10, marginTop: 6 }}>
             <input
               type="email"
               value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="e.g. admin@talentops.ai"
-              style={{
-                background: '#0b1329', border: '1px solid #232e52',
-                color: '#fff', outline: 'none', borderRadius: 8, padding: 12, fontSize: 13.5
-              }}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email (for session label)"
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 14, border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.02)', color: '#e5e7eb', outline: 'none' }}
             />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'rgba(229,231,235,0.7)', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1 }}>
+              <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} disabled={submitting} />
+              Remember session
+            </label>
+            {error && <div style={{ fontSize: 12, color: '#f87171', textAlign: 'center' }}>{error}</div>}
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={handleSubmit}
+              disabled={submitting}
+              style={{ width: '100%', borderRadius: 14, padding: '12px 14px', fontWeight: 900, justifyContent: 'center', opacity: submitting ? 0.75 : 1 }}
+            >
+              {submitting ? 'Verifying…' : 'Access Platform'}
+            </button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••"
-              style={{
-                background: '#0b1329', border: '1px solid #232e52',
-                color: '#fff', outline: 'none', borderRadius: 8, padding: 12, fontSize: 13.5
-              }}
-            />
+          <div style={{ marginTop: 8, fontSize: 11, letterSpacing: '0.14em', color: 'rgba(229,231,235,0.45)', textTransform: 'uppercase', textAlign: 'center' }}>
+            Restricted access • authorized personnel only
           </div>
-
-          <button
-            type="submit"
-            style={{
-              background: '#185FA5', color: '#fff', fontWeight: 600,
-              padding: 12, borderRadius: 8, border: 'none', cursor: 'pointer',
-              fontSize: 13.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              marginTop: 6, transition: 'background 0.2s',
-              opacity: submitting ? 0.7 : 1,
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = '#1b6dbd'}
-            onMouseLeave={e => e.currentTarget.style.background = '#185FA5'}
-            disabled={submitting}
-          >
-            <span>{submitting ? 'Unlocking…' : 'Unlock Platform'}</span>
-            <i className="ti ti-arrow-right" style={{ fontSize: 14 }} />
-          </button>
-
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#94a3b8', marginTop: 8, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1 }}>
-            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} disabled={submitting} />
-            Remember session
-          </label>
-        </form>
+        </div>
       </div>
     </div>
   )

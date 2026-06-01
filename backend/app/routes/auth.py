@@ -216,7 +216,7 @@ def logout(response: Response, request: Request, db: Session = Depends(get_db)):
         key="admin_session",
         path="/",
         httponly=True,
-        samesite="lax",
+        samesite="none" if IS_PRODUCTION else "lax",
         secure=IS_PRODUCTION,
     )
     _log_admin_event(db, request, "ADMIN_LOGOUT", "success")
@@ -229,7 +229,7 @@ def app_logout(response: Response):
         key="app_session",
         path="/",
         httponly=True,
-        samesite="lax",
+        samesite="none" if IS_PRODUCTION else "lax",
         secure=IS_PRODUCTION,
     )
     return {"message": "Logged out successfully"}

@@ -4,6 +4,11 @@ import jwt
 import time
 import logging
 from app.config import JWT_SECRET, ADMIN_PASSWORD, IS_PRODUCTION
+from app.database import get_db
+from sqlalchemy.orm import Session
+from app.models.models import ActionLog
+from datetime import datetime
+from collections import defaultdict, deque
 
 logger = logging.getLogger("talentops")
 router = APIRouter()
@@ -29,12 +34,69 @@ def _decode_admin_token(token: str):
     return payload
 
 
-def verify_admin(request: Request):
+# -------- Rate limiting (in-memory) --------
+# NOTE: This is per-process. For multi-instance deployments, prefer a shared store (Redis/Postgres).
+_FAILED_BY_IP: dict[str, deque] = defaultdict(deque)  # ip -> timestamps (seconds)
+_LOCKED_UNTIL: dict[str, float] = {}                  # ip -> epoch seconds
+_MAX_FAILS = 5
+_WINDOW_SECONDS = 10 * 60   # 10 minutes
+_LOCK_SECONDS = 10 * 60     # 10 minutes
+
+
+def _client_ip(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for") or request.headers.get("X-Forwarded-For")
+    if fwd:
+        # first IP in the chain
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _is_locked(ip: str) -> float | None:
+    until = _LOCKED_UNTIL.get(ip)
+    now = time.time()
+    if until and until > now:
+        return until
+    if until:
+        _LOCKED_UNTIL.pop(ip, None)
+    return None
+
+
+def _register_failure(ip: str):
+    now = time.time()
+    q = _FAILED_BY_IP[ip]
+    q.append(now)
+    # drop old
+    while q and (now - q[0]) > _WINDOW_SECONDS:
+        q.popleft()
+    if len(q) >= _MAX_FAILS:
+        _LOCKED_UNTIL[ip] = now + _LOCK_SECONDS
+        q.clear()
+
+
+def _clear_failures(ip: str):
+    _FAILED_BY_IP.pop(ip, None)
+    _LOCKED_UNTIL.pop(ip, None)
+
+
+def _log_admin_event(db: Session, request: Request, action_type: str, status_value: str, details: str | None = None):
+    try:
+        ip = _client_ip(request)
+        db.add(ActionLog(
+            user_email=None,
+            session_id=None,
+            action_type=action_type,
+            details=details,
+            status=status_value,
+            ip_address=ip,
+        ))
+        db.commit()
+    except Exception:
+        db.rollback()
+
+
+def verify_admin(request: Request, db: Session = Depends(get_db)):
     token = request.cookies.get("admin_session")
     if not token:
-        legacy = request.headers.get("X-Admin-Token")
-        if legacy and legacy == ADMIN_PASSWORD:
-            return True
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated.",
@@ -43,8 +105,10 @@ def verify_admin(request: Request):
         _decode_admin_token(token)
         return True
     except jwt.ExpiredSignatureError:
+        _log_admin_event(db, request, "ADMIN_SESSION_EXPIRED", "failed", details="expired")
         raise HTTPException(status_code=401, detail="Session expired. Please log in again.")
     except jwt.InvalidTokenError:
+        _log_admin_event(db, request, "ADMIN_SESSION_INVALID", "failed", details="invalid")
         raise HTTPException(status_code=401, detail="Invalid session.")
 
 
@@ -61,9 +125,21 @@ def auth_me(request: Request):
 
 
 @router.post("/login")
-def login(data: LoginRequest, response: Response):
+def login(data: LoginRequest, response: Response, request: Request, db: Session = Depends(get_db)):
+    """
+    Admin login using a PIN/password stored server-side (ADMIN_PASSWORD env var).
+    Sets an HttpOnly session cookie. Includes rate limiting + audit logs.
+    """
+    ip = _client_ip(request)
+    locked_until = _is_locked(ip)
+    if locked_until:
+        _log_admin_event(db, request, "ADMIN_LOGIN_LOCKED", "failed", details=f"locked_until={int(locked_until)}")
+        raise HTTPException(status_code=429, detail="Too many failed attempts. Please wait before retrying.")
+
     if data.password != ADMIN_PASSWORD:
-        raise HTTPException(status_code=401, detail="Incorrect password.")
+        _register_failure(ip)
+        _log_admin_event(db, request, "ADMIN_LOGIN_FAILURE", "failed", details="invalid_pin")
+        raise HTTPException(status_code=401, detail="Invalid credentials.")
 
     expires_in = 30 * 24 * 60 * 60 if data.remember_device else 24 * 60 * 60
     token = create_access_token(
@@ -80,11 +156,13 @@ def login(data: LoginRequest, response: Response):
         samesite="lax",
         path="/",
     )
+    _clear_failures(ip)
+    _log_admin_event(db, request, "ADMIN_LOGIN_SUCCESS", "success", details=f"expires_in={expires_in}")
     return {"message": "Logged in successfully", "role": "admin"}
 
 
 @router.post("/logout")
-def logout(response: Response):
+def logout(response: Response, request: Request, db: Session = Depends(get_db)):
     response.delete_cookie(
         key="admin_session",
         path="/",
@@ -92,4 +170,5 @@ def logout(response: Response):
         samesite="lax",
         secure=IS_PRODUCTION,
     )
+    _log_admin_event(db, request, "ADMIN_LOGOUT", "success")
     return {"message": "Logged out successfully"}

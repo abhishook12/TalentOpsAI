@@ -1,13 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import axios from 'axios'
-import { API, getErrorMessage } from '../services/api'
-const ADMIN_TOKEN = 'talentops-admin-1012'
-const ADMIN_PIN = '1012'
-
-const adminAxios = axios.create({
-  baseURL: API,
-  headers: { 'X-Admin-Token': ADMIN_TOKEN }
-})
+import api, { checkAuth, getErrorMessage, login, logout } from '../services/api'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(n) { return n?.toLocaleString?.() ?? '—' }
@@ -53,20 +45,40 @@ function Badge({ children, color = '#38bdf8' }) {
 }
 
 // ── Lock Screen ───────────────────────────────────────────────────────────────
-function AdminLock({ onUnlock }) {
+function AdminLock({ onUnlock, errorMessage }) {
   const [pin, setPin] = useState('')
   const [shake, setShake] = useState(false)
   const [attempts, setAttempts] = useState(0)
+  const [verifying, setVerifying] = useState(false)
+  const [lockedMsg, setLockedMsg] = useState('')
+  const [remember, setRemember] = useState(false)
+  const [healthOpen, setHealthOpen] = useState(false)
+  const [healthData, setHealthData] = useState(null)
+  const [healthLoading, setHealthLoading] = useState(false)
   const pinRef = useRef(pin)
   pinRef.current = pin
 
-  const submit = useCallback(() => {
-    if (pinRef.current === ADMIN_PIN) { onUnlock(); return }
-    setShake(true)
-    setAttempts(a => a + 1)
-    setPin('')
-    setTimeout(() => setShake(false), 600)
-  }, [onUnlock])
+  const submit = useCallback(async () => {
+    if (verifying) return
+    if (pinRef.current.length === 0) return
+    setVerifying(true)
+    setLockedMsg('')
+    try {
+      await onUnlock(pinRef.current, { remember })
+    } catch (e) {
+      const status = e?.response?.status
+      if (status === 429) {
+        setLockedMsg('Too many failed attempts. Please wait before retrying.')
+      } else {
+        setShake(true)
+        setAttempts(a => a + 1)
+        setPin('')
+        setTimeout(() => setShake(false), 600)
+      }
+    } finally {
+      setVerifying(false)
+    }
+  }, [onUnlock, remember, verifying])
 
   const pressKey = useCallback((k) => {
     if (k === '⌫') setPin(p => p.slice(0, -1))
@@ -153,8 +165,9 @@ function AdminLock({ onUnlock }) {
                 background: k === '↵' ? 'linear-gradient(135deg, #0ea5e9, #1d4ed8)' : '#111c30',
                 color: k === '↵' ? '#fff' : '#94a3b8',
                 border: '1px solid #1e3a5f',
-                cursor: 'pointer', transition: 'all 0.1s',
+                cursor: verifying ? 'not-allowed' : 'pointer', transition: 'all 0.1s',
                 boxShadow: k === '↵' ? '0 0 16px rgba(14,165,233,0.3)' : 'none',
+                opacity: verifying ? 0.7 : 1,
               }}
               onMouseEnter={e => { e.currentTarget.style.background = k === '↵' ? 'linear-gradient(135deg, #38bdf8, #3b82f6)' : '#1a2840'; e.currentTarget.style.color = '#e2e8f0' }}
               onMouseLeave={e => { e.currentTarget.style.background = k === '↵' ? 'linear-gradient(135deg, #0ea5e9, #1d4ed8)' : '#111c30'; e.currentTarget.style.color = k === '↵' ? '#fff' : '#94a3b8' }}
@@ -162,14 +175,127 @@ function AdminLock({ onUnlock }) {
             ))}
           </div>
 
-          {attempts > 0 && (
-            <div style={{ fontSize: 11.5, color: '#f87171', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <i className="ti ti-alert-triangle" style={{ fontSize: 13 }} />
-              Invalid PIN — {attempts} failed attempt{attempts > 1 ? 's' : ''}
+          <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+            <button
+              type="button"
+              onClick={() => { setPin(''); setAttempts(0); setLockedMsg('') }}
+              style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 12 }}
+              title="Emergency Reset (clears PIN input only)"
+              disabled={verifying}
+            >
+              Emergency Reset
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                setHealthOpen(true)
+                setHealthLoading(true)
+                try {
+                  const { data } = await api.get('/health')
+                  setHealthData(data)
+                } catch {
+                  setHealthData({ status: 'degraded', database: 'unknown', detail: 'Cannot reach API' })
+                } finally {
+                  setHealthLoading(false)
+                }
+              }}
+              style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 12 }}
+              title="System Health"
+              disabled={verifying}
+            >
+              System Health
+            </button>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#94a3b8', cursor: verifying ? 'not-allowed' : 'pointer', opacity: verifying ? 0.7 : 1 }} title="Remember this admin session on this device">
+              <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} disabled={verifying} />
+              Remember
+            </label>
+          </div>
+
+          {verifying && (
+            <div style={{ fontSize: 11.5, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <i className="ti ti-loader" style={{ fontSize: 13, animation: 'spin 0.8s linear infinite' }} />
+              Verifying credentials…
+            </div>
+          )}
+
+          {(lockedMsg || errorMessage || attempts > 0) && (
+            <div style={{ fontSize: 11.5, color: lockedMsg ? '#fbbf24' : '#f87171', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <i className={`ti ${lockedMsg ? 'ti-alert-circle' : 'ti-alert-triangle'}`} style={{ fontSize: 13 }} />
+              {lockedMsg || errorMessage || `Invalid PIN`}
             </div>
           )}
         </div>
       </div>
+
+      {healthOpen && (
+        <div
+          onClick={() => setHealthOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.55)',
+            display: 'grid',
+            placeItems: 'center',
+            zIndex: 100001,
+            padding: 20,
+          }}
+        >
+          <div
+            className="card"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: 520,
+              padding: 18,
+              borderRadius: 18,
+              background: 'var(--card-bg)',
+              border: '1px solid var(--card-border)',
+              boxShadow: 'var(--shadow-lg)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--text-primary)' }}>
+                System Health
+              </div>
+              <button onClick={() => setHealthOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                <i className="ti ti-x" />
+              </button>
+            </div>
+
+            {healthLoading ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
+                <i className="ti ti-loader" style={{ animation: 'spin 0.8s linear infinite' }} />
+                Checking services…
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {[
+                  { label: 'API Service', value: healthData?.status || 'unknown', ok: healthData?.status === 'healthy' },
+                  { label: 'Database', value: healthData?.database || 'unknown', ok: healthData?.database === 'connected' },
+                  { label: 'ETL Service', value: 'No Data Available', ok: null },
+                  { label: 'Search Engine', value: 'No Data Available', ok: null },
+                ].map((r) => (
+                  <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 14, background: 'var(--panel-bg)', border: '1px solid var(--card-border)' }}>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 800 }}>{r.label}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {r.ok === true && <span className="badge badge-green">Healthy</span>}
+                      {r.ok === false && <span className="badge badge-red">Degraded</span>}
+                      {r.ok === null && <span className="badge badge-gray">N/A</span>}
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--mono)' }}>{String(r.value)}</span>
+                    </div>
+                  </div>
+                ))}
+                {healthData?.detail && (
+                  <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{healthData.detail}</div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -184,7 +310,7 @@ function SqlConsole() {
   const run = async () => {
     setLoading(true); setError(null); setResult(null)
     try {
-      const res = await adminAxios.post('/admin/sql', { sql })
+      const res = await api.post('/admin/sql', { sql })
       setResult(res.data)
     } catch (e) {
       setError(e.response?.data?.detail || 'Query failed.')
@@ -337,7 +463,6 @@ function SessionRow({ session, isOpen, onToggle, index }) {
 
 // ── Main Terminal ─────────────────────────────────────────────────────────────
 export default function AdminTerminal() {
-  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem('admin_unlocked') === 'yes')
   const [stats, setStats] = useState(null)
   const [opsKpis, setOpsKpis] = useState(null)
   const [topStates, setTopStates] = useState([])
@@ -372,10 +497,35 @@ export default function AdminTerminal() {
     setLogLines(prev => [...prev.slice(-80), { ts, msg, type }])
   }
 
-  const unlock = () => {
-    sessionStorage.setItem('admin_unlocked', 'yes')
-    setUnlocked(true)
+  const [unlocked, setUnlocked] = useState(false)
+  const [authError, setAuthError] = useState('')
+
+  const unlock = async (pin, opts = {}) => {
+    setAuthError('')
+    try {
+      await login(pin, Boolean(opts.remember))
+      setUnlocked(true)
+    } catch (e) {
+      setAuthError(getErrorMessage(e, e?.response?.status === 429 ? 'Too many failed attempts. Please wait before retrying.' : 'Invalid PIN'))
+      throw e
+    }
   }
+
+  const doLogout = async () => {
+    try { await logout() } catch {}
+    setUnlocked(false)
+    setActiveTab('overview')
+  }
+
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      const ok = await checkAuth()
+      if (!alive) return
+      setUnlocked(ok)
+    })()
+    return () => { alive = false }
+  }, [])
 
   const loadAll = useCallback(async () => {
     if (!unlocked) return
@@ -383,8 +533,19 @@ export default function AdminTerminal() {
     log('Connecting to TalentOps AI backend…')
     
     const safeGet = async (url) => {
-      try { const res = await adminAxios.get(url); return res.data; }
-      catch (e) { log(`✗ Failed to load ${url}`, 'warn'); return null; }
+      try {
+        const res = await api.get(url)
+        return res.data
+      } catch (e) {
+        const status = e?.response?.status
+        if (status === 401) {
+          setAuthError('Session expired. Please log in again.')
+          setUnlocked(false)
+          return null
+        }
+        log(`✗ Failed to load ${url}`, 'warn')
+        return null
+      }
     }
 
     const [s, ok, ts, ri, fa, tbl, sys, orp, dq, dop, uop, si, ei, al, feed, cov] = await Promise.all([
@@ -429,10 +590,10 @@ export default function AdminTerminal() {
 
   const verifyFeature = async (featureId, status) => {
     try {
-      await adminAxios.post(`/updates/verify/${featureId}`, { status });
+      await api.post(`/updates/verify/${featureId}`, { status });
       log(`✓ Feature ${featureId} marked as ${status}`, 'ok');
-      const res = await adminAxios.get('/updates/features');
-      setFeatures(res.data);
+      const res = await api.get('/updates/features');
+      setFeatures(res.data.features || []);
     } catch(e) {
       log(`✗ Failed to update feature: ` + getErrorMessage(e), 'error');
     }
@@ -442,7 +603,7 @@ export default function AdminTerminal() {
     if (!window.confirm('This will permanently delete recruiters missing both email and phone. Continue?')) return;
     setLoading(true);
     try {
-      const res = await adminAxios.post('/admin/cleanup');
+      const res = await api.post('/admin/cleanup');
       log(`✓ Cleanup complete: ${res.data.deleted_count} records removed.`, 'ok');
       loadAll();
     } catch (e) {
@@ -460,7 +621,7 @@ export default function AdminTerminal() {
   const loadDupes = async () => {
     log('Scanning for duplicate emails…')
     try {
-      const res = await adminAxios.get('/admin/duplicates')
+      const res = await api.get('/admin/duplicates')
       setDupes(res.data)
       log(`✓ Found ${res.data.total_duplicate_groups} duplicate email groups`, res.data.total_duplicate_groups > 0 ? 'warn' : 'ok')
     } catch { log('✗ Failed to load duplicates', 'error') }
@@ -470,7 +631,7 @@ export default function AdminTerminal() {
     if (!jobId) return
     log(`Retrying import job ${jobId}...`)
     try {
-      await adminAxios.post(`/upload/jobs/${jobId}/retry`)
+      await api.post(`/upload/jobs/${jobId}/retry`)
       log('✓ Retry triggered', 'ok')
       await loadAll()
     } catch (e) {
@@ -480,7 +641,7 @@ export default function AdminTerminal() {
 
   const clearCache = async () => {
     try {
-      await adminAxios.post('/admin/clear-cache')
+      await api.post('/admin/clear-cache')
       setCacheMsg('✓ Analytics cache cleared!'); setTimeout(() => setCacheMsg(null), 3000)
       log('✓ Analytics cache cleared', 'ok')
     } catch { log('✗ Failed to clear cache', 'error') }
@@ -492,8 +653,8 @@ export default function AdminTerminal() {
     log(`Loading visitor logs for last ${days} days…`)
     try {
       const [logsRes, summRes] = await Promise.all([
-        adminAxios.get(`/admin/visitor-logs?days=${days}&limit=300`),
-        adminAxios.get(`/admin/visitor-summary?days=${days}`),
+        api.get(`/admin/visitor-logs?days=${days}&limit=300`),
+        api.get(`/admin/visitor-summary?days=${days}`),
       ])
       setVisitorLogs(logsRes.data)
       setVisitorSummary(summRes.data)
@@ -516,7 +677,7 @@ export default function AdminTerminal() {
     }
   }, [unlocked, activeTab])
 
-  if (!unlocked) return <AdminLock onUnlock={unlock} />
+  if (!unlocked) return <AdminLock onUnlock={unlock} errorMessage={authError} />
 
   const TABS = [
     { id: 'overview', icon: 'ti-layout-dashboard', label: 'Overview' },
@@ -566,8 +727,8 @@ export default function AdminTerminal() {
             <i className="ti ti-trash" /> Clear Cache
           </button>
           {cacheMsg && <span style={{ fontSize: 12, color: '#22c55e' }}>{cacheMsg}</span>}
-          <button onClick={() => { sessionStorage.removeItem('admin_unlocked'); setUnlocked(false) }} style={{ background: '#300', border: '1px solid #7f1d1d', color: '#f87171', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <i className="ti ti-lock" /> Lock
+          <button onClick={doLogout} style={{ background: '#300', border: '1px solid #7f1d1d', color: '#f87171', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <i className="ti ti-logout" /> Logout
           </button>
         </div>
       </div>

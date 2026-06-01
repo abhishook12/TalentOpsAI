@@ -1,8 +1,8 @@
 """
 Admin Terminal API
-All endpoints require the X-Admin-Token header = ADMIN_SECRET_KEY (default: talentops-admin-1012)
+All endpoints require a valid admin session (HttpOnly cookie set by /auth/login).
 """
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from sqlalchemy.exc import ProgrammingError
@@ -13,18 +13,9 @@ from app.models.models import UploadJob, ActionLog
 from datetime import datetime, timedelta
 from collections import defaultdict
 import time
+from app.routes.auth import verify_admin
 
 router = APIRouter()
-
-ADMIN_SECRET = "talentops-admin-1012"
-
-
-def verify_admin(x_admin_token: Optional[str] = Header(None)):
-    if x_admin_token != ADMIN_SECRET:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or missing admin token."
-        )
 
 
 # ── 1. Live database stats ────────────────────────────────────────────────────

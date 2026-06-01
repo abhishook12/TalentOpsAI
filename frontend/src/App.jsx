@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 import React, { useEffect, useState, lazy, Suspense, useRef, Component } from 'react'
 import Sidebar from './components/Sidebar'
 import UpdateCenter from './components/UpdateCenter'
-import { API } from './services/api'
+import { API, checkAuth, login } from './services/api'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Recruiters = lazy(() => import('./pages/Recruiters'))
@@ -337,8 +337,10 @@ function LoginScreen({ onLoginSuccess }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [remember, setRemember] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!email.trim() || !password.trim()) {
       setError('Please fill in all fields.')
@@ -349,12 +351,16 @@ function LoginScreen({ onLoginSuccess }) {
       setError('Please enter a valid email address.')
       return
     }
-    if (password !== '1012') {
-      setError('Incorrect password.')
-      return
-    }
+    setSubmitting(true)
     setError('')
-    onLoginSuccess(email)
+    try {
+      await login(password, remember)
+      onLoginSuccess(email)
+    } catch (e) {
+      setError(e?.response?.data?.detail || 'Authentication failed.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -432,13 +438,20 @@ function LoginScreen({ onLoginSuccess }) {
               padding: 12, borderRadius: 8, border: 'none', cursor: 'pointer',
               fontSize: 13.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               marginTop: 6, transition: 'background 0.2s',
+              opacity: submitting ? 0.7 : 1,
             }}
             onMouseEnter={e => e.currentTarget.style.background = '#1b6dbd'}
             onMouseLeave={e => e.currentTarget.style.background = '#185FA5'}
+            disabled={submitting}
           >
-            <span>Unlock Platform</span>
+            <span>{submitting ? 'Unlocking…' : 'Unlock Platform'}</span>
             <i className="ti ti-arrow-right" style={{ fontSize: 14 }} />
           </button>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#94a3b8', marginTop: 8, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1 }}>
+            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} disabled={submitting} />
+            Remember session
+          </label>
         </form>
       </div>
     </div>
@@ -450,38 +463,21 @@ function App() {
 
   // Verify session on mount + periodic check
   useEffect(() => {
-    const checkSession = () => {
-      const sessionStr = localStorage.getItem('auth_session')
-      if (sessionStr) {
-        try {
-          const session = JSON.parse(sessionStr)
-          const isExpired = Date.now() - session.loginTime >= 24 * 60 * 60 * 1000 // 24 hours
-          if (isExpired) {
-            localStorage.removeItem('auth_session')
-            setIsAuthenticated(false)
-          } else {
-            setIsAuthenticated(true)
-          }
-        } catch {
-          localStorage.removeItem('auth_session')
-          setIsAuthenticated(false)
-        }
-      } else {
-        setIsAuthenticated(false)
-      }
+    let alive = true
+    const run = async () => {
+      const ok = await checkAuth()
+      if (!alive) return
+      setIsAuthenticated(ok)
     }
 
-    checkSession()
-    // Run periodic validation check every 10 seconds to catch timeout in real time
-    const interval = setInterval(checkSession, 10000)
-    return () => clearInterval(interval)
+    run()
+    const interval = setInterval(run, 15000)
+    return () => { alive = false; clearInterval(interval) }
   }, [])
 
   const handleLoginSuccess = (email) => {
-    localStorage.setItem('auth_session', JSON.stringify({
-      email: email,
-      loginTime: Date.now()
-    }))
+    // Used only for visit tracking labels, not auth.
+    localStorage.setItem('auth_session', JSON.stringify({ email }))
     setIsAuthenticated(true)
   }
 

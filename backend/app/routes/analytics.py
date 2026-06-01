@@ -2,11 +2,13 @@ import re
 from fastapi import APIRouter, Depends, Query, Response, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, text
+from sqlalchemy.exc import ProgrammingError
 from typing import Optional
 from app.database import get_db
 from app.models.models import Recruiter, Company, Vendor, PageVisit
 from pydantic import BaseModel
 from datetime import datetime, timedelta
+import logging
 
 
 
@@ -38,6 +40,7 @@ class SimpleCache:
                 del self._cache[key]
 
 analytics_cache = SimpleCache()
+logger = logging.getLogger("talentops.analytics")
 
 router = APIRouter()
 
@@ -86,8 +89,22 @@ def recruiters_by_state(db: Session = Depends(get_db)):
     cached = analytics_cache.get("recruiters_by_state")
     if cached is not None:
         return cached
-    results = db.execute(text("SELECT state, count FROM mv_recruiters_by_state ORDER BY count DESC LIMIT 20")).mappings().all()
-    res_list = [{"state": r["state"], "count": r["count"]} for r in results]
+
+    try:
+        results = db.execute(text("SELECT state, count FROM mv_recruiters_by_state ORDER BY count DESC LIMIT 20")).mappings().all()
+    except ProgrammingError as e:
+        # Render/Neon may not have had materialized views created yet.
+        logger.warning("mv_recruiters_by_state missing; falling back to live aggregation: %s", e)
+        results = db.execute(text("""
+            SELECT state, COUNT(recruiter_id) AS count
+            FROM recruiters
+            WHERE state IS NOT NULL AND state != ''
+            GROUP BY state
+            ORDER BY count DESC
+            LIMIT 20
+        """)).mappings().all()
+
+    res_list = [{"state": r["state"], "count": int(r["count"])} for r in results]
     analytics_cache.set("recruiters_by_state", res_list, ttl=30)
     return res_list
 
@@ -136,8 +153,20 @@ def companies_count_by_state(db: Session = Depends(get_db)):
     if cached is not None:
         return cached
 
-    sql = text("SELECT state, count FROM mv_state_company_counts")
-    rows = db.execute(sql).mappings().all()
+    try:
+        sql = text("SELECT state, count FROM mv_state_company_counts")
+        rows = db.execute(sql).mappings().all()
+    except ProgrammingError as e:
+        logger.warning("mv_state_company_counts missing; falling back to live aggregation: %s", e)
+        rows = db.execute(text("""
+            SELECT
+                COALESCE(c.state, r.state) AS state,
+                COUNT(DISTINCT c.company_id) AS count
+            FROM companies c
+            LEFT JOIN recruiters r ON r.company_id = c.company_id
+            WHERE COALESCE(c.state, r.state) IS NOT NULL
+            GROUP BY COALESCE(c.state, r.state)
+        """)).mappings().all()
 
     counts = {row["state"]: row["count"] for row in rows}
 

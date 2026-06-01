@@ -95,6 +95,7 @@ def recruiters_by_state(db: Session = Depends(get_db)):
     except ProgrammingError as e:
         # Render/Neon may not have had materialized views created yet.
         logger.warning("mv_recruiters_by_state missing; falling back to live aggregation: %s", e)
+        db.rollback()
         results = db.execute(text("""
             SELECT state, COUNT(recruiter_id) AS count
             FROM recruiters
@@ -158,6 +159,7 @@ def companies_count_by_state(db: Session = Depends(get_db)):
         rows = db.execute(sql).mappings().all()
     except ProgrammingError as e:
         logger.warning("mv_state_company_counts missing; falling back to live aggregation: %s", e)
+        db.rollback()
         rows = db.execute(text("""
             SELECT
                 COALESCE(c.state, r.state) AS state,

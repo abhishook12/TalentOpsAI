@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 import React, { useEffect, useState, lazy, Suspense, useRef, Component } from 'react'
 import Sidebar from './components/Sidebar'
 import UpdateCenter from './components/UpdateCenter'
-import { API, checkAppAuth, appLogin } from './services/api'
+import { API } from './services/api'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Recruiters = lazy(() => import('./pages/Recruiters'))
@@ -539,45 +539,12 @@ function LoginScreen({ onLoginSuccess }) {
 }
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-
-  // Verify session on mount + periodic check
-  useEffect(() => {
-    let alive = true
-    const run = async () => {
-      const ok = await checkAppAuth()
-      if (!alive) return
-      setIsAuthenticated(ok)
-    }
-
-    run()
-    const interval = setInterval(run, 15000)
-    return () => { alive = false; clearInterval(interval) }
-  }, [])
-
-  const handleLoginSuccess = (email) => {
-    // Used only for visit tracking labels, not auth.
-    localStorage.setItem('auth_session', JSON.stringify({ email }))
-    setIsAuthenticated(true)
-  }
-
   useEffect(() => {
     const style = document.createElement('style')
     style.textContent = globalStyles
     document.head.appendChild(style)
     return () => document.head.removeChild(style)
   }, [])
-
-  if (!isAuthenticated) {
-    return (
-      <div style={{ position: 'relative', minHeight: '100vh' }}>
-        <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 100001 }}>
-          <ThemeSwitcher />
-        </div>
-        <LoginScreen onLoginSuccess={handleLoginSuccess} />
-      </div>
-    )
-  }
 
   return (
     <Router>

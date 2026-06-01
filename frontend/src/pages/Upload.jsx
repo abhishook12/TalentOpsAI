@@ -1,9 +1,8 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
-import axios from 'axios'
 import JobsHistory from '../components/JobsHistory'
 import { formatDistanceToNow } from 'date-fns'
 
-const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
+import api, { API, getErrorMessage } from '../services/api'
 
 // ─── Regex Parsers (for Paste & Parse) ────────────────────────────────────────
 const EMAIL_RE   = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g
@@ -109,7 +108,7 @@ function SmartUploadZone() {
     const fd = new FormData()
     fd.append('file', file)
     try {
-      const res = await axios.post(`${API}/upload/analyze`, fd, {
+      const res = await api.post('/upload/analyze', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (e) => {
           if (e.total) setProgress(Math.round((e.loaded / e.total) * 100))
@@ -119,7 +118,7 @@ function SmartUploadZone() {
       setColumnMap(res.data.column_map || {})
       setStep('preview')
     } catch (e) {
-      setError(e.response?.data?.detail || 'Analysis failed. Check file format.')
+      setError(getErrorMessage(e, 'Analysis failed. Check file format.'))
       setStep('error')
     }
   }, [])
@@ -132,7 +131,7 @@ function SmartUploadZone() {
     const fd = new FormData()
     fd.append('file', fileRef)
     try {
-      const res = await axios.post(`${API}/upload/smart-import-async`, fd, {
+      const res = await api.post('/upload/smart-import-async', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (e) => {
           if (e.total) setProgress(Math.round((e.loaded / e.total) * 100))
@@ -142,7 +141,7 @@ function SmartUploadZone() {
       setActiveJobId(res.data.job_id)
       setStep('tracking')
     } catch (e) {
-      setError(e.response?.data?.detail || 'Import failed.')
+      setError(getErrorMessage(e, 'Import failed.'))
       setStep('error')
     }
   }, [fileRef])
@@ -159,7 +158,7 @@ function SmartUploadZone() {
     if (step === 'tracking' && activeJobId) {
       const poll = async () => {
         try {
-          const res = await axios.get(`${API}/upload/jobs/${activeJobId}`);
+          const res = await api.get(`/upload/jobs/${activeJobId}`)
           setActiveJob(res.data);
           if (res.data.status === 'completed' || res.data.status === 'failed') {
             clearInterval(interval);
@@ -666,10 +665,10 @@ function LegacyUploadZone() {
     const fd = new FormData()
     fd.append('file', file)
     try {
-      const res = await axios.post(`${API}/upload/recruiters`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      const res = await api.post('/upload/recruiters', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
       setResult(res.data)
     } catch (e) {
-      setError(e.response?.data?.detail || 'Upload failed. Check file format.')
+      setError(getErrorMessage(e, 'Upload failed. Check file format.'))
     }
     setUploading(false)
   }
@@ -750,7 +749,7 @@ function PasteParser() {
     let inserted = 0, skipped = 0
     for (const r of toSave) {
       try {
-        await axios.post(`${API}/recruiters/`, {
+        await api.post('/recruiters/', {
           recruiter_name: r.recruiter_name || r.email.split('@')[0],
           email: r.email,
           phone: r.phone || null,
@@ -897,54 +896,65 @@ export default function Upload() {
   const [kpis, setKpis] = useState({ loading: true, error: null, data: null })
   const [toast, setToast] = useState('')
 
+  const refreshKpis = useCallback(async (opts = {}) => {
+    const { silent = false } = opts
+    if (!silent) setKpis({ loading: true, error: null, data: null })
+    try {
+      const [healthRes, recruitersRes, jobsRes] = await Promise.allSettled([
+        api.get('/health'),
+        api.get('/recruiters', { params: { page: 1, limit: 1 } }),
+        api.get('/upload/jobs'),
+      ])
+
+      const healthOk = healthRes.status === 'fulfilled' ? healthRes.value.data : null
+      const recruitersHeader = recruitersRes.status === 'fulfilled' ? recruitersRes.value.headers?.['x-total-count'] : null
+      const totalRecords = recruitersHeader ? Number(recruitersHeader) : null
+      const jobs = jobsRes.status === 'fulfilled' ? (jobsRes.value.data || []) : null
+
+      const active = Array.isArray(jobs) ? jobs.find(j => j.status === 'processing' || j.status === 'queued') : null
+      const lastJob = Array.isArray(jobs)
+        ? [...jobs].sort((a, b) => new Date(b.started_at || 0).getTime() - new Date(a.started_at || 0).getTime())[0]
+        : null
+
+      const processingQueue = Array.isArray(jobs)
+        ? {
+            activeStatus: active?.status || 'idle',
+            pending: jobs.filter(j => j.status === 'queued').length,
+            processing: jobs.filter(j => j.status === 'processing').length,
+          }
+        : null
+
+      const lastSync = lastJob?.started_at ? formatDistanceToNow(new Date(`${lastJob.started_at}Z`), { addSuffix: true }) : null
+
+      const payload = {
+        databaseHealth: healthOk?.database || null,
+        databaseStatus: healthOk?.status || null,
+        totalRecords,
+        processingQueue,
+        lastSync,
+      }
+
+      setKpis({ loading: false, error: null, data: payload })
+      return payload
+    } catch (e) {
+      setKpis({ loading: false, error: e, data: null })
+      throw e
+    }
+  }, [])
+
   useEffect(() => {
     let cancelled = false
     const run = async () => {
+      if (cancelled) return
       try {
-        const [healthRes, recruitersRes, jobsRes] = await Promise.allSettled([
-          axios.get(`${API}/health`),
-          axios.get(`${API}/recruiters`, { params: { page: 1, limit: 1 } }),
-          axios.get(`${API}/upload/jobs`),
-        ])
-
-        const healthOk = healthRes.status === 'fulfilled' ? healthRes.value.data : null
-        const recruitersHeader = recruitersRes.status === 'fulfilled' ? recruitersRes.value.headers?.['x-total-count'] : null
-        const totalRecords = recruitersHeader ? Number(recruitersHeader) : null
-        const jobs = jobsRes.status === 'fulfilled' ? (jobsRes.value.data || []) : null
-
-        const active = Array.isArray(jobs) ? jobs.find(j => j.status === 'processing' || j.status === 'queued') : null
-        const lastJob = Array.isArray(jobs)
-          ? [...jobs].sort((a, b) => new Date(b.started_at || 0).getTime() - new Date(a.started_at || 0).getTime())[0]
-          : null
-
-        const processingQueue = Array.isArray(jobs)
-          ? {
-              activeStatus: active?.status || 'idle',
-              pending: jobs.filter(j => j.status === 'queued').length,
-              processing: jobs.filter(j => j.status === 'processing').length,
-            }
-          : null
-
-        const lastSync = lastJob?.started_at ? formatDistanceToNow(new Date(`${lastJob.started_at}Z`), { addSuffix: true }) : null
-
-        const payload = {
-          databaseHealth: healthOk?.database || null,
-          databaseStatus: healthOk?.status || null,
-          totalRecords,
-          processingQueue,
-          lastSync,
-        }
-
-        if (!cancelled) setKpis({ loading: false, error: null, data: payload })
-      } catch (e) {
-        if (!cancelled) setKpis({ loading: false, error: e, data: null })
+        await refreshKpis({ silent: false })
+      } catch {
+        // state already set
       }
     }
-
-    setKpis({ loading: true, error: null, data: null })
     run()
     return () => { cancelled = true }
-  }, [])
+  }, [refreshKpis])
 
   const fireSoon = (label) => {
     setToast(`${label}: Coming soon`)
@@ -981,7 +991,19 @@ export default function Upload() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={() => fireSoon('Manual Sync')} style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'transparent', color: 'var(--text-secondary)', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>
+          <button
+            onClick={async () => {
+              try {
+                await refreshKpis({ silent: false })
+                setToast('Synced: refreshed ETL KPIs')
+                setTimeout(() => setToast(''), 1400)
+              } catch (e) {
+                setToast(getErrorMessage(e, 'Sync failed'))
+                setTimeout(() => setToast(''), 1800)
+              }
+            }}
+            style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'transparent', color: 'var(--text-secondary)', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}
+          >
             <i className="ti ti-refresh" style={{ marginRight: 8 }} />
             Manual Sync
           </button>

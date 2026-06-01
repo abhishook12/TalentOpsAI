@@ -50,6 +50,21 @@ function createWorkbook(rows) {
   return workbook
 }
 
+function Panel({ title, icon, badge, children, style }) {
+  return (
+    <div className="card" style={{ padding: 14, borderRadius: 16, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 10, ...style }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          <i className={`ti ${icon}`} style={{ color: 'var(--accent)', fontSize: 16 }} />
+          <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
+        </div>
+        {badge}
+      </div>
+      {children}
+    </div>
+  )
+}
+
 export default function StateDirectory() {
   const [selectedState, setSelectedState] = useState(null)
   const [stateQuery, setStateQuery] = useState('')
@@ -397,6 +412,8 @@ export default function StateDirectory() {
     }
   }
 
+  const drawerOpen = Boolean(activeRecruiter)
+
   return (
     <>
       {headerPortalElement && createPortal(
@@ -408,13 +425,14 @@ export default function StateDirectory() {
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-              padding: '6px 12px', borderRadius: 8, fontSize: 13,
+              padding: '6px 12px', borderRadius: 10, fontSize: 13,
               color: 'var(--text-primary)', cursor: 'pointer',
               height: 36, opacity: (!selectedState || !selectedCompanyName || selectedRecruiters.size === 0 || exporting) ? 0.55 : 1,
+              fontWeight: 900,
             }}
           >
             <i className="ti ti-checkbox" style={{ fontSize: 16 }} />
-            <span style={{ fontWeight: 500 }}>Export Selected</span>
+            <span>Export Selected</span>
           </button>
 
           <button
@@ -424,10 +442,10 @@ export default function StateDirectory() {
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               background: 'var(--accent)', border: '1px solid rgba(0,0,0,0)',
-              padding: '6px 12px', borderRadius: 8, fontSize: 13,
-              color: '#031b16', cursor: 'pointer',
+              padding: '6px 12px', borderRadius: 10, fontSize: 13,
+              color: 'var(--text-inverse)', cursor: 'pointer',
               height: 36, opacity: (!selectedState || !selectedCompanyName || exporting) ? 0.55 : 1,
-              fontWeight: 650,
+              fontWeight: 900,
             }}
           >
             <i className="ti ti-download" style={{ fontSize: 16 }} />
@@ -437,21 +455,393 @@ export default function StateDirectory() {
         headerPortalElement
       )}
 
-      <div className="page-enter" style={{ minHeight: 'calc(100vh - 120px)' }}>
-        <div style={{ marginBottom: 14 }}>
-          <h1 style={{ fontSize: 24, fontWeight: 650, letterSpacing: '-0.02em' }}>Territory Intelligence Center</h1>
+      <div className="page-enter" style={{ minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ marginBottom: 2 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 950, letterSpacing: '-0.02em', margin: 0 }}>Territory Intelligence Center</h1>
           <p style={{ marginTop: 6, fontSize: 13, color: 'var(--text-muted)' }}>
             State → Company → Recruiters → Export Excel. Everything shown is real data from your database.
           </p>
         </div>
 
         {!selectedState ? (
-          
+          <div className="card" style={{ padding: 18, borderRadius: 16 }}>
+            <div style={{ display: 'grid', placeItems: 'center', padding: 26, textAlign: 'center' }}>
+              <div style={{ maxWidth: 760 }}>
+                <div style={{ width: 54, height: 54, borderRadius: 16, background: 'var(--accent-bg)', border: '1px solid var(--card-border)', display: 'grid', placeItems: 'center', margin: '0 auto 12px' }}>
+                  <i className="ti ti-map" style={{ fontSize: 20, color: 'var(--accent)' }} />
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 950, color: 'var(--text-primary)' }}>Start by selecting a state</div>
+                <div style={{ marginTop: 6, fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.55 }}>
+                  This workflow is optimized for large datasets with server-side pagination and filtering.
+                </div>
+                <div style={{ marginTop: 14, display: 'grid', gap: 10, textAlign: 'left' }}>
+                  {[
+                    { n: 1, t: 'Select State', d: 'Choose the territory you want to extract recruiters from.' },
+                    { n: 2, t: 'Select Company', d: 'Pick a company and see its recruiter list for that state.' },
+                    { n: 3, t: 'Browse Recruiters', d: 'Search within results without loading everything into the browser.' },
+                    { n: 4, t: 'Export Excel', d: 'Export selected recruiters or all filtered recruiters.' },
+                  ].map((s) => (
+                    <div key={s.n} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: 12, borderRadius: 14, background: 'var(--panel-bg)', border: '1px solid var(--card-border)' }}>
+                      <div style={{ width: 30, height: 30, borderRadius: 10, background: 'var(--bg-hover)', display: 'grid', placeItems: 'center', fontWeight: 950 }}>{s.n}</div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 950, color: 'var(--text-primary)' }}>{s.t}</div>
+                        <div style={{ marginTop: 2, fontSize: 12.5, color: 'var(--text-muted)' }}>{s.d}</div>
+                      </div>
                     </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: drawerOpen ? '340px 380px 1fr 360px' : '340px 380px 1fr',
+            gap: 12,
+            minHeight: 0,
+            alignItems: 'start',
+          }}>
+            <Panel
+              title="1. Select State"
+              icon="ti-map-pin"
+              badge={<span className="badge badge-gray">{filteredStates.length}</span>}
+              style={{ minHeight: 0 }}
+            >
+              <input
+                value={stateQuery}
+                onChange={(e) => setStateQuery(e.target.value)}
+                placeholder="Search states…"
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', outline: 'none' }}
+              />
+              <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 'calc(100vh - 260px)' }}>
+                {filteredStates.map((s) => {
+                  const recruitersCount = stateRecruiterCounts.get(s.abbr) ?? null
+                  const companiesCount = stateCompanyCounts.get(s.abbr) ?? null
+                  const selected = selectedState === s.abbr
+                  return (
+                    <button
+                      key={s.abbr}
+                      onClick={() => setSelectedState(s.abbr)}
+                      style={{
+                        textAlign: 'left',
+                        borderRadius: 14,
+                        border: `1px solid ${selected ? 'rgba(24,95,165,0.35)' : 'var(--card-border)'}`,
+                        background: selected ? 'rgba(24,95,165,0.08)' : 'var(--panel-bg)',
+                        padding: 12,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: 10,
+                        alignItems: 'center',
+                      }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 950, color: 'var(--text-primary)' }}>{s.name}</div>
+                        <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-muted)' }}>
+                          {typeof recruitersCount === 'number' ? `${recruitersCount.toLocaleString()} recruiters` : 'Recruiters: —'}
+                          {'  •  '}
+                          {typeof companiesCount === 'number' ? `${companiesCount.toLocaleString()} companies` : 'Companies: —'}
+                        </div>
+                      </div>
+                      <div style={{ width: 28, height: 28, borderRadius: 10, border: `1px solid ${selected ? 'rgba(24,95,165,0.35)' : 'var(--card-border)'}`, background: selected ? 'rgba(24,95,165,0.12)' : 'transparent', display: 'grid', placeItems: 'center' }}>
+                        {selected ? <i className="ti ti-check" style={{ color: 'var(--accent)' }} /> : <span style={{ fontFamily: 'var(--mono)', fontWeight: 900, color: 'var(--text-muted)' }}>{s.abbr}</span>}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </Panel>
+
+            <Panel
+              title="2. Company"
+              icon="ti-building"
+              badge={<span className="badge badge-gray">{companiesLoading ? '…' : companies.length}</span>}
+              style={{ minHeight: 0 }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  <span style={{ fontWeight: 950, color: 'var(--text-primary)' }}>{selectedStateName || selectedState}</span>
+                  {typeof selectedStateCompanyCount === 'number' && <span> • {selectedStateCompanyCount.toLocaleString()} companies</span>}
+                </div>
+                <button
+                  onClick={() => { setSelectedCompany(null); setPage(1); setRecruiterQuery(''); setSelectedRecruiters(new Map()); setActiveRecruiter(null) }}
+                  disabled={!selectedCompany}
+                  style={{ background: 'transparent', border: 'none', color: selectedCompany ? 'var(--text-secondary)' : 'var(--text-muted)', cursor: selectedCompany ? 'pointer' : 'not-allowed', fontWeight: 900, fontSize: 12, opacity: selectedCompany ? 1 : 0.6 }}
+                  title={selectedCompany ? 'Clear selection' : 'Select a company'}
+                >
+                  Clear
+                </button>
+              </div>
+
+              <input
+                value={companyQuery}
+                onChange={(e) => setCompanyQuery(e.target.value)}
+                placeholder={`Search companies in ${selectedState}…`}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', outline: 'none', marginTop: 10 }}
+              />
+
+              <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 'calc(100vh - 310px)' }}>
+                {companiesLoading ? (
+                  <div style={{ padding: 14, color: 'var(--text-muted)', fontSize: 12 }}>Loading companies…</div>
+                ) : companies.length === 0 ? (
+                  <div style={{ padding: 14, color: 'var(--text-muted)', fontSize: 12 }}>
+                    No Data Available. This state has no companies with linked recruiters yet.
+                  </div>
+                ) : (
+                  [...companies]
+                    .sort((a, b) => Number(b.recruiter_count || 0) - Number(a.recruiter_count || 0))
+                    .map((c) => {
+                      const selected = selectedCompany?.company_id === c.company_id
+                      return (
+                        <button
+                          key={c.company_id}
+                          onClick={() => {
+                            setSelectedCompany(c)
+                            setPage(1)
+                            setSelectedRecruiters(new Map())
+                            setActiveRecruiter(null)
+                          }}
+                          style={{
+                            textAlign: 'left',
+                            borderRadius: 14,
+                            border: `1px solid ${selected ? 'rgba(24,95,165,0.35)' : 'var(--card-border)'}`,
+                            background: selected ? 'rgba(24,95,165,0.08)' : 'var(--panel-bg)',
+                            padding: 12,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            gap: 10,
+                            alignItems: 'center',
+                          }}
+                        >
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <div style={{ width: 32, height: 32, borderRadius: 12, background: 'var(--bg-hover)', border: '1px solid var(--card-border)', display: 'grid', placeItems: 'center', fontWeight: 950, fontFamily: 'var(--mono)', color: 'var(--text-secondary)', flexShrink: 0 }}>
+                                {(c.company_name || 'C').slice(0, 2).toUpperCase()}
+                              </div>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontSize: 13, fontWeight: 950, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.company_name || 'Unnamed company'}</div>
+                                <div style={{ marginTop: 2, fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.location || 'Not available'}</div>
+                              </div>
+                            </div>
+                          </div>
+                          <div style={{ fontFamily: 'var(--mono)', fontWeight: 950, color: 'var(--text-secondary)' }}>
+                            {(Number(c.recruiter_count || 0)).toLocaleString()}
+                          </div>
+                        </button>
+                      )
+                    })
+                )}
+              </div>
+            </Panel>
+
+            <Panel
+              title="3. Recruiters"
+              icon="ti-users"
+              badge={<span className="badge badge-gray">{selectedCompanyName ? recruitersTotal.toLocaleString() : '—'}</span>}
+              style={{ minHeight: 0 }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  <span style={{ fontWeight: 950, color: 'var(--text-primary)' }}>{selectedStateName || selectedState}</span>
+                  {selectedCompanyName && <span> • <span style={{ fontWeight: 950, color: 'var(--text-primary)' }}>{selectedCompanyName}</span></span>}
+                  {selectedCompanyName && <span> • {recruitersTotal.toLocaleString()} recruiters</span>}
+                </div>
+                <button
+                  onClick={exportCurrentPage}
+                  disabled={!selectedCompanyName || recruiters.length === 0 || exporting}
+                  title={!selectedCompanyName ? 'Select a company first' : 'Export current page to Excel'}
+                  style={{
+                    background: 'var(--bg-hover)',
+                    border: '1px solid var(--card-border)',
+                    color: (!selectedCompanyName || recruiters.length === 0 || exporting) ? 'var(--text-muted)' : 'var(--text-secondary)',
+                    padding: '8px 10px',
+                    borderRadius: 12,
+                    cursor: (!selectedCompanyName || recruiters.length === 0 || exporting) ? 'not-allowed' : 'pointer',
+                    fontWeight: 950,
+                    fontSize: 12,
+                    opacity: (!selectedCompanyName || recruiters.length === 0 || exporting) ? 0.7 : 1,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}
+                >
+                  <i className="ti ti-file-spreadsheet" /> Export Page
+                </button>
+              </div>
+
+              <input
+                value={recruiterQuery}
+                onChange={(e) => { setRecruiterQuery(e.target.value); setPage(1) }}
+                placeholder={selectedCompanyName ? 'Search recruiters by name, email, company, location…' : 'Select a company to browse recruiters…'}
+                disabled={!selectedCompanyName}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', outline: 'none', marginTop: 10, opacity: selectedCompanyName ? 1 : 0.7 }}
+              />
+
+              <div style={{ marginTop: 10, minHeight: 0, flex: 1, overflow: 'hidden', borderRadius: 14, border: '1px solid var(--card-border)', background: 'var(--panel-bg)' }}>
+                {!selectedCompanyName ? (
+                  <div style={{ padding: 18, color: 'var(--text-muted)', fontSize: 12 }}>Select a company to view recruiters.</div>
+                ) : recruitersLoading ? (
+                  <div style={{ padding: 18, color: 'var(--text-muted)', fontSize: 12 }}>Loading recruiters…</div>
+                ) : recruiters.length === 0 ? (
+                  <div style={{ padding: 18, color: 'var(--text-muted)', fontSize: 12 }}>No Data Available for this filter.</div>
+                ) : (
+                  <div style={{ overflow: 'auto', maxHeight: 'calc(100vh - 360px)' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+                      <thead>
+                        <tr style={{ background: 'var(--bg-hover)' }}>
+                          <th style={{ width: 36, padding: '10px 12px', borderBottom: '1px solid var(--card-border)' }}>
+                            <input
+                              type="checkbox"
+                              checked={allOnPageSelected}
+                              onChange={(e) => selectAllOnPage(e.target.checked)}
+                              aria-label="Select all on page"
+                            />
+                          </th>
+                          <th style={{ padding: '10px 12px', borderBottom: '1px solid var(--card-border)' }}>Name</th>
+                          <th style={{ padding: '10px 12px', borderBottom: '1px solid var(--card-border)' }}>Email</th>
+                          <th style={{ padding: '10px 12px', borderBottom: '1px solid var(--card-border)' }}>Company</th>
+                          <th style={{ padding: '10px 12px', borderBottom: '1px solid var(--card-border)' }}>Location</th>
+                          <th style={{ padding: '10px 12px', borderBottom: '1px solid var(--card-border)' }}>Phone</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recruiters.map((r) => (
+                          <tr
+                            key={r.recruiter_id}
+                            style={{ borderBottom: '1px solid var(--card-border)', cursor: 'pointer' }}
+                            onClick={() => setActiveRecruiter(r)}
+                          >
+                            <td style={{ padding: '10px 12px' }} onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={selectedRecruiters.has(r.recruiter_id)}
+                                onChange={(e) => toggleRecruiterSelected(r, e.target.checked)}
+                                aria-label={`Select ${r.recruiter_name || 'recruiter'}`}
+                              />
+                            </td>
+                            <td style={{ padding: '10px 12px', color: 'var(--text-primary)', fontWeight: 900 }}>
+                              {safeText(r.recruiter_name, '')}
+                            </td>
+                            <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>
+                              {r.email || ''}
+                            </td>
+                            <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>
+                              {r.company_name || selectedCompanyName || ''}
+                            </td>
+                            <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>
+                              {r.location || r.state || ''}
+                            </td>
+                            <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>
+                              {r.phone || ''}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
-            </div>
+
+              {selectedCompanyName && (
+                <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--mono)' }}>
+                    Page {page} / {totalPages} • {pageSize} per page
+                    {exporting && <span style={{ marginLeft: 10 }}>Exporting… {exporting.current}/{exporting.total}</span>}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1) }}
+                      style={{ padding: '8px 10px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)' }}
+                    >
+                      {[50, 100, 200].map((n) => <option key={n} value={n}>{n}/page</option>)}
+                    </select>
+                    <button
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={page <= 1}
+                      style={{ padding: '8px 10px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: page <= 1 ? 'var(--text-muted)' : 'var(--text-secondary)', cursor: page <= 1 ? 'not-allowed' : 'pointer' }}
+                    >
+                      <i className="ti ti-chevron-left" />
+                    </button>
+                    <button
+                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                      disabled={page >= totalPages}
+                      style={{ padding: '8px 10px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: page >= totalPages ? 'var(--text-muted)' : 'var(--text-secondary)', cursor: page >= totalPages ? 'not-allowed' : 'pointer' }}
+                    >
+                      <i className="ti ti-chevron-right" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </Panel>
+
+            {drawerOpen && (
+              <div className="card" style={{ padding: 14, borderRadius: 16, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', minWidth: 0 }}>
+                    <div style={{ width: 42, height: 42, borderRadius: 14, background: 'var(--bg-hover)', border: '1px solid var(--card-border)', display: 'grid', placeItems: 'center', fontWeight: 950, fontFamily: 'var(--mono)', color: 'var(--text-secondary)' }}>
+                      {initialsFromName(activeRecruiter?.recruiter_name || '')}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 950, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {safeText(activeRecruiter?.recruiter_name, '') || 'Recruiter'}
+                      </div>
+                      <div style={{ marginTop: 2, fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {activeRecruiter?.company_name || selectedCompanyName || 'Not available'}
+                      </div>
+                    </div>
+                  </div>
+                  <button onClick={() => setActiveRecruiter(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }} title="Close">
+                    <i className="ti ti-x" />
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gap: 10 }}>
+                  <div style={{ padding: 12, borderRadius: 14, border: '1px solid var(--card-border)', background: 'var(--panel-bg)' }}>
+                    <div style={{ fontSize: 10.5, fontWeight: 950, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Contact</div>
+                    <div style={{ marginTop: 8, display: 'grid', gap: 6, fontSize: 12.5 }}>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-secondary)' }}>
+                        <i className="ti ti-mail" /> {safeText(activeRecruiter?.email, 'Not available')}
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-secondary)' }}>
+                        <i className="ti ti-phone" /> {safeText(activeRecruiter?.phone, 'Not available')}
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={() => { if (activeRecruiter?.email) navigator.clipboard.writeText(activeRecruiter.email); showToast(activeRecruiter?.email ? 'Copied email' : 'No email to copy', activeRecruiter?.email ? 'success' : 'info') }}
+                        style={{ flex: 1, padding: '9px 10px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--bg-hover)', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 950, fontSize: 12 }}
+                      >
+                        Copy Email
+                      </button>
+                      <button
+                        onClick={() => { if (activeRecruiter?.phone) navigator.clipboard.writeText(activeRecruiter.phone); showToast(activeRecruiter?.phone ? 'Copied phone' : 'No phone to copy', activeRecruiter?.phone ? 'success' : 'info') }}
+                        style={{ flex: 1, padding: '9px 10px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--bg-hover)', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 950, fontSize: 12 }}
+                      >
+                        Copy Phone
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ padding: 12, borderRadius: 14, border: '1px solid var(--card-border)', background: 'var(--panel-bg)' }}>
+                    <div style={{ fontSize: 10.5, fontWeight: 950, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Details</div>
+                    <div style={{ marginTop: 8, display: 'grid', gap: 6, fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                      <div><span style={{ color: 'var(--text-muted)' }}>Location:</span> {safeText(activeRecruiter?.location || activeRecruiter?.state, 'Not available')}</div>
+                      <div><span style={{ color: 'var(--text-muted)' }}>Title:</span> {safeText(activeRecruiter?.title, 'Not available')}</div>
+                      <div><span style={{ color: 'var(--text-muted)' }}>Specialization:</span> {safeText(activeRecruiter?.specialization, 'Not available')}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ padding: 12, borderRadius: 14, border: '1px solid var(--card-border)', background: 'var(--panel-bg)' }}>
+                    <div style={{ fontSize: 10.5, fontWeight: 950, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Future</div>
+                    <div style={{ marginTop: 8, fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                      LinkedIn, notes, and tags will appear here when implemented.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -459,7 +849,7 @@ export default function StateDirectory() {
           <div style={{ position: 'fixed', bottom: 18, right: 18, zIndex: 50 }}>
             <div className="card" style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
               <i
-                className={toast.type === 'error' ? 'ti ti-alert-triangle' : toast.type === 'success' ? 'ti ti-circle-check' : 'ti ti-info-circle'}
+                className={toast.type === 'error' ? 'ti ti-alert-triangle' : toast.type === 'success' ? 'ti ti-circle-check' : toast.type === 'info' ? 'ti ti-info-circle' : 'ti ti-info-circle'}
                 style={{ color: toast.type === 'error' ? '#fb7185' : toast.type === 'success' ? '#34d399' : 'var(--text-secondary)' }}
               />
               <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{toast.message}</div>
@@ -470,3 +860,4 @@ export default function StateDirectory() {
     </>
   )
 }
+

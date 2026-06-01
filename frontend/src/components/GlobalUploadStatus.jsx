@@ -1,48 +1,70 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { RefreshCw, CheckCircle, XCircle } from 'lucide-react';
+import React, { useEffect, useState } from 'react'
+import { RefreshCw } from 'lucide-react'
+import api from '../services/api'
 
-const GlobalUploadStatus = () => {
-  const [activeJob, setActiveJob] = useState(null);
+export default function GlobalUploadStatus() {
+  const [activeJob, setActiveJob] = useState(null)
 
   useEffect(() => {
+    let cancelled = false
+
     const fetchJobs = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/upload/jobs`);
-        const jobs = response.data;
-        if (jobs && jobs.length > 0) {
-          // Find first active job
-          const running = jobs.find(j => j.status === 'processing' || j.status === 'queued');
-          setActiveJob(running || null);
+        const { data: jobs } = await api.get('/upload/jobs')
+        if (cancelled) return
+        if (Array.isArray(jobs) && jobs.length > 0) {
+          const running = jobs.find((j) => j.status === 'processing' || j.status === 'queued')
+          setActiveJob(running || null)
         } else {
-          setActiveJob(null);
+          setActiveJob(null)
         }
-      } catch (err) {
-        console.error("Failed to fetch global upload status", err);
+      } catch {
+        // Silent: this should never block core UX.
       }
-    };
+    }
 
-    fetchJobs();
-    const interval = setInterval(fetchJobs, 3000);
-    return () => clearInterval(interval);
-  }, []);
+    fetchJobs()
+    const interval = window.setInterval(fetchJobs, 3000)
+    return () => { cancelled = true; window.clearInterval(interval) }
+  }, [])
 
-  if (!activeJob) return null;
+  if (!activeJob) return null
 
-  const pct = activeJob.total_rows > 0 ? Math.round((activeJob.processed_rows / activeJob.total_rows) * 100) : 0;
+  const total = Number(activeJob.total_rows || 0)
+  const done = Number(activeJob.processed_rows || 0)
+  const pct = total > 0 ? Math.max(0, Math.min(100, Math.round((done / total) * 100))) : 0
 
   return (
-    <div className="fixed bottom-4 right-4 bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-lg flex items-center space-x-4 z-50">
-      <RefreshCw className="w-5 h-5 text-blue-400 animate-spin" />
-      <div>
-        <p className="text-sm font-semibold text-white">Importing {activeJob.filename}</p>
-        <div className="w-48 bg-gray-700 rounded-full h-2 mt-2">
-          <div className="bg-blue-500 h-2 rounded-full transition-all duration-300" style={{ width: `${pct}%` }}></div>
+    <div style={{
+      position: 'fixed',
+      right: 16,
+      bottom: 16,
+      zIndex: 50,
+      display: 'flex',
+      gap: 12,
+      alignItems: 'center',
+      padding: 14,
+      borderRadius: 14,
+      background: 'var(--card-bg)',
+      border: '1px solid var(--card-border)',
+      boxShadow: 'var(--shadow-lg)',
+      minWidth: 320,
+    }}>
+      <div style={{ width: 30, height: 30, borderRadius: 10, background: 'var(--accent-bg)', display: 'grid', placeItems: 'center' }}>
+        <RefreshCw className="w-4 h-4" style={{ color: 'var(--accent)', animation: 'spin 0.9s linear infinite' }} />
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 900, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          Importing {activeJob.file_name || activeJob.filename || `Job ${activeJob.job_id}`}
         </div>
-        <p className="text-xs text-gray-400 mt-1">{pct}% • {activeJob.processed_rows} / {activeJob.total_rows} rows</p>
+        <div style={{ width: 220, background: 'var(--bg-hover)', border: '1px solid var(--card-border)', borderRadius: 999, height: 8, marginTop: 8, overflow: 'hidden' }}>
+          <div style={{ background: 'var(--accent)', height: '100%', width: `${pct}%`, borderRadius: 999, transition: 'width 0.3s ease' }} />
+        </div>
+        <div style={{ marginTop: 6, fontSize: 11.5, color: 'var(--text-muted)', fontFamily: 'var(--mono)' }}>
+          {pct}% • {done.toLocaleString()} / {total.toLocaleString()} rows
+        </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default GlobalUploadStatus;

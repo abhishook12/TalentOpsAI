@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import axios from 'axios'
+import api from '../services/api'
 import CompanyModal from '../components/CompanyModal'
-
-const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 
 const US_STATES = [
   { abbr: 'AL', name: 'Alabama' }, { abbr: 'AK', name: 'Alaska' },
@@ -117,7 +115,7 @@ export default function CompanyDirectory() {
   useEffect(() => {
     const fetchCounts = async () => {
       try {
-        const res = await axios.get(`${API}/analytics/companies-count-by-state`)
+        const res = await api.get('/analytics/companies-count-by-state')
         setStateCounts(res.data)
       } catch (err) {
         console.error(err)
@@ -133,7 +131,7 @@ export default function CompanyDirectory() {
       const params = { limit: 200, skip: 0 }
       if (q?.trim()) params.q = q.trim()
       if (state) params.state = state
-      const res = await axios.get(`${API}/analytics/companies-search`, { params })
+      const res = await api.get('/analytics/companies-search', { params })
       setCompanies(res.data)
       const count = parseInt(res.headers['x-total-count'] || res.data.length, 10)
       setTotalCount(count)
@@ -156,7 +154,7 @@ export default function CompanyDirectory() {
       const params = { limit: 200, skip: companies.length }
       if (query?.trim()) params.q = query.trim()
       if (selectedState) params.state = selectedState
-      const res = await axios.get(`${API}/analytics/companies-search`, { params })
+      const res = await api.get('/analytics/companies-search', { params })
       setCompanies(prev => [...prev, ...res.data])
       const count = parseInt(res.headers['x-total-count'] || totalCount, 10)
       setTotalCount(count)

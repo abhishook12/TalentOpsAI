@@ -1,228 +1,208 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
-import { API } from '../services/api'
+import api, { getErrorMessage } from '../services/api'
 
-const pipelineRows = [
-  { source: 'LinkedIn Global Dump', type: 'JSON', count: 412083, status: 'Live Sync' },
-  { source: 'Apollo Integration v4', type: 'API', count: 82192, status: 'Completed' },
-  { source: 'Manpower Group Historical', type: 'CSV', count: 12500, status: 'Completed' },
-  { source: 'Crunchbase Pro Export', type: 'JSON', count: 4812, status: 'Schema Mismatch' },
-  { source: 'State-Level Directories', type: 'CSV', count: 189420, status: 'Queued' },
-]
+function Card({ title, icon, action, children, style }) {
+  return (
+    <div className="card" style={{ padding: 16, borderRadius: 14, display: 'flex', flexDirection: 'column', gap: 10, ...style }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          {icon && <i className={`ti ${icon}`} style={{ color: 'var(--accent)', fontSize: 16 }} />}
+          <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {title}
+          </div>
+        </div>
+        {action}
+      </div>
+      <div style={{ minHeight: 0 }}>{children}</div>
+    </div>
+  )
+}
 
-const marketLeaders = [
-  { code: 'KF', name: 'Korn Ferry', count: '8,421 Recruiters Identified' },
-  { code: 'SS', name: 'Spencer Stuart', count: '4,102 Recruiters Identified' },
-  { code: 'HS', name: 'Heidrick & Struggles', count: '3,890 Recruiters Identified' },
-  { code: 'EZ', name: 'Egon Zehnder', count: '2,554 Recruiters Identified' },
-]
-
-const trafficSources = [
-  { city: 'New York, US', x: 23, y: 36, share: 31 },
-  { city: 'London, UK', x: 47, y: 29, share: 19 },
-  { city: 'Bengaluru, IN', x: 68, y: 50, share: 23 },
-  { city: 'Singapore, SG', x: 75, y: 57, share: 14 },
-  { city: 'Sydney, AU', x: 84, y: 76, share: 13 },
-]
-
-function statusPill(status) {
-  if (status === 'Live Sync') return { bg: 'rgba(22,163,74,0.12)', color: '#2f8f53', icon: 'ti-point-filled' }
-  if (status === 'Schema Mismatch') return { bg: 'rgba(220,38,38,0.14)', color: '#d14d4d', icon: 'ti-alert-triangle' }
-  if (status === 'Queued') return { bg: 'rgba(180,83,9,0.16)', color: '#b07843', icon: 'ti-clock' }
-  return { bg: 'var(--accent-bg)', color: 'var(--text-secondary)', icon: 'ti-circle-check' }
+function KPI({ label, value, sub, icon, tone = 'default' }) {
+  const left = tone === 'good' ? '#22c55e' : tone === 'warn' ? '#f59e0b' : tone === 'bad' ? '#ef4444' : 'var(--card-border)'
+  return (
+    <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 12, padding: '12px 14px', borderLeft: `3px solid ${left}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <i className={`ti ${icon}`} style={{ color: 'var(--text-muted)', fontSize: 15 }} />
+          <div style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</div>
+        </div>
+      </div>
+      <div style={{ marginTop: 8, fontSize: 22, fontWeight: 900, color: 'var(--text-primary)' }}>{value ?? '—'}</div>
+      {sub && <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-muted)' }}>{sub}</div>}
+    </div>
+  )
 }
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState('Dashboard')
-  const [query, setQuery] = useState('')
   const [toast, setToast] = useState('')
-  const [activeTraffic, setActiveTraffic] = useState(trafficSources[0])
 
-  const { data: kpi, isLoading } = useQuery({
-    queryKey: ['dashboard-kpi'],
-    queryFn: async () => (await axios.get(`${API}/analytics/dashboard`)).data,
-  })
-  const { data: recruiterStats } = useQuery({
-    queryKey: ['dashboard-recruiter-total'],
-    queryFn: async () => (await axios.get(`${API}/recruiters?page=1&limit=1`)).data,
-  })
-  const { data: companyStats } = useQuery({
-    queryKey: ['dashboard-company-total'],
-    queryFn: async () => (await axios.get(`${API}/companies?page=1&limit=1`)).data,
+  const { data: kpis, isLoading: kpisLoading, error: kpisError } = useQuery({
+    queryKey: ['dashboard-kpis'],
+    queryFn: async () => (await api.get('/analytics/dashboard')).data,
   })
 
-  const stats = useMemo(() => ([
-    { label: 'Total Recruiters', icon: 'ti-users', value: recruiterStats?.total_count?.toLocaleString?.() ?? (isLoading ? '...' : (kpi?.recruiters?.total ?? 0).toLocaleString()), sub: isLoading ? 'Loading' : '~ +12.4% MoM' },
-    { label: 'Associated Companies', icon: 'ti-building', value: companyStats?.total_count?.toLocaleString?.() ?? (isLoading ? '...' : (kpi?.companies?.total ?? 0).toLocaleString()), sub: isLoading ? 'Loading' : '~ +3.1% MoM' },
-    { label: 'States Active', icon: 'ti-flag', value: '50', sub: 'Full Coverage REACH' },
-    { label: 'Data Quality', icon: 'ti-shield-check', value: '99.4%', sub: 'Verified recruiter records' },
-  ]), [companyStats, recruiterStats, kpi, isLoading])
+  const { data: visits, isLoading: visitsLoading, error: visitsError } = useQuery({
+    queryKey: ['dashboard-visits'],
+    queryFn: async () => (await api.get('/analytics/visit-stats')).data,
+  })
 
-  const ping = (msg) => {
+  const { data: topCompanies, isLoading: companiesLoading, error: companiesError } = useQuery({
+    queryKey: ['dashboard-top-companies'],
+    queryFn: async () => (await api.get('/analytics/companies-search', { params: { state: 'ALL', limit: 6, skip: 0, min_recruiters: 1 } })).data,
+  })
+
+  const { data: jobs, isLoading: jobsLoading, error: jobsError } = useQuery({
+    queryKey: ['dashboard-upload-jobs'],
+    queryFn: async () => (await api.get('/upload/jobs')).data,
+  })
+
+  const statBlocks = useMemo(() => {
+    const r = kpis?.recruiters || {}
+    const c = kpis?.companies || {}
+    return [
+      { label: 'Total Recruiters', icon: 'ti-users', value: typeof r.total === 'number' ? r.total.toLocaleString() : null, sub: 'From database', tone: (r.total || 0) > 0 ? 'good' : 'default' },
+      { label: 'Companies', icon: 'ti-building', value: typeof c.total === 'number' ? c.total.toLocaleString() : null, sub: 'From database', tone: (c.total || 0) > 0 ? 'good' : 'default' },
+      { label: 'Email Coverage', icon: 'ti-mail', value: typeof r.email_coverage_percent === 'number' ? `${r.email_coverage_percent}%` : null, sub: typeof r.with_email === 'number' ? `${r.with_email.toLocaleString()} with email` : null, tone: typeof r.email_coverage_percent === 'number' ? (r.email_coverage_percent >= 80 ? 'good' : r.email_coverage_percent >= 50 ? 'warn' : 'bad') : 'default' },
+      { label: 'Needs Review', icon: 'ti-alert-circle', value: typeof r.needs_review === 'number' ? r.needs_review.toLocaleString() : null, sub: typeof r.needs_review_percent === 'number' ? `${r.needs_review_percent}% of recruiters` : null, tone: typeof r.needs_review === 'number' ? (r.needs_review === 0 ? 'good' : 'warn') : 'default' },
+    ]
+  }, [kpis])
+
+  const showToast = (msg) => {
     setToast(msg)
-    console.log(`[UI Action] ${msg}`)
-    setTimeout(() => setToast(''), 1800)
+    window.clearTimeout(showToast._t)
+    showToast._t = window.setTimeout(() => setToast(''), 1600)
   }
 
+  const topPages = Array.isArray(visits?.top_pages) ? visits.top_pages.slice(0, 6) : []
+  const recentJobs = Array.isArray(jobs) ? [...jobs].sort((a, b) => new Date(b.started_at || 0) - new Date(a.started_at || 0)).slice(0, 6) : []
+
   return (
-    <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div className="card" style={{ padding: 14, borderRadius: 10 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
-            <h1 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Recruiter Intelligence</h1>
-            {['Dashboard', 'Staffing Firms'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => { setActiveTab(tab); ping(`${tab} tab selected`) }}
-                style={{
-                  background: 'transparent',
-                  borderBottom: activeTab === tab ? '2px solid var(--text-primary)' : '2px solid transparent',
-                  borderRadius: 0,
-                  color: 'var(--text-secondary)',
-                  padding: '8px 2px',
-                  fontSize: 12,
-                  fontWeight: 600,
-                }}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => ping('Notifications opened')} title="Notifications" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)', width: 30, height: 30 }}><i className="ti ti-bell" /></button>
-            <button onClick={() => ping('Settings opened')} title="Settings" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)', width: 30, height: 30 }}><i className="ti ti-settings" /></button>
-            <button onClick={() => navigate('/admin')} title="Profile" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)', width: 30, height: 30 }}><i className="ti ti-user-circle" /></button>
-          </div>
+    <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Recruiter Intelligence</h1>
+          <div style={{ marginTop: 6, fontSize: 13, color: 'var(--text-muted)' }}>Operational overview using real database data. No demo content.</div>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-primary" onClick={() => navigate('/ai-search')} style={{ borderRadius: 12, padding: '10px 12px', fontWeight: 900 }}>
+            <i className="ti ti-sparkles" /> Smart Search
+          </button>
+          <button
+            onClick={() => showToast('Notifications: not implemented yet')}
+            title="Notifications not implemented yet"
+            disabled
+            style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-muted)', width: 36, height: 36, borderRadius: 12, cursor: 'not-allowed', opacity: 0.7 }}
+          >
+            <i className="ti ti-bell" />
+          </button>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 10 }}>
-        {stats.map((s) => (
-          <div key={s.label} className="card" style={{ padding: 12, borderRadius: 8 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
-              <span style={{ fontSize: 10, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text-muted)' }}>{s.label}</span>
-              <i className={`ti ${s.icon}`} style={{ color: 'var(--text-muted)' }} />
-            </div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>{s.value}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{s.sub}</div>
-          </div>
+      {(kpisError || visitsError || companiesError || jobsError) && (
+        <div style={{ padding: '10px 12px', borderRadius: 12, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444' }}>
+          {getErrorMessage(kpisError || visitsError || companiesError || jobsError, 'Failed to load dashboard data')}
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10 }}>
+        {statBlocks.map((s) => (
+          <KPI key={s.label} {...s} value={kpisLoading ? '…' : s.value} sub={kpisLoading ? 'Loading…' : s.sub} />
         ))}
       </div>
 
-      <div className="card" style={{ padding: 10, display: 'flex', alignItems: 'center', gap: 8, borderRadius: 8 }}>
-        <i className="ti ti-search" style={{ color: 'var(--text-muted)' }} />
-        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Ask TalentOps AI..." style={{ flex: 1, border: 'none', background: 'transparent', padding: '8px 4px' }} />
-        <kbd style={{ fontSize: 10, border: '1px solid var(--card-border)', borderRadius: 4, padding: '2px 6px', color: 'var(--text-muted)', background: 'var(--bg-hover)' }}>⌘ K</kbd>
-        <button className="btn-primary" onClick={() => { ping(`Search submitted: ${query || '(empty)'}`); navigate('/ai-search') }}>Search</button>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
-        <div className="card" style={{ borderRadius: 8, overflow: 'hidden' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', borderBottom: '1px solid var(--card-border)' }}>
-            <strong style={{ fontSize: 12 }}>Intelligence Pipeline</strong>
-            <button onClick={() => ping('View ETL Logs clicked')} style={{ background: 'transparent', color: 'var(--text-secondary)', fontSize: 11 }}>View ETL Logs <i className="ti ti-arrow-right" /></button>
-          </div>
-          <table>
-            <thead>
-              <tr><th>Source</th><th>Type</th><th>Recruiter Count</th><th>Processed Status</th></tr>
-            </thead>
-            <tbody>
-              {pipelineRows.map((row) => {
-                const s = statusPill(row.status)
-                return (
-                  <tr key={row.source} onClick={() => ping(`${row.source} clicked`)} style={{ cursor: 'pointer' }}>
-                    <td style={{ fontWeight: 600 }}>{row.source}</td>
-                    <td><span style={{ border: '1px solid var(--card-border)', borderRadius: 4, fontSize: 10, padding: '2px 6px' }}>{row.type}</span></td>
-                    <td>{row.count.toLocaleString()}</td>
-                    <td>
-                      <span style={{ background: s.bg, color: s.color, padding: '4px 8px', borderRadius: 999, fontSize: 11 }}>
-                        <i className={`ti ${s.icon}`} /> {row.status}
-                      </span>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        <div style={{ display: 'grid', gap: 10 }}>
-          <div className="card" style={{ borderRadius: 8, padding: 10 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <strong style={{ fontSize: 12 }}>Market Leaders</strong>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>By Count</span>
-            </div>
-            <div style={{ display: 'grid', gap: 8 }}>
-              {marketLeaders.map((m) => (
-                <button key={m.code} onClick={() => ping(`${m.name} selected`)} style={{ display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left', background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)', padding: '8px 7px', borderRadius: 6 }}>
-                  <span style={{ width: 22, height: 22, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-hover)', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>{m.code}</span>
-                  <span style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600 }}>{m.name}</div>
-                    <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{m.count}</div>
-                  </span>
-                  <i className="ti ti-arrow-up-right" />
+      <div style={{ display: 'grid', gridTemplateColumns: '1.35fr 1fr 1fr', gap: 10, minHeight: 0 }}>
+        <Card
+          title="Top Companies (by recruiters)"
+          icon="ti-building-community"
+          action={
+            <button onClick={() => navigate('/companies')} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12, fontWeight: 800 }}>
+              View all <i className="ti ti-arrow-right" />
+            </button>
+          }
+        >
+          {companiesLoading ? (
+            <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Loading…</div>
+          ) : (Array.isArray(topCompanies) && topCompanies.length > 0) ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {topCompanies.map((c) => (
+                <button
+                  key={c.company_id}
+                  onClick={() => navigate('/companies')}
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', cursor: 'pointer', textAlign: 'left' }}
+                  title="Open Company Directory"
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.company_name || 'Unnamed company'}</div>
+                    <div style={{ marginTop: 2, fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.location || 'Not available'} • {c.state_abbr || '—'}</div>
+                  </div>
+                  <div style={{ fontFamily: 'var(--mono)', fontWeight: 900, color: 'var(--text-secondary)' }}>{(c.recruiter_count ?? 0).toLocaleString()} rec</div>
                 </button>
               ))}
             </div>
-            <button onClick={() => ping('Explore Firms Database clicked')} style={{ marginTop: 10, width: '100%', border: '1px solid var(--card-border)', background: 'var(--bg-hover)', color: 'var(--text-primary)', padding: '8px', fontSize: 12 }}>Explore Firms Database</button>
-          </div>
-
-          <div className="card" style={{ borderRadius: 8, padding: 10 }}>
-            <strong style={{ fontSize: 12 }}>State Coverage</strong>
-            <div style={{ height: 130, border: '1px solid var(--card-border)', borderRadius: 6, marginTop: 8, position: 'relative', background: 'var(--panel-bg)', overflow: 'hidden' }}>
-              <svg viewBox="0 0 800 360" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
-                <path d="M44 160 L110 130 L170 145 L190 178 L165 210 L100 220 L60 194 Z" fill="#8e96a3" />
-                <path d="M230 145 L270 118 L325 122 L362 150 L332 182 L277 190 L240 175 Z" fill="#8e96a3" />
-                <path d="M370 115 L430 98 L500 116 L560 150 L550 198 L485 216 L420 196 L392 160 Z" fill="#8e96a3" />
-                <path d="M515 220 L555 236 L582 270 L560 305 L520 292 L500 250 Z" fill="#8e96a3" />
-                <path d="M600 175 L655 170 L715 192 L735 226 L692 242 L630 230 L596 203 Z" fill="#8e96a3" />
-              </svg>
-              {trafficSources.map((t) => (
-                <button
-                  key={t.city}
-                  onClick={() => { setActiveTraffic(t); ping(`Traffic source: ${t.city}`) }}
-                  title={`${t.city} (${t.share}%)`}
-                  style={{
-                    position: 'absolute',
-                    left: `${t.x}%`,
-                    top: `${t.y}%`,
-                    width: 10,
-                    height: 10,
-                    borderRadius: '50%',
-                    border: '1px solid var(--panel-bg)',
-                    background: 'var(--text-primary)',
-                    boxShadow: activeTraffic.city === t.city ? '0 0 0 5px var(--accent-glow)' : '0 0 0 2px var(--accent-glow)',
-                    transform: 'translate(-50%, -50%)',
-                    cursor: 'pointer',
-                  }}
-                />
-              ))}
-              <div style={{ position: 'absolute', left: 8, bottom: 8, fontSize: 10, color: 'var(--text-secondary)', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 5, padding: '3px 6px' }}>
-                {activeTraffic.city} • {activeTraffic.share}% traffic
-              </div>
+          ) : (
+            <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+              No Data Available. Add companies and link recruiters to see rankings.
             </div>
-            <p style={{ marginTop: 8, fontSize: 11, color: 'var(--text-secondary)' }}>Live traffic origin map • 50/50 US States Synced</p>
-          </div>
-        </div>
+          )}
+        </Card>
+
+        <Card title="Recent Upload Jobs" icon="ti-cloud-upload">
+          {jobsLoading ? (
+            <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Loading…</div>
+          ) : recentJobs.length ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {recentJobs.map((j) => (
+                <div key={j.job_id} style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 900, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{j.file_name || `Job ${j.job_id}`}</div>
+                    <div style={{ marginTop: 2, fontSize: 12, color: 'var(--text-muted)' }}>{j.status || 'unknown'}</div>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--mono)' }}>
+                    {j.started_at ? new Date(j.started_at).toLocaleDateString() : '—'}
+                  </div>
+                </div>
+              ))}
+              <button onClick={() => navigate('/upload')} style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: 'var(--text-secondary)', padding: '10px 12px', borderRadius: 12, cursor: 'pointer', fontWeight: 900 }}>
+                Open ETL Intelligence Center <i className="ti ti-arrow-right" />
+              </button>
+            </div>
+          ) : (
+            <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+              No Data Available. Run an upload to see import history here.
+            </div>
+          )}
+        </Card>
+
+        <Card title="Top Pages (visits)" icon="ti-chart-bar" action={<span className="badge badge-gray">Visits</span>}>
+          {visitsLoading ? (
+            <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Loading…</div>
+          ) : topPages.length ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {topPages.map((p, idx) => (
+                <div key={`${p.page}-${idx}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: 12, background: 'var(--panel-bg)', border: '1px solid var(--card-border)' }}>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: 12, fontWeight: 800, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.page}</div>
+                  <div style={{ color: 'var(--text-muted)', fontFamily: 'var(--mono)', fontSize: 12 }}>{Number(p.visits || 0).toLocaleString()}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+              No Data Available. Browse the app to generate visit tracking.
+            </div>
+          )}
+        </Card>
       </div>
 
-      <footer className="card" style={{ borderRadius: 8, padding: '10px 12px', display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-        <span>Recruiter Intelligence © 2026</span>
-        <div style={{ display: 'flex', gap: 14 }}>
-          <button onClick={() => ping('System Status clicked')} style={{ background: 'transparent' }}>System Status</button>
-          <button onClick={() => ping('Privacy Policy clicked')} style={{ background: 'transparent' }}>Privacy Policy</button>
-          <button onClick={() => ping('Terms clicked')} style={{ background: 'transparent' }}>Terms of Service</button>
-        </div>
-      </footer>
-
       {toast && (
-        <div style={{ position: 'fixed', right: 20, bottom: 20, background: 'var(--text-primary)', color: 'var(--text-inverse)', padding: '10px 12px', borderRadius: 8, fontSize: 12 }}>
+        <div style={{ position: 'fixed', right: 18, bottom: 18, background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)', padding: '10px 12px', borderRadius: 12, fontSize: 12, boxShadow: 'var(--shadow)' }}>
           {toast}
         </div>
       )}
     </div>
   )
 }
+

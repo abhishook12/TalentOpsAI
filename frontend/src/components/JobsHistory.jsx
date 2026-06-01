@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { formatDistanceToNow } from 'date-fns';
-
-const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
+import api from '../services/api'
 
 export default function JobsHistory() {
   const [jobs, setJobs] = useState([]);
@@ -11,7 +9,7 @@ export default function JobsHistory() {
   useEffect(() => {
     const fetchJobs = async () => {
       try {
-        const res = await axios.get(`${API}/upload/jobs`);
+        const res = await api.get('/upload/jobs');
         setJobs(res.data);
       } catch (e) {
         console.error(e);
@@ -56,7 +54,7 @@ export default function JobsHistory() {
 
             const handleDownloadErrors = async () => {
               try {
-                const res = await axios.get(`${API}/upload/jobs/${j.job_id}`);
+                const res = await api.get(`/upload/jobs/${j.job_id}`);
                 const errs = res.data.errors;
                 if (!errs || !errs.length) {
                   alert('No detailed errors available for this job.');
@@ -77,7 +75,7 @@ export default function JobsHistory() {
 
             const handleRetry = async () => {
               try {
-                await axios.post(`${API}/upload/jobs/${j.job_id}/retry`);
+                await api.post(`/upload/jobs/${j.job_id}/retry`);
                 alert('Job retry has been queued successfully.');
               } catch (err) {
                 alert('Could not retry this job. The original file may have been deleted.');

@@ -1,7 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-
-const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
+import React, { useState, useEffect } from 'react'
+import api, { getErrorMessage } from '../services/api'
 
 export default function CompanyModal({ company, onClose, onSave }) {
   const [formData, setFormData] = useState({
@@ -13,8 +11,8 @@ export default function CompanyModal({ company, onClose, onSave }) {
     notes: '',
     is_active: true
   });
-  const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (company) {
@@ -47,15 +45,15 @@ export default function CompanyModal({ company, onClose, onSave }) {
     try {
       if (company && company.company_id) {
         // Update
-        const res = await axios.put(`${API}/companies/${company.company_id}`, formData);
-        onSave(res.data);
+        const { data } = await api.put(`/companies/${company.company_id}`, formData)
+        onSave(data)
       } else {
         // Create
-        const res = await axios.post(`${API}/companies/`, formData);
-        onSave(res.data);
+        const { data } = await api.post('/companies/', formData)
+        onSave(data)
       }
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to save company.');
+      setError(getErrorMessage(err, 'Failed to save company.'))
     } finally {
       setSaving(false);
     }

@@ -25,10 +25,10 @@ function StatCard({ icon, label, value, sub, color = '#185FA5', glow }) {
         <div style={{ width: 34, height: 34, borderRadius: 8, background: `${color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <i className={`ti ${icon}`} style={{ color, fontSize: 18 }} />
         </div>
-        <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 600 }}>{label}</span>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 600 }}>{label}</span>
       </div>
-      <div style={{ fontSize: 28, fontWeight: 700, color: '#e2e8f0', fontVariantNumeric: 'tabular-nums' }}>{value}</div>
-      {sub && <div style={{ fontSize: 11.5, color: '#475569' }}>{sub}</div>}
+      <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+      {sub && <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{sub}</div>}
     </div>
   )
 }
@@ -38,8 +38,8 @@ function Section({ title, icon, children, action, style }) {
     <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 14, overflow: 'hidden', marginBottom: 20, boxShadow: 'var(--shadow)', ...style }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid var(--card-border)', background: 'var(--panel-bg)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <i className={`ti ${icon}`} style={{ color: '#38bdf8', fontSize: 17 }} />
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#cbd5e1', letterSpacing: '-0.01em' }}>{title}</span>
+          <i className={`ti ${icon}`} style={{ color: 'var(--accent)', fontSize: 17 }} />
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>{title}</span>
         </div>
         {action}
       </div>
@@ -257,13 +257,13 @@ function SqlConsole() {
             <thead>
               <tr style={{ background: 'var(--panel-bg)' }}>
                 {result.columns.map(c => (
-                  <th key={c} style={{ padding: '8px 14px', textAlign: 'left', color: '#38bdf8', fontSize: 10.5, letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: '1px solid #1e3a5f', whiteSpace: 'nowrap' }}>{c}</th>
+                  <th key={c} style={{ padding: '8px 14px', textAlign: 'left', color: '#38bdf8', fontSize: 10.5, letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: '1px solid var(--card-border)', whiteSpace: 'nowrap' }}>{c}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {result.rows.map((row, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid #0e1e30' }}
+                <tr key={i} style={{ borderBottom: '1px solid var(--card-border)' }}
                   onMouseEnter={e => e.currentTarget.style.background = '#111c30'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
@@ -559,10 +559,10 @@ export default function AdminTerminal() {
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
           {loading && <span style={{ fontSize: 12, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}><i className="ti ti-loader" style={{ animation: 'spin 0.8s linear infinite' }} /> Loading…</span>}
-          <button onClick={loadAll} style={{ background: 'var(--card-bg)', border: '1px solid #1e3a5f', color: 'var(--text-secondary)', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={loadAll} style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-secondary)', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <i className="ti ti-refresh" /> Refresh
           </button>
-          <button onClick={clearCache} style={{ background: 'var(--card-bg)', border: '1px solid #1e3a5f', color: '#f59e0b', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={clearCache} style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: '#f59e0b', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <i className="ti ti-trash" /> Clear Cache
           </button>
           {cacheMsg && <span style={{ fontSize: 12, color: '#22c55e' }}>{cacheMsg}</span>}
@@ -661,7 +661,7 @@ export default function AdminTerminal() {
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {alerts.slice(0, 4).map((a, i) => (
-                      <div key={i} style={{ background: 'var(--panel-bg)', border: '1px solid #1e2d45', borderRadius: 12, padding: 12, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                      <div key={i} style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 12, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                         <div style={{ width: 34, height: 34, borderRadius: 10, background: a.severity === 'critical' ? 'rgba(239,68,68,0.18)' : 'rgba(245,158,11,0.16)', border: `1px solid ${a.severity === 'critical' ? 'rgba(239,68,68,0.35)' : 'rgba(245,158,11,0.28)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <i className={`ti ${a.severity === 'critical' ? 'ti-alert-triangle' : 'ti-alert-circle'}`} style={{ color: a.severity === 'critical' ? '#f87171' : '#fbbf24' }} />
                         </div>
@@ -671,7 +671,7 @@ export default function AdminTerminal() {
                           {a.action?.tab && (
                             <button
                               onClick={() => setActiveTab(a.action.tab)}
-                              style={{ marginTop: 10, background: 'var(--bg-hover)', border: '1px solid #1e3a5f', color: '#38bdf8', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                              style={{ marginTop: 10, background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: '#38bdf8', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                             >
                               <i className="ti ti-arrow-right" /> {a.action.label || 'Open'}
                             </button>
@@ -691,7 +691,7 @@ export default function AdminTerminal() {
                       <Badge color="#a78bfa">Last 24h</Badge>
                     </div>
                     {(searchIntel?.most_searched_states?.length ? searchIntel.most_searched_states : []).slice(0, 5).map((r, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid #1e2d45' }}>
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid var(--card-border)' }}>
                         <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: "'DM Mono', monospace" }}>{r.key}</span>
                         <span style={{ fontSize: 12, fontWeight: 700, color: '#a78bfa', fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
                       </div>
@@ -703,7 +703,7 @@ export default function AdminTerminal() {
                 <Section title="Activity Feed" icon="ti-activity" style={{ marginBottom: 0 }}>
                   <div style={{ maxHeight: 210, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {(activityFeed?.items || []).slice(0, 10).map((it, i) => (
-                      <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 10px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid #1e2d45' }}>
+                      <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 10px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid var(--card-border)' }}>
                         <div style={{ width: 28, height: 28, borderRadius: 9, background: 'var(--bg-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <i className={`ti ${it.type === 'upload' ? 'ti-cloud-upload' : it.action_type?.startsWith('EXPORT_') ? 'ti-file-export' : it.action_type?.startsWith('SEARCH_') ? 'ti-search' : 'ti-bolt'}`} style={{ color: '#38bdf8', fontSize: 14 }} />
                         </div>
@@ -749,15 +749,15 @@ export default function AdminTerminal() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                   <thead>
                     <tr style={{ background: 'var(--bg-hover)' }}>
-                      <th style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', fontSize: 10.5, borderBottom: '1px solid #1e3a5f' }}>Feature Name</th>
-                      <th style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', fontSize: 10.5, borderBottom: '1px solid #1e3a5f' }}>Status</th>
-                      <th style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', fontSize: 10.5, borderBottom: '1px solid #1e3a5f' }}>Last Tested</th>
-                      <th style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', fontSize: 10.5, borderBottom: '1px solid #1e3a5f' }}>Actions</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', fontSize: 10.5, borderBottom: '1px solid var(--card-border)' }}>Feature Name</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', fontSize: 10.5, borderBottom: '1px solid var(--card-border)' }}>Status</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', fontSize: 10.5, borderBottom: '1px solid var(--card-border)' }}>Last Tested</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', fontSize: 10.5, borderBottom: '1px solid var(--card-border)' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {features.map(f => (
-                      <tr key={f.id} style={{ borderBottom: '1px solid #0e1e30' }}>
+                      <tr key={f.id} style={{ borderBottom: '1px solid var(--card-border)' }}>
                         <td style={{ padding: '10px 12px', color: 'var(--text-primary)' }}>{f.name}</td>
                         <td style={{ padding: '10px 12px' }}>
                           <Badge color={f.status.includes('Verified') ? '#22c55e' : f.status.includes('Failed') ? '#ef4444' : '#fbbf24'}>
@@ -802,7 +802,7 @@ export default function AdminTerminal() {
                             title={b.disabled ? 'Coming soon' : b.label}
                             style={{
                               background: 'var(--bg-hover)',
-                              border: '1px solid #1e3a5f',
+                              border: '1px solid var(--card-border)',
                               color: b.disabled ? 'var(--text-muted)' : '#38bdf8',
                               padding: '9px 14px',
                               borderRadius: 10,
@@ -825,7 +825,7 @@ export default function AdminTerminal() {
                       <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>State Coverage Center</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 220, overflowY: 'auto' }}>
                         {(stateCoverage?.states || []).slice(0, 12).map((r, i) => (
-                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'var(--panel-bg)', border: '1px solid #1e2d45', borderRadius: 10 }}>
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 10 }}>
                             <span style={{ color: 'var(--text-secondary)', fontFamily: "'DM Mono', monospace" }}>{r.state}</span>
                             <span style={{ color: '#38bdf8', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.recruiters)} rec</span>
                           </div>
@@ -852,7 +852,7 @@ export default function AdminTerminal() {
                     const coverage = 100 - info.pct
                     const color = coverage > 80 ? '#22c55e' : coverage > 50 ? '#f59e0b' : '#ef4444'
                     return (
-                      <div key={field} style={{ background: 'var(--panel-bg)', border: '1px solid #1e2d45', borderRadius: 10, padding: 16 }}>
+                      <div key={field} style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 10, padding: 16 }}>
                         <div style={{ fontSize: 10.5, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>{field.replace('missing_', '')}</div>
                         <div style={{ fontSize: 22, fontWeight: 700, color, marginBottom: 4, fontFamily: "'DM Mono', monospace" }}>{coverage}%</div>
                         <div style={{ height: 4, background: 'var(--card-border)', borderRadius: 99, overflow: 'hidden', marginBottom: 8 }}>
@@ -868,7 +868,7 @@ export default function AdminTerminal() {
 
             {/* Duplicates */}
             <Section title="Duplicate Email Detection" icon="ti-copy" action={
-              <button onClick={loadDupes} style={{ background: 'var(--bg-hover)', border: '1px solid #1e3a5f', color: '#38bdf8', padding: '6px 14px', borderRadius: 7, fontSize: 12, cursor: 'pointer' }}>
+              <button onClick={loadDupes} style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: '#38bdf8', padding: '6px 14px', borderRadius: 7, fontSize: 12, cursor: 'pointer' }}>
                 <i className="ti ti-search" /> Scan Duplicates
               </button>
             }>
@@ -927,13 +927,13 @@ export default function AdminTerminal() {
                     <thead>
                       <tr style={{ background: 'var(--bg-hover)' }}>
                         {['File Name', 'Rows', 'Status', 'Date', 'Source', 'Actions'].map(h => (
-                          <th key={h} style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', fontSize: 10.5, letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: '1px solid #1e3a5f', whiteSpace: 'nowrap' }}>{h}</th>
+                          <th key={h} style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', fontSize: 10.5, letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: '1px solid var(--card-border)', whiteSpace: 'nowrap' }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {uploadOps.jobs.slice(0, 30).map((j) => (
-                        <tr key={j.job_id} style={{ borderBottom: '1px solid #0e1e30' }}
+                        <tr key={j.job_id} style={{ borderBottom: '1px solid var(--card-border)' }}
                           onMouseEnter={e => { e.currentTarget.style.background = 'var(--panel-bg)' }}
                           onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                         >
@@ -949,7 +949,7 @@ export default function AdminTerminal() {
                           <td style={{ padding: '10px 12px' }}>
                             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                               
-                              <button onClick={() => retryImport(j.job_id)} style={{ background: 'var(--bg-hover)', border: '1px solid #1e3a5f', color: '#38bdf8', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer' }}>
+                              <button onClick={() => retryImport(j.job_id)} style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: '#38bdf8', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer' }}>
                                 Retry
                               </button>
                               
@@ -971,7 +971,7 @@ export default function AdminTerminal() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
               <Section title="Most Searched States" icon="ti-map-2" style={{ marginBottom: 0 }}>
                 {(searchIntel?.most_searched_states || []).slice(0, 12).map((r, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid #1e2d45', marginBottom: 8 }}>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid var(--card-border)', marginBottom: 8 }}>
                     <span style={{ color: 'var(--text-secondary)', fontFamily: "'DM Mono', monospace" }}>{r.key}</span>
                     <span style={{ color: '#38bdf8', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
                   </div>
@@ -981,7 +981,7 @@ export default function AdminTerminal() {
 
               <Section title="Most Searched Companies" icon="ti-building" style={{ marginBottom: 0 }}>
                 {(searchIntel?.most_searched_companies || []).slice(0, 12).map((r, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid #1e2d45', marginBottom: 8 }}>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid var(--card-border)', marginBottom: 8 }}>
                     <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.key}</span>
                     <span style={{ color: '#a78bfa', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
                   </div>
@@ -991,7 +991,7 @@ export default function AdminTerminal() {
 
               <Section title="Most Searched Recruiters" icon="ti-users" style={{ marginBottom: 0 }}>
                 {(searchIntel?.most_searched_recruiters || []).slice(0, 12).map((r, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid #1e2d45', marginBottom: 8 }}>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid var(--card-border)', marginBottom: 8 }}>
                     <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.key}</span>
                     <span style={{ color: '#22c55e', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
                   </div>
@@ -1013,7 +1013,7 @@ export default function AdminTerminal() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
               <Section title="Most Exported States" icon="ti-map-2" style={{ marginBottom: 0 }}>
                 {(exportIntel?.most_exported_states || []).slice(0, 15).map((r, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid #1e2d45', marginBottom: 8 }}>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid var(--card-border)', marginBottom: 8 }}>
                     <span style={{ color: 'var(--text-secondary)', fontFamily: "'DM Mono', monospace" }}>{r.key}</span>
                     <span style={{ color: '#22c55e', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
                   </div>
@@ -1022,7 +1022,7 @@ export default function AdminTerminal() {
               </Section>
               <Section title="Most Exported Companies" icon="ti-building" style={{ marginBottom: 0 }}>
                 {(exportIntel?.most_exported_companies || []).slice(0, 15).map((r, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid #1e2d45', marginBottom: 8 }}>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid var(--card-border)', marginBottom: 8 }}>
                     <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.key}</span>
                     <span style={{ color: '#a78bfa', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
                   </div>
@@ -1083,7 +1083,7 @@ export default function AdminTerminal() {
                 }}>Last {d} day{d > 1 ? 's' : ''}</button>
               ))}
               <button onClick={() => loadVisitorLogs(logDays)} style={{
-                marginLeft: 'auto', background: 'var(--card-bg)', border: '1px solid #1e3a5f',
+                marginLeft: 'auto', background: 'var(--card-bg)', border: '1px solid var(--card-border)',
                 color: '#38bdf8', padding: '7px 16px', borderRadius: 8, fontSize: 12.5, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: 6,
               }}>
@@ -1101,7 +1101,7 @@ export default function AdminTerminal() {
             )}
 
             {loadingLogs && !visitorSummary && (
-              <div style={{ background: 'var(--card-bg)', border: '1px solid #1e3a5f', borderRadius: 14, padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+              <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 14, padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
                 <i className="ti ti-loader" style={{ fontSize: 28, animation: 'spin 0.8s linear infinite', display: 'block', marginBottom: 10 }} />
                 Loading visitor log book…
               </div>

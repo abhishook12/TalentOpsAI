@@ -1,10 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
-import axios from 'axios'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, AreaChart, Area, Cell, LabelList
 } from 'recharts'
-import { API } from '../services/api'
+import api, { API } from '../services/api'
 
 const CHART_TICK = { fill: '#ffffff', fontSize: 12, fontWeight: 700 }
 
@@ -130,8 +129,8 @@ export default function Analytics() {
     queryKey: ['analytics-dashboard'],
     queryFn: async () => {
       const [v, s] = await Promise.all([
-        axios.get(`${API}/analytics/visit-stats`),
-        axios.get(`${API}/analytics/recruiters-by-state`),
+        api.get('/analytics/visit-stats'),
+        api.get('/analytics/recruiters-by-state'),
       ])
 
       const raw = Array.isArray(s.data) ? s.data : []

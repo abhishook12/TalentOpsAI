@@ -463,94 +463,63 @@ export default function StateDirectory() {
           </p>
         </div>
 
-        {!selectedState ? (
-          <div className="card" style={{ padding: 18, borderRadius: 16 }}>
-            <div style={{ display: 'grid', placeItems: 'center', padding: 26, textAlign: 'center' }}>
-              <div style={{ maxWidth: 760 }}>
-                <div style={{ width: 54, height: 54, borderRadius: 16, background: 'var(--accent-bg)', border: '1px solid var(--card-border)', display: 'grid', placeItems: 'center', margin: '0 auto 12px' }}>
-                  <i className="ti ti-map" style={{ fontSize: 20, color: 'var(--accent)' }} />
-                </div>
-                <div style={{ fontSize: 16, fontWeight: 950, color: 'var(--text-primary)' }}>Start by selecting a state</div>
-                <div style={{ marginTop: 6, fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.55 }}>
-                  This workflow is optimized for large datasets with server-side pagination and filtering.
-                </div>
-                <div style={{ marginTop: 14, display: 'grid', gap: 10, textAlign: 'left' }}>
-                  {[
-                    { n: 1, t: 'Select State', d: 'Choose the territory you want to extract recruiters from.' },
-                    { n: 2, t: 'Select Company', d: 'Pick a company and see its recruiter list for that state.' },
-                    { n: 3, t: 'Browse Recruiters', d: 'Search within results without loading everything into the browser.' },
-                    { n: 4, t: 'Export Excel', d: 'Export selected recruiters or all filtered recruiters.' },
-                  ].map((s) => (
-                    <div key={s.n} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: 12, borderRadius: 14, background: 'var(--panel-bg)', border: '1px solid var(--card-border)' }}>
-                      <div style={{ width: 30, height: 30, borderRadius: 10, background: 'var(--bg-hover)', display: 'grid', placeItems: 'center', fontWeight: 950 }}>{s.n}</div>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 950, color: 'var(--text-primary)' }}>{s.t}</div>
-                        <div style={{ marginTop: 2, fontSize: 12.5, color: 'var(--text-muted)' }}>{s.d}</div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: drawerOpen ? '340px 380px 1fr 360px' : '340px 380px 1fr',
+          gap: 12,
+          minHeight: 0,
+          alignItems: 'start',
+        }}>
+          <Panel
+            title="1. Select State"
+            icon="ti-map-pin"
+            badge={<span className="badge badge-gray">{filteredStates.length}</span>}
+            style={{ minHeight: 0 }}
+          >
+            <input
+              value={stateQuery}
+              onChange={(e) => setStateQuery(e.target.value)}
+              placeholder="Search states…"
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', outline: 'none' }}
+            />
+            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 'calc(100vh - 260px)' }}>
+              {filteredStates.map((s) => {
+                const recruitersCount = stateRecruiterCounts.get(s.abbr) ?? null
+                const companiesCount = stateCompanyCounts.get(s.abbr) ?? null
+                const selected = selectedState === s.abbr
+                return (
+                  <button
+                    key={s.abbr}
+                    onClick={() => setSelectedState(s.abbr)}
+                    style={{
+                      textAlign: 'left',
+                      borderRadius: 14,
+                      border: `1px solid ${selected ? 'rgba(24,95,165,0.35)' : 'var(--card-border)'}`,
+                      background: selected ? 'rgba(24,95,165,0.08)' : 'var(--panel-bg)',
+                      padding: 12,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 10,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 950, color: 'var(--text-primary)' }}>{s.name}</div>
+                      <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-muted)' }}>
+                        {typeof recruitersCount === 'number' ? `${recruitersCount.toLocaleString()} recruiters` : 'Recruiters: —'}
+                        {'  •  '}
+                        {typeof companiesCount === 'number' ? `${companiesCount.toLocaleString()} companies` : 'Companies: —'}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
+                    <div style={{ width: 28, height: 28, borderRadius: 10, border: `1px solid ${selected ? 'rgba(24,95,165,0.35)' : 'var(--card-border)'}`, background: selected ? 'rgba(24,95,165,0.12)' : 'transparent', display: 'grid', placeItems: 'center' }}>
+                      {selected ? <i className="ti ti-check" style={{ color: 'var(--accent)' }} /> : <span style={{ fontFamily: 'var(--mono)', fontWeight: 900, color: 'var(--text-muted)' }}>{s.abbr}</span>}
+                    </div>
+                  </button>
+                )
+              })}
             </div>
-          </div>
-        ) : (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: drawerOpen ? '340px 380px 1fr 360px' : '340px 380px 1fr',
-            gap: 12,
-            minHeight: 0,
-            alignItems: 'start',
-          }}>
-            <Panel
-              title="1. Select State"
-              icon="ti-map-pin"
-              badge={<span className="badge badge-gray">{filteredStates.length}</span>}
-              style={{ minHeight: 0 }}
-            >
-              <input
-                value={stateQuery}
-                onChange={(e) => setStateQuery(e.target.value)}
-                placeholder="Search states…"
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', outline: 'none' }}
-              />
-              <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 'calc(100vh - 260px)' }}>
-                {filteredStates.map((s) => {
-                  const recruitersCount = stateRecruiterCounts.get(s.abbr) ?? null
-                  const companiesCount = stateCompanyCounts.get(s.abbr) ?? null
-                  const selected = selectedState === s.abbr
-                  return (
-                    <button
-                      key={s.abbr}
-                      onClick={() => setSelectedState(s.abbr)}
-                      style={{
-                        textAlign: 'left',
-                        borderRadius: 14,
-                        border: `1px solid ${selected ? 'rgba(24,95,165,0.35)' : 'var(--card-border)'}`,
-                        background: selected ? 'rgba(24,95,165,0.08)' : 'var(--panel-bg)',
-                        padding: 12,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        gap: 10,
-                        alignItems: 'center',
-                      }}
-                    >
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 950, color: 'var(--text-primary)' }}>{s.name}</div>
-                        <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-muted)' }}>
-                          {typeof recruitersCount === 'number' ? `${recruitersCount.toLocaleString()} recruiters` : 'Recruiters: —'}
-                          {'  •  '}
-                          {typeof companiesCount === 'number' ? `${companiesCount.toLocaleString()} companies` : 'Companies: —'}
-                        </div>
-                      </div>
-                      <div style={{ width: 28, height: 28, borderRadius: 10, border: `1px solid ${selected ? 'rgba(24,95,165,0.35)' : 'var(--card-border)'}`, background: selected ? 'rgba(24,95,165,0.12)' : 'transparent', display: 'grid', placeItems: 'center' }}>
-                        {selected ? <i className="ti ti-check" style={{ color: 'var(--accent)' }} /> : <span style={{ fontFamily: 'var(--mono)', fontWeight: 900, color: 'var(--text-muted)' }}>{s.abbr}</span>}
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            </Panel>
+          </Panel>
 
             <Panel
               title="2. Company"
@@ -558,6 +527,14 @@ export default function StateDirectory() {
               badge={<span className="badge badge-gray">{companiesLoading ? '…' : companies.length}</span>}
               style={{ minHeight: 0 }}
             >
+              {!selectedState ? (
+                <div style={{ padding: 14, color: 'var(--text-muted)', fontSize: 12, lineHeight: 1.55 }}>
+                  <div style={{ fontSize: 13, fontWeight: 950, color: 'var(--text-primary)' }}>Start by selecting a state</div>
+                  <div style={{ marginTop: 6 }}>
+                    1) Select State → 2) Select Company → 3) Browse Recruiters → 4) Export Excel
+                  </div>
+                </div>
+              ) : null}
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                   <span style={{ fontWeight: 950, color: 'var(--text-primary)' }}>{selectedStateName || selectedState}</span>
@@ -577,6 +554,7 @@ export default function StateDirectory() {
                 value={companyQuery}
                 onChange={(e) => setCompanyQuery(e.target.value)}
                 placeholder={`Search companies in ${selectedState}…`}
+                disabled={!selectedState}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', outline: 'none', marginTop: 10 }}
               />
 
@@ -641,6 +619,11 @@ export default function StateDirectory() {
               badge={<span className="badge badge-gray">{selectedCompanyName ? recruitersTotal.toLocaleString() : '—'}</span>}
               style={{ minHeight: 0 }}
             >
+              {!selectedState ? (
+                <div style={{ padding: 14, color: 'var(--text-muted)', fontSize: 12, lineHeight: 1.55 }}>
+                  Select a state to see companies and recruiters.
+                </div>
+              ) : null}
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                   <span style={{ fontWeight: 950, color: 'var(--text-primary)' }}>{selectedStateName || selectedState}</span>
@@ -842,8 +825,7 @@ export default function StateDirectory() {
                 </div>
               </div>
             )}
-          </div>
-        )}
+        </div>
 
         {toast && (
           <div style={{ position: 'fixed', bottom: 18, right: 18, zIndex: 50 }}>
@@ -860,4 +842,3 @@ export default function StateDirectory() {
     </>
   )
 }
-

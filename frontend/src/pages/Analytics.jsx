@@ -59,7 +59,7 @@ function KPI({ label, value, sub, color, icon, compact, inline }) {
         <i className={`ti ${icon}`} style={{ fontSize: 13, color, flexShrink: 0 }} />
         <div style={{ minWidth: 0 }}>
           <p style={{ color: 'var(--text-muted)', fontSize: 9, fontWeight: 500, lineHeight: 1.1, margin: 0 }}>{label}</p>
-          <p style={{ color: 'var(--text-primary)', fontSize: 15, fontWeight: 700, lineHeight: 1.1, margin: 0 }}>{value ?? '—'}</p>
+          <p style={{ color: 'var(--text-primary)', fontSize: 15, fontWeight: 700, lineHeight: 1.1, margin: 0 }}>{value ?? 'â€”'}</p>
           {sub && <p style={{ fontSize: 9, color: 'var(--text-muted)', margin: 0, lineHeight: 1.1 }}>{sub}</p>}
         </div>
       </div>
@@ -75,7 +75,7 @@ function KPI({ label, value, sub, color, icon, compact, inline }) {
         <i className={`ti ${icon}`} style={{ fontSize: compact ? 12 : 14, color }} />
         <p style={{ color: 'var(--text-muted)', fontSize: compact ? 10 : 11, fontWeight: 500, lineHeight: 1.2 }}>{label}</p>
       </div>
-      <h3 style={{ color: 'var(--text-primary)', fontSize: compact ? 18 : 26, fontWeight: 700, lineHeight: 1 }}>{value ?? '—'}</h3>
+      <h3 style={{ color: 'var(--text-primary)', fontSize: compact ? 18 : 26, fontWeight: 700, lineHeight: 1 }}>{value ?? 'â€”'}</h3>
       {sub && <p style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.2 }}>{sub}</p>}
     </div>
   )
@@ -169,6 +169,15 @@ export default function Analytics() {
     ? (((visits.today - visits.yesterday) / visits.yesterday) * 100).toFixed(0)
     : null
 
+  const isEmptyAnalytics =
+    (visits?.total_visits || 0) === 0 &&
+    stateData.length === 0 &&
+    dailyData.length === 0 &&
+    weeklyData.length === 0 &&
+    topPages.length === 0
+
+  const hasStateData = stateData.length > 0
+
   return (
     <div
       style={{
@@ -176,7 +185,9 @@ export default function Analytics() {
         minHeight: 0,
         height: '100%',
         display: 'grid',
-        gridTemplateRows: 'auto minmax(0, 1fr) minmax(0, 1fr)',
+        gridTemplateRows: isEmptyAnalytics
+          ? 'auto auto'
+          : (hasStateData ? 'auto minmax(0, 1fr) minmax(0, 1fr)' : 'auto auto minmax(0, 1fr)'),
         gridTemplateColumns: '1fr 1fr 1fr',
         gap: 8,
         overflow: 'hidden',
@@ -188,37 +199,73 @@ export default function Analytics() {
         <h1 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: 0, lineHeight: 1.1 }}>Analytics</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           <KPI inline label="Total Visits" value={(visits?.total_visits || 0).toLocaleString()} color="#7C3AED" icon="ti-eye" />
-          <KPI inline label="Today" value={(visits?.today || 0).toLocaleString()} sub={todayChange !== null ? `${todayChange > 0 ? '▲' : '▼'} ${Math.abs(todayChange)}%` : null} color="#185FA5" icon="ti-calendar-today" />
+          <KPI inline label="Today" value={(visits?.today || 0).toLocaleString()} sub={todayChange !== null ? `${todayChange > 0 ? 'â–²' : 'â–¼'} ${Math.abs(todayChange)}%` : null} color="#185FA5" icon="ti-calendar-today" />
           <KPI inline label="Yesterday" value={(visits?.yesterday || 0).toLocaleString()} color="#0F6E56" icon="ti-calendar" />
         </div>
       </div>
 
-      {/* State chart — full width middle row */}
-      <SectionCard title="State‑wise Companies Distribution" icon="ti-map" compact style={{ gridColumn: '1 / -1', minHeight: 0 }}>
-        {stateData.length === 0 ? (
-          <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 11 }}>No state data yet.</div>
-        ) : (
-          <div style={{ position: 'relative', flex: 1, minHeight: 0, width: '100%' }}>
-            <ChartBox>
-              <BarChart data={stateData} margin={{ top: 16, right: 8, left: 0, bottom: 4 }} barCategoryGap="18%">
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
-                <XAxis dataKey="state" tick={CHART_TICK} axisLine={false} tickLine={false} interval={0} />
-                <YAxis tick={CHART_TICK} axisLine={false} tickLine={false} width={36} allowDecimals={false} />
-                <Tooltip content={<StateTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-                <Bar dataKey="companies" radius={[3, 3, 0, 0]} maxBarSize={24}>
-                  <LabelList dataKey="companies" position="top" {...BAR_LABEL_PROPS} />
-                  {stateData.map((entry, i) => (
-                    <Cell key={entry.state} fill={PAGE_COLORS[i % PAGE_COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ChartBox>
+      {/* State chart â€” full width middle row */}
+      {isEmptyAnalytics ? (
+        <SectionCard title="Analytics Setup" icon="ti-info-circle" compact style={{ gridColumn: '1 / -1' }}>
+          <div style={{ display: 'grid', placeItems: 'center', height: '100%', padding: 18, textAlign: 'center' }}>
+            <div style={{ maxWidth: 640 }}>
+              <div style={{ width: 54, height: 54, borderRadius: 16, background: 'var(--accent-bg)', border: '1px solid rgba(45, 212, 191, 0.22)', display: 'grid', placeItems: 'center', margin: '0 auto 10px' }}>
+                <i className="ti ti-chart-bar" style={{ fontSize: 18, color: 'var(--accent)' }} />
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>No analytics data yet</div>
+              <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                This dashboard only displays real data from your database. Once visit tracking is active and company records include state information, charts will populate automatically.
+              </div>
+              <div style={{ marginTop: 12, textAlign: 'left', fontSize: 12, color: 'var(--text-secondary)' }}>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>Checklist</div>
+                <ul style={{ paddingLeft: 18, margin: 0, lineHeight: 1.65 }}>
+                  <li>Confirm the API is reachable from this environment.</li>
+                  <li>Generate page visits by browsing the app (visit tracking endpoints must be enabled).</li>
+                  <li>Ensure companies have a valid state/region so the “Companies by State” chart can aggregate.</li>
+                </ul>
+              </div>
+              <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text-muted)' }}>
+                API: <span style={{ fontFamily: 'var(--mono)' }}>{API}</span>
+              </div>
+            </div>
           </div>
-        )}
-      </SectionCard>
+        </SectionCard>
+      ) : (
+        <SectionCard title="Stateâ€‘wise Companies Distribution" icon="ti-map" compact style={{ gridColumn: '1 / -1', minHeight: hasStateData ? 0 : 160 }}>
+          {stateData.length === 0 ? (
+            <div style={{ display: 'grid', placeItems: 'center', height: '100%', textAlign: 'center', color: 'var(--text-muted)', fontSize: 11, padding: 14 }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>No state data yet</div>
+                <div style={{ marginTop: 6 }}>
+                  This chart needs company records grouped by state from the API.
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ position: 'relative', flex: 1, minHeight: 0, width: '100%' }}>
+              <ChartBox>
+                <BarChart data={stateData} margin={{ top: 16, right: 8, left: 0, bottom: 4 }} barCategoryGap="18%">
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
+                  <XAxis dataKey="state" tick={CHART_TICK} axisLine={false} tickLine={false} interval={0} />
+                  <YAxis tick={CHART_TICK} axisLine={false} tickLine={false} width={36} allowDecimals={false} />
+                  <Tooltip content={<StateTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+                  <Bar dataKey="companies" radius={[3, 3, 0, 0]} maxBarSize={24}>
+                    <LabelList dataKey="companies" position="top" {...BAR_LABEL_PROPS} />
+                    {stateData.map((entry, i) => (
+                      <Cell key={entry.state} fill={PAGE_COLORS[i % PAGE_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ChartBox>
+            </div>
+          )}
+        </SectionCard>
+      )}
 
       {/* Bottom row: 3 equal panels */}
-      <SectionCard title="Daily — 7 Days" icon="ti-chart-area-line" compact style={{ minHeight: 0 }}>
+      {!isEmptyAnalytics && (
+        <>
+      <SectionCard title="Daily â€” 7 Days" icon="ti-chart-area-line" compact style={{ minHeight: 0 }}>
         {dailyData.length === 0 ? (
           <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>No data</div>
         ) : (
@@ -242,7 +289,7 @@ export default function Analytics() {
         )}
       </SectionCard>
 
-      <SectionCard title="Weekly — 4 Wks" icon="ti-calendar-week" compact style={{ minHeight: 0 }}>
+      <SectionCard title="Weekly â€” 4 Wks" icon="ti-calendar-week" compact style={{ minHeight: 0 }}>
         {weeklyData.length === 0 ? (
           <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>No data</div>
         ) : (
@@ -274,7 +321,7 @@ export default function Analytics() {
                 <div key={p.page} style={{ flexShrink: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 1 }}>
                     <span style={{ fontSize: 9.5, color: 'var(--text-primary)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '72%' }}>
-                      <span style={{ color: PAGE_COLORS[i % PAGE_COLORS.length], marginRight: 3 }}>●</span>
+                      <span style={{ color: PAGE_COLORS[i % PAGE_COLORS.length], marginRight: 3 }}>â—</span>
                       {p.page}
                     </span>
                     <span style={{ fontSize: 12, color: '#ffffff', fontWeight: 700 }}>{p.visits.toLocaleString()}</span>
@@ -288,6 +335,8 @@ export default function Analytics() {
           </div>
         )}
       </SectionCard>
+        </>
+      )}
     </div>
   )
 }

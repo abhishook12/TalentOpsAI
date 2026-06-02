@@ -203,7 +203,7 @@ async def analyze_file(file: UploadFile = File(...)):
         empty_columns=empty_cols,
         corrupted_rows=corrupted,
         column_map=column_map,
-        original_headers=list(df.columns),
+        original_headers=list(headers),
         preview=preview,
     )
 

@@ -1,6 +1,7 @@
 import logging
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from sqlalchemy import inspect
 from app.database import SessionLocal
 from app.models.models import StagingRecruiter, Recruiter, Company, StagingCompany
 from app.utils.normalizer import normalize_text, extract_domain
@@ -15,27 +16,37 @@ def process_staging_records():
     """
     db: Session = SessionLocal()
     try:
-        # Process Staging Companies first
-        staging_comps = db.query(StagingCompany).filter(StagingCompany.status == "pending").limit(500).all()
-        for s_comp in staging_comps:
-            norm_name = normalize_text(s_comp.company_name)
-            
-            # Deduplicate
-            existing = db.query(Company).filter(Company.normalized_company_name == norm_name).first()
-            if existing:
-                s_comp.status = "duplicate"
-            else:
-                new_comp = Company(
-                    company_name=s_comp.company_name,
-                    normalized_company_name=norm_name,
-                    location=s_comp.location,
-                    industry=s_comp.industry,
-                    data_source="etl",
-                    trust_score=80
-                )
-                db.add(new_comp)
-                s_comp.status = "approved"
-        db.commit()
+        inspector = inspect(db.get_bind())
+        staging_company_supported = False
+        try:
+            if inspector.has_table("staging_companies"):
+                company_columns = {column["name"] for column in inspector.get_columns("staging_companies")}
+                staging_company_supported = "job_id" in company_columns
+        except Exception:
+            staging_company_supported = False
+
+        # Process Staging Companies first only when the live table schema supports it.
+        if staging_company_supported:
+            staging_comps = db.query(StagingCompany).filter(StagingCompany.status == "pending").limit(500).all()
+            for s_comp in staging_comps:
+                norm_name = normalize_text(s_comp.company_name)
+
+                # Deduplicate
+                existing = db.query(Company).filter(Company.normalized_company_name == norm_name).first()
+                if existing:
+                    s_comp.status = "duplicate"
+                else:
+                    new_comp = Company(
+                        company_name=s_comp.company_name,
+                        normalized_company_name=norm_name,
+                        location=s_comp.location,
+                        industry=s_comp.industry,
+                        data_source="etl",
+                        trust_score=80
+                    )
+                    db.add(new_comp)
+                    s_comp.status = "approved"
+            db.commit()
 
         # Process Staging Recruiters
         staging_recs = db.query(StagingRecruiter).filter(StagingRecruiter.status == "pending").limit(1000).all()

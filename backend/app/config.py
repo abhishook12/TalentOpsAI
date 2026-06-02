@@ -10,7 +10,7 @@ IS_PRODUCTION = ENV in ("production", "prod") or IS_RENDER
 
 JWT_SECRET = os.getenv("JWT_SECRET", "super-secret-jwt-key-talentops")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "1012")
-APP_PASSWORD = os.getenv("APP_PASSWORD", "1012")
+APP_PASSWORD = os.getenv("APP_PASSWORD") or ADMIN_PASSWORD
 
 CORS_ORIGINS = [
     o.strip()
@@ -26,8 +26,6 @@ if IS_PRODUCTION:
         raise RuntimeError("Set a strong JWT_SECRET in production (Render env vars).")
     if not os.getenv("ADMIN_PASSWORD"):
         raise RuntimeError("Set ADMIN_PASSWORD in production (Render env vars).")
-    if not os.getenv("APP_PASSWORD"):
-        raise RuntimeError("Set APP_PASSWORD in production (Render env vars).")
 else:
     if JWT_SECRET.startswith("super-secret") or ADMIN_PASSWORD == "1012" or APP_PASSWORD == "1012":
         logger.warning(

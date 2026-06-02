@@ -2,7 +2,6 @@ import re
 from fastapi import APIRouter, Depends, Query, Response, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, text
-from sqlalchemy.exc import ProgrammingError
 from typing import Optional
 from app.database import get_db
 from app.models.models import Recruiter, Company, Vendor, PageVisit
@@ -85,17 +84,11 @@ def get_dashboard_kpis(db: Session = Depends(get_db)):
 
 @router.get("/recruiters-by-state")
 def recruiters_by_state(db: Session = Depends(get_db)):
-    """Top states by recruiter count.
-
-    Prefer `recruiters.state` when present, otherwise try to derive a 2-letter
-    state code from `recruiters.location` (e.g. "TX", "Austin, TX").
-    """
+    """Top states by recruiter count computed directly from live recruiter data."""
     cached = analytics_cache.get("recruiters_by_state")
     if cached is not None:
         return cached
 
-    # Compute a best-effort 2-letter state value without relying on materialized views,
-    # since many environments (or older datasets) may not have a populated `state` column.
     computed_state_sql = """
         COALESCE(
             NULLIF(TRIM(r.state), ''),
@@ -107,33 +100,16 @@ def recruiters_by_state(db: Session = Depends(get_db)):
         )
     """
 
-    try:
-        results = db.execute(text("SELECT state, count FROM mv_recruiters_by_state ORDER BY count DESC LIMIT 20")).mappings().all()
-
-        # If the materialized view is present but returns too few states, fall back to live aggregation.
-        # This commonly happens when older data stores state only in `location`.
-        if len(results) < 2:
-            distinct_from_location = db.execute(text(f"""
-                SELECT COUNT(DISTINCT {computed_state_sql}) AS c
-                FROM recruiters r
-                WHERE {computed_state_sql} IS NOT NULL
-            """)).mappings().first()
-            if distinct_from_location and int(distinct_from_location["c"] or 0) >= 2:
-                raise ProgrammingError("mv_recruiters_by_state appears incomplete for this dataset", None, None)
-    except ProgrammingError as e:
-        # Render/Neon may not have had materialized views created yet.
-        logger.warning("mv_recruiters_by_state missing; falling back to live aggregation: %s", e)
-        db.rollback()
-        results = db.execute(text(f"""
-            SELECT
-                {computed_state_sql} AS state,
-                COUNT(r.recruiter_id) AS count
-            FROM recruiters r
-            WHERE {computed_state_sql} IS NOT NULL
-            GROUP BY {computed_state_sql}
-            ORDER BY count DESC
-            LIMIT 20
-        """)).mappings().all()
+    results = db.execute(text(f"""
+        SELECT
+            {computed_state_sql} AS state,
+            COUNT(r.recruiter_id) AS count
+        FROM recruiters r
+        WHERE {computed_state_sql} IS NOT NULL
+        GROUP BY {computed_state_sql}
+        ORDER BY count DESC
+        LIMIT 20
+    """)).mappings().all()
 
     res_list = [{"state": r["state"], "count": int(r["count"])} for r in results]
     analytics_cache.set("recruiters_by_state", res_list, ttl=30)

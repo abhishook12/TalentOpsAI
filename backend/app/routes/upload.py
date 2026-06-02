@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, BackgroundTasks, Request
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, BackgroundTasks, Request, Form
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
@@ -27,6 +27,46 @@ def read_file(contents, filename):
         ws = wb.active
         headers = [cell.value for cell in ws[1]]
         return [dict(zip(headers, [cell.value for cell in row])) for row in ws.iter_rows(min_row=2)]
+
+def stream_file_rows(contents: bytes, filename: str):
+    if filename.lower().endswith(".csv"):
+        text = contents.decode("utf-8", errors="replace")
+        reader = csv.DictReader(io.StringIO(text))
+        headers = reader.fieldnames or []
+        return headers, reader
+
+    if filename.lower().endswith(".xlsx"):
+        wb = load_workbook(io.BytesIO(contents), read_only=True, data_only=True)
+        ws = wb.active
+        rows = ws.iter_rows(values_only=True)
+        headers = [str(cell).strip() if cell is not None else "" for cell in next(rows, [])]
+
+        def row_iter():
+            for values in rows:
+                yield {headers[idx]: values[idx] if idx < len(values) else None for idx in range(len(headers)) if headers[idx]}
+
+        return headers, row_iter()
+
+    # Legacy .xls fallback. This is slower, but it keeps compatibility.
+    df = pd.read_excel(io.BytesIO(contents), dtype=str, keep_default_na=False)
+    headers = list(df.columns)
+    return headers, ({col: row[col] for col in headers} for _, row in df.iterrows())
+
+def read_file_headers(contents: bytes, filename: str):
+    if filename.lower().endswith(".csv"):
+        text = contents.decode("utf-8", errors="replace")
+        reader = csv.reader(io.StringIO(text))
+        return next(reader, [])
+
+    if filename.lower().endswith(".xlsx"):
+        wb = load_workbook(io.BytesIO(contents), read_only=True, data_only=True)
+        ws = wb.active
+        headers = [str(cell).strip() if cell is not None else "" for cell in next(ws.iter_rows(values_only=True), [])]
+        wb.close()
+        return headers
+
+    df = pd.read_excel(io.BytesIO(contents), dtype=str, keep_default_na=False, nrows=1)
+    return list(df.columns)
 
 # ─── Original Legacy Endpoints (keep working) ─────────────────────────────────
 
@@ -99,44 +139,59 @@ async def analyze_file(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Unsupported file type. Use CSV or Excel.")
     try:
         contents = await file.read()
-        if file.filename.lower().endswith('.csv'):
-            df = pd.read_csv(io.BytesIO(contents), dtype=str, keep_default_na=False)
-        else:
-            df = pd.read_excel(io.BytesIO(contents), dtype=str, keep_default_na=False)
+        headers, rows = stream_file_rows(contents, file.filename)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to parse file: {e}")
 
     # Detect column mapping using heuristic matcher
-    column_map = detect_columns(list(df.columns))
+    column_map = detect_columns(list(headers))
 
-    total_rows = len(df)
+    total_rows = 0
     email_col = column_map.get('email')
-    duplicates = missing = invalid_emails = invalid_phones = 0
-
-    if email_col:
-        duplicates = int(df[email_col].duplicated().sum())
-        missing = int((df[email_col] == '').sum() + df[email_col].isna().sum())
-        email_re = re.compile(r'^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$')
-        valid_mask = df[email_col].astype(str).apply(lambda x: bool(email_re.match(x)))
-        invalid_emails = int((~valid_mask).sum())
-
+    duplicates = missing = invalid_emails = invalid_phones = corrupted = 0
+    empty_cols = set(headers)
+    non_empty_cols = set()
+    seen_emails = set()
+    email_re = re.compile(r'^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$')
     phone_re = re.compile(r'^(?:\+?1[\s.\-]?)?\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}$')
-    phone_cols = [c for k, c in column_map.items() if k.startswith('phone')]
-    for pc in phone_cols:
-        valid_mask = df[pc].astype(str).apply(lambda x: bool(phone_re.match(x)) if x.strip() else True)
-        invalid_phones += int((~valid_mask).sum())
+    phone_cols = [c for k, c in column_map.items() if k.startswith('phone') and c]
+    preview: List[Dict[str, Any]] = []
 
-    # Empty columns
-    empty_cols = [c for c in df.columns if (df[c] == '').all() or df[c].isna().all()]
+    for row in rows:
+        total_rows += 1
+        cleaned_row = {col: row.get(col) for col in headers}
+        if total_rows <= 10:
+            preview.append(cleaned_row)
 
-    # Corrupted rows (all empty)
-    corrupted = int((df.apply(lambda row: all(str(v).strip() == '' for v in row), axis=1)).sum())
+        row_has_value = False
+        for col, value in cleaned_row.items():
+            if str(value).strip():
+                row_has_value = True
+                non_empty_cols.add(col)
+
+        if not row_has_value:
+            corrupted += 1
+
+        if email_col:
+            raw_email = str(cleaned_row.get(email_col, '')).strip()
+            if not raw_email:
+                missing += 1
+            else:
+                if raw_email in seen_emails:
+                    duplicates += 1
+                else:
+                    seen_emails.add(raw_email)
+                if not email_re.match(raw_email):
+                    invalid_emails += 1
+
+        for pc in phone_cols:
+            raw_phone = str(cleaned_row.get(pc, '')).strip()
+            if raw_phone and not phone_re.match(raw_phone):
+                invalid_phones += 1
+
+    empty_cols = [c for c in headers if c not in non_empty_cols]
 
     # Prepare preview (first 10 rows) with original headers
-    preview: List[Dict[str, Any]] = []
-    for _, row in df.head(10).iterrows():
-        preview.append({col: row[col] for col in df.columns})
-
     analysis_id = str(uuid.uuid4())
     return AnalyzeResponse(
         analysis_id=analysis_id,
@@ -159,7 +214,13 @@ import json
 from app.services.etl_worker import process_smart_import
 
 @router.post("/smart-import-async")
-async def smart_import_async(request: Request, background_tasks: BackgroundTasks, file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def smart_import_async(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    mapping: str = Form(None),
+    db: Session = Depends(get_db),
+):
     """Accept a file + column mapping and enqueue an async background import job."""
     if not file.filename.lower().endswith((".csv", ".xlsx", ".xls")):
         raise HTTPException(status_code=400, detail="Unsupported file type. Use CSV or Excel.")
@@ -174,23 +235,27 @@ async def smart_import_async(request: Request, background_tasks: BackgroundTasks
     contents = await file.read()
     with open(filepath, "wb") as f:
         f.write(contents)
-        
+
     try:
-        if file.filename.lower().endswith('.csv'):
-            df = pd.read_csv(io.BytesIO(contents), dtype=str, keep_default_na=False)
-        else:
-            df = pd.read_excel(io.BytesIO(contents), dtype=str, keep_default_na=False)
+        headers = read_file_headers(contents, file.filename)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to parse file: {e}")
 
-    column_map = detect_columns(list(df.columns))
+    column_map = detect_columns(list(headers))
+    if mapping:
+        try:
+            parsed_mapping = json.loads(mapping)
+            if isinstance(parsed_mapping, dict):
+                column_map = parsed_mapping
+        except Exception:
+            pass
     
     # Create UploadJob record
     new_job = UploadJob(
         job_id=job_id,
         filename=file.filename,
         status="queued",
-        total_rows=len(df),
+        total_rows=0,
         processed_rows=0,
         inserted_rows=0,
         skipped_rows=0,
@@ -206,7 +271,7 @@ async def smart_import_async(request: Request, background_tasks: BackgroundTasks
         user_email=user_email,
         session_id=session_id,
         action_type="UPLOAD_ETL",
-        details=json.dumps({"filename": file.filename, "job_id": job_id, "rows": len(df)}),
+        details=json.dumps({"filename": file.filename, "job_id": job_id, "rows": 0}),
         status="success",
         ip_address=ip_address
     )

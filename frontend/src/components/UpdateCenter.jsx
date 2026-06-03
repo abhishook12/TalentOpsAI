@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../services/api';
 
 export default function UpdateCenter() {
@@ -27,9 +27,14 @@ export default function UpdateCenter() {
 
   useEffect(() => {
     fetchStatus();
+    fetchChangelog();
     // Poll every 5 minutes in case an admin updates a status
     const intv = setInterval(fetchStatus, 300000);
-    return () => clearInterval(intv);
+    const changelogIntv = setInterval(fetchChangelog, 600000);
+    return () => {
+      clearInterval(intv);
+      clearInterval(changelogIntv);
+    };
   }, []);
 
   useEffect(() => {
@@ -37,6 +42,34 @@ export default function UpdateCenter() {
   }, [open]);
 
   if (!status) return null;
+
+  const latestUpdate = useMemo(() => {
+    const entry = changelog?.[0];
+    if (entry) return entry;
+    return {
+      version: status.version,
+      title: 'Platform Status',
+      date: status.date,
+      status: status.status,
+      features: status.features || [],
+    };
+  }, [changelog, status]);
+
+  const statusCounts = useMemo(() => {
+    const features = status?.features || [];
+    return {
+      verified: features.filter(f => f.status.includes('Verified')).length,
+      pending: features.filter(f => f.status.includes('Pending')).length,
+      failed: features.filter(f => f.status.includes('Failed')).length,
+      total: features.length,
+    };
+  }, [status]);
+
+  const updateTime = latestUpdate?.date ? new Date(latestUpdate.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Never';
+  const compactSummary = latestUpdate?.features?.length
+    ? `${latestUpdate.features.slice(0, 2).map(f => f.name).join(' • ')}${latestUpdate.features.length > 2 ? ` +${latestUpdate.features.length - 2} more` : ''}`
+    : 'No detailed updates available yet';
+  const briefHeadline = latestUpdate?.title || 'No Data Available';
 
   // Determine indicator color based on status
   let color = '#38bdf8'; // Blue: Update Available / Operational (default)
@@ -70,53 +103,103 @@ export default function UpdateCenter() {
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
       >
-        {hover && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'stretch',
+          gap: 10,
+        }}>
+          {hover && (
+            <div style={{
+              background: 'var(--panel-bg)',
+              border: '1px solid var(--card-border)',
+              padding: '12px 14px',
+              borderRadius: 12,
+              boxShadow: 'var(--shadow-lg)',
+              fontSize: 12,
+              animation: 'fadeUp 0.2s ease',
+              color: 'var(--text-secondary)',
+              minWidth: 280,
+              maxWidth: 320,
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 6, alignItems: 'baseline' }}>
+                <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>Latest Update</span>
+                <span style={{ color, fontWeight: 700 }}>{status.version}</span>
+              </div>
+              <div style={{ fontSize: 12.5, color: 'var(--text-primary)', fontWeight: 700, lineHeight: 1.35 }}>
+                {briefHeadline}
+              </div>
+              <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.45 }}>
+                {compactSummary}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginTop: 10 }}>
+                <span>Updated:</span>
+                <span style={{ color: 'var(--text-primary)', textAlign: 'right' }}>{updateTime}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginTop: 4 }}>
+                <span>Status:</span>
+                <strong style={{ color, textAlign: 'right' }}>{status.status}</strong>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                <span className="badge badge-blue">Verified {statusCounts.verified}</span>
+                <span className="badge badge-amber">Pending {statusCounts.pending}</span>
+                <span className="badge badge-red">Failed {statusCounts.failed}</span>
+              </div>
+            </div>
+          )}
+
           <div style={{
+            minWidth: 190,
+            maxWidth: 230,
+            alignSelf: 'end',
             background: 'var(--panel-bg)',
             border: '1px solid var(--card-border)',
-            padding: '12px 16px',
-            borderRadius: 12,
+            borderRadius: 14,
+            padding: '10px 12px',
             boxShadow: 'var(--shadow-lg)',
-            fontSize: 12,
-            animation: 'fadeUp 0.2s ease',
-            color: 'var(--text-secondary)'
+            color: 'var(--text-secondary)',
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 20, marginBottom: 4 }}>
-              <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>Platform Status</span>
-              <span style={{ color }}>{status.version}</span>
+            <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+              Platform Update
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 20, marginBottom: 4 }}>
-              <span>Last Update:</span>
-              <span style={{ color: 'var(--text-primary)' }}>{status.date ? status.date.split('T')[0] : 'Never'}</span>
+            <div style={{ marginTop: 4, fontSize: 13.5, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+              {status.version}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 20 }}>
-              <span>Status:</span>
-              <strong style={{ color }}>{status.status}</strong>
+            <div style={{ marginTop: 3, fontSize: 11.5, color: 'var(--text-muted)' }}>
+              {updateTime}
+            </div>
+            <div style={{ marginTop: 5, fontSize: 11.5, color: 'var(--text-secondary)', lineHeight: 1.35 }}>
+              {compactSummary}
+            </div>
+            <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 7, height: 7, borderRadius: 99, background: color, boxShadow: `0 0 8px ${color}` }} />
+              <span style={{ fontSize: 11.5, fontWeight: 700, color }}>{status.status}</span>
             </div>
           </div>
-        )}
-        
-        <button
-          onClick={() => setOpen(true)}
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 24,
-            background: 'var(--card-bg)',
-            border: `2px solid ${color}`,
-            color: color,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 22,
-            cursor: 'pointer',
-            boxShadow: `0 4px 12px ${color}33`,
-            transition: 'all 0.2s ease',
-            transform: hover ? 'scale(1.05)' : 'scale(1)',
-          }}
-        >
-          <i className={`ti ${icon}`} />
-        </button>
+
+          <button
+            onClick={() => setOpen(true)}
+            aria-label="Open update center"
+            title="Open update center"
+            style={{
+              width: 50,
+              height: 50,
+              borderRadius: 16,
+              background: 'var(--card-bg)',
+              border: `2px solid ${color}`,
+              color: color,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 22,
+              cursor: 'pointer',
+              boxShadow: `0 4px 12px ${color}33`,
+              transition: 'all 0.2s ease',
+              transform: hover ? 'scale(1.05)' : 'scale(1)',
+            }}
+          >
+            <i className={`ti ${icon}`} />
+          </button>
+        </div>
       </div>
 
       {/* Update Center Drawer */}
@@ -148,6 +231,18 @@ export default function UpdateCenter() {
             </div>
             
             <div style={{ flex: 1, overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 16, padding: 20 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Latest Update Brief</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.25 }}>{briefHeadline}</div>
+                <div style={{ marginTop: 6, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+                  {compactSummary}
+                </div>
+                <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <span className="badge badge-blue">{status.version}</span>
+                  <span className="badge badge-gray">{updateTime}</span>
+                  <span className="badge badge-green">{status.status}</span>
+                </div>
+              </div>
               
               {/* Current Status Card */}
               <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 16, padding: 20 }}>

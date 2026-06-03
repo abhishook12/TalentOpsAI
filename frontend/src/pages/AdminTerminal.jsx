@@ -649,6 +649,7 @@ export default function AdminTerminal() {
 
   const [unlocked, setUnlocked] = useState(false)
   const [authError, setAuthError] = useState('')
+  const [authChecking, setAuthChecking] = useState(true)
 
   const unlock = async (pin, opts = {}) => {
     setAuthError('')
@@ -667,20 +668,37 @@ export default function AdminTerminal() {
     setActiveTab('overview')
   }
 
+  const verifySession = useCallback(async () => {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const ok = await checkAuth()
+        if (ok) return true
+      } catch {
+        // Let the retry loop handle temporary network blips.
+      }
+      if (attempt < 2) {
+        await sleep(700 + attempt * 600)
+      }
+    }
+    return false
+  }, [])
+
   useEffect(() => {
     let alive = true
     ;(async () => {
-      const ok = await checkAuth()
+      const ok = await verifySession()
       if (!alive) return
       setUnlocked(ok)
+      setAuthChecking(false)
     })()
     return () => { alive = false }
-  }, [])
+  }, [verifySession])
 
   const loadAll = useCallback(async () => {
     if (!unlocked) return
     setLoading(true)
     log('Connecting to TalentOps AI backend…')
+    let sawUnauthorized = false
     
     const safeGet = async (url) => {
       try {
@@ -689,8 +707,7 @@ export default function AdminTerminal() {
       } catch (e) {
         const status = e?.response?.status
         if (status === 401) {
-          setAuthError('Session expired. Please log in again.')
-          setUnlocked(false)
+          sawUnauthorized = true
           return null
         }
         log(`✗ Failed to load ${url}`, 'warn')
@@ -722,6 +739,17 @@ export default function AdminTerminal() {
     if (dop) setDataOps(dop); if (uop) setUploadOps(uop); if (si) setSearchIntel(si); if (ei) setExportIntel(ei)
     if (al) setAlerts(al.alerts || []); if (feed) setActivityFeed(feed); if (cov) setStateCoverage(cov)
     
+    if (sawUnauthorized) {
+      const stillValid = await verifySession()
+      if (!stillValid) {
+        setAuthError('Session expired. Please log in again.')
+        setUnlocked(false)
+        setLoading(false)
+        return
+      }
+      setAuthError('')
+    }
+
     if (s && sys) {
       log(`✓ Stats loaded: ${s.total_recruiters?.toLocaleString()} recruiters, ${s.total_companies?.toLocaleString()} companies`, 'ok')
       log(`✓ DB size: ${sys.database_size} · Uptime: ${sys.uptime}`, 'ok')
@@ -1004,6 +1032,7 @@ export default function AdminTerminal() {
     }
   }, [unlocked, activeTab])
 
+  if (authChecking) return <AdminLock onUnlock={unlock} errorMessage="Checking session…" />
   if (!unlocked) return <AdminLock onUnlock={unlock} errorMessage={authError} />
 
   const TABS = [

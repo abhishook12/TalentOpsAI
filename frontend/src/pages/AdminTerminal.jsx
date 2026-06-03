@@ -614,6 +614,7 @@ export default function AdminTerminal() {
   const [expandedSession, setExpandedSession] = useState(null)
   const [loadingLogs, setLoadingLogs] = useState(false)
   const [logsError, setLogsError] = useState(null)
+  const [actionNotice, setActionNotice] = useState(null)
 
   const log = (msg, type = 'info') => {
     const ts = new Date().toLocaleTimeString('en-US', { hour12: false })
@@ -873,11 +874,19 @@ export default function AdminTerminal() {
     if (!window.confirm(`Delete ${recruiter.recruiter_name}?`)) return
     try {
       await api.delete(`/recruiters/${recruiter.recruiter_id}`)
+      setLiveRecruiters(prev => ({
+        ...prev,
+        results: (prev.results || []).filter(item => item.recruiter_id !== recruiter.recruiter_id),
+        total_count: Math.max(0, (prev.total_count || 0) - 1),
+      }))
       log(`✓ Deleted ${recruiter.recruiter_name}`, 'ok')
+      setActionNotice({ type: 'success', text: `Deleted ${recruiter.recruiter_name}` })
       setSelectedRecruiters(prev => prev.filter(id => id !== recruiter.recruiter_id))
       await loadLiveRecruiters()
     } catch (e) {
-      log('✗ Failed to delete recruiter: ' + getErrorMessage(e), 'error')
+      const msg = getErrorMessage(e)
+      setActionNotice({ type: 'error', text: `Delete failed: ${msg}` })
+      log('✗ Failed to delete recruiter: ' + msg, 'error')
     }
   }
 
@@ -898,11 +907,19 @@ export default function AdminTerminal() {
     if (!window.confirm(`Delete ${selectedRecruiters.length} selected recruiter(s)?`)) return
     try {
       await api.post('/recruiters/batch-delete', { ids: selectedRecruiters })
+      setLiveRecruiters(prev => ({
+        ...prev,
+        results: (prev.results || []).filter(item => !selectedRecruiters.includes(item.recruiter_id)),
+        total_count: Math.max(0, (prev.total_count || 0) - selectedRecruiters.length),
+      }))
       log(`✓ Deleted ${selectedRecruiters.length} recruiter(s)`, 'ok')
+      setActionNotice({ type: 'success', text: `Deleted ${selectedRecruiters.length} selected recruiter(s)` })
       setSelectedRecruiters([])
       await loadLiveRecruiters()
     } catch (e) {
-      log('✗ Batch delete failed: ' + getErrorMessage(e), 'error')
+      const msg = getErrorMessage(e)
+      setActionNotice({ type: 'error', text: `Batch delete failed: ${msg}` })
+      log('✗ Batch delete failed: ' + msg, 'error')
     }
   }
 
@@ -932,11 +949,26 @@ export default function AdminTerminal() {
     if (!window.confirm(`Delete upload batch "${job.filename}" and ${countLabel}? This will remove the imported recruiters.`)) return
     try {
       await api.delete(`/admin/upload-operations/${job.job_id}`)
+      setUploadOps(prev => prev ? {
+        ...prev,
+        jobs: (prev.jobs || []).filter(item => item.job_id !== job.job_id),
+      } : prev)
+      setLiveRecruiters(prev => ({
+        ...prev,
+        results: (prev.results || []).filter(item => item.source_job_id !== job.job_id),
+        total_count: Math.max(0, (prev.total_count || 0) - (job.recruiter_count || 0)),
+      }))
       log(`✓ Deleted upload batch ${job.filename}`, 'ok')
+      setActionNotice({ type: 'success', text: `Deleted upload batch ${job.filename}` })
       if (liveRecruiterJobId === job.job_id) clearRecruiterBatchFilter()
+      if (activeTab === 'ops') {
+        await loadLiveRecruiters()
+      }
       await loadAll()
     } catch (e) {
-      log('✗ Failed to delete upload batch: ' + getErrorMessage(e), 'error')
+      const msg = getErrorMessage(e)
+      setActionNotice({ type: 'error', text: `Batch delete failed: ${msg}` })
+      log('✗ Failed to delete upload batch: ' + msg, 'error')
     }
   }
 
@@ -1018,6 +1050,21 @@ export default function AdminTerminal() {
           </button>
         ))}
       </div>
+
+      {actionNotice && (
+        <div style={{
+          margin: '14px 28px 0',
+          padding: '10px 14px',
+          borderRadius: 10,
+          border: `1px solid ${actionNotice.type === 'success' ? 'rgba(34,197,94,0.28)' : 'rgba(248,113,113,0.28)'}`,
+          background: actionNotice.type === 'success' ? 'rgba(34,197,94,0.08)' : 'rgba(248,113,113,0.08)',
+          color: actionNotice.type === 'success' ? '#22c55e' : '#f87171',
+          fontSize: 12.5,
+          fontWeight: 600,
+        }}>
+          {actionNotice.text}
+        </div>
+      )}
 
       {/* Content — scrollable */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px 24px 28px', maxWidth: 1300, margin: '0 auto', width: '100%' }}>

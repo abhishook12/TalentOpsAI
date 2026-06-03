@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom'
+import { clearStoredToken } from '../services/api'
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: 'ti-layout-dashboard' },
@@ -16,6 +17,8 @@ export default function Sidebar() {
   const logoutSoon = () => {
     localStorage.removeItem('auth_session');
     sessionStorage.removeItem('auth_session');
+    clearStoredToken('admin');
+    clearStoredToken('app');
     window.location.reload();
   }
 

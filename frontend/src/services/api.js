@@ -29,6 +29,38 @@ const createClient = (baseURL) => {
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
+const ADMIN_TOKEN_KEY = 'admin_access_token'
+const APP_TOKEN_KEY = 'app_access_token'
+
+const getStoredToken = (scope = 'admin') => {
+  if (typeof window === 'undefined') return null
+  if (scope === 'app') {
+    return localStorage.getItem(APP_TOKEN_KEY) || sessionStorage.getItem(APP_TOKEN_KEY)
+  }
+  if (scope === 'none') return null
+  return localStorage.getItem(ADMIN_TOKEN_KEY) || sessionStorage.getItem(ADMIN_TOKEN_KEY)
+}
+
+export const setStoredToken = (scope, token, remember = false) => {
+  if (typeof window === 'undefined') return
+  const storage = remember ? localStorage : sessionStorage
+  const key = scope === 'app' ? APP_TOKEN_KEY : ADMIN_TOKEN_KEY
+  localStorage.removeItem(key)
+  sessionStorage.removeItem(key)
+  if (token) storage.setItem(key, token)
+}
+
+export const clearStoredToken = (scope = 'admin') => {
+  if (typeof window === 'undefined') return
+  if (scope === 'app') {
+    localStorage.removeItem(APP_TOKEN_KEY)
+    sessionStorage.removeItem(APP_TOKEN_KEY)
+    return
+  }
+  localStorage.removeItem(ADMIN_TOKEN_KEY)
+  sessionStorage.removeItem(ADMIN_TOKEN_KEY)
+}
+
 const isRetryableError = (error) => {
   const status = error?.response?.status
   return error?.message === 'Network Error'
@@ -43,6 +75,8 @@ async function smartRequest(method, url, data, config = {}) {
   const retryDelayMs = config.retryDelayMs ?? 1200
   const maxAttempts = retryable ? 2 : 1
   const candidateOrder = config.baseURLs?.length ? config.baseURLs : API_CANDIDATES
+  const authScope = config.authScope ?? 'admin'
+  const authToken = getStoredToken(authScope)
   let lastError = null
 
   for (const baseURL of candidateOrder) {
@@ -53,6 +87,14 @@ async function smartRequest(method, url, data, config = {}) {
         delete requestConfig.baseURLs
         delete requestConfig.retryable
         delete requestConfig.retryDelayMs
+        delete requestConfig.authScope
+
+        requestConfig.headers = {
+          ...(requestConfig.headers || {}),
+        }
+        if (authToken && authScope !== 'none') {
+          requestConfig.headers.Authorization = `Bearer ${authToken}`
+        }
 
         if (method === 'get' || method === 'delete' || method === 'head') {
           return await client[method](url, requestConfig)
@@ -86,7 +128,7 @@ const api = {
 
 export async function checkAuth() {
   try {
-    const { data } = await api.get('/auth/me')
+    const { data } = await api.get('/auth/me', { authScope: 'admin' })
     return data.authenticated === true
   } catch {
     return false
@@ -95,7 +137,7 @@ export async function checkAuth() {
 
 export async function checkAppAuth() {
   try {
-    const { data } = await api.get('/auth/app-me')
+    const { data } = await api.get('/auth/app-me', { authScope: 'app' })
     return data.authenticated === true
   } catch {
     return false
@@ -106,7 +148,7 @@ export async function login(password, rememberDevice = false) {
   const { data } = await api.post('/auth/login', {
     password,
     remember_device: rememberDevice,
-  })
+  }, { authScope: 'none' })
   return data
 }
 
@@ -114,16 +156,16 @@ export async function appLogin(password, rememberDevice = false) {
   const { data } = await api.post('/auth/app-login', {
     password,
     remember_device: rememberDevice,
-  })
+  }, { authScope: 'none' })
   return data
 }
 
 export async function logout() {
-  await api.post('/auth/logout')
+  await api.post('/auth/logout', undefined, { authScope: 'admin' })
 }
 
 export async function appLogout() {
-  await api.post('/auth/app-logout')
+  await api.post('/auth/app-logout', undefined, { authScope: 'app' })
 }
 
 export async function logAction(actionType, details = {}, status = 'success') {

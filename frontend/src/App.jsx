@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 import React, { useEffect, useState, lazy, Suspense, useRef, Component } from 'react'
 import Sidebar from './components/Sidebar'
 import UpdateCenter from './components/UpdateCenter'
-import { API } from './services/api'
+import { API, appLogin, setStoredToken } from './services/api'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Recruiters = lazy(() => import('./pages/Recruiters'))
@@ -364,7 +364,10 @@ function LoginScreen({ onLoginSuccess }) {
     setSubmitting(true)
     setError('')
     try {
-      await appLogin(pinRef.current, remember)
+      const result = await appLogin(pinRef.current, remember)
+      if (result?.access_token) {
+        setStoredToken('app', result.access_token, remember)
+      }
       onLoginSuccess(email)
     } catch (e) {
       setError(e?.response?.data?.detail || 'Authentication failed.')

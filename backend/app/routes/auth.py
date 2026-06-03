@@ -41,6 +41,16 @@ def _decode_app_token(token: str):
     return payload
 
 
+def _extract_token(request: Request, cookie_name: str):
+    cookie_token = request.cookies.get(cookie_name)
+    if cookie_token:
+        return cookie_token
+    auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
+    if auth_header and auth_header.lower().startswith("bearer "):
+        return auth_header.split(" ", 1)[1].strip()
+    return None
+
+
 # -------- Rate limiting (in-memory) --------
 # NOTE: This is per-process. For multi-instance deployments, prefer a shared store (Redis/Postgres).
 _FAILED_BY_IP: dict[str, deque] = defaultdict(deque)  # ip -> timestamps (seconds)
@@ -102,7 +112,7 @@ def _log_admin_event(db: Session, request: Request, action_type: str, status_val
 
 
 def verify_admin(request: Request, db: Session = Depends(get_db)):
-    token = request.cookies.get("admin_session")
+    token = _extract_token(request, "admin_session")
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -121,7 +131,7 @@ def verify_admin(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/me")
 def auth_me(request: Request):
-    token = request.cookies.get("admin_session")
+    token = _extract_token(request, "admin_session")
     if not token:
         return {"authenticated": False}
     try:
@@ -133,7 +143,7 @@ def auth_me(request: Request):
 
 @router.get("/app-me")
 def app_me(request: Request):
-    token = request.cookies.get("app_session")
+    token = _extract_token(request, "app_session")
     if not token:
         return {"authenticated": False}
     try:
@@ -180,7 +190,7 @@ def login(data: LoginRequest, response: Response, request: Request, db: Session 
     )
     _clear_failures(ip)
     _log_admin_event(db, request, "ADMIN_LOGIN_SUCCESS", "success", details=f"expires_in={expires_in}")
-    return {"message": "Logged in successfully", "role": "admin"}
+    return {"message": "Logged in successfully", "role": "admin", "access_token": token, "expires_in": expires_in}
 
 
 @router.post("/app-login")
@@ -207,7 +217,7 @@ def app_login(data: LoginRequest, response: Response, request: Request):
         samesite="none" if IS_PRODUCTION else "lax",
         path="/",
     )
-    return {"message": "Logged in successfully", "role": "user"}
+    return {"message": "Logged in successfully", "role": "user", "access_token": token, "expires_in": expires_in}
 
 
 @router.post("/logout")

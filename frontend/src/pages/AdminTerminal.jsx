@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import api, { checkAuth, getErrorMessage, login, logout } from '../services/api'
+import api, { checkAuth, getErrorMessage, login, logout, setStoredToken, clearStoredToken } from '../services/api'
 import { exportToExcel } from '../services/export'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -654,7 +654,10 @@ export default function AdminTerminal() {
   const unlock = async (pin, opts = {}) => {
     setAuthError('')
     try {
-      await login(pin, Boolean(opts.remember))
+      const result = await login(pin, Boolean(opts.remember))
+      if (result?.access_token) {
+        setStoredToken('admin', result.access_token, Boolean(opts.remember))
+      }
       setUnlocked(true)
     } catch (e) {
       setAuthError(getErrorMessage(e, e?.response?.status === 429 ? 'Too many failed attempts. Please wait before retrying.' : 'Invalid PIN'))
@@ -664,6 +667,7 @@ export default function AdminTerminal() {
 
   const doLogout = async () => {
     try { await logout() } catch {}
+    clearStoredToken('admin')
     setUnlocked(false)
     setActiveTab('overview')
   }

@@ -621,6 +621,32 @@ export default function AdminTerminal() {
     setLogLines(prev => [...prev.slice(-80), { ts, msg, type }])
   }
 
+  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+
+  const callWithRetry = async (fn, { retries = 1, treat404AsSuccess = false } = {}) => {
+    let lastError = null
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+      try {
+        return await fn()
+      } catch (error) {
+        lastError = error
+        const status = error?.response?.status
+        const isNetworkError = error?.message === 'Network Error' || error?.code === 'ERR_NETWORK'
+        const isRetryable = isNetworkError || (status >= 500 && status < 600)
+        if (attempt < retries && isRetryable) {
+          log(`Retrying request after ${isNetworkError ? 'network' : `HTTP ${status}`} error…`, 'warn')
+          await sleep(1400)
+          continue
+        }
+        if (treat404AsSuccess && status === 404) {
+          return { data: { alreadyDeleted: true } }
+        }
+        throw error
+      }
+    }
+    throw lastError
+  }
+
   const [unlocked, setUnlocked] = useState(false)
   const [authError, setAuthError] = useState('')
 
@@ -873,7 +899,7 @@ export default function AdminTerminal() {
   const deleteRecruiter = async (recruiter) => {
     if (!window.confirm(`Delete ${recruiter.recruiter_name}?`)) return
     try {
-      await api.delete(`/recruiters/${recruiter.recruiter_id}`)
+      await callWithRetry(() => api.delete(`/recruiters/${recruiter.recruiter_id}`), { retries: 1, treat404AsSuccess: true })
       setLiveRecruiters(prev => ({
         ...prev,
         results: (prev.results || []).filter(item => item.recruiter_id !== recruiter.recruiter_id),
@@ -906,7 +932,7 @@ export default function AdminTerminal() {
     if (!selectedRecruiters.length) return
     if (!window.confirm(`Delete ${selectedRecruiters.length} selected recruiter(s)?`)) return
     try {
-      await api.post('/recruiters/batch-delete', { ids: selectedRecruiters })
+      await callWithRetry(() => api.post('/recruiters/batch-delete', { ids: selectedRecruiters }), { retries: 1, treat404AsSuccess: true })
       setLiveRecruiters(prev => ({
         ...prev,
         results: (prev.results || []).filter(item => !selectedRecruiters.includes(item.recruiter_id)),
@@ -948,7 +974,7 @@ export default function AdminTerminal() {
     const countLabel = job.recruiter_count != null ? `${fmt(job.recruiter_count)} recruiter(s)` : 'the linked recruiter records'
     if (!window.confirm(`Delete upload batch "${job.filename}" and ${countLabel}? This will remove the imported recruiters.`)) return
     try {
-      await api.delete(`/admin/upload-operations/${job.job_id}`)
+      await callWithRetry(() => api.delete(`/admin/upload-operations/${job.job_id}`), { retries: 1, treat404AsSuccess: true })
       setUploadOps(prev => prev ? {
         ...prev,
         jobs: (prev.jobs || []).filter(item => item.job_id !== job.job_id),

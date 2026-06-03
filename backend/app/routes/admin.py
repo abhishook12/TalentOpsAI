@@ -2,7 +2,7 @@
 Admin Terminal API
 All endpoints require a valid admin session (HttpOnly cookie set by /auth/login).
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text, func
 from sqlalchemy.exc import ProgrammingError
@@ -16,6 +16,37 @@ import time
 from app.routes.auth import verify_admin
 
 router = APIRouter()
+
+
+def _resolve_upload_batch_recruiters(db: Session, job: UploadJob):
+    exact = (
+        db.query(Recruiter)
+        .filter(Recruiter.source_job_id == job.job_id)
+        .all()
+    )
+    if exact:
+        return exact
+
+    if not job.started_at:
+        return []
+
+    start_window = job.started_at - timedelta(minutes=10)
+    end_window = (job.completed_at or datetime.utcnow()) + timedelta(minutes=10)
+    fallback = (
+        db.query(Recruiter)
+        .filter(Recruiter.data_source == "etl")
+        .filter(Recruiter.created_at >= start_window)
+        .filter(Recruiter.created_at <= end_window)
+        .order_by(Recruiter.created_at.asc())
+        .all()
+    )
+
+    if fallback:
+        for recruiter in fallback:
+            recruiter.source_job_id = job.job_id
+        db.flush()
+
+    return fallback
 
 
 # ── 1. Live database stats ────────────────────────────────────────────────────
@@ -200,21 +231,12 @@ def admin_upload_operations(limit: int = 25, db: Session = Depends(get_db), _=De
     except Exception:
         return {"jobs": [], "detail": "No Data Available"}
 
-    job_ids = [j.job_id for j in jobs]
-    recruiter_counts = {}
-    if job_ids:
-        try:
-            rows = (
-                db.query(Recruiter.source_job_id, func.count(Recruiter.recruiter_id))
-                .filter(Recruiter.source_job_id.in_(job_ids))
-                .group_by(Recruiter.source_job_id)
-                .all()
-            )
-            recruiter_counts = {row[0]: int(row[1]) for row in rows}
-        except Exception:
-            recruiter_counts = {}
-
     def _job(j: UploadJob):
+        recruiter_count = 0
+        try:
+            recruiter_count = len(_resolve_upload_batch_recruiters(db, j))
+        except Exception:
+            recruiter_count = 0
         return {
             "job_id": j.job_id,
             "filename": j.filename,
@@ -224,7 +246,7 @@ def admin_upload_operations(limit: int = 25, db: Session = Depends(get_db), _=De
             "inserted_rows": j.inserted_rows,
             "skipped_rows": j.skipped_rows,
             "error_count": j.error_count,
-            "recruiter_count": recruiter_counts.get(j.job_id, 0),
+            "recruiter_count": recruiter_count,
             "started_at": str(j.started_at) if j.started_at else None,
             "completed_at": str(j.completed_at) if j.completed_at else None,
         }
@@ -234,13 +256,12 @@ def admin_upload_operations(limit: int = 25, db: Session = Depends(get_db), _=De
 
 @router.get("/upload-operations/{job_id}/recruiters")
 def admin_upload_job_recruiters(job_id: str, limit: int = 500, db: Session = Depends(get_db), _=Depends(verify_admin)):
-    rows = (
-        db.query(Recruiter)
-        .filter(Recruiter.source_job_id == job_id)
-        .order_by(Recruiter.created_at.desc().nullslast())
-        .limit(limit)
-        .all()
-    )
+    job = db.query(UploadJob).filter(UploadJob.job_id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Upload job not found")
+
+    rows = _resolve_upload_batch_recruiters(db, job)
+    rows = sorted(rows, key=lambda r: r.created_at or datetime.min, reverse=True)[:limit]
     return {
         "job_id": job_id,
         "count": len(rows),
@@ -264,7 +285,19 @@ def admin_upload_job_recruiters(job_id: str, limit: int = 500, db: Session = Dep
 
 @router.delete("/upload-operations/{job_id}")
 def admin_delete_upload_job(job_id: str, db: Session = Depends(get_db), _=Depends(verify_admin)):
-    recruiters_deleted = db.query(Recruiter).filter(Recruiter.source_job_id == job_id).delete(synchronize_session=False)
+    job = db.query(UploadJob).filter(UploadJob.job_id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Upload job not found")
+
+    recruiters = _resolve_upload_batch_recruiters(db, job)
+    recruiter_ids = [r.recruiter_id for r in recruiters]
+    recruiters_deleted = 0
+    if recruiter_ids:
+        recruiters_deleted = (
+            db.query(Recruiter)
+            .filter(Recruiter.recruiter_id.in_(recruiter_ids))
+            .delete(synchronize_session=False)
+        )
 
     companies_deleted = 0
     for company in db.query(Company).filter(Company.source_job_id == job_id).all():

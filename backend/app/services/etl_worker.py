@@ -104,6 +104,7 @@ def get_or_create_company(
         data_source="etl",
         trust_score=80,
         is_active=True,
+        source_job_id=job_id,
     )
     db.add(company)
     db.flush()
@@ -223,6 +224,7 @@ def process_smart_import(job_id: str, filepath: str, column_map: dict):
                         "data_source": "etl",
                         "trust_score": 80 if company_id else 65,
                         "is_active": True,
+                        "source_job_id": job_id,
                     })
                     existing_emails.add(email)
                     inserted += 1

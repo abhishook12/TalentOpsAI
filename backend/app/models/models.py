@@ -42,6 +42,7 @@ class Company(Base):
     is_active    = Column(Boolean, default=True)
     data_source  = Column(String(100), default="manual")
     trust_score  = Column(Integer, default=100)
+    source_job_id = Column(String(36), index=True, nullable=True)
     created_at   = Column(TIMESTAMP, server_default=func.now())
     updated_at   = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
     recruiters   = relationship("Recruiter", back_populates="company")
@@ -82,6 +83,7 @@ class Recruiter(Base):
     is_active        = Column(Boolean, default=True)
     data_source      = Column(String(100), default="manual")
     trust_score      = Column(Integer, default=100)
+    source_job_id    = Column(String(36), index=True, nullable=True)
     created_at       = Column(TIMESTAMP, server_default=func.now())
     updated_at       = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
     company          = relationship("Company", back_populates="recruiters")
@@ -205,3 +207,51 @@ class FeatureVerification(Base):
     result = Column(Text, nullable=True)
     
     update = relationship("PlatformUpdate", back_populates="features")
+
+
+
+class SmartImportJob(Base):
+    __tablename__ = "smart_import_jobs"
+    job_id = Column(String(36), primary_key=True, index=True)
+    filename = Column(String(255), nullable=False)
+    status = Column(String(50), default="mapping") # mapping, validating, reviewing, importing, completed, failed
+    total_rows = Column(Integer, default=0)
+    valid_rows = Column(Integer, default=0)
+    error_rows = Column(Integer, default=0)
+    duplicate_rows = Column(Integer, default=0)
+    inserted_rows = Column(Integer, default=0)
+    skipped_rows = Column(Integer, default=0)
+    started_at = Column(TIMESTAMP, server_default=func.now())
+    completed_at = Column(TIMESTAMP, nullable=True)
+    user_email = Column(String(150), nullable=True)
+    column_mapping = Column(Text, nullable=True) # JSON string of confirmed mapping
+    
+    rows = relationship("SmartImportRow", back_populates="job", cascade="all, delete-orphan")
+
+
+class SmartImportRow(Base):
+    __tablename__ = "smart_import_rows"
+    row_id = Column(Integer, primary_key=True, autoincrement=True)
+    job_id = Column(String(36), ForeignKey("smart_import_jobs.job_id", ondelete="CASCADE"), index=True)
+    original_row_index = Column(Integer)
+    
+    # Normalized Fields
+    recruiter_name = Column(String(255), nullable=True)
+    email = Column(String(255), nullable=True)
+    phone = Column(String(50), nullable=True)
+    company_name = Column(String(255), nullable=True)
+    state = Column(String(100), nullable=True)
+    location = Column(String(255), nullable=True)
+    linkedin = Column(String(255), nullable=True)
+    title = Column(String(255), nullable=True)
+    specialization = Column(String(255), nullable=True)
+    notes = Column(Text, nullable=True)
+    
+    # Raw Data for fallback/reference
+    raw_json = Column(Text)
+    
+    # Validation Data
+    status = Column(String(50), default="Ready") # Ready, Warning, Error, Duplicate, Needs Review
+    validation_issues = Column(Text) # JSON list of strings
+    
+    job = relationship("SmartImportJob", back_populates="rows")

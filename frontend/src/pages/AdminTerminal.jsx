@@ -585,6 +585,7 @@ export default function AdminTerminal() {
   const [liveRecruiterQuery, setLiveRecruiterQuery] = useState('')
   const [liveRecruiterState, setLiveRecruiterState] = useState('')
   const [liveRecruiterCompany, setLiveRecruiterCompany] = useState('')
+  const [liveRecruiterJobId, setLiveRecruiterJobId] = useState('')
   const [liveRecruiterPage, setLiveRecruiterPage] = useState(1)
   const [selectedRecruiters, setSelectedRecruiters] = useState([])
   const [editRecruiter, setEditRecruiter] = useState(null)
@@ -805,6 +806,7 @@ export default function AdminTerminal() {
       if (liveRecruiterQuery.trim()) params.set('search', liveRecruiterQuery.trim())
       if (liveRecruiterState.trim()) params.set('state', liveRecruiterState.trim())
       if (liveRecruiterCompany.trim()) params.set('company', liveRecruiterCompany.trim())
+      if (liveRecruiterJobId.trim()) params.set('source_job_id', liveRecruiterJobId.trim())
       const { data } = await api.get(`/recruiters/?${params.toString()}`)
       setLiveRecruiters(data || { results: [], total_count: 0, page: 1, total_pages: 1 })
       setSelectedRecruiters([])
@@ -814,7 +816,7 @@ export default function AdminTerminal() {
     } finally {
       setLiveRecruitersLoading(false)
     }
-  }, [unlocked, activeTab, liveRecruiterPage, liveRecruiterQuery, liveRecruiterState, liveRecruiterCompany])
+  }, [unlocked, activeTab, liveRecruiterPage, liveRecruiterQuery, liveRecruiterState, liveRecruiterCompany, liveRecruiterJobId])
 
   useEffect(() => {
     if (unlocked && activeTab === 'ops') {
@@ -907,6 +909,35 @@ export default function AdminTerminal() {
   const exportSelectedRecruiters = () => {
     const rows = liveRecruiters.results.filter(r => selectedRecruiters.includes(r.recruiter_id))
     exportToExcel(rows, 'selected_recruiters')
+  }
+
+  const clearRecruiterBatchFilter = () => {
+    setLiveRecruiterJobId('')
+    setLiveRecruiterPage(1)
+  }
+
+  const viewUploadBatch = (jobId) => {
+    setActiveTab('ops')
+    setLiveRecruiterJobId(jobId)
+    setLiveRecruiterQuery('')
+    setLiveRecruiterState('')
+    setLiveRecruiterCompany('')
+    setLiveRecruiterPage(1)
+    setSelectedRecruiters([])
+  }
+
+  const deleteUploadBatch = async (job) => {
+    if (!job?.job_id) return
+    const countLabel = job.recruiter_count != null ? `${fmt(job.recruiter_count)} recruiter(s)` : 'the linked recruiter records'
+    if (!window.confirm(`Delete upload batch "${job.filename}" and ${countLabel}? This will remove the imported recruiters.`)) return
+    try {
+      await api.delete(`/admin/upload-operations/${job.job_id}`)
+      log(`✓ Deleted upload batch ${job.filename}`, 'ok')
+      if (liveRecruiterJobId === job.job_id) clearRecruiterBatchFilter()
+      await loadAll()
+    } catch (e) {
+      log('✗ Failed to delete upload batch: ' + getErrorMessage(e), 'error')
+    }
   }
 
   useEffect(() => {
@@ -1236,6 +1267,16 @@ export default function AdminTerminal() {
                 </Section>
 
                 <Section title="Live Recruiter Control Center" icon="ti-table" action={<Badge color="#38bdf8">Select · Edit · Delete</Badge>}>
+                  {liveRecruiterJobId && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.18)' }}>
+                      <div style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                        Viewing batch <strong style={{ color: 'var(--text-primary)' }}>{liveRecruiterJobId}</strong>
+                      </div>
+                      <button onClick={clearRecruiterBatchFilter} style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: 'var(--text-secondary)', padding: '6px 10px', borderRadius: 8, fontSize: 12, cursor: 'pointer' }}>
+                        Clear Batch Filter
+                      </button>
+                    </div>
+                  )}
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
                     <div style={{ position: 'relative', flex: '1 1 260px' }}>
                       <i className="ti ti-search" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 14 }} />
@@ -1455,6 +1496,25 @@ export default function AdminTerminal() {
         {activeTab === 'uploads' && (
           <div style={{ animation: 'fadeUp 0.25s ease' }}>
             <Section title="Upload Operations Center" icon="ti-cloud-upload" action={<Badge color="#38bdf8">ETL History</Badge>}>
+              {uploadOps?.jobs?.length ? (
+                <div style={{ marginBottom: 14, padding: 14, borderRadius: 12, background: 'var(--panel-bg)', border: '1px solid var(--card-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>Latest Upload Batch</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginTop: 4 }}>{uploadOps.jobs[0].filename || 'No Data Available'}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
+                      {fmt(uploadOps.jobs[0].recruiter_count ?? 0)} recruiters · {String(uploadOps.jobs[0].status || 'unknown').toUpperCase()}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button onClick={() => viewUploadBatch(uploadOps.jobs[0].job_id)} style={{ background: 'linear-gradient(135deg, #0ea5e9, #1d4ed8)', border: '1px solid rgba(59,130,246,0.35)', color: '#fff', padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                      Edit Latest Batch
+                    </button>
+                    <button onClick={() => deleteUploadBatch(uploadOps.jobs[0])} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.22)', color: '#f87171', padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                      Delete Latest Batch
+                    </button>
+                  </div>
+                </div>
+              ) : null}
               {!(uploadOps?.jobs?.length) ? (
                 <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No Data Available</div>
               ) : (
@@ -1462,7 +1522,7 @@ export default function AdminTerminal() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                     <thead>
                       <tr style={{ background: 'var(--bg-hover)' }}>
-                        {['File Name', 'Rows', 'Status', 'Date', 'Source', 'Actions'].map(h => (
+                        {['File Name', 'Rows', 'Status', 'Date', 'Source', 'Recruiters', 'Actions'].map(h => (
                           <th key={h} style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', fontSize: 10.5, letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: '1px solid var(--card-border)', whiteSpace: 'nowrap' }}>{h}</th>
                         ))}
                       </tr>
@@ -1482,13 +1542,18 @@ export default function AdminTerminal() {
                           </td>
                           <td style={{ padding: '10px 12px', color: 'var(--text-muted)', fontFamily: "'DM Mono', monospace", whiteSpace: 'nowrap' }}>{String(j.started_at || '').replace('T', ' ').slice(0, 16) || '—'}</td>
                           <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>{j.source || 'No Data Available'}</td>
+                          <td style={{ padding: '10px 12px', color: 'var(--text-muted)', fontFamily: "'DM Mono', monospace" }}>{fmt(j.recruiter_count ?? 0)}</td>
                           <td style={{ padding: '10px 12px' }}>
-                            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                              
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                              <button onClick={() => viewUploadBatch(j.job_id)} style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: '#38bdf8', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer' }}>
+                                Edit Batch
+                              </button>
                               <button onClick={() => retryImport(j.job_id)} style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: '#38bdf8', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer' }}>
                                 Retry
                               </button>
-                              
+                              <button onClick={() => deleteUploadBatch(j)} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.22)', color: '#f87171', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer' }}>
+                                Delete Batch
+                              </button>
                             </div>
                           </td>
                         </tr>

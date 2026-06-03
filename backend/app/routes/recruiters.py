@@ -73,6 +73,7 @@ def serialize_recruiter(r):
         "needs_review": getattr(r, "needs_review", False),
         "location_confidence": getattr(r, "location_confidence", "high"),
         "is_active": r.is_active,
+        "source_job_id": getattr(r, "source_job_id", None),
         "created_at": str(r.created_at) if r.created_at else None,
     }
 
@@ -226,6 +227,7 @@ def get_recruiters(
     is_active: Optional[bool] = None,
     min_completeness: Optional[int] = None,
     needs_review: Optional[bool] = None,
+    source_job_id: Optional[str] = None,
     sort_by: Optional[str] = "created_at",
     sort_desc: Optional[bool] = True,
     db: Session = Depends(get_db)
@@ -277,6 +279,9 @@ def get_recruiters(
         
     if needs_review is not None:
         query = query.filter(Recruiter.needs_review == needs_review)
+
+    if source_job_id:
+        query = query.filter(Recruiter.source_job_id == source_job_id)
         
     total_count = query.count()
     response.headers["X-Total-Count"] = str(total_count)

@@ -7,7 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.config import CORS_ORIGINS, IS_PRODUCTION
-from app.routes import recruiters, companies, vendors, analytics, upload, admin, auth, actions, updates
+from app.routes import recruiters, companies, vendors, analytics, upload, admin, auth, actions, updates, import_engine
 from app.database import get_db, engine
 from app.models import models
 from app.create_indexes import create_performance_indexes
@@ -38,6 +38,38 @@ try:
         except Exception:
             _db.rollback()
         admin.migrate_page_visits(_db)
+        try:
+            existing_cols = set(
+                row[0]
+                for row in _db.execute(text("""
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_name = 'recruiters'
+                """)).all()
+            )
+            recruit_adds = []
+            if "source_job_id" not in existing_cols:
+                recruit_adds.append("ADD COLUMN source_job_id VARCHAR(36)")
+            if recruit_adds:
+                _db.execute(text(f"ALTER TABLE recruiters {', '.join(recruit_adds)}"))
+                _db.commit()
+
+            existing_company_cols = set(
+                row[0]
+                for row in _db.execute(text("""
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_name = 'companies'
+                """)).all()
+            )
+            company_adds = []
+            if "source_job_id" not in existing_company_cols:
+                company_adds.append("ADD COLUMN source_job_id VARCHAR(36)")
+            if company_adds:
+                _db.execute(text(f"ALTER TABLE companies {', '.join(company_adds)}"))
+                _db.commit()
+        except Exception as e:
+            logger.warning("Import batch column migration warning: %s", e)
 except Exception as e:
     logger.warning("Migration warning: %s", e)
 
@@ -58,6 +90,7 @@ app.add_middleware(
 )
 
 app.include_router(recruiters.router, prefix="/recruiters", tags=["Recruiters"])
+app.include_router(import_engine.router, prefix="/api", tags=["Smart Import"])
 app.include_router(companies.router, prefix="/companies", tags=["Companies"])
 app.include_router(vendors.router, prefix="/vendors", tags=["Vendors"])
 app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])

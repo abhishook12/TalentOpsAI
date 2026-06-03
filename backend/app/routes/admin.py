@@ -4,7 +4,7 @@ All endpoints require a valid admin session (HttpOnly cookie set by /auth/login)
 """
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import text, func
 from sqlalchemy.exc import ProgrammingError
 from typing import Optional
 from app.database import get_db
@@ -200,6 +200,20 @@ def admin_upload_operations(limit: int = 25, db: Session = Depends(get_db), _=De
     except Exception:
         return {"jobs": [], "detail": "No Data Available"}
 
+    job_ids = [j.job_id for j in jobs]
+    recruiter_counts = {}
+    if job_ids:
+        try:
+            rows = (
+                db.query(Recruiter.source_job_id, func.count(Recruiter.recruiter_id))
+                .filter(Recruiter.source_job_id.in_(job_ids))
+                .group_by(Recruiter.source_job_id)
+                .all()
+            )
+            recruiter_counts = {row[0]: int(row[1]) for row in rows}
+        except Exception:
+            recruiter_counts = {}
+
     def _job(j: UploadJob):
         return {
             "job_id": j.job_id,
@@ -210,11 +224,76 @@ def admin_upload_operations(limit: int = 25, db: Session = Depends(get_db), _=De
             "inserted_rows": j.inserted_rows,
             "skipped_rows": j.skipped_rows,
             "error_count": j.error_count,
+            "recruiter_count": recruiter_counts.get(j.job_id, 0),
             "started_at": str(j.started_at) if j.started_at else None,
             "completed_at": str(j.completed_at) if j.completed_at else None,
         }
 
     return {"jobs": [_job(j) for j in jobs]}
+
+
+@router.get("/upload-operations/{job_id}/recruiters")
+def admin_upload_job_recruiters(job_id: str, limit: int = 500, db: Session = Depends(get_db), _=Depends(verify_admin)):
+    rows = (
+        db.query(Recruiter)
+        .filter(Recruiter.source_job_id == job_id)
+        .order_by(Recruiter.created_at.desc().nullslast())
+        .limit(limit)
+        .all()
+    )
+    return {
+        "job_id": job_id,
+        "count": len(rows),
+        "recruiters": [
+            {
+                "recruiter_id": r.recruiter_id,
+                "recruiter_name": r.recruiter_name,
+                "email": r.email,
+                "phone": r.phone,
+                "company_id": r.company_id,
+                "company_name": r.company.company_name if r.company else None,
+                "location": r.location,
+                "state": r.state,
+                "is_active": r.is_active,
+                "created_at": str(r.created_at) if r.created_at else None,
+            }
+            for r in rows
+        ],
+    }
+
+
+@router.delete("/upload-operations/{job_id}")
+def admin_delete_upload_job(job_id: str, db: Session = Depends(get_db), _=Depends(verify_admin)):
+    recruiters_deleted = db.query(Recruiter).filter(Recruiter.source_job_id == job_id).delete(synchronize_session=False)
+
+    companies_deleted = 0
+    for company in db.query(Company).filter(Company.source_job_id == job_id).all():
+        has_other_recruiters = db.query(Recruiter.recruiter_id).filter(Recruiter.company_id == company.company_id).first()
+        if not has_other_recruiters:
+            db.delete(company)
+            companies_deleted += 1
+
+    for table in ("raw_uploads", "staging_recruiters", "staging_companies", "smart_import_rows"):
+        try:
+            db.execute(text(f"DELETE FROM {table} WHERE job_id = :job_id"), {"job_id": job_id})
+        except Exception:
+            pass
+
+    try:
+        db.execute(text("DELETE FROM smart_import_jobs WHERE job_id = :job_id"), {"job_id": job_id})
+    except Exception:
+        pass
+
+    upload_job_deleted = db.query(UploadJob).filter(UploadJob.job_id == job_id).delete(synchronize_session=False)
+
+    db.commit()
+    return {
+        "message": "Upload batch deleted",
+        "job_id": job_id,
+        "recruiters_deleted": recruiters_deleted,
+        "companies_deleted": companies_deleted,
+        "upload_jobs_deleted": upload_job_deleted,
+    }
 
 
 @router.get("/search-activity")

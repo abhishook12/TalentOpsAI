@@ -10,7 +10,7 @@ export default function JobsHistory() {
     const fetchJobs = async () => {
       try {
         const res = await api.get('/upload/jobs');
-        setJobs(res.data);
+        setJobs(Array.isArray(res.data) ? res.data : []);
       } catch (e) {
         console.error(e);
       } finally {
@@ -49,25 +49,15 @@ export default function JobsHistory() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
           {jobs.map(j => {
-            const pct = j.total_rows ? Math.round((j.processed_rows / j.total_rows) * 100) : 0;
-            const successRate = j.total_rows ? Math.round(((j.inserted_rows || 0) / j.total_rows) * 1000) / 10 : null
+            const errorRows = j.error_rows ?? j.error_count ?? 0;
+            const skippedRows = j.skipped_rows ?? 0;
+            const insertedRows = j.inserted_rows ?? 0;
+            const pct = j.total_rows ? Math.round(((insertedRows + skippedRows + errorRows) / j.total_rows) * 100) : 0;
+            const successRate = j.total_rows ? Math.round((insertedRows / j.total_rows) * 1000) / 10 : null
 
             const handleDownloadErrors = async () => {
               try {
-                const res = await api.get(`/upload/jobs/${j.job_id}`);
-                const errs = res.data.errors;
-                if (!errs || !errs.length) {
-                  alert('No detailed errors available for this job.');
-                  return;
-                }
-                const csvContent = 'data:text/csv;charset=utf-8,Row,Reason\n'
-                  + errs.map(e => `${e.row},"${(e.reason || '').replace(/"/g, '""')}"`).join('\n');
-                const encodedUri = encodeURI(csvContent);
-                const link = document.createElement('a');
-                link.setAttribute('href', encodedUri);
-                link.setAttribute('download', `errors_${j.job_id}.csv`);
-                document.body.appendChild(link);
-                link.click();
+                alert('Rejected row export is not available on the current backend yet.');
               } catch (err) {
                 console.error('Error downloading report', err);
               }
@@ -75,10 +65,9 @@ export default function JobsHistory() {
 
             const handleRetry = async () => {
               try {
-                await api.post(`/upload/jobs/${j.job_id}/retry`);
-                alert('Job retry has been queued successfully.');
+                alert('Retry is not supported yet for the new Smart Import Engine.');
               } catch (err) {
-                alert('Could not retry this job. The original file may have been deleted.');
+                alert('Could not retry this job.');
               }
             };
 
@@ -128,7 +117,7 @@ export default function JobsHistory() {
                   </div>
 
                   <div style={{ display: 'flex', gap: 8 }}>
-                    {(j.error_count > 0 || j.status === 'failed') && (
+                    {(errorRows > 0 || j.status === 'failed' || j.status === 'completed') && (
                       <button
                         onClick={handleDownloadErrors}
                         title="Download Error Report"

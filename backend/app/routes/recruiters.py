@@ -39,6 +39,20 @@ class RecruiterUpdate(BaseModel):
     location: Optional[str] = None
     is_active: Optional[bool] = None
 
+class RecruiterBatchUpdate(BaseModel):
+    ids: List[int]
+    recruiter_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    email2: Optional[str] = None
+    phone2: Optional[str] = None
+    linkedin: Optional[str] = None
+    specialization: Optional[str] = None
+    notes: Optional[str] = None
+    company_id: Optional[int] = None
+    location: Optional[str] = None
+    is_active: Optional[bool] = None
+
 def serialize_recruiter(r):
     return {
         "recruiter_id": r.recruiter_id,
@@ -61,6 +75,28 @@ def serialize_recruiter(r):
         "is_active": r.is_active,
         "created_at": str(r.created_at) if r.created_at else None,
     }
+
+def apply_recruiter_update(r, update_data: dict, db: Session):
+    if "email" in update_data and update_data["email"] and update_data["email"] != r.email:
+        existing = db.query(Recruiter).filter(
+            Recruiter.email == update_data["email"],
+            Recruiter.recruiter_id != r.recruiter_id
+        ).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already exists")
+
+    for key, value in update_data.items():
+        setattr(r, key, value)
+
+    if 'location' in update_data or 'company_id' in update_data:
+        loc = r.location
+        if not loc and r.company_id:
+            comp = db.query(Company).filter(Company.company_id == r.company_id).first()
+            if comp:
+                loc = comp.location
+        r.state = normalize_state(loc) if loc else None
+    
+    return r
 
 # --- Smart Ranked Search ---
 @router.get("/search")
@@ -308,27 +344,47 @@ def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Dep
         raise HTTPException(status_code=404, detail="Recruiter not found")
         
     update_data = data.dict(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(r, key, value)
-        
-    # Re-evaluate state if location or company changed
-    if 'location' in update_data or 'company_id' in update_data:
-        loc = r.location
-        if not loc and r.company_id:
-            comp = db.query(Company).filter(Company.company_id == r.company_id).first()
-            if comp:
-                loc = comp.location
-        r.state = normalize_state(loc) if loc else None
+    apply_recruiter_update(r, update_data, db)
         
     db.commit()
     db.refresh(r)
     return serialize_recruiter(r)
 
 @router.delete("/{recruiter_id}")
-def delete_recruiter(recruiter_id: int, db: Session = Depends(get_db)):
+def delete_recruiter(recruiter_id: int, db: Session = Depends(get_db), _=Depends(verify_admin)):
     r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
     db.delete(r)
     db.commit()
     return {"message": "Recruiter deleted"}
+
+@router.post("/batch-delete")
+def batch_delete_recruiters(payload: dict, db: Session = Depends(get_db), _=Depends(verify_admin)):
+    ids = [int(i) for i in payload.get("ids", []) if str(i).strip()]
+    if not ids:
+        raise HTTPException(status_code=400, detail="No recruiter ids supplied")
+    deleted = db.query(Recruiter).filter(Recruiter.recruiter_id.in_(ids)).delete(synchronize_session=False)
+    db.commit()
+    return {"message": "Recruiters deleted", "deleted_count": deleted}
+
+@router.post("/batch-update")
+def batch_update_recruiters(payload: RecruiterBatchUpdate, db: Session = Depends(get_db), _=Depends(verify_admin)):
+    ids = [int(i) for i in payload.ids if str(i).strip()]
+    if not ids:
+        raise HTTPException(status_code=400, detail="No recruiter ids supplied")
+
+    update_data = payload.dict(exclude_unset=True, exclude={"ids"})
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No updates supplied")
+
+    recruiters = db.query(Recruiter).filter(Recruiter.recruiter_id.in_(ids)).all()
+    if not recruiters:
+        raise HTTPException(status_code=404, detail="No recruiters found")
+
+    updated = 0
+    for recruiter in recruiters:
+        apply_recruiter_update(recruiter, update_data, db)
+        updated += 1
+    db.commit()
+    return {"message": "Recruiters updated", "updated_count": updated}

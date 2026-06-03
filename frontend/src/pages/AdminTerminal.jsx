@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import api, { checkAuth, getErrorMessage, login, logout } from '../services/api'
+import { exportToExcel } from '../services/export'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(n) { return n?.toLocaleString?.() ?? '—' }
@@ -579,6 +580,28 @@ export default function AdminTerminal() {
   const [tableSizes, setTableSizes] = useState([])
   const [sysInfo, setSysInfo] = useState(null)
   const [orphans, setOrphans] = useState(null)
+  const [liveRecruiters, setLiveRecruiters] = useState({ results: [], total_count: 0, page: 1, total_pages: 1 })
+  const [liveRecruitersLoading, setLiveRecruitersLoading] = useState(false)
+  const [liveRecruiterQuery, setLiveRecruiterQuery] = useState('')
+  const [liveRecruiterState, setLiveRecruiterState] = useState('')
+  const [liveRecruiterCompany, setLiveRecruiterCompany] = useState('')
+  const [liveRecruiterPage, setLiveRecruiterPage] = useState(1)
+  const [selectedRecruiters, setSelectedRecruiters] = useState([])
+  const [editRecruiter, setEditRecruiter] = useState(null)
+  const [editRecruiterForm, setEditRecruiterForm] = useState({
+    recruiter_name: '',
+    email: '',
+    phone: '',
+    linkedin: '',
+    specialization: '',
+    company_id: '',
+    location: '',
+    is_active: true,
+    email2: '',
+    phone2: '',
+    notes: '',
+  })
+  const [savingRecruiter, setSavingRecruiter] = useState(false)
   const [cacheMsg, setCacheMsg] = useState(null)
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
@@ -768,6 +791,122 @@ export default function AdminTerminal() {
       log('✗ Failed to load visitor logs: ' + msg, 'error')
     }
     setLoadingLogs(false)
+  }
+
+  const loadLiveRecruiters = useCallback(async () => {
+    if (!unlocked || activeTab !== 'ops') return
+    setLiveRecruitersLoading(true)
+    try {
+      const params = new URLSearchParams()
+      params.set('page', String(liveRecruiterPage))
+      params.set('limit', '12')
+      params.set('sort_by', 'created_at')
+      params.set('sort_desc', 'true')
+      if (liveRecruiterQuery.trim()) params.set('search', liveRecruiterQuery.trim())
+      if (liveRecruiterState.trim()) params.set('state', liveRecruiterState.trim())
+      if (liveRecruiterCompany.trim()) params.set('company', liveRecruiterCompany.trim())
+      const { data } = await api.get(`/recruiters/?${params.toString()}`)
+      setLiveRecruiters(data || { results: [], total_count: 0, page: 1, total_pages: 1 })
+      setSelectedRecruiters([])
+    } catch (e) {
+      log('✗ Failed to load live recruiter data: ' + getErrorMessage(e), 'error')
+      setLiveRecruiters({ results: [], total_count: 0, page: 1, total_pages: 1 })
+    } finally {
+      setLiveRecruitersLoading(false)
+    }
+  }, [unlocked, activeTab, liveRecruiterPage, liveRecruiterQuery, liveRecruiterState, liveRecruiterCompany])
+
+  useEffect(() => {
+    if (unlocked && activeTab === 'ops') {
+      const t = setTimeout(() => loadLiveRecruiters(), 250)
+      return () => clearTimeout(t)
+    }
+  }, [unlocked, activeTab, liveRecruiterPage, liveRecruiterQuery, liveRecruiterState, liveRecruiterCompany, loadLiveRecruiters])
+
+  const toggleRecruiterSelection = (id) => {
+    setSelectedRecruiters(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id])
+  }
+
+  const openRecruiterEdit = (recruiter) => {
+    setEditRecruiter(recruiter)
+    setEditRecruiterForm({
+      recruiter_name: recruiter.recruiter_name || '',
+      email: recruiter.email || '',
+      phone: recruiter.phone || '',
+      linkedin: recruiter.linkedin || '',
+      specialization: recruiter.specialization || '',
+      company_id: recruiter.company_id || '',
+      location: recruiter.location || '',
+      is_active: recruiter.is_active !== false,
+      email2: recruiter.email2 || '',
+      phone2: recruiter.phone2 || '',
+      notes: recruiter.notes || '',
+    })
+  }
+
+  const saveRecruiter = async () => {
+    if (!editRecruiter) return
+    if (!editRecruiterForm.recruiter_name.trim() || !editRecruiterForm.email.trim()) {
+      log('Recruiter name and email are required.', 'warn')
+      return
+    }
+    setSavingRecruiter(true)
+    try {
+      const payload = {
+        ...editRecruiterForm,
+        company_id: editRecruiterForm.company_id ? Number(editRecruiterForm.company_id) : null,
+      }
+      await api.put(`/recruiters/${editRecruiter.recruiter_id}`, payload)
+      log(`✓ Updated ${editRecruiter.recruiter_name}`, 'ok')
+      setEditRecruiter(null)
+      await loadLiveRecruiters()
+    } catch (e) {
+      log('✗ Failed to update recruiter: ' + getErrorMessage(e), 'error')
+    } finally {
+      setSavingRecruiter(false)
+    }
+  }
+
+  const deleteRecruiter = async (recruiter) => {
+    if (!window.confirm(`Delete ${recruiter.recruiter_name}?`)) return
+    try {
+      await api.delete(`/recruiters/${recruiter.recruiter_id}`)
+      log(`✓ Deleted ${recruiter.recruiter_name}`, 'ok')
+      setSelectedRecruiters(prev => prev.filter(id => id !== recruiter.recruiter_id))
+      await loadLiveRecruiters()
+    } catch (e) {
+      log('✗ Failed to delete recruiter: ' + getErrorMessage(e), 'error')
+    }
+  }
+
+  const batchUpdateRecruiters = async (updates) => {
+    if (!selectedRecruiters.length) return
+    try {
+      await api.post('/recruiters/batch-update', { ids: selectedRecruiters, ...updates })
+      log(`✓ Updated ${selectedRecruiters.length} recruiter(s)`, 'ok')
+      setSelectedRecruiters([])
+      await loadLiveRecruiters()
+    } catch (e) {
+      log('✗ Batch update failed: ' + getErrorMessage(e), 'error')
+    }
+  }
+
+  const batchDeleteRecruiters = async () => {
+    if (!selectedRecruiters.length) return
+    if (!window.confirm(`Delete ${selectedRecruiters.length} selected recruiter(s)?`)) return
+    try {
+      await api.post('/recruiters/batch-delete', { ids: selectedRecruiters })
+      log(`✓ Deleted ${selectedRecruiters.length} recruiter(s)`, 'ok')
+      setSelectedRecruiters([])
+      await loadLiveRecruiters()
+    } catch (e) {
+      log('✗ Batch delete failed: ' + getErrorMessage(e), 'error')
+    }
+  }
+
+  const exportSelectedRecruiters = () => {
+    const rows = liveRecruiters.results.filter(r => selectedRecruiters.includes(r.recruiter_id))
+    exportToExcel(rows, 'selected_recruiters')
   }
 
   useEffect(() => {
@@ -1092,6 +1231,143 @@ export default function AdminTerminal() {
                         ))}
                         {!(stateCoverage?.states?.length) && <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No Data Available</div>}
                       </div>
+                    </div>
+                  </div>
+                </Section>
+
+                <Section title="Live Recruiter Control Center" icon="ti-table" action={<Badge color="#38bdf8">Select · Edit · Delete</Badge>}>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
+                    <div style={{ position: 'relative', flex: '1 1 260px' }}>
+                      <i className="ti ti-search" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 14 }} />
+                      <input
+                        value={liveRecruiterQuery}
+                        onChange={(e) => { setLiveRecruiterQuery(e.target.value); setLiveRecruiterPage(1) }}
+                        placeholder="Search name, email, company..."
+                        style={{ width: '100%', height: 38, paddingLeft: 36, borderRadius: 10, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', outline: 'none' }}
+                      />
+                    </div>
+                    <input
+                      value={liveRecruiterState}
+                      onChange={(e) => { setLiveRecruiterState(e.target.value.toUpperCase()); setLiveRecruiterPage(1) }}
+                      placeholder="State"
+                      style={{ width: 110, height: 38, padding: '0 12px', borderRadius: 10, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', outline: 'none' }}
+                    />
+                    <input
+                      value={liveRecruiterCompany}
+                      onChange={(e) => { setLiveRecruiterCompany(e.target.value); setLiveRecruiterPage(1) }}
+                      placeholder="Company"
+                      style={{ width: 180, height: 38, padding: '0 12px', borderRadius: 10, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', outline: 'none' }}
+                    />
+                    <button
+                      onClick={() => {
+                        setLiveRecruiterQuery('')
+                        setLiveRecruiterState('')
+                        setLiveRecruiterCompany('')
+                        setLiveRecruiterPage(1)
+                      }}
+                      style={{ height: 38, padding: '0 14px', borderRadius: 10, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                    >
+                      Reset Filters
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+                    <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
+                      {liveRecruitersLoading ? 'Loading live recruiter records…' : `${fmt(liveRecruiters.total_count)} live recruiter records`}
+                      {selectedRecruiters.length > 0 && ` · ${selectedRecruiters.length} selected`}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button onClick={() => batchUpdateRecruiters({ is_active: true })} disabled={!selectedRecruiters.length} style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: '#22c55e', padding: '7px 12px', borderRadius: 8, fontSize: 12, cursor: selectedRecruiters.length ? 'pointer' : 'not-allowed', opacity: selectedRecruiters.length ? 1 : 0.55 }}>
+                        Activate Selected
+                      </button>
+                      <button onClick={() => batchUpdateRecruiters({ is_active: false })} disabled={!selectedRecruiters.length} style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: '#f59e0b', padding: '7px 12px', borderRadius: 8, fontSize: 12, cursor: selectedRecruiters.length ? 'pointer' : 'not-allowed', opacity: selectedRecruiters.length ? 1 : 0.55 }}>
+                        Deactivate Selected
+                      </button>
+                      <button onClick={exportSelectedRecruiters} disabled={!selectedRecruiters.length} style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: '#38bdf8', padding: '7px 12px', borderRadius: 8, fontSize: 12, cursor: selectedRecruiters.length ? 'pointer' : 'not-allowed', opacity: selectedRecruiters.length ? 1 : 0.55 }}>
+                        Export Selected
+                      </button>
+                      <button onClick={batchDeleteRecruiters} disabled={!selectedRecruiters.length} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.22)', color: '#f87171', padding: '7px 12px', borderRadius: 8, fontSize: 12, cursor: selectedRecruiters.length ? 'pointer' : 'not-allowed', opacity: selectedRecruiters.length ? 1 : 0.55 }}>
+                        Delete Selected
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ overflowX: 'auto', border: '1px solid var(--card-border)', borderRadius: 12, background: 'var(--panel-bg)' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+                      <thead>
+                        <tr style={{ background: 'var(--bg-hover)' }}>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 10.5 }}>Select</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 10.5 }}>Name</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 10.5 }}>Email</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 10.5 }}>Company</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 10.5 }}>Location</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 10.5 }}>Status</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 10.5 }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {!liveRecruitersLoading && (liveRecruiters.results || []).map((r) => (
+                          <tr key={r.recruiter_id} style={{ borderTop: '1px solid var(--card-border)' }}>
+                            <td style={{ padding: '10px 12px' }}>
+                              <input type="checkbox" checked={selectedRecruiters.includes(r.recruiter_id)} onChange={() => toggleRecruiterSelection(r.recruiter_id)} />
+                            </td>
+                            <td style={{ padding: '10px 12px', color: 'var(--text-primary)', fontWeight: 600 }}>{r.recruiter_name || '—'}</td>
+                            <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{r.email || '—'}</td>
+                            <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{r.company_name || 'Not available'}</td>
+                            <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{r.location || r.state || '—'}</td>
+                            <td style={{ padding: '10px 12px' }}>
+                              <Badge color={r.is_active ? '#22c55e' : '#f87171'}>{r.is_active ? 'Active' : 'Inactive'}</Badge>
+                            </td>
+                            <td style={{ padding: '10px 12px' }}>
+                              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                <button onClick={() => openRecruiterEdit(r)} style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: '#38bdf8', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer' }}>
+                                  Edit
+                                </button>
+                                <button onClick={() => deleteRecruiter(r)} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.22)', color: '#f87171', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer' }}>
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {liveRecruitersLoading && (
+                          <tr>
+                            <td colSpan="7" style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)' }}>
+                              <i className="ti ti-loader" style={{ animation: 'spin 0.8s linear infinite', marginRight: 8 }} />
+                              Loading live recruiter data…
+                            </td>
+                          </tr>
+                        )}
+                        {!liveRecruitersLoading && (!liveRecruiters.results || liveRecruiters.results.length === 0) && (
+                          <tr>
+                            <td colSpan="7" style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)' }}>
+                              No live recruiter data found.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                      Page {liveRecruiters.page || 1} of {liveRecruiters.total_pages || 1}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={() => setLiveRecruiterPage(p => Math.max(1, p - 1))}
+                        disabled={(liveRecruiters.page || 1) <= 1}
+                        style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-secondary)', cursor: (liveRecruiters.page || 1) <= 1 ? 'not-allowed' : 'pointer', opacity: (liveRecruiters.page || 1) <= 1 ? 0.6 : 1 }}
+                      >
+                        Prev
+                      </button>
+                      <button
+                        onClick={() => setLiveRecruiterPage(p => p + 1)}
+                        disabled={(liveRecruiters.page || 1) >= (liveRecruiters.total_pages || 1)}
+                        style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-secondary)', cursor: (liveRecruiters.page || 1) >= (liveRecruiters.total_pages || 1) ? 'not-allowed' : 'pointer', opacity: (liveRecruiters.page || 1) >= (liveRecruiters.total_pages || 1) ? 0.6 : 1 }}
+                      >
+                        Next
+                      </button>
                     </div>
                   </div>
                 </Section>
@@ -1470,6 +1746,90 @@ export default function AdminTerminal() {
                 <span style={{ color: 'var(--card-border)', animation: 'blink 1.2s step-end infinite' }}>▌</span>
               </div>
             </Section>
+          </div>
+        )}
+
+        {editRecruiter && (
+          <div
+            onClick={() => setEditRecruiter(null)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(2,6,23,0.62)',
+              zIndex: 2000,
+              display: 'grid',
+              placeItems: 'center',
+              padding: 20,
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: '100%',
+                maxWidth: 720,
+                background: 'var(--card-bg)',
+                border: '1px solid var(--card-border)',
+                borderRadius: 18,
+                boxShadow: '0 24px 70px rgba(0,0,0,0.45)',
+                overflow: 'hidden',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 22px', borderBottom: '1px solid var(--card-border)' }}>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>Edit Recruiter</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{editRecruiter.recruiter_name || 'Selected recruiter'}</div>
+                </div>
+                <button onClick={() => setEditRecruiter(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18 }}>
+                  <i className="ti ti-x" />
+                </button>
+              </div>
+              <div style={{ padding: 22, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14 }}>
+                {[
+                  ['recruiter_name', 'Name *'],
+                  ['email', 'Email *'],
+                  ['phone', 'Phone'],
+                  ['company_id', 'Company ID'],
+                  ['location', 'Location'],
+                  ['linkedin', 'LinkedIn'],
+                  ['specialization', 'Specialization'],
+                  ['email2', 'Alt Email'],
+                  ['phone2', 'Alt Phone'],
+                ].map(([key, label]) => (
+                  <div key={key} style={{ gridColumn: key === 'location' || key === 'linkedin' || key === 'specialization' || key === 'notes' ? 'span 2' : 'span 1' }}>
+                    <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</label>
+                    <input
+                      value={editRecruiterForm[key] ?? ''}
+                      onChange={(e) => setEditRecruiterForm(prev => ({ ...prev, [key]: e.target.value }))}
+                      style={{ width: '100%', height: 38, borderRadius: 10, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', outline: 'none', padding: '0 12px' }}
+                    />
+                  </div>
+                ))}
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Notes</label>
+                  <textarea
+                    value={editRecruiterForm.notes}
+                    onChange={(e) => setEditRecruiterForm(prev => ({ ...prev, notes: e.target.value }))}
+                    style={{ width: '100%', minHeight: 88, borderRadius: 10, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', outline: 'none', padding: 12, resize: 'vertical' }}
+                  />
+                </div>
+                <div style={{ gridColumn: 'span 2', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)', fontSize: 13 }}>
+                    <input
+                      type="checkbox"
+                      checked={editRecruiterForm.is_active}
+                      onChange={(e) => setEditRecruiterForm(prev => ({ ...prev, is_active: e.target.checked }))}
+                    />
+                    Active
+                  </label>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button onClick={() => setEditRecruiter(null)} style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-secondary)', cursor: 'pointer' }}>Cancel</button>
+                    <button onClick={saveRecruiter} disabled={savingRecruiter} style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid #2563eb', background: 'linear-gradient(135deg, #2563eb, #0ea5e9)', color: '#fff', cursor: savingRecruiter ? 'not-allowed' : 'pointer', opacity: savingRecruiter ? 0.7 : 1 }}>
+                      {savingRecruiter ? 'Saving...' : 'Save Changes'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

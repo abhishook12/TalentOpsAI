@@ -41,9 +41,10 @@ export default function UpdateCenter() {
     if (open) fetchChangelog();
   }, [open]);
 
-  if (!status) return null;
-
   const latestUpdate = useMemo(() => {
+    if (!status) {
+      return null;
+    }
     const entry = changelog?.[0];
     if (entry) return entry;
     return {
@@ -64,6 +65,8 @@ export default function UpdateCenter() {
       total: features.length,
     };
   }, [status]);
+
+  if (!status) return null;
 
   const updateTime = latestUpdate?.date ? new Date(latestUpdate.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Never';
   const compactSummary = latestUpdate?.features?.length

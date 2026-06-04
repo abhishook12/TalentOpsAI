@@ -89,8 +89,17 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
     error_count = 0
     dup_count = 0
     
-    # Caches
-    existing_emails = {e[0] for e in db.query(Recruiter.email).filter(Recruiter.email.isnot(None)).all()}
+    # Caches for advanced deduplication
+    existing_emails = {e[0].lower() for e in db.query(Recruiter.email).filter(Recruiter.email.isnot(None)).all() if e[0]}
+    existing_phones = {clean_phone(p[0]) for p in db.query(Recruiter.phone).filter(Recruiter.phone.isnot(None)).all() if p[0] and clean_phone(p[0])}
+    existing_linkedin = {l[0].lower().strip() for l in db.query(Recruiter.linkedin).filter(Recruiter.linkedin.isnot(None)).all() if l[0]}
+    
+    # Pre-fetch companies for name+company dedupe
+    existing_rec_comps = db.query(Recruiter.recruiter_name, Company.company_name).outerjoin(Company, Recruiter.company_id == Company.company_id).all()
+    existing_name_company = set()
+    for name, comp in existing_rec_comps:
+        if name and comp:
+            existing_name_company.add((name.strip().title(), comp.strip().title()))
     
     email_col = column_mapping.get("email")
     name_col = column_mapping.get("name")
@@ -138,8 +147,17 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
         elif "@" not in r.email or "." not in r.email:
             issues.append("Invalid email format")
             status = "Error"
-        elif r.email in existing_emails:
+        elif r.email.lower() in existing_emails:
             issues.append("Duplicate email in database")
+            status = "Duplicate"
+        elif r.phone and r.phone in existing_phones:
+            issues.append("Duplicate phone in database")
+            status = "Duplicate"
+        elif r.linkedin and r.linkedin.lower().strip() in existing_linkedin:
+            issues.append("Duplicate LinkedIn in database")
+            status = "Duplicate"
+        elif r.recruiter_name and r.company_name and (r.recruiter_name.title(), r.company_name.title()) in existing_name_company:
+            issues.append("Duplicate Name+Company in database")
             status = "Duplicate"
             
         if not r.recruiter_name and r.email:
@@ -151,7 +169,7 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
         if not r.company_name and r.email:
             # Auto-generate company from email domain
             domain = r.email.split("@")[-1].split(".")[0].title()
-            if domain not in ("Gmail", "Yahoo", "Hotmail", "Outlook"):
+            if domain not in ("Gmail", "Yahoo", "Hotmail", "Outlook", "Aol", "Icloud"):
                 r.company_name = domain
                 issues.append("Company inferred from email")
                 if status == "Ready": status = "Warning"
@@ -183,25 +201,87 @@ def process_commit(job_id: str):
         return
         
     rows = db.query(SmartImportRow).filter(SmartImportRow.job_id == job_id).all()
+    column_mapping = json.loads(job.column_mapping) if job.column_mapping else {}
+    
+    # We want the values (mapped column names from the file)
+    mapped_keys = [k for k in column_mapping.values() if k and isinstance(k, str)]
+    
+    from app.utils.normalizer import normalize_text
+    
+    # Cache companies to avoid n+1 selects
+    company_cache = {normalize_text(c.company_name): c for c in db.query(Company).all() if c.company_name}
     
     inserted = 0
     skipped = 0
     
-    for r in rows:
+    for i, r in enumerate(rows):
         if r.status in ["Ready", "Warning"]:
-            # Check duplicate again just in case
+            # Check duplicate again just in case (e.g. against rows just inserted in this loop)
             if not db.query(Recruiter).filter(Recruiter.email == r.email).first():
+                # Process Company
+                company_id = None
+                if r.company_name:
+                    norm_comp = normalize_text(r.company_name)
+                    if norm_comp in company_cache:
+                        company_id = company_cache[norm_comp].company_id
+                    else:
+                        new_comp = Company(
+                            company_name=r.company_name,
+                            normalized_company_name=norm_comp,
+                            location=r.location,
+                            state=r.state,
+                            is_active=True,
+                            data_source="smart_import",
+                            source_job_id=job_id
+                        )
+                        db.add(new_comp)
+                        db.commit()
+                        db.refresh(new_comp)
+                        company_cache[norm_comp] = new_comp
+                        company_id = new_comp.company_id
+
+                # Preserve metadata (unknown columns)
+                raw_dict = json.loads(r.raw_json)
+                metadata = {k: v for k, v in raw_dict.items() if k not in mapped_keys and v is not None and str(v).strip() != ""}
+                metadata_json = json.dumps(metadata) if metadata else None
+                
+                # Extract alternative emails/phones from metadata
+                email2 = None
+                phone2 = None
+                for k, v in metadata.items():
+                    key_lower = k.lower()
+                    if "email" in key_lower and not email2 and str(v).strip().lower() != (r.email or "").lower():
+                        email2 = str(v).strip()
+                    elif ("phone" in key_lower or "mobile" in key_lower or "cell" in key_lower) and not phone2:
+                        cp = clean_phone(str(v))
+                        if cp and cp != r.phone:
+                            phone2 = cp
+
                 rec = Recruiter(
                     recruiter_name=r.recruiter_name,
+                    normalized_recruiter_name=normalize_text(r.recruiter_name) if r.recruiter_name else None,
                     email=r.email,
                     phone=r.phone,
+                    email2=email2,
+                    phone2=phone2,
                     linkedin=r.linkedin,
                     specialization=r.title,
-                    notes=r.notes,
-                    is_active=True
+                    title=r.title,
+                    company_id=company_id,
+                    location=r.location,
+                    state=r.state,
+                    is_active=True,
+                    data_source="smart_import",
+                    source_job_id=job_id,
+                    raw_data=r.raw_json,
+                    metadata_json=metadata_json
                 )
                 db.add(rec)
                 inserted += 1
+                
+                # Chunked commits
+                if inserted % 500 == 0:
+                    db.commit()
             else:
                 skipped += 1
                 r.status = "Duplicate"

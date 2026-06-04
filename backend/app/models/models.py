@@ -75,6 +75,7 @@ class Recruiter(Base):
     phone2           = Column(String(30))           # secondary phone
     linkedin         = Column(String(255))
     specialization   = Column(String(150))
+    title            = Column(String(150))
     notes            = Column(Text)                 # any extra info from messages etc.
     company_id       = Column(Integer, ForeignKey("companies.company_id", ondelete="SET NULL"), nullable=True)
     location         = Column(String(255))
@@ -170,6 +171,7 @@ class StagingRecruiter(Base):
     email         = Column(String(255), index=True)
     phone         = Column(String(100))
     company_name  = Column(String(255))
+    title         = Column(String(150))
     location      = Column(String(255))
     status        = Column(String(50), default="pending") # pending, processing, approved, rejected, duplicate, suspicious
     confidence_score = Column(Integer, default=0)

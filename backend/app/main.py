@@ -60,6 +60,8 @@ try:
                 recruit_adds.append("ADD COLUMN metadata_json TEXT")
             if "tags" not in existing_cols:
                 recruit_adds.append("ADD COLUMN tags TEXT")
+            if "title" not in existing_cols:
+                recruit_adds.append("ADD COLUMN title VARCHAR(150)")
             if recruit_adds:
                 _db.execute(text(f"ALTER TABLE recruiters {', '.join(recruit_adds)}"))
                 _db.commit()

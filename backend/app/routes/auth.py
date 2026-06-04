@@ -3,7 +3,7 @@ from pydantic import BaseModel
 import jwt
 import time
 import logging
-from app.config import JWT_SECRET, ADMIN_PASSWORD, APP_PASSWORD, IS_PRODUCTION
+from app.config import JWT_SECRET, ADMIN_PASSWORD, APP_PASSWORD, IS_PRODUCTION, FREE_ADMIN_MODE
 from app.database import get_db
 from sqlalchemy.orm import Session
 from app.models.models import ActionLog
@@ -112,6 +112,8 @@ def _log_admin_event(db: Session, request: Request, action_type: str, status_val
 
 
 def verify_admin(request: Request, db: Session = Depends(get_db)):
+    if FREE_ADMIN_MODE:
+        return True
     token = _extract_token(request, "admin_session")
     if not token:
         raise HTTPException(
@@ -131,6 +133,8 @@ def verify_admin(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/me")
 def auth_me(request: Request):
+    if FREE_ADMIN_MODE:
+        return {"authenticated": True, "role": "admin", "free_mode": True}
     token = _extract_token(request, "admin_session")
     if not token:
         return {"authenticated": False}

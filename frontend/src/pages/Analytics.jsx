@@ -5,9 +5,9 @@ import {
 } from 'recharts'
 import api, { API } from '../services/api'
 
-const CHART_TICK = { fill: '#ffffff', fontSize: 12, fontWeight: 700 }
+const CHART_TICK = { fill: 'var(--text-primary)', fontSize: 12, fontWeight: 700 }
 
-const BAR_LABEL_PROPS = { fill: '#ffffff', fontSize: 12, fontWeight: 700 }
+const BAR_LABEL_PROPS = { fill: 'var(--text-primary)', fontSize: 12, fontWeight: 700 }
 
 const PAGE_COLORS = ['#185FA5', '#0F6E56', '#534AB7', '#BA7517', '#C4394A', '#1695A3', '#7C3AED', '#D97706']
 

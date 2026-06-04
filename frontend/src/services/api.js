@@ -1,19 +1,7 @@
 import axios from 'axios'
 
-const PROD_HOST_OVERRIDE = typeof window !== 'undefined' && window.location.hostname === 'talent-ops-ai.vercel.app'
-  ? 'https://talentopsai-1.onrender.com'
-  : null
-
-const API_CANDIDATES = Array.from(new Set([
-  PROD_HOST_OVERRIDE,
-  import.meta.env.VITE_API_URL,
-  'https://talentopsai-1.onrender.com',
-  'https://talentopsai.onrender.com',
-  'http://localhost:8000',
-  'http://127.0.0.1:8000',
-].filter(Boolean))).map((url) => String(url).replace(/\/$/, ''))
-
-export const API = API_CANDIDATES[0]
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+export const API = String(API_URL).replace(/\/$/, '')
 
 const clientCache = new Map()
 const createClient = (baseURL) => {
@@ -74,42 +62,38 @@ async function smartRequest(method, url, data, config = {}) {
   const retryable = config.retryable ?? ['get', 'delete', 'head'].includes(method)
   const retryDelayMs = config.retryDelayMs ?? 1200
   const maxAttempts = retryable ? 2 : 1
-  const candidateOrder = config.baseURLs?.length ? config.baseURLs : API_CANDIDATES
   const authScope = config.authScope ?? 'admin'
   const authToken = getStoredToken(authScope)
   let lastError = null
+  const client = createClient(API)
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const requestConfig = { ...config }
+      delete requestConfig.retryable
+      delete requestConfig.retryDelayMs
+      delete requestConfig.authScope
 
-  for (const baseURL of candidateOrder) {
-    const client = createClient(baseURL)
-    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      try {
-        const requestConfig = { ...config }
-        delete requestConfig.baseURLs
-        delete requestConfig.retryable
-        delete requestConfig.retryDelayMs
-        delete requestConfig.authScope
-
-        requestConfig.headers = {
-          ...(requestConfig.headers || {}),
-        }
-        if (authToken && authScope !== 'none') {
-          requestConfig.headers.Authorization = `Bearer ${authToken}`
-        }
-
-        if (method === 'get' || method === 'delete' || method === 'head') {
-          return await client[method](url, requestConfig)
-        }
-        return await client[method](url, data, requestConfig)
-      } catch (error) {
-        lastError = error
-        if (attempt < maxAttempts && isRetryableError(error)) {
-          await sleep(retryDelayMs)
-          continue
-        }
-        break
+      requestConfig.headers = {
+        ...(requestConfig.headers || {}),
       }
-    }
-    if (!isRetryableError(lastError)) {
+      if (authToken && authScope !== 'none') {
+        requestConfig.headers.Authorization = `Bearer ${authToken}`
+      }
+
+      if (method === 'get' || method === 'delete' || method === 'head') {
+        return await client[method](url, requestConfig)
+      }
+      return await client[method](url, data, requestConfig)
+    } catch (error) {
+      lastError = error
+      // Don't retry if the request was cancelled
+      if (axios.isCancel(error)) {
+        throw error
+      }
+      if (attempt < maxAttempts && isRetryableError(error)) {
+        await sleep(retryDelayMs)
+        continue
+      }
       break
     }
   }

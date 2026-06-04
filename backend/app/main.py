@@ -37,6 +37,10 @@ try:
             _db.commit()
         except Exception:
             _db.rollback()
+            
+        # Ensure any missing tables (like smart_import_jobs) are created
+        models.Base.metadata.create_all(bind=engine)
+        
         admin.migrate_page_visits(_db)
         try:
             existing_cols = set(
@@ -50,6 +54,12 @@ try:
             recruit_adds = []
             if "source_job_id" not in existing_cols:
                 recruit_adds.append("ADD COLUMN source_job_id VARCHAR(36)")
+            if "raw_data" not in existing_cols:
+                recruit_adds.append("ADD COLUMN raw_data TEXT")
+            if "metadata_json" not in existing_cols:
+                recruit_adds.append("ADD COLUMN metadata_json TEXT")
+            if "tags" not in existing_cols:
+                recruit_adds.append("ADD COLUMN tags TEXT")
             if recruit_adds:
                 _db.execute(text(f"ALTER TABLE recruiters {', '.join(recruit_adds)}"))
                 _db.commit()
@@ -65,6 +75,12 @@ try:
             company_adds = []
             if "source_job_id" not in existing_company_cols:
                 company_adds.append("ADD COLUMN source_job_id VARCHAR(36)")
+            if "raw_data" not in existing_company_cols:
+                company_adds.append("ADD COLUMN raw_data TEXT")
+            if "metadata_json" not in existing_company_cols:
+                company_adds.append("ADD COLUMN metadata_json TEXT")
+            if "tags" not in existing_company_cols:
+                company_adds.append("ADD COLUMN tags TEXT")
             if company_adds:
                 _db.execute(text(f"ALTER TABLE companies {', '.join(company_adds)}"))
                 _db.commit()
@@ -88,6 +104,27 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["X-Total-Count"],
 )
+
+from fastapi.responses import JSONResponse
+from fastapi import Request
+from sqlalchemy.exc import SQLAlchemyError
+import traceback
+
+@app.exception_handler(SQLAlchemyError)
+async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
+    logger.error(f"Database error on {request.url.path}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "A database error occurred.", "type": "database_error"}
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception on {request.url.path}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An unexpected error occurred.", "type": "internal_error"}
+    )
 
 app.include_router(recruiters.router, prefix="/recruiters", tags=["Recruiters"])
 app.include_router(import_engine.router, prefix="/api", tags=["Smart Import"])

@@ -43,6 +43,9 @@ class Company(Base):
     data_source  = Column(String(100), default="manual")
     trust_score  = Column(Integer, default=100)
     source_job_id = Column(String(36), index=True, nullable=True)
+    raw_data     = Column(Text, nullable=True)     # Original uploaded row (JSON string)
+    metadata_json= Column(Text, nullable=True)     # Extra dynamic attributes (JSON string)
+    tags         = Column(Text, nullable=True)     # Comma-separated tags or JSON list
     created_at   = Column(TIMESTAMP, server_default=func.now())
     updated_at   = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
     recruiters   = relationship("Recruiter", back_populates="company")
@@ -84,6 +87,9 @@ class Recruiter(Base):
     data_source      = Column(String(100), default="manual")
     trust_score      = Column(Integer, default=100)
     source_job_id    = Column(String(36), index=True, nullable=True)
+    raw_data         = Column(Text, nullable=True)     # Original uploaded row (JSON string)
+    metadata_json    = Column(Text, nullable=True)     # Extra dynamic attributes (JSON string)
+    tags             = Column(Text, nullable=True)     # Comma-separated tags or JSON list
     created_at       = Column(TIMESTAMP, server_default=func.now())
     updated_at       = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
     company          = relationship("Company", back_populates="recruiters")

@@ -30,12 +30,20 @@ class GlobalErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: 50, textAlign: 'center', color: 'var(--text-primary)' }}>
-          <h2 style={{ marginBottom: 16 }}>Oops, something went wrong.</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: 24 }}>A new version of the app may have been deployed.</p>
-          <button onClick={() => window.location.reload()} style={{ padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
-            Reload Page
-          </button>
+        <div style={{ padding: 50, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)', background: 'var(--main-bg)' }}>
+          <i className="ti ti-alert-triangle" style={{ fontSize: 48, color: 'var(--red)', marginBottom: 24 }}></i>
+          <h2 style={{ marginBottom: 16, fontSize: 24, fontWeight: 600 }}>Component Crashed</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: 32, maxWidth: 400, textAlign: 'center', lineHeight: 1.5 }}>
+            An unexpected error occurred while rendering this page. The system caught the error to prevent a full application crash.
+          </p>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <button onClick={() => window.location.href = '/'} style={{ padding: '10px 20px', background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)', borderRadius: 8, cursor: 'pointer', fontWeight: 500 }}>
+              Return to Dashboard
+            </button>
+            <button onClick={() => window.location.reload()} style={{ padding: '10px 20px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 500 }}>
+              Reload Page
+            </button>
+          </div>
         </div>
       )
     }

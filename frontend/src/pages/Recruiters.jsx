@@ -207,9 +207,9 @@ export default function Recruiters() {
     params.append('sort_desc', debouncedFilters.sort_desc === 'true' ? 'true' : 'false')
 
     api.get(`/recruiters/?${params.toString()}`).then(r => { 
-        setRecruiters(r.data.results)
-        setTotalCount(r.data.total_count)
-        setTotalPages(r.data.total_pages)
+        setRecruiters(r.data?.results || [])
+        setTotalCount(r.data?.total_count || 0)
+        setTotalPages(r.data?.total_pages || 1)
         setLoading(false) 
     }).catch(() => setLoading(false))
   }, [page, debouncedSearch, debouncedFilters])

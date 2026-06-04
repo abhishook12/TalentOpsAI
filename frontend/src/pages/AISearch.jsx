@@ -33,6 +33,113 @@ function badgeForMatch(matchType) {
   }
 }
 
+function parseLooseJson(value) {
+  if (!value) return null
+  if (typeof value === 'object') return value
+  try {
+    return JSON.parse(value)
+  } catch {
+    return null
+  }
+}
+
+function flattenValue(value) {
+  if (value == null) return []
+  if (Array.isArray(value)) {
+    return value.flatMap(flattenValue)
+  }
+  const text = String(value).trim()
+  if (!text) return []
+  return [text]
+}
+
+function dedupeValues(values, normalizer = (value) => value.toLowerCase()) {
+  const seen = new Set()
+  const deduped = []
+  values.forEach((value) => {
+    const normalized = normalizer(value)
+    if (!normalized || seen.has(normalized)) return
+    seen.add(normalized)
+    deduped.push(value)
+  })
+  return deduped
+}
+
+function collectContactValues(record, matcher) {
+  const raw = parseLooseJson(record?.raw_data) || {}
+  const metadata = parseLooseJson(record?.metadata_json) || {}
+  const buckets = [record || {}, raw, metadata]
+  const values = []
+
+  buckets.forEach((bucket) => {
+    Object.entries(bucket).forEach(([key, value]) => {
+      if (!matcher(key, value)) return
+      values.push(...flattenValue(value))
+    })
+  })
+
+  return values
+}
+
+function buildRecruiterInsight(record) {
+  if (!record) {
+    return { emails: [], phones: [], extras: [], createdAt: 'Not available', address: 'Not available' }
+  }
+
+  const emailValues = collectContactValues(
+    record,
+    (key, value) => /email|mail/i.test(String(key)) && String(value || '').includes('@')
+  )
+  const phoneValues = collectContactValues(
+    record,
+    (key, value) => /phone|mobile|cell|contact/i.test(String(key)) && String(value || '').trim()
+  )
+
+  const emails = dedupeValues(emailValues.map((value) => value.trim()).filter(Boolean))
+  const phones = dedupeValues(
+    phoneValues.map((value) => value.trim()).filter(Boolean),
+    (value) => value.replace(/[^\d+]/g, '')
+  )
+
+  const raw = parseLooseJson(record.raw_data) || {}
+  const metadata = parseLooseJson(record.metadata_json) || {}
+  const ignoredKeys = new Set([
+    'recruiter_name', 'name', 'full_name', 'email', 'email2', 'work_email', 'personal_email',
+    'phone', 'phone2', 'mobile', 'cell', 'contact', 'linkedin', 'specialization', 'title',
+    'company', 'company_name', 'location', 'state', 'city', 'address', 'notes',
+  ])
+
+  const extras = []
+  ;[raw, metadata].forEach((bucket) => {
+    Object.entries(bucket).forEach(([key, value]) => {
+      if (ignoredKeys.has(String(key).toLowerCase())) return
+      const flattened = flattenValue(value).join(', ').trim()
+      if (!flattened) return
+      extras.push({
+        key: String(key).replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim(),
+        value: flattened,
+      })
+    })
+  })
+
+  const createdAt = record.created_at
+    ? new Date(record.created_at).toLocaleString()
+    : 'Not available'
+
+  const address = [record.location, record.state].filter((part) => part && String(part).trim()).join(', ') || 'Not available'
+
+  return {
+    emails,
+    phones,
+    extras: dedupeValues(extras.map((item) => `${item.key}::${item.value}`)).map((item) => {
+      const [key, value] = item.split('::')
+      return { key, value }
+    }),
+    createdAt,
+    address,
+  }
+}
+
 function iconButtonStyle(disabled = false) {
   return {
     width: 34,
@@ -130,6 +237,8 @@ export default function AISearch() {
     () => results.find((r) => r.recruiter_id === selectedId) || null,
     [results, selectedId]
   )
+
+  const selectedInsight = useMemo(() => buildRecruiterInsight(selected), [selected])
 
   useEffect(() => {
     if (!editOpen) return
@@ -609,7 +718,23 @@ export default function AISearch() {
               >
                 <i className="ti ti-edit" />
               </button>
-              <button onClick={() => { if(selected) { navigator.clipboard.writeText(`${selected.recruiter_name} - ${selected.email} - ${selected.phone}`); setToast('Profile copied to clipboard') } }} style={iconButtonStyle(!selected)} title="Copy Profile" disabled={!selected}>
+              <button
+                onClick={() => {
+                  if (!selected) return
+                  const payload = [
+                    selected.recruiter_name,
+                    `Emails: ${selectedInsight.emails.join(', ') || safe(selected.email)}`,
+                    `Phones: ${selectedInsight.phones.join(', ') || safe(selected.phone)}`,
+                    `Company: ${safe(selected.company_name)}`,
+                    `Address: ${selectedInsight.address}`,
+                  ].join(' | ')
+                  navigator.clipboard.writeText(payload)
+                  setToast('Profile copied to clipboard')
+                }}
+                style={iconButtonStyle(!selected)}
+                title="Copy Profile"
+                disabled={!selected}
+              >
                 <i className="ti ti-copy" />
               </button>
               
@@ -666,16 +791,36 @@ export default function AISearch() {
                 <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>Contact info</div>
                 <div style={{ display: 'grid', gap: 10 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Email</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(selected.email)}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Emails</div>
+                    <div style={{ display: 'grid', gap: 6 }}>
+                      {selectedInsight.emails.length ? selectedInsight.emails.map((email, index) => (
+                        <div key={`${email}-${index}`} style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {index + 1}. {email}
+                        </div>
+                      )) : (
+                        <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700 }}>{safe(selected.email)}</div>
+                      )}
+                    </div>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Phone</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(selected.phone)}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Phones</div>
+                    <div style={{ display: 'grid', gap: 6 }}>
+                      {selectedInsight.phones.length ? selectedInsight.phones.map((phone, index) => (
+                        <div key={`${phone}-${index}`} style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {index + 1}. {phone}
+                        </div>
+                      )) : (
+                        <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700 }}>{safe(selected.phone)}</div>
+                      )}
+                    </div>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>LinkedIn</div>
                     <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(selected.linkedin)}</div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Created</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700 }}>{selectedInsight.createdAt}</div>
                   </div>
                 </div>
               </div>
@@ -689,8 +834,8 @@ export default function AISearch() {
                     <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(selected.company_name)}</div>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Location</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(selected.location)}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Address</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedInsight.address}</div>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -701,6 +846,26 @@ export default function AISearch() {
                       </div>
                     ))}
                   </div>
+                </div>
+              </div>
+
+              <div style={{ border: '1px solid var(--card-border)', borderRadius: 14, padding: 12, background: 'var(--card-bg)' }}>
+                <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>Notes & captured details</div>
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {selected?.notes ? (
+                    <div style={{ fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.6 }}>
+                      {selected.notes}
+                    </div>
+                  ) : null}
+                  {selectedInsight.extras.length ? selectedInsight.extras.map((item, index) => (
+                    <div key={`${item.key}-${index}`} style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 10, alignItems: 'start' }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'capitalize' }}>{item.key}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.5 }}>{item.value}</div>
+                    </div>
+                  )) : null}
+                  {!selected?.notes && !selectedInsight.extras.length ? (
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>No additional captured details available.</div>
+                  ) : null}
                 </div>
               </div>
             </div>

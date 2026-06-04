@@ -89,18 +89,6 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
     error_count = 0
     dup_count = 0
     
-    # Caches for advanced deduplication
-    existing_emails = {e[0].lower() for e in db.query(Recruiter.email).filter(Recruiter.email.isnot(None)).all() if e[0]}
-    existing_phones = {clean_phone(p[0]) for p in db.query(Recruiter.phone).filter(Recruiter.phone.isnot(None)).all() if p[0] and clean_phone(p[0])}
-    existing_linkedin = {l[0].lower().strip() for l in db.query(Recruiter.linkedin).filter(Recruiter.linkedin.isnot(None)).all() if l[0]}
-    
-    # Pre-fetch companies for name+company dedupe
-    existing_rec_comps = db.query(Recruiter.recruiter_name, Company.company_name).outerjoin(Company, Recruiter.company_id == Company.company_id).all()
-    existing_name_company = set()
-    for name, comp in existing_rec_comps:
-        if name and comp:
-            existing_name_company.add((name.strip().title(), comp.strip().title()))
-    
     email_col = column_mapping.get("email")
     name_col = column_mapping.get("name")
     company_col = column_mapping.get("company")
@@ -109,6 +97,35 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
     location_col = column_mapping.get("location")
     linkedin_col = column_mapping.get("linkedin")
     title_col = column_mapping.get("title")
+
+    # 1. Gather all unique keys from the uploaded batch to batch-fetch existing records
+    emails_to_check = set()
+    phones_to_check = set()
+    names_to_check = set()
+    for r in rows:
+        raw = json.loads(r.raw_json)
+        e = str(raw.get(email_col, "")).strip().lower()
+        if "](mailto:" in e:
+            m = re.search(r'\]\(mailto:(.*?)\)', e)
+            if m: e = m.group(1)
+        if e: emails_to_check.add(e)
+        
+        p = clean_phone(str(raw.get(phone_col, "")))
+        if p: phones_to_check.add(p)
+        
+        n = str(raw.get(name_col, "")).strip().title()
+        if n: names_to_check.add(n)
+        
+    # 2. Fetch only matching records from DB
+    existing_by_email = {er.email.lower(): er for er in db.query(Recruiter).filter(Recruiter.email.in_(emails_to_check)).all()} if emails_to_check else {}
+    existing_by_phone = {er.phone: er for er in db.query(Recruiter).filter(Recruiter.phone.in_(phones_to_check)).all()} if phones_to_check else {}
+    
+    existing_by_name_comp = {}
+    if names_to_check:
+        matching_names = db.query(Recruiter).outerjoin(Company, Recruiter.company_id == Company.company_id).filter(Recruiter.recruiter_name.in_(names_to_check)).all()
+        for er in matching_names:
+            if er.recruiter_name and er.company and er.company.company_name:
+                existing_by_name_comp[(er.recruiter_name.strip().title(), er.company.company_name.strip().title())] = er
 
     for r in rows:
         raw = json.loads(r.raw_json)
@@ -123,7 +140,6 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
         raw_state = str(raw.get(state_col, "")).strip() if state_col else ""
         raw_location = str(raw.get(location_col, "")).strip() if location_col else ""
         
-        # Remove Markdown Links from email e.g. [a@b.com](mailto:a@b.com)
         if "](mailto:" in raw_email:
             m = re.search(r'\]\(mailto:(.*?)\)', raw_email)
             if m: raw_email = m.group(1)
@@ -140,6 +156,24 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
         r.linkedin = str(raw.get(linkedin_col, "")).strip() if linkedin_col else None
         r.title = str(raw.get(title_col, "")).strip() if title_col else None
         
+        # Determine Match
+        match_er = None
+        match_reason = None
+        
+        if r.email and r.email.lower() in existing_by_email:
+            match_er = existing_by_email[r.email.lower()]
+            match_reason = "email"
+        elif r.phone and r.phone in existing_by_phone:
+            match_er = existing_by_phone[r.phone]
+            # check if same person or different
+            if r.recruiter_name and match_er.recruiter_name and r.recruiter_name.title() != match_er.recruiter_name.title():
+                match_reason = "phone_diff_person"
+            else:
+                match_reason = "phone"
+        elif r.recruiter_name and r.company_name and (r.recruiter_name.title(), r.company_name.title()) in existing_by_name_comp:
+            match_er = existing_by_name_comp[(r.recruiter_name.title(), r.company_name.title())]
+            match_reason = "name_comp_diff_email"
+            
         # Validation Logic
         if not r.email:
             issues.append("Missing email")
@@ -147,27 +181,38 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
         elif "@" not in r.email or "." not in r.email:
             issues.append("Invalid email format")
             status = "Error"
-        elif r.email.lower() in existing_emails:
-            issues.append("Duplicate email in database")
-            status = "Duplicate"
-        elif r.phone and r.phone in existing_phones:
-            issues.append("Duplicate phone in database")
-            status = "Duplicate"
-        elif r.linkedin and r.linkedin.lower().strip() in existing_linkedin:
-            issues.append("Duplicate LinkedIn in database")
-            status = "Duplicate"
-        elif r.recruiter_name and r.company_name and (r.recruiter_name.title(), r.company_name.title()) in existing_name_company:
-            issues.append("Duplicate Name+Company in database")
-            status = "Duplicate"
+        elif match_reason == "email" or match_reason == "phone":
+            status = "Enrich"
+            enriched_fields = []
+            if r.phone and not match_er.phone: enriched_fields.append("+phone")
+            if r.title and not match_er.title: enriched_fields.append("+title")
+            if r.location and not match_er.location: enriched_fields.append("+location")
+            if r.linkedin and not match_er.linkedin: enriched_fields.append("+linkedin")
+            if r.company_name and not match_er.company_id: enriched_fields.append("+company")
+            
+            # Check for alternate emails/phones in metadata
+            mapped_keys = [k for k in column_mapping.values() if k and isinstance(k, str)]
+            metadata = {k: v for k, v in raw.items() if k not in mapped_keys and v is not None and str(v).strip() != ""}
+            for k, v in metadata.items():
+                kl = k.lower()
+                if "email" in kl and str(v).strip().lower() != (match_er.email or "").lower() and not match_er.email2:
+                    enriched_fields.append("+email2")
+                    break
+            
+            if enriched_fields:
+                issues.append(f"Will enrich existing with: {', '.join(enriched_fields)}")
+            else:
+                issues.append("Will merge (no new core fields)")
+        elif match_reason in ["phone_diff_person", "name_comp_diff_email"]:
+            status = "Possible Duplicate"
+            issues.append("Possible Duplicate - Needs Review")
             
         if not r.recruiter_name and r.email:
-            # Auto-generate name from email
             r.recruiter_name = r.email.split("@")[0].replace(".", " ").title()
             issues.append("Name generated from email")
             if status == "Ready": status = "Warning"
             
         if not r.company_name and r.email:
-            # Auto-generate company from email domain
             domain = r.email.split("@")[-1].split(".")[0].title()
             if domain not in ("Gmail", "Yahoo", "Hotmail", "Outlook", "Aol", "Icloud"):
                 r.company_name = domain
@@ -177,12 +222,12 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
         r.status = status
         r.validation_issues = json.dumps(issues)
         
-        if status == "Ready" or status == "Warning":
+        if status in ["Ready", "Warning", "Possible Duplicate"]:
             valid_count += 1
+        elif status == "Enrich":
+            dup_count += 1 # We count enrichments as duplicates in the overall tally
         elif status == "Error":
             error_count += 1
-        elif status == "Duplicate":
-            dup_count += 1
 
     job.valid_rows = valid_count
     job.error_rows = error_count
@@ -215,48 +260,81 @@ def process_commit(job_id: str):
     skipped = 0
     
     for i, r in enumerate(rows):
-        if r.status in ["Ready", "Warning"]:
-            # Check duplicate again just in case (e.g. against rows just inserted in this loop)
-            if not db.query(Recruiter).filter(Recruiter.email == r.email).first():
-                # Process Company
-                company_id = None
-                if r.company_name:
-                    norm_comp = normalize_text(r.company_name)
-                    if norm_comp in company_cache:
-                        company_id = company_cache[norm_comp].company_id
-                    else:
-                        new_comp = Company(
-                            company_name=r.company_name,
-                            normalized_company_name=norm_comp,
-                            location=r.location,
-                            state=r.state,
-                            is_active=True,
-                            data_source="smart_import",
-                            source_job_id=job_id
-                        )
-                        db.add(new_comp)
-                        db.commit()
-                        db.refresh(new_comp)
-                        company_cache[norm_comp] = new_comp
-                        company_id = new_comp.company_id
+        if r.status in ["Ready", "Warning", "Possible Duplicate", "Enrich"]:
+            # Process Company
+            company_id = None
+            if r.company_name:
+                norm_comp = normalize_text(r.company_name)
+                if norm_comp in company_cache:
+                    company_id = company_cache[norm_comp].company_id
+                else:
+                    new_comp = Company(
+                        company_name=r.company_name,
+                        normalized_company_name=norm_comp,
+                        location=r.location,
+                        state=r.state,
+                        is_active=True,
+                        data_source="smart_import",
+                        source_job_id=job_id
+                    )
+                    db.add(new_comp)
+                    db.commit()
+                    db.refresh(new_comp)
+                    company_cache[norm_comp] = new_comp
+                    company_id = new_comp.company_id
 
-                # Preserve metadata (unknown columns)
-                raw_dict = json.loads(r.raw_json)
-                metadata = {k: v for k, v in raw_dict.items() if k not in mapped_keys and v is not None and str(v).strip() != ""}
-                metadata_json = json.dumps(metadata) if metadata else None
+            # Preserve metadata (unknown columns)
+            raw_dict = json.loads(r.raw_json)
+            metadata = {k: v for k, v in raw_dict.items() if k not in mapped_keys and v is not None and str(v).strip() != ""}
+            
+            # Extract alternative emails/phones from metadata
+            email2 = None
+            phone2 = None
+            for k, v in metadata.items():
+                key_lower = k.lower()
+                if "email" in key_lower and not email2 and str(v).strip().lower() != (r.email or "").lower():
+                    email2 = str(v).strip()
+                elif ("phone" in key_lower or "mobile" in key_lower or "cell" in key_lower) and not phone2:
+                    cp = clean_phone(str(v))
+                    if cp and cp != r.phone:
+                        phone2 = cp
+                        
+            metadata_json = json.dumps(metadata) if metadata else None
+            
+            if r.status == "Enrich":
+                # Find existing recruiter and merge data
+                existing = None
+                if r.email:
+                    existing = db.query(Recruiter).filter(Recruiter.email == r.email).first()
+                if not existing and r.phone:
+                    existing = db.query(Recruiter).filter(Recruiter.phone == r.phone).first()
                 
-                # Extract alternative emails/phones from metadata
-                email2 = None
-                phone2 = None
-                for k, v in metadata.items():
-                    key_lower = k.lower()
-                    if "email" in key_lower and not email2 and str(v).strip().lower() != (r.email or "").lower():
-                        email2 = str(v).strip()
-                    elif ("phone" in key_lower or "mobile" in key_lower or "cell" in key_lower) and not phone2:
-                        cp = clean_phone(str(v))
-                        if cp and cp != r.phone:
-                            phone2 = cp
-
+                if existing:
+                    # Enrich missing core fields
+                    if not existing.phone and r.phone: existing.phone = r.phone
+                    if not existing.title and r.title:
+                        existing.title = r.title
+                        existing.specialization = r.title
+                    if not existing.location and r.location: existing.location = r.location
+                    if not existing.state and r.state: existing.state = r.state
+                    if not existing.linkedin and r.linkedin: existing.linkedin = r.linkedin
+                    if not existing.company_id and company_id: existing.company_id = company_id
+                    
+                    if email2 and not existing.email2: existing.email2 = email2
+                    if phone2 and not existing.phone2: existing.phone2 = phone2
+                    
+                    # Merge metadata
+                    if metadata:
+                        existing_meta = json.loads(existing.metadata_json) if existing.metadata_json else {}
+                        existing_meta.update(metadata)
+                        existing.metadata_json = json.dumps(existing_meta)
+                        
+                    inserted += 1 # Count as successful import/update
+            else:
+                # Insert new recruiter (Ready, Warning, Possible Duplicate)
+                needs_review = (r.status == "Possible Duplicate")
+                notes = "[Possible Duplicate] Uploaded with matching details to an existing profile." if needs_review else None
+                
                 rec = Recruiter(
                     recruiter_name=r.recruiter_name,
                     normalized_recruiter_name=normalize_text(r.recruiter_name) if r.recruiter_name else None,
@@ -274,17 +352,16 @@ def process_commit(job_id: str):
                     data_source="smart_import",
                     source_job_id=job_id,
                     raw_data=r.raw_json,
-                    metadata_json=metadata_json
+                    metadata_json=metadata_json,
+                    needs_review=needs_review,
+                    notes=notes
                 )
                 db.add(rec)
                 inserted += 1
                 
-                # Chunked commits
-                if inserted % 500 == 0:
-                    db.commit()
-            else:
-                skipped += 1
-                r.status = "Duplicate"
+            # Chunked commits
+            if inserted % 500 == 0:
+                db.commit()
         else:
             skipped += 1
             

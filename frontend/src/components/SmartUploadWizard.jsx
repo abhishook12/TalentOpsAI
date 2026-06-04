@@ -298,13 +298,19 @@ export default function SmartUploadWizard() {
     const colors = {
       'Ready': { bg: 'rgba(15,110,86,0.1)', color: '#0F6E56' },
       'Warning': { bg: 'rgba(186,117,23,0.1)', color: '#BA7517' },
+      'Enrich': { bg: 'rgba(24,95,165,0.1)', color: '#185FA5' },
+      'Possible Duplicate': { bg: 'rgba(186,117,23,0.1)', color: '#BA7517' },
       'Duplicate': { bg: 'rgba(186,117,23,0.1)', color: '#BA7517' },
       'Error': { bg: 'rgba(196,57,74,0.1)', color: '#C4394A' },
     }
     const style = colors[status] || { bg: '#eee', color: '#666' }
+    let displayStatus = status
+    if (status === 'Enrich') displayStatus = 'Duplicate - Will Enrich'
+    if (status === 'Possible Duplicate') displayStatus = 'Possible Duplicate - Needs Review'
+
     return (
       <span style={{ padding: '4px 8px', borderRadius: 12, fontSize: 10, fontWeight: 600, background: style.bg, color: style.color }}>
-        {status}
+        {displayStatus}
       </span>
     )
   }
@@ -393,9 +399,9 @@ export default function SmartUploadWizard() {
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Errors</div>
                 <div style={{ fontSize: 24, fontWeight: 700, color: '#C4394A' }}>{previewData.job.error_rows}</div>
               </div>
-              <div style={{ padding: 16, background: 'var(--main-bg)', border: '1px solid var(--card-border)', borderRadius: 10, borderLeft: '4px solid #BA7517' }}>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Duplicates</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: '#BA7517' }}>{previewData.job.duplicate_rows}</div>
+              <div style={{ padding: 16, background: 'var(--main-bg)', border: '1px solid var(--card-border)', borderRadius: 10, borderLeft: '4px solid #185FA5' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Enrich / Merge</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: '#185FA5' }}>{previewData.job.duplicate_rows}</div>
               </div>
             </div>
 

@@ -107,6 +107,8 @@ export default function SmartUploadWizard() {
   const [sampleData, setSampleData] = useState([])
   const [columnMap, setColumnMap] = useState({})
   const [confidences, setConfidences] = useState({})
+  const [detectedFormat, setDetectedFormat] = useState('standard_row')
+  const [formatConfidence, setFormatConfidence] = useState(100)
   
   // Preview state
   const [previewData, setPreviewData] = useState(null)
@@ -156,7 +158,9 @@ export default function SmartUploadWizard() {
       }
       setColumnMap(newMap)
       setConfidences(newConf)
-      setStep('mapping')
+      setDetectedFormat(res.data.detected_format || 'standard_row')
+      setFormatConfidence(res.data.format_confidence || 100)
+      setStep('format_review')
       return
     } catch (e) {
       console.warn('New smart import endpoint unavailable; falling back to legacy ETL.', e)
@@ -188,7 +192,7 @@ export default function SmartUploadWizard() {
     }
     setStep('validating')
     try {
-      await api.post(`/api/import/validate/${jobId}`, { mapping: columnMap })
+      await api.post(`/api/import/validate/${jobId}`, { mapping: columnMap, format: detectedFormat })
       pollPreview()
     } catch (e) {
       setError(getErrorMessage(e, 'Validation failed'))
@@ -344,6 +348,51 @@ export default function SmartUploadWizard() {
             <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>Drop your data file here</p>
             <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>Supports .csv, .xlsx, .xls (Up to 100k rows)</p>
             <input ref={inputRef} type="file" accept=".csv,.xlsx,.xls" style={{ display: 'none' }} onChange={e => handleFileUpload(e.target.files[0])} />
+          </div>
+        )}
+
+        {/* STEP 1.5: FORMAT REVIEW */}
+        {step === 'format_review' && (
+          <div>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>Verify Data Structure</h3>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 20 }}>
+              Our engine analyzed the file and detected the following structure.
+            </p>
+
+            <div style={{ background: 'var(--main-bg)', padding: '16px 20px', borderRadius: 12, border: '1px solid var(--card-border)', marginBottom: 24 }}>
+               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Detected Format</div>
+                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Confidence: <strong style={{ color: formatConfidence > 80 ? '#0F6E56' : '#BA7517' }}>{formatConfidence}%</strong></div>
+               </div>
+               
+               <select 
+                 value={detectedFormat}
+                 onChange={e => setDetectedFormat(e.target.value)}
+                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)', fontSize: 13, cursor: 'pointer' }}
+               >
+                 <option value="standard_row">Standard Row (1 row = 1 recruiter)</option>
+                 <option value="vertical_multi_value">Vertical Multi-Value (Rows grouped by Name/Company)</option>
+                 <option value="wide_multi_column">Wide Multi-Column (Multiple email/phone columns)</option>
+                 <option value="company_first">Company First (Company precedes Name)</option>
+                 <option value="linkedin_text">LinkedIn Copied Text</option>
+                 <option value="company_block">Company Block Format</option>
+                 <option value="unknown_mixed">Unknown / Messy Mixed</option>
+               </select>
+               
+               <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 12, lineHeight: 1.5 }}>
+                 {detectedFormat === 'vertical_multi_value' && "Rows will be merged by Name and Company. Select this if contact fields are split across multiple rows."}
+                 {detectedFormat === 'standard_row' && "A standard CSV/Excel layout where each row represents exactly one complete person profile."}
+                 {detectedFormat === 'wide_multi_column' && "Our engine will automatically extract multiple contact points into the single profile."}
+                 {detectedFormat === 'linkedin_text' && "We will parse vertical text blocks using AI extraction."}
+                 {detectedFormat === 'unknown_mixed' && "Safest mode. We will extract what we can and flag uncertain rows for manual review."}
+               </p>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button onClick={() => setStep('mapping')} style={{ background: '#534AB7', color: '#fff', border: 'none', padding: '8px 20px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
+                Confirm Format & Map Columns <i className="ti ti-arrow-right" style={{ marginLeft: 6 }} />
+              </button>
+            </div>
           </div>
         )}
 

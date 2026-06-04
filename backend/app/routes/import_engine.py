@@ -11,6 +11,7 @@ from datetime import datetime
 from app.database import get_db
 from app.models.models import SmartImportJob, SmartImportRow, Recruiter, ActionLog
 from app.services.import_service import detect_smart_columns, validate_and_save_rows, process_commit, generate_excel_from_rows
+from app.services.format_detector import detect_format
 
 router = APIRouter(prefix="/import", tags=["import"])
 
@@ -40,6 +41,9 @@ async def parse_file(request: Request, file: UploadFile = File(...), db: Session
     sample_data = df.head(5).to_dict(orient="records")
     mapping_suggestions = detect_smart_columns(headers, sample_data)
     
+    # 2. Format Detection
+    format_info = detect_format(df)
+    
     # Create Job
     job_id = str(uuid.uuid4())
     job = SmartImportJob(
@@ -47,7 +51,9 @@ async def parse_file(request: Request, file: UploadFile = File(...), db: Session
         filename=file.filename,
         status="mapping",
         total_rows=len(df),
-        user_email=request.headers.get("X-User-Email", "System")
+        user_email=request.headers.get("X-User-Email", "System"),
+        detected_format=format_info["detected_format"],
+        format_confidence=format_info["confidence"]
     )
     db.add(job)
     
@@ -71,7 +77,9 @@ async def parse_file(request: Request, file: UploadFile = File(...), db: Session
         "total_rows": len(df),
         "headers": headers,
         "mapping_suggestions": mapping_suggestions,
-        "sample_data": sample_data
+        "sample_data": sample_data,
+        "detected_format": format_info["detected_format"],
+        "format_confidence": format_info["confidence"]
     }
 
 @router.post("/validate/{job_id}")
@@ -80,7 +88,11 @@ async def validate_mapping(job_id: str, payload: dict, background_tasks: Backgro
     if not job: raise HTTPException(status_code=404, detail="Job not found")
     
     column_mapping = payload.get("mapping", {})
+    override_format = payload.get("format")
+    
     job.column_mapping = json.dumps(column_mapping)
+    if override_format:
+        job.detected_format = override_format
     job.status = "validating"
     db.commit()
     

@@ -127,7 +127,63 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
             if er.recruiter_name and er.company and er.company.company_name:
                 existing_by_name_comp[(er.recruiter_name.strip().title(), er.company.company_name.strip().title())] = er
 
+    # If vertical format, group rows
+    if job.detected_format == "vertical_multi_value":
+        # Group by name + company
+        headers = list(json.loads(rows[0].raw_json).keys()) if rows else []
+        type_col = next((c for c in headers if 'type' in c.lower()), None)
+        val_col = next((c for c in headers if 'value' in c.lower()), None)
+        
+        grouped = {}
+        for r in rows:
+            raw = json.loads(r.raw_json)
+            n = str(raw.get(name_col, "")).strip().title() if name_col else ""
+            c = str(raw.get(company_col, "")).strip() if company_col else ""
+            key = (n, c)
+            
+            if key not in grouped:
+                grouped[key] = {"primary_row": r, "merged_rows": [], "combined": raw.copy(), "all_emails": [], "all_phones": [], "unmapped": {}}
+            else:
+                grouped[key]["merged_rows"].append(r)
+                r.status = "Merged"
+            
+            if type_col and val_col:
+                f_type = str(raw.get(type_col, "")).lower().strip()
+                f_val = str(raw.get(val_col, "")).strip()
+                if not f_val: continue
+                
+                if 'email' in f_type:
+                    grouped[key]["all_emails"].append(f_val)
+                    if not email_col: email_col = "__extracted_email"
+                elif 'phone' in f_type or 'mobile' in f_type:
+                    grouped[key]["all_phones"].append(f_val)
+                    if not phone_col: phone_col = "__extracted_phone"
+                elif 'title' in f_type:
+                    if not title_col: title_col = "__extracted_title"
+                    grouped[key]["combined"][title_col] = f_val
+                elif 'linkedin' in f_type:
+                    if not linkedin_col: linkedin_col = "__extracted_linkedin"
+                    grouped[key]["combined"][linkedin_col] = f_val
+                else:
+                    grouped[key]["unmapped"][f_type] = f_val
+                    
+        # Apply combined data back
+        for key, data in grouped.items():
+            if data["all_emails"]:
+                data["combined"][email_col] = data["all_emails"][0]
+                if len(data["all_emails"]) > 1:
+                    data["combined"]["__email2"] = data["all_emails"][1]
+            if data["all_phones"]:
+                data["combined"][phone_col] = data["all_phones"][0]
+                if len(data["all_phones"]) > 1:
+                    data["combined"]["__phone2"] = data["all_phones"][1]
+            data["combined"]["__unmapped_fields"] = data["unmapped"]
+            data["primary_row"].raw_json = json.dumps(data["combined"])
+
     for r in rows:
+        if r.status == "Merged":
+            continue
+        
         raw = json.loads(r.raw_json)
         issues = []
         status = "Ready"
@@ -190,14 +246,18 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
             if r.linkedin and not match_er.linkedin: enriched_fields.append("+linkedin")
             if r.company_name and not match_er.company_id: enriched_fields.append("+company")
             
-            # Check for alternate emails/phones in metadata
+            # Check for alternate emails/phones in metadata or injected fields
+            if "__email2" in raw and not match_er.email2: enriched_fields.append("+email2")
+            if "__phone2" in raw and not match_er.phone2: enriched_fields.append("+phone2")
+            
             mapped_keys = [k for k in column_mapping.values() if k and isinstance(k, str)]
-            metadata = {k: v for k, v in raw.items() if k not in mapped_keys and v is not None and str(v).strip() != ""}
+            metadata = {k: v for k, v in raw.items() if k not in mapped_keys and not k.startswith("__") and v is not None and str(v).strip() != ""}
             for k, v in metadata.items():
                 kl = k.lower()
                 if "email" in kl and str(v).strip().lower() != (match_er.email or "").lower() and not match_er.email2:
-                    enriched_fields.append("+email2")
-                    break
+                    if "+email2" not in enriched_fields: enriched_fields.append("+email2")
+                elif ("phone" in kl or "mobile" in kl) and clean_phone(str(v)) != match_er.phone and not match_er.phone2:
+                    if "+phone2" not in enriched_fields: enriched_fields.append("+phone2")
             
             if enriched_fields:
                 issues.append(f"Will enrich existing with: {', '.join(enriched_fields)}")
@@ -206,6 +266,11 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
         elif match_reason in ["phone_diff_person", "name_comp_diff_email"]:
             status = "Possible Duplicate"
             issues.append("Possible Duplicate - Needs Review")
+            
+        if job.detected_format in ["linkedin_text", "unknown_mixed"]:
+            if not r.recruiter_name or not r.email:
+                status = "Possible Duplicate"
+                issues.append("Needs Review - Uncertain extraction")
             
         if not r.recruiter_name and r.email:
             r.recruiter_name = r.email.split("@")[0].replace(".", " ").title()
@@ -285,11 +350,13 @@ def process_commit(job_id: str):
 
             # Preserve metadata (unknown columns)
             raw_dict = json.loads(r.raw_json)
-            metadata = {k: v for k, v in raw_dict.items() if k not in mapped_keys and v is not None and str(v).strip() != ""}
+            metadata = {k: v for k, v in raw_dict.items() if k not in mapped_keys and not k.startswith("__") and v is not None and str(v).strip() != ""}
+            if "__unmapped_fields" in raw_dict:
+                metadata.update(raw_dict["__unmapped_fields"])
             
             # Extract alternative emails/phones from metadata
-            email2 = None
-            phone2 = None
+            email2 = raw_dict.get("__email2")
+            phone2 = raw_dict.get("__phone2")
             for k, v in metadata.items():
                 key_lower = k.lower()
                 if "email" in key_lower and not email2 and str(v).strip().lower() != (r.email or "").lower():

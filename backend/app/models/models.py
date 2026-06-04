@@ -233,6 +233,8 @@ class SmartImportJob(Base):
     completed_at = Column(TIMESTAMP, nullable=True)
     user_email = Column(String(150), nullable=True)
     column_mapping = Column(Text, nullable=True) # JSON string of confirmed mapping
+    detected_format = Column(String(100), default="standard_row")
+    format_confidence = Column(Integer, default=100)
     
     rows = relationship("SmartImportRow", back_populates="job", cascade="all, delete-orphan")
 

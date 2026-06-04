@@ -4,11 +4,13 @@ from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 import pandas as pd
 import io, csv, uuid, re
+from datetime import datetime
 from openpyxl import load_workbook
 from app.database import get_db
 from app.models.models import Candidate, Recruiter, UploadJob, ActionLog
 from app.utils.column_mapper import detect_columns
 from app.schemas.upload import AnalyzeResponse
+from app.services.job_tracker import serialize_upload_job
 
 router = APIRouter()
 
@@ -254,12 +256,16 @@ async def smart_import_async(
     new_job = UploadJob(
         job_id=job_id,
         filename=file.filename,
-        status="queued",
+        status="uploading",
+        current_step="Receiving file",
+        progress_percent=5,
+        file_size_bytes=len(contents),
         total_rows=0,
         processed_rows=0,
         inserted_rows=0,
         skipped_rows=0,
-        error_count=0
+        error_count=0,
+        last_heartbeat_at=datetime.utcnow() if hasattr(datetime, "utcnow") else None,
     )
     db.add(new_job)
 
@@ -287,27 +293,28 @@ async def smart_import_async(
 @router.get("/jobs")
 def get_jobs(db: Session = Depends(get_db)):
     jobs = db.query(UploadJob).order_by(UploadJob.started_at.desc()).limit(20).all()
-    return jobs
+    return [serialize_upload_job(job) for job in jobs]
+
+
+@router.get("/jobs/active")
+def get_active_jobs(db: Session = Depends(get_db)):
+    jobs = (
+        db.query(UploadJob)
+        .filter(UploadJob.status.in_(["queued", "uploading", "analyzing", "parsing", "mapping", "validating", "preview_ready", "importing", "processing"]))
+        .order_by(UploadJob.started_at.desc())
+        .limit(5)
+        .all()
+    )
+    return [serialize_upload_job(job) for job in jobs]
 
 @router.get("/jobs/{job_id}")
+@router.get("/jobs/{job_id}/status")
 def get_job_status(job_id: str, db: Session = Depends(get_db)):
     job = db.query(UploadJob).filter(UploadJob.job_id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    
-    job_dict = {
-        "job_id": job.job_id,
-        "filename": job.filename,
-        "status": job.status,
-        "total_rows": job.total_rows,
-        "processed_rows": job.processed_rows,
-        "inserted_rows": job.inserted_rows,
-        "skipped_rows": job.skipped_rows,
-        "error_count": job.error_count,
-        "started_at": job.started_at,
-        "completed_at": job.completed_at,
-        "errors": json.loads(job.errors) if job.errors else []
-    }
+    job_dict = serialize_upload_job(job)
+    job_dict["errors"] = json.loads(job.errors) if job.errors else []
     return job_dict
 
 @router.post("/jobs/{job_id}/retry")
@@ -346,11 +353,15 @@ async def retry_job(job_id: str, background_tasks: BackgroundTasks, db: Session 
         job_id=new_job_id,
         filename=old_job.filename,
         status="queued",
+        current_step="Queued for retry",
+        progress_percent=0,
+        file_size_bytes=old_job.file_size_bytes or 0,
         total_rows=len(df),
         processed_rows=0,
         inserted_rows=0,
         skipped_rows=0,
-        error_count=0
+        error_count=0,
+        last_heartbeat_at=datetime.utcnow() if hasattr(datetime, "utcnow") else None,
     )
     db.add(new_job)
     db.commit()

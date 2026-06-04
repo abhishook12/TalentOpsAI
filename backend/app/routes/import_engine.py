@@ -12,6 +12,7 @@ from app.database import get_db
 from app.models.models import SmartImportJob, SmartImportRow, Recruiter, ActionLog
 from app.services.import_service import detect_smart_columns, validate_and_save_rows, process_commit, generate_excel_from_rows
 from app.services.format_detector import detect_format
+from app.services.job_tracker import serialize_smart_job
 
 router = APIRouter(prefix="/import", tags=["import"])
 
@@ -50,7 +51,11 @@ async def parse_file(request: Request, file: UploadFile = File(...), db: Session
         job_id=job_id,
         filename=file.filename,
         status="mapping",
+        current_step="Analyzing file structure",
+        progress_percent=12,
+        file_size_bytes=len(contents),
         total_rows=len(df),
+        processed_rows=0,
         user_email=request.headers.get("X-User-Email", "System"),
         detected_format=format_info["detected_format"],
         format_confidence=format_info["confidence"]
@@ -94,6 +99,8 @@ async def validate_mapping(job_id: str, payload: dict, background_tasks: Backgro
     if override_format:
         job.detected_format = override_format
     job.status = "validating"
+    job.current_step = "Validating rows"
+    job.progress_percent = 35
     db.commit()
     
     # Background Validation
@@ -114,13 +121,7 @@ def get_preview(job_id: str, page: int = 1, limit: int = 50, filter_status: str 
     rows = q.order_by(SmartImportRow.original_row_index).offset((page - 1) * limit).limit(limit).all()
     
     return {
-        "job": {
-            "status": job.status,
-            "total_rows": job.total_rows,
-            "valid_rows": job.valid_rows,
-            "error_rows": job.error_rows,
-            "duplicate_rows": job.duplicate_rows,
-        },
+        "job": serialize_smart_job(job),
         "rows": [{
             "row_id": r.row_id,
             "index": r.original_row_index,
@@ -147,6 +148,8 @@ async def commit_import(job_id: str, background_tasks: BackgroundTasks, db: Sess
     if not job: raise HTTPException(status_code=404, detail="Job not found")
     
     job.status = "importing"
+    job.current_step = "Importing validated rows"
+    job.progress_percent = max(job.progress_percent or 0, 80)
     db.commit()
     
     # Background Commit
@@ -156,17 +159,27 @@ async def commit_import(job_id: str, background_tasks: BackgroundTasks, db: Sess
 @router.get("/history")
 def get_history(db: Session = Depends(get_db)):
     jobs = db.query(SmartImportJob).order_by(desc(SmartImportJob.started_at)).limit(50).all()
-    return [{
-        "job_id": j.job_id,
-        "filename": j.filename,
-        "status": j.status,
-        "total_rows": j.total_rows,
-        "inserted_rows": j.inserted_rows,
-        "skipped_rows": j.skipped_rows,
-        "error_rows": j.error_rows,
-        "started_at": j.started_at.isoformat() if j.started_at else None,
-        "user": j.user_email
-    } for j in jobs]
+    return [serialize_smart_job(j) for j in jobs]
+
+
+@router.get("/jobs/active")
+def get_active_jobs(db: Session = Depends(get_db)):
+    jobs = (
+        db.query(SmartImportJob)
+        .filter(SmartImportJob.status.in_(["mapping", "validating", "preview_ready", "importing"]))
+        .order_by(SmartImportJob.started_at.desc())
+        .limit(5)
+        .all()
+    )
+    return [serialize_smart_job(j) for j in jobs]
+
+
+@router.get("/jobs/{job_id}/status")
+def get_job_status(job_id: str, db: Session = Depends(get_db)):
+    job = db.query(SmartImportJob).filter(SmartImportJob.job_id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return serialize_smart_job(job)
 
 @router.get("/{job_id}/rejected")
 def download_rejected(job_id: str, db: Session = Depends(get_db)):

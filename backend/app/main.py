@@ -86,6 +86,48 @@ try:
             if company_adds:
                 _db.execute(text(f"ALTER TABLE companies {', '.join(company_adds)}"))
                 _db.commit()
+
+            def _ensure_columns(table_name: str, columns: dict[str, str]) -> None:
+                existing = set(
+                    row[0]
+                    for row in _db.execute(text("""
+                        SELECT column_name
+                        FROM information_schema.columns
+                        WHERE table_name = :table_name
+                    """), {"table_name": table_name}).all()
+                )
+                adds = [f"ADD COLUMN {column} {definition}" for column, definition in columns.items() if column not in existing]
+                if adds:
+                    _db.execute(text(f"ALTER TABLE {table_name} {', '.join(adds)}"))
+                    _db.commit()
+
+            _ensure_columns("upload_jobs", {
+                "current_step": "VARCHAR(100)",
+                "progress_percent": "INTEGER DEFAULT 0",
+                "file_size_bytes": "INTEGER DEFAULT 0",
+                "valid_rows": "INTEGER DEFAULT 0",
+                "warning_rows": "INTEGER DEFAULT 0",
+                "duplicate_rows": "INTEGER DEFAULT 0",
+                "possible_duplicate_rows": "INTEGER DEFAULT 0",
+                "enriched_rows": "INTEGER DEFAULT 0",
+                "failed_rows": "INTEGER DEFAULT 0",
+                "error_message": "TEXT",
+                "last_heartbeat_at": "TIMESTAMP",
+                "updated_at": "TIMESTAMP DEFAULT NOW()",
+            })
+            _ensure_columns("smart_import_jobs", {
+                "current_step": "VARCHAR(100)",
+                "progress_percent": "INTEGER DEFAULT 0",
+                "file_size_bytes": "INTEGER DEFAULT 0",
+                "processed_rows": "INTEGER DEFAULT 0",
+                "warning_rows": "INTEGER DEFAULT 0",
+                "possible_duplicate_rows": "INTEGER DEFAULT 0",
+                "enriched_rows": "INTEGER DEFAULT 0",
+                "failed_rows": "INTEGER DEFAULT 0",
+                "error_message": "TEXT",
+                "last_heartbeat_at": "TIMESTAMP",
+                "updated_at": "TIMESTAMP DEFAULT NOW()",
+            })
         except Exception as e:
             logger.warning("Import batch column migration warning: %s", e)
 except Exception as e:

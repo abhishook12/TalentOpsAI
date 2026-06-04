@@ -101,6 +101,7 @@ export default function SmartUploadWizard() {
   const [error, setError] = useState(null)
   const [backendFlavor, setBackendFlavor] = useState('auto') // auto, new, legacy
   const [sourceFile, setSourceFile] = useState(null)
+  const [uploadProgress, setUploadProgress] = useState(0)
   
   // Mapping state
   const [headers, setHeaders] = useState([])
@@ -116,23 +117,25 @@ export default function SmartUploadWizard() {
   
   const reset = () => {
     setStep('idle'); setJobId(null); setError(null); setColumnMap({}); setBackendFlavor('auto'); setSourceFile(null);
-    setPreviewData(null); setHeaders([]); setSampleData([]); setConfidences({});
+    setPreviewData(null); setHeaders([]); setSampleData([]); setConfidences({}); setUploadProgress(0)
     if(inputRef.current) inputRef.current.value = ''
   }
 
-  const parseWithNewEngine = async (file) => {
+  const parseWithNewEngine = async (file, onUploadProgress) => {
     const fd = new FormData()
     fd.append('file', file)
     return api.post('/api/import/parse', fd, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress,
     })
   }
 
-  const parseWithLegacyEngine = async (file) => {
+  const parseWithLegacyEngine = async (file, onUploadProgress) => {
     const fd = new FormData()
     fd.append('file', file)
     return api.post('/upload/analyze', fd, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress,
     })
   }
 
@@ -141,10 +144,15 @@ export default function SmartUploadWizard() {
     setFileName(file.name)
     setSourceFile(file)
     setStep('uploading')
+    setUploadProgress(0)
     setError(null)
 
     try {
-      const res = await parseWithNewEngine(file)
+      const res = await parseWithNewEngine(file, (event) => {
+        if (!event?.total) return
+        setUploadProgress(Math.max(0, Math.min(100, Math.round((event.loaded / event.total) * 100))))
+      })
+      setUploadProgress(100)
       setBackendFlavor('new')
       setJobId(res.data.job_id)
       setHeaders(res.data.headers || [])
@@ -167,7 +175,11 @@ export default function SmartUploadWizard() {
     }
 
     try {
-      const res = await parseWithLegacyEngine(file)
+      const res = await parseWithLegacyEngine(file, (event) => {
+        if (!event?.total) return
+        setUploadProgress(Math.max(0, Math.min(100, Math.round((event.loaded / event.total) * 100))))
+      })
+      setUploadProgress(100)
       setBackendFlavor('legacy')
       setHeaders(res.data.original_headers || [])
       setSampleData(res.data.preview || [])
@@ -179,7 +191,7 @@ export default function SmartUploadWizard() {
       )
       setPreviewData(buildLegacyPreview(res.data, res.data.column_map || {}))
       setStep('preview')
-    } catch (e) {
+      } catch (e) {
       setError(getErrorMessage(e, 'Failed to parse file with both import engines'))
       setStep('error')
     }
@@ -340,7 +352,19 @@ export default function SmartUploadWizard() {
       </div>
 
       <div style={{ padding: '20px 24px 24px' }}>
-        
+        {step === 'uploading' && (
+          <div style={{ marginBottom: 18, padding: '12px 14px', borderRadius: 12, background: 'var(--main-bg)', border: '1px solid var(--card-border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>Uploading file</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{uploadProgress}%</div>
+            </div>
+            <div style={{ height: 8, borderRadius: 999, background: 'rgba(148,163,184,0.18)', overflow: 'hidden' }}>
+              <div style={{ width: `${uploadProgress}%`, height: '100%', borderRadius: 999, background: 'linear-gradient(90deg, #534AB7, #185FA5)' }} />
+            </div>
+            <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--text-muted)' }}>Sending {fileName} to the server…</div>
+          </div>
+        )}
+
         {/* STEP 1: IDLE */}
         {step === 'idle' && (
           <div onClick={() => inputRef.current?.click()} style={{ border: '2px dashed var(--card-border)', borderRadius: 14, padding: '48px 24px', textAlign: 'center', cursor: 'pointer', background: 'var(--main-bg)', transition: 'all 0.2s' }}>

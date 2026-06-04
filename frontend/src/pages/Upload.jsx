@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import JobsHistory from '../components/JobsHistory'
 import SmartUploadWizard from '../components/SmartUploadWizard'
+import LiveUploadStatusPanel from '../components/LiveUploadStatusPanel'
 
 import api, { getErrorMessage } from '../services/api'
 
@@ -288,9 +289,15 @@ export default function Upload() {
 
   return (
     <div className="page-container">
-      <div style={{ marginBottom: 24 }}>
-        <h1 className="page-title">ETL & Upload Center</h1>
-        <p className="page-subtitle">Ingest, parse, and validate recruiter data from any source.</p>
+      <div style={{ marginBottom: 20 }}>
+        <div>
+          <h1 className="page-title">ETL & Upload Center</h1>
+          <p className="page-subtitle">Ingest, parse, and validate recruiter data from any source.</p>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 20 }}>
+        <LiveUploadStatusPanel />
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '1px solid var(--card-border)', paddingBottom: 16 }}>

@@ -7,6 +7,7 @@ import io
 
 from app.database import SessionLocal
 from app.models.models import SmartImportJob, SmartImportRow, Recruiter, Company
+from app.services.job_tracker import mark_progress, utc_now
 
 # Normalization Dictionaries
 STATE_MAP = {
@@ -84,10 +85,21 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
         return
 
     rows = db.query(SmartImportRow).filter(SmartImportRow.job_id == job_id).all()
+    mark_progress(
+        job,
+        status="validating",
+        current_step="Validating rows",
+        progress_percent=40,
+    )
+    db.commit()
     
     valid_count = 0
     error_count = 0
     dup_count = 0
+    warning_count = 0
+    enriched_count = 0
+    possible_duplicate_count = 0
+    processed_count = 0
     
     email_col = column_mapping.get("email")
     name_col = column_mapping.get("name")
@@ -184,6 +196,7 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
         if r.status == "Merged":
             continue
         
+        processed_count += 1
         raw = json.loads(r.raw_json)
         issues = []
         status = "Ready"
@@ -266,16 +279,19 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
         elif match_reason in ["phone_diff_person", "name_comp_diff_email"]:
             status = "Possible Duplicate"
             issues.append("Possible Duplicate - Needs Review")
+            possible_duplicate_count += 1
             
         if job.detected_format in ["linkedin_text", "unknown_mixed"]:
             if not r.recruiter_name or not r.email:
                 status = "Possible Duplicate"
                 issues.append("Needs Review - Uncertain extraction")
+                possible_duplicate_count += 1
             
         if not r.recruiter_name and r.email:
             r.recruiter_name = r.email.split("@")[0].replace(".", " ").title()
             issues.append("Name generated from email")
             if status == "Ready": status = "Warning"
+            warning_count += 1
             
         if not r.company_name and r.email:
             domain = r.email.split("@")[-1].split(".")[0].title()
@@ -283,6 +299,7 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
                 r.company_name = domain
                 issues.append("Company inferred from email")
                 if status == "Ready": status = "Warning"
+                warning_count += 1
 
         r.status = status
         r.validation_issues = json.dumps(issues)
@@ -291,13 +308,49 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
             valid_count += 1
         elif status == "Enrich":
             dup_count += 1 # We count enrichments as duplicates in the overall tally
+            enriched_count += 1
         elif status == "Error":
             error_count += 1
+
+        if processed_count % 200 == 0:
+            mark_progress(
+                job,
+                status="validating",
+                current_step=f"Validating rows {processed_count}/{len(rows)}",
+                progress_percent=40 if not len(rows) else min(75, 40 + int((processed_count / max(len(rows), 1)) * 35)),
+                processed_rows=processed_count,
+                valid_rows=valid_count,
+                warning_rows=warning_count,
+                error_rows=error_count,
+                duplicate_rows=dup_count,
+                possible_duplicate_rows=possible_duplicate_count,
+                enriched_rows=enriched_count,
+                failed_rows=error_count,
+            )
+            db.commit()
 
     job.valid_rows = valid_count
     job.error_rows = error_count
     job.duplicate_rows = dup_count
-    job.status = "preview"
+    job.warning_rows = warning_count
+    job.possible_duplicate_rows = possible_duplicate_count
+    job.enriched_rows = enriched_count
+    job.failed_rows = error_count
+    job.processed_rows = processed_count
+    mark_progress(
+        job,
+        status="preview_ready",
+        current_step="Preview ready",
+        progress_percent=78,
+        processed_rows=processed_count,
+        valid_rows=valid_count,
+        warning_rows=warning_count,
+        error_rows=error_count,
+        duplicate_rows=dup_count,
+        possible_duplicate_rows=possible_duplicate_count,
+        enriched_rows=enriched_count,
+        failed_rows=error_count,
+    )
     
     db.commit()
     db.close()
@@ -323,8 +376,10 @@ def process_commit(job_id: str):
     
     inserted = 0
     skipped = 0
+    processed = 0
     
     for i, r in enumerate(rows):
+        processed += 1
         if r.status in ["Ready", "Warning", "Possible Duplicate", "Enrich"]:
             # Process Company
             company_id = None
@@ -431,13 +486,34 @@ def process_commit(job_id: str):
                 db.commit()
         else:
             skipped += 1
+
+        if processed % 200 == 0:
+            mark_progress(
+                job,
+                status="importing",
+                current_step=f"Importing rows {processed}/{len(rows)}",
+                progress_percent=80 if not len(rows) else min(98, 80 + int((processed / max(len(rows), 1)) * 18)),
+                processed_rows=processed,
+                inserted_rows=inserted,
+                skipped_rows=skipped,
+            )
+            db.commit()
             
     db.commit()
     
     job.inserted_rows = inserted
     job.skipped_rows = skipped
-    job.status = "completed"
-    job.completed_at = datetime.utcnow()
+    job.processed_rows = processed
+    mark_progress(
+        job,
+        status="completed",
+        current_step="Import completed",
+        progress_percent=100,
+        processed_rows=processed,
+        inserted_rows=inserted,
+        skipped_rows=skipped,
+    )
+    job.completed_at = utc_now()
     
     db.commit()
     db.close()

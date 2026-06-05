@@ -150,35 +150,6 @@ export default function UpdateCenter() {
             </div>
           )}
 
-          <div style={{
-            minWidth: 190,
-            maxWidth: 230,
-            alignSelf: 'end',
-            background: 'var(--panel-bg)',
-            border: '1px solid var(--card-border)',
-            borderRadius: 14,
-            padding: '10px 12px',
-            boxShadow: 'var(--shadow-lg)',
-            color: 'var(--text-secondary)',
-          }}>
-            <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-              Platform Update
-            </div>
-            <div style={{ marginTop: 4, fontSize: 13.5, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2 }}>
-              {status.version}
-            </div>
-            <div style={{ marginTop: 3, fontSize: 11.5, color: 'var(--text-muted)' }}>
-              {updateTime}
-            </div>
-            <div style={{ marginTop: 5, fontSize: 11.5, color: 'var(--text-secondary)', lineHeight: 1.35 }}>
-              {compactSummary}
-            </div>
-            <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 7, height: 7, borderRadius: 99, background: color, boxShadow: `0 0 8px ${color}` }} />
-              <span style={{ fontSize: 11.5, fontWeight: 700, color }}>{status.status}</span>
-            </div>
-          </div>
-
           <button
             onClick={() => setOpen(true)}
             aria-label="Open update center"

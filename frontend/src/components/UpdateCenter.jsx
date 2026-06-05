@@ -107,12 +107,17 @@ export default function UpdateCenter() {
         onMouseLeave={() => setHover(false)}
       >
         <div style={{
+          position: 'relative',
           display: 'flex',
-          alignItems: 'stretch',
-          gap: 10,
+          alignItems: 'center',
+          justifyContent: 'flex-end',
         }}>
           {hover && (
             <div style={{
+              position: 'absolute',
+              bottom: '100%',
+              right: 0,
+              marginBottom: 12,
               background: 'var(--panel-bg)',
               border: '1px solid var(--card-border)',
               padding: '12px 14px',
@@ -123,6 +128,7 @@ export default function UpdateCenter() {
               color: 'var(--text-secondary)',
               minWidth: 280,
               maxWidth: 320,
+              zIndex: 100,
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 6, alignItems: 'baseline' }}>
                 <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>Latest Update</span>

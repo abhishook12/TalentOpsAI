@@ -42,50 +42,6 @@ try:
         
         admin.migrate_page_visits(_db)
         try:
-            existing_cols = set(
-                row[0]
-                for row in _db.execute(text("""
-                    SELECT column_name
-                    FROM information_schema.columns
-                    WHERE table_name = 'recruiters'
-                """)).all()
-            )
-            recruit_adds = []
-            if "source_job_id" not in existing_cols:
-                recruit_adds.append("ADD COLUMN source_job_id VARCHAR(36)")
-            if "raw_data" not in existing_cols:
-                recruit_adds.append("ADD COLUMN raw_data TEXT")
-            if "metadata_json" not in existing_cols:
-                recruit_adds.append("ADD COLUMN metadata_json TEXT")
-            if "tags" not in existing_cols:
-                recruit_adds.append("ADD COLUMN tags TEXT")
-            if "title" not in existing_cols:
-                recruit_adds.append("ADD COLUMN title VARCHAR(150)")
-            if recruit_adds:
-                _db.execute(text(f"ALTER TABLE recruiters {', '.join(recruit_adds)}"))
-                _db.commit()
-
-            existing_company_cols = set(
-                row[0]
-                for row in _db.execute(text("""
-                    SELECT column_name
-                    FROM information_schema.columns
-                    WHERE table_name = 'companies'
-                """)).all()
-            )
-            company_adds = []
-            if "source_job_id" not in existing_company_cols:
-                company_adds.append("ADD COLUMN source_job_id VARCHAR(36)")
-            if "raw_data" not in existing_company_cols:
-                company_adds.append("ADD COLUMN raw_data TEXT")
-            if "metadata_json" not in existing_company_cols:
-                company_adds.append("ADD COLUMN metadata_json TEXT")
-            if "tags" not in existing_company_cols:
-                company_adds.append("ADD COLUMN tags TEXT")
-            if company_adds:
-                _db.execute(text(f"ALTER TABLE companies {', '.join(company_adds)}"))
-                _db.commit()
-
             def _ensure_columns(table_name: str, columns: dict[str, str]) -> None:
                 existing = set(
                     row[0]
@@ -99,6 +55,42 @@ try:
                 if adds:
                     _db.execute(text(f"ALTER TABLE {table_name} {', '.join(adds)}"))
                     _db.commit()
+
+            _ensure_columns("recruiters", {
+                "source_job_id": "VARCHAR(36)",
+                "raw_data": "TEXT",
+                "metadata_json": "TEXT",
+                "tags": "TEXT",
+                "title": "VARCHAR(150)",
+                "email2": "VARCHAR(150)",
+                "phone2": "VARCHAR(30)",
+                "email3": "VARCHAR(150)",
+                "phone3": "VARCHAR(30)",
+                "email4": "VARCHAR(150)",
+                "phone4": "VARCHAR(30)",
+                "alternate_emails": "TEXT",
+                "alternate_phones": "TEXT",
+                "review_reason": "TEXT",
+                "linkedin": "VARCHAR(255)",
+                "notes": "TEXT",
+                "location_confidence": "VARCHAR(20) DEFAULT 'high'",
+                "completeness_score": "INTEGER DEFAULT 0",
+                "needs_review": "BOOLEAN DEFAULT FALSE",
+                "is_active": "BOOLEAN DEFAULT TRUE",
+                "data_source": "VARCHAR(100) DEFAULT 'manual'",
+                "trust_score": "INTEGER DEFAULT 100",
+            })
+
+            _ensure_columns("companies", {
+                "source_job_id": "VARCHAR(36)",
+                "raw_data": "TEXT",
+                "metadata_json": "TEXT",
+                "tags": "TEXT",
+                "normalized_company_name": "VARCHAR(255)",
+                "state": "VARCHAR(2)",
+                "trust_score": "INTEGER DEFAULT 100",
+                "data_source": "VARCHAR(100) DEFAULT 'manual'",
+            })
 
             _ensure_columns("upload_jobs", {
                 "current_step": "VARCHAR(100)",

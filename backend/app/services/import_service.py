@@ -322,9 +322,11 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
             )
             db.commit()
 
-    # Apply all updates at once for massive speedup
+    # Apply all updates in chunks for massive speedup without hitting Neon limits
     if row_updates:
-        db.bulk_update_mappings(SmartImportRow, row_updates)
+        chunk_size = 2000
+        for i in range(0, len(row_updates), chunk_size):
+            db.bulk_update_mappings(SmartImportRow, row_updates[i:i+chunk_size])
 
     job.valid_rows = valid_count
     job.error_rows = error_count

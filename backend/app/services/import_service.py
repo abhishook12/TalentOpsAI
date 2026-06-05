@@ -192,6 +192,7 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
             data["combined"]["__unmapped_fields"] = data["unmapped"]
             data["primary_row"].raw_json = json.dumps(data["combined"])
 
+    row_updates = []
     for r in rows:
         if r.status == "Merged":
             continue
@@ -316,18 +317,14 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
             mark_progress(
                 job,
                 status="validating",
-                current_step=f"Validating rows {processed_count}/{len(rows)}",
-                progress_percent=40 if not len(rows) else min(75, 40 + int((processed_count / max(len(rows), 1)) * 35)),
-                processed_rows=processed_count,
-                valid_rows=valid_count,
-                warning_rows=warning_count,
-                error_rows=error_count,
-                duplicate_rows=dup_count,
-                possible_duplicate_rows=possible_duplicate_count,
-                enriched_rows=enriched_count,
-                failed_rows=error_count,
+                current_step=f"Validating rows ({processed_count}/{len(rows)})",
+                progress_percent=40 + int(40 * (processed_count / max(len(rows), 1))),
             )
             db.commit()
+
+    # Apply all updates at once for massive speedup
+    if row_updates:
+        db.bulk_update_mappings(SmartImportRow, row_updates)
 
     job.valid_rows = valid_count
     job.error_rows = error_count
@@ -340,8 +337,8 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
     mark_progress(
         job,
         status="preview_ready",
-        current_step="Preview ready",
-        progress_percent=78,
+        current_step="Validation complete",
+        progress_percent=80,
         processed_rows=processed_count,
         valid_rows=valid_count,
         warning_rows=warning_count,

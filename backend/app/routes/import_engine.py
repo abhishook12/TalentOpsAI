@@ -67,14 +67,14 @@ async def parse_file(request: Request, file: UploadFile = File(...), db: Session
     records = df.to_dict(orient="records")
     db_rows = []
     for i, r in enumerate(records):
-        db_rows.append(SmartImportRow(
-            job_id=job_id,
-            original_row_index=i,
-            raw_json=json.dumps(r, default=str),
-            status="Raw"
-        ))
+        db_rows.append({
+            "job_id": job_id,
+            "original_row_index": i,
+            "raw_json": json.dumps(r, default=str),
+            "status": "Raw"
+        })
     
-    db.add_all(db_rows)
+    db.bulk_insert_mappings(SmartImportRow, db_rows)
     db.commit()
     
     return {

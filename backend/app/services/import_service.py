@@ -214,97 +214,40 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
             m = re.search(r'\]\(mailto:(.*?)\)', raw_email)
             if m: raw_email = m.group(1)
             
-        r.email = raw_email if raw_email else None
-        r.recruiter_name = raw_name if raw_name else None
-        r.company_name = raw_company if raw_company else None
-        r.phone = clean_phone(raw_phone)
-        r.state = normalize_state(raw_state)
-        if not r.state and raw_location: # fallback location->state
-            r.state = normalize_state(raw_location)
-            
-        r.location = raw_location if raw_location else None
-        r.linkedin = str(raw.get(linkedin_col, "")).strip() if linkedin_col else None
-        r.title = str(raw.get(title_col, "")).strip() if title_col else None
+        row_update = {
+            "row_id": r.row_id,
+            "status": status,
+            "validation_issues": json.dumps(issues),
+            "email": raw_email if raw_email else None,
+            "recruiter_name": r.recruiter_name if r.recruiter_name else (raw_name if raw_name else None),
+            "company_name": r.company_name if hasattr(r, 'company_name') and r.company_name else (raw_company if raw_company else None),
+            "phone": clean_phone(raw_phone),
+            "state": normalize_state(raw_state) or (normalize_state(raw_location) if raw_location else None),
+            "location": raw_location if raw_location else None,
+            "linkedin": str(raw.get(linkedin_col, "")).strip() if linkedin_col else None,
+            "title": str(raw.get(title_col, "")).strip() if title_col else None
+        }
         
-        # Determine Match
-        match_er = None
-        match_reason = None
-        
-        if r.email and r.email.lower() in existing_by_email:
-            match_er = existing_by_email[r.email.lower()]
-            match_reason = "email"
-        elif r.phone and r.phone in existing_by_phone:
-            match_er = existing_by_phone[r.phone]
-            # check if same person or different
-            if r.recruiter_name and match_er.recruiter_name and r.recruiter_name.title() != match_er.recruiter_name.title():
-                match_reason = "phone_diff_person"
-            else:
-                match_reason = "phone"
-        elif r.recruiter_name and r.company_name and (r.recruiter_name.title(), r.company_name.title()) in existing_by_name_comp:
-            match_er = existing_by_name_comp[(r.recruiter_name.title(), r.company_name.title())]
-            match_reason = "name_comp_diff_email"
-            
-        # Validation Logic
-        if not r.email:
-            issues.append("Missing email")
-            status = "Error"
-        elif "@" not in r.email or "." not in r.email:
-            issues.append("Invalid email format")
-            status = "Error"
-        elif match_reason == "email" or match_reason == "phone":
-            status = "Enrich"
-            enriched_fields = []
-            if r.phone and not match_er.phone: enriched_fields.append("+phone")
-            if r.title and not match_er.title: enriched_fields.append("+title")
-            if r.location and not match_er.location: enriched_fields.append("+location")
-            if r.linkedin and not match_er.linkedin: enriched_fields.append("+linkedin")
-            if r.company_name and not match_er.company_id: enriched_fields.append("+company")
-            
-            # Check for alternate emails/phones in metadata or injected fields
-            if "__email2" in raw and not match_er.email2: enriched_fields.append("+email2")
-            if "__phone2" in raw and not match_er.phone2: enriched_fields.append("+phone2")
-            
-            mapped_keys = [k for k in column_mapping.values() if k and isinstance(k, str)]
-            metadata = {k: v for k, v in raw.items() if k not in mapped_keys and not k.startswith("__") and v is not None and str(v).strip() != ""}
-            for k, v in metadata.items():
-                kl = k.lower()
-                if "email" in kl and str(v).strip().lower() != (match_er.email or "").lower() and not match_er.email2:
-                    if "+email2" not in enriched_fields: enriched_fields.append("+email2")
-                elif ("phone" in kl or "mobile" in kl) and clean_phone(str(v)) != match_er.phone and not match_er.phone2:
-                    if "+phone2" not in enriched_fields: enriched_fields.append("+phone2")
-            
-            if enriched_fields:
-                issues.append(f"Will enrich existing with: {', '.join(enriched_fields)}")
-            else:
-                issues.append("Will merge (no new core fields)")
-        elif match_reason in ["phone_diff_person", "name_comp_diff_email"]:
-            status = "Possible Duplicate"
-            issues.append("Possible Duplicate - Needs Review")
-            possible_duplicate_count += 1
-            
-        if job.detected_format in ["linkedin_text", "unknown_mixed"]:
-            if not r.recruiter_name or not r.email:
-                status = "Possible Duplicate"
-                issues.append("Needs Review - Uncertain extraction")
-                possible_duplicate_count += 1
-            
-        if not r.recruiter_name and r.email:
-            r.recruiter_name = r.email.split("@")[0].replace(".", " ").title()
+        if not row_update["recruiter_name"] and row_update["email"]:
+            row_update["recruiter_name"] = row_update["email"].split("@")[0].replace(".", " ").title()
             issues.append("Name generated from email")
             if status == "Ready": status = "Warning"
+            row_update["status"] = status
+            row_update["validation_issues"] = json.dumps(issues)
             warning_count += 1
             
-        if not r.company_name and r.email:
-            domain = r.email.split("@")[-1].split(".")[0].title()
+        if not row_update["company_name"] and row_update["email"]:
+            domain = row_update["email"].split("@")[-1].split(".")[0].title()
             if domain not in ("Gmail", "Yahoo", "Hotmail", "Outlook", "Aol", "Icloud"):
-                r.company_name = domain
+                row_update["company_name"] = domain
                 issues.append("Company inferred from email")
                 if status == "Ready": status = "Warning"
+                row_update["status"] = status
+                row_update["validation_issues"] = json.dumps(issues)
                 warning_count += 1
 
-        r.status = status
-        r.validation_issues = json.dumps(issues)
-        
+        row_updates.append(row_update)
+
         if status in ["Ready", "Warning", "Possible Duplicate"]:
             valid_count += 1
         elif status == "Enrich":
@@ -314,13 +257,9 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
             error_count += 1
 
         if processed_count % 200 == 0:
-            mark_progress(
-                job,
-                status="validating",
-                current_step=f"Validating rows ({processed_count}/{len(rows)})",
-                progress_percent=40 + int(40 * (processed_count / max(len(rows), 1))),
-            )
-            db.commit()
+            # We don't commit here because we haven't flushed row_updates yet!
+            job.current_step = f"Validating rows ({processed_count}/{len(rows)})"
+            job.progress_percent = 40 + int(40 * (processed_count / max(len(rows), 1)))
 
     # Apply all updates in chunks for massive speedup without hitting Neon limits
     if row_updates:

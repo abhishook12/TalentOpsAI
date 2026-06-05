@@ -153,6 +153,7 @@ function LegacyUploadZone() {
 function PasteParser() {
   const [raw, setRaw] = useState('')
   const [parsed, setParsed] = useState(null)
+  const [page, setPage] = useState(1)
   const [saving, setSaving] = useState(false)
   const [saveResult, setSaveResult] = useState(null)
 
@@ -160,7 +161,12 @@ function PasteParser() {
     const results = parseText(raw)
     setParsed(results)
     setSaveResult(null)
+    setPage(1)
   }
+
+  const itemsPerPage = 50
+  const paginated = parsed ? parsed.slice((page - 1) * itemsPerPage, page * itemsPerPage) : []
+  const totalPages = parsed ? Math.ceil(parsed.length / itemsPerPage) : 0
 
   const toggle = (id) => setParsed(p => p.map(r => r.id === id ? { ...r, selected: !r.selected } : r))
   const updateField = (id, field, val) => setParsed(p => p.map(r => r.id === id ? { ...r, [field]: val } : r))
@@ -242,7 +248,7 @@ function PasteParser() {
                     </tr>
                   </thead>
                   <tbody>
-                    {parsed.map(r => (
+                    {paginated.map(r => (
                       <tr key={r.id} style={{ borderBottom: '1px solid var(--card-border)', background: r.selected ? 'transparent' : 'var(--main-bg)', opacity: r.selected ? 1 : 0.5 }}>
                         <td style={{ padding: '6px 10px' }}>
                           <input type="checkbox" checked={r.selected} onChange={() => toggle(r.id)} style={{ cursor: 'pointer' }} />
@@ -264,6 +270,14 @@ function PasteParser() {
                   </tbody>
                 </table>
               </div>
+              
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, fontSize: 12 }}>
+                  <button disabled={page === 1} onClick={() => setPage(p => p - 1)} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--card-bg)', cursor: page === 1 ? 'not-allowed' : 'pointer', opacity: page === 1 ? 0.5 : 1 }}>Prev</button>
+                  <span style={{ color: 'var(--text-secondary)' }}>Page {page} of {totalPages}</span>
+                  <button disabled={page === totalPages} onClick={() => setPage(p => p + 1)} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--card-bg)', cursor: page === totalPages ? 'not-allowed' : 'pointer', opacity: page === totalPages ? 0.5 : 1 }}>Next</button>
+                </div>
+              )}
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <button onClick={handleSave} disabled={saving} className="btn-primary" style={{ background: 'linear-gradient(135deg, #0F6E56, #185FA5)' }}>

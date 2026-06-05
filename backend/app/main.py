@@ -6,7 +6,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.config import CORS_ORIGINS, IS_PRODUCTION
+from app.config import CORS_ORIGINS, IS_PRODUCTION, ENV as APP_ENV
 from app.routes import recruiters, companies, vendors, analytics, upload, admin, auth, actions, updates, import_engine
 from app.database import get_db, engine
 from app.models import models
@@ -223,11 +223,12 @@ def ping():
     return {"status": "ok"}
 
 
+
 @app.get("/health")
 def health(db: Session = Depends(get_db)):
     try:
         db.execute(text("SELECT 1"))
-        return {"status": "healthy", "database": "connected"}
+        return {"status": "healthy", "database": "connected", "environment": APP_ENV}
     except Exception as e:
         logger.error("Health check failed: %s", e)
-        return {"status": "degraded", "database": "disconnected", "detail": str(e)}
+        return {"status": "degraded", "database": "disconnected", "environment": APP_ENV, "detail": str(e)}

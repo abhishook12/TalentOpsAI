@@ -6,7 +6,8 @@ logger = logging.getLogger("talentops")
 
 ENV = os.getenv("ENV", "development").lower()
 IS_RENDER = bool(os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID") or os.getenv("RENDER_EXTERNAL_URL"))
-IS_PRODUCTION = ENV in ("production", "prod") or IS_RENDER
+IS_STAGING = ENV == "staging"
+IS_PRODUCTION = (ENV in ("production", "prod") or IS_RENDER) and not IS_STAGING
 
 JWT_SECRET = os.getenv("JWT_SECRET", "super-secret-jwt-key-talentops")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "1012")
@@ -17,7 +18,7 @@ CORS_ORIGINS = [
     o.strip()
     for o in os.getenv(
         "CORS_ORIGINS",
-        "https://talent-ops-ai.vercel.app,http://localhost:5173,http://127.0.0.1:5173",
+        "https://talent-ops-ai.vercel.app,https://talent-ops-ai-staging.vercel.app,http://localhost:5173,http://127.0.0.1:5173",
     ).split(",")
     if o.strip()
 ]

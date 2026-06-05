@@ -61,6 +61,7 @@ async def parse_file(request: Request, file: UploadFile = File(...), db: Session
         format_confidence=format_info["confidence"]
     )
     db.add(job)
+    db.flush() # Ensure job is in DB before we insert rows with foreign keys
     
     # Store Raw Rows directly for validation step later
     # We serialize the dataframe to JSON rows

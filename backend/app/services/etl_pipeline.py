@@ -2,10 +2,10 @@ import logging
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from sqlalchemy import inspect
-from app.database import SessionLocal
-from app.models.models import StagingRecruiter, Recruiter, Company, StagingCompany
-from app.utils.normalizer import normalize_text, extract_domain
-from app.utils.state_mapper import normalize_state
+from ..database import SessionLocal
+from ..models.models import StagingRecruiter, Recruiter, Company, StagingCompany
+from ..utils.normalizer import normalize_text, extract_domain
+from ..utils.state_mapper import normalize_state
 
 logger = logging.getLogger(__name__)
 

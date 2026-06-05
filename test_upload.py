@@ -2,8 +2,8 @@ import requests
 import json
 import time
 
-BASE_URL = "https://talentopsai-staging.onrender.com/api/import"
-HEALTH_URL = "https://talentopsai-staging.onrender.com/api/health"
+BASE_URL = "http://127.0.0.1:8001/api/import"
+HEALTH_URL = "http://127.0.0.1:8001/api/health"
 FILE_PATH = r"C:\Users\User\Desktop\for talent ops.xlsx"
 
 print(f"--- 1. Testing Backend Health ---")

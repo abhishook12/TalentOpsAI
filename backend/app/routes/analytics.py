@@ -52,11 +52,22 @@ def get_dashboard_kpis(db: Session = Depends(get_db)):
     active_recruiters = db.query(Recruiter).filter(Recruiter.is_active == True).count()
     needs_review = db.query(Recruiter).filter(Recruiter.needs_review == True).count()
     low_quality = db.query(Recruiter).filter(Recruiter.completeness_score < 50).count()
+    from sqlalchemy import or_
     with_email = db.query(Recruiter).filter(
-        Recruiter.email.isnot(None), Recruiter.email != ""
+        or_(
+            (Recruiter.email.isnot(None)) & (Recruiter.email != ""),
+            (Recruiter.email2.isnot(None)) & (Recruiter.email2 != ""),
+            (Recruiter.email3.isnot(None)) & (Recruiter.email3 != ""),
+            (Recruiter.email4.isnot(None)) & (Recruiter.email4 != "")
+        )
     ).count()
     with_phone = db.query(Recruiter).filter(
-        Recruiter.phone.isnot(None), Recruiter.phone != ""
+        or_(
+            (Recruiter.phone.isnot(None)) & (Recruiter.phone != ""),
+            (Recruiter.phone2.isnot(None)) & (Recruiter.phone2 != ""),
+            (Recruiter.phone3.isnot(None)) & (Recruiter.phone3 != ""),
+            (Recruiter.phone4.isnot(None)) & (Recruiter.phone4 != "")
+        )
     ).count()
     total_companies = db.query(Company).count()
     total_vendors = db.query(Vendor).count()

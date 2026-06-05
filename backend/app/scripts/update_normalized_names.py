@@ -2,9 +2,9 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from app.database import SessionLocal
-from app.models.models import Recruiter, Company
-from app.utils.normalizer import normalize_text
+from ..database import SessionLocal
+from ..models.models import Recruiter, Company
+from ..utils.normalizer import normalize_text
 
 def main():
     db = SessionLocal()

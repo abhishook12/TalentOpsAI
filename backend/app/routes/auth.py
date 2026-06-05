@@ -3,10 +3,10 @@ from pydantic import BaseModel
 import jwt
 import time
 import logging
-from app.config import JWT_SECRET, ADMIN_PASSWORD, APP_PASSWORD, IS_PRODUCTION, FREE_ADMIN_MODE
-from app.database import get_db
+from ..config import JWT_SECRET, ADMIN_PASSWORD, APP_PASSWORD, IS_PRODUCTION, FREE_ADMIN_MODE
+from ..database import get_db
 from sqlalchemy.orm import Session
-from app.models.models import ActionLog
+from ..models.models import ActionLog
 from datetime import datetime
 from collections import defaultdict, deque
 

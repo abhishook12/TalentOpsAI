@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date
-from app.database import get_db
-from app.models.models import Submission, Candidate, Recruiter, Company, Vendor
+from ..database import get_db
+from ..models.models import Submission, Candidate, Recruiter, Company, Vendor
 
 router = APIRouter()
 

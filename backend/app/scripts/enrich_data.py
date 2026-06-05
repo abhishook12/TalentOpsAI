@@ -5,9 +5,9 @@ import re
 # Add backend directory to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from app.database import SessionLocal
-from app.models.models import Recruiter, Company
-from app.utils.state_mapper import normalize_state, CITY_TO_STATE, ABBR_TO_NAME
+from ..database import SessionLocal
+from ..models.models import Recruiter, Company
+from ..utils.state_mapper import normalize_state, CITY_TO_STATE, ABBR_TO_NAME
 
 def get_completeness_score(r: Recruiter) -> int:
     score = 0

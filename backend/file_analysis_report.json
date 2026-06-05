@@ -1,0 +1,3801 @@
+{
+  "files": [
+    {
+      "filename": "202f1fec-7f3a-4916-a5ef-db0ab4ae8bea.xlsx",
+      "file_size_bytes": 1372307,
+      "sheets": [
+        {
+          "sheet_name": "Abhishek Sheet",
+          "total_rows": 118159,
+          "blank_rows": 99723,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Company",
+            "Email",
+            "State"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Michelle Maruska",
+                "Kforce",
+                "mmaruska@kforce.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Emily Adams",
+                "Kforce",
+                "eadams@kforce.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "Kayla Massop",
+                "Kforce",
+                "kmassop@kforce.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Max Suarez",
+                "Kforce",
+                "msuarez@kforce.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Tyler Miksiewicz",
+                "Kforce",
+                "tmiksiewicz@kforce.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 118158,
+              "values": []
+            },
+            {
+              "row_index": 118159,
+              "values": []
+            }
+          ],
+          "rows_with_email": 18304,
+          "rows_without_email": 132,
+          "rows_with_phone": 0,
+          "rows_with_company": 18436,
+          "rows_with_state": 18062,
+          "rows_with_name": 18436,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [
+            "State"
+          ],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 882,
+          "duplicate_email_examples": {
+            "rsmith@kforce.com": 2,
+            "athomas@kforce.com": 2,
+            "adavis@kforce.com": 2,
+            "ldavis@kforce.com": 2,
+            "lgarcia@kforce.com": 2,
+            "smcdonald@kforce.com": 2,
+            "jsmith@kforce.com": 2,
+            "kmiller@kforce.com": 2,
+            "aanderson@kforce.com": 2,
+            "awright@kforce.com": 2
+          },
+          "unique_email_count": 17362,
+          "unique_phone_count": 0,
+          "unique_company_count": 33,
+          "unique_state_count": 73,
+          "unique_name_count": 16458,
+          "top_companies": {
+            "Robert Half": 5323,
+            "ManpowerGroup": 4280,
+            "Insght global": 3198,
+            "Kforce": 1235,
+            "Experis": 1202,
+            "Oxford Global Resources": 892,
+            "Randstad Digital Americas": 806,
+            "Apex Systems, Inc.": 662,
+            "Procom": 262,
+            "Entegee": 208,
+            "Randstad Digital US": 146,
+            "Randstad Digital": 56,
+            "Turnberry Solutions": 40,
+            "Andiamo": 36,
+            "Tier4 Group": 30
+          },
+          "top_states": {
+            "Texas": 1698,
+            "California": 1560,
+            "Florida": 1444,
+            "Wisconsin": 866,
+            "Georgia": 804,
+            "North Carolina": 795,
+            "Virginia": 671,
+            "Ohio": 665,
+            "Arizona": 654,
+            "Pennsylvania": 594,
+            "Michigan": 531,
+            "Washington": 505,
+            "New Jersey": 454,
+            "New york": 452,
+            "Colorado": 452
+          }
+        },
+        {
+          "sheet_name": "Anshu Sheet",
+          "total_rows": 997,
+          "blank_rows": 896,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Email",
+            "Company",
+            "Location"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Darcel Walker-Morales",
+                "walker_darcel@arsiem.com",
+                "ARSIEM Corporation"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Tracie Young",
+                "tracie_young@arsiem.com",
+                "ARSIEM Corporation"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "Kristen Rietz",
+                "krietz@aquent.com",
+                "Aquent"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Caitlin Bair, CSMR",
+                "cbair@aquent.com",
+                "Aquent"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "George Strippoli, CIR, CSSR",
+                "gstrippoli@aquent.com",
+                "Aquent"
+              ]
+            },
+            {
+              "row_index": 996,
+              "values": []
+            },
+            {
+              "row_index": 997,
+              "values": []
+            }
+          ],
+          "rows_with_email": 101,
+          "rows_without_email": 0,
+          "rows_with_phone": 0,
+          "rows_with_company": 101,
+          "rows_with_state": 0,
+          "rows_with_name": 101,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 0,
+          "duplicate_email_examples": {},
+          "unique_email_count": 101,
+          "unique_phone_count": 0,
+          "unique_company_count": 7,
+          "unique_state_count": 0,
+          "unique_name_count": 101,
+          "top_companies": {
+            "Aquent": 53,
+            "Piper Companies": 31,
+            "GTN Technical Staffing": 11,
+            "ARSIEM Corporation": 2,
+            "Aquent Studios": 2,
+            "Pasona N A, Inc.": 1,
+            "General Motors": 1
+          },
+          "top_states": {}
+        },
+        {
+          "sheet_name": "k force",
+          "total_rows": 1235,
+          "blank_rows": 0,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Company",
+            "Email",
+            "State"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Michelle Maruska",
+                "Kforce",
+                "mmaruska@kforce.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Emily Adams",
+                "Kforce",
+                "eadams@kforce.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "Kayla Massop",
+                "Kforce",
+                "kmassop@kforce.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Max Suarez",
+                "Kforce",
+                "msuarez@kforce.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Tyler Miksiewicz",
+                "Kforce",
+                "tmiksiewicz@kforce.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 1234,
+              "values": [
+                "Kendra Inness",
+                "Kforce",
+                "kinness@kforce.com",
+                "Kansas"
+              ]
+            },
+            {
+              "row_index": 1235,
+              "values": [
+                "Stacey A. Bailey",
+                "Kforce",
+                "sbailey@kforce.com",
+                "Kansas"
+              ]
+            }
+          ],
+          "rows_with_email": 1225,
+          "rows_without_email": 10,
+          "rows_with_phone": 0,
+          "rows_with_company": 1235,
+          "rows_with_state": 1235,
+          "rows_with_name": 1235,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [
+            "State"
+          ],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 27,
+          "duplicate_email_examples": {
+            "rsmith@kforce.com": 2,
+            "athomas@kforce.com": 2,
+            "adavis@kforce.com": 2,
+            "ldavis@kforce.com": 2,
+            "lgarcia@kforce.com": 2,
+            "smcdonald@kforce.com": 2,
+            "jsmith@kforce.com": 2,
+            "kmiller@kforce.com": 2,
+            "aanderson@kforce.com": 2,
+            "awright@kforce.com": 2
+          },
+          "unique_email_count": 1198,
+          "unique_phone_count": 0,
+          "unique_company_count": 1,
+          "unique_state_count": 24,
+          "unique_name_count": 1235,
+          "top_companies": {
+            "Kforce": 1235
+          },
+          "top_states": {
+            "Florida": 359,
+            "Texas": 128,
+            "California": 111,
+            "Missouri": 55,
+            "Virginia": 54,
+            "Georgia": 51,
+            "Washington": 48,
+            "Ohio": 47,
+            "Pennsylvania": 45,
+            "Arizona": 44,
+            "Colorado": 38,
+            "Washington DC": 36,
+            "Michigan": 35,
+            "Ilinois": 34,
+            "New york": 34
+          }
+        },
+        {
+          "sheet_name": "Randstad Digital Americas",
+          "total_rows": 999,
+          "blank_rows": 193,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Company",
+            "Email",
+            "State"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Erich Ryser",
+                "Randstad Digital Americas",
+                "erich.ryser@randstaddigital.com",
+                "Texas"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Brandon Phillips",
+                "Randstad Digital Americas",
+                "brandon.phillips@randstaddigital.com",
+                "Texas"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "TJ Brand",
+                "Randstad Digital Americas",
+                "tj.brand@randstaddigital.com",
+                "Texas"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Brian Jones",
+                "Randstad Digital Americas",
+                "brian.jones@randstaddigital.com",
+                "Texas"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Roze A.",
+                "Randstad Digital Americas",
+                "roze.a.@randstaddigital.com",
+                "Texas"
+              ]
+            },
+            {
+              "row_index": 998,
+              "values": []
+            },
+            {
+              "row_index": 999,
+              "values": []
+            }
+          ],
+          "rows_with_email": 802,
+          "rows_without_email": 4,
+          "rows_with_phone": 0,
+          "rows_with_company": 806,
+          "rows_with_state": 806,
+          "rows_with_name": 806,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [
+            "State"
+          ],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 43,
+          "duplicate_email_examples": {
+            "jamie.andrews@randstaddigital.com": 2,
+            "zack.gavin@randstaddigital.com": 2,
+            "matthew.price@randstaddigital.com": 2,
+            "samira.tofighbakhsh@randstaddigital.com": 2,
+            "avante.brown@randstaddigital.com": 2,
+            "james.palubinski@randstaddigital.com": 2,
+            "sean.mckinney@randstaddigital.com": 2,
+            "kyle.weissenburger@randstaddigital.com": 2,
+            "zach.campbell@randstaddigital.com": 2,
+            "laurie.casper@randstaddigital.com": 2
+          },
+          "unique_email_count": 759,
+          "unique_phone_count": 0,
+          "unique_company_count": 1,
+          "unique_state_count": 31,
+          "unique_name_count": 764,
+          "top_companies": {
+            "Randstad Digital Americas": 806
+          },
+          "top_states": {
+            "Texas": 103,
+            "Caliornia": 92,
+            "Florida": 65,
+            "Illinois": 56,
+            "Georgia": 51,
+            "Pennsylvania": 48,
+            "Washington DC": 44,
+            "North Carolina": 44,
+            "New jersey": 41,
+            "Virginia": 35,
+            "New York": 29,
+            "Ohio": 28,
+            "Maryland": 26,
+            "Michigan": 24,
+            "Arizona": 20
+          }
+        },
+        {
+          "sheet_name": "Oxford Global Resources",
+          "total_rows": 999,
+          "blank_rows": 107,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Company",
+            "Email",
+            "State"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Gavin Mims",
+                "Oxford Global Resources",
+                "gavin_mims@oxfordcorp.com",
+                "Alabama"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Shea Paredes",
+                "Oxford Global Resources",
+                "shea_paredes@oxfordcorp.com",
+                "Arizona"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "John Rodhouse",
+                "Oxford Global Resources",
+                "john_rodhouse@oxfordcorp.com",
+                "Arizona"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Madalyn Mclean",
+                "Oxford Global Resources",
+                "madalyn_mclean@oxfordcorp.com",
+                "Arizona"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Ismael Gutierrez",
+                "Oxford Global Resources",
+                "ismael_gutierrez@oxfordcorp.com",
+                "Arizona"
+              ]
+            },
+            {
+              "row_index": 998,
+              "values": []
+            },
+            {
+              "row_index": 999,
+              "values": []
+            }
+          ],
+          "rows_with_email": 892,
+          "rows_without_email": 0,
+          "rows_with_phone": 0,
+          "rows_with_company": 892,
+          "rows_with_state": 892,
+          "rows_with_name": 892,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [
+            "State"
+          ],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 18,
+          "duplicate_email_examples": {
+            "samantha_hunter@oxfordcorp.com": 2,
+            "tk_goldsmith@oxfordcorp.com": 2,
+            "michael_winfield@oxfordcorp.com": 2,
+            "ryan_kelly@oxfordcorp.com": 2,
+            "sonny_abraham@oxfordcorp.com": 2,
+            "shawn_cushman@oxfordcorp.com": 2,
+            "ken_stine@oxfordcorp.com": 2,
+            "austin_larson@oxfordcorp.com": 2,
+            "naomi_carlson@oxfordcorp.com": 2,
+            "mirhanda_henneman@oxfordcorp.com": 2
+          },
+          "unique_email_count": 874,
+          "unique_phone_count": 0,
+          "unique_company_count": 1,
+          "unique_state_count": 39,
+          "unique_name_count": 874,
+          "top_companies": {
+            "Oxford Global Resources": 892
+          },
+          "top_states": {
+            "Massachusetts": 182,
+            "Wisconsin": 140,
+            "Florida": 129,
+            "Arizona": 101,
+            "Texas": 97,
+            "California": 49,
+            "Ohio": 29,
+            "Connecticut": 21,
+            "Washington": 14,
+            "Virginia": 13,
+            "Illinois": 12,
+            "United States": 12,
+            "USA": 11,
+            "New York": 10,
+            "Pennsylvania": 10
+          }
+        },
+        {
+          "sheet_name": "Randstad Digital",
+          "total_rows": 999,
+          "blank_rows": 797,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Company",
+            "Email",
+            "State"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Adrian Young",
+                "Randstad Digital",
+                "adrian.young@randstaddigital.com",
+                "California"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Lauren Hitt",
+                "Randstad Digital",
+                "lauren.hitt@randstaddigital.com",
+                "California"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "Annemarie Pizzo",
+                "Randstad Digital",
+                "annemarie.pizzo@randstaddigital.com",
+                "California"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Eric Disque",
+                "Randstad Digital",
+                "eric.disque@randstaddigital.com",
+                "California"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Ashley Jackson",
+                "Randstad Digital",
+                "ashley.jackson@randstaddigital.com",
+                "California"
+              ]
+            },
+            {
+              "row_index": 998,
+              "values": []
+            },
+            {
+              "row_index": 999,
+              "values": []
+            }
+          ],
+          "rows_with_email": 202,
+          "rows_without_email": 0,
+          "rows_with_phone": 0,
+          "rows_with_company": 202,
+          "rows_with_state": 202,
+          "rows_with_name": 202,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [
+            "State"
+          ],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 0,
+          "duplicate_email_examples": {},
+          "unique_email_count": 202,
+          "unique_phone_count": 0,
+          "unique_company_count": 2,
+          "unique_state_count": 5,
+          "unique_name_count": 202,
+          "top_companies": {
+            "Randstad Digital US": 146,
+            "Randstad Digital": 56
+          },
+          "top_states": {
+            "Texas": 60,
+            "California": 54,
+            "Florida": 37,
+            "Illinois": 32,
+            "New York": 19
+          }
+        },
+        {
+          "sheet_name": "Apex Systems Contacts",
+          "total_rows": 999,
+          "blank_rows": 337,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Company",
+            "Email",
+            "State"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Bethany Frechette",
+                "Apex Systems, Inc.",
+                "bfrechette@apexsystems.com",
+                "Alabama"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Collin Mccain",
+                "Apex Systems, Inc.",
+                "cmccain@apexsystems.com",
+                "Alabama"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "Kim Lorberbaum",
+                "Apex Systems, Inc.",
+                "klorberbaum@apexsystems.com",
+                "Alabama"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Mary Katherine Keough",
+                "Apex Systems, Inc.",
+                "mkeough@apexsystems.com",
+                "Alabama"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Robert Clausen",
+                "Apex Systems, Inc.",
+                "rclausen@apexsystems.com",
+                "Alabama"
+              ]
+            },
+            {
+              "row_index": 998,
+              "values": []
+            },
+            {
+              "row_index": 999,
+              "values": []
+            }
+          ],
+          "rows_with_email": 662,
+          "rows_without_email": 0,
+          "rows_with_phone": 0,
+          "rows_with_company": 662,
+          "rows_with_state": 662,
+          "rows_with_name": 662,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [
+            "State"
+          ],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 9,
+          "duplicate_email_examples": {
+            "cjohnson@apexsystems.com": 2,
+            "jsmith@apexsystems.com": 3,
+            "scarter@apexsystems.com": 2,
+            "crobinson@apexsystems.com": 2,
+            "sfoster@apexsystems.com": 2,
+            "kdadzie@apexsystems.com": 2,
+            "tjones@apexsystems.com": 2,
+            "jthomas@apexsystems.com": 2,
+            "atucker@apexsystems.com": 2
+          },
+          "unique_email_count": 652,
+          "unique_phone_count": 0,
+          "unique_company_count": 1,
+          "unique_state_count": 40,
+          "unique_name_count": 662,
+          "top_companies": {
+            "Apex Systems, Inc.": 662
+          },
+          "top_states": {
+            "Virginia": 152,
+            "California": 56,
+            "Texas": 54,
+            "North Carolina": 51,
+            "Florida": 32,
+            "Colorado": 29,
+            "Arizona": 25,
+            "USA": 24,
+            "Washington": 23,
+            "Illinois": 22,
+            "Maryland": 16,
+            "Minnesota": 15,
+            "New York": 15,
+            "Pennsylvania": 15,
+            "Georgia": 14
+          }
+        },
+        {
+          "sheet_name": "Experis EST",
+          "total_rows": 1202,
+          "blank_rows": 0,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Company",
+            "Email",
+            "State"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Lindsay Plotkin",
+                "Experis",
+                "lindsay.plotkin@experis.com",
+                "North Carolina"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Reid Webster",
+                "Experis",
+                "reid.webster@experis.com",
+                "North Carolina"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "Katie Pinson Johnson",
+                "Experis",
+                "katie.johnson@experis.com",
+                "North Carolina"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Joseph Bartolotta",
+                "Experis",
+                "joseph.bartolotta@experis.com",
+                "North Carolina"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Baker Westmoreland",
+                "Experis",
+                "baker.westmoreland@experis.com",
+                "North Carolina"
+              ]
+            },
+            {
+              "row_index": 1201,
+              "values": [
+                "Brenda Noordam",
+                "Experis",
+                "brenda.noordam@experis.com",
+                "Texas"
+              ]
+            },
+            {
+              "row_index": 1202,
+              "values": [
+                "Tamika Phillips",
+                "Experis",
+                "tamika.phillips@experis.com",
+                "Texas"
+              ]
+            }
+          ],
+          "rows_with_email": 1194,
+          "rows_without_email": 8,
+          "rows_with_phone": 0,
+          "rows_with_company": 1202,
+          "rows_with_state": 1202,
+          "rows_with_name": 1202,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [
+            "State"
+          ],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 1,
+          "duplicate_email_examples": {
+            "chris.morris@experis.com": 2
+          },
+          "unique_email_count": 1193,
+          "unique_phone_count": 0,
+          "unique_company_count": 1,
+          "unique_state_count": 40,
+          "unique_name_count": 1199,
+          "top_companies": {
+            "Experis": 1202
+          },
+          "top_states": {
+            "North Carolina": 139,
+            "Texas": 105,
+            "California": 77,
+            "Wisconsin": 65,
+            "Georgia": 64,
+            "Pennsylvania": 61,
+            "New York": 59,
+            "Illinois": 51,
+            "Colorado": 45,
+            "Florida": 43,
+            "Washington": 42,
+            "Arizona": 38,
+            "Virginia": 37,
+            "New Jersey": 36,
+            "Indiana": 35
+          }
+        },
+        {
+          "sheet_name": "Sleeper Agents",
+          "total_rows": 4,
+          "blank_rows": 0,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Email",
+            "Company"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Patrick Verrette",
+                "pverrette@sleeperagents.org",
+                "Sleeper Agents"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Hunter Hatton",
+                "hhunter@sleeperagents.org",
+                "Sleeper Agents"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "William Lewis",
+                "wlewis@sleeperagents.org",
+                "Sleeper Agents"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Max Yarbrough",
+                "myarbrough@sleeperagents.org",
+                "Sleeper Agents"
+              ]
+            }
+          ],
+          "rows_with_email": 4,
+          "rows_without_email": 0,
+          "rows_with_phone": 0,
+          "rows_with_company": 4,
+          "rows_with_state": 0,
+          "rows_with_name": 4,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 0,
+          "duplicate_email_examples": {},
+          "unique_email_count": 4,
+          "unique_phone_count": 0,
+          "unique_company_count": 1,
+          "unique_state_count": 0,
+          "unique_name_count": 4,
+          "top_companies": {
+            "Sleeper Agents": 4
+          },
+          "top_states": {}
+        },
+        {
+          "sheet_name": "ManpowerGroup",
+          "total_rows": 4280,
+          "blank_rows": 0,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Company",
+            "Email",
+            "State"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Troy Hennum",
+                "ManpowerGroup",
+                "troy.hennum@manpower.com",
+                "Washington"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Deanna Swigert",
+                "ManpowerGroup",
+                "deanna.swigert@manpower.com",
+                "Washington"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "Sean Cissna",
+                "ManpowerGroup",
+                "sean.cissna@manpower.com",
+                "Washington"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Julie Loucks",
+                "ManpowerGroup",
+                "julie.loucks@manpower.com",
+                "Washington"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Amina M.",
+                "ManpowerGroup",
+                "amina.m.@manpower.com",
+                "Washington"
+              ]
+            },
+            {
+              "row_index": 4279,
+              "values": [
+                "Tom Burnell",
+                "ManpowerGroup",
+                "tom.burnell@manpower.com",
+                "Kentucky"
+              ]
+            },
+            {
+              "row_index": 4280,
+              "values": [
+                "Dean Rogers",
+                "ManpowerGroup",
+                "dean.rogers@manpower.com",
+                "Kentucky"
+              ]
+            }
+          ],
+          "rows_with_email": 4253,
+          "rows_without_email": 27,
+          "rows_with_phone": 0,
+          "rows_with_company": 4280,
+          "rows_with_state": 4280,
+          "rows_with_name": 4280,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [
+            "State"
+          ],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 210,
+          "duplicate_email_examples": {
+            "christy.clark@manpower.com": 2,
+            "tyler.spevacek@manpower.com": 2,
+            "chris.scioscia@manpower.com": 2,
+            "renee.campbell@manpower.com": 2,
+            "joshua.davis@manpower.com": 2,
+            "debbie.schmidt@manpower.com": 2,
+            "eric.hess@manpower.com": 2,
+            "mike.gallardo@manpower.com": 2,
+            "jerome.bunkers@manpower.com": 2,
+            "shelly.goetz@manpower.com": 2
+          },
+          "unique_email_count": 4040,
+          "unique_phone_count": 0,
+          "unique_company_count": 1,
+          "unique_state_count": 47,
+          "unique_name_count": 4071,
+          "top_companies": {
+            "ManpowerGroup": 4280
+          },
+          "top_states": {
+            "Wisconsin": 567,
+            "California": 357,
+            "Texas": 355,
+            "Michigan": 316,
+            "North Carolina": 211,
+            "Florida": 193,
+            "Pennsylvania": 184,
+            "New york": 157,
+            "Georgia": 145,
+            "Illinois": 125,
+            "Colorado": 112,
+            "Ohio": 109,
+            "Virginia": 106,
+            "Missouri": 105,
+            "Arizona": 97
+          }
+        },
+        {
+          "sheet_name": "BHT Staffing",
+          "total_rows": 5,
+          "blank_rows": 0,
+          "has_headers": false,
+          "detected_format": "STANDARD",
+          "headers": [
+            "Column_0",
+            "Column_1",
+            "Column_2"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Abby Kleinberg",
+                "abbyk@bhtstaffing.com",
+                "BHT Staffing"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Eric Silverman",
+                "erics@bhtstaffing.com",
+                "BHT Staffing"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "Rachel Jenkins",
+                "rachelj@bhtstaffing.com",
+                "BHT Staffing"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Abby Kaiser",
+                "abbyk@bhtstaffing.com",
+                "BHT Staffing"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Patrick O'Hara",
+                "patricko@bhtstaffing.com",
+                "BHT Staffing"
+              ]
+            }
+          ],
+          "rows_with_email": 5,
+          "rows_without_email": 0,
+          "rows_with_phone": 0,
+          "rows_with_company": 0,
+          "rows_with_state": 0,
+          "rows_with_name": 0,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Column_1"
+          ],
+          "phone_columns": [],
+          "name_columns": [],
+          "company_columns": [],
+          "state_columns": [],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 1,
+          "duplicate_email_examples": {
+            "abbyk@bhtstaffing.com": 2
+          },
+          "unique_email_count": 4,
+          "unique_phone_count": 0,
+          "unique_company_count": 0,
+          "unique_state_count": 0,
+          "unique_name_count": 0,
+          "top_companies": {},
+          "top_states": {}
+        },
+        {
+          "sheet_name": "Insight global",
+          "total_rows": 3199,
+          "blank_rows": 0,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Company",
+            "Email",
+            "State"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Melody Rizo",
+                "Insght global",
+                "Melody.rizo@insightglobal.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Amirica Nicholson",
+                "Insght global",
+                "Amirica.nicholson@insightglobal.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "Arden Gill",
+                "Insght global",
+                "Arden.gill@insightglobal.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Allison Dod",
+                "Insght global",
+                "Allison.dod@insightglobal.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Wynser Inabinet",
+                "Insght global",
+                "Wynser.inabinet@insightglobal.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 3198,
+              "values": [
+                "Tricia Cannavo",
+                "Insght global",
+                "Tricia.cannavo@insightglobal.com",
+                "Winconsin"
+              ]
+            },
+            {
+              "row_index": 3199,
+              "values": [
+                "Julaine Zuelzke",
+                "Insght global",
+                "Julaine.zuelzke@insightglobal.com",
+                "Winconsin"
+              ]
+            }
+          ],
+          "rows_with_email": 3190,
+          "rows_without_email": 9,
+          "rows_with_phone": 0,
+          "rows_with_company": 3199,
+          "rows_with_state": 3199,
+          "rows_with_name": 3198,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [
+            "State"
+          ],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 223,
+          "duplicate_email_examples": {
+            "kelsey.wright@insightglobal.com": 2,
+            "miguel.espinoza@insightglobal.com": 2,
+            "yasmin.connor@insightglobal.com": 2,
+            "adam.reese@insightglobal.com": 2,
+            "katherine.martin@insightglobal.com": 2,
+            "trevlyn.kennedy@insightglobal.com": 2,
+            "ben.duignan@insightglobal.com": 2,
+            "taylor.schwab@insightglobal.com": 2,
+            "diane.diamond@insightglobal.com": 2,
+            "caroline.ong@insightglobal.com": 2
+          },
+          "unique_email_count": 2913,
+          "unique_phone_count": 0,
+          "unique_company_count": 1,
+          "unique_state_count": 45,
+          "unique_name_count": 2922,
+          "top_companies": {
+            "Insght global": 3199
+          },
+          "top_states": {
+            "Texas": 319,
+            "Georgia": 308,
+            "California": 270,
+            "Florida": 257,
+            "North Carolina": 166,
+            "Washington DC": 161,
+            "Virginia": 159,
+            "Washington": 130,
+            "Ohio": 119,
+            "Illinois": 109,
+            "Colorado": 104,
+            "New York": 103,
+            "New Jersey": 84,
+            "tennesse": 84,
+            "Arizona": 83
+          }
+        },
+        {
+          "sheet_name": "Sheet2",
+          "total_rows": 1000,
+          "blank_rows": 1000,
+          "has_headers": false,
+          "detected_format": "STANDARD",
+          "headers": [],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": []
+            },
+            {
+              "row_index": 2,
+              "values": []
+            },
+            {
+              "row_index": 3,
+              "values": []
+            },
+            {
+              "row_index": 4,
+              "values": []
+            },
+            {
+              "row_index": 5,
+              "values": []
+            },
+            {
+              "row_index": 999,
+              "values": []
+            },
+            {
+              "row_index": 1000,
+              "values": []
+            }
+          ],
+          "rows_with_email": 0,
+          "rows_without_email": 0,
+          "rows_with_phone": 0,
+          "rows_with_company": 0,
+          "rows_with_state": 0,
+          "rows_with_name": 0,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [],
+          "phone_columns": [],
+          "name_columns": [],
+          "company_columns": [],
+          "state_columns": [],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 0,
+          "duplicate_email_examples": {},
+          "unique_email_count": 0,
+          "unique_phone_count": 0,
+          "unique_company_count": 0,
+          "unique_state_count": 0,
+          "unique_name_count": 0,
+          "top_companies": {},
+          "top_states": {}
+        },
+        {
+          "sheet_name": "Robert Half",
+          "total_rows": 5323,
+          "blank_rows": 0,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Company",
+            "Email",
+            "State"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "christina R.",
+                "Robert Half",
+                "christina.r.@roberthalf.com",
+                "New york"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Kara Lyon",
+                "Robert Half",
+                "kara.lyon@roberthalf.com",
+                "New york"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "Stephanie Sposato",
+                "Robert Half",
+                "stephanie.sposato@roberthalf.com",
+                "New york"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Mary Eble",
+                "Robert Half",
+                "mary.eble@roberthalf.com",
+                "New york"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Tess Gilmore",
+                "Robert Half",
+                "tess.gilmore@roberthalf.com",
+                "New york"
+              ]
+            },
+            {
+              "row_index": 5322,
+              "values": [
+                "Matt Kinsella",
+                "Robert Half",
+                "matt.kinsella@roberthalf.com",
+                "Montana"
+              ]
+            },
+            {
+              "row_index": 5323,
+              "values": [
+                "Samantha Stuen",
+                "Robert Half",
+                "samantha.stuen@roberthalf.com",
+                "Montana"
+              ]
+            }
+          ],
+          "rows_with_email": 5273,
+          "rows_without_email": 50,
+          "rows_with_phone": 0,
+          "rows_with_company": 5323,
+          "rows_with_state": 5323,
+          "rows_with_name": 5323,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [
+            "State"
+          ],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 239,
+          "duplicate_email_examples": {
+            "stephen.williams@roberthalf.com": 2,
+            "kimberly.vance@roberthalf.com": 2,
+            "nathan.rusli@roberthalf.com": 2,
+            "omar.naimyar@roberthalf.com": 2,
+            "larry.dominguez@roberthalf.com": 2,
+            "yodit.n.@roberthalf.com": 2,
+            "alex.lukic@roberthalf.com": 2,
+            "robin.anderson@roberthalf.com": 2,
+            "margaretha.juan@roberthalf.com": 2,
+            "mahil.santram@roberthalf.com": 2
+          },
+          "unique_email_count": 5033,
+          "unique_phone_count": 0,
+          "unique_company_count": 1,
+          "unique_state_count": 45,
+          "unique_name_count": 5088,
+          "top_companies": {
+            "Robert Half": 5323
+          },
+          "top_states": {
+            "California": 586,
+            "Texas": 477,
+            "Florida": 329,
+            "llinois": 298,
+            "Ohio": 291,
+            "New york": 261,
+            "Arizona": 246,
+            "New Jersey": 232,
+            "Minnesota": 217,
+            "Pennsylvania": 199,
+            "Massachsuttes": 194,
+            "North Carolina": 171,
+            "Georgia": 166,
+            "Washington": 152,
+            "Virginia": 115
+          }
+        },
+        {
+          "sheet_name": "Tier4 Group",
+          "total_rows": 1000,
+          "blank_rows": 970,
+          "has_headers": false,
+          "detected_format": "STANDARD",
+          "headers": [
+            "Column_0",
+            "Column_1",
+            "Column_2"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Joe",
+                "joe@tier4group.com",
+                "Tier4 Group"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Vince Godfrey",
+                "vince.godfrey@tier4group.com",
+                "Tier4 Group"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "Christopher Frana",
+                "christopher.frana@tier4group.com",
+                "Tier4 Group"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Crystal Rehling",
+                "crystal.rehling@tier4group.com",
+                "Tier4 Group"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Hena K",
+                "hena.k@tier4group.com",
+                "Tier4 Group"
+              ]
+            },
+            {
+              "row_index": 999,
+              "values": []
+            },
+            {
+              "row_index": 1000,
+              "values": []
+            }
+          ],
+          "rows_with_email": 30,
+          "rows_without_email": 0,
+          "rows_with_phone": 0,
+          "rows_with_company": 0,
+          "rows_with_state": 0,
+          "rows_with_name": 0,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Column_1"
+          ],
+          "phone_columns": [],
+          "name_columns": [],
+          "company_columns": [],
+          "state_columns": [],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 0,
+          "duplicate_email_examples": {},
+          "unique_email_count": 30,
+          "unique_phone_count": 0,
+          "unique_company_count": 0,
+          "unique_state_count": 0,
+          "unique_name_count": 0,
+          "top_companies": {},
+          "top_states": {}
+        },
+        {
+          "sheet_name": "Agile Resources, Inc.",
+          "total_rows": 1000,
+          "blank_rows": 987,
+          "has_headers": false,
+          "detected_format": "STANDARD",
+          "headers": [
+            "Column_0",
+            "Column_1",
+            "Column_2"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Bric Rowan",
+                "browan@gotoagile.com",
+                "Agile Resources, Inc."
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Emily C",
+                "ec@gotoagile.com",
+                "Agile Resources, Inc."
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "Alex Hunter",
+                "ahunter@gotoagile.com",
+                "Agile Resources, Inc."
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Ciara Nasuti",
+                "cnasuti@gotoagile.com",
+                "Agile Resources, Inc."
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Anna Brantner",
+                "abrantner@gotoagile.com",
+                "Agile Resources, Inc."
+              ]
+            },
+            {
+              "row_index": 999,
+              "values": []
+            },
+            {
+              "row_index": 1000,
+              "values": []
+            }
+          ],
+          "rows_with_email": 13,
+          "rows_without_email": 0,
+          "rows_with_phone": 0,
+          "rows_with_company": 0,
+          "rows_with_state": 0,
+          "rows_with_name": 0,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Column_1"
+          ],
+          "phone_columns": [],
+          "name_columns": [],
+          "company_columns": [],
+          "state_columns": [],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 0,
+          "duplicate_email_examples": {},
+          "unique_email_count": 13,
+          "unique_phone_count": 0,
+          "unique_company_count": 0,
+          "unique_state_count": 0,
+          "unique_name_count": 0,
+          "top_companies": {},
+          "top_states": {}
+        },
+        {
+          "sheet_name": "Turnberry Solutions",
+          "total_rows": 1000,
+          "blank_rows": 960,
+          "has_headers": false,
+          "detected_format": "STANDARD",
+          "headers": [
+            "Column_0",
+            "Column_1",
+            "Column_2"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Jamie Kozelka",
+                "jamie.kozelka@turnberrysolutions.com",
+                "Turnberry Solutions"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Vikas Jha",
+                "vikas.jha@turnberrysolutions.com",
+                "Turnberry Solutions"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "Shashwat Bajpai",
+                "shashwat.bajpai@turnberrysolutions.com",
+                "Turnberry Solutions"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Abhishek Garg",
+                "abhishek.garg@turnberrysolutions.com",
+                "Turnberry Solutions"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Daniel Neil",
+                "daniel.neil@turnberrysolutions.com",
+                "Turnberry Solutions"
+              ]
+            },
+            {
+              "row_index": 999,
+              "values": []
+            },
+            {
+              "row_index": 1000,
+              "values": []
+            }
+          ],
+          "rows_with_email": 40,
+          "rows_without_email": 0,
+          "rows_with_phone": 0,
+          "rows_with_company": 0,
+          "rows_with_state": 0,
+          "rows_with_name": 0,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Column_1"
+          ],
+          "phone_columns": [],
+          "name_columns": [],
+          "company_columns": [],
+          "state_columns": [],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 0,
+          "duplicate_email_examples": {},
+          "unique_email_count": 40,
+          "unique_phone_count": 0,
+          "unique_company_count": 0,
+          "unique_state_count": 0,
+          "unique_name_count": 0,
+          "top_companies": {},
+          "top_states": {}
+        },
+        {
+          "sheet_name": "Entegee",
+          "total_rows": 999,
+          "blank_rows": 791,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Company",
+            "Email",
+            "State"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Andrew Becker",
+                "Entegee",
+                "andrew.becker@entegee.com"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Chase L.",
+                "Entegee",
+                "chase.l.@entegee.com"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "Joseph Dwinell",
+                "Entegee",
+                "joseph.dwinell@entegee.com"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Christopher Sullivan",
+                "Entegee",
+                "christopher.sullivan@entegee.com"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "David P.",
+                "Entegee",
+                "david.p.@entegee.com"
+              ]
+            },
+            {
+              "row_index": 998,
+              "values": []
+            },
+            {
+              "row_index": 999,
+              "values": []
+            }
+          ],
+          "rows_with_email": 205,
+          "rows_without_email": 3,
+          "rows_with_phone": 0,
+          "rows_with_company": 208,
+          "rows_with_state": 0,
+          "rows_with_name": 208,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [
+            "State"
+          ],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 0,
+          "duplicate_email_examples": {},
+          "unique_email_count": 205,
+          "unique_phone_count": 0,
+          "unique_company_count": 1,
+          "unique_state_count": 0,
+          "unique_name_count": 208,
+          "top_companies": {
+            "Entegee": 208
+          },
+          "top_states": {}
+        },
+        {
+          "sheet_name": "Andiamo",
+          "total_rows": 999,
+          "blank_rows": 963,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Company",
+            "Email",
+            "State"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Stephanie Keryluk",
+                "Andiamo",
+                "stephanie.keryluk@andiamogo.com"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Jaikishan Jangir",
+                "Andiamo",
+                "jaikishan.jangir@andiamogo.com"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "Shane Zobel",
+                "Andiamo",
+                "shane.zobel@andiamogo.com"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Prashant Chauhan",
+                "Andiamo",
+                "prashant.chauhan@andiamogo.com"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Shri Patel",
+                "Andiamo",
+                "shri.patel@andiamogo.com"
+              ]
+            },
+            {
+              "row_index": 998,
+              "values": []
+            },
+            {
+              "row_index": 999,
+              "values": []
+            }
+          ],
+          "rows_with_email": 36,
+          "rows_without_email": 0,
+          "rows_with_phone": 0,
+          "rows_with_company": 36,
+          "rows_with_state": 0,
+          "rows_with_name": 36,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [
+            "State"
+          ],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 0,
+          "duplicate_email_examples": {},
+          "unique_email_count": 36,
+          "unique_phone_count": 0,
+          "unique_company_count": 1,
+          "unique_state_count": 0,
+          "unique_name_count": 36,
+          "top_companies": {
+            "Andiamo": 36
+          },
+          "top_states": {}
+        },
+        {
+          "sheet_name": "Impel Consultants",
+          "total_rows": 999,
+          "blank_rows": 995,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Company",
+            "Email",
+            "State"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Adam Jaber",
+                "Impel-Consultants",
+                "adam@impel-consultants.com"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Ben McLachlan",
+                "Impel-Consultants",
+                "ben@impel-consultants.com"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "James Onslow",
+                "Impel-Consultants",
+                "james@impel-consultants.com"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Betty Davis-Robinson",
+                "Impel-Consultants",
+                "betty@impel-consultants.com"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": []
+            },
+            {
+              "row_index": 998,
+              "values": []
+            },
+            {
+              "row_index": 999,
+              "values": []
+            }
+          ],
+          "rows_with_email": 4,
+          "rows_without_email": 0,
+          "rows_with_phone": 0,
+          "rows_with_company": 4,
+          "rows_with_state": 0,
+          "rows_with_name": 4,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [
+            "State"
+          ],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 0,
+          "duplicate_email_examples": {},
+          "unique_email_count": 4,
+          "unique_phone_count": 0,
+          "unique_company_count": 1,
+          "unique_state_count": 0,
+          "unique_name_count": 4,
+          "top_companies": {
+            "Impel-Consultants": 4
+          },
+          "top_states": {}
+        },
+        {
+          "sheet_name": "Whitehall Resources",
+          "total_rows": 999,
+          "blank_rows": 977,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Company",
+            "Email",
+            "State"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Max Davies",
+                "Whitehall Resources",
+                "max.davies@whitehallresources.com"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Charlie Regan",
+                "Whitehall Resources",
+                "charlie.regan@whitehallresources.com"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "Keir Turnbull",
+                "Whitehall Resources",
+                "keir.turnbull@whitehallresources.com"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Matt Grove",
+                "Whitehall Resources",
+                "matt.grove@whitehallresources.com"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Adam Edgell",
+                "Whitehall Resources",
+                "adam.edgell@whitehallresources.com"
+              ]
+            },
+            {
+              "row_index": 998,
+              "values": []
+            },
+            {
+              "row_index": 999,
+              "values": []
+            }
+          ],
+          "rows_with_email": 22,
+          "rows_without_email": 0,
+          "rows_with_phone": 0,
+          "rows_with_company": 22,
+          "rows_with_state": 0,
+          "rows_with_name": 22,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [
+            "State"
+          ],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 0,
+          "duplicate_email_examples": {},
+          "unique_email_count": 22,
+          "unique_phone_count": 0,
+          "unique_company_count": 1,
+          "unique_state_count": 0,
+          "unique_name_count": 22,
+          "top_companies": {
+            "Whitehall Resources": 22
+          },
+          "top_states": {}
+        },
+        {
+          "sheet_name": "Susan Graham Consulting",
+          "total_rows": 999,
+          "blank_rows": 993,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Company",
+            "Email",
+            "State"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Eryn Williams",
+                "Susan Graham Consulting",
+                "ewilliams@susangconsulting.com"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Erin Brockman",
+                "Susan Graham Consulting",
+                "ebrockman@susangconsulting.com"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "Taylor Underkoffler",
+                "Susan Graham Consulting",
+                "tunderkoffler@susangconsulting.com"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Molly Shelley",
+                "Susan Graham Consulting",
+                "mshelley@susangconsulting.com"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Ali Weiand",
+                "Susan Graham Consulting",
+                "aweiand@susangconsulting.com"
+              ]
+            },
+            {
+              "row_index": 998,
+              "values": []
+            },
+            {
+              "row_index": 999,
+              "values": []
+            }
+          ],
+          "rows_with_email": 6,
+          "rows_without_email": 0,
+          "rows_with_phone": 0,
+          "rows_with_company": 6,
+          "rows_with_state": 0,
+          "rows_with_name": 6,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [
+            "State"
+          ],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 0,
+          "duplicate_email_examples": {},
+          "unique_email_count": 6,
+          "unique_phone_count": 0,
+          "unique_company_count": 1,
+          "unique_state_count": 0,
+          "unique_name_count": 6,
+          "top_companies": {
+            "Susan Graham Consulting": 6
+          },
+          "top_states": {}
+        },
+        {
+          "sheet_name": "Procom",
+          "total_rows": 999,
+          "blank_rows": 737,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Company",
+            "Email",
+            "Country",
+            "State"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Roy Mella",
+                "Procom",
+                "roy.mella@procomservices.com",
+                "US",
+                ""
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Stefany Mitchell",
+                "Procom",
+                "stefany.mitchell@procomservices.com",
+                "US",
+                ""
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "Trey Scott",
+                "Procom",
+                "trey.scott@procomservices.com",
+                "US",
+                ""
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Milind Sethi",
+                "Procom",
+                "milind.sethi@procomservices.com",
+                "US",
+                "Texas"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Kathleen Gessler",
+                "Procom",
+                "kathleen.gessler@procomservices.com",
+                "US",
+                "Texas"
+              ]
+            },
+            {
+              "row_index": 998,
+              "values": []
+            },
+            {
+              "row_index": 999,
+              "values": []
+            }
+          ],
+          "rows_with_email": 255,
+          "rows_without_email": 7,
+          "rows_with_phone": 0,
+          "rows_with_company": 262,
+          "rows_with_state": 30,
+          "rows_with_name": 262,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [
+            "State"
+          ],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 1,
+          "duplicate_email_examples": {
+            "christine.plowucha@procomservices.com": 2
+          },
+          "unique_email_count": 254,
+          "unique_phone_count": 0,
+          "unique_company_count": 1,
+          "unique_state_count": 5,
+          "unique_name_count": 262,
+          "top_companies": {
+            "Procom": 262
+          },
+          "top_states": {
+            "Texas": 14,
+            "North Carolina": 12,
+            "New York": 2,
+            "Illinois": 1,
+            "Florida": 1
+          }
+        }
+      ],
+      "errors": [],
+      "sheet_names": [
+        "Abhishek Sheet",
+        "Anshu Sheet",
+        "k force",
+        "Randstad Digital Americas",
+        "Oxford Global Resources",
+        "Randstad Digital",
+        "Apex Systems Contacts",
+        "Experis EST",
+        "Sleeper Agents",
+        "ManpowerGroup",
+        "BHT Staffing",
+        "Insight global",
+        "Sheet2",
+        "Robert Half",
+        "Tier4 Group",
+        "Agile Resources, Inc.",
+        "Turnberry Solutions",
+        "Entegee",
+        "Andiamo",
+        "Impel Consultants",
+        "Whitehall Resources",
+        "Susan Graham Consulting",
+        "Procom"
+      ],
+      "sheet_count": 23
+    },
+    {
+      "filename": "2477397f-414d-455a-b888-4f539497783e.xlsx",
+      "file_size_bytes": 17051,
+      "sheets": [
+        {
+          "sheet_name": "Sheet1",
+          "total_rows": 202,
+          "blank_rows": 0,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Company",
+            "Email",
+            "State"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Adrian Young",
+                "Randstad Digital",
+                "adrian.young@randstaddigital.com",
+                "California"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Lauren Hitt",
+                "Randstad Digital",
+                "lauren.hitt@randstaddigital.com",
+                "California"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "Annemarie Pizzo",
+                "Randstad Digital",
+                "annemarie.pizzo@randstaddigital.com",
+                "California"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Eric Disque",
+                "Randstad Digital",
+                "eric.disque@randstaddigital.com",
+                "California"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Ashley Jackson",
+                "Randstad Digital",
+                "ashley.jackson@randstaddigital.com",
+                "California"
+              ]
+            },
+            {
+              "row_index": 201,
+              "values": [
+                "Jessica Ball",
+                "Randstad Digital US",
+                "jessica.ball@randstaddigital.com",
+                "Illinois"
+              ]
+            },
+            {
+              "row_index": 202,
+              "values": [
+                "Bart Lago",
+                "Randstad Digital US",
+                "bart.lago@randstaddigital.com",
+                "Illinois"
+              ]
+            }
+          ],
+          "rows_with_email": 202,
+          "rows_without_email": 0,
+          "rows_with_phone": 0,
+          "rows_with_company": 202,
+          "rows_with_state": 202,
+          "rows_with_name": 202,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [
+            "State"
+          ],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 0,
+          "duplicate_email_examples": {},
+          "unique_email_count": 202,
+          "unique_phone_count": 0,
+          "unique_company_count": 2,
+          "unique_state_count": 5,
+          "unique_name_count": 202,
+          "top_companies": {
+            "Randstad Digital US": 146,
+            "Randstad Digital": 56
+          },
+          "top_states": {
+            "Texas": 60,
+            "California": 54,
+            "Florida": 37,
+            "Illinois": 32,
+            "New York": 19
+          }
+        }
+      ],
+      "errors": [],
+      "sheet_names": [
+        "Sheet1"
+      ],
+      "sheet_count": 1
+    },
+    {
+      "filename": "3aeade5e-cc97-4bb8-8e4a-7852235c5955.xlsx",
+      "file_size_bytes": 33169,
+      "sheets": [
+        {
+          "sheet_name": "Sheet1",
+          "total_rows": 662,
+          "blank_rows": 0,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Company",
+            "Email",
+            "State"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Bethany Frechette",
+                "Apex Systems, Inc.",
+                "bfrechette@apexsystems.com",
+                "Alabama"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Collin Mccain",
+                "Apex Systems, Inc.",
+                "cmccain@apexsystems.com",
+                "Alabama"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "Kim Lorberbaum",
+                "Apex Systems, Inc.",
+                "klorberbaum@apexsystems.com",
+                "Alabama"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Mary Katherine Keough",
+                "Apex Systems, Inc.",
+                "mkeough@apexsystems.com",
+                "Alabama"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Robert Clausen",
+                "Apex Systems, Inc.",
+                "rclausen@apexsystems.com",
+                "Alabama"
+              ]
+            },
+            {
+              "row_index": 661,
+              "values": [
+                "Shauna Anderson",
+                "Apex Systems, Inc.",
+                "sanderson@apexsystems.com",
+                "Wisconsin"
+              ]
+            },
+            {
+              "row_index": 662,
+              "values": [
+                "Tim Koelbl",
+                "Apex Systems, Inc.",
+                "tkoelbl@apexsystems.com",
+                "Wisconsin"
+              ]
+            }
+          ],
+          "rows_with_email": 662,
+          "rows_without_email": 0,
+          "rows_with_phone": 0,
+          "rows_with_company": 662,
+          "rows_with_state": 662,
+          "rows_with_name": 662,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [
+            "State"
+          ],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 9,
+          "duplicate_email_examples": {
+            "cjohnson@apexsystems.com": 2,
+            "jsmith@apexsystems.com": 3,
+            "scarter@apexsystems.com": 2,
+            "crobinson@apexsystems.com": 2,
+            "sfoster@apexsystems.com": 2,
+            "kdadzie@apexsystems.com": 2,
+            "tjones@apexsystems.com": 2,
+            "jthomas@apexsystems.com": 2,
+            "atucker@apexsystems.com": 2
+          },
+          "unique_email_count": 652,
+          "unique_phone_count": 0,
+          "unique_company_count": 1,
+          "unique_state_count": 40,
+          "unique_name_count": 662,
+          "top_companies": {
+            "Apex Systems, Inc.": 662
+          },
+          "top_states": {
+            "Virginia": 152,
+            "California": 56,
+            "Texas": 54,
+            "North Carolina": 51,
+            "Florida": 32,
+            "Colorado": 29,
+            "Arizona": 25,
+            "USA": 24,
+            "Washington": 23,
+            "Illinois": 22,
+            "Maryland": 16,
+            "Minnesota": 15,
+            "New York": 15,
+            "Pennsylvania": 15,
+            "Georgia": 14
+          }
+        }
+      ],
+      "errors": [],
+      "sheet_names": [
+        "Sheet1"
+      ],
+      "sheet_count": 1
+    },
+    {
+      "filename": "446b73ad-ba0e-4245-ac51-874c73814b14.xlsx",
+      "file_size_bytes": 170642,
+      "sheets": [
+        {
+          "sheet_name": "Sheet1",
+          "total_rows": 4280,
+          "blank_rows": 0,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Company",
+            "Email",
+            "State"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Troy Hennum",
+                "ManpowerGroup",
+                "troy.hennum@manpower.com",
+                "Washington"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Deanna Swigert",
+                "ManpowerGroup",
+                "deanna.swigert@manpower.com",
+                "Washington"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "Sean Cissna",
+                "ManpowerGroup",
+                "sean.cissna@manpower.com",
+                "Washington"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Julie Loucks",
+                "ManpowerGroup",
+                "julie.loucks@manpower.com",
+                "Washington"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Amina M.",
+                "ManpowerGroup",
+                "amina.m.@manpower.com",
+                "Washington"
+              ]
+            },
+            {
+              "row_index": 4279,
+              "values": [
+                "Tom Burnell",
+                "ManpowerGroup",
+                "tom.burnell@manpower.com",
+                "Kentucky"
+              ]
+            },
+            {
+              "row_index": 4280,
+              "values": [
+                "Dean Rogers",
+                "ManpowerGroup",
+                "dean.rogers@manpower.com",
+                "Kentucky"
+              ]
+            }
+          ],
+          "rows_with_email": 4253,
+          "rows_without_email": 27,
+          "rows_with_phone": 0,
+          "rows_with_company": 4280,
+          "rows_with_state": 4280,
+          "rows_with_name": 4280,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [
+            "State"
+          ],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 210,
+          "duplicate_email_examples": {
+            "christy.clark@manpower.com": 2,
+            "tyler.spevacek@manpower.com": 2,
+            "chris.scioscia@manpower.com": 2,
+            "renee.campbell@manpower.com": 2,
+            "joshua.davis@manpower.com": 2,
+            "debbie.schmidt@manpower.com": 2,
+            "eric.hess@manpower.com": 2,
+            "mike.gallardo@manpower.com": 2,
+            "jerome.bunkers@manpower.com": 2,
+            "shelly.goetz@manpower.com": 2
+          },
+          "unique_email_count": 4040,
+          "unique_phone_count": 0,
+          "unique_company_count": 1,
+          "unique_state_count": 47,
+          "unique_name_count": 4071,
+          "top_companies": {
+            "ManpowerGroup": 4280
+          },
+          "top_states": {
+            "Wisconsin": 567,
+            "California": 357,
+            "Texas": 355,
+            "Michigan": 316,
+            "North Carolina": 211,
+            "Florida": 193,
+            "Pennsylvania": 184,
+            "New york": 157,
+            "Georgia": 145,
+            "Illinois": 125,
+            "Colorado": 112,
+            "Ohio": 109,
+            "Virginia": 106,
+            "Missouri": 105,
+            "Arizona": 97
+          }
+        }
+      ],
+      "errors": [],
+      "sheet_names": [
+        "Sheet1"
+      ],
+      "sheet_count": 1
+    },
+    {
+      "filename": "60101ce2-e426-4ca1-89d7-12e732e83060.xlsx",
+      "file_size_bytes": 126520,
+      "sheets": [
+        {
+          "sheet_name": "Sheet1",
+          "total_rows": 3199,
+          "blank_rows": 0,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Company",
+            "Email",
+            "State"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Melody Rizo",
+                "Insght global",
+                "Melody.rizo@insightglobal.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Amirica Nicholson",
+                "Insght global",
+                "Amirica.nicholson@insightglobal.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "Arden Gill",
+                "Insght global",
+                "Arden.gill@insightglobal.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Allison Dod",
+                "Insght global",
+                "Allison.dod@insightglobal.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Wynser Inabinet",
+                "Insght global",
+                "Wynser.inabinet@insightglobal.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 3198,
+              "values": [
+                "Tricia Cannavo",
+                "Insght global",
+                "Tricia.cannavo@insightglobal.com",
+                "Winconsin"
+              ]
+            },
+            {
+              "row_index": 3199,
+              "values": [
+                "Julaine Zuelzke",
+                "Insght global",
+                "Julaine.zuelzke@insightglobal.com",
+                "Winconsin"
+              ]
+            }
+          ],
+          "rows_with_email": 3190,
+          "rows_without_email": 9,
+          "rows_with_phone": 0,
+          "rows_with_company": 3199,
+          "rows_with_state": 3199,
+          "rows_with_name": 3198,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [
+            "State"
+          ],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 223,
+          "duplicate_email_examples": {
+            "kelsey.wright@insightglobal.com": 2,
+            "miguel.espinoza@insightglobal.com": 2,
+            "yasmin.connor@insightglobal.com": 2,
+            "adam.reese@insightglobal.com": 2,
+            "katherine.martin@insightglobal.com": 2,
+            "trevlyn.kennedy@insightglobal.com": 2,
+            "ben.duignan@insightglobal.com": 2,
+            "taylor.schwab@insightglobal.com": 2,
+            "diane.diamond@insightglobal.com": 2,
+            "caroline.ong@insightglobal.com": 2
+          },
+          "unique_email_count": 2913,
+          "unique_phone_count": 0,
+          "unique_company_count": 1,
+          "unique_state_count": 45,
+          "unique_name_count": 2922,
+          "top_companies": {
+            "Insght global": 3199
+          },
+          "top_states": {
+            "Texas": 319,
+            "Georgia": 308,
+            "California": 270,
+            "Florida": 257,
+            "North Carolina": 166,
+            "Washington DC": 161,
+            "Virginia": 159,
+            "Washington": 130,
+            "Ohio": 119,
+            "Illinois": 109,
+            "Colorado": 104,
+            "New York": 103,
+            "New Jersey": 84,
+            "tennesse": 84,
+            "Arizona": 83
+          }
+        }
+      ],
+      "errors": [],
+      "sheet_names": [
+        "Sheet1"
+      ],
+      "sheet_count": 1
+    },
+    {
+      "filename": "7572f2f2-1905-412d-b567-481379d3e052.xlsx",
+      "file_size_bytes": 53732,
+      "sheets": [
+        {
+          "sheet_name": "Sheet1",
+          "total_rows": 1235,
+          "blank_rows": 0,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Company",
+            "Email",
+            "State"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Michelle Maruska",
+                "Kforce",
+                "mmaruska@kforce.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Emily Adams",
+                "Kforce",
+                "eadams@kforce.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "Kayla Massop",
+                "Kforce",
+                "kmassop@kforce.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Max Suarez",
+                "Kforce",
+                "msuarez@kforce.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Tyler Miksiewicz",
+                "Kforce",
+                "tmiksiewicz@kforce.com",
+                "Florida"
+              ]
+            },
+            {
+              "row_index": 1234,
+              "values": [
+                "Kendra Inness",
+                "Kforce",
+                "kinness@kforce.com",
+                "Kansas"
+              ]
+            },
+            {
+              "row_index": 1235,
+              "values": [
+                "Stacey A. Bailey",
+                "Kforce",
+                "sbailey@kforce.com",
+                "Kansas"
+              ]
+            }
+          ],
+          "rows_with_email": 1225,
+          "rows_without_email": 10,
+          "rows_with_phone": 0,
+          "rows_with_company": 1235,
+          "rows_with_state": 1235,
+          "rows_with_name": 1235,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [
+            "State"
+          ],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 27,
+          "duplicate_email_examples": {
+            "rsmith@kforce.com": 2,
+            "athomas@kforce.com": 2,
+            "adavis@kforce.com": 2,
+            "ldavis@kforce.com": 2,
+            "lgarcia@kforce.com": 2,
+            "smcdonald@kforce.com": 2,
+            "jsmith@kforce.com": 2,
+            "kmiller@kforce.com": 2,
+            "aanderson@kforce.com": 2,
+            "awright@kforce.com": 2
+          },
+          "unique_email_count": 1198,
+          "unique_phone_count": 0,
+          "unique_company_count": 1,
+          "unique_state_count": 24,
+          "unique_name_count": 1235,
+          "top_companies": {
+            "Kforce": 1235
+          },
+          "top_states": {
+            "Florida": 359,
+            "Texas": 128,
+            "California": 111,
+            "Missouri": 55,
+            "Virginia": 54,
+            "Georgia": 51,
+            "Washington": 48,
+            "Ohio": 47,
+            "Pennsylvania": 45,
+            "Arizona": 44,
+            "Colorado": 38,
+            "Washington DC": 36,
+            "Michigan": 35,
+            "Ilinois": 34,
+            "New york": 34
+          }
+        }
+      ],
+      "errors": [],
+      "sheet_names": [
+        "Sheet1"
+      ],
+      "sheet_count": 1
+    },
+    {
+      "filename": "7b50a76b-1097-4dd8-8645-ce32bb9801e4.csv",
+      "file_size_bytes": 292,
+      "sheets": [],
+      "errors": [
+        "Cannot open file: openpyxl does not support .csv file format, please check you can open it with Excel first. Supported formats are: .xlsx,.xlsm,.xltx,.xltm"
+      ]
+    },
+    {
+      "filename": "98351faa-5f9a-4456-b48c-84f0c856c0b3.xlsx",
+      "file_size_bytes": 43411,
+      "sheets": [
+        {
+          "sheet_name": "Sheet1",
+          "total_rows": 892,
+          "blank_rows": 0,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Company",
+            "Email",
+            "State"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Gavin Mims",
+                "Oxford Global Resources",
+                "gavin_mims@oxfordcorp.com",
+                "Alabama"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Shea Paredes",
+                "Oxford Global Resources",
+                "shea_paredes@oxfordcorp.com",
+                "Arizona"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "John Rodhouse",
+                "Oxford Global Resources",
+                "john_rodhouse@oxfordcorp.com",
+                "Arizona"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Madalyn Mclean",
+                "Oxford Global Resources",
+                "madalyn_mclean@oxfordcorp.com",
+                "Arizona"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Ismael Gutierrez",
+                "Oxford Global Resources",
+                "ismael_gutierrez@oxfordcorp.com",
+                "Arizona"
+              ]
+            },
+            {
+              "row_index": 891,
+              "values": [
+                "Danielle Wendt",
+                "Oxford Global Resources",
+                "danielle_wendt@oxfordcorp.com",
+                "Wisconsin"
+              ]
+            },
+            {
+              "row_index": 892,
+              "values": [
+                "Andy Kirchner",
+                "Oxford Global Resources",
+                "andy_kirchner@oxfordcorp.com",
+                "Wisconsin"
+              ]
+            }
+          ],
+          "rows_with_email": 892,
+          "rows_without_email": 0,
+          "rows_with_phone": 0,
+          "rows_with_company": 892,
+          "rows_with_state": 892,
+          "rows_with_name": 892,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [
+            "State"
+          ],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 18,
+          "duplicate_email_examples": {
+            "samantha_hunter@oxfordcorp.com": 2,
+            "tk_goldsmith@oxfordcorp.com": 2,
+            "michael_winfield@oxfordcorp.com": 2,
+            "ryan_kelly@oxfordcorp.com": 2,
+            "sonny_abraham@oxfordcorp.com": 2,
+            "shawn_cushman@oxfordcorp.com": 2,
+            "ken_stine@oxfordcorp.com": 2,
+            "austin_larson@oxfordcorp.com": 2,
+            "naomi_carlson@oxfordcorp.com": 2,
+            "mirhanda_henneman@oxfordcorp.com": 2
+          },
+          "unique_email_count": 874,
+          "unique_phone_count": 0,
+          "unique_company_count": 1,
+          "unique_state_count": 39,
+          "unique_name_count": 874,
+          "top_companies": {
+            "Oxford Global Resources": 892
+          },
+          "top_states": {
+            "Massachusetts": 182,
+            "Wisconsin": 140,
+            "Florida": 129,
+            "Arizona": 101,
+            "Texas": 97,
+            "California": 49,
+            "Ohio": 29,
+            "Connecticut": 21,
+            "Washington": 14,
+            "Virginia": 13,
+            "Illinois": 12,
+            "United States": 12,
+            "USA": 11,
+            "New York": 10,
+            "Pennsylvania": 10
+          }
+        }
+      ],
+      "errors": [],
+      "sheet_names": [
+        "Sheet1"
+      ],
+      "sheet_count": 1
+    },
+    {
+      "filename": "c9d9def7-cdc4-463f-8797-f12012a89102.xlsx",
+      "file_size_bytes": 39572,
+      "sheets": [
+        {
+          "sheet_name": "Sheet1",
+          "total_rows": 806,
+          "blank_rows": 0,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Company",
+            "Email",
+            "State"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Erich Ryser",
+                "Randstad Digital Americas",
+                "erich.ryser@randstaddigital.com",
+                "Texas"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Brandon Phillips",
+                "Randstad Digital Americas",
+                "brandon.phillips@randstaddigital.com",
+                "Texas"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "TJ Brand",
+                "Randstad Digital Americas",
+                "tj.brand@randstaddigital.com",
+                "Texas"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Brian Jones",
+                "Randstad Digital Americas",
+                "brian.jones@randstaddigital.com",
+                "Texas"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Roze A.",
+                "Randstad Digital Americas",
+                "roze.a.@randstaddigital.com",
+                "Texas"
+              ]
+            },
+            {
+              "row_index": 805,
+              "values": [
+                "Cara Walters",
+                "Randstad Digital Americas",
+                "cara.walters@randstaddigital.com",
+                "Nevada"
+              ]
+            },
+            {
+              "row_index": 806,
+              "values": [
+                "Jeffrey Snyder",
+                "Randstad Digital Americas",
+                "jeffrey.snyder@randstaddigital.com",
+                "Nevada"
+              ]
+            }
+          ],
+          "rows_with_email": 802,
+          "rows_without_email": 4,
+          "rows_with_phone": 0,
+          "rows_with_company": 806,
+          "rows_with_state": 806,
+          "rows_with_name": 806,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [
+            "State"
+          ],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 43,
+          "duplicate_email_examples": {
+            "jamie.andrews@randstaddigital.com": 2,
+            "zack.gavin@randstaddigital.com": 2,
+            "matthew.price@randstaddigital.com": 2,
+            "samira.tofighbakhsh@randstaddigital.com": 2,
+            "avante.brown@randstaddigital.com": 2,
+            "james.palubinski@randstaddigital.com": 2,
+            "sean.mckinney@randstaddigital.com": 2,
+            "kyle.weissenburger@randstaddigital.com": 2,
+            "zach.campbell@randstaddigital.com": 2,
+            "laurie.casper@randstaddigital.com": 2
+          },
+          "unique_email_count": 759,
+          "unique_phone_count": 0,
+          "unique_company_count": 1,
+          "unique_state_count": 31,
+          "unique_name_count": 764,
+          "top_companies": {
+            "Randstad Digital Americas": 806
+          },
+          "top_states": {
+            "Texas": 103,
+            "Caliornia": 92,
+            "Florida": 65,
+            "Illinois": 56,
+            "Georgia": 51,
+            "Pennsylvania": 48,
+            "Washington DC": 44,
+            "North Carolina": 44,
+            "New jersey": 41,
+            "Virginia": 35,
+            "New York": 29,
+            "Ohio": 28,
+            "Maryland": 26,
+            "Michigan": 24,
+            "Arizona": 20
+          }
+        }
+      ],
+      "errors": [],
+      "sheet_names": [
+        "Sheet1"
+      ],
+      "sheet_count": 1
+    },
+    {
+      "filename": "cafcf6b2-21f8-4446-bd55-b4b4f931d097.xlsx",
+      "file_size_bytes": 55708,
+      "sheets": [
+        {
+          "sheet_name": "Sheet1",
+          "total_rows": 1202,
+          "blank_rows": 0,
+          "has_headers": true,
+          "detected_format": "SIMPLE_ROW",
+          "headers": [
+            "Name",
+            "Company",
+            "Email",
+            "State"
+          ],
+          "sample_rows": [
+            {
+              "row_index": 1,
+              "values": [
+                "Lindsay Plotkin",
+                "Experis",
+                "lindsay.plotkin@experis.com",
+                "North Carolina"
+              ]
+            },
+            {
+              "row_index": 2,
+              "values": [
+                "Reid Webster",
+                "Experis",
+                "reid.webster@experis.com",
+                "North Carolina"
+              ]
+            },
+            {
+              "row_index": 3,
+              "values": [
+                "Katie Pinson Johnson",
+                "Experis",
+                "katie.johnson@experis.com",
+                "North Carolina"
+              ]
+            },
+            {
+              "row_index": 4,
+              "values": [
+                "Joseph Bartolotta",
+                "Experis",
+                "joseph.bartolotta@experis.com",
+                "North Carolina"
+              ]
+            },
+            {
+              "row_index": 5,
+              "values": [
+                "Baker Westmoreland",
+                "Experis",
+                "baker.westmoreland@experis.com",
+                "North Carolina"
+              ]
+            },
+            {
+              "row_index": 1201,
+              "values": [
+                "Brenda Noordam",
+                "Experis",
+                "brenda.noordam@experis.com",
+                "Texas"
+              ]
+            },
+            {
+              "row_index": 1202,
+              "values": [
+                "Tamika Phillips",
+                "Experis",
+                "tamika.phillips@experis.com",
+                "Texas"
+              ]
+            }
+          ],
+          "rows_with_email": 1194,
+          "rows_without_email": 8,
+          "rows_with_phone": 0,
+          "rows_with_company": 1202,
+          "rows_with_state": 1202,
+          "rows_with_name": 1202,
+          "bad_phones": 0,
+          "multi_email_rows": 0,
+          "multi_phone_rows": 0,
+          "possible_vertical_format": false,
+          "email_columns": [
+            "Email"
+          ],
+          "phone_columns": [],
+          "name_columns": [
+            "Name"
+          ],
+          "company_columns": [
+            "Company"
+          ],
+          "state_columns": [
+            "State"
+          ],
+          "duplicate_emails_within_file": [],
+          "duplicate_emails_count": 1,
+          "duplicate_email_examples": {
+            "chris.morris@experis.com": 2
+          },
+          "unique_email_count": 1193,
+          "unique_phone_count": 0,
+          "unique_company_count": 1,
+          "unique_state_count": 40,
+          "unique_name_count": 1199,
+          "top_companies": {
+            "Experis": 1202
+          },
+          "top_states": {
+            "North Carolina": 139,
+            "Texas": 105,
+            "California": 77,
+            "Wisconsin": 65,
+            "Georgia": 64,
+            "Pennsylvania": 61,
+            "New York": 59,
+            "Illinois": 51,
+            "Colorado": 45,
+            "Florida": 43,
+            "Washington": 42,
+            "Arizona": 38,
+            "Virginia": 37,
+            "New Jersey": 36,
+            "Indiana": 35
+          }
+        }
+      ],
+      "errors": [],
+      "sheet_names": [
+        "Sheet1"
+      ],
+      "sheet_count": 1
+    }
+  ],
+  "cross_file_analysis": {
+    "total_unique_emails_across_all_files": 17362,
+    "total_unique_names_across_all_files": 16458,
+    "emails_in_multiple_files": 11719,
+    "cross_file_duplicate_examples": {
+      "mmaruska@kforce.com": [
+        "202f1fec-7f3a-4916-a5ef-db0ab4ae8bea.xlsx",
+        "7572f2f2-1905-412d-b567-481379d3e052.xlsx"
+      ],
+      "eadams@kforce.com": [
+        "202f1fec-7f3a-4916-a5ef-db0ab4ae8bea.xlsx",
+        "7572f2f2-1905-412d-b567-481379d3e052.xlsx"
+      ],
+      "kmassop@kforce.com": [
+        "202f1fec-7f3a-4916-a5ef-db0ab4ae8bea.xlsx",
+        "7572f2f2-1905-412d-b567-481379d3e052.xlsx"
+      ],
+      "msuarez@kforce.com": [
+        "202f1fec-7f3a-4916-a5ef-db0ab4ae8bea.xlsx",
+        "7572f2f2-1905-412d-b567-481379d3e052.xlsx"
+      ],
+      "tmiksiewicz@kforce.com": [
+        "202f1fec-7f3a-4916-a5ef-db0ab4ae8bea.xlsx",
+        "7572f2f2-1905-412d-b567-481379d3e052.xlsx"
+      ],
+      "eduarte@kforce.com": [
+        "202f1fec-7f3a-4916-a5ef-db0ab4ae8bea.xlsx",
+        "7572f2f2-1905-412d-b567-481379d3e052.xlsx"
+      ],
+      "ceudis@kforce.com": [
+        "202f1fec-7f3a-4916-a5ef-db0ab4ae8bea.xlsx",
+        "7572f2f2-1905-412d-b567-481379d3e052.xlsx"
+      ],
+      "mdennison@kforce.com": [
+        "202f1fec-7f3a-4916-a5ef-db0ab4ae8bea.xlsx",
+        "7572f2f2-1905-412d-b567-481379d3e052.xlsx"
+      ],
+      "sdietz@kforce.com": [
+        "202f1fec-7f3a-4916-a5ef-db0ab4ae8bea.xlsx",
+        "7572f2f2-1905-412d-b567-481379d3e052.xlsx"
+      ],
+      "odiaz@kforce.com": [
+        "202f1fec-7f3a-4916-a5ef-db0ab4ae8bea.xlsx",
+        "7572f2f2-1905-412d-b567-481379d3e052.xlsx"
+      ]
+    }
+  }
+}

@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
-from app.database import get_db
-from app.models.models import Company
+from ..database import get_db
+from ..models.models import Company
 
 router = APIRouter()
 
@@ -46,9 +46,9 @@ def get_company(company_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Company not found")
     return c
 
-from app.utils.state_mapper import normalize_state
+from ..utils.state_mapper import normalize_state
 
-from app.routes.auth import verify_admin
+from .auth import verify_admin
 
 @router.post("/", status_code=201)
 def create_company(data: CompanyCreate, db: Session = Depends(get_db), _=Depends(verify_admin)):

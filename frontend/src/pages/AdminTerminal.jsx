@@ -594,12 +594,15 @@ export default function AdminTerminal() {
     email: '',
     phone: '',
     linkedin: '',
+    location: '',
     specialization: '',
     company_id: '',
-    location: '',
-    is_active: true,
     email2: '',
     phone2: '',
+    email3: '',
+    phone3: '',
+    email4: '',
+    phone4: '',
     notes: '',
   })
   const [savingRecruiter, setSavingRecruiter] = useState(false)
@@ -1930,8 +1933,12 @@ export default function AdminTerminal() {
                   ['location', 'Location'],
                   ['linkedin', 'LinkedIn'],
                   ['specialization', 'Specialization'],
-                  ['email2', 'Alt Email'],
-                  ['phone2', 'Alt Phone'],
+                  ['email2', 'Email 2'],
+                  ['phone2', 'Phone 2'],
+                  ['email3', 'Email 3'],
+                  ['phone3', 'Phone 3'],
+                  ['email4', 'Email 4'],
+                  ['phone4', 'Phone 4'],
                 ].map(([key, label]) => (
                   <div key={key} style={{ gridColumn: key === 'location' || key === 'linkedin' || key === 'specialization' || key === 'notes' ? 'span 2' : 'span 1' }}>
                     <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</label>

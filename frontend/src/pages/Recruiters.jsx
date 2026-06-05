@@ -4,8 +4,8 @@ import api from '../services/api'
 
 const emptyForm = {
   recruiter_name: '', email: '', phone: '', linkedin: '',
-  specialization: '', company_id: '', is_active: true,
-  email2: '', phone2: '', notes: ''
+  specialization: '', location: '', company_id: '',
+  email2: '', phone2: '', email3: '', phone3: '', email4: '', phone4: '', notes: ''
 }
 
 function Modal({ title, onClose, onSave, form, setForm, saving }) {
@@ -29,8 +29,12 @@ function Modal({ title, onClose, onSave, form, setForm, saving }) {
             { key: 'recruiter_name', label: 'Full Name *', span: 2 },
             { key: 'email', label: 'Email *', type: 'email' },
             { key: 'phone', label: 'Phone' },
-            { key: 'email2', label: 'Alt Email', type: 'email' },
-            { key: 'phone2', label: 'Alt Phone' },
+            { key: 'email2', label: 'Alt Email 2', type: 'email' },
+            { key: 'phone2', label: 'Alt Phone 2' },
+            { key: 'email3', label: 'Alt Email 3', type: 'email' },
+            { key: 'phone3', label: 'Alt Phone 3' },
+            { key: 'email4', label: 'Alt Email 4', type: 'email' },
+            { key: 'phone4', label: 'Alt Phone 4' },
             { key: 'specialization', label: 'Specialization', span: 2 },
             { key: 'linkedin', label: 'LinkedIn URL', span: 2 },
             { key: 'notes', label: 'Notes', span: 2, type: 'textarea' },
@@ -81,7 +85,7 @@ function Modal({ title, onClose, onSave, form, setForm, saving }) {
 
 function RecruiterTableRow({ r, toggleActive, openEdit, handleDelete }) {
   const [expanded, setExpanded] = useState(false)
-  const hasExtra = !!(r.email2 || r.phone2 || r.notes)
+  const hasExtra = !!(r.email2 || r.phone2 || r.email3 || r.phone3 || r.email4 || r.phone4 || r.notes)
   
   const qcColor = r.needs_review ? '#f59e0b' : (r.completeness_score >= 80 ? '#22c55e' : (r.completeness_score >= 50 ? '#38bdf8' : '#ef4444'))
   
@@ -142,8 +146,12 @@ function RecruiterTableRow({ r, toggleActive, openEdit, handleDelete }) {
       {expanded && hasExtra && (
         <tr>
           <td colSpan="7" style={{ background: 'var(--main-bg)', padding: '12px 16px 12px 64px', borderBottom: '1px solid var(--card-border)', fontSize: 13, color: 'var(--text-secondary)' }}>
-            {r.email2 && <div style={{ marginBottom: 6 }}><i className="ti ti-mail" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Alt Email:</strong> {r.email2}</div>}
-            {r.phone2 && <div style={{ marginBottom: 6 }}><i className="ti ti-phone" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Alt Phone:</strong> {r.phone2}</div>}
+            {r.email2 && <div style={{ marginBottom: 6 }}><i className="ti ti-mail" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Email 2:</strong> {r.email2}</div>}
+            {r.email3 && <div style={{ marginBottom: 6 }}><i className="ti ti-mail" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Email 3:</strong> {r.email3}</div>}
+            {r.email4 && <div style={{ marginBottom: 6 }}><i className="ti ti-mail" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Email 4:</strong> {r.email4}</div>}
+            {r.phone2 && <div style={{ marginBottom: 6 }}><i className="ti ti-phone" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Phone 2:</strong> {r.phone2}</div>}
+            {r.phone3 && <div style={{ marginBottom: 6 }}><i className="ti ti-phone" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Phone 3:</strong> {r.phone3}</div>}
+            {r.phone4 && <div style={{ marginBottom: 6 }}><i className="ti ti-phone" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Phone 4:</strong> {r.phone4}</div>}
             {r.notes && <div><i className="ti ti-notes" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Notes:</strong> {r.notes}</div>}
           </td>
         </tr>
@@ -248,7 +256,7 @@ export default function Recruiters() {
       recruiter_name: r.recruiter_name || '', email: r.email || '', phone: r.phone || '',
       linkedin: r.linkedin || '', specialization: r.specialization || '',
       company_id: r.company_id || '', is_active: r.is_active !== false,
-      email2: r.email2 || '', phone2: r.phone2 || '', notes: r.notes || '',
+      email2: r.email2 || '', phone2: r.phone2 || '', email3: r.email3 || '', phone3: r.phone3 || '', email4: r.email4 || '', phone4: r.phone4 || '', notes: r.notes || '',
       needs_review: r.needs_review || false, review_reason: r.review_reason || ''
     })
     setModal(r)

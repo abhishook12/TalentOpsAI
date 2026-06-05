@@ -6,11 +6,11 @@ import pandas as pd
 import io, csv, uuid, re
 from datetime import datetime
 from openpyxl import load_workbook
-from app.database import get_db
-from app.models.models import Candidate, Recruiter, UploadJob, ActionLog
-from app.utils.column_mapper import detect_columns
-from app.schemas.upload import AnalyzeResponse
-from app.services.job_tracker import serialize_upload_job
+from ..database import get_db
+from ..models.models import Candidate, Recruiter, UploadJob, ActionLog
+from ..utils.column_mapper import detect_columns
+from ..schemas.upload import AnalyzeResponse
+from ..services.job_tracker import serialize_upload_job
 
 router = APIRouter()
 
@@ -122,6 +122,68 @@ async def upload_recruiters(file: UploadFile = File(...), db: Session = Depends(
             email2=str(row["email2"]).lower().strip() if row.get("email2") else None,
             phone2=clean_phone(row.get("phone2","")) or None,
             linkedin=str(row["linkedin"]).strip() if row.get("linkedin") else None,
+            email3=str(row.get("email3", "")).lower().strip() or None,
+            phone3=clean_phone(row.get("phone3", "")) or None,
+            email4=str(row.get("email4", "")).lower().strip() or None,
+            phone4=clean_phone(row.get("phone4", "")) or None
+        )
+        db.add(recruiter)
+        inserted += 1
+    db.commit()
+    return {"message": "Upload complete", "inserted": inserted, "duplicates_skipped": duplicates, "total_rows": len(rows)}
+
+# ─── Original Legacy Endpoints (keep working) ─────────────────────────────────
+
+@router.post("/candidates")
+async def upload_candidates(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    if not file.filename.endswith((".csv", ".xlsx")):
+        raise HTTPException(status_code=400, detail="Only CSV and Excel files are supported")
+    contents = await file.read()
+    rows = read_file(contents, file.filename)
+    if not rows or "candidate_name" not in rows[0] or "email" not in rows[0]:
+        raise HTTPException(status_code=400, detail="Missing required columns: candidate_name, email")
+    inserted = duplicates = 0
+    for row in rows:
+        email = clean_email(row.get("email",""))
+        if not email: continue
+        if db.query(Candidate).filter(Candidate.email == email).first():
+            duplicates += 1; continue
+        candidate = Candidate(
+            candidate_name=clean_name(row.get("candidate_name","")),
+            email=email,
+            phone=clean_phone(row.get("phone","")) or None,
+            visa_status=str(row["visa_status"]).strip() if row.get("visa_status") else None,
+            skills=str(row["skills"]) if row.get("skills") else None,
+            experience_years=float(row["experience_years"]) if row.get("experience_years") else None,
+            location=str(row["location"]).strip() if row.get("location") else None,
+            rate_per_hour=float(row["rate_per_hour"]) if row.get("rate_per_hour") else None,
+            availability=str(row["availability"]).strip() if row.get("availability") else None,
+        )
+        db.add(candidate); inserted += 1
+    db.commit()
+    return {"message": "Upload complete", "inserted": inserted, "duplicates_skipped": duplicates, "total_rows": len(rows)}
+
+@router.post("/recruiters")
+async def upload_recruiters(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    if not file.filename.endswith((".csv", ".xlsx")):
+        raise HTTPException(status_code=400, detail="Only CSV and Excel files are supported")
+    contents = await file.read()
+    rows = read_file(contents, file.filename)
+    if not rows or "recruiter_name" not in rows[0] or "email" not in rows[0]:
+        raise HTTPException(status_code=400, detail="Missing required columns: recruiter_name, email")
+    inserted = duplicates = 0
+    for row in rows:
+        email = clean_email(row.get("email",""))
+        if not email: continue
+        if db.query(Recruiter).filter(Recruiter.email == email).first():
+            duplicates += 1; continue
+        recruiter = Recruiter(
+            recruiter_name=clean_name(row.get("recruiter_name","")),
+            email=email,
+            phone=clean_phone(row.get("phone","")) or None,
+            email2=str(row["email2"]).lower().strip() if row.get("email2") else None,
+            phone2=clean_phone(row.get("phone2","")) or None,
+            linkedin=str(row["linkedin"]).strip() if row.get("linkedin") else None,
             specialization=str(row["specialization"]).strip() if row.get("specialization") else None,
             notes=str(row["notes"]).strip() if row.get("notes") else None,
             is_active=True,
@@ -139,88 +201,67 @@ async def analyze_file(file: UploadFile = File(...)):
     run basic validation, and return a preview with statistics."""
     if not file.filename.lower().endswith((".csv", ".xlsx", ".xls")):
         raise HTTPException(status_code=400, detail="Unsupported file type. Use CSV or Excel.")
+    
+    # Save temp file for adaptive parser
+    temp_dir = "uploads/temp"
+    os.makedirs(temp_dir, exist_ok=True)
+    temp_path = os.path.join(temp_dir, f"temp_{uuid.uuid4()}_{file.filename}")
+    
+    contents = await file.read()
+    with open(temp_path, "wb") as f:
+        f.write(contents)
+        
     try:
-        contents = await file.read()
-        headers, rows = stream_file_rows(contents, file.filename)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to parse file: {e}")
+        from ..services.adaptive_parser import parse_file
+        # Parse only first 100 rows per sheet for fast analysis
+        result = parse_file(temp_path, max_rows_per_sheet=100) 
+        
+        sheets_data = []
+        for s in result.sheets:
+            # Reconstruct raw_data for preview (parser stores it as dict but preview wants dict)
+            preview_rows = []
+            for r in s.parsed_rows[:10]:
+                preview_rows.append(r.raw_data)
 
-    # Detect column mapping using heuristic matcher
-    column_map = detect_columns(list(headers))
-
-    total_rows = 0
-    email_col = column_map.get('email')
-    duplicates = missing = invalid_emails = invalid_phones = corrupted = 0
-    empty_cols = set(headers)
-    non_empty_cols = set()
-    seen_emails = set()
-    email_re = re.compile(r'^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$')
-    phone_re = re.compile(r'^(?:\+?1[\s.\-]?)?\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}$')
-    phone_cols = [c for k, c in column_map.items() if k.startswith('phone') and c]
-    preview: List[Dict[str, Any]] = []
-
-    for row in rows:
-        total_rows += 1
-        cleaned_row = {col: row.get(col) for col in headers}
-        if total_rows <= 10:
-            preview.append(cleaned_row)
-
-        row_has_value = False
-        for col, value in cleaned_row.items():
-            if str(value).strip():
-                row_has_value = True
-                non_empty_cols.add(col)
-
-        if not row_has_value:
-            corrupted += 1
-
-        if email_col:
-            raw_email = str(cleaned_row.get(email_col, '')).strip()
-            if not raw_email:
-                missing += 1
-            else:
-                if raw_email in seen_emails:
-                    duplicates += 1
-                else:
-                    seen_emails.add(raw_email)
-                if not email_re.match(raw_email):
-                    invalid_emails += 1
-
-        for pc in phone_cols:
-            raw_phone = str(cleaned_row.get(pc, '')).strip()
-            if raw_phone and not phone_re.match(raw_phone):
-                invalid_phones += 1
-
-    empty_cols = [c for c in headers if c not in non_empty_cols]
-
-    # Prepare preview (first 10 rows) with original headers
-    analysis_id = str(uuid.uuid4())
-    return AnalyzeResponse(
-        analysis_id=analysis_id,
-        total_rows=total_rows,
-        duplicates=duplicates,
-        missing_fields=missing,
-        invalid_emails=invalid_emails,
-        invalid_phones=invalid_phones,
-        empty_columns=empty_cols,
-        corrupted_rows=corrupted,
-        column_map=column_map,
-        original_headers=list(headers),
-        preview=preview,
-    )
+            sheets_data.append({
+                "sheet_name": s.sheet_name,
+                "detected_format": s.detected_format,
+                "format_confidence": s.format_confidence,
+                "has_headers": s.has_headers,
+                "headers": s.headers,
+                "total_rows": s.total_rows,
+                "data_rows": s.data_rows,
+                "blank_rows": s.blank_rows,
+                "column_map": s.column_mapping.to_dict(),
+                "preview": preview_rows,
+            })
+            
+        return AnalyzeResponse(
+            analysis_id=str(uuid.uuid4()),
+            total_rows=result.total_parsed_rows,
+            file_size_bytes=result.file_size_bytes,
+            sheet_count=result.sheet_count,
+            sheets=sheets_data,
+            errors=result.errors
+        )
+    finally:
+        if os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except:
+                pass
 
 
 # ─── NEW: Smart Import Async Endpoint ───────────────────────────────────────────
 import os
 import json
-from app.services.etl_worker import process_smart_import
+from ..services.etl_worker import process_smart_import
 
 @router.post("/smart-import-async")
 async def smart_import_async(
     request: Request,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    mapping: str = Form(None),
     db: Session = Depends(get_db),
 ):
     """Accept a file + column mapping and enqueue an async background import job."""
@@ -239,18 +280,11 @@ async def smart_import_async(
         f.write(contents)
 
     try:
-        headers = read_file_headers(contents, file.filename)
+        from ..services.adaptive_parser import parse_file
+        # Light verification parse
+        _ = parse_file(filepath, max_rows_per_sheet=2)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to parse file: {e}")
-
-    column_map = detect_columns(list(headers))
-    if mapping:
-        try:
-            parsed_mapping = json.loads(mapping)
-            if isinstance(parsed_mapping, dict):
-                column_map = parsed_mapping
-        except Exception:
-            pass
     
     # Create UploadJob record
     new_job = UploadJob(
@@ -286,9 +320,9 @@ async def smart_import_async(
     db.commit()
 
     # Launch background task
-    background_tasks.add_task(process_smart_import, job_id, filepath, column_map)
+    background_tasks.add_task(process_smart_import, job_id, filepath)
 
-    return {"message": "Job queued successfully", "job_id": job_id, "column_map": column_map}
+    return {"message": "Job queued successfully", "job_id": job_id}
 
 @router.get("/jobs")
 def get_jobs(db: Session = Depends(get_db)):
@@ -340,8 +374,6 @@ async def retry_job(job_id: str, background_tasks: BackgroundTasks, db: Session 
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to parse file: {e}")
 
-    column_map = detect_columns(list(df.columns))
-    
     new_job_id = str(uuid.uuid4())
     
     # Copy file to new ID
@@ -366,6 +398,6 @@ async def retry_job(job_id: str, background_tasks: BackgroundTasks, db: Session 
     db.add(new_job)
     db.commit()
 
-    background_tasks.add_task(process_smart_import, new_job_id, new_filepath, column_map)
+    background_tasks.add_task(process_smart_import, new_job_id, new_filepath)
 
     return {"message": "Job retried successfully", "new_job_id": new_job_id}

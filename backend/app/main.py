@@ -5,12 +5,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-
-from app.config import CORS_ORIGINS, IS_PRODUCTION, ENV as APP_ENV
-from app.routes import recruiters, companies, vendors, analytics, upload, admin, auth, actions, updates, import_engine
-from app.database import get_db, engine
-from app.models import models
-from app.create_indexes import create_performance_indexes
+from .config import CORS_ORIGINS, IS_PRODUCTION, ENV as APP_ENV
+from .routes import recruiters, companies, vendors, analytics, upload, admin, auth, actions, updates, import_engine
+from .database import get_db, engine
+from .models import models
+from .create_indexes import create_performance_indexes
 
 logging.basicConfig(
     level=logging.INFO if IS_PRODUCTION else logging.DEBUG,

@@ -4,11 +4,20 @@ from sqlalchemy.orm import Session, joinedload, contains_eager
 from sqlalchemy import text
 from pydantic import BaseModel
 from typing import List, Optional
-from app.database import get_db
-from app.routes.auth import verify_admin
-from app.models.models import Recruiter, Company
+from ..database import get_db
+from .auth import verify_admin
+from ..models.models import Recruiter, Company
+import re
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlalchemy.orm import Session, joinedload, contains_eager
+from sqlalchemy import text
+from pydantic import BaseModel
+from typing import List, Optional
+from ..database import get_db
+from .auth import verify_admin
+from ..models.models import Recruiter, Company
 
-from app.utils.state_mapper import normalize_state
+from ..utils.state_mapper import normalize_state
 
 
 router = APIRouter()
@@ -19,6 +28,10 @@ class RecruiterCreate(BaseModel):
     phone: Optional[str] = None
     email2: Optional[str] = None
     phone2: Optional[str] = None
+    email3: Optional[str] = None
+    phone3: Optional[str] = None
+    email4: Optional[str] = None
+    phone4: Optional[str] = None
     linkedin: Optional[str] = None
     specialization: Optional[str] = None
     notes: Optional[str] = None
@@ -32,6 +45,10 @@ class RecruiterUpdate(BaseModel):
     phone: Optional[str] = None
     email2: Optional[str] = None
     phone2: Optional[str] = None
+    email3: Optional[str] = None
+    phone3: Optional[str] = None
+    email4: Optional[str] = None
+    phone4: Optional[str] = None
     linkedin: Optional[str] = None
     specialization: Optional[str] = None
     notes: Optional[str] = None
@@ -46,6 +63,10 @@ class RecruiterBatchUpdate(BaseModel):
     phone: Optional[str] = None
     email2: Optional[str] = None
     phone2: Optional[str] = None
+    email3: Optional[str] = None
+    phone3: Optional[str] = None
+    email4: Optional[str] = None
+    phone4: Optional[str] = None
     linkedin: Optional[str] = None
     specialization: Optional[str] = None
     notes: Optional[str] = None
@@ -61,6 +82,10 @@ def serialize_recruiter(r):
         "phone": r.phone,
         "email2": r.email2,
         "phone2": r.phone2,
+        "email3": r.email3,
+        "phone3": r.phone3,
+        "email4": r.email4,
+        "phone4": r.phone4,
         "alternate_emails": getattr(r, "alternate_emails", None),
         "alternate_phones": getattr(r, "alternate_phones", None),
         "linkedin": r.linkedin,
@@ -125,6 +150,10 @@ def search_recruiters(
             r.phone,
             r.email2,
             r.phone2,
+            r.email3,
+            r.phone3,
+            r.email4,
+            r.phone4,
             r.linkedin,
             r.specialization,
             r.notes,
@@ -175,6 +204,14 @@ def search_recruiters(
             (
                 r.recruiter_name ILIKE '%' || :q || '%'
                 OR r.email ILIKE '%' || :q || '%'
+                OR r.email2 ILIKE '%' || :q || '%'
+                OR r.email3 ILIKE '%' || :q || '%'
+                OR r.email4 ILIKE '%' || :q || '%'
+                OR r.phone ILIKE '%' || :q || '%'
+                OR r.phone2 ILIKE '%' || :q || '%'
+                OR r.phone3 ILIKE '%' || :q || '%'
+                OR r.phone4 ILIKE '%' || :q || '%'
+                OR r.metadata_json::text ILIKE '%' || :q || '%'
                 OR COALESCE(c.company_name, '') ILIKE '%' || :q || '%'
                 OR COALESCE(r.specialization, '') ILIKE '%' || :q || '%'
                 OR similarity(r.recruiter_name, :q) > 0.3
@@ -208,6 +245,10 @@ def search_recruiters(
             "phone": row["phone"],
             "email2": row["email2"],
             "phone2": row["phone2"],
+            "email3": row["email3"],
+            "phone3": row["phone3"],
+            "email4": row["email4"],
+            "phone4": row["phone4"],
             "linkedin": row["linkedin"],
             "specialization": row["specialization"],
             "notes": row["notes"],
@@ -246,7 +287,7 @@ def get_recruiters(
 ):
     query = db.query(Recruiter).join(Recruiter.company, isouter=True).options(contains_eager(Recruiter.company))
     
-    from app.utils.normalizer import normalize_text
+    from ..utils.normalizer import normalize_text
     
     if search:
         clean_search = normalize_text(search)
@@ -427,7 +468,7 @@ def export_recruiters(
 ):
     query = db.query(Recruiter).join(Recruiter.company, isouter=True)
     
-    from app.utils.normalizer import normalize_text
+    from ..utils.normalizer import normalize_text
     
     if search:
         clean_search = normalize_text(search)
@@ -471,8 +512,9 @@ def export_recruiters(
     output = StringIO()
     writer = csv.writer(output)
     writer.writerow([
-        "Recruiter ID", "Name", "Email", "Phone", "Alternate Emails", "Alternate Phones", 
-        "Company", "Location", "State", "Title", "LinkedIn", "Needs Review", "Review Reason"
+        "Recruiter ID", "Name", "Email", "Email 2", "Email 3", "Email 4",
+        "Phone", "Phone 2", "Phone 3", "Phone 4", "Alternate Emails", "Alternate Phones", 
+        "Company", "Location", "State", "Title", "LinkedIn", "Needs Review", "Review Reason", "Metadata JSON", "Raw Data", "Source Job ID", "Duplicate Match Type"
     ])
     
     for r in recruiters:
@@ -480,7 +522,13 @@ def export_recruiters(
             r.recruiter_id,
             r.recruiter_name or "",
             r.email or "",
+            getattr(r, "email2", ""),
+            getattr(r, "email3", ""),
+            getattr(r, "email4", ""),
             r.phone or "",
+            getattr(r, "phone2", ""),
+            getattr(r, "phone3", ""),
+            getattr(r, "phone4", ""),
             getattr(r, "alternate_emails", ""),
             getattr(r, "alternate_phones", ""),
             r.company.company_name if r.company else "",
@@ -489,7 +537,11 @@ def export_recruiters(
             r.title or r.specialization or "",
             r.linkedin or "",
             getattr(r, "needs_review", False),
-            getattr(r, "review_reason", "")
+            getattr(r, "review_reason", ""),
+            getattr(r, "metadata_json", ""),
+            getattr(r, "raw_data", ""),
+            getattr(r, "source_job_id", ""),
+            getattr(r, "duplicate_match_type", "")
         ])
 
     output.seek(0)

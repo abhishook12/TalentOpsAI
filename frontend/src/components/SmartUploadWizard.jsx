@@ -1,142 +1,28 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
-import api, { getErrorMessage, API } from '../services/api'
-
-const FIELD_LABELS = {
-  name: 'Name', email: 'Email', phone: 'Phone',
-  company: 'Company', location: 'Location', state: 'State',
-  linkedin: 'LinkedIn', title: 'Title / Role'
-}
-const ALL_LOGICAL_FIELDS = Object.keys(FIELD_LABELS)
-
-function safeJsonParse(value) {
-  try {
-    return JSON.parse(value)
-  } catch {
-    return null
-  }
-}
-
-function buildLegacyPreview(analysis, mapping) {
-  const seenEmails = new Set()
-  const rows = (analysis.preview || []).map((row, index) => {
-    const getValue = (field) => {
-      const column = mapping[field]
-      if (!column) return ''
-      return String(row[column] ?? '').trim()
-    }
-
-    const email = getValue('email').toLowerCase()
-    const name = getValue('name')
-    const company = getValue('company')
-    const state = getValue('state')
-    const location = getValue('location')
-    const phone = getValue('phone')
-    const linkedin = getValue('linkedin')
-    const issues = []
-    let status = 'Ready'
-
-    if (!email) {
-      status = 'Error'
-      issues.push('Missing email')
-    } else if (!email.includes('@')) {
-      status = 'Error'
-      issues.push('Invalid email format')
-    } else if (seenEmails.has(email)) {
-      status = 'Duplicate'
-      issues.push('Duplicate in file')
-    } else {
-      seenEmails.add(email)
-    }
-
-    if (!name) issues.push('Missing name')
-    if (!company) issues.push('Missing company')
-    if (!state && !location) issues.push('Missing state/location')
-
-    return {
-      row_id: `legacy-${index}`,
-      index,
-      name,
-      email,
-      phone,
-      company,
-      state,
-      location,
-      linkedin,
-      status,
-      issues,
-    }
-  })
-
-  const totalRows = analysis.total_rows || rows.length
-  const duplicateRows = analysis.duplicates || 0
-  const missingFields = analysis.missing_fields || 0
-  const invalidEmails = analysis.invalid_emails || 0
-  const invalidPhones = analysis.invalid_phones || 0
-  const errorRows = Math.max(missingFields, invalidEmails, invalidPhones)
-  const validRows = Math.max(totalRows - duplicateRows - errorRows, 0)
-
-  return {
-    job: {
-      status: 'preview',
-      total_rows: totalRows,
-      valid_rows: validRows,
-      error_rows: errorRows,
-      duplicate_rows: duplicateRows,
-    },
-    rows,
-    pagination: {
-      page: 1,
-      limit: rows.length || 1,
-      total: rows.length,
-      pages: 1,
-    },
-  }
-}
+import { useState, useRef } from 'react'
+import api, { getErrorMessage } from '../services/api'
 
 export default function SmartUploadWizard() {
   const inputRef = useRef()
-  const [step, setStep] = useState('idle') // idle, uploading, mapping, validating, preview, importing, completed, error
+  const [step, setStep] = useState('idle') // idle, uploading, review, importing, completed, error
   const [jobId, setJobId] = useState(null)
   const [fileName, setFileName] = useState('')
   const [error, setError] = useState(null)
-  const [backendFlavor, setBackendFlavor] = useState('auto') // auto, new, legacy
   const [sourceFile, setSourceFile] = useState(null)
   const [uploadProgress, setUploadProgress] = useState(0)
   
-  // Mapping state
-  const [headers, setHeaders] = useState([])
-  const [sampleData, setSampleData] = useState([])
-  const [columnMap, setColumnMap] = useState({})
-  const [confidences, setConfidences] = useState({})
-  const [detectedFormat, setDetectedFormat] = useState('standard_row')
-  const [formatConfidence, setFormatConfidence] = useState(100)
-  
-  // Preview state
-  const [previewData, setPreviewData] = useState(null)
-  const [page, setPage] = useState(1)
+  // Analysis state
+  const [analysis, setAnalysis] = useState(null)
+  const [activeSheetIdx, setActiveSheetIdx] = useState(0)
   
   const reset = () => {
-    setStep('idle'); setJobId(null); setError(null); setColumnMap({}); setBackendFlavor('auto'); setSourceFile(null);
-    setPreviewData(null); setHeaders([]); setSampleData([]); setConfidences({}); setUploadProgress(0)
+    setStep('idle')
+    setJobId(null)
+    setError(null)
+    setSourceFile(null)
+    setAnalysis(null)
+    setActiveSheetIdx(0)
+    setUploadProgress(0)
     if(inputRef.current) inputRef.current.value = ''
-  }
-
-  const parseWithNewEngine = async (file, onUploadProgress) => {
-    const fd = new FormData()
-    fd.append('file', file)
-    return api.post('/api/import/parse', fd, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress,
-    })
-  }
-
-  const parseWithLegacyEngine = async (file, onUploadProgress) => {
-    const fd = new FormData()
-    fd.append('file', file)
-    return api.post('/upload/analyze', fd, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress,
-    })
   }
 
   const handleFileUpload = async (file) => {
@@ -147,156 +33,63 @@ export default function SmartUploadWizard() {
     setUploadProgress(0)
     setError(null)
 
-    try {
-      const res = await parseWithNewEngine(file, (event) => {
-        if (!event?.total) return
-        setUploadProgress(Math.max(0, Math.min(100, Math.round((event.loaded / event.total) * 100))))
-      })
-      setUploadProgress(100)
-      setBackendFlavor('new')
-      setJobId(res.data.job_id)
-      setHeaders(res.data.headers || [])
-      setSampleData(res.data.sample_data || [])
-
-      const newMap = {}
-      const newConf = {}
-      for (const [logical, details] of Object.entries(res.data.mapping_suggestions || {})) {
-        newMap[logical] = details.column
-        newConf[logical] = details.confidence
-      }
-      setColumnMap(newMap)
-      setConfidences(newConf)
-      setDetectedFormat(res.data.detected_format || 'standard_row')
-      setFormatConfidence(res.data.format_confidence || 100)
-      setStep('format_review')
-      return
-    } catch (e) {
-      console.warn('New smart import endpoint unavailable; falling back to legacy ETL.', e)
-    }
+    const fd = new FormData()
+    fd.append('file', file)
 
     try {
-      const res = await parseWithLegacyEngine(file, (event) => {
-        if (!event?.total) return
-        setUploadProgress(Math.max(0, Math.min(100, Math.round((event.loaded / event.total) * 100))))
-      })
-      setUploadProgress(100)
-      setBackendFlavor('legacy')
-      setHeaders(res.data.original_headers || [])
-      setSampleData(res.data.preview || [])
-      setColumnMap(res.data.column_map || {})
-      setConfidences(
-        Object.fromEntries(
-          Object.keys(res.data.column_map || {}).map((key) => [key, 100])
-        )
-      )
-      setPreviewData(buildLegacyPreview(res.data, res.data.column_map || {}))
-      setStep('preview')
-      } catch (e) {
-      setError(getErrorMessage(e, 'Failed to parse file with both import engines'))
-      setStep('error')
-    }
-  }
-
-  const startValidation = async () => {
-    if (backendFlavor === 'legacy') {
-      setStep('preview')
-      return
-    }
-    setStep('validating')
-    try {
-      await api.post(`/api/import/validate/${jobId}`, { mapping: columnMap, format: detectedFormat })
-      pollPreview()
-    } catch (e) {
-      setError(getErrorMessage(e, 'Validation failed'))
-      setStep('error')
-    }
-  }
-  
-  const pollPreview = async () => {
-    const fetchPage = async () => {
-      try {
-        const res = await api.get(`/api/import/preview/${jobId}?page=${page}&limit=50`)
-        if (res.data.job.status === 'validating') {
-          setTimeout(fetchPage, 2000)
-        } else {
-          setPreviewData(res.data)
-          setStep('preview')
+      const res = await api.post('/upload/analyze', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (event) => {
+          if (event.total) setUploadProgress(Math.max(0, Math.min(100, Math.round((event.loaded / event.total) * 100))))
         }
-      } catch (e) {
-        console.error(e)
-      }
+      })
+      setUploadProgress(100)
+      setAnalysis(res.data)
+      setStep('review')
+    } catch (e) {
+      setError(getErrorMessage(e, 'Failed to analyze file'))
+      setStep('error')
     }
-    fetchPage()
   }
-  
-  useEffect(() => {
-    if (step === 'preview') {
-      // Re-fetch when page changes
-        api.get(`/api/import/preview/${jobId}?page=${page}&limit=50`).then(res => setPreviewData(res.data))
-    }
-  }, [page, step, jobId])
 
-  const commitImport = async () => {
-    if (backendFlavor === 'legacy') {
-      setStep('importing')
-      setError(null)
-      try {
-        const fd = new FormData()
-        fd.append('file', sourceFile)
-        fd.append('mapping', JSON.stringify(columnMap))
-        const res = await api.post('/upload/smart-import-async', fd, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        })
-        setJobId(res.data.job_id)
-        pollLegacyCompletion(res.data.job_id)
-      } catch (e) {
-        setError(getErrorMessage(e, 'Commit failed'))
-        setStep('error')
-      }
-      return
-    }
-
+  const startImport = async () => {
     setStep('importing')
+    setError(null)
     try {
-      await api.post(`/api/import/commit/${jobId}`)
-      pollCompletion()
+      const fd = new FormData()
+      fd.append('file', sourceFile)
+      
+      const res = await api.post('/upload/smart-import-async', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      setJobId(res.data.job_id)
+      pollCompletion(res.data.job_id)
     } catch (e) {
-      setError(getErrorMessage(e, 'Commit failed'))
+      setError(getErrorMessage(e, 'Import failed to start'))
       setStep('error')
     }
   }
-  
-  const pollCompletion = async () => {
-    const fetchHistory = async () => {
-      try {
-        const res = await api.get(`/api/import/history`)
-        const myJob = res.data.find(j => j.job_id === jobId)
-        if (myJob && myJob.status === 'completed') {
-          setStep('completed')
-        } else if (myJob && myJob.status === 'importing') {
-          setTimeout(fetchHistory, 2000)
-        } else {
-          setStep('completed')
-        }
-      } catch (e) {
-        console.error(e)
-      }
-    }
-    fetchHistory()
-  }
 
-  const pollLegacyCompletion = async (legacyJobId) => {
+  const pollCompletion = async (currentJobId) => {
     const fetchStatus = async () => {
       try {
-        const res = await api.get(`/upload/jobs/${legacyJobId}`)
+        const res = await api.get(`/upload/jobs/${currentJobId}`)
         const job = res.data
-        if (job.status === 'completed') {
-          setStep('completed')
+        if (job.status === 'completed' || job.status === 'mapping_failed') {
+          if (job.status === 'mapping_failed') {
+            setError(job.error_message || 'Import failed to map or insert any rows.')
+            setStep('error')
+          } else {
+            setStep('completed')
+          }
           return
         }
         if (job.status === 'failed') {
-          const firstError = Array.isArray(job.errors) && job.errors[0]?.reason
-          setError(firstError || 'The import failed on the server.')
+          let errStr = job.error_message || 'The import failed on the server.'
+          if (job.errors && job.errors.length > 0) {
+            errStr = job.errors[0]?.reason || errStr
+          }
+          setError(errStr)
           setStep('error')
           return
         }
@@ -309,27 +102,7 @@ export default function SmartUploadWizard() {
     fetchStatus()
   }
 
-  // --- RENDER HELPERS ---
-  const renderStatusChip = (status) => {
-    const colors = {
-      'Ready': { bg: 'rgba(15,110,86,0.1)', color: '#0F6E56' },
-      'Warning': { bg: 'rgba(186,117,23,0.1)', color: '#BA7517' },
-      'Enrich': { bg: 'rgba(24,95,165,0.1)', color: '#185FA5' },
-      'Possible Duplicate': { bg: 'rgba(186,117,23,0.1)', color: '#BA7517' },
-      'Duplicate': { bg: 'rgba(186,117,23,0.1)', color: '#BA7517' },
-      'Error': { bg: 'rgba(196,57,74,0.1)', color: '#C4394A' },
-    }
-    const style = colors[status] || { bg: '#eee', color: '#666' }
-    let displayStatus = status
-    if (status === 'Enrich') displayStatus = 'Duplicate - Will Enrich'
-    if (status === 'Possible Duplicate') displayStatus = 'Possible Duplicate - Needs Review'
-
-    return (
-      <span style={{ padding: '4px 8px', borderRadius: 12, fontSize: 10, fontWeight: 600, background: style.bg, color: style.color }}>
-        {displayStatus}
-      </span>
-    )
-  }
+  const activeSheet = analysis?.sheets?.[activeSheetIdx]
 
   return (
     <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: 20 }}>
@@ -340,8 +113,8 @@ export default function SmartUploadWizard() {
             <i className="ti ti-brain" style={{ fontSize: 20, color: '#534AB7' }} />
           </div>
           <div>
-            <h2 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Smart Upload Engine</h2>
-            <p style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>AI‑assisted column detection • Data Normalization • Duplicate Detection</p>
+            <h2 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Adaptive ETL Engine</h2>
+            <p style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Multi-sheet Detection • Auto Mapping • Deduplication</p>
           </div>
         </div>
         {step !== 'idle' && (
@@ -355,13 +128,13 @@ export default function SmartUploadWizard() {
         {step === 'uploading' && (
           <div style={{ marginBottom: 18, padding: '12px 14px', borderRadius: 12, background: 'var(--main-bg)', border: '1px solid var(--card-border)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>Uploading file</div>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>Uploading & Analyzing</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{uploadProgress}%</div>
             </div>
             <div style={{ height: 8, borderRadius: 999, background: 'rgba(148,163,184,0.18)', overflow: 'hidden' }}>
               <div style={{ width: `${uploadProgress}%`, height: '100%', borderRadius: 999, background: 'linear-gradient(90deg, #534AB7, #185FA5)' }} />
             </div>
-            <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--text-muted)' }}>Sending {fileName} to the server…</div>
+            <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--text-muted)' }}>Parsing sheets and detecting formats...</div>
           </div>
         )}
 
@@ -370,168 +143,120 @@ export default function SmartUploadWizard() {
           <div onClick={() => inputRef.current?.click()} style={{ border: '2px dashed var(--card-border)', borderRadius: 14, padding: '48px 24px', textAlign: 'center', cursor: 'pointer', background: 'var(--main-bg)', transition: 'all 0.2s' }}>
             <i className="ti ti-cloud-upload" style={{ fontSize: 32, color: 'var(--text-muted)', marginBottom: 12, display: 'block' }} />
             <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>Drop your data file here</p>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>Supports .csv, .xlsx, .xls (Up to 100k rows)</p>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>Supports .csv, .xlsx, .xls</p>
             <input ref={inputRef} type="file" accept=".csv,.xlsx,.xls" style={{ display: 'none' }} onChange={e => handleFileUpload(e.target.files[0])} />
           </div>
         )}
 
-        {/* STEP 1.5: FORMAT REVIEW */}
-        {step === 'format_review' && (
+        {/* STEP 2: REVIEW (Multi-sheet) */}
+        {step === 'review' && analysis && (
           <div>
-            <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>Verify Data Structure</h3>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 20 }}>
-              Our engine analyzed the file and detected the following structure.
-            </p>
-
-            <div style={{ background: 'var(--main-bg)', padding: '16px 20px', borderRadius: 12, border: '1px solid var(--card-border)', marginBottom: 24 }}>
-               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Detected Format</div>
-                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Confidence: <strong style={{ color: formatConfidence > 80 ? '#0F6E56' : '#BA7517' }}>{formatConfidence}%</strong></div>
-               </div>
-               
-               <select 
-                 value={detectedFormat}
-                 onChange={e => setDetectedFormat(e.target.value)}
-                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)', fontSize: 13, cursor: 'pointer' }}
-               >
-                 <option value="standard_row">Standard Row (1 row = 1 recruiter)</option>
-                 <option value="vertical_multi_value">Vertical Multi-Value (Rows grouped by Name/Company)</option>
-                 <option value="wide_multi_column">Wide Multi-Column (Multiple email/phone columns)</option>
-                 <option value="company_first">Company First (Company precedes Name)</option>
-                 <option value="linkedin_text">LinkedIn Copied Text</option>
-                 <option value="company_block">Company Block Format</option>
-                 <option value="unknown_mixed">Unknown / Messy Mixed</option>
-               </select>
-               
-               <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 12, lineHeight: 1.5 }}>
-                 {detectedFormat === 'vertical_multi_value' && "Rows will be merged by Name and Company. Select this if contact fields are split across multiple rows."}
-                 {detectedFormat === 'standard_row' && "A standard CSV/Excel layout where each row represents exactly one complete person profile."}
-                 {detectedFormat === 'wide_multi_column' && "Our engine will automatically extract multiple contact points into the single profile."}
-                 {detectedFormat === 'linkedin_text' && "We will parse vertical text blocks using AI extraction."}
-                 {detectedFormat === 'unknown_mixed' && "Safest mode. We will extract what we can and flag uncertain rows for manual review."}
-               </p>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button onClick={() => setStep('mapping')} style={{ background: '#534AB7', color: '#fff', border: 'none', padding: '8px 20px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
-                Confirm Format & Map Columns <i className="ti ti-arrow-right" style={{ marginLeft: 6 }} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 2: MAPPING */}
-        {step === 'mapping' && (
-          <div>
-            <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Map Columns</h3>
-            <div style={{ border: '1px solid var(--card-border)', borderRadius: 10, overflow: 'hidden', marginBottom: 20 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 2fr 100px', gap: 10, padding: '10px 14px', background: 'var(--main-bg)', borderBottom: '1px solid var(--card-border)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                <span>Database Field</span>
-                <span>File Column</span>
-                <span>Confidence</span>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>File Analysis Complete</h3>
+            
+            <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
+              <div style={{ flex: 1, padding: 16, background: 'var(--main-bg)', border: '1px solid var(--card-border)', borderRadius: 10 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Total Sheets</div>
+                <div style={{ fontSize: 24, fontWeight: 700 }}>{analysis.sheet_count}</div>
               </div>
-              {ALL_LOGICAL_FIELDS.map(logical => (
-                <div key={logical} style={{ display: 'grid', gridTemplateColumns: '1.5fr 2fr 100px', gap: 10, padding: '10px 14px', borderBottom: '1px solid var(--card-border)', alignItems: 'center' }}>
-                  <span style={{ fontSize: 13, fontWeight: 500 }}>{FIELD_LABELS[logical]}</span>
-                  <select 
-                    value={columnMap[logical] || ''}
-                    onChange={e => setColumnMap({...columnMap, [logical]: e.target.value})}
-                    style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--card-bg)' }}
+              <div style={{ flex: 1, padding: 16, background: 'var(--main-bg)', border: '1px solid var(--card-border)', borderRadius: 10 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Total Rows</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: '#185FA5' }}>{analysis.total_rows}</div>
+              </div>
+            </div>
+
+            <div style={{ border: '1px solid var(--card-border)', borderRadius: 10, overflow: 'hidden', marginBottom: 20 }}>
+              {/* Sheet Tabs */}
+              <div style={{ display: 'flex', borderBottom: '1px solid var(--card-border)', background: 'var(--main-bg)', overflowX: 'auto' }}>
+                {analysis.sheets.map((sheet, idx) => (
+                  <button 
+                    key={idx}
+                    onClick={() => setActiveSheetIdx(idx)}
+                    style={{
+                      padding: '12px 16px',
+                      background: activeSheetIdx === idx ? 'var(--card-bg)' : 'transparent',
+                      border: 'none',
+                      borderBottom: activeSheetIdx === idx ? '2px solid #534AB7' : '2px solid transparent',
+                      color: activeSheetIdx === idx ? 'var(--text-primary)' : 'var(--text-muted)',
+                      fontWeight: activeSheetIdx === idx ? 600 : 500,
+                      fontSize: 13,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
                   >
-                    <option value="">— Skip —</option>
-                    {headers.map(h => <option key={h} value={h}>{h}</option>)}
-                  </select>
-                  <div>
-                    {confidences[logical] ? (
-                       <span style={{ fontSize: 11, color: confidences[logical] > 80 ? '#0F6E56' : '#BA7517', fontWeight: 600 }}>{confidences[logical]}% Match</span>
-                    ) : <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>—</span>}
+                    {sheet.sheet_name} ({sheet.data_rows} rows)
+                  </button>
+                ))}
+              </div>
+
+              {/* Sheet Content */}
+              {activeSheet && (
+                <div style={{ padding: 20 }}>
+                  <div style={{ display: 'flex', gap: 24, marginBottom: 20 }}>
+                    <div>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Detected Format</span>
+                      <span style={{ fontSize: 13, fontWeight: 600 }}>{activeSheet.detected_format}</span>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Confidence</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: activeSheet.format_confidence === 'high' ? '#0F6E56' : '#BA7517' }}>
+                        {activeSheet.format_confidence.toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Blank Rows Skipped</span>
+                      <span style={{ fontSize: 13, fontWeight: 600 }}>{activeSheet.blank_rows}</span>
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>Column Mapping Preview</div>
+                  <div style={{ overflowX: 'auto', border: '1px solid var(--card-border)', borderRadius: 8 }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ background: 'var(--main-bg)', borderBottom: '1px solid var(--card-border)' }}>
+                          {Object.keys(activeSheet.column_map).map(logical => (
+                            <th key={logical} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)', borderRight: '1px solid var(--card-border)' }}>
+                              {logical}
+                            </th>
+                          ))}
+                        </tr>
+                        <tr style={{ background: 'var(--card-bg)', borderBottom: '1px solid var(--card-border)' }}>
+                          {Object.values(activeSheet.column_map).map((header, idx) => (
+                            <th key={idx} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#185FA5', borderRight: '1px solid var(--card-border)' }}>
+                              {header || <span style={{color: '#aaa'}}>—</span>}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {activeSheet.preview.slice(0, 3).map((row, rowIdx) => (
+                          <tr key={rowIdx} style={{ borderBottom: '1px solid var(--card-border)' }}>
+                            {Object.values(activeSheet.column_map).map((header, colIdx) => (
+                              <td key={colIdx} style={{ padding: '8px 12px', borderRight: '1px solid var(--card-border)' }}>
+                                {header && row[header] ? String(row[header]) : ''}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-              ))}
-            </div>
-            
-            <button onClick={startValidation} className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '12px' }}>
-              Confirm & Start Validation
-            </button>
-          </div>
-        )}
-
-        {/* STEP 3: PREVIEW & VALIDATION */}
-        {step === 'preview' && previewData && (
-          <div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
-              <div style={{ padding: 16, background: 'var(--main-bg)', border: '1px solid var(--card-border)', borderRadius: 10, borderLeft: '4px solid #185FA5' }}>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Total Rows</div>
-                <div style={{ fontSize: 24, fontWeight: 700 }}>{previewData.job.total_rows}</div>
-              </div>
-              <div style={{ padding: 16, background: 'var(--main-bg)', border: '1px solid var(--card-border)', borderRadius: 10, borderLeft: '4px solid #0F6E56' }}>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Valid</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: '#0F6E56' }}>{previewData.job.valid_rows}</div>
-              </div>
-              <div style={{ padding: 16, background: 'var(--main-bg)', border: '1px solid var(--card-border)', borderRadius: 10, borderLeft: '4px solid #C4394A' }}>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Errors</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: '#C4394A' }}>{previewData.job.error_rows}</div>
-              </div>
-              <div style={{ padding: 16, background: 'var(--main-bg)', border: '1px solid var(--card-border)', borderRadius: 10, borderLeft: '4px solid #185FA5' }}>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Enrich / Merge</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: '#185FA5' }}>{previewData.job.duplicate_rows}</div>
-              </div>
-            </div>
-
-            <div style={{ border: '1px solid var(--card-border)', borderRadius: 10, overflowX: 'auto', marginBottom: 20 }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                <thead>
-                  <tr style={{ background: 'var(--main-bg)', borderBottom: '1px solid var(--card-border)' }}>
-                    <th style={{ padding: '10px', textAlign: 'left', fontWeight: 600 }}>Row</th>
-                    <th style={{ padding: '10px', textAlign: 'left', fontWeight: 600 }}>Status</th>
-                    <th style={{ padding: '10px', textAlign: 'left', fontWeight: 600 }}>Name</th>
-                    <th style={{ padding: '10px', textAlign: 'left', fontWeight: 600 }}>Email</th>
-                    <th style={{ padding: '10px', textAlign: 'left', fontWeight: 600 }}>Company</th>
-                    <th style={{ padding: '10px', textAlign: 'left', fontWeight: 600 }}>State</th>
-                    <th style={{ padding: '10px', textAlign: 'left', fontWeight: 600 }}>Issues</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {previewData.rows.map((r, i) => (
-                    <tr key={r.row_id} style={{ borderBottom: '1px solid var(--card-border)' }}>
-                      <td style={{ padding: '10px' }}>{r.index + 1}</td>
-                      <td style={{ padding: '10px' }}>{renderStatusChip(r.status)}</td>
-                      <td style={{ padding: '10px' }}>{r.name}</td>
-                      <td style={{ padding: '10px' }}>{r.email}</td>
-                      <td style={{ padding: '10px' }}>{r.company}</td>
-                      <td style={{ padding: '10px' }}>{r.state}</td>
-                      <td style={{ padding: '10px', color: '#C4394A', fontSize: 11 }}>{r.issues.join(', ')}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div style={{ padding: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--main-bg)' }}>
-                <button disabled={page === 1} onClick={() => setPage(p => p-1)} className="btn-secondary" style={{ padding: '4px 12px' }}>Prev</button>
-                <span style={{ fontSize: 12 }}>Page {page} of {previewData.pagination.pages}</span>
-                <button disabled={page === previewData.pagination.pages} onClick={() => setPage(p => p+1)} className="btn-secondary" style={{ padding: '4px 12px' }}>Next</button>
-              </div>
-            </div>
-
-            <button onClick={commitImport} className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '12px', background: 'linear-gradient(135deg, #185FA5, #534AB7)' }}>
-              <i className="ti ti-database-import" style={{ marginRight: 8, fontSize: 18 }} />
-              {backendFlavor === 'legacy' ? `Start Import (${previewData.job.total_rows} Rows)` : `Finalize Import (${previewData.job.valid_rows} Rows)`}
-            </button>
-            <div style={{ textAlign: 'center', marginTop: 12 }}>
-              {backendFlavor === 'legacy' ? (
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Rejected row export is not available on the current backend.</span>
-              ) : (
-                <a href={`${API}/api/import/${jobId}/rejected`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: 'var(--text-muted)', textDecoration: 'underline' }}>Download Rejected Rows</a>
               )}
             </div>
+
+            <button onClick={startImport} className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '12px', background: 'linear-gradient(135deg, #185FA5, #534AB7)' }}>
+              <i className="ti ti-database-import" style={{ marginRight: 8, fontSize: 18 }} />
+              Start Adaptive Import ({analysis.total_rows} Rows)
+            </button>
           </div>
         )}
 
         {/* LOADING STATES */}
-        {(step === 'uploading' || step === 'validating' || step === 'importing') && (
+        {step === 'importing' && (
            <div style={{ textAlign: 'center', padding: '40px 0' }}>
              <i className="ti ti-loader" style={{ fontSize: 40, color: '#534AB7', animation: 'spin 1s linear infinite', marginBottom: 16, display: 'block' }} />
              <p style={{ fontSize: 16, fontWeight: 500 }}>
-               {step === 'uploading' ? 'Parsing File...' : step === 'validating' ? 'Validating Data (Checking for duplicates & normalizing)...' : 'Committing to Database...'}
+               Deduplicating and Committing Database...
              </p>
            </div>
         )}
@@ -543,7 +268,7 @@ export default function SmartUploadWizard() {
                <i className="ti ti-check" style={{ fontSize: 32, color: '#0F6E56' }} />
              </div>
              <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Import Successful!</p>
-             <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>Your valid records have been ingested.</p>
+             <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>Your records have been ingested via the Adaptive Engine.</p>
              <button onClick={reset} className="btn-secondary" style={{ padding: '8px 24px' }}>Upload Another</button>
           </div>
         )}

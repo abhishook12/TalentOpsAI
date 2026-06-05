@@ -8,11 +8,11 @@ import io
 import math
 from datetime import datetime
 
-from app.database import get_db
-from app.models.models import SmartImportJob, SmartImportRow, Recruiter, ActionLog
-from app.services.import_service import detect_smart_columns, validate_and_save_rows, process_commit, generate_excel_from_rows
-from app.services.format_detector import detect_format
-from app.services.job_tracker import serialize_smart_job
+from ..database import get_db
+from ..models.models import SmartImportJob, SmartImportRow, Recruiter, ActionLog
+from ..services.import_service import detect_smart_columns, validate_and_save_rows, process_commit, generate_excel_from_rows
+from ..services.format_detector import detect_format
+from ..services.job_tracker import serialize_smart_job
 
 router = APIRouter(prefix="/import", tags=["import"])
 

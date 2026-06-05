@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
 import io, csv
 from openpyxl import load_workbook
-from app.database import get_db
-from app.models.models import Candidate, Recruiter
+from ..database import get_db
+from ..models.models import Candidate, Recruiter
 
 router = APIRouter()
 

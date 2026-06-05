@@ -7,13 +7,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text, func
 from sqlalchemy.exc import ProgrammingError
 from typing import Optional
-from app.database import get_db
-from app.models.models import Recruiter, Company, Candidate, Submission, Vendor, PageVisit
-from app.models.models import UploadJob, ActionLog
+from ..database import get_db
+from ..models.models import Recruiter, Company, Candidate, Submission, Vendor, PageVisit
+from ..models.models import UploadJob, ActionLog
 from datetime import datetime, timedelta
 from collections import defaultdict
 import time
-from app.routes.auth import verify_admin
+from ..routes.auth import verify_admin
 
 router = APIRouter()
 
@@ -638,7 +638,7 @@ def admin_orphan_companies(limit: int = 50, db: Session = Depends(get_db), _=Dep
 # ── 8. Cache clear ────────────────────────────────────────────────────────────
 @router.post("/clear-cache")
 def admin_clear_cache(_=Depends(verify_admin)):
-    from app.routes.analytics import analytics_cache
+    from ..routes.analytics import analytics_cache
     analytics_cache._cache.clear()
     return {"status": "ok", "message": "Analytics cache cleared."}
 

@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, Numeric, Date, Text, ForeignKey, TIMESTAMP
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from app.database import Base
+from ..database import Base
 
 
 class PageVisit(Base):
@@ -72,8 +72,12 @@ class Recruiter(Base):
     email            = Column(String(150), unique=True, nullable=False)
     phone            = Column(String(30))
     email2           = Column(String(150))          # secondary / personal email
-    alternate_emails = Column(Text)                 # CSV of extra emails
     phone2           = Column(String(30))           # secondary phone
+    email3           = Column(String(150))
+    phone3           = Column(String(30))
+    email4           = Column(String(150))
+    phone4           = Column(String(30))
+    alternate_emails = Column(Text)                 # CSV of extra emails
     alternate_phones = Column(Text)                 # CSV of extra phones
     linkedin         = Column(String(255))
     specialization   = Column(String(150))

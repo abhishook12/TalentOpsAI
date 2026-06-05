@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError, DBAPIError
 
-from app.database import SessionLocal
+from ..database import SessionLocal
 
 # Configuration via environment variables
 RETENTION_DAYS = int(os.getenv("PAGE_VISIT_RETENTION_DAYS", "30"))

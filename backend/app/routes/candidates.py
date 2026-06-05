@@ -3,9 +3,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from pydantic import BaseModel
 from typing import Optional, List
-from app.database import get_db
-from app.routes.auth import verify_admin
-from app.models.models import Candidate
+from ..database import get_db
+from .auth import verify_admin
+from ..models.models import Candidate
 
 router = APIRouter()
 

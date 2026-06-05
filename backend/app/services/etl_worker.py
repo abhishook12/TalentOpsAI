@@ -1,85 +1,23 @@
-import csv
 import json
 import os
 import traceback
 from datetime import datetime
 
-import pandas as pd
-from openpyxl import load_workbook
 from sqlalchemy.orm import Session
 
-from app.database import SessionLocal
-from app.models.models import Company, RawUpload, Recruiter, UploadJob
-from app.utils.normalizer import extract_domain, normalize_text
-from app.utils.state_mapper import normalize_state
-from app.services.job_tracker import mark_progress, utc_now
-
-def clean_val(v):
-    if pd.isna(v): return None
-    s = str(v).strip()
-    return s if s and s.lower() not in ('none', 'n/a', 'nan', 'null', '') else None
-
-def clean_email(email): 
-    return str(email).lower().strip() if email else None
-
-def clean_phone(phone): 
-    if not phone: return None
-    return str(phone).replace("-","").replace(" ","").replace("(","").replace(")","").strip()
-
-def clean_name(name):
-    if not name:
-        return None
-    value = str(name).strip()
-    return value if value else None
+from ..database import SessionLocal
+from ..models.models import Company, RawUpload, Recruiter, UploadJob
+from ..utils.normalizer import extract_domain, normalize_text
+from ..utils.state_normalizer import normalize_state_name
+from ..services.job_tracker import mark_progress, utc_now
+from ..services.adaptive_parser import parse_file
+from ..services.dedup_engine import deduplicate_and_enrich
 
 def build_company_name(company_name: str | None) -> str | None:
     if not company_name:
         return None
     value = str(company_name).strip()
     return value if value else None
-
-
-def count_file_rows(filepath: str) -> int:
-    if filepath.lower().endswith(".csv"):
-        try:
-            with open(filepath, "r", encoding="utf-8", errors="ignore") as handle:
-                row_count = sum(1 for _ in handle) - 1
-                return max(row_count, 0)
-        except Exception:
-            return 0
-    try:
-        workbook = load_workbook(filepath, read_only=True, data_only=True)
-        worksheet = workbook.active
-        row_count = max((worksheet.max_row or 1) - 1, 0)
-        workbook.close()
-        return row_count
-    except Exception:
-        return 0
-
-def iter_file_batches(filepath: str, batch_size: int = 2000):
-    if filepath.lower().endswith(".csv"):
-        for chunk in pd.read_csv(filepath, dtype=str, keep_default_na=False, chunksize=batch_size):
-            yield chunk.fillna("").to_dict(orient="records")
-        return
-
-    workbook = load_workbook(filepath, read_only=True, data_only=True)
-    worksheet = workbook.active
-    rows = worksheet.iter_rows(values_only=True)
-    headers = [str(header).strip() if header is not None else "" for header in next(rows, [])]
-    batch: list[dict] = []
-    for values in rows:
-        row = {}
-        for index, header in enumerate(headers):
-            if not header:
-                continue
-            row[header] = values[index] if index < len(values) else None
-        batch.append(row)
-        if len(batch) >= batch_size:
-            yield batch
-            batch = []
-    if batch:
-        yield batch
-    workbook.close()
 
 def get_or_create_company(
     db: Session,
@@ -141,7 +79,11 @@ def calculate_completeness(name: str | None, email: str | None, phone: str | Non
     if state: score += 10
     return min(score, 100)
 
-def process_smart_import(job_id: str, filepath: str, column_map: dict):
+def process_smart_import(job_id: str, filepath: str, column_map: dict = None):
+    """
+    New Adaptive ETL Pipeline.
+    Uses adaptive_parser and dedup_engine.
+    """
     db: Session = SessionLocal()
     job = db.query(UploadJob).filter(UploadJob.job_id == job_id).first()
     
@@ -149,49 +91,68 @@ def process_smart_import(job_id: str, filepath: str, column_map: dict):
         db.close()
         return
 
-    total_rows = count_file_rows(filepath)
-    mark_progress(
-        job,
-        status="parsing",
-        current_step="Parsing rows",
-        progress_percent=8,
-        total_rows=total_rows,
-        processed_rows=0,
-        valid_rows=0,
-        warning_rows=0,
-        duplicate_rows=0,
-        possible_duplicate_rows=0,
-        enriched_rows=0,
-        failed_rows=0,
-        inserted_rows=0,
-        skipped_rows=0,
-        error_count=0,
-    )
+    mark_progress(job, status="parsing", current_step="Parsing files (adaptive)", progress_percent=5)
     db.commit()
 
     try:
-        source_job_id = job_id
-        mark_progress(job, status="mapping", current_step="Mapping columns", progress_percent=15)
+        # Step 1: Parse entire file with adaptive parser
+        parse_result = parse_file(filepath)
+        
+        if parse_result.errors:
+            job.errors = json.dumps([{"error": e} for e in parse_result.errors])
+            job.error_message = f"Parsing failed: {parse_result.errors[0]}"
+            mark_progress(job, status="failed", current_step="Parse failed", progress_percent=100)
+            db.commit()
+            db.close()
+            return
+            
+        total_data_rows = parse_result.total_parsed_rows
+        job.total_rows = total_data_rows
         db.commit()
 
-        email_col = column_map.get('email')
-        name_col = column_map.get('name')
-        phone_col = column_map.get('phone')
-        company_col = column_map.get('company')
-        location_col = column_map.get('location')
-        state_col = column_map.get('state')
+        if total_data_rows == 0:
+            job.errors = json.dumps([{"error": "No data rows found in file."}])
+            mark_progress(job, status="mapping_failed", current_step="No rows mapped", progress_percent=100)
+            db.commit()
+            db.close()
+            return
 
+        mark_progress(job, status="mapping", current_step="Deduplicating rows", progress_percent=20)
+        db.commit()
+
+        # Gather all parsed rows across all sheets
+        all_raw_dicts = []
+        for sheet in parse_result.sheets:
+            for r in sheet.parsed_rows:
+                all_raw_dicts.append(r.to_dict())
+
+        # Step 2: Run within-file Deduplication Engine
+        unique_profiles, duplicate_report = deduplicate_and_enrich(all_raw_dicts)
+        
+        duplicate_rows_count = len(all_raw_dicts) - len(unique_profiles)
+        
+        mark_progress(
+            job, 
+            status="importing", 
+            current_step="Validating against database", 
+            progress_percent=40,
+            duplicate_rows=duplicate_rows_count
+        )
+        db.commit()
+
+        # Step 3: Database validation & insertion
         inserted = 0
         skipped = 0
         errors = 0
         processed = 0
         valid_rows = 0
         warning_rows = 0
-        duplicate_rows = 0
         possible_duplicate_rows = 0
         enriched_rows = 0
         failed_rows = 0
-        error_log = []
+        error_log = duplicate_report  # include dedup report in errors for visibility
+
+        # Load existing cache
         existing_emails = {
             email for (email,) in db.query(Recruiter.email).yield_per(5000) if email
         }
@@ -201,153 +162,151 @@ def process_smart_import(job_id: str, filepath: str, column_map: dict):
             if normalized
         }
 
-        batch_size = 2000
-        if total_rows <= 0:
-            total_rows = 0
-        job.total_rows = total_rows
-        db.commit()
-
-        for batch in iter_file_batches(filepath, batch_size=batch_size):
-            mark_progress(
-                job,
-                status="importing",
-                current_step=f"Importing batch {max(processed // batch_size + 1, 1)}",
-                progress_percent=20 if not total_rows else min(95, 20 + int((processed / max(total_rows, 1)) * 75)),
-            )
-            db.commit()
-            pending_rows = []
-
-            for row in batch:
-                processed += 1
-                try:
-                    email = clean_email(clean_val(row.get(email_col, '')))
-                    if not email or '@' not in email:
-                        skipped += 1
-                        failed_rows += 1
-                        continue
-
-                    if email in existing_emails:
-                        skipped += 1
-                        duplicate_rows += 1
-                        continue
-
-                    raw_name = clean_name(clean_val(row.get(name_col, ''))) if name_col else None
-                    fallback_name = email.split('@')[0].replace('.', ' ').replace('_', ' ').title()
-                    recruiter_name = raw_name or fallback_name
-                    if not recruiter_name:
-                        skipped += 1
-                        failed_rows += 1
-                        continue
-
-                    company_name = clean_val(row.get(company_col, '')) if company_col else None
-                    loc_val = clean_val(row.get(location_col, '')) if location_col else None
-                    state_val = clean_val(row.get(state_col, '')) if state_col else None
-                    normalized_state = normalize_state(state_val or loc_val) if (state_val or loc_val) else None
-                    phone_val = clean_phone(clean_val(row.get(phone_col, ''))) if phone_col else None
-                    try:
-                        company_id = get_or_create_company(
-                            db,
-                            source_job_id,
-                            company_name,
-                            loc_val,
-                            normalized_state,
-                            email,
-                            company_cache,
-                        )
-                    except Exception as company_error:
-                        company_id = None
-                        warning_rows += 1
-                        error_log.append({"row": processed, "reason": f"Company lookup failed: {company_error}"})
-
-                    pending_rows.append({
-                        "raw_row": {
-                            "job_id": job_id,
-                            "raw_data": json.dumps(row, default=str),
-                            "source_filename": job.filename,
-                        },
-                        "recruiter_row": {
-                            "recruiter_name": recruiter_name,
-                            "normalized_recruiter_name": normalize_text(recruiter_name),
-                            "email": email,
-                            "phone": phone_val,
-                            "company_id": company_id,
-                            "location": loc_val,
-                            "state": normalized_state,
-                            "normalized_city": normalize_text(loc_val) if loc_val else None,
-                            "location_confidence": "high" if normalized_state or loc_val else "low",
-                            "completeness_score": calculate_completeness(
-                                recruiter_name,
-                                email,
-                                phone_val,
-                                company_id,
-                                loc_val,
-                                normalized_state,
-                            ),
-                            "needs_review": not bool(company_id and normalized_state),
-                            "data_source": "etl",
-                            "trust_score": 80 if company_id else 65,
-                            "is_active": True,
-                            "source_job_id": job_id,
-                        },
-                    })
-                    existing_emails.add(email)
-                    inserted += 1
-                    valid_rows += 1
-                    if not normalized_state or not company_id:
-                        warning_rows += 1
-                except Exception as e:
-                    errors += 1
-                    failed_rows += 1
-                    error_log.append({"row": processed, "reason": str(e)})
-
+        pending_rows = []
+        for profile in unique_profiles:
+            processed += 1
             try:
-                if pending_rows:
-                    db.bulk_insert_mappings(RawUpload, [item["raw_row"] for item in pending_rows])
-                    db.bulk_insert_mappings(Recruiter, [item["recruiter_row"] for item in pending_rows])
+                email = profile.get("email")
+                if not email or '@' not in email:
+                    skipped += 1
+                    failed_rows += 1
+                    continue
+
+                if email in existing_emails:
+                    skipped += 1
+                    # It's an existing db dup
+                    continue
+
+                raw_name = profile.get("name")
+                fallback_name = email.split('@')[0].replace('.', ' ').replace('_', ' ').title()
+                recruiter_name = raw_name or fallback_name
+
+                # Normalize State
+                state_val = profile.get("state")
+                loc_val = profile.get("location")
+                
+                state_to_normalize = state_val or loc_val or ""
+                norm_state, needs_state_review, state_review_reason = normalize_state_name(state_to_normalize)
+
+                company_name = profile.get("company")
+                try:
+                    company_id = get_or_create_company(
+                        db,
+                        job_id,
+                        company_name,
+                        loc_val,
+                        norm_state,
+                        email,
+                        company_cache,
+                    )
+                except Exception as company_error:
+                    company_id = None
+                    warning_rows += 1
+                    error_log.append({"row": processed, "reason": f"Company lookup failed: {company_error}"})
+
+                needs_review = profile.get("needs_review", False)
+                review_reasons = profile.get("review_reasons", [])
+                
+                if needs_state_review:
+                    needs_review = True
+                    review_reasons.append(state_review_reason)
+                
+                if not company_id:
+                    needs_review = True
+                    if "missing_company" not in review_reasons:
+                        review_reasons.append("missing_company")
+
+                # Parse back the metadata and raw_data which were json dumped by the parser
+                metadata_dict = profile.get("metadata_json") or {}
+                    
+                # Store all review reasons in metadata
+                if review_reasons:
+                    metadata_dict["review_reasons"] = list(set(review_reasons))
+                
+                if profile.get("duplicate_match_type"):
+                    possible_duplicate_rows += 1
+
+                pending_rows.append({
+                    "raw_row": {
+                        "job_id": job_id,
+                        "raw_data": json.dumps(profile.get("raw_data") or {}, default=str),
+                        "source_filename": job.filename,
+                    },
+                    "recruiter_row": {
+                        "recruiter_name": recruiter_name,
+                        "normalized_recruiter_name": normalize_text(recruiter_name),
+                        "email": email,
+                        "phone": profile.get("phone"),
+                        "email2": profile.get("email2"),
+                        "phone2": profile.get("phone2"),
+                        "email3": profile.get("email3"),
+                        "phone3": profile.get("phone3"),
+                        "email4": profile.get("email4"),
+                        "phone4": profile.get("phone4"),
+                        "linkedin": profile.get("linkedin"),
+                        "title": profile.get("title"),
+                        "specialization": profile.get("specialization"),
+                        "notes": profile.get("notes"),
+                        "company_id": company_id,
+                        "location": loc_val,
+                        "state": norm_state,
+                        "normalized_city": normalize_text(loc_val) if loc_val else None,
+                        "location_confidence": "high" if not needs_state_review else "low",
+                        "completeness_score": calculate_completeness(
+                            recruiter_name, email, profile.get("phone"), company_id, loc_val, norm_state
+                        ),
+                        "needs_review": needs_review,
+                        "review_reason": ", ".join(set(review_reasons)) if review_reasons else None,
+                        "data_source": "etl",
+                        "trust_score": 80 if company_id else 65,
+                        "is_active": True,
+                        "source_job_id": job_id,
+                        "raw_data": json.dumps(profile.get("raw_data") or {}, default=str),
+                        "metadata_json": json.dumps(metadata_dict, default=str),
+                    },
+                })
+                existing_emails.add(email)
+                inserted += 1
+                valid_rows += 1
+                if needs_review:
+                    warning_rows += 1
+
+            except Exception as e:
+                errors += 1
+                failed_rows += 1
+                error_log.append({"row": processed, "reason": str(e)})
+
+        # Bulk Insert
+        if pending_rows:
+            try:
+                db.bulk_insert_mappings(RawUpload, [item["raw_row"] for item in pending_rows])
+                db.bulk_insert_mappings(Recruiter, [item["recruiter_row"] for item in pending_rows])
                 db.commit()
             except Exception as batch_error:
                 db.rollback()
-                row_failures = 0
                 for item in pending_rows:
                     try:
-                        raw_row = item["raw_row"]
-                        recruiter_row = item["recruiter_row"]
-                        raw_record = RawUpload(**raw_row)
-                        recruiter_record = Recruiter(**recruiter_row)
+                        raw_record = RawUpload(**item["raw_row"])
+                        recruiter_record = Recruiter(**item["recruiter_row"])
                         db.add(raw_record)
                         db.add(recruiter_record)
                         db.commit()
                     except Exception as row_error:
                         db.rollback()
-                        row_failures += 1
                         errors += 1
                         failed_rows += 1
-                        error_log.append({"row": processed, "reason": f"{batch_error}; row retry failed: {row_error}"})
-                if row_failures == 0:
-                    error_log.append({"row": processed, "reason": str(batch_error)})
+                        error_log.append({"row": "batch_retry", "reason": f"Row retry failed: {row_error}"})
 
-            mark_progress(
-                job,
-                status="importing",
-                current_step=f"Importing rows {processed}/{max(total_rows, processed)}",
-                progress_percent=20 if not total_rows else min(96, 20 + int((processed / max(total_rows, processed)) * 75)),
-                processed_rows=processed,
-                inserted_rows=inserted,
-                skipped_rows=skipped,
-                error_count=errors,
-                valid_rows=valid_rows,
-                warning_rows=warning_rows,
-                duplicate_rows=duplicate_rows,
-                possible_duplicate_rows=possible_duplicate_rows,
-                enriched_rows=enriched_rows,
-                failed_rows=failed_rows,
-            )
-            db.commit()
+        # Finalize
+        if inserted == 0 and total_data_rows > 0 and duplicate_rows_count == 0:
+            final_status = "mapping_failed"
+        else:
+            final_status = "completed"
 
         mark_progress(
             job,
-            status="completed",
-            current_step="Import completed",
+            status=final_status,
+            current_step="Import finished",
             progress_percent=100,
             processed_rows=processed,
             inserted_rows=inserted,
@@ -355,7 +314,7 @@ def process_smart_import(job_id: str, filepath: str, column_map: dict):
             error_count=errors,
             valid_rows=valid_rows,
             warning_rows=warning_rows,
-            duplicate_rows=duplicate_rows,
+            duplicate_rows=duplicate_rows_count,
             possible_duplicate_rows=possible_duplicate_rows,
             enriched_rows=enriched_rows,
             failed_rows=failed_rows,
@@ -373,4 +332,3 @@ def process_smart_import(job_id: str, filepath: str, column_map: dict):
         db.commit()
     finally:
         db.close()
-

@@ -787,9 +787,15 @@ export default function StateDirectory() {
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-secondary)' }}>
                         <i className="ti ti-mail" /> {safeText(activeRecruiter?.email, 'Not available')}
                       </div>
+                      {activeRecruiter?.email2 && <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-secondary)' }}><i className="ti ti-mail" /> {activeRecruiter.email2}</div>}
+                      {activeRecruiter?.email3 && <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-secondary)' }}><i className="ti ti-mail" /> {activeRecruiter.email3}</div>}
+                      {activeRecruiter?.email4 && <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-secondary)' }}><i className="ti ti-mail" /> {activeRecruiter.email4}</div>}
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-secondary)' }}>
                         <i className="ti ti-phone" /> {safeText(activeRecruiter?.phone, 'Not available')}
                       </div>
+                      {activeRecruiter?.phone2 && <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-secondary)' }}><i className="ti ti-phone" /> {activeRecruiter.phone2}</div>}
+                      {activeRecruiter?.phone3 && <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-secondary)' }}><i className="ti ti-phone" /> {activeRecruiter.phone3}</div>}
+                      {activeRecruiter?.phone4 && <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-secondary)' }}><i className="ti ti-phone" /> {activeRecruiter.phone4}</div>}
                     </div>
                     <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
                       <button

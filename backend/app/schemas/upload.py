@@ -1,15 +1,22 @@
 from pydantic import BaseModel, Field
 from typing import Dict, List, Any, Optional
 
+class SheetAnalysis(BaseModel):
+    sheet_name: str
+    detected_format: str
+    format_confidence: str
+    has_headers: bool
+    headers: List[str]
+    total_rows: int
+    data_rows: int
+    blank_rows: int
+    column_map: Dict[str, Optional[str]]
+    preview: List[Dict[str, Any]]
+
 class AnalyzeResponse(BaseModel):
     analysis_id: str = Field(..., description="Unique ID for this analysis session")
     total_rows: int = Field(..., description="Total number of rows in the uploaded file")
-    duplicates: int = Field(..., description="Number of duplicate email rows detected")
-    missing_fields: int = Field(..., description="Rows missing required email field")
-    invalid_emails: int = Field(..., description="Count of emails that fail regex validation")
-    invalid_phones: int = Field(..., description="Count of phone numbers that fail regex validation")
-    empty_columns: List[str] = Field(default_factory=list, description="Columns that are entirely empty")
-    corrupted_rows: int = Field(0, description="Rows where all fields are empty")
-    column_map: Dict[str, str] = Field(..., description="Mapping from logical field name to original column header")
-    original_headers: List[str] = Field(default_factory=list, description="Original column headers from file")
-    preview: List[Dict[str, Any]] = Field(..., description="First few rows for preview")
+    file_size_bytes: int = Field(0, description="Size of the uploaded file")
+    sheet_count: int = Field(1, description="Number of sheets in the file")
+    sheets: List[SheetAnalysis] = Field(default_factory=list, description="Analysis per sheet")
+    errors: List[str] = Field(default_factory=list, description="Parsing errors")

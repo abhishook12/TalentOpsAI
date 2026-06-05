@@ -6,9 +6,9 @@ from sqlalchemy import update
 from datetime import datetime
 import io
 
-from app.database import SessionLocal
-from app.models.models import SmartImportJob, SmartImportRow, Recruiter, Company
-from app.services.job_tracker import mark_progress, utc_now
+from ..database import SessionLocal
+from ..models.models import SmartImportJob, SmartImportRow, Recruiter, Company
+from ..services.job_tracker import mark_progress, utc_now
 
 # Normalization Dictionaries
 STATE_MAP = {
@@ -77,9 +77,9 @@ def detect_smart_columns(headers, sample_data):
             
     return mapping
 
-
 def validate_and_save_rows(job_id: str, column_mapping: dict):
     db: Session = SessionLocal()
+    db.expire_on_commit = False
     job = db.query(SmartImportJob).filter(SmartImportJob.job_id == job_id).first()
     if not job: 
         db.close()
@@ -129,16 +129,29 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
         n = str(raw.get(name_col, "")).strip().title()
         if n: names_to_check.add(n)
         
-    # 2. Fetch only matching records from DB
-    existing_by_email = {er.email.lower(): er for er in db.query(Recruiter).filter(Recruiter.email.in_(emails_to_check)).all()} if emails_to_check else {}
-    existing_by_phone = {er.phone: er for er in db.query(Recruiter).filter(Recruiter.phone.in_(phones_to_check)).all()} if phones_to_check else {}
-    
+    # 2. Fetch only matching records from DB in chunks to avoid query parser hangs
+    existing_by_email = {}
+    if emails_to_check:
+        emails_list = list(emails_to_check)
+        for i in range(0, len(emails_list), 1000):
+            for er in db.query(Recruiter).filter(Recruiter.email.in_(emails_list[i:i+1000])).all():
+                existing_by_email[er.email.lower()] = er
+                
+    existing_by_phone = {}
+    if phones_to_check:
+        phones_list = list(phones_to_check)
+        for i in range(0, len(phones_list), 1000):
+            for er in db.query(Recruiter).filter(Recruiter.phone.in_(phones_list[i:i+1000])).all():
+                existing_by_phone[er.phone] = er
+                
     existing_by_name_comp = {}
     if names_to_check:
-        matching_names = db.query(Recruiter).outerjoin(Company, Recruiter.company_id == Company.company_id).filter(Recruiter.recruiter_name.in_(names_to_check)).all()
-        for er in matching_names:
-            if er.recruiter_name and er.company and er.company.company_name:
-                existing_by_name_comp[(er.recruiter_name.strip().title(), er.company.company_name.strip().title())] = er
+        names_list = list(names_to_check)
+        for i in range(0, len(names_list), 1000):
+            matching_names = db.query(Recruiter).outerjoin(Company, Recruiter.company_id == Company.company_id).filter(Recruiter.recruiter_name.in_(names_list[i:i+1000])).all()
+            for er in matching_names:
+                if er.recruiter_name and er.company and er.company.company_name:
+                    existing_by_name_comp[(er.recruiter_name.strip().title(), er.company.company_name.strip().title())] = er
 
     # If vertical format, group rows
     if job.detected_format == "vertical_multi_value":
@@ -280,18 +293,24 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
             prog_val = 40 + int(40 * (processed_count / max(len(rows), 1)))
             job.current_step = step_text
             job.progress_percent = prog_val
-            # Direct SQL update bypasses ORM flush, providing massive performance boost while keeping UI live!
-            db.execute(
-                update(SmartImportJob).where(SmartImportJob.job_id == job_id).values(
-                    current_step=step_text,
-                    progress_percent=prog_val
+            # Direct SQL update in a separate session avoids expiring the ORM objects in the main session!
+            progress_db = SessionLocal()
+            try:
+                progress_db.execute(
+                    update(SmartImportJob).where(SmartImportJob.job_id == job_id).values(
+                        current_step=step_text,
+                        progress_percent=prog_val,
+                        last_heartbeat_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow()
+                    )
                 )
-            )
-            db.commit()
+                progress_db.commit()
+            finally:
+                progress_db.close()
 
     # Apply all updates in chunks for massive speedup without hitting Neon limits
     if row_updates:
-        chunk_size = 2000
+        chunk_size = 200
         for i in range(0, len(row_updates), chunk_size):
             db.bulk_update_mappings(SmartImportRow, row_updates[i:i+chunk_size])
 
@@ -324,6 +343,7 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
 
 def process_commit(job_id: str):
     db: Session = SessionLocal()
+    db.expire_on_commit = False
     job = db.query(SmartImportJob).filter(SmartImportJob.job_id == job_id).first()
     if not job: 
         db.close()
@@ -335,7 +355,7 @@ def process_commit(job_id: str):
     # We want the values (mapped column names from the file)
     mapped_keys = [k for k in column_mapping.values() if k and isinstance(k, str)]
     
-    from app.utils.normalizer import normalize_text
+    from ..utils.normalizer import normalize_text
     
     # Cache companies to avoid n+1 selects
     company_cache = {normalize_text(c.company_name): c for c in db.query(Company).all() if c.company_name}
@@ -454,14 +474,19 @@ def process_commit(job_id: str):
             skipped += 1
 
         if processed % 200 == 0:
-            mark_progress(
-                job,
-                status="importing",
-                current_step=f"Importing rows {processed}/{len(rows)}",
-                progress_percent=80 if not len(rows) else min(98, 80 + int((processed / max(len(rows), 1)) * 18)),
-                processed_rows=processed,
-                inserted_rows=inserted,
-                skipped_rows=skipped,
+            step_text = f"Importing rows {processed}/{len(rows)}"
+            prog_val = 80 if not len(rows) else min(98, 80 + int((processed / max(len(rows), 1)) * 18))
+            db.execute(
+                update(SmartImportJob).where(SmartImportJob.job_id == job_id).values(
+                    status="importing",
+                    current_step=step_text,
+                    progress_percent=prog_val,
+                    processed_rows=processed,
+                    inserted_rows=inserted,
+                    skipped_rows=skipped,
+                    last_heartbeat_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow()
+                )
             )
             db.commit()
             
@@ -480,7 +505,6 @@ def process_commit(job_id: str):
         skipped_rows=skipped,
     )
     job.completed_at = utc_now()
-    
     db.commit()
     db.close()
 

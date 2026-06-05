@@ -74,7 +74,10 @@ async def parse_file(request: Request, file: UploadFile = File(...), db: Session
             "status": "Raw"
         })
     
-    db.bulk_insert_mappings(SmartImportRow, db_rows)
+    # Chunk bulk insert to avoid Neon DB / PgBouncer limits
+    chunk_size = 2000
+    for i in range(0, len(db_rows), chunk_size):
+        db.bulk_insert_mappings(SmartImportRow, db_rows[i:i+chunk_size])
     db.commit()
     
     return {

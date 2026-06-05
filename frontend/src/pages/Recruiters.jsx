@@ -61,6 +61,12 @@ function Modal({ title, onClose, onSave, form, setForm, saving }) {
               <option value="inactive">Inactive</option>
             </select>
           </div>
+          {form.needs_review && (
+            <div style={{ gridColumn: 'span 2', padding: '10px 14px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#d97706', marginBottom: 4 }}>Needs Manual Review</div>
+              <div style={{ fontSize: 12, color: '#b45309' }}>{form.review_reason || 'This record flagged as a possible duplicate during import.'}</div>
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 24px', borderTop: '1px solid var(--card-border)' }}>
           <button onClick={onClose} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid var(--card-border)', background: 'var(--card-bg)', color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>Cancel</button>
@@ -218,8 +224,23 @@ export default function Recruiters() {
 
 
   const exportRecruiters = () => {
-    if (!recruiters || recruiters.length === 0) return alert('No recruiters to export');
-    exportToExcel(recruiters, 'recruiters_export');
+    if (totalCount === 0) return alert('No recruiters to export');
+    
+    const params = new URLSearchParams()
+    if (debouncedSearch) params.append('search', debouncedSearch)
+    if (debouncedFilters.state) params.append('state', debouncedFilters.state)
+    if (debouncedFilters.city) params.append('city', debouncedFilters.city)
+    if (debouncedFilters.company) params.append('company', debouncedFilters.company)
+    if (debouncedFilters.title) params.append('title', debouncedFilters.title)
+    if (debouncedFilters.has_phone === 'yes') params.append('has_phone', 'true')
+    if (debouncedFilters.has_phone === 'no') params.append('has_phone', 'false')
+    if (debouncedFilters.missing_email === 'yes') params.append('missing_email', 'true')
+    if (debouncedFilters.missing_email === 'no') params.append('missing_email', 'false')
+    if (debouncedFilters.status === 'active') params.append('is_active', 'true')
+    if (debouncedFilters.status === 'inactive') params.append('is_active', 'false')
+    if (debouncedFilters.needs_review === 'yes') params.append('needs_review', 'true')
+
+    window.open(`${api.defaults.baseURL}/recruiters/export?${params.toString()}`, '_blank');
   }
 
   const openEdit = (r) => {
@@ -227,7 +248,8 @@ export default function Recruiters() {
       recruiter_name: r.recruiter_name || '', email: r.email || '', phone: r.phone || '',
       linkedin: r.linkedin || '', specialization: r.specialization || '',
       company_id: r.company_id || '', is_active: r.is_active !== false,
-      email2: r.email2 || '', phone2: r.phone2 || '', notes: r.notes || ''
+      email2: r.email2 || '', phone2: r.phone2 || '', notes: r.notes || '',
+      needs_review: r.needs_review || false, review_reason: r.review_reason || ''
     })
     setModal(r)
   }

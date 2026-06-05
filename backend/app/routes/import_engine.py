@@ -88,7 +88,8 @@ async def parse_file(request: Request, file: UploadFile = File(...), db: Session
         "mapping_suggestions": mapping_suggestions,
         "sample_data": sample_data,
         "detected_format": format_info["detected_format"],
-        "format_confidence": format_info["confidence"]
+        "format_confidence": format_info["confidence"],
+        "detection_reason": format_info.get("detection_reason", "No reason provided.")
     }
 
 @router.post("/validate/{job_id}")

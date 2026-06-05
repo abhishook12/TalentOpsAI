@@ -61,20 +61,24 @@ def serialize_recruiter(r):
         "phone": r.phone,
         "email2": r.email2,
         "phone2": r.phone2,
+        "alternate_emails": getattr(r, "alternate_emails", None),
+        "alternate_phones": getattr(r, "alternate_phones", None),
         "linkedin": r.linkedin,
         "specialization": r.specialization,
         "notes": r.notes,
+        "metadata_json": getattr(r, "metadata_json", None),
         "company_id": r.company_id,
-        "company_name": r.company.company_name if r.company else None,
-        "location": r.location if r.location else (r.company.location if r.company else None),
+        "company_name": r.company.company_name if hasattr(r, "company") and r.company else None,
+        "location": r.location if r.location else (r.company.location if hasattr(r, "company") and r.company else None),
         "state": r.state,
         "normalized_city": getattr(r, "normalized_city", None),
         "completeness_score": getattr(r, "completeness_score", 0),
         "needs_review": getattr(r, "needs_review", False),
+        "review_reason": getattr(r, "review_reason", None),
         "location_confidence": getattr(r, "location_confidence", "high"),
         "is_active": r.is_active,
         "source_job_id": getattr(r, "source_job_id", None),
-        "created_at": str(r.created_at) if r.created_at else None,
+        "created_at": str(r.created_at) if getattr(r, "created_at", None) else None,
     }
 
 def apply_recruiter_update(r, update_data: dict, db: Session):
@@ -401,3 +405,96 @@ def batch_update_recruiters(payload: RecruiterBatchUpdate, db: Session = Depends
         updated += 1
     db.commit()
     return {"message": "Recruiters updated", "updated_count": updated}
+
+import csv
+from io import StringIO
+from fastapi.responses import StreamingResponse
+
+@router.get("/export")
+def export_recruiters(
+    search: Optional[str] = None,
+    state: Optional[str] = None,
+    city: Optional[str] = None,
+    company: Optional[str] = None,
+    title: Optional[str] = None,
+    has_phone: Optional[bool] = None,
+    missing_email: Optional[bool] = None,
+    is_active: Optional[bool] = None,
+    min_completeness: Optional[int] = None,
+    needs_review: Optional[bool] = None,
+    source_job_id: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(Recruiter).join(Recruiter.company, isouter=True)
+    
+    from app.utils.normalizer import normalize_text
+    
+    if search:
+        clean_search = normalize_text(search)
+        query = query.filter(
+            Recruiter.normalized_recruiter_name.ilike(f"%{clean_search}%") |
+            Recruiter.email.ilike(f"%{search}%") |
+            Recruiter.specialization.ilike(f"%{search}%") |
+            Company.normalized_company_name.ilike(f"%{clean_search}%") |
+            Recruiter.location.ilike(f"%{search}%") |
+            Company.location.ilike(f"%{search}%")
+        )
+    
+    if state:
+        query = query.filter(Recruiter.state == state)
+    if city:
+        query = query.filter(Recruiter.normalized_city.ilike(f"%{city}%"))
+    if company:
+        clean_company = normalize_text(company)
+        query = query.filter(Company.normalized_company_name.ilike(f"%{clean_company}%"))
+    if title:
+        query = query.filter(Recruiter.specialization.ilike(f"%{title}%"))
+    if has_phone is True:
+        query = query.filter(Recruiter.phone.isnot(None), Recruiter.phone != "")
+    elif has_phone is False:
+        query = query.filter((Recruiter.phone.is_(None)) | (Recruiter.phone == ""))
+    if missing_email is True:
+        query = query.filter((Recruiter.email.is_(None)) | (Recruiter.email == ""))
+    elif missing_email is False:
+        query = query.filter(Recruiter.email.isnot(None), Recruiter.email != "")
+    if is_active is not None:
+        query = query.filter(Recruiter.is_active == is_active)
+    if min_completeness is not None:
+        query = query.filter(Recruiter.completeness_score >= min_completeness)
+    if needs_review is not None:
+        query = query.filter(Recruiter.needs_review == needs_review)
+    if source_job_id:
+        query = query.filter(Recruiter.source_job_id == source_job_id)
+
+    recruiters = query.all()
+
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Recruiter ID", "Name", "Email", "Phone", "Alternate Emails", "Alternate Phones", 
+        "Company", "Location", "State", "Title", "LinkedIn", "Needs Review", "Review Reason"
+    ])
+    
+    for r in recruiters:
+        writer.writerow([
+            r.recruiter_id,
+            r.recruiter_name or "",
+            r.email or "",
+            r.phone or "",
+            getattr(r, "alternate_emails", ""),
+            getattr(r, "alternate_phones", ""),
+            r.company.company_name if r.company else "",
+            r.location or (r.company.location if r.company else ""),
+            r.state or "",
+            r.title or r.specialization or "",
+            r.linkedin or "",
+            getattr(r, "needs_review", False),
+            getattr(r, "review_reason", "")
+        ])
+
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=recruiters_export.csv"}
+    )

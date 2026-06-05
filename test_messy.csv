@@ -1,0 +1,5 @@
+Full Name,Work Mail,Firm,Area,Extra Phone,Notes,Unknown Data
+John Smith,john.smith@apple.com,Apple,Cupertino,555-0999,Has a dog,Blue
+Missing Email,,Tesla,Austin,555-0888,,Green
+Duplicate John,john.smith@apple.com,Apple,Cupertino,555-0777,Duplicate row,Red
+,noname@amazon.com,Amazon,Seattle,555-0666,Just an email,Yellow

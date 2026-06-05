@@ -2,6 +2,7 @@ import json
 import re
 import pandas as pd
 from sqlalchemy.orm import Session
+from sqlalchemy import update
 from datetime import datetime
 import io
 
@@ -246,6 +247,24 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
                 row_update["validation_issues"] = json.dumps(issues)
                 warning_count += 1
 
+        # Check for duplicates
+        email_to_check = row_update["email"]
+        phone_to_check = row_update["phone"]
+        name_comp_key = (row_update["recruiter_name"], row_update["company_name"])
+        
+        if email_to_check and email_to_check in existing_by_email:
+            status = "Enrich"
+            issues.append("Exact email match. Will enrich existing record.")
+        elif phone_to_check and phone_to_check in existing_by_phone:
+            status = "Possible Duplicate"
+            issues.append("Phone number matches an existing recruiter.")
+        elif row_update["recruiter_name"] and row_update["company_name"] and name_comp_key in existing_by_name_comp:
+            status = "Possible Duplicate"
+            issues.append("Name and Company match an existing recruiter.")
+            
+        row_update["status"] = status
+        row_update["validation_issues"] = json.dumps(issues)
+
         row_updates.append(row_update)
 
         if status in ["Ready", "Warning", "Possible Duplicate"]:
@@ -257,9 +276,18 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
             error_count += 1
 
         if processed_count % 200 == 0:
-            # We don't commit here because we haven't flushed row_updates yet!
-            job.current_step = f"Validating rows ({processed_count}/{len(rows)})"
-            job.progress_percent = 40 + int(40 * (processed_count / max(len(rows), 1)))
+            step_text = f"Validating rows ({processed_count}/{len(rows)})"
+            prog_val = 40 + int(40 * (processed_count / max(len(rows), 1)))
+            job.current_step = step_text
+            job.progress_percent = prog_val
+            # Direct SQL update bypasses ORM flush, providing massive performance boost while keeping UI live!
+            db.execute(
+                update(SmartImportJob).where(SmartImportJob.job_id == job_id).values(
+                    current_step=step_text,
+                    progress_percent=prog_val
+                )
+            )
+            db.commit()
 
     # Apply all updates in chunks for massive speedup without hitting Neon limits
     if row_updates:
@@ -393,7 +421,7 @@ def process_commit(job_id: str):
             else:
                 # Insert new recruiter (Ready, Warning, Possible Duplicate)
                 needs_review = (r.status == "Possible Duplicate")
-                notes = "[Possible Duplicate] Uploaded with matching details to an existing profile." if needs_review else None
+                review_reason = "Uploaded with matching details to an existing profile (Phone or Name+Company)." if needs_review else None
                 
                 rec = Recruiter(
                     recruiter_name=r.recruiter_name,
@@ -414,7 +442,7 @@ def process_commit(job_id: str):
                     raw_data=r.raw_json,
                     metadata_json=metadata_json,
                     needs_review=needs_review,
-                    notes=notes
+                    review_reason=review_reason
                 )
                 db.add(rec)
                 inserted += 1

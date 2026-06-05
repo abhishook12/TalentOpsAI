@@ -72,11 +72,14 @@ class Recruiter(Base):
     email            = Column(String(150), unique=True, nullable=False)
     phone            = Column(String(30))
     email2           = Column(String(150))          # secondary / personal email
+    alternate_emails = Column(Text)                 # CSV of extra emails
     phone2           = Column(String(30))           # secondary phone
+    alternate_phones = Column(Text)                 # CSV of extra phones
     linkedin         = Column(String(255))
     specialization   = Column(String(150))
     title            = Column(String(150))
     notes            = Column(Text)                 # any extra info from messages etc.
+    review_reason    = Column(Text)                 # Why it needs review
     company_id       = Column(Integer, ForeignKey("companies.company_id", ondelete="SET NULL"), nullable=True)
     location         = Column(String(255))
     state            = Column(String(2), index=True) # Normalized state

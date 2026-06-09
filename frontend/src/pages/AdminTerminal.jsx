@@ -755,11 +755,11 @@ export default function AdminTerminal() {
   }
 
   const runCleanup = async () => {
-    if (!window.confirm('This will permanently delete recruiters missing both email and phone. Continue?')) return;
+    if (!window.confirm('This will delete old logs, stale upload staging data, and recruiters missing both email and phone. It will also compact storage to reclaim space. Continue?')) return;
     setLoading(true);
     try {
-      const res = await api.post('/admin/cleanup');
-      log(`✓ Cleanup complete: ${res.data.deleted_count} records removed.`, 'ok');
+      const res = await api.post('/admin/cleanup?compact=true');
+      log(`✓ Cleanup complete: ${Object.values(res.data || {}).filter(v => typeof v === 'number').reduce((sum, value) => sum + value, 0)} records removed.`, 'ok');
       loadAll();
     } catch (e) {
       log('✗ Cleanup failed: ' + getErrorMessage(e), 'error');
@@ -1045,7 +1045,7 @@ export default function AdminTerminal() {
           <i className="ti ti-terminal-2" style={{ color: '#fff', fontSize: 18 }} />
         </div>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>ADMIN TERMINAL</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Operational Command Center</div>
           <div style={{ fontSize: 11, color: '#38bdf8', fontFamily: "'DM Mono', monospace" }}>TalentOps AI · Privileged Access</div>
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -1053,8 +1053,8 @@ export default function AdminTerminal() {
           <button onClick={loadAll} style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-secondary)', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <i className="ti ti-refresh" /> Refresh
           </button>
-          <button onClick={clearCache} style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: '#f59e0b', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <i className="ti ti-trash" /> Clear Cache
+          <button onClick={runCleanup} style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: '#f59e0b', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <i className="ti ti-trash" /> Shrink Storage
           </button>
           {cacheMsg && <span style={{ fontSize: 12, color: '#22c55e' }}>{cacheMsg}</span>}
           <button onClick={doLogout} style={{ background: '#300', border: '1px solid #7f1d1d', color: '#f87171', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1430,7 +1430,7 @@ export default function AdminTerminal() {
                             </td>
                             <td style={{ padding: '10px 12px', color: 'var(--text-primary)', fontWeight: 600 }}>{r.recruiter_name || '—'}</td>
                             <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{r.email || '—'}</td>
-                            <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{r.company_name || 'Not available'}</td>
+                            <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{r.company_name || 'Independent / Unlisted'}</td>
                             <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{r.location || r.state || '—'}</td>
                             <td style={{ padding: '10px 12px' }}>
                               <Badge color={r.is_active ? '#22c55e' : '#f87171'}>{r.is_active ? 'Active' : 'Inactive'}</Badge>

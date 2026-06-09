@@ -1,68 +1,15 @@
-/* TalentOps — Obsidian Aurora (dark only) */
-:root,
-[data-theme="dark"] {
-  --main-bg: #0a0d12;
-  --panel-bg: #0f131a;
-  --card-bg: #141b26;
-  --card-border: #243044;
-  --text-primary: #eef1f6;
-  --text-secondary: #9aa8bc;
-  --text-muted: #5c6b7f;
-  --accent: #2dd4bf;
-  --accent-hover: #5eead4;
-  --accent-bg: rgba(45, 212, 191, 0.12);
-  --sidebar-bg: #06090e;
-  --sidebar-border: #1a2433;
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* Base reset and browser-level defaults for the command center shell. */
+html,
+body,
+#root {
+  width: 100%;
 }
 
 body {
-  background: var(--main-bg);
-  color: var(--text-primary);
-  font-family: 'Inter', sans-serif;
+  margin: 0;
 }
 
-input, select, textarea {
-  background: var(--panel-bg) !important;
-  color: var(--text-primary) !important;
-  border-color: var(--card-border) !important;
+* {
+  box-sizing: border-box;
 }
 
-.card {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-  border-radius: 10px;
-}
-
-a {
-  text-decoration: none;
-  color: inherit;
-}
-
-button {
-  font-family: inherit;
-}
-
-.badge-green {
-  background: rgba(52, 211, 153, 0.14);
-  color: #34d399;
-}
-
-.badge-gray {
-  background: rgba(154, 168, 188, 0.1);
-  color: var(--text-secondary);
-}
-
-/* Recharts — white axis & bar labels on dark cards */
-.recharts-cartesian-axis-tick-value tspan,
-.recharts-label-list text tspan {
-  fill: #ffffff !important;
-  font-size: 12px !important;
-  font-weight: 700 !important;
-}

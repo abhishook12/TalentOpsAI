@@ -86,14 +86,8 @@ function buildRecruiterInsight(record) {
     return { emails: [], phones: [], extras: [], createdAt: 'Not available', address: 'Not available' }
   }
 
-  const emailValues = collectContactValues(
-    record,
-    (key, value) => /email|mail/i.test(String(key)) && String(value || '').includes('@')
-  )
-  const phoneValues = collectContactValues(
-    record,
-    (key, value) => /phone|mobile|cell|contact/i.test(String(key)) && String(value || '').trim()
-  )
+  const emailValues = [record.email, record.email2, record.email3, record.email4].filter(Boolean)
+  const phoneValues = [record.phone, record.phone2, record.phone3, record.phone4].filter(Boolean)
 
   const emails = dedupeValues(emailValues.map((value) => value.trim()).filter(Boolean))
   const phones = dedupeValues(
@@ -337,7 +331,7 @@ export default function AISearch() {
               <i className="ti ti-sparkles" style={{ fontSize: 16 }} />
             </div>
             <div>
-              <h1 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Smart Search</h1>
+              <h1 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Recruiter Intelligence Search</h1>
               <p style={{ marginTop: 2, fontSize: 12, color: 'var(--text-muted)' }}>
                 Ranked recruiter search — exact matches first, fuzzy matches after. No demo data.
               </p>
@@ -355,7 +349,7 @@ export default function AISearch() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.65fr 1fr', gap: 14, minHeight: 'calc(100vh - 210px)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.65fr 1fr', gap: 14, height: 'calc(100vh - 210px)', minHeight: 0 }}>
         <div
           style={{
             border: '1px solid var(--card-border)',
@@ -849,21 +843,38 @@ export default function AISearch() {
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Address</div>
                     <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedInsight.address}</div>
                   </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    {['Engagement score', 'Response time'].map((label) => (
-                      <div key={label} style={{ border: '1px dashed var(--card-border)', borderRadius: 12, padding: 10, background: 'var(--panel-bg)' }}>
-                        <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
-                        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>Not available (coming soon)</div>
+                  
+                  {selected?.state_source && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>State Inf.</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700 }}>
+                        {selected.state_source} <span style={{ color: selected.state_confidence === 'high' ? 'var(--success)' : 'var(--warning)', marginLeft: 4 }}>({selected.state_confidence})</span>
                       </div>
-                    ))}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 4 }}>
+                    <div style={{ border: '1px dashed var(--card-border)', borderRadius: 12, padding: 10, background: 'var(--panel-bg)' }}>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Completeness</div>
+                      <div style={{ marginTop: 8, fontSize: 14, fontWeight: 900, color: selected?.completeness_score >= 80 ? 'var(--success)' : selected?.completeness_score >= 50 ? 'var(--warning)' : 'var(--danger)' }}>
+                        {selected?.completeness_score ?? 0}%
+                      </div>
+                    </div>
+                    <div style={{ border: '1px dashed var(--card-border)', borderRadius: 12, padding: 10, background: 'var(--panel-bg)', borderColor: selected?.needs_review ? 'rgba(245,158,11,0.4)' : 'var(--card-border)' }}>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Data Quality</div>
+                      <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: selected?.needs_review ? '#d97706' : 'var(--success)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {selected?.needs_review ? (selected?.review_reason || 'Needs Review') : 'Verified Clean'}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div style={{ border: '1px solid var(--card-border)', borderRadius: 14, padding: 12, background: 'var(--card-bg)' }}>
-                <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>Notes & captured details</div>
-                <div style={{ display: 'grid', gap: 8 }}>
+              <details style={{ border: '1px solid var(--card-border)', borderRadius: 14, background: 'var(--card-bg)', overflow: 'hidden' }}>
+                <summary style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', padding: 12, cursor: 'pointer', outline: 'none', background: 'var(--panel-bg)' }}>
+                  Raw source text / needs review
+                </summary>
+                <div style={{ padding: 12, borderTop: '1px solid var(--card-border)', display: 'grid', gap: 8 }}>
                   {selected?.notes ? (
                     <div style={{ fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.6 }}>
                       {selected.notes}
@@ -872,14 +883,14 @@ export default function AISearch() {
                   {selectedInsight.extras.length ? selectedInsight.extras.map((item, index) => (
                     <div key={`${item.key}-${index}`} style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 10, alignItems: 'start' }}>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'capitalize' }}>{item.key}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.5 }}>{item.value}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.5, wordBreak: 'break-all' }}>{item.value}</div>
                     </div>
                   )) : null}
                   {!selected?.notes && !selectedInsight.extras.length ? (
                     <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>No additional captured details available.</div>
                   ) : null}
                 </div>
-              </div>
+              </details>
             </div>
           )}
         </div>

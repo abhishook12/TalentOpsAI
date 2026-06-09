@@ -57,7 +57,7 @@ def admin_stats(db: Session = Depends(get_db), _=Depends(verify_admin)):
         SELECT
             (SELECT COUNT(*) FROM recruiters)  AS total_recruiters,
             (SELECT COUNT(*) FROM recruiters WHERE is_active = true) AS active_recruiters,
-            (SELECT COUNT(*) FROM recruiters WHERE email IS NOT NULL AND email <> '') AS with_email,
+            (SELECT COUNT(*) FROM recruiters WHERE email IS NOT NULL AND email <> '' AND email NOT LIKE '%@missing.local%') AS with_email,
             (SELECT COUNT(*) FROM recruiters WHERE phone IS NOT NULL AND phone <> '') AS with_phone,
             (SELECT COUNT(*) FROM companies)   AS total_companies,
             (SELECT COUNT(*) FROM candidates)  AS total_candidates,
@@ -149,7 +149,7 @@ def admin_data_operations(db: Session = Depends(get_db), _=Depends(verify_admin)
     """
     Data operations summary (counts) + small samples for operational workflows.
     """
-    missing_email = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE email IS NULL OR email = ''")).scalar()
+    missing_email = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE email IS NULL OR email = '' OR email LIKE '%@missing.local%'")).scalar()
     missing_phone = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE phone IS NULL OR phone = ''")).scalar()
     missing_location = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE location IS NULL OR location = ''")).scalar()
 
@@ -237,10 +237,20 @@ def admin_upload_operations(limit: int = 25, db: Session = Depends(get_db), _=De
             recruiter_count = len(_resolve_upload_batch_recruiters(db, j))
         except Exception:
             recruiter_count = 0
+            
+        display_status = j.status
+        if j.status == 'completed':
+            if j.inserted_rows == 0:
+                display_status = 'completed_with_zero_import'
+            elif j.error_count and j.error_count > 0:
+                display_status = 'completed_with_errors'
+        elif j.status in ['failed', 'error']:
+            display_status = 'validation_failed'
+
         return {
             "job_id": j.job_id,
             "filename": j.filename,
-            "status": j.status,
+            "status": display_status,
             "total_rows": j.total_rows,
             "processed_rows": j.processed_rows,
             "inserted_rows": j.inserted_rows,

@@ -305,8 +305,8 @@ export default function Upload() {
     <div className="page-container">
       <div style={{ marginBottom: 20 }}>
         <div>
-          <h1 className="page-title">ETL & Upload Center</h1>
-          <p className="page-subtitle">Ingest, parse, and validate recruiter data from any source.</p>
+          <h1 className="page-title">ETL Operations</h1>
+          <p className="page-subtitle">Ingest, parse, and validate recruiter data from any source in a control-room layout.</p>
         </div>
       </div>
 

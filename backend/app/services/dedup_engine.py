@@ -181,27 +181,66 @@ def deduplicate_and_enrich(
                 
         if match_idx is not None:
             primary = merged[match_idx]
-            meta = primary.setdefault("metadata_json", {})
-            alternates = meta.setdefault("alternate_entries", [])
+            
+            p_name = normalize_name(primary.get("name"))
+            r_name = normalize_name(row.get("name"))
+            safe_merge = True
+            
+            # Conflict if both names exist and neither is a substring of the other
+            if p_name and r_name and p_name != r_name:
+                if p_name not in r_name and r_name not in p_name:
+                    safe_merge = False
 
-            _back_fill(primary, row)
-            _merge_contacts(primary, row)
+            if safe_merge:
+                meta = primary.setdefault("metadata_json", {})
+                alternates = meta.setdefault("alternate_entries", [])
 
-            # Update email index with any new emails that were added
-            for k in ("email", "email2", "email3", "email4"):
-                ne = normalize_email(primary.get(k))
-                if ne and ne not in email_index:
-                    email_index[ne] = match_idx
+                _back_fill(primary, row)
+                _merge_contacts(primary, row)
 
-            alt = _collect_alternate_values(primary, row)
-            alternates.append(alt)
+                # Update email index with any new emails that were added
+                for k in ("email", "email2", "email3", "email4"):
+                    ne = normalize_email(primary.get(k))
+                    if ne and ne not in email_index:
+                        email_index[ne] = match_idx
 
-            duplicate_report.append({
-                "action": "merged",
-                "type": "definite_email_match",
-                "primary_email": primary.get("email"),
-                "merged_from": {"source_sheet": row.get("source_sheet"), "row_index": row.get("row_index"), "name": row.get("name")},
-            })
+                alt = _collect_alternate_values(primary, row)
+                alternates.append(alt)
+
+                duplicate_report.append({
+                    "action": "merged",
+                    "type": "definite_email_match",
+                    "primary_email": primary.get("email"),
+                    "merged_from": {"source_sheet": row.get("source_sheet"), "row_index": row.get("row_index"), "name": row.get("name")},
+                })
+            else:
+                # Same email but different names -> unsafe merge
+                primary["needs_review"] = True
+                primary["possible_duplicate"] = True
+                primary["duplicate_match_type"] = "shared_email_conflict"
+                
+                row["needs_review"] = True
+                row["possible_duplicate"] = True
+                row["duplicate_match_type"] = "shared_email_conflict"
+                
+                # Treat as new profile
+                meta = row.setdefault("metadata_json", {})
+                meta.setdefault("all_emails", [])
+                meta.setdefault("all_phones", [])
+                meta.setdefault("extra_emails", [])
+                meta.setdefault("extra_phones", [])
+                meta.setdefault("alternate_entries", [])
+                
+                # Init contacts properly
+                temp_row = copy.deepcopy(row)
+                for k in ("email", "email2", "email3", "email4", "phone", "phone2", "phone3", "phone4"):
+                    row[k] = None
+                _merge_contacts(row, temp_row)
+
+                merged.append(row)
+                new_idx = len(merged) - 1
+                # Do NOT update the email index to point to this new one, 
+                # keep the primary one as the index owner so further conflicts hit the same block.
         else:
             # New profile
             meta = row.setdefault("metadata_json", {})
@@ -265,6 +304,13 @@ def deduplicate_and_enrich(
             d_emails = [donor.get(k) for k in ("email", "email2", "email3", "email4") if donor.get(k)]
             
             conflict = False
+            
+            if p_emails and d_emails:
+                p_email_set = {normalize_email(e) for e in p_emails}
+                d_email_set = {normalize_email(e) for e in d_emails}
+                # If not vertical format and emails are entirely disjoint -> flag it instead of auto-merging
+                if not is_vertical and not p_email_set.intersection(d_email_set):
+                    conflict = True
                 
             if conflict:
                 # Flag as possible duplicate

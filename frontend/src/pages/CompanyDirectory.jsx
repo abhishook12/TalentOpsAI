@@ -198,7 +198,7 @@ export default function CompanyDirectory() {
       <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 4 }}>
-            Company Directory
+            Company Intelligence
           </h1>
           <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
             Browse staffing companies by state — sorted by recruiter headcount
@@ -480,10 +480,28 @@ export default function CompanyDirectory() {
                           {c.industry || '—'}
                         </p>
 
-                        {/* Location */}
-                        <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {c.location || '—'}
-                        </p>
+                        {/* Location & Intelligence */}
+                        <div>
+                          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {c.location || '—'}
+                          </p>
+                          {(c.needs_review_count > 0 || c.missing_state_count > 0) && (
+                            <div style={{ marginTop: 4, display: 'flex', gap: 6, alignItems: 'center' }}>
+                              {c.needs_review_count > 0 && (
+                                <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'rgba(245,158,11,0.15)', color: '#d97706', border: '1px solid rgba(245,158,11,0.3)' }} title={`${c.needs_review_count} recruiters flagged for review (duplicates/missing data)`}>
+                                  <i className="ti ti-alert-triangle" style={{ marginRight: 4 }} />
+                                  {c.needs_review_count} flagged
+                                </span>
+                              )}
+                              {c.missing_state_count > 0 && (
+                                <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'rgba(100,116,139,0.15)', color: '#475569', border: '1px solid rgba(100,116,139,0.3)' }} title={`${c.missing_state_count} recruiters missing state inference`}>
+                                  <i className="ti ti-map-off" style={{ marginRight: 4 }} />
+                                  {c.missing_state_count} unmapped
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
 
                         {/* Recruiter bar */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between' }}>

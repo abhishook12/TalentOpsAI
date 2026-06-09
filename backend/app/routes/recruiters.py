@@ -18,8 +18,7 @@ from .auth import verify_admin
 from ..models.models import Recruiter, Company
 
 from ..utils.state_mapper import normalize_state
-
-
+from ..utils.filters import apply_state_filter, apply_company_filter
 router = APIRouter()
 
 class RecruiterCreate(BaseModel):
@@ -222,8 +221,10 @@ def search_recruiters(
     params = {"q": q, "limit": limit}
 
     if company:
-        base_sql += " AND c.company_name ILIKE '%' || :company || '%'"
-        params["company"] = company
+        from app.utils.normalizer import normalize_text
+        clean_company = normalize_text(company)
+        base_sql += " AND c.normalized_company_name ILIKE '%' || :company || '%'"
+        params["company"] = clean_company
     if location:
         abbr = normalize_state(location)
         if abbr:
@@ -272,6 +273,7 @@ def get_recruiters(
     limit: int = 100,
     search: Optional[str] = None,
     state: Optional[str] = None,
+    state_status: Optional[str] = None,
     city: Optional[str] = None,
     company: Optional[str] = None,
     title: Optional[str] = None,
@@ -301,15 +303,28 @@ def get_recruiters(
         )
     
     if state:
-        # State filter now perfectly uses normalized state
-        query = query.filter(Recruiter.state == state)
+        query = apply_state_filter(query, state)
+        
+    if state_status:
+        from sqlalchemy import or_, and_
+        if state_status == 'known':
+            query = query.filter(
+                or_(
+                    and_(Recruiter.state != None, Recruiter.state != ''),
+                    and_(Company.state != None, Company.state != '')
+                )
+            )
+        elif state_status == 'unknown':
+            query = query.filter(
+                or_(Recruiter.state == None, Recruiter.state == ''),
+                or_(Company.state == None, Company.state == '')
+            )
         
     if city:
         query = query.filter(Recruiter.normalized_city.ilike(f"%{city}%"))
         
     if company:
-        clean_company = normalize_text(company)
-        query = query.filter(Company.normalized_company_name.ilike(f"%{clean_company}%"))
+        query = apply_company_filter(query, company)
         
     if title:
         query = query.filter(Recruiter.specialization.ilike(f"%{title}%"))
@@ -482,12 +497,25 @@ def export_recruiters(
         )
     
     if state:
-        query = query.filter(Recruiter.state == state)
+        query = apply_state_filter(query, state)
+    if state_status:
+        from sqlalchemy import or_, and_
+        if state_status == 'known':
+            query = query.filter(
+                or_(
+                    and_(Recruiter.state != None, Recruiter.state != ''),
+                    and_(Company.state != None, Company.state != '')
+                )
+            )
+        elif state_status == 'unknown':
+            query = query.filter(
+                or_(Recruiter.state == None, Recruiter.state == ''),
+                or_(Company.state == None, Company.state == '')
+            )
     if city:
         query = query.filter(Recruiter.normalized_city.ilike(f"%{city}%"))
     if company:
-        clean_company = normalize_text(company)
-        query = query.filter(Company.normalized_company_name.ilike(f"%{clean_company}%"))
+        query = apply_company_filter(query, company)
     if title:
         query = query.filter(Recruiter.specialization.ilike(f"%{title}%"))
     if has_phone is True:
@@ -514,7 +542,7 @@ def export_recruiters(
     writer.writerow([
         "Recruiter ID", "Name", "Email", "Email 2", "Email 3", "Email 4",
         "Phone", "Phone 2", "Phone 3", "Phone 4", "Alternate Emails", "Alternate Phones", 
-        "Company", "Location", "State", "Title", "LinkedIn", "Needs Review", "Review Reason", "Metadata JSON", "Raw Data", "Source Job ID", "Duplicate Match Type"
+        "Company", "Location", "State", "State Source", "State Confidence", "State Reason", "Title", "LinkedIn", "Needs Review", "Review Reason", "Metadata JSON", "Raw Data", "Source Job ID", "Duplicate Match Type"
     ])
     
     for r in recruiters:
@@ -534,6 +562,9 @@ def export_recruiters(
             r.company.company_name if r.company else "",
             r.location or (r.company.location if r.company else ""),
             r.state or "",
+            getattr(r, "state_source", ""),
+            getattr(r, "state_confidence", ""),
+            getattr(r, "state_reason", ""),
             r.title or r.specialization or "",
             r.linkedin or "",
             getattr(r, "needs_review", False),

@@ -152,6 +152,7 @@ function RecruiterTableRow({ r, toggleActive, openEdit, handleDelete }) {
             {r.phone2 && <div style={{ marginBottom: 6 }}><i className="ti ti-phone" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Phone 2:</strong> {r.phone2}</div>}
             {r.phone3 && <div style={{ marginBottom: 6 }}><i className="ti ti-phone" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Phone 3:</strong> {r.phone3}</div>}
             {r.phone4 && <div style={{ marginBottom: 6 }}><i className="ti ti-phone" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Phone 4:</strong> {r.phone4}</div>}
+            {r.state_source && <div style={{ marginBottom: 6 }}><i className="ti ti-map-pin" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>State Inference:</strong> {r.state_source} <span style={{ color: r.state_confidence === 'high' ? 'var(--success)' : 'var(--warning)', marginLeft: 4 }}>({r.state_confidence})</span> — <em>{r.state_reason}</em></div>}
             {r.notes && <div><i className="ti ti-notes" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Notes:</strong> {r.notes}</div>}
           </td>
         </tr>
@@ -174,7 +175,7 @@ export default function Recruiters() {
   const [filters, setFilters] = useState({
       state: '', city: '', company: '', title: '',
       has_phone: '', missing_email: '', status: '',
-      needs_review: '', sort_by: 'created_at', sort_desc: 'true'
+      needs_review: '', state_status: '', sort_by: 'created_at', sort_desc: 'true'
   })
   
   const [debouncedSearch, setDebouncedSearch] = useState(search)
@@ -216,6 +217,7 @@ export default function Recruiters() {
     if (debouncedFilters.status === 'inactive') params.append('is_active', 'false')
     
     if (debouncedFilters.needs_review === 'yes') params.append('needs_review', 'true')
+    if (debouncedFilters.state_status) params.append('state_status', debouncedFilters.state_status)
     
     params.append('sort_by', debouncedFilters.sort_by)
     params.append('sort_desc', debouncedFilters.sort_desc === 'true' ? 'true' : 'false')
@@ -247,6 +249,7 @@ export default function Recruiters() {
     if (debouncedFilters.status === 'active') params.append('is_active', 'true')
     if (debouncedFilters.status === 'inactive') params.append('is_active', 'false')
     if (debouncedFilters.needs_review === 'yes') params.append('needs_review', 'true')
+    if (debouncedFilters.state_status) params.append('state_status', debouncedFilters.state_status)
 
     window.open(`${api.defaults.baseURL}/recruiters/export?${params.toString()}`, '_blank');
   }
@@ -343,6 +346,11 @@ export default function Recruiters() {
                   <div>
                       <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Data Quality Checks</label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <select value={filters.state_status} onChange={e => updateFilter('state_status', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }}>
+                            <option value="">Any State Status</option>
+                            <option value="known">State Known / Inferred</option>
+                            <option value="unknown">State Unknown / Missing</option>
+                          </select>
                           <select value={filters.needs_review} onChange={e => updateFilter('needs_review', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }}>
                             <option value="">Any Confidence</option>
                             <option value="yes">Needs Manual Review</option>
@@ -385,7 +393,7 @@ export default function Recruiters() {
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
             <div>
-              <h1 style={{ fontSize: 20, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 3 }}>Recruiter Database</h1>
+              <h1 style={{ fontSize: 20, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 3 }}>Recruiter Discovery</h1>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <p style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600 }}>{totalCount.toLocaleString()} total matches found</p>
                   <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>— Powered by Unified Data Engine</span>

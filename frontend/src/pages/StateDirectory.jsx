@@ -31,6 +31,11 @@ const STATES = [
   { abbr: 'WI', name: 'Wisconsin' }, { abbr: 'WY', name: 'Wyoming' },
 ]
 
+const ENHANCED_STATES = [
+  ...STATES,
+  { abbr: 'Unknown', name: 'Unknown / Missing Data' }
+]
+
 function initialsFromName(name = '') {
   const parts = String(name).trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return '?'
@@ -98,13 +103,13 @@ export default function StateDirectory() {
 
   const [headerPortalElement, setHeaderPortalElement] = useState(null)
 
-  const selectedStateName = useMemo(() => STATES.find(s => s.abbr === selectedState)?.name || '', [selectedState])
+  const selectedStateName = useMemo(() => ENHANCED_STATES.find(s => s.abbr === selectedState)?.name || '', [selectedState])
   const selectedCompanyName = selectedCompany?.company_name || ''
 
   const filteredStates = useMemo(() => {
     const q = stateQuery.trim().toLowerCase()
-    if (!q) return STATES
-    return STATES.filter(s => s.abbr.toLowerCase().includes(q) || s.name.toLowerCase().includes(q))
+    if (!q) return ENHANCED_STATES
+    return ENHANCED_STATES.filter(s => s.abbr.toLowerCase().includes(q) || s.name.toLowerCase().includes(q))
   }, [stateQuery])
 
   const totalPages = useMemo(() => {
@@ -457,7 +462,7 @@ export default function StateDirectory() {
 
       <div className="page-enter" style={{ minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ marginBottom: 2 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 950, letterSpacing: '-0.02em', margin: 0 }}>Territory Intelligence Center</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 950, letterSpacing: '-0.02em', margin: 0 }}>Territory Analytics</h1>
           <p style={{ marginTop: 6, fontSize: 13, color: 'var(--text-muted)' }}>
             State → Company → Recruiters → Export Excel. Everything shown is real data from your database.
           </p>
@@ -535,6 +540,14 @@ export default function StateDirectory() {
                   </div>
                 </div>
               ) : null}
+              {selectedState === 'Unknown' && (
+                <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: 'var(--text-primary)', fontSize: 12, lineHeight: 1.5, marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, color: '#ef4444', marginBottom: 4 }}>
+                    <i className="ti ti-alert-triangle" /> Missing Metadata
+                  </div>
+                  Records in this bucket have absolutely no state, location, or company metadata, so they cannot be placed into a state yet.
+                </div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                   <span style={{ fontWeight: 950, color: 'var(--text-primary)' }}>{selectedStateName || selectedState}</span>
@@ -771,7 +784,7 @@ export default function StateDirectory() {
                         {safeText(activeRecruiter?.recruiter_name, '') || 'Recruiter'}
                       </div>
                       <div style={{ marginTop: 2, fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {activeRecruiter?.company_name || selectedCompanyName || 'Not available'}
+                        {activeRecruiter?.company_name || selectedCompanyName || 'Independent / Unlisted'}
                       </div>
                     </div>
                   </div>
@@ -785,13 +798,13 @@ export default function StateDirectory() {
                     <div style={{ fontSize: 10.5, fontWeight: 950, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Contact</div>
                     <div style={{ marginTop: 8, display: 'grid', gap: 6, fontSize: 12.5 }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-secondary)' }}>
-                        <i className="ti ti-mail" /> {safeText(activeRecruiter?.email, 'Not available')}
+                        <i className="ti ti-mail" /> {safeText(activeRecruiter?.email, 'Unlisted')}
                       </div>
                       {activeRecruiter?.email2 && <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-secondary)' }}><i className="ti ti-mail" /> {activeRecruiter.email2}</div>}
                       {activeRecruiter?.email3 && <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-secondary)' }}><i className="ti ti-mail" /> {activeRecruiter.email3}</div>}
                       {activeRecruiter?.email4 && <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-secondary)' }}><i className="ti ti-mail" /> {activeRecruiter.email4}</div>}
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-secondary)' }}>
-                        <i className="ti ti-phone" /> {safeText(activeRecruiter?.phone, 'Not available')}
+                        <i className="ti ti-phone" /> {safeText(activeRecruiter?.phone, 'Unlisted')}
                       </div>
                       {activeRecruiter?.phone2 && <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-secondary)' }}><i className="ti ti-phone" /> {activeRecruiter.phone2}</div>}
                       {activeRecruiter?.phone3 && <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-secondary)' }}><i className="ti ti-phone" /> {activeRecruiter.phone3}</div>}
@@ -816,9 +829,22 @@ export default function StateDirectory() {
                   <div style={{ padding: 12, borderRadius: 14, border: '1px solid var(--card-border)', background: 'var(--panel-bg)' }}>
                     <div style={{ fontSize: 10.5, fontWeight: 950, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Details</div>
                     <div style={{ marginTop: 8, display: 'grid', gap: 6, fontSize: 12.5, color: 'var(--text-secondary)' }}>
-                      <div><span style={{ color: 'var(--text-muted)' }}>Location:</span> {safeText(activeRecruiter?.location || activeRecruiter?.state, 'Not available')}</div>
-                      <div><span style={{ color: 'var(--text-muted)' }}>Title:</span> {safeText(activeRecruiter?.title, 'Not available')}</div>
-                      <div><span style={{ color: 'var(--text-muted)' }}>Specialization:</span> {safeText(activeRecruiter?.specialization, 'Not available')}</div>
+                      <div><span style={{ color: 'var(--text-muted)' }}>Location:</span> {safeText(activeRecruiter?.location || activeRecruiter?.state, 'Unlisted')}</div>
+                      {activeRecruiter?.state_source && (
+                        <div>
+                          <span style={{ color: 'var(--text-muted)' }}>State Source:</span> {activeRecruiter.state_source} 
+                          <span style={{ marginLeft: 6, color: activeRecruiter.state_confidence === 'high' ? 'var(--success)' : 'var(--warning)' }}>
+                            ({activeRecruiter.state_confidence})
+                          </span>
+                        </div>
+                      )}
+                      {activeRecruiter?.state_reason && (
+                        <div style={{ fontStyle: 'italic', color: 'var(--text-muted)', fontSize: 11 }}>
+                          ↳ {activeRecruiter.state_reason}
+                        </div>
+                      )}
+                      <div><span style={{ color: 'var(--text-muted)' }}>Title:</span> {safeText(activeRecruiter?.title, 'Unlisted')}</div>
+                      <div><span style={{ color: 'var(--text-muted)' }}>Specialization:</span> {safeText(activeRecruiter?.specialization, 'Unlisted')}</div>
                     </div>
                   </div>
 

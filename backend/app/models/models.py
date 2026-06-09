@@ -89,6 +89,10 @@ class Recruiter(Base):
     state            = Column(String(2), index=True) # Normalized state
     normalized_city  = Column(String(150), index=True)
     location_confidence = Column(String(20), default="high") # high, low, manual_review
+    state_source     = Column(String(150), nullable=True)
+    state_confidence = Column(String(50), nullable=True)
+    state_reason     = Column(Text, nullable=True)
+    last_scan_at     = Column(TIMESTAMP, nullable=True)
     completeness_score = Column(Integer, default=0, index=True)
     needs_review     = Column(Boolean, default=False, index=True)
     is_active        = Column(Boolean, default=True)

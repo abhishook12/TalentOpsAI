@@ -19,9 +19,9 @@ ABBR_TO_NAME = {v: k for k, v in STATE_MAP.items()}
 CITY_TO_STATE = {
     'ATLANTA': 'GA', 'AUSTIN': 'TX', 'BALTIMORE': 'MD', 'BOSTON': 'MA', 'CHARLOTTE': 'NC',
     'CHICAGO': 'IL', 'CLEVELAND': 'OH', 'COLUMBUS': 'OH', 'DALLAS': 'TX', 'DENVER': 'CO',
-    'DETROIT': 'MI', 'HOUSTON': 'TX', 'INDIANAPOLIS': 'IN', 'JACKSONVILLE': 'FL',
+    'DETROIT': 'MI', 'TROY': 'MI', 'LIVONIA': 'MI', 'HOUSTON': 'TX', 'INDIANAPOLIS': 'IN', 'JACKSONVILLE': 'FL',
     'LOS ANGELES': 'CA', 'MIAMI': 'FL', 'MINNEAPOLIS': 'MN', 'NASHVILLE': 'TN',
-    'NEW YORK': 'NY', 'ORLANDO': 'FL', 'PHILADELPHIA': 'PA', 'PHOENIX': 'AZ',
+    'NEW YORK': 'NY', 'NYC': 'NY', 'ORLANDO': 'FL', 'PHILADELPHIA': 'PA', 'PHOENIX': 'AZ',
     'PITTSBURGH': 'PA', 'PORTLAND': 'OR', 'RALEIGH': 'NC', 'RICHMOND': 'VA',
     'SACRAMENTO': 'CA', 'SAN ANTONIO': 'TX', 'SAN DIEGO': 'CA', 'SAN FRANCISCO': 'CA',
     'SAN JOSE': 'CA', 'SEATTLE': 'WA', 'ST. LOUIS': 'MO', 'TAMPA': 'FL',
@@ -30,44 +30,72 @@ CITY_TO_STATE = {
     'OMAHA': 'NE', 'NOIDA': 'UP', 'BANGALORE': 'KA', 'HYDERABAD': 'TG', 'PUNE': 'MH', 'CHENNAI': 'TN'
 }
 
+LOCATION_PHRASE_TO_STATE = {
+    'GREATER DALLAS': 'TX',
+    'DALLAS-FORT WORTH': 'TX',
+    'DFW': 'TX',
+    'AUSTIN METRO': 'TX',
+    'ATLANTA METRO': 'GA',
+    'BAY AREA': 'CA',
+    'GREATER CHICAGO': 'IL',
+    'NYC METRO': 'NY',
+    'GREATER NEW YORK': 'NY',
+    'GREATER PHILADELPHIA': 'PA',
+    'CHARLOTTE METRO': 'NC',
+    'RESEARCH TRIANGLE': 'NC',
+    'RTP': 'NC',
+    'DETROIT METRO': 'MI'
+}
+
+def extract_state_detailed(location: str):
+    """
+    Returns (state_abbreviation, source_reason)
+    """
+    if not location:
+        return None, None
+    
+    loc_upper = str(location).upper()
+    
+    # 1. Exact match for state abbreviation
+    clean_abbr = re.sub(r'[^A-Z]', '', loc_upper)
+    if len(clean_abbr) == 2 and clean_abbr in ABBR_TO_NAME:
+        return clean_abbr, 'abbreviation_exact_match'
+
+    # 2. Match location phrases
+    for phrase, abbr in LOCATION_PHRASE_TO_STATE.items():
+        if phrase in loc_upper:
+            return abbr, 'location_phrase_match'
+            
+    # 3. Match full state names
+    for state_name, abbr in STATE_MAP.items():
+        if re.search(r'\b' + re.escape(state_name) + r'\b', loc_upper):
+            return abbr, 'full_state_name_match'
+            
+    # 4. Look for 2-letter word boundaries that match state abbreviations
+    tokens = re.findall(r'\b[A-Z]{2}\b', loc_upper)
+    for token in tokens:
+        if token in ABBR_TO_NAME:
+            return token, 'abbreviation_word_boundary'
+            
+    # 5. Fallback: Split by commas or spaces, check reversed
+    parts = [p.strip() for p in re.split(r'[,\s]+', loc_upper) if p.strip()]
+    for p in reversed(parts):
+        clean_p = p.replace('.', '')
+        if clean_p in ABBR_TO_NAME:
+            return clean_p, 'abbreviation_comma_split'
+            
+    # 6. City match
+    for city, abbr in CITY_TO_STATE.items():
+        if re.search(r'\b' + re.escape(city) + r'\b', loc_upper):
+            if abbr in ABBR_TO_NAME:
+                return abbr, 'city_match'
+
+    return None, None
+
 def normalize_state(location: str) -> str:
     """
     Returns the 2-letter state abbreviation if a valid US state is found in the location string.
     Returns None otherwise.
     """
-    if not location:
-        return None
-    
-    loc_upper = str(location).upper()
-    
-    # 1. Exact match for state abbreviation, handling punctuation like "N.C." -> "NC"
-    clean_abbr = re.sub(r'[^A-Z]', '', loc_upper)
-    if len(clean_abbr) == 2 and clean_abbr in ABBR_TO_NAME:
-        return clean_abbr
-        
-    # 2. Match full state names
-    for state_name, abbr in STATE_MAP.items():
-        if re.search(r'\b' + re.escape(state_name) + r'\b', loc_upper):
-            return abbr
-            
-    # 3. Look for 2-letter word boundaries that match state abbreviations
-    tokens = re.findall(r'\b[A-Z]{2}\b', loc_upper)
-    for token in tokens:
-        if token in ABBR_TO_NAME:
-            return token
-            
-    # 4. Fallback: Split by commas or spaces, check reversed (typically City, ST format)
-    parts = [p.strip() for p in re.split(r'[,\s]+', loc_upper) if p.strip()]
-    for p in reversed(parts):
-        # Also clean periods from parts like "N.C." -> "NC"
-        clean_p = p.replace('.', '')
-        if clean_p in ABBR_TO_NAME:
-            return clean_p
-            
-    # 5. Last resort: check if any known major city is in the location
-    for city, abbr in CITY_TO_STATE.items():
-        if re.search(r'\b' + re.escape(city) + r'\b', loc_upper):
-            if abbr in ABBR_TO_NAME: # Only return valid US states
-                return abbr
-
-    return None
+    state, _ = extract_state_detailed(location)
+    return state

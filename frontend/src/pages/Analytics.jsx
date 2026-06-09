@@ -128,9 +128,10 @@ export default function Analytics() {
   const { data: analyticsData, isLoading: loading } = useQuery({
     queryKey: ['analytics-dashboard'],
     queryFn: async () => {
-      const [v, s] = await Promise.all([
+      const [v, s, dq] = await Promise.all([
         api.get('/analytics/visit-stats'),
         api.get('/analytics/recruiters-by-state'),
+        api.get('/analytics/data-quality')
       ])
 
       const raw = Array.isArray(s.data) ? s.data : []
@@ -140,12 +141,13 @@ export default function Analytics() {
         .sort((a, b) => b.recruiters - a.recruiters)
         .slice(0, 10)
         
-      return { visits: v.data, stateData }
+      return { visits: v.data, stateData, dq: dq.data }
     }
   })
 
   const visits = analyticsData?.visits
   const stateData = analyticsData?.stateData || []
+  const dq = analyticsData?.dq
 
   if (loading) return (
     <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
@@ -195,11 +197,23 @@ export default function Analytics() {
     >
       {/* Header + KPI strip */}
       <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
-        <h1 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: 0, lineHeight: 1.1 }}>Analytics</h1>
+        <h1 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: 0, lineHeight: 1.1 }}>Advanced Intelligence</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           <KPI inline label="Total Visits" value={(visits?.total_visits || 0).toLocaleString()} color="#7C3AED" icon="ti-eye" />
-          <KPI inline label="Today" value={(visits?.today || 0).toLocaleString()} sub={todayChange !== null ? `${todayChange > 0 ? 'â–²' : 'â–¼'} ${Math.abs(todayChange)}%` : null} color="#185FA5" icon="ti-calendar-today" />
+          <KPI inline label="Today" value={(visits?.today || 0).toLocaleString()} sub={todayChange !== null ? `${todayChange > 0 ? '▲' : '▼'} ${Math.abs(todayChange)}%` : null} color="#185FA5" icon="ti-calendar-today" />
           <KPI inline label="Yesterday" value={(visits?.yesterday || 0).toLocaleString()} color="#0F6E56" icon="ti-calendar" />
+        </div>
+        
+        <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: '8px 0 0', lineHeight: 1.1 }}>State Extraction Intelligence</h2>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <KPI inline label="Known State" value={dq?.known_state_count?.toLocaleString()} color="#0F6E56" icon="ti-map-pin-filled" />
+          <KPI inline label="Explicit State" value={dq?.explicit_state_count?.toLocaleString()} color="#185FA5" icon="ti-target" />
+          <KPI inline label="Inferred State" value={dq?.inferred_state_count?.toLocaleString()} color="#7C3AED" icon="ti-wand" />
+          <KPI inline label="Unknown State" value={dq?.unknown_state_count?.toLocaleString()} color="#ef4444" icon="ti-alert-triangle" />
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, padding: '8px 12px', background: 'rgba(239, 68, 68, 0.05)', borderRadius: 8, border: '1px solid rgba(239, 68, 68, 0.1)' }}>
+          <i className="ti ti-info-circle" style={{ marginRight: 4, color: '#ef4444' }} />
+          <strong>Unknown State Records:</strong> These records lack any parsable state, location, or company metadata. They cannot be placed into the directory map until updated.
         </div>
       </div>
 

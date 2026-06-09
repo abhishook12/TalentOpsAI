@@ -43,6 +43,80 @@ logger = logging.getLogger("talentops.analytics")
 
 router = APIRouter()
 
+@router.get("/data-quality")
+def get_data_quality(db: Session = Depends(get_db)):
+    cached = analytics_cache.get("data_quality")
+    if cached is not None:
+        return cached
+
+    total_recruiters = db.execute(text("SELECT COUNT(*) FROM recruiters")).scalar()
+    total_companies = db.execute(text("SELECT COUNT(*) FROM companies")).scalar()
+    states_covered = db.execute(text("SELECT COUNT(DISTINCT state) FROM recruiters WHERE state IS NOT NULL AND state != ''")).scalar()
+    
+    try:
+        db_size = db.execute(text("SELECT pg_size_pretty(pg_database_size(current_database()))")).scalar()
+    except Exception:
+        db_size = "Unknown"
+
+    real_emails = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE email IS NOT NULL AND email != '' AND email NOT LIKE '%@missing.local%'")).scalar()
+    phones = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE phone IS NOT NULL AND phone != ''")).scalar()
+    companies_linked = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE company_id IS NOT NULL")).scalar()
+    with_state = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE state IS NOT NULL AND state != ''")).scalar()
+
+    duplicate_risk = db.execute(text("SELECT COUNT(*) FROM (SELECT phone FROM recruiters WHERE phone IS NOT NULL AND phone != '' GROUP BY phone HAVING COUNT(*) > 1) t")).scalar()
+    needs_review = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE needs_review = true")).scalar()
+    
+    # State specific metrics
+    unknown_state_count = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE state IS NULL OR state = ''")).scalar()
+    explicit_state_count = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE state_source = 'recruiter_state_col' OR state_source = 'abbreviation_exact_match'")).scalar()
+    # Explicit before backfill + any new explicit matches
+    inferred_state_count = with_state - explicit_state_count
+    # Add pre-existing clean states (which have state_source IS NULL but state IS NOT NULL) to explicit_state_count
+    pre_existing_states = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE (state IS NOT NULL AND state != '') AND (state_source IS NULL OR state_source = '')")).scalar()
+    explicit_state_count += pre_existing_states
+    inferred_state_count = with_state - explicit_state_count
+
+    # Calculate coverages safely
+    email_cov = round((real_emails / total_recruiters * 100), 1) if total_recruiters else 0
+    phone_cov = round((phones / total_recruiters * 100), 1) if total_recruiters else 0
+    comp_cov = round((companies_linked / total_recruiters * 100), 1) if total_recruiters else 0
+    state_cov = round((with_state / total_recruiters * 100), 1) if total_recruiters else 0
+    review_cov = round((needs_review / total_recruiters * 100), 1) if total_recruiters else 0
+
+    # Calculate overall score (weighted average of coverages)
+    quality_score = round((email_cov * 0.4) + (phone_cov * 0.2) + (comp_cov * 0.2) + (state_cov * 0.2), 1)
+
+    result = {
+        "total_recruiters": total_recruiters,
+        "total_companies": total_companies,
+        "states_covered": states_covered or 0,
+        "database_size": db_size,
+        
+        "email_coverage": email_cov,
+        "phone_coverage": phone_cov,
+        "company_coverage": comp_cov,
+        "state_coverage": state_cov,
+        "needs_review_percent": review_cov,
+        "quality_score": quality_score,
+        
+        "missing_email_count": total_recruiters - real_emails,
+        "missing_phone_count": total_recruiters - phones,
+        "missing_company_count": total_recruiters - companies_linked,
+        "missing_state_count": unknown_state_count,
+        
+        "duplicate_risk_count": duplicate_risk or 0,
+        "needs_review_count": needs_review or 0,
+        
+        # New State Metrics
+        "known_state_count": with_state,
+        "unknown_state_count": unknown_state_count,
+        "explicit_state_count": explicit_state_count,
+        "inferred_state_count": inferred_state_count,
+    }
+    
+    analytics_cache.set("data_quality", result, ttl=60)
+    return result
+
 @router.get("/dashboard")
 def get_dashboard_kpis(db: Session = Depends(get_db)):
     cached = analytics_cache.get("dashboard_kpis")
@@ -55,7 +129,7 @@ def get_dashboard_kpis(db: Session = Depends(get_db)):
     from sqlalchemy import or_
     with_email = db.query(Recruiter).filter(
         or_(
-            (Recruiter.email.isnot(None)) & (Recruiter.email != ""),
+            (Recruiter.email.isnot(None)) & (Recruiter.email != "") & (~Recruiter.email.like("%@missing.local%")),
             (Recruiter.email2.isnot(None)) & (Recruiter.email2 != ""),
             (Recruiter.email3.isnot(None)) & (Recruiter.email3 != ""),
             (Recruiter.email4.isnot(None)) & (Recruiter.email4 != "")
@@ -180,12 +254,11 @@ def companies_count_by_state(db: Session = Depends(get_db)):
         try:
             rows = db.execute(text("""
                 SELECT
-                    COALESCE(c.state, r.state) AS state,
+                    COALESCE(COALESCE(r.state, c.state), 'Unknown') AS state,
                     COUNT(DISTINCT c.company_id) AS count
                 FROM companies c
                 LEFT JOIN recruiters r ON r.company_id = c.company_id
-                WHERE COALESCE(c.state, r.state) IS NOT NULL
-                GROUP BY COALESCE(c.state, r.state)
+                GROUP BY COALESCE(COALESCE(r.state, c.state), 'Unknown')
             """)).mappings().all()
         except ProgrammingError as e2:
             # Some environments may not have `companies.state` yet.
@@ -193,15 +266,20 @@ def companies_count_by_state(db: Session = Depends(get_db)):
             db.rollback()
             rows = db.execute(text("""
                 SELECT
-                    r.state AS state,
+                    COALESCE(r.state, 'Unknown') AS state,
                     COUNT(DISTINCT c.company_id) AS count
                 FROM companies c
-                JOIN recruiters r ON r.company_id = c.company_id
-                WHERE r.state IS NOT NULL AND r.state != ''
-                GROUP BY r.state
+                LEFT JOIN recruiters r ON r.company_id = c.company_id
+                GROUP BY COALESCE(r.state, 'Unknown')
             """)).mappings().all()
 
-    counts = {row["state"]: row["count"] for row in rows}
+    # Filter out actual empty string state keys if they slip through, map to Unknown
+    counts = {}
+    for row in rows:
+        st = row["state"]
+        if not st or st.strip() == '':
+            st = 'Unknown'
+        counts[st] = counts.get(st, 0) + row["count"]
 
     analytics_cache.set("companies_count_by_state", counts, ttl=30)
     return counts
@@ -228,7 +306,9 @@ def companies_search(
             c.industry,
             c.website,
             COUNT(DISTINCT r.recruiter_id) AS recruiter_count,
-            COALESCE(c.state, r.state) AS state_abbr,
+            COALESCE(c.state, MAX(r.state)) AS state_abbr,
+            COUNT(CASE WHEN r.state IS NULL OR r.state = '' THEN 1 END) AS missing_state_count,
+            COUNT(CASE WHEN r.needs_review = true THEN 1 END) AS needs_review_count,
             COUNT(*) OVER() AS full_count
         FROM companies c
         LEFT JOIN recruiters r ON r.company_id = c.company_id
@@ -242,12 +322,12 @@ def companies_search(
         sql += " AND c.normalized_company_name ILIKE '%' || :q || '%'"
         params["q"] = clean_q
     if state and state.upper() != "ALL":
-        sql += " AND COALESCE(c.state, r.state) = :state"
+        sql += " AND (r.state = :state OR ( (r.state IS NULL OR r.state = '') AND c.state = :state ))"
         params["state"] = state.upper()
 
 
     sql += """
-        GROUP BY c.company_id, c.company_name, c.location, c.industry, c.website, COALESCE(c.state, r.state)
+        GROUP BY c.company_id, c.company_name, c.location, c.industry, c.website, c.state
         HAVING COUNT(DISTINCT r.recruiter_id) >= :min_recruiters
         ORDER BY recruiter_count DESC, c.company_name ASC
         LIMIT :limit OFFSET :skip
@@ -267,6 +347,8 @@ def companies_search(
             "website": row["website"],
             "recruiter_count": int(row["recruiter_count"]),
             "state_abbr": row["state_abbr"] or 'Unknown',
+            "missing_state_count": int(row["missing_state_count"]),
+            "needs_review_count": int(row["needs_review_count"]),
         })
     return res
 

@@ -2,6 +2,7 @@ import re
 from fastapi import APIRouter, Depends, Query, Response, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, text
+from sqlalchemy.exc import ProgrammingError
 from typing import Optional
 from app.database import get_db
 from app.models.models import Recruiter, Company, Vendor, PageVisit
@@ -68,11 +69,39 @@ def get_data_quality(db: Session = Depends(get_db)):
     
     # State specific metrics
     unknown_state_count = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE state IS NULL OR state = ''")).scalar()
-    explicit_state_count = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE state_source = 'recruiter_state_col' OR state_source = 'abbreviation_exact_match'")).scalar()
-    # Explicit before backfill + any new explicit matches
-    inferred_state_count = with_state - explicit_state_count
+    direct_state_count = db.execute(text("""
+        SELECT COUNT(*)
+        FROM recruiters
+        WHERE state_source IN ('state_column', 'recruiter_state_col', 'abbreviation_exact_match')
+    """)).scalar()
+    company_state_count = db.execute(text("""
+        SELECT COUNT(*)
+        FROM recruiters
+        WHERE state_source = 'company_state'
+    """)).scalar()
+    company_majority_count = db.execute(text("""
+        SELECT COUNT(*)
+        FROM recruiters
+        WHERE state_source LIKE 'company_majority_state%'
+    """)).scalar()
+    domain_state_count = db.execute(text("""
+        SELECT COUNT(*)
+        FROM recruiters
+        WHERE state_source = 'email_domain'
+    """)).scalar()
+    text_inferred_count = db.execute(text("""
+        SELECT COUNT(*)
+        FROM recruiters
+        WHERE state_source IN ('recruiter_location', 'company_location', 'notes', 'review_reason', 'metadata_json', 'raw_data')
+    """)).scalar()
+    explicit_state_count = direct_state_count
     # Add pre-existing clean states (which have state_source IS NULL but state IS NOT NULL) to explicit_state_count
-    pre_existing_states = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE (state IS NOT NULL AND state != '') AND (state_source IS NULL OR state_source = '')")).scalar()
+    pre_existing_states = db.execute(text("""
+        SELECT COUNT(*)
+        FROM recruiters
+        WHERE (state IS NOT NULL AND state != '')
+          AND (state_source IS NULL OR state_source = '')
+    """)).scalar()
     explicit_state_count += pre_existing_states
     inferred_state_count = with_state - explicit_state_count
 
@@ -112,6 +141,10 @@ def get_data_quality(db: Session = Depends(get_db)):
         "unknown_state_count": unknown_state_count,
         "explicit_state_count": explicit_state_count,
         "inferred_state_count": inferred_state_count,
+        "company_state_count": company_state_count or 0,
+        "company_majority_state_count": company_majority_count or 0,
+        "domain_state_count": domain_state_count or 0,
+        "text_inferred_state_count": text_inferred_count or 0,
     }
     
     analytics_cache.set("data_quality", result, ttl=60)
@@ -203,13 +236,14 @@ def recruiters_by_state(db: Session = Depends(get_db)):
 
 @router.get("/companies-by-state")
 def companies_by_state(db: Session = Depends(get_db)):
-    cached = analytics_cache.get("companies_by_state")
-    if cached is not None:
-        return cached
     """
     Returns companies grouped by state, each with recruiter count.
     State is extracted from the company location field (last word / 2-letter abbr).
     """
+    cached = analytics_cache.get("companies_by_state")
+    if cached is not None:
+        return cached
+
     sql = text("""
         SELECT
             c.company_id,
@@ -245,35 +279,29 @@ def companies_count_by_state(db: Session = Depends(get_db)):
     if cached is not None:
         return cached
 
+    # Use live aggregation directly (no materialized view)
     try:
-        sql = text("SELECT state, count FROM mv_state_company_counts")
-        rows = db.execute(sql).mappings().all()
-    except ProgrammingError as e:
-        logger.warning("mv_state_company_counts missing; falling back to live aggregation: %s", e)
+        rows = db.execute(text("""
+            SELECT
+                COALESCE(COALESCE(r.state, c.state), 'Unknown') AS state,
+                COUNT(DISTINCT c.company_id) AS count
+            FROM companies c
+            LEFT JOIN recruiters r ON r.company_id = c.company_id
+            GROUP BY COALESCE(COALESCE(r.state, c.state), 'Unknown')
+        """)).mappings().all()
+    except Exception as e:
+        logger.warning("companies.state column may be missing; using recruiters.state only: %s", e)
         db.rollback()
-        try:
-            rows = db.execute(text("""
-                SELECT
-                    COALESCE(COALESCE(r.state, c.state), 'Unknown') AS state,
-                    COUNT(DISTINCT c.company_id) AS count
-                FROM companies c
-                LEFT JOIN recruiters r ON r.company_id = c.company_id
-                GROUP BY COALESCE(COALESCE(r.state, c.state), 'Unknown')
-            """)).mappings().all()
-        except ProgrammingError as e2:
-            # Some environments may not have `companies.state` yet.
-            logger.warning("companies.state missing; using recruiters.state only: %s", e2)
-            db.rollback()
-            rows = db.execute(text("""
-                SELECT
-                    COALESCE(r.state, 'Unknown') AS state,
-                    COUNT(DISTINCT c.company_id) AS count
-                FROM companies c
-                LEFT JOIN recruiters r ON r.company_id = c.company_id
-                GROUP BY COALESCE(r.state, 'Unknown')
-            """)).mappings().all()
+        rows = db.execute(text("""
+            SELECT
+                COALESCE(r.state, 'Unknown') AS state,
+                COUNT(DISTINCT c.company_id) AS count
+            FROM companies c
+            LEFT JOIN recruiters r ON r.company_id = c.company_id
+            GROUP BY COALESCE(r.state, 'Unknown')
+        """)).mappings().all()
 
-    # Filter out actual empty string state keys if they slip through, map to Unknown
+    # Filter out empty string state keys, map to Unknown
     counts = {}
     for row in rows:
         st = row["state"]

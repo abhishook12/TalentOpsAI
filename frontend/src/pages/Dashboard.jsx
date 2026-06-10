@@ -28,26 +28,46 @@ export default function Dashboard() {
   const { data: kpis, isLoading: kpisLoading, error: kpisError } = useQuery({
     queryKey: ['dashboard-kpis'],
     queryFn: async () => (await api.get('/analytics/dashboard')).data,
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    retry: 1,
   })
 
   const { data: dataQuality, isLoading: dqLoading, error: dqError } = useQuery({
     queryKey: ['dashboard-data-quality'],
     queryFn: async () => (await api.get('/analytics/data-quality')).data,
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    retry: 1,
   })
 
   const { data: visits, isLoading: visitsLoading, error: visitsError } = useQuery({
     queryKey: ['dashboard-visits'],
     queryFn: async () => (await api.get('/analytics/visit-stats')).data,
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    retry: 1,
   })
 
   const { data: topCompanies, isLoading: companiesLoading, error: companiesError } = useQuery({
     queryKey: ['dashboard-top-companies'],
     queryFn: async () => (await api.get('/analytics/companies-search', { params: { state: 'ALL', limit: 6, skip: 0, min_recruiters: 1 } })).data,
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    retry: 1,
   })
 
   const { data: jobs, isLoading: jobsLoading, error: jobsError } = useQuery({
     queryKey: ['dashboard-upload-jobs'],
     queryFn: async () => (await api.get('/upload/jobs')).data,
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    retry: 1,
   })
 
   const topPages = Array.isArray(visits?.top_pages) ? visits.top_pages.slice(0, 5) : []
@@ -361,4 +381,3 @@ export default function Dashboard() {
     </div>
   )
 }
-

@@ -106,14 +106,15 @@ const globalStyles = `
 
   *, *::before, *::after { box-sizing: border-box; }
   html, body, #root {
-    height: 100%;
+    min-height: 100%;
     margin: 0;
     background:
       linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.0)),
       linear-gradient(180deg, var(--main-bg), var(--main-bg));
     color: var(--text-primary);
     font-family: var(--font);
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -169,7 +170,11 @@ const globalStyles = `
     z-index: 0;
   }
 
-  #root { position: relative; z-index: 1; }
+  #root {
+    position: relative;
+    z-index: 1;
+    min-height: 100dvh;
+  }
 
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -342,36 +347,51 @@ const globalStyles = `
   }
 
   .cc-content {
-    flex: 1;
+    flex: 1 0 auto;
     min-width: 0;
     min-height: 0;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: visible;
     background: linear-gradient(180deg, rgba(244,245,242,0.8), rgba(244,245,242,1));
   }
 
   .cc-page-body {
-    flex: 1;
-    min-height: 0;
-    overflow: auto;
-    padding: 18px 18px 14px;
+    flex: 1 0 auto;
+    min-height: auto;
+    overflow: visible;
+    padding: 18px 18px 96px;
   }
 
   .cc-footer {
+    position: fixed;
+    bottom: 0;
+    left: var(--sidebar-width);
+    right: 0;
+    z-index: 25;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 18px;
     padding: 14px 20px;
     border-top: 1px solid var(--card-border);
-    background: rgba(255,255,255,0.72);
+    background: rgba(255,255,255,0.94);
     backdrop-filter: blur(6px);
     font-size: 12px;
     color: var(--text-secondary);
   }
 
   .cc-footer strong { color: var(--text-primary); }
+
+  .cc-footer-center {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-width: 0;
+    padding: 0 16px;
+    text-align: center;
+  }
 
   .cc-eyebrow {
     font-size: 10px;
@@ -618,6 +638,7 @@ const PAGE_NAMES = {
   '/analytics': 'Analytics',
   '/ai-search': 'AI Search',
   '/directory': 'States',
+  '/states': 'States',
   '/companies': 'Companies',
   '/upload': 'ETL',
   '/admin': 'Admin Ops',
@@ -635,6 +656,7 @@ function getSessionId() {
 function PageTracker() {
   const location = useLocation()
   const entryTimeRef = useRef(null)
+  const lastLoggedRef = useRef(null)
 
   useEffect(() => {
     if (entryTimeRef.current === null) {
@@ -655,6 +677,11 @@ function PageTracker() {
     })()
 
     const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
+    const logKey = `${location.pathname}:${page}:${session?.email || ''}`
+    if (lastLoggedRef.current === logKey) {
+      return
+    }
+    lastLoggedRef.current = logKey
     fetch(`${apiUrl}/analytics/log-visit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -672,8 +699,7 @@ function PageTracker() {
   return null
 }
 
-function AppShell() {
-  const location = useLocation()
+function UtcClock() {
   const [utcTime, setUtcTime] = useState(() => new Date().toUTCString().slice(17, 25))
 
   useEffect(() => {
@@ -682,6 +708,12 @@ function AppShell() {
     }, 1000)
     return () => window.clearInterval(tick)
   }, [])
+
+  return <div className="cc-session-time">UTC {utcTime}</div>
+}
+
+function AppShell() {
+  const location = useLocation()
 
   const pageName = useMemo(() => PAGE_NAMES[location.pathname] || 'Dashboard', [location.pathname])
 
@@ -698,7 +730,7 @@ function AppShell() {
                 <span className="cc-session-dot" />
                 Session: Active
               </div>
-              <div className="cc-session-time">UTC {utcTime}</div>
+              <UtcClock />
               <div style={{ color: 'rgba(255,255,255,0.72)', fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', minWidth: 0 }}>
                 {pageName}
               </div>
@@ -736,6 +768,7 @@ function AppShell() {
                     <Route path="/analytics" element={<Analytics />} />
                     <Route path="/ai-search" element={<AISearch />} />
                     <Route path="/directory" element={<StateDirectory />} />
+                    <Route path="/states" element={<StateDirectory />} />
                     <Route path="/companies" element={<CompanyDirectory />} />
                     <Route path="/upload" element={<Upload />} />
                     <Route path="/admin" element={<AdminTerminal />} />
@@ -749,9 +782,24 @@ function AppShell() {
                 <div style={{ width: 28, height: 28, borderRadius: 10, background: 'linear-gradient(135deg, #d7d7d7, #8e8e8e)', color: '#111', display: 'grid', placeItems: 'center' }}>
                   <i className="ti ti-brand-graphql" />
                 </div>
-                <div>
-                  <strong>REC-INTEL v4.0</strong>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Operational Command Center</div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 16, fontWeight: 900, lineHeight: 1, letterSpacing: '-0.03em', color: '#ffffff', textShadow: '0 1px 10px rgba(0,0,0,0.28)' }}>
+                    REC-INTEL v4.0
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    Operational Command Center
+                  </div>
+                </div>
+              </div>
+
+              <div className="cc-footer-center">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 34, whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: '#ffffff' }}>
+                    Built by
+                  </span>
+                  <span style={{ fontSize: 17, fontWeight: 500, fontStyle: 'italic', color: '#ffffff', letterSpacing: '0.01em', textShadow: '0 1px 8px rgba(0,0,0,0.28)' }}>
+                    Abhishek
+                  </span>
                 </div>
               </div>
 

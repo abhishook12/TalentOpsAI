@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from openpyxl import load_workbook
+from ..utils.phone_normalizer import format_us_phone
 
 # ──────────────────────────────────────────────────────────────
 # Constants
@@ -269,11 +270,11 @@ def _clean_phone(v: Any) -> str | None:
     s = _clean_val(v)
     if not s:
         return None
-    cleaned = s.replace("-", "").replace(" ", "").replace("(", "").replace(")", "").replace("+", "").strip()
+    cleaned = re.sub(r"\D+", "", s)
     if cleaned.lower() in BAD_PHONE_VALUES:
         return None
     if PHONE_RE.search(cleaned):
-        return s.strip()  # Return original formatting but trimmed
+        return format_us_phone(s)
     return None
 
 

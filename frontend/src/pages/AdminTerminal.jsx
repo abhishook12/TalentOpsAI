@@ -577,6 +577,7 @@ export default function AdminTerminal() {
   const [activityFeed, setActivityFeed] = useState(null)
   const [stateCoverage, setStateCoverage] = useState(null)
   const [fieldAudit, setFieldAudit] = useState(null)
+  const [dataQuality, setDataQuality] = useState(null)
   const [tableSizes, setTableSizes] = useState([])
   const [sysInfo, setSysInfo] = useState(null)
   const [orphans, setOrphans] = useState(null)
@@ -588,7 +589,12 @@ export default function AdminTerminal() {
   const [liveRecruiterJobId, setLiveRecruiterJobId] = useState('')
   const [liveRecruiterPage, setLiveRecruiterPage] = useState(1)
   const [selectedRecruiters, setSelectedRecruiters] = useState([])
+  const [reviewPanelOpen, setReviewPanelOpen] = useState(false)
+  const [reviewQueue, setReviewQueue] = useState({ results: [], total_count: 0, page: 1, total_pages: 1 })
+  const [reviewQueueLoading, setReviewQueueLoading] = useState(false)
+  const [reviewQueuePage, setReviewQueuePage] = useState(1)
   const [editRecruiter, setEditRecruiter] = useState(null)
+  const [resolveAfterSave, setResolveAfterSave] = useState(false)
   const [editRecruiterForm, setEditRecruiterForm] = useState({
     recruiter_name: '',
     email: '',
@@ -850,6 +856,26 @@ export default function AdminTerminal() {
     }
   }, [unlocked, activeTab, liveRecruiterPage, liveRecruiterQuery, liveRecruiterState, liveRecruiterCompany, liveRecruiterJobId])
 
+  const loadReviewQueue = useCallback(async () => {
+    if (!unlocked) return
+    setReviewQueueLoading(true)
+    try {
+      const params = new URLSearchParams()
+      params.set('page', String(reviewQueuePage))
+      params.set('limit', '8')
+      params.set('needs_review', 'true')
+      params.set('sort_by', 'created_at')
+      params.set('sort_desc', 'true')
+      const { data } = await api.get(`/recruiters/?${params.toString()}`)
+      setReviewQueue(data || { results: [], total_count: 0, page: 1, total_pages: 1 })
+    } catch (e) {
+      log('✗ Failed to load review queue: ' + getErrorMessage(e), 'error')
+      setReviewQueue({ results: [], total_count: 0, page: 1, total_pages: 1 })
+    } finally {
+      setReviewQueueLoading(false)
+    }
+  }, [unlocked, reviewQueuePage])
+
   useEffect(() => {
     if (unlocked && activeTab === 'ops') {
       const t = setTimeout(() => loadLiveRecruiters(), 250)
@@ -857,12 +883,37 @@ export default function AdminTerminal() {
     }
   }, [unlocked, activeTab, liveRecruiterPage, liveRecruiterQuery, liveRecruiterState, liveRecruiterCompany, loadLiveRecruiters])
 
+  useEffect(() => {
+    if (!reviewPanelOpen || !unlocked) return undefined
+    const t = setTimeout(() => loadReviewQueue(), 150)
+    return () => clearTimeout(t)
+  }, [loadReviewQueue, reviewPanelOpen, unlocked, reviewQueuePage])
+
   const toggleRecruiterSelection = (id) => {
     setSelectedRecruiters(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id])
   }
 
   const openRecruiterEdit = (recruiter) => {
     setEditRecruiter(recruiter)
+    setResolveAfterSave(false)
+    setEditRecruiterForm({
+      recruiter_name: recruiter.recruiter_name || '',
+      email: recruiter.email || '',
+      phone: recruiter.phone || '',
+      linkedin: recruiter.linkedin || '',
+      specialization: recruiter.specialization || '',
+      company_id: recruiter.company_id || '',
+      location: recruiter.location || '',
+      is_active: recruiter.is_active !== false,
+      email2: recruiter.email2 || '',
+      phone2: recruiter.phone2 || '',
+      notes: recruiter.notes || '',
+    })
+  }
+
+  const openReviewRecruiter = (recruiter) => {
+    setEditRecruiter(recruiter)
+    setResolveAfterSave(true)
     setEditRecruiterForm({
       recruiter_name: recruiter.recruiter_name || '',
       email: recruiter.email || '',
@@ -889,15 +940,49 @@ export default function AdminTerminal() {
       const payload = {
         ...editRecruiterForm,
         company_id: editRecruiterForm.company_id ? Number(editRecruiterForm.company_id) : null,
+        needs_review: resolveAfterSave ? false : editRecruiter.needs_review,
+        review_reason: resolveAfterSave ? '' : editRecruiter.review_reason,
       }
       await api.put(`/recruiters/${editRecruiter.recruiter_id}`, payload)
       log(`✓ Updated ${editRecruiter.recruiter_name}`, 'ok')
       setEditRecruiter(null)
+      setResolveAfterSave(false)
       await loadLiveRecruiters()
+      if (reviewPanelOpen) await loadReviewQueue()
     } catch (e) {
       log('✗ Failed to update recruiter: ' + getErrorMessage(e), 'error')
     } finally {
       setSavingRecruiter(false)
+    }
+  }
+
+  const markRecruiterReviewed = async (recruiter) => {
+    if (!recruiter?.recruiter_id) return
+    try {
+      await api.put(`/recruiters/${recruiter.recruiter_id}`, {
+        recruiter_name: recruiter.recruiter_name || '',
+        email: recruiter.email || '',
+        phone: recruiter.phone || '',
+        linkedin: recruiter.linkedin || '',
+        specialization: recruiter.specialization || '',
+        company_id: recruiter.company_id ? Number(recruiter.company_id) : null,
+        location: recruiter.location || '',
+        is_active: recruiter.is_active !== false,
+        email2: recruiter.email2 || '',
+        phone2: recruiter.phone2 || '',
+        email3: recruiter.email3 || '',
+        phone3: recruiter.phone3 || '',
+        email4: recruiter.email4 || '',
+        phone4: recruiter.phone4 || '',
+        notes: recruiter.notes || '',
+        needs_review: false,
+        review_reason: '',
+      })
+      log(`✓ Marked ${recruiter.recruiter_name || 'recruiter'} as reviewed`, 'ok')
+      await loadReviewQueue()
+      await loadLiveRecruiters()
+    } catch (e) {
+      log('✗ Failed to mark recruiter reviewed: ' + getErrorMessage(e), 'error')
     }
   }
 
@@ -957,6 +1042,16 @@ export default function AdminTerminal() {
   const exportSelectedRecruiters = () => {
     const rows = liveRecruiters.results.filter(r => selectedRecruiters.includes(r.recruiter_id))
     exportToExcel(rows, 'selected_recruiters')
+  }
+
+  const openReviewPanel = () => {
+    setReviewQueuePage(1)
+    setReviewPanelOpen(true)
+  }
+
+  const closeRecruiterEditor = () => {
+    setEditRecruiter(null)
+    setResolveAfterSave(false)
   }
 
   const clearRecruiterBatchFilter = () => {
@@ -1050,6 +1145,18 @@ export default function AdminTerminal() {
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
           {loading && <span style={{ fontSize: 12, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}><i className="ti ti-loader" style={{ animation: 'spin 0.8s linear infinite' }} /> Loading…</span>}
+          <button
+            onClick={openReviewPanel}
+            title="Open the review queue"
+            style={{ background: 'linear-gradient(135deg, #1d4ed8, #0ea5e9)', border: '1px solid #1d4ed8', color: '#fff', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+          >
+            <i className="ti ti-clipboard-check" /> Review Panel
+            {dataQuality?.needs_review_count != null && (
+              <span style={{ marginLeft: 4, padding: '1px 6px', borderRadius: 999, background: 'rgba(255,255,255,0.16)', fontSize: 11 }}>
+                {fmt(dataQuality.needs_review_count)}
+              </span>
+            )}
+          </button>
           <button onClick={loadAll} style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-secondary)', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <i className="ti ti-refresh" /> Refresh
           </button>
@@ -1489,9 +1596,23 @@ export default function AdminTerminal() {
                   </div>
                 </Section>
 
-                <Section title="Duplicate Resolution Center" icon="ti-git-merge" action={<Badge color="#64748b">Future-ready</Badge>}>
-                  <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-                    No Data Available. Duplicate merge suggestions and review queue will appear here when implemented.
+                <Section title="Duplicate Resolution Center" icon="ti-git-merge" action={<Badge color="#64748b">Marked</Badge>}>
+                  <div style={{ color: 'var(--text-muted)', fontSize: 12, lineHeight: 1.6 }}>
+                    Open the hidden review panel to check flagged records, fix details, and clear them when they are correct.
+                  </div>
+                  <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={openReviewPanel}
+                      style={{ background: 'linear-gradient(135deg, #2563eb, #0ea5e9)', border: '1px solid #2563eb', color: '#fff', padding: '8px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
+                    >
+                      <i className="ti ti-clipboard-check" /> Open Review Panel
+                    </button>
+                    <button
+                      onClick={() => loadDupes()}
+                      style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: 'var(--text-secondary)', padding: '8px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
+                    >
+                      <i className="ti ti-refresh" /> Refresh Scan
+                    </button>
                   </div>
                 </Section>
               </>
@@ -1890,9 +2011,143 @@ export default function AdminTerminal() {
           </div>
         )}
 
+        {reviewPanelOpen && (
+          <div
+            onClick={() => setReviewPanelOpen(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(2,6,23,0.66)',
+              zIndex: 1990,
+              display: 'grid',
+              placeItems: 'center',
+              padding: 20,
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: '100%',
+                maxWidth: 1020,
+                maxHeight: '90vh',
+                background: 'var(--card-bg)',
+                border: '1px solid var(--card-border)',
+                borderRadius: 18,
+                boxShadow: '0 24px 70px rgba(0,0,0,0.45)',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 22px', borderBottom: '1px solid var(--card-border)' }}>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>Review Panel</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    Simple place to check flagged records, fix them, and mark them clean
+                  </div>
+                </div>
+                <button onClick={() => setReviewPanelOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18 }}>
+                  <i className="ti ti-x" />
+                </button>
+              </div>
+
+              <div style={{ padding: 18, borderBottom: '1px solid var(--card-border)', display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
+                <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 14 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Flagged records</div>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', marginTop: 4 }}>{fmt(reviewQueue.total_count || 0)}</div>
+                </div>
+                <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 14 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Page</div>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', marginTop: 4 }}>{reviewQueue.page || 1}</div>
+                </div>
+                <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 14 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Shown now</div>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', marginTop: 4 }}>{(reviewQueue.results || []).length}</div>
+                </div>
+                <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 14 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Status</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: reviewQueueLoading ? '#fbbf24' : '#22c55e', marginTop: 8 }}>{reviewQueueLoading ? 'Loading' : 'Ready'}</div>
+                </div>
+              </div>
+
+              <div style={{ padding: 18, overflowY: 'auto', flex: 1 }}>
+                {reviewQueueLoading && (
+                  <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: '18px 4px' }}>Loading review records…</div>
+                )}
+                {!reviewQueueLoading && (reviewQueue.results || []).length === 0 && (
+                  <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: '18px 4px' }}>No flagged records were found.</div>
+                )}
+                <div style={{ display: 'grid', gap: 12 }}>
+                  {(reviewQueue.results || []).map((r) => (
+                    <div key={r.recruiter_id} style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 14, padding: 14 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>{r.recruiter_name || 'Unnamed recruiter'}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                            {r.company?.company_name || r.company_name || 'No company'} · {r.location || 'No location'}
+                          </div>
+                        </div>
+                        <span className="badge badge-amber">Needs review</span>
+                      </div>
+
+                      <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10, fontSize: 12.5 }}>
+                        <div><span style={{ color: 'var(--text-muted)' }}>Email:</span> <span style={{ color: 'var(--text-primary)' }}>{r.email || '—'}</span></div>
+                        <div><span style={{ color: 'var(--text-muted)' }}>Phone:</span> <span style={{ color: 'var(--text-primary)' }}>{r.phone || '—'}</span></div>
+                        <div><span style={{ color: 'var(--text-muted)' }}>State:</span> <span style={{ color: 'var(--text-primary)' }}>{r.state || '—'}</span></div>
+                        <div><span style={{ color: 'var(--text-muted)' }}>Source:</span> <span style={{ color: 'var(--text-primary)' }}>{r.state_source || '—'}</span></div>
+                      </div>
+
+                      <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                        {r.review_reason || 'No review reason provided.'}
+                      </div>
+
+                      <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                        <button
+                          onClick={() => openReviewRecruiter(r)}
+                          style={{ background: 'linear-gradient(135deg, #2563eb, #0ea5e9)', border: '1px solid #2563eb', color: '#fff', padding: '8px 12px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
+                        >
+                          Open editor
+                        </button>
+                        <button
+                          onClick={() => markRecruiterReviewed(r)}
+                          style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: 'var(--text-secondary)', padding: '8px 12px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
+                        >
+                          Mark reviewed
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderTop: '1px solid var(--card-border)' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  Page {reviewQueue.page || 1} of {reviewQueue.total_pages || 1}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => setReviewQueuePage(p => Math.max(1, p - 1))}
+                    disabled={(reviewQueue.page || 1) <= 1}
+                    style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-secondary)', cursor: (reviewQueue.page || 1) <= 1 ? 'not-allowed' : 'pointer', opacity: (reviewQueue.page || 1) <= 1 ? 0.6 : 1 }}
+                  >
+                    Prev
+                  </button>
+                  <button
+                    onClick={() => setReviewQueuePage(p => p + 1)}
+                    disabled={(reviewQueue.page || 1) >= (reviewQueue.total_pages || 1)}
+                    style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-secondary)', cursor: (reviewQueue.page || 1) >= (reviewQueue.total_pages || 1) ? 'not-allowed' : 'pointer', opacity: (reviewQueue.page || 1) >= (reviewQueue.total_pages || 1) ? 0.6 : 1 }}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {editRecruiter && (
           <div
-            onClick={() => setEditRecruiter(null)}
+            onClick={closeRecruiterEditor}
             style={{
               position: 'fixed',
               inset: 0,
@@ -1920,7 +2175,7 @@ export default function AdminTerminal() {
                   <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>Edit Recruiter</div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{editRecruiter.recruiter_name || 'Selected recruiter'}</div>
                 </div>
-                <button onClick={() => setEditRecruiter(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18 }}>
+                <button onClick={closeRecruiterEditor} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18 }}>
                   <i className="ti ti-x" />
                 </button>
               </div>
@@ -1967,7 +2222,7 @@ export default function AdminTerminal() {
                     Active
                   </label>
                   <div style={{ display: 'flex', gap: 10 }}>
-                    <button onClick={() => setEditRecruiter(null)} style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-secondary)', cursor: 'pointer' }}>Cancel</button>
+                    <button onClick={closeRecruiterEditor} style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-secondary)', cursor: 'pointer' }}>Cancel</button>
                     <button onClick={saveRecruiter} disabled={savingRecruiter} style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid #2563eb', background: 'linear-gradient(135deg, #2563eb, #0ea5e9)', color: '#fff', cursor: savingRecruiter ? 'not-allowed' : 'pointer', opacity: savingRecruiter ? 0.7 : 1 }}>
                       {savingRecruiter ? 'Saving...' : 'Save Changes'}
                     </button>

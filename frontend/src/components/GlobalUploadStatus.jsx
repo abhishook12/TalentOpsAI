@@ -17,6 +17,7 @@ export default function GlobalUploadStatus() {
 
   useEffect(() => {
     let cancelled = false
+    let interval = null
 
     const fetchJobs = async () => {
       try {
@@ -28,16 +29,18 @@ export default function GlobalUploadStatus() {
         const jobs = [...legacyActive, ...smartActive].filter((job) => isRunningStatus(job.status))
         const latest = jobs.sort((a, b) => jobScore(b) - jobScore(a))
         setActiveJob(latest[0] || null)
+        if (latest[0] && !interval) {
+          interval = window.setInterval(fetchJobs, 10000)
+        }
       } catch {
         // Silent: this should never block core UX.
       }
     }
 
     fetchJobs()
-    const interval = window.setInterval(fetchJobs, 3000)
     return () => {
       cancelled = true
-      window.clearInterval(interval)
+      if (interval) window.clearInterval(interval)
     }
   }, [])
 

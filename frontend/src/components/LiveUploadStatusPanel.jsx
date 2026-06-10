@@ -120,15 +120,26 @@ export default function LiveUploadStatusPanel({ compact = false }) {
         error: null,
         refreshing: false,
       })
+      return job
     } catch (error) {
       setState((current) => ({ ...current, loading: false, refreshing: false, error: error?.message || 'Unable to load job status' }))
+      return null
     }
   }
 
   useEffect(() => {
-    fetchJobs()
-    const interval = window.setInterval(fetchJobs, 2500)
-    return () => window.clearInterval(interval)
+    let interval = null
+    let disposed = false
+    fetchJobs().then((job) => {
+      if (disposed) return
+      if (job) {
+        interval = window.setInterval(fetchJobs, 10000)
+      }
+    })
+    return () => {
+      disposed = true
+      if (interval) window.clearInterval(interval)
+    }
   }, [])
 
   const display = useMemo(() => {

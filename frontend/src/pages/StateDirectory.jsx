@@ -272,12 +272,12 @@ export default function StateDirectory() {
 
   const selectedStateRecruiterCount = useMemo(() => {
     if (!selectedState) return null
-    return stateRecruiterCounts.get(String(selectedState).toUpperCase()) ?? null
+    return stateRecruiterCounts.get(String(selectedState).toUpperCase()) ?? 0
   }, [selectedState, stateRecruiterCounts])
 
   const selectedStateCompanyCount = useMemo(() => {
     if (!selectedState) return null
-    return stateCompanyCounts.get(String(selectedState).toUpperCase()) ?? null
+    return stateCompanyCounts.get(String(selectedState).toUpperCase()) ?? 0
   }, [selectedState, stateCompanyCounts])
 
   const toggleRecruiterSelected = (r, checked) => {
@@ -489,8 +489,8 @@ export default function StateDirectory() {
             />
             <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 'calc(100vh - 260px)' }}>
               {filteredStates.map((s) => {
-                const recruitersCount = stateRecruiterCounts.get(s.abbr) ?? null
-                const companiesCount = stateCompanyCounts.get(s.abbr) ?? null
+                const recruitersCount = stateRecruiterCounts.get(s.abbr) ?? 0
+                const companiesCount = stateCompanyCounts.get(s.abbr) ?? 0
                 const selected = selectedState === s.abbr
                 return (
                   <button
@@ -512,9 +512,9 @@ export default function StateDirectory() {
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 950, color: 'var(--text-primary)' }}>{s.name}</div>
                       <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-muted)' }}>
-                        {typeof recruitersCount === 'number' ? `${recruitersCount.toLocaleString()} recruiters` : 'Recruiters: —'}
+                        {`${Number(recruitersCount || 0).toLocaleString()} recruiters`}
                         {'  •  '}
-                        {typeof companiesCount === 'number' ? `${companiesCount.toLocaleString()} companies` : 'Companies: —'}
+                        {`${Number(companiesCount || 0).toLocaleString()} companies`}
                       </div>
                     </div>
                     <div style={{ width: 28, height: 28, borderRadius: 10, border: `1px solid ${selected ? 'rgba(24,95,165,0.35)' : 'var(--card-border)'}`, background: selected ? 'rgba(24,95,165,0.12)' : 'transparent', display: 'grid', placeItems: 'center' }}>
@@ -551,7 +551,7 @@ export default function StateDirectory() {
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                   <span style={{ fontWeight: 950, color: 'var(--text-primary)' }}>{selectedStateName || selectedState}</span>
-                  {typeof selectedStateCompanyCount === 'number' && <span> • {selectedStateCompanyCount.toLocaleString()} companies</span>}
+                  <span> • {Number(selectedStateCompanyCount || 0).toLocaleString()} companies</span>
                 </div>
                 <button
                   onClick={() => { setSelectedCompany(null); setPage(1); setRecruiterQuery(''); setSelectedRecruiters(new Map()); setActiveRecruiter(null) }}
@@ -588,6 +588,7 @@ export default function StateDirectory() {
                           key={c.company_id}
                           onClick={() => {
                             setSelectedCompany(c)
+                            setRecruitersTotal(Number(c.recruiter_count || 0))
                             setPage(1)
                             setSelectedRecruiters(new Map())
                             setActiveRecruiter(null)
@@ -629,7 +630,7 @@ export default function StateDirectory() {
             <Panel
               title="3. Recruiters"
               icon="ti-users"
-              badge={<span className="badge badge-gray">{selectedCompanyName ? recruitersTotal.toLocaleString() : '—'}</span>}
+              badge={<span className="badge badge-gray">{selectedCompanyName ? Number(recruitersTotal || 0).toLocaleString() : '0'}</span>}
               style={{ minHeight: 0 }}
             >
               {!selectedState ? (

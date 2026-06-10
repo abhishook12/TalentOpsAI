@@ -3,7 +3,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 import pandas as pd
-import io, csv, uuid, re
+import io, csv, uuid, re, time
 from datetime import datetime
 from openpyxl import load_workbook
 from ..database import get_db
@@ -11,12 +11,13 @@ from ..models.models import Candidate, Recruiter, UploadJob, ActionLog
 from ..utils.column_mapper import detect_columns
 from ..schemas.upload import AnalyzeResponse
 from ..services.job_tracker import serialize_upload_job
+from ..utils.phone_normalizer import format_us_phone
 
 router = APIRouter()
 
 # ─── Helpers ───────────────────────────────────────────────────────────────────
 def clean_email(email): return str(email).lower().strip()
-def clean_phone(phone): return str(phone).replace("-","").replace(" ","").replace("(","").replace(")","").strip()
+def clean_phone(phone): return format_us_phone(phone)
 def clean_name(name): return str(name).strip().title()
 
 def read_file(contents, filename):
@@ -326,8 +327,16 @@ async def smart_import_async(
 
 @router.get("/jobs")
 def get_jobs(db: Session = Depends(get_db)):
+    cached = getattr(get_jobs, "_cache", None)
+    cached_at = getattr(get_jobs, "_cache_at", 0)
+    if cached is not None and (time.time() - cached_at) < 60:
+        return cached
+
     jobs = db.query(UploadJob).order_by(UploadJob.started_at.desc()).limit(20).all()
-    return [serialize_upload_job(job) for job in jobs]
+    result = [serialize_upload_job(job) for job in jobs]
+    get_jobs._cache = result
+    get_jobs._cache_at = time.time()
+    return result
 
 
 @router.get("/jobs/active")

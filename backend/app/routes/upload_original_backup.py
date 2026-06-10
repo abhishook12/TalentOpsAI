@@ -4,11 +4,12 @@ import io, csv
 from openpyxl import load_workbook
 from ..database import get_db
 from ..models.models import Candidate, Recruiter
+from ..utils.phone_normalizer import format_us_phone
 
 router = APIRouter()
 
 def clean_email(email): return str(email).lower().strip()
-def clean_phone(phone): return str(phone).replace("-","").replace(" ","").replace("(","").replace(")","").strip()
+def clean_phone(phone): return format_us_phone(phone)
 def clean_name(name): return str(name).strip().title()
 
 def read_file(contents, filename):

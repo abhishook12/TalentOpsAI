@@ -9,6 +9,9 @@ import io
 from ..database import SessionLocal
 from ..models.models import SmartImportJob, SmartImportRow, Recruiter, Company
 from ..services.job_tracker import mark_progress, utc_now
+from ..utils.state_mapper import extract_state_detailed
+from ..utils.state_recovery import build_company_domain_state_index, infer_state_from_sources
+from ..utils.phone_normalizer import format_us_phone
 
 # Normalization Dictionaries
 STATE_MAP = {
@@ -30,11 +33,9 @@ def normalize_state(raw_val: str) -> str:
     return raw_val.strip().title()
 
 def clean_phone(phone: str) -> str:
-    if not phone: return None
-    p = str(phone).replace("-","").replace(" ","").replace("(","").replace(")","").replace("+","").strip()
-    if len(p) == 11 and p.startswith("1"):
-        p = p[1:]
-    return p if p else None
+    if not phone:
+        return None
+    return format_us_phone(phone)
 
 # Detect Smart Columns (Heuristics)
 def detect_smart_columns(headers, sample_data):
@@ -358,7 +359,10 @@ def process_commit(job_id: str):
     from ..utils.normalizer import normalize_text
     
     # Cache companies to avoid n+1 selects
-    company_cache = {normalize_text(c.company_name): c for c in db.query(Company).all() if c.company_name}
+    all_companies = db.query(Company).all()
+    company_cache = {normalize_text(c.company_name): c for c in all_companies if c.company_name}
+    company_by_id = {c.company_id: c for c in all_companies}
+    company_domain_index = build_company_domain_state_index(all_companies)
     
     inserted = 0
     skipped = 0
@@ -387,6 +391,7 @@ def process_commit(job_id: str):
                     db.commit()
                     db.refresh(new_comp)
                     company_cache[norm_comp] = new_comp
+                    company_by_id[new_comp.company_id] = new_comp
                     company_id = new_comp.company_id
 
             # Preserve metadata (unknown columns)
@@ -407,7 +412,44 @@ def process_commit(job_id: str):
                     if cp and cp != r.phone:
                         phone2 = cp
                         
-            metadata_json = json.dumps(metadata) if metadata else None
+            state_source = None
+            state_confidence = None
+            state_reason = None
+            state_value = None
+            state_result = infer_state_from_sources(
+                [
+                    ("state_column", r.state),
+                    ("location_column", r.location),
+                    ("company_state", company_by_id.get(company_id).state if company_id and company_by_id.get(company_id) else None),
+                    ("email_domain", r.email),
+                ],
+                domain_index=company_domain_index,
+            )
+            if state_result:
+                state_value = state_result["state"]
+                state_source = state_result["state_source"]
+                state_confidence = state_result["state_confidence"]
+                state_reason = state_result["state_reason"]
+                if state_result.get("evidence"):
+                    metadata = metadata or {}
+                    metadata["state_recovery"] = {
+                        "source": state_source,
+                        "confidence": state_confidence,
+                        "reason": state_reason,
+                        "evidence": state_result.get("evidence"),
+                    }
+            elif r.state:
+                state_value = r.state
+                state_source = "state_column"
+                state_confidence = "high"
+            elif r.location:
+                inferred_state, inferred_reason = extract_state_detailed(r.location)
+                if inferred_state:
+                    state_value = inferred_state
+                    state_source = "location_column"
+                    state_confidence = "high"
+                    state_reason = inferred_reason
+            metadata_json = json.dumps(metadata, default=str) if metadata else None
             
             if r.status == "Enrich":
                 # Find existing recruiter and merge data
@@ -427,6 +469,11 @@ def process_commit(job_id: str):
                     if not existing.state and r.state: existing.state = r.state
                     if not existing.linkedin and r.linkedin: existing.linkedin = r.linkedin
                     if not existing.company_id and company_id: existing.company_id = company_id
+                    if not existing.state and state_value:
+                        existing.state = state_value
+                        existing.state_source = state_source
+                        existing.state_confidence = state_confidence
+                        existing.state_reason = state_reason
                     
                     if email2 and not existing.email2: existing.email2 = email2
                     if phone2 and not existing.phone2: existing.phone2 = phone2
@@ -455,7 +502,10 @@ def process_commit(job_id: str):
                     title=r.title,
                     company_id=company_id,
                     location=r.location,
-                    state=r.state,
+                    state=state_value,
+                    state_source=state_source,
+                    state_confidence=state_confidence,
+                    state_reason=state_reason,
                     is_active=True,
                     data_source="smart_import",
                     source_job_id=job_id,

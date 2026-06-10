@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
+import { cloneElement, useEffect, useRef, useState } from 'react'
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, Tooltip,
   CartesianGrid, AreaChart, Area, Cell, LabelList
 } from 'recharts'
 import api, { API } from '../services/api'
@@ -79,12 +80,31 @@ function KPI({ label, value, sub, color, icon, compact, inline }) {
   )
 }
 
-function ChartBox({ children }) {
+function ChartBox({ children, height = 240 }) {
+  const containerRef = useRef(null)
+  const [size, setSize] = useState({ width: 0, height })
+
+  useEffect(() => {
+    const element = containerRef.current
+    if (!element || typeof ResizeObserver === 'undefined') {
+      setSize({ width: element?.clientWidth || 0, height })
+      return undefined
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      const width = Math.max(0, Math.floor(entry?.contentRect?.width || 0))
+      const nextHeight = Math.max(height, Math.floor(entry?.contentRect?.height || height))
+      setSize({ width, height: nextHeight })
+    })
+
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+
   return (
-    <div style={{ position: 'absolute', inset: 0 }}>
-      <ResponsiveContainer width="100%" height="100%">
-        {children}
-      </ResponsiveContainer>
+    <div ref={containerRef} style={{ position: 'relative', width: '100%', height, minHeight: height }}>
+      {size.width > 0 ? cloneElement(children, { width: size.width, height: size.height }) : null}
     </div>
   )
 }
@@ -255,7 +275,7 @@ export default function Analytics() {
               </div>
             </div>
           ) : (
-            <div style={{ position: 'relative', flex: 1, minHeight: 0, width: '100%' }}>
+            <div style={{ position: 'relative', width: '100%', height: 320 }}>
               <ChartBox>
                 <BarChart data={stateData} margin={{ top: 16, right: 8, left: 0, bottom: 4 }} barCategoryGap="18%">
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
@@ -278,11 +298,11 @@ export default function Analytics() {
       {/* Bottom row: 3 equal panels */}
       {!isEmptyAnalytics && (
         <>
-      <SectionCard title="Daily â€” 7 Days" icon="ti-chart-area-line" compact style={{ minHeight: 0 }}>
+      <SectionCard title="Daily — 7 Days" icon="ti-chart-area-line" compact style={{ minHeight: 0 }}>
         {dailyData.length === 0 ? (
           <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>No data</div>
         ) : (
-          <div style={{ position: 'relative', flex: 1, minHeight: 0, width: '100%' }}>
+          <div style={{ position: 'relative', width: '100%', height: 240 }}>
             <ChartBox>
               <AreaChart data={dailyData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
                 <defs>
@@ -302,11 +322,11 @@ export default function Analytics() {
         )}
       </SectionCard>
 
-      <SectionCard title="Weekly â€” 4 Wks" icon="ti-calendar-week" compact style={{ minHeight: 0 }}>
+      <SectionCard title="Weekly — 4 Wks" icon="ti-calendar-week" compact style={{ minHeight: 0 }}>
         {weeklyData.length === 0 ? (
           <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>No data</div>
         ) : (
-          <div style={{ position: 'relative', flex: 1, minHeight: 0, width: '100%' }}>
+          <div style={{ position: 'relative', width: '100%', height: 240 }}>
             <ChartBox>
               <BarChart data={weeklyData} margin={{ top: 16, right: 8, left: 0, bottom: 4 }} maxBarSize={28}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
@@ -334,7 +354,7 @@ export default function Analytics() {
                 <div key={p.page} style={{ flexShrink: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 1 }}>
                     <span style={{ fontSize: 9.5, color: 'var(--text-primary)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '72%' }}>
-                      <span style={{ color: PAGE_COLORS[i % PAGE_COLORS.length], marginRight: 3 }}>â—</span>
+                      <span style={{ color: PAGE_COLORS[i % PAGE_COLORS.length], marginRight: 3 }}>●</span>
                       {p.page}
                     </span>
                     <span style={{ fontSize: 12, color: '#ffffff', fontWeight: 700 }}>{p.visits.toLocaleString()}</span>

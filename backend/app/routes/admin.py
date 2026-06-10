@@ -12,10 +12,63 @@ from ..models.models import Recruiter, Company, Candidate, Submission, Vendor, P
 from ..models.models import UploadJob, ActionLog
 from datetime import datetime, timedelta
 from collections import defaultdict
+from functools import wraps
 import time
 from ..routes.auth import verify_admin
 
 router = APIRouter()
+
+
+class SimpleCache:
+    def __init__(self):
+        self._cache = {}
+
+    def get(self, key):
+        value = self._cache.get(key)
+        if not value:
+            return None
+        payload, expiry = value
+        if time.time() >= expiry:
+            self._cache.pop(key, None)
+            return None
+        return payload
+
+    def set(self, key, value, ttl=30):
+        self._cache[key] = (value, time.time() + ttl)
+
+
+admin_cache = SimpleCache()
+
+
+def cached_route(ttl=30):
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            cache_args = []
+            for value in args:
+                value_type = type(value).__name__
+                if value_type == "Session":
+                    continue
+                cache_args.append(value)
+
+            cache_kwargs = {
+                key: value
+                for key, value in kwargs.items()
+                if key not in {"db", "_"}
+            }
+            cache_key = (
+                fn.__name__,
+                tuple(repr(value) for value in cache_args),
+                tuple(sorted((key, repr(value)) for key, value in cache_kwargs.items())),
+            )
+            cached = admin_cache.get(cache_key)
+            if cached is not None:
+                return cached
+            result = fn(*args, **kwargs)
+            admin_cache.set(cache_key, result, ttl=ttl)
+            return result
+        return wrapper
+    return decorator
 
 
 def _resolve_upload_batch_recruiters(db: Session, job: UploadJob):
@@ -51,6 +104,7 @@ def _resolve_upload_batch_recruiters(db: Session, job: UploadJob):
 
 # ── 1. Live database stats ────────────────────────────────────────────────────
 @router.get("/stats")
+@cached_route(ttl=60)
 def admin_stats(db: Session = Depends(get_db), _=Depends(verify_admin)):
     t0 = time.time()
     rows = db.execute(text("""
@@ -73,6 +127,7 @@ def admin_stats(db: Session = Depends(get_db), _=Depends(verify_admin)):
 
 
 @router.get("/ops-kpis")
+@cached_route(ttl=60)
 def admin_ops_kpis(db: Session = Depends(get_db), _=Depends(verify_admin)):
     """
     Operational KPIs for the command center.
@@ -145,6 +200,7 @@ def admin_ops_kpis(db: Session = Depends(get_db), _=Depends(verify_admin)):
 
 
 @router.get("/data-operations")
+@cached_route(ttl=60)
 def admin_data_operations(db: Session = Depends(get_db), _=Depends(verify_admin)):
     """
     Data operations summary (counts) + small samples for operational workflows.
@@ -222,22 +278,31 @@ def admin_data_operations(db: Session = Depends(get_db), _=Depends(verify_admin)
 
 
 @router.get("/upload-operations")
+@cached_route(ttl=60)
 def admin_upload_operations(limit: int = 25, db: Session = Depends(get_db), _=Depends(verify_admin)):
     """
     Recent upload jobs (ETL history) from UploadJob table.
     """
+    cached = admin_cache.get(("upload_operations", limit))
+    if cached is not None:
+        return cached
+
     try:
         jobs = db.query(UploadJob).order_by(UploadJob.started_at.desc()).limit(limit).all()
     except Exception:
         return {"jobs": [], "detail": "No Data Available"}
 
+    recruiter_counts = {
+        row["source_job_id"]: int(row["count"])
+        for row in db.execute(text("""
+            SELECT source_job_id, COUNT(*) AS count
+            FROM recruiters
+            WHERE source_job_id IS NOT NULL
+            GROUP BY source_job_id
+        """)).mappings().all()
+    }
+
     def _job(j: UploadJob):
-        recruiter_count = 0
-        try:
-            recruiter_count = len(_resolve_upload_batch_recruiters(db, j))
-        except Exception:
-            recruiter_count = 0
-            
         display_status = j.status
         if j.status == 'completed':
             if j.inserted_rows == 0:
@@ -256,12 +321,14 @@ def admin_upload_operations(limit: int = 25, db: Session = Depends(get_db), _=De
             "inserted_rows": j.inserted_rows,
             "skipped_rows": j.skipped_rows,
             "error_count": j.error_count,
-            "recruiter_count": recruiter_count,
+            "recruiter_count": recruiter_counts.get(j.job_id, 0),
             "started_at": str(j.started_at) if j.started_at else None,
             "completed_at": str(j.completed_at) if j.completed_at else None,
         }
 
-    return {"jobs": [_job(j) for j in jobs]}
+    result = {"jobs": [_job(j) for j in jobs]}
+    admin_cache.set(("upload_operations", limit), result, ttl=30)
+    return result
 
 
 @router.get("/upload-operations/{job_id}/recruiters")
@@ -340,6 +407,7 @@ def admin_delete_upload_job(job_id: str, db: Session = Depends(get_db), _=Depend
 
 
 @router.get("/search-activity")
+@cached_route(ttl=60)
 def admin_search_activity(days: int = 1, db: Session = Depends(get_db), _=Depends(verify_admin)):
     """
     Aggregates recent SEARCH_* action logs. Only counts events that stored JSON details.
@@ -373,6 +441,7 @@ def admin_search_activity(days: int = 1, db: Session = Depends(get_db), _=Depend
 
 
 @router.get("/export-analytics")
+@cached_route(ttl=60)
 def admin_export_analytics(days: int = 1, db: Session = Depends(get_db), _=Depends(verify_admin)):
     since = datetime.utcnow() - timedelta(days=max(1, days))
 
@@ -413,6 +482,7 @@ def admin_export_analytics(days: int = 1, db: Session = Depends(get_db), _=Depen
 
 
 @router.get("/alerts")
+@cached_route(ttl=30)
 def admin_alerts(db: Session = Depends(get_db), _=Depends(verify_admin)):
     """
     Actionable alerts derived from real DB state.
@@ -456,6 +526,7 @@ def admin_alerts(db: Session = Depends(get_db), _=Depends(verify_admin)):
 
 
 @router.get("/activity-feed")
+@cached_route(ttl=60)
 def admin_activity_feed(limit: int = 50, db: Session = Depends(get_db), _=Depends(verify_admin)):
     """
     Unified activity feed powered by ActionLog + UploadJob.
@@ -498,6 +569,7 @@ def admin_activity_feed(limit: int = 50, db: Session = Depends(get_db), _=Depend
 
 
 @router.get("/state-coverage")
+@cached_route(ttl=60)
 def admin_state_coverage(limit: int = 20, db: Session = Depends(get_db), _=Depends(verify_admin)):
     """
     Coverage centers: recruiters per state + companies per state.
@@ -534,13 +606,14 @@ def admin_state_coverage(limit: int = 20, db: Session = Depends(get_db), _=Depen
 
 # ── 2. Top states by recruiter count ─────────────────────────────────────────
 @router.get("/top-states")
+@cached_route(ttl=60)
 def admin_top_states(limit: int = 15, db: Session = Depends(get_db), _=Depends(verify_admin)):
     rows = db.execute(text("""
         SELECT
-            TRIM(SPLIT_PART(location, ',', -1)) AS state,
+            state,
             COUNT(*) AS count
         FROM recruiters
-        WHERE location IS NOT NULL AND TRIM(location) <> ''
+        WHERE state IS NOT NULL AND TRIM(state) <> ''
         GROUP BY state
         ORDER BY count DESC
         LIMIT :limit
@@ -550,6 +623,7 @@ def admin_top_states(limit: int = 15, db: Session = Depends(get_db), _=Depends(v
 
 # ── 3. Recent imports ─────────────────────────────────────────────────────────
 @router.get("/recent-imports")
+@cached_route(ttl=60)
 def admin_recent_imports(limit: int = 20, db: Session = Depends(get_db), _=Depends(verify_admin)):
     rows = db.execute(text("""
         SELECT
@@ -593,13 +667,14 @@ def admin_duplicates(limit: int = 50, db: Session = Depends(get_db), _=Depends(v
 
 # ── 5. Empty-field audit ──────────────────────────────────────────────────────
 @router.get("/field-audit")
+@cached_route(ttl=60)
 def admin_field_audit(db: Session = Depends(get_db), _=Depends(verify_admin)):
     total = db.query(Recruiter).count()
     if total == 0:
         return {}
     rows = db.execute(text("""
         SELECT
-            COUNT(*) FILTER (WHERE name IS NULL OR name = '')     AS missing_name,
+            COUNT(*) FILTER (WHERE recruiter_name IS NULL OR recruiter_name = '')     AS missing_name,
             COUNT(*) FILTER (WHERE email IS NULL OR email = '')   AS missing_email,
             COUNT(*) FILTER (WHERE phone IS NULL OR phone = '')   AS missing_phone,
             COUNT(*) FILTER (WHERE company_id IS NULL)            AS missing_company,
@@ -616,8 +691,33 @@ def admin_field_audit(db: Session = Depends(get_db), _=Depends(verify_admin)):
     }
 
 
+# â”€â”€ 5b. Data quality snapshot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+@router.get("/data-quality")
+@cached_route(ttl=60)
+def admin_data_quality(db: Session = Depends(get_db), _=Depends(verify_admin)):
+    total_recruiters = db.query(Recruiter).count()
+    total_companies = db.query(Company).count()
+    known_state_count = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE state IS NOT NULL AND state != ''")).scalar() or 0
+    unknown_state_count = total_recruiters - known_state_count
+    needs_review = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE needs_review = true")).scalar() or 0
+    with_email = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE email IS NOT NULL AND email != '' AND email NOT LIKE '%@missing.local%'")).scalar() or 0
+    with_phone = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE phone IS NOT NULL AND phone != ''")).scalar() or 0
+    quality_score = round(((with_email / total_recruiters * 100) if total_recruiters else 0) * 0.4 + ((with_phone / total_recruiters * 100) if total_recruiters else 0) * 0.2 + ((known_state_count / total_recruiters * 100) if total_recruiters else 0) * 0.4, 1)
+    return {
+        "total_recruiters": total_recruiters,
+        "total_companies": total_companies,
+        "known_state_count": known_state_count,
+        "unknown_state_count": unknown_state_count,
+        "needs_review_count": needs_review,
+        "email_coverage": round((with_email / total_recruiters * 100), 1) if total_recruiters else 0,
+        "phone_coverage": round((with_phone / total_recruiters * 100), 1) if total_recruiters else 0,
+        "quality_score": quality_score,
+    }
+
+
 # ── 6. Table sizes ────────────────────────────────────────────────────────────
 @router.get("/table-sizes")
+@cached_route(ttl=120)
 def admin_table_sizes(db: Session = Depends(get_db), _=Depends(verify_admin)):
     rows = db.execute(text("""
         SELECT
@@ -633,6 +733,7 @@ def admin_table_sizes(db: Session = Depends(get_db), _=Depends(verify_admin)):
 
 # ── 7. Companies without recruiter ───────────────────────────────────────────
 @router.get("/orphan-companies")
+@cached_route(ttl=60)
 def admin_orphan_companies(limit: int = 50, db: Session = Depends(get_db), _=Depends(verify_admin)):
     rows = db.execute(text("""
         SELECT c.company_id, c.company_name, c.location, c.website
@@ -689,6 +790,7 @@ def admin_sql(body: SqlQuery, db: Session = Depends(get_db), _=Depends(verify_ad
 
 # ── 10. System info ───────────────────────────────────────────────────────────
 @router.get("/system-info")
+@cached_route(ttl=120)
 def admin_system_info(db: Session = Depends(get_db), _=Depends(verify_admin)):
     pg_ver = db.execute(text("SELECT version()")).scalar()
     db_size = db.execute(text("SELECT pg_size_pretty(pg_database_size(current_database()))")).scalar()
@@ -729,6 +831,7 @@ def _browser_from_ua(ua: str) -> str:
 
 
 @router.get("/visitor-logs")
+@cached_route(ttl=60)
 def admin_visitor_logs(
     days: int = 7,
     limit: int = 200,
@@ -797,6 +900,7 @@ def admin_visitor_logs(
 
 
 @router.get("/visitor-summary")
+@cached_route(ttl=60)
 def admin_visitor_summary(days: int = 30, db: Session = Depends(get_db), _=Depends(verify_admin)):
     """Daily unique visitors, total page views, avg session length."""
     rows = db.execute(text("""

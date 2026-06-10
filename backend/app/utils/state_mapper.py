@@ -27,7 +27,19 @@ CITY_TO_STATE = {
     'SAN JOSE': 'CA', 'SEATTLE': 'WA', 'ST. LOUIS': 'MO', 'TAMPA': 'FL',
     'WASHINGTON D.C.': 'DC', 'WASHINGTON DC': 'DC', 'LAS VEGAS': 'NV',
     'SALT LAKE CITY': 'UT', 'MILWAUKEE': 'WI', 'CINCINNATI': 'OH', 'KANSAS CITY': 'MO',
-    'OMAHA': 'NE', 'NOIDA': 'UP', 'BANGALORE': 'KA', 'HYDERABAD': 'TG', 'PUNE': 'MH', 'CHENNAI': 'TN'
+    'OMAHA': 'NE', 'NOIDA': 'UP', 'BANGALORE': 'KA', 'HYDERABAD': 'TG', 'PUNE': 'MH', 'CHENNAI': 'TN',
+    'IRVING': 'TX', 'PLANO': 'TX', 'FRISCO': 'TX', 'FORT WORTH': 'TX', 'THE WOODLANDS': 'TX',
+    'ALEXANDRIA': 'VA', 'ARLINGTON': 'VA', 'MCLEAN': 'VA', 'RESTON': 'VA', 'TYSONS': 'VA',
+    'RALEIGH': 'NC', 'CARY': 'NC', 'DURHAM': 'NC', 'CHARLOTTE': 'NC', 'WILMINGTON': 'NC',
+    'TAMPA BAY': 'FL', 'SOUTH FLORIDA': 'FL', 'CENTRAL FLORIDA': 'FL', 'ORLANDO AREA': 'FL',
+    'BAY AREA': 'CA', 'SILICON VALLEY': 'CA', 'LOS ANGELES COUNTY': 'CA', 'ORANGE COUNTY': 'CA',
+    'TWIN CITIES': 'MN', 'MINNEAPOLIS ST. PAUL': 'MN', 'GREATER DETROIT': 'MI', 'SOUTH JERSEY': 'NJ',
+    'NORTH JERSEY': 'NJ', 'NORTH TEXAS': 'TX', 'CENTRAL TEXAS': 'TX', 'WEST TEXAS': 'TX',
+    'PHOENIX METRO': 'AZ', 'SEATTLE METRO': 'WA', 'HOUSTON METRO': 'TX', 'DALLAS METRO': 'TX',
+    'ATLANTA METRO': 'GA', 'CHARLOTTE METRO': 'NC', 'NYC METRO': 'NY', 'NEW YORK CITY': 'NY',
+    'GREATER PHILADELPHIA': 'PA', 'PHILADELPHIA METRO': 'PA', 'RESEARCH TRIANGLE': 'NC', 'RTP': 'NC',
+    'GREATER DALLAS': 'TX', 'DALLAS-FORT WORTH': 'TX', 'DFW': 'TX', 'TRI-STATE AREA': 'NY',
+    'GREATER NEW YORK': 'NY', 'NEW YORK METRO': 'NY', 'WASHINGTON METRO': 'DC', 'DMV': 'DC',
 }
 
 LOCATION_PHRASE_TO_STATE = {
@@ -44,7 +56,16 @@ LOCATION_PHRASE_TO_STATE = {
     'CHARLOTTE METRO': 'NC',
     'RESEARCH TRIANGLE': 'NC',
     'RTP': 'NC',
-    'DETROIT METRO': 'MI'
+    'DETROIT METRO': 'MI',
+    'BAY AREA': 'CA',
+    'SILICON VALLEY': 'CA',
+    'NORTH TEXAS': 'TX',
+    'SOUTH FLORIDA': 'FL',
+    'CENTRAL FLORIDA': 'FL',
+    'TAMPA BAY': 'FL',
+    'TRI-STATE AREA': 'NY',
+    'NEW YORK METRO': 'NY',
+    'WASHINGTON METRO': 'DC',
 }
 
 def extract_state_detailed(location: str):
@@ -66,29 +87,29 @@ def extract_state_detailed(location: str):
         if phrase in loc_upper:
             return abbr, 'location_phrase_match'
             
-    # 3. Match full state names
-    for state_name, abbr in STATE_MAP.items():
-        if re.search(r'\b' + re.escape(state_name) + r'\b', loc_upper):
-            return abbr, 'full_state_name_match'
-            
-    # 4. Look for 2-letter word boundaries that match state abbreviations
+    # 3. Look for 2-letter word boundaries that match state abbreviations
     tokens = re.findall(r'\b[A-Z]{2}\b', loc_upper)
     for token in tokens:
         if token in ABBR_TO_NAME:
             return token, 'abbreviation_word_boundary'
             
-    # 5. Fallback: Split by commas or spaces, check reversed
+    # 4. Fallback: Split by commas or spaces, check reversed
     parts = [p.strip() for p in re.split(r'[,\s]+', loc_upper) if p.strip()]
     for p in reversed(parts):
         clean_p = p.replace('.', '')
         if clean_p in ABBR_TO_NAME:
             return clean_p, 'abbreviation_comma_split'
-            
-    # 6. City match
+
+    # 5. City match
     for city, abbr in CITY_TO_STATE.items():
         if re.search(r'\b' + re.escape(city) + r'\b', loc_upper):
             if abbr in ABBR_TO_NAME:
                 return abbr, 'city_match'
+
+    # 6. Match full state names
+    for state_name, abbr in STATE_MAP.items():
+        if re.search(r'\b' + re.escape(state_name) + r'\b', loc_upper):
+            return abbr, 'full_state_name_match'
 
     return None, None
 

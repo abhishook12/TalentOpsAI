@@ -1,5 +1,6 @@
+import { useEffect, useMemo, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { clearStoredToken } from '../services/api'
+import api, { clearStoredToken } from '../services/api'
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: 'ti-layout-dashboard' },
@@ -14,10 +15,52 @@ const nav = [
 
 export default function Sidebar() {
   const location = useLocation()
+  const [updateStatus, setUpdateStatus] = useState(null)
+  const [lastSyncedAt, setLastSyncedAt] = useState(null)
+
+  useEffect(() => {
+    let alive = true
+
+    const loadUpdateStatus = async () => {
+      try {
+        const res = await api.get('/updates/status')
+        if (alive) {
+          setUpdateStatus(res.data || null)
+          setLastSyncedAt(new Date().toISOString())
+        }
+      } catch {
+        if (alive) setUpdateStatus(null)
+      }
+    }
+
+    loadUpdateStatus()
+    const timer = setInterval(loadUpdateStatus, 5 * 60 * 1000)
+
+    return () => {
+      alive = false
+      clearInterval(timer)
+    }
+  }, [])
+
+  const updateLabel = useMemo(() => {
+    const stamp = lastSyncedAt ? new Date(lastSyncedAt) : updateStatus?.date ? new Date(updateStatus.date) : null
+    if (!stamp || Number.isNaN(stamp.getTime())) return 'Updated recently'
+    return `Updated ${stamp.toLocaleDateString([], { month: 'short', day: 'numeric' })}`
+  }, [lastSyncedAt, updateStatus])
+
+  const updateDetail = useMemo(() => {
+    const stamp = lastSyncedAt ? new Date(lastSyncedAt) : updateStatus?.date ? new Date(updateStatus.date) : null
+    if (!stamp || Number.isNaN(stamp.getTime())) return 'Click to open the update log'
+    return `${stamp.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })} • ${updateStatus?.version || 'Latest build'}`
+  }, [lastSyncedAt, updateStatus])
+
+  const openUpdateCenter = () => {
+    window.dispatchEvent(new CustomEvent('open-update-center'))
+  }
 
   const logoutSoon = () => {
     localStorage.removeItem('auth_session')
-    sessionStorage.removeItem('auth_session')
+    sessionStorage.removeItem('auth_session')   
     clearStoredToken('admin')
     clearStoredToken('app')
     window.location.reload()
@@ -35,6 +78,7 @@ export default function Sidebar() {
       top: 0,
       flexShrink: 0,
       zIndex: 20,
+      overflow: 'visible',
     }}>
       <div style={{ padding: '22px 18px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -60,7 +104,7 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <nav style={{ flex: 1, padding: '14px 12px', overflowY: 'auto' }}>
+      <nav style={{ flex: 1, minHeight: 0, padding: '14px 12px', overflowY: 'auto' }}>
         {nav.map(({ to, label, icon }) => {
           const active = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to)
           return (
@@ -93,7 +137,11 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div style={{ padding: '12px 14px 18px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{
+        padding: '10px 14px 12px',
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+        flexShrink: 0,
+      }}>
         <button
           onClick={logoutSoon}
           style={{
@@ -117,7 +165,7 @@ export default function Sidebar() {
         </button>
       </div>
 
-      <div style={{ padding: '0 14px 16px' }}>
+      <div style={{ padding: '0 14px 12px', flexShrink: 0 }}>
         <div style={{
           border: '1px solid rgba(255,255,255,0.08)',
           borderRadius: 16,
@@ -144,6 +192,50 @@ export default function Sidebar() {
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.62)', marginTop: 2 }}>Terminal 01-A</div>
           </div>
         </div>
+        <button
+          onClick={openUpdateCenter}
+          title={updateDetail}
+          aria-label="Open update log"
+          style={{
+            width: '100%',
+            marginTop: 10,
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 16,
+            background: 'rgba(255,255,255,0.04)',
+            color: '#f3f3f3',
+            padding: '10px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            cursor: 'pointer',
+            textAlign: 'left',
+          }}
+        >
+          <div style={{
+            width: 34,
+            height: 34,
+            borderRadius: 13,
+            display: 'grid',
+            placeItems: 'center',
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.10)',
+            flexShrink: 0,
+          }}>
+            <i className="ti ti-refresh" style={{ fontSize: 16, color: '#ffffff' }} />
+          </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.58)' }}>
+              {updateLabel}
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 800, marginTop: 2, color: '#f8f8f8' }}>
+              Latest change log
+            </div>
+            <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.62)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {updateDetail}
+            </div>
+          </div>
+          <i className="ti ti-chevron-right" style={{ fontSize: 16, color: 'rgba(255,255,255,0.45)', flexShrink: 0 }} />
+        </button>
       </div>
     </aside>
   )

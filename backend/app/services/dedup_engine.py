@@ -21,6 +21,8 @@ import copy
 import re
 from typing import Any
 
+from ..utils.phone_normalizer import phone_compare_key
+
 # ---------------------------------------------------------------------------
 # Normalization helpers
 # ---------------------------------------------------------------------------
@@ -116,7 +118,7 @@ def _merge_contacts(primary: dict[str, Any], donor: dict[str, Any]) -> None:
         if not p: continue
         
         # Normalize phone just for comparison (remove spaces/dashes)
-        def norm_p(phone_str): return re.sub(r"\D", "", phone_str)
+        def norm_p(phone_str): return phone_compare_key(phone_str)
         np = norm_p(p)
         
         existing_norms = [norm_p(primary.get(k) or "") for k in ("phone", "phone2", "phone3", "phone4") if primary.get(k)]

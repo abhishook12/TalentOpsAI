@@ -9,6 +9,7 @@ from ..database import SessionLocal
 from ..models.models import Company, RawUpload, Recruiter, UploadJob
 from ..utils.normalizer import extract_domain, normalize_text
 from ..utils.state_normalizer import normalize_state_name
+from ..utils.state_recovery import build_company_domain_state_index, infer_state_from_sources
 from ..services.job_tracker import mark_progress, utc_now
 from ..services.adaptive_parser import parse_file
 from ..services.dedup_engine import deduplicate_and_enrich
@@ -161,6 +162,9 @@ def process_smart_import(job_id: str, filepath: str, column_map: dict = None):
             for company_id, normalized in db.query(Company.company_id, Company.normalized_company_name).all()
             if normalized
         }
+        all_companies = db.query(Company).all()
+        company_by_id = {company.company_id: company for company in all_companies}
+        company_domain_index = build_company_domain_state_index(all_companies)
 
         pending_rows = []
         for profile in unique_profiles:
@@ -184,9 +188,10 @@ def process_smart_import(job_id: str, filepath: str, column_map: dict = None):
                 # Normalize State
                 state_val = profile.get("state")
                 loc_val = profile.get("location")
-                
                 state_to_normalize = state_val or loc_val or ""
                 norm_state, needs_state_review, state_review_reason = normalize_state_name(state_to_normalize)
+                state_source = "state_column" if state_val else ("location_column" if loc_val and norm_state else None)
+                state_confidence = "high" if state_val else ("low" if needs_state_review else "medium")
 
                 company_name = profile.get("company")
                 try:
@@ -206,7 +211,30 @@ def process_smart_import(job_id: str, filepath: str, column_map: dict = None):
 
                 needs_review = profile.get("needs_review", False)
                 review_reasons = profile.get("review_reasons", [])
-                
+
+                metadata_dict = profile.get("metadata_json") or {}
+                state_result = infer_state_from_sources(
+                    [
+                        ("state_column", state_val),
+                        ("location_column", loc_val),
+                        ("company_state", company_by_id.get(company_id).state if company_id and company_by_id.get(company_id) else None),
+                        ("email_domain", email),
+                    ],
+                    domain_index=company_domain_index,
+                )
+                if state_result:
+                    norm_state = state_result["state"]
+                    state_source = state_result["state_source"]
+                    state_confidence = state_result["state_confidence"]
+                    state_review_reason = state_result["state_reason"]
+                    if state_result.get("evidence"):
+                        metadata_dict["state_recovery"] = {
+                            "source": state_source,
+                            "confidence": state_confidence,
+                            "reason": state_review_reason,
+                            "evidence": state_result["evidence"],
+                        }
+
                 if needs_state_review:
                     needs_review = True
                     review_reasons.append(state_review_reason)
@@ -216,9 +244,6 @@ def process_smart_import(job_id: str, filepath: str, column_map: dict = None):
                     if "missing_company" not in review_reasons:
                         review_reasons.append("missing_company")
 
-                # Parse back the metadata and raw_data which were json dumped by the parser
-                metadata_dict = profile.get("metadata_json") or {}
-                    
                 # Store all review reasons in metadata
                 if review_reasons:
                     metadata_dict["review_reasons"] = list(set(review_reasons))
@@ -252,6 +277,9 @@ def process_smart_import(job_id: str, filepath: str, column_map: dict = None):
                         "state": norm_state,
                         "normalized_city": normalize_text(loc_val) if loc_val else None,
                         "location_confidence": "high" if not needs_state_review else "low",
+                        "state_source": state_source,
+                        "state_confidence": state_confidence,
+                        "state_reason": state_review_reason if needs_state_review else None,
                         "completeness_score": calculate_completeness(
                             recruiter_name, email, profile.get("phone"), company_id, loc_val, norm_state
                         ),

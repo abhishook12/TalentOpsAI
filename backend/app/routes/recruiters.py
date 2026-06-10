@@ -1,12 +1,4 @@
-import re
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from sqlalchemy.orm import Session, joinedload, contains_eager
-from sqlalchemy import text
-from pydantic import BaseModel
-from typing import List, Optional
-from ..database import get_db
-from .auth import verify_admin
-from ..models.models import Recruiter, Company
+import json
 import re
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session, joinedload, contains_eager
@@ -17,8 +9,10 @@ from ..database import get_db
 from .auth import verify_admin
 from ..models.models import Recruiter, Company
 
-from ..utils.state_mapper import normalize_state
+from ..utils.state_mapper import normalize_state, extract_state_detailed
+from ..utils.state_recovery import infer_state_from_sources
 from ..utils.filters import apply_state_filter, apply_company_filter
+from ..utils.phone_normalizer import format_us_phone
 router = APIRouter()
 
 class RecruiterCreate(BaseModel):
@@ -100,10 +94,54 @@ def serialize_recruiter(r):
         "needs_review": getattr(r, "needs_review", False),
         "review_reason": getattr(r, "review_reason", None),
         "location_confidence": getattr(r, "location_confidence", "high"),
+        "state_source": getattr(r, "state_source", None),
+        "state_confidence": getattr(r, "state_confidence", None),
+        "state_reason": getattr(r, "state_reason", None),
+        "last_scan_at": str(r.last_scan_at) if getattr(r, "last_scan_at", None) else None,
         "is_active": r.is_active,
         "source_job_id": getattr(r, "source_job_id", None),
         "created_at": str(r.created_at) if getattr(r, "created_at", None) else None,
     }
+
+
+def _update_state_metadata(r, db: Session) -> None:
+    company = db.query(Company).filter(Company.company_id == r.company_id).first() if r.company_id else None
+    state_result = infer_state_from_sources(
+        [
+            ("recruiter_location", r.location),
+            ("company_state", company.state if company else None),
+            ("company_location", company.location if company else None),
+            ("notes", r.notes),
+            ("review_reason", r.review_reason),
+            ("metadata_json", r.metadata_json),
+            ("raw_data", r.raw_data),
+        ]
+    )
+    if state_result:
+        r.state = state_result["state"]
+        r.state_source = state_result["state_source"]
+        r.state_confidence = state_result["state_confidence"]
+        r.state_reason = state_result["state_reason"]
+        if state_result.get("evidence"):
+            meta = {}
+            if r.metadata_json:
+                try:
+                    meta = json.loads(r.metadata_json) if isinstance(r.metadata_json, str) else dict(r.metadata_json)
+                except Exception:
+                    meta = {"raw_metadata": str(r.metadata_json)}
+            meta["state_recovery"] = {
+                "source": r.state_source,
+                "confidence": r.state_confidence,
+                "reason": r.state_reason,
+                "evidence": state_result.get("evidence"),
+            }
+            r.metadata_json = json.dumps(meta, default=str)
+        return
+
+    r.state = None
+    r.state_source = None
+    r.state_confidence = None
+    r.state_reason = None
 
 def apply_recruiter_update(r, update_data: dict, db: Session):
     if "email" in update_data and update_data["email"] and update_data["email"] != r.email:
@@ -114,16 +152,15 @@ def apply_recruiter_update(r, update_data: dict, db: Session):
         if existing:
             raise HTTPException(status_code=400, detail="Email already exists")
 
+    for phone_field in ("phone", "phone2", "phone3", "phone4"):
+        if phone_field in update_data:
+            update_data[phone_field] = format_us_phone(update_data[phone_field]) if update_data[phone_field] else None
+
     for key, value in update_data.items():
         setattr(r, key, value)
 
-    if 'location' in update_data or 'company_id' in update_data:
-        loc = r.location
-        if not loc and r.company_id:
-            comp = db.query(Company).filter(Company.company_id == r.company_id).first()
-            if comp:
-                loc = comp.location
-        r.state = normalize_state(loc) if loc else None
+    if any(field in update_data for field in ("location", "company_id", "notes", "metadata_json", "raw_data", "review_reason")):
+        _update_state_metadata(r, db)
     
     return r
 
@@ -398,13 +435,24 @@ def create_recruiter(data: RecruiterCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Email already exists")
         
     r_data = data.dict()
+    for phone_field in ("phone", "phone2", "phone3", "phone4"):
+        if r_data.get(phone_field):
+            r_data[phone_field] = format_us_phone(r_data[phone_field])
     state = normalize_state(r_data.get('location'))
+    state_source = "recruiter_location" if state else None
+    state_confidence = "high" if state else None
+    state_reason = None
     if not state and r_data.get('company_id'):
         company = db.query(Company).filter(Company.company_id == r_data['company_id']).first()
         if company and company.location:
-            state = normalize_state(company.location)
-            
-    r = Recruiter(**r_data, state=state)
+            state, state_reason = extract_state_detailed(company.location)
+            if state:
+                state_source = "company_location"
+                state_confidence = "high"
+    if state and not state_reason and r_data.get('location'):
+        _, state_reason = extract_state_detailed(r_data.get('location'))
+
+    r = Recruiter(**r_data, state=state, state_source=state_source, state_confidence=state_confidence, state_reason=state_reason)
     db.add(r)
     db.commit()
     db.refresh(r)
@@ -470,6 +518,7 @@ from fastapi.responses import StreamingResponse
 def export_recruiters(
     search: Optional[str] = None,
     state: Optional[str] = None,
+    state_status: Optional[str] = None,
     city: Optional[str] = None,
     company: Optional[str] = None,
     title: Optional[str] = None,

@@ -56,16 +56,27 @@ def get_current_status(db: Session = Depends(get_db)):
     """
     Gets the latest update and its overall status.
     """
+    cached = getattr(get_current_status, "_cache", None)
+    cached_at = getattr(get_current_status, "_cache_at", 0)
+    if cached is not None and (datetime.utcnow().timestamp() - cached_at) < 300:
+        return cached
+
     try:
         latest_update = db.query(PlatformUpdate).order_by(desc(PlatformUpdate.created_at)).first()
         if not latest_update:
-            return {"version": "v1.0.0", "status": "Operational", "date": datetime.utcnow().isoformat(), "features": []}
+            result = {"version": "v1.0.0", "status": "Operational", "date": datetime.utcnow().isoformat(), "features": []}
+            get_current_status._cache = result
+            get_current_status._cache_at = datetime.utcnow().timestamp()
+            return result
 
         features = db.query(FeatureVerification).filter(FeatureVerification.update_id == latest_update.update_id).all()
     except ProgrammingError:
         # Deployments may not have run migrations yet. Keep UI stable.
         db.rollback()
-        return {"version": "v1.0.0", "status": "No Data Available", "date": None, "features": []}
+        result = {"version": "v1.0.0", "status": "No Data Available", "date": None, "features": []}
+        get_current_status._cache = result
+        get_current_status._cache_at = datetime.utcnow().timestamp()
+        return result
     
     # Calculate overall status
     if not features:
@@ -79,18 +90,26 @@ def get_current_status(db: Session = Depends(get_db)):
         else:
             overall_status = "Verified & Operational"
 
-    return {
+    result = {
         "version": latest_update.version,
         "date": latest_update.created_at.isoformat() if latest_update.created_at else None,
         "status": overall_status,
         "features": [{"id": f.feature_id, "name": f.feature_name, "status": f.status} for f in features]
     }
+    get_current_status._cache = result
+    get_current_status._cache_at = datetime.utcnow().timestamp()
+    return result
 
 @router.get("/changelog")
 def get_changelog(db: Session = Depends(get_db)):
     """
     Gets all updates.
     """
+    cached = getattr(get_changelog, "_cache", None)
+    cached_at = getattr(get_changelog, "_cache_at", 0)
+    if cached is not None and (datetime.utcnow().timestamp() - cached_at) < 600:
+        return cached
+
     try:
         updates = db.query(PlatformUpdate).order_by(desc(PlatformUpdate.created_at)).all()
     except ProgrammingError:
@@ -120,6 +139,8 @@ def get_changelog(db: Session = Depends(get_db)):
             "status": status,
             "features": [{"id": f.feature_id, "name": f.feature_name, "status": f.status, "tester": f.tester, "last_tested": f.last_tested.isoformat() if f.last_tested else None, "result": f.result} for f in features]
         })
+    get_changelog._cache = result
+    get_changelog._cache_at = datetime.utcnow().timestamp()
     return result
 
 @router.get("/features")

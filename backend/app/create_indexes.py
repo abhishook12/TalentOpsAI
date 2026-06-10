@@ -1,17 +1,28 @@
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 
-def create_performance_indexes():
-    env_path = r"C:\TalentOpsAI\backend\.env"
-    db_url = None
-    if os.path.exists(env_path):
-        with open(env_path, "r") as f:
-            for line in f:
-                if line.startswith("DATABASE_URL="):
-                    db_url = line.split("=", 1)[1].strip()
 
+def resolve_database_url():
+    env_url = os.getenv("DATABASE_URL")
+    if env_url:
+        return env_url
+
+    env_path = Path(__file__).resolve().parents[1] / ".env"
+    if env_path.exists():
+        load_dotenv(env_path, override=False)
+        env_url = os.getenv("DATABASE_URL")
+        if env_url:
+            return env_url
+
+    return None
+
+def create_performance_indexes():
+    db_url = resolve_database_url()
     if not db_url:
-        print("DATABASE_URL not found")
+        print("DATABASE_URL not found in environment or backend/.env")
         return
 
     if db_url.startswith("postgresql://"):

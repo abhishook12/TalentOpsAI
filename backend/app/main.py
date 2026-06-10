@@ -79,6 +79,10 @@ try:
                 "is_active": "BOOLEAN DEFAULT TRUE",
                 "data_source": "VARCHAR(100) DEFAULT 'manual'",
                 "trust_score": "INTEGER DEFAULT 100",
+                "state_source": "VARCHAR(100)",
+                "state_confidence": "VARCHAR(20)",
+                "state_reason": "TEXT",
+                "last_scan_at": "TIMESTAMP",
             })
 
             _ensure_columns("companies", {

@@ -244,13 +244,13 @@ export default function CompanyDirectory() {
                 fontSize: 12, fontWeight: selectedState === null ? 600 : 400,
                 border: selectedState === null ? '1.5px solid var(--accent)' : '1.5px solid transparent',
                 background: selectedState === null ? 'rgba(24,95,165,0.08)' : 'transparent',
-                color: selectedState === null ? 'var(--accent)' : '#ffffff',
+                color: selectedState === null ? 'var(--accent)' : 'var(--text-primary)',
                 cursor: 'pointer', marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 transition: 'all 0.12s',
               }}
             >
               <span>All States</span>
-              <span style={{ fontSize: 10, fontWeight: 600, color: selectedState === null ? 'var(--accent)' : 'rgba(255, 255, 255, 0.5)' }}>{dbTotalCompanies || totalCount}</span>
+              <span style={{ fontSize: 10, fontWeight: 600, color: selectedState === null ? 'var(--accent)' : 'var(--text-muted)' }}>{dbTotalCompanies || totalCount}</span>
             </button>
 
             {/* State list */}
@@ -268,7 +268,7 @@ export default function CompanyDirectory() {
                       fontSize: 12, fontWeight: isActive ? 600 : 400,
                       border: isActive ? '1.5px solid var(--accent)' : '1.5px solid transparent',
                       background: isActive ? 'rgba(24,95,165,0.08)' : 'transparent',
-                      color: isActive ? 'var(--accent)' : hasData ? '#ffffff' : 'rgba(255, 255, 255, 0.35)',
+                      color: isActive ? 'var(--accent)' : hasData ? 'var(--text-primary)' : 'var(--text-muted)',
                       cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       transition: 'all 0.1s',
                     }}
@@ -276,11 +276,11 @@ export default function CompanyDirectory() {
                     onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
                   >
                     <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontWeight: 600, fontSize: 11, minWidth: 24, color: isActive ? 'var(--accent)' : hasData ? 'rgba(255, 255, 255, 0.7)' : 'rgba(255, 255, 255, 0.35)' }}>{abbr}</span>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 90, color: isActive ? 'var(--accent)' : hasData ? '#ffffff' : 'rgba(255, 255, 255, 0.35)' }}>{name}</span>
+                      <span style={{ fontWeight: 600, fontSize: 11, minWidth: 24, color: isActive ? 'var(--accent)' : hasData ? 'var(--text-secondary)' : 'var(--text-muted)' }}>{abbr}</span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 90, color: isActive ? 'var(--accent)' : hasData ? 'var(--text-primary)' : 'var(--text-muted)' }}>{name}</span>
                     </span>
                     {count > 0 && (
-                      <span style={{ fontSize: 10, fontWeight: 600, color: isActive ? 'var(--accent)' : 'rgba(255, 255, 255, 0.5)', flexShrink: 0 }}>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: isActive ? 'var(--accent)' : 'var(--text-muted)', flexShrink: 0 }}>
                         {count}
                       </span>
                     )}

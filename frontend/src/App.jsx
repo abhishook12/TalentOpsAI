@@ -56,6 +56,8 @@ const globalStyles = `
     --main-bg: #f4f5f2;
     --panel-bg: #ffffff;
     --card-bg: #ffffff;
+    --bg-primary: #f4f5f2;
+    --bg-surface: #ffffff;
     --card-border: #d5d8d3;
     --card-border-strong: #b8bcb6;
     --sidebar-bg: #0d1527;
@@ -84,6 +86,8 @@ const globalStyles = `
     --main-bg: #141414;
     --panel-bg: #1b1b1b;
     --card-bg: #202020;
+    --bg-primary: #141414;
+    --bg-surface: #1b1b1b;
     --card-border: #343434;
     --card-border-strong: #4a4a4a;
     --sidebar-bg: #151515;
@@ -110,7 +114,7 @@ const globalStyles = `
     margin: 0;
     background:
       linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.0)),
-      linear-gradient(180deg, var(--main-bg), var(--main-bg));
+      linear-gradient(180deg, var(--bg-primary), var(--bg-primary));
     color: var(--text-primary);
     font-family: var(--font);
     overflow-x: hidden;
@@ -125,7 +129,7 @@ const globalStyles = `
   }
 
   html[data-theme='dark'] .cc-content {
-    background: linear-gradient(180deg, #171717, #131313) !important;
+    background: linear-gradient(180deg, var(--bg-primary), var(--bg-primary)) !important;
   }
 
   html[data-theme='dark'] .cc-footer {
@@ -375,7 +379,7 @@ const globalStyles = `
     gap: 18px;
     padding: 14px 20px;
     border-top: 1px solid var(--card-border);
-    background: rgba(255,255,255,0.94);
+    background: var(--bg-surface);
     backdrop-filter: blur(6px);
     font-size: 12px;
     color: var(--text-secondary);
@@ -613,7 +617,10 @@ const globalStyles = `
 `
 
 function ThemeSwitcher() {
-  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light')
+  const [theme, setTheme] = useState(() => {
+    const savedTheme = localStorage.getItem('theme')
+    return savedTheme || 'light'
+  })
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -783,7 +790,7 @@ function AppShell() {
                   <i className="ti ti-brand-graphql" />
                 </div>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 16, fontWeight: 900, lineHeight: 1, letterSpacing: '-0.03em', color: '#ffffff', textShadow: '0 1px 10px rgba(0,0,0,0.28)' }}>
+                  <div style={{ fontSize: 16, fontWeight: 900, lineHeight: 1, letterSpacing: '-0.03em', color: 'var(--text-primary)' }}>
                     REC-INTEL v4.0
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
@@ -794,10 +801,10 @@ function AppShell() {
 
               <div className="cc-footer-center">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 34, whiteSpace: 'nowrap' }}>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: '#ffffff' }}>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)' }}>
                     Built by
                   </span>
-                  <span style={{ fontSize: 17, fontWeight: 500, fontStyle: 'italic', color: '#ffffff', letterSpacing: '0.01em', textShadow: '0 1px 8px rgba(0,0,0,0.28)' }}>
+                  <span style={{ fontSize: 17, fontWeight: 500, fontStyle: 'italic', color: 'var(--text-primary)', letterSpacing: '0.01em' }}>
                     Abhishek
                   </span>
                 </div>

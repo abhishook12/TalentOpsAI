@@ -357,7 +357,7 @@ export default function Analytics() {
                       <span style={{ color: PAGE_COLORS[i % PAGE_COLORS.length], marginRight: 3 }}>●</span>
                       {p.page}
                     </span>
-                    <span style={{ fontSize: 12, color: '#ffffff', fontWeight: 700 }}>{p.visits.toLocaleString()}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700 }}>{p.visits.toLocaleString()}</span>
                   </div>
                   <div style={{ height: 3, background: 'var(--card-border)', borderRadius: 99 }}>
                     <div style={{ height: '100%', width: `${pct}%`, background: PAGE_COLORS[i % PAGE_COLORS.length], borderRadius: 99 }} />

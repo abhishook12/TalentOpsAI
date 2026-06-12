@@ -15,6 +15,9 @@ from ..utils.filters import apply_state_filter, apply_company_filter
 from ..utils.phone_normalizer import format_us_phone
 router = APIRouter()
 
+EMAIL_PATTERN = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+PHONE_PATTERN = re.compile(r"\+?\d[\d\s().-]{7,}\d")
+
 class RecruiterCreate(BaseModel):
     recruiter_name: str
     email: str
@@ -67,7 +70,128 @@ class RecruiterBatchUpdate(BaseModel):
     location: Optional[str] = None
     is_active: Optional[bool] = None
 
+
+def _parse_json_blob(value):
+    if not value:
+        return None
+    if isinstance(value, (dict, list)):
+        return value
+    try:
+        return json.loads(value)
+    except Exception:
+        return None
+
+
+def _split_loose_values(value):
+    if not value:
+        return []
+    if isinstance(value, (list, tuple, set)):
+        values = []
+        for item in value:
+            values.extend(_split_loose_values(item))
+        return values
+    text = str(value).strip()
+    if not text:
+        return []
+    return [part.strip() for part in re.split(r"[,\n;|]+", text) if part.strip()]
+
+
+def _collect_text_values(value):
+    if value is None:
+        return []
+    if isinstance(value, list):
+        values = []
+        for item in value:
+            values.extend(_collect_text_values(item))
+        return values
+    if isinstance(value, dict):
+        values = []
+        for item in value.values():
+            values.extend(_collect_text_values(item))
+        return values
+    text = str(value).strip()
+    return [text] if text else []
+
+
+def _dedupe_values(values, normalizer):
+    seen = set()
+    deduped = []
+    for value in values:
+        normalized = normalizer(value)
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        deduped.append(value)
+    return deduped
+
+
+def _normalize_email(value):
+    return str(value).strip().lower() if value else ""
+
+
+def _normalize_phone(value):
+    return re.sub(r"[^\d+]+", "", str(value)).strip() if value else ""
+
+
+def _extract_emails_from_text(values):
+    matches = []
+    for value in values:
+        matches.extend(EMAIL_PATTERN.findall(str(value)))
+    return _dedupe_values(matches, _normalize_email)
+
+
+def _extract_phones_from_text(values):
+    matches = []
+    for value in values:
+        for match in PHONE_PATTERN.findall(str(value)):
+            digits = _normalize_phone(match)
+            if len(re.sub(r"\D+", "", digits)) < 10:
+                continue
+            matches.append(digits)
+    return _dedupe_values(matches, lambda item: re.sub(r"\D+", "", _normalize_phone(item)))
+
+
+def _collect_all_contacts(record):
+    raw = _parse_json_blob(getattr(record, "raw_data", None)) or {}
+    metadata = _parse_json_blob(getattr(record, "metadata_json", None)) or {}
+    source_texts = _collect_text_values(raw) + _collect_text_values(metadata)
+
+    direct_emails = [
+        getattr(record, "email", None),
+        getattr(record, "email2", None),
+        getattr(record, "email3", None),
+        getattr(record, "email4", None),
+    ]
+    direct_phones = [
+        getattr(record, "phone", None),
+        getattr(record, "phone2", None),
+        getattr(record, "phone3", None),
+        getattr(record, "phone4", None),
+    ]
+
+    metadata_emails = (
+        _split_loose_values(getattr(record, "alternate_emails", None))
+        + _split_loose_values(metadata.get("all_emails"))
+        + _split_loose_values(metadata.get("extra_emails"))
+    )
+    metadata_phones = (
+        _split_loose_values(getattr(record, "alternate_phones", None))
+        + _split_loose_values(metadata.get("all_phones"))
+        + _split_loose_values(metadata.get("extra_phones"))
+    )
+
+    all_emails = _dedupe_values(
+        [value for value in direct_emails + metadata_emails + _extract_emails_from_text(source_texts) if value],
+        _normalize_email,
+    )
+    all_phones = _dedupe_values(
+        [value for value in direct_phones + metadata_phones + _extract_phones_from_text(source_texts) if value],
+        lambda item: re.sub(r"\D+", "", _normalize_phone(item)),
+    )
+    return all_emails, all_phones
+
 def serialize_recruiter(r):
+    all_emails, all_phones = _collect_all_contacts(r)
     return {
         "recruiter_id": r.recruiter_id,
         "recruiter_name": r.recruiter_name,
@@ -81,10 +205,13 @@ def serialize_recruiter(r):
         "phone4": r.phone4,
         "alternate_emails": getattr(r, "alternate_emails", None),
         "alternate_phones": getattr(r, "alternate_phones", None),
+        "all_emails": all_emails,
+        "all_phones": all_phones,
         "linkedin": r.linkedin,
         "specialization": r.specialization,
         "notes": r.notes,
-        "metadata_json": getattr(r, "metadata_json", None),
+        "metadata_json": r.__dict__.get("metadata_json"),
+        "raw_data": r.__dict__.get("raw_data"),
         "company_id": r.company_id,
         "company_name": r.company.company_name if hasattr(r, "company") and r.company else None,
         "location": r.location if r.location else (r.company.location if hasattr(r, "company") and r.company else None),
@@ -178,6 +305,7 @@ def search_recruiters(
     Smart weighted search using pg_trgm similarity + ILIKE scoring.
     Results are ranked by relevance_score descending.
     """
+    q_digits = re.sub(r"\D+", "", q or "")
     base_sql = """
         SELECT
             r.recruiter_id,
@@ -190,11 +318,11 @@ def search_recruiters(
             r.phone3,
             r.email4,
             r.phone4,
+            r.alternate_emails,
+            r.alternate_phones,
             r.linkedin,
             r.specialization,
             r.notes,
-            r.raw_data,
-            r.metadata_json,
             r.state,
             r.created_at,
             r.is_active,
@@ -217,6 +345,51 @@ def search_recruiters(
                         THEN 200
                     WHEN LOWER(r.email) LIKE '%' || LOWER(:q) || '%'
                         THEN 80
+                    ELSE 0
+                END
+                +
+                CASE
+                    WHEN LOWER(COALESCE(r.email2, '')) = LOWER(:q)
+                        OR LOWER(COALESCE(r.email3, '')) = LOWER(:q)
+                        OR LOWER(COALESCE(r.email4, '')) = LOWER(:q)
+                        OR LOWER(COALESCE(r.alternate_emails, '')) LIKE '%' || LOWER(:q) || '%'
+                        THEN 180
+                    WHEN LOWER(COALESCE(r.email2, '')) LIKE '%' || LOWER(:q) || '%'
+                        OR LOWER(COALESCE(r.email3, '')) LIKE '%' || LOWER(:q) || '%'
+                        OR LOWER(COALESCE(r.email4, '')) LIKE '%' || LOWER(:q) || '%'
+                        THEN 110
+                    ELSE 0
+                END
+                +
+                CASE
+                    WHEN :q_digits != ''
+                        AND (
+                            regexp_replace(COALESCE(r.phone, ''), '[^0-9]+', '', 'g') = :q_digits
+                            OR regexp_replace(COALESCE(r.phone2, ''), '[^0-9]+', '', 'g') = :q_digits
+                            OR regexp_replace(COALESCE(r.phone3, ''), '[^0-9]+', '', 'g') = :q_digits
+                            OR regexp_replace(COALESCE(r.phone4, ''), '[^0-9]+', '', 'g') = :q_digits
+                            OR regexp_replace(COALESCE(r.alternate_phones, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
+                            OR regexp_replace(COALESCE(r.metadata_json, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
+                            OR regexp_replace(COALESCE(r.raw_data, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
+                        )
+                        THEN 180
+                    WHEN :q_digits != ''
+                        AND (
+                            regexp_replace(COALESCE(r.phone, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
+                            OR regexp_replace(COALESCE(r.phone2, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
+                            OR regexp_replace(COALESCE(r.phone3, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
+                            OR regexp_replace(COALESCE(r.phone4, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
+                            OR regexp_replace(COALESCE(r.metadata_json, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
+                            OR regexp_replace(COALESCE(r.raw_data, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
+                        )
+                        THEN 100
+                    ELSE 0
+                END
+                +
+                CASE
+                    WHEN COALESCE(r.metadata_json, '') ILIKE '%' || :q || '%'
+                        OR COALESCE(r.raw_data, '') ILIKE '%' || :q || '%'
+                        THEN 90
                     ELSE 0
                 END
                 +
@@ -247,7 +420,22 @@ def search_recruiters(
                 OR r.phone2 ILIKE '%' || :q || '%'
                 OR r.phone3 ILIKE '%' || :q || '%'
                 OR r.phone4 ILIKE '%' || :q || '%'
+                OR COALESCE(r.alternate_emails, '') ILIKE '%' || :q || '%'
+                OR COALESCE(r.alternate_phones, '') ILIKE '%' || :q || '%'
                 OR r.metadata_json::text ILIKE '%' || :q || '%'
+                OR r.raw_data::text ILIKE '%' || :q || '%'
+                OR (
+                    :q_digits != ''
+                    AND (
+                        regexp_replace(COALESCE(r.phone, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
+                        OR regexp_replace(COALESCE(r.phone2, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
+                        OR regexp_replace(COALESCE(r.phone3, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
+                        OR regexp_replace(COALESCE(r.phone4, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
+                        OR regexp_replace(COALESCE(r.alternate_phones, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
+                        OR regexp_replace(COALESCE(r.metadata_json, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
+                        OR regexp_replace(COALESCE(r.raw_data, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
+                    )
+                )
                 OR COALESCE(c.company_name, '') ILIKE '%' || :q || '%'
                 OR COALESCE(r.specialization, '') ILIKE '%' || :q || '%'
                 OR similarity(r.recruiter_name, :q) > 0.3
@@ -255,7 +443,7 @@ def search_recruiters(
             )
     """
 
-    params = {"q": q, "limit": limit}
+    params = {"q": q, "q_digits": q_digits, "limit": limit}
 
     if company:
         from app.utils.normalizer import normalize_text
@@ -287,11 +475,11 @@ def search_recruiters(
             "phone3": row["phone3"],
             "email4": row["email4"],
             "phone4": row["phone4"],
+            "alternate_emails": row["alternate_emails"],
+            "alternate_phones": row["alternate_phones"],
             "linkedin": row["linkedin"],
             "specialization": row["specialization"],
             "notes": row["notes"],
-            "raw_data": row["raw_data"],
-            "metadata_json": row["metadata_json"],
             "company_id": row["company_id"],
             "company_name": row["company_name"],
             "location": row.get("location"),
@@ -303,11 +491,13 @@ def search_recruiters(
         for row in rows
     ]
 
+from sqlalchemy.orm import load_only
+
 @router.get("/")
 def get_recruiters(
     response: Response,
     page: int = 1,
-    limit: int = 100,
+    limit: int = 50,
     search: Optional[str] = None,
     state: Optional[str] = None,
     state_status: Optional[str] = None,
@@ -324,7 +514,18 @@ def get_recruiters(
     sort_desc: Optional[bool] = True,
     db: Session = Depends(get_db)
 ):
-    query = db.query(Recruiter).join(Recruiter.company, isouter=True).options(contains_eager(Recruiter.company))
+    print(f"GET /recruiters/ CALLED! needs_review={needs_review}", flush=True)
+    query = db.query(Recruiter).join(Recruiter.company, isouter=True).options(
+        contains_eager(Recruiter.company).load_only(Company.company_id, Company.company_name, Company.location),
+        load_only(
+            Recruiter.recruiter_id, Recruiter.recruiter_name, Recruiter.email, 
+            Recruiter.phone, Recruiter.email2, Recruiter.phone2, Recruiter.email3, Recruiter.phone3,
+            Recruiter.email4, Recruiter.phone4, Recruiter.linkedin,
+            Recruiter.company_id, Recruiter.state, 
+            Recruiter.location, Recruiter.specialization, Recruiter.needs_review, 
+            Recruiter.completeness_score, Recruiter.is_active, Recruiter.created_at
+        )
+    )
     
     from ..utils.normalizer import normalize_text
     

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { exportToExcel } from '../services/export'
-import api, { checkAuth, getErrorMessage, login, logAction } from '../services/api'
+import api, { API, checkAuth, getErrorMessage, login, logAction } from '../services/api'
 
 function initials(name) {
   const parts = (name || '').trim().split(' ').filter(Boolean)
@@ -12,10 +12,20 @@ function matchTypeFor(rec, q) {
   const s = (q || '').trim().toLowerCase()
   if (!s) return 'Fuzzy'
   const name = (rec?.recruiter_name || '').toLowerCase()
-  const email = (rec?.email || '').toLowerCase()
+  const emailFields = (Array.isArray(rec?.all_emails) && rec.all_emails.length ? rec.all_emails : [rec?.email, rec?.email2, rec?.email3, rec?.email4, rec?.alternate_emails])
+    .filter(Boolean)
+    .map((value) => String(value).toLowerCase())
+  const phoneFields = (Array.isArray(rec?.all_phones) && rec.all_phones.length ? rec.all_phones : [rec?.phone, rec?.phone2, rec?.phone3, rec?.phone4, rec?.alternate_phones])
+    .filter(Boolean)
+    .map((value) => String(value))
   const company = (rec?.company_name || '').toLowerCase()
-  if (name === s || email === s || company === s) return 'Exact'
-  if (name.startsWith(s) || email.startsWith(s) || company.startsWith(s)) return 'Exact'
+  const normalizedQueryDigits = s.replace(/[^\d]/g, '')
+  const exactEmail = emailFields.some((value) => value === s || value.includes(s))
+  const exactPhone = normalizedQueryDigits
+    ? phoneFields.some((value) => value.replace(/[^\d]/g, '').includes(normalizedQueryDigits))
+    : false
+  if (name === s || company === s || exactEmail || exactPhone) return 'Exact'
+  if (name.startsWith(s) || company.startsWith(s) || emailFields.some((value) => value.startsWith(s))) return 'Exact'
   return 'Fuzzy'
 }
 
@@ -48,6 +58,9 @@ function flattenValue(value) {
   if (Array.isArray(value)) {
     return value.flatMap(flattenValue)
   }
+  if (typeof value === 'object') {
+    return [JSON.stringify(value)]
+  }
   const text = String(value).trim()
   if (!text) return []
   return [text]
@@ -71,14 +84,83 @@ function collectContactValues(record, matcher) {
   const buckets = [record || {}, raw, metadata]
   const values = []
 
+  const visit = (value, path = []) => {
+    if (value == null) return
+    if (Array.isArray(value)) {
+      value.forEach((item, index) => visit(item, [...path, String(index)]))
+      return
+    }
+    if (typeof value === 'object') {
+      Object.entries(value).forEach(([key, child]) => visit(child, [...path, key]))
+      return
+    }
+    const joinedPath = path.join('.')
+    if (!matcher(joinedPath, value)) return
+    values.push(...flattenValue(value))
+  }
+
   buckets.forEach((bucket) => {
-    Object.entries(bucket).forEach(([key, value]) => {
-      if (!matcher(key, value)) return
-      values.push(...flattenValue(value))
-    })
+    visit(bucket)
   })
 
   return values
+}
+
+function splitLooseList(value) {
+  if (!value) return []
+  if (Array.isArray(value)) return value.flatMap(splitLooseList)
+  return String(value)
+    .split(/[,\n;|]+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+function collectTextValuesDeep(value) {
+  if (value == null) return []
+  if (Array.isArray(value)) return value.flatMap(collectTextValuesDeep)
+  if (typeof value === 'object') return Object.values(value).flatMap(collectTextValuesDeep)
+  const text = String(value).trim()
+  return text ? [text] : []
+}
+
+function extractEmailsFromText(values) {
+  const matches = []
+  values.forEach((value) => {
+    const found = String(value).match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) || []
+    matches.push(...found)
+  })
+  return dedupeValues(matches.map((value) => value.trim().toLowerCase()))
+}
+
+function extractPhonesFromText(values) {
+  const matches = []
+  values.forEach((value) => {
+    const found = String(value).match(/\+?\d[\d\s().-]{7,}\d/g) || []
+    found.forEach((item) => {
+      const digits = item.replace(/[^\d+]/g, '').trim()
+      if (digits.replace(/\D/g, '').length < 10) return
+      matches.push(digits)
+    })
+  })
+  return dedupeValues(matches, (value) => value.replace(/[^\d+]/g, ''))
+}
+
+function looksLikeEmailKey(key) {
+  const normalized = String(key || '').toLowerCase()
+  return /(email|e-mail|mail)/.test(normalized) && !/(domain|pattern|status|verified|quality)/.test(normalized)
+}
+
+function looksLikePhoneKey(key) {
+  const normalized = String(key || '').toLowerCase()
+  return /(phone|mobile|cell|tel|telephone|contact_number|contactnumber|whatsapp)/.test(normalized)
+}
+
+function mergeSelectedRecord(summary, detail) {
+  if (!summary && !detail) return null
+  if (summary && detail && summary.recruiter_id !== detail.recruiter_id) {
+    return summary
+  }
+  return { ...(summary || {}), ...(detail || {}) }
 }
 
 function buildRecruiterInsight(record) {
@@ -86,8 +168,29 @@ function buildRecruiterInsight(record) {
     return { emails: [], phones: [], extras: [], createdAt: 'Not available', address: 'Not available' }
   }
 
-  const emailValues = [record.email, record.email2, record.email3, record.email4].filter(Boolean)
-  const phoneValues = [record.phone, record.phone2, record.phone3, record.phone4].filter(Boolean)
+  const sourceTexts = collectTextValuesDeep(parseLooseJson(record.raw_data) || {}).concat(
+    collectTextValuesDeep(parseLooseJson(record.metadata_json) || {})
+  )
+  const emailValues = [
+    ...(Array.isArray(record.all_emails) ? record.all_emails : []),
+    record.email,
+    record.email2,
+    record.email3,
+    record.email4,
+    ...splitLooseList(record.alternate_emails),
+    ...collectContactValues(record, (key) => looksLikeEmailKey(key)),
+    ...extractEmailsFromText(sourceTexts),
+  ].filter(Boolean)
+  const phoneValues = [
+    ...(Array.isArray(record.all_phones) ? record.all_phones : []),
+    record.phone,
+    record.phone2,
+    record.phone3,
+    record.phone4,
+    ...splitLooseList(record.alternate_phones),
+    ...collectContactValues(record, (key) => looksLikePhoneKey(key)),
+    ...extractPhonesFromText(sourceTexts),
+  ].filter(Boolean)
 
   const emails = dedupeValues(emailValues.map((value) => value.trim()).filter(Boolean))
   const phones = dedupeValues(
@@ -99,20 +202,45 @@ function buildRecruiterInsight(record) {
   const metadata = parseLooseJson(record.metadata_json) || {}
   const ignoredKeys = new Set([
     'recruiter_name', 'name', 'full_name', 'email', 'email2', 'work_email', 'personal_email',
-    'phone', 'phone2', 'mobile', 'cell', 'contact', 'linkedin', 'specialization', 'title',
+    'email3', 'email4', 'alternate_emails', 'all_emails',
+    'phone', 'phone2', 'phone3', 'phone4', 'mobile', 'cell', 'contact', 'contact_number', 'telephone',
+    'alternate_phones', 'all_phones', 'linkedin', 'specialization', 'title',
     'company', 'company_name', 'location', 'state', 'city', 'address', 'notes',
+    'created_at', 'updated_at', 'recruiter_id', 'company_id',
   ])
 
   const extras = []
+  const walkExtras = (value, path = []) => {
+    if (value == null) return
+    if (Array.isArray(value)) {
+      value.forEach((item, index) => walkExtras(item, [...path, String(index + 1)]))
+      return
+    }
+    if (typeof value === 'object') {
+      Object.entries(value).forEach(([key, child]) => walkExtras(child, [...path, key]))
+      return
+    }
+
+    const leafKey = String(path[path.length - 1] || '').toLowerCase()
+    const fullPath = path.join('.').toLowerCase()
+    if (!leafKey || ignoredKeys.has(leafKey) || looksLikeEmailKey(fullPath) || looksLikePhoneKey(fullPath)) return
+
+    const flattened = String(value).trim()
+    if (!flattened) return
+    extras.push({
+      key: path.join(' / ').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim(),
+      value: flattened,
+    })
+  }
+
   ;[raw, metadata].forEach((bucket) => {
+    if (!bucket || typeof bucket !== 'object') return
+    if (Array.isArray(bucket)) {
+      bucket.forEach((item, index) => walkExtras(item, [`Source row ${index + 1}`]))
+      return
+    }
     Object.entries(bucket).forEach(([key, value]) => {
-      if (ignoredKeys.has(String(key).toLowerCase())) return
-      const flattened = flattenValue(value).join(', ').trim()
-      if (!flattened) return
-      extras.push({
-        key: String(key).replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim(),
-        value: flattened,
-      })
+      walkExtras(value, [key])
     })
   })
 
@@ -120,7 +248,12 @@ function buildRecruiterInsight(record) {
     ? new Date(record.created_at).toLocaleString()
     : 'Not available'
 
-  const address = [record.location, record.state].filter((part) => part && String(part).trim()).join(', ') || 'Not available'
+  const addressCandidates = dedupeValues([
+    record.location,
+    record.address,
+    ...collectContactValues(record, (key) => /(address|street|suite|city|state|zip|postal|location)/i.test(key)),
+  ].filter(Boolean))
+  const address = addressCandidates[0] || [record.location, record.state].filter((part) => part && String(part).trim()).join(', ') || 'Not available'
 
   return {
     emails,
@@ -159,6 +292,9 @@ export default function AISearch() {
   const [selectedId, setSelectedId] = useState(null)
   const [showFilters, setShowFilters] = useState(false)
   const [toast, setToast] = useState('')
+  const [selectedDetail, setSelectedDetail] = useState(null)
+  const [selectedDetailLoading, setSelectedDetailLoading] = useState(false)
+  const [selectedDetailError, setSelectedDetailError] = useState('')
   const [filterCompany, setFilterCompany] = useState('')
   const [filterLocation, setFilterLocation] = useState('')
   const [filterSpecialization, setFilterSpecialization] = useState('')
@@ -183,6 +319,28 @@ export default function AISearch() {
     specialization: '',
     notes: '',
   })
+
+  const primeEditState = (record) => {
+    setEditError('')
+    setEditPin('')
+    setEditSaving(false)
+    setEditAuthed(false)
+    setEditForm({
+      recruiter_name: record?.recruiter_name || '',
+      email: record?.email || '',
+      email2: record?.email2 || '',
+      email3: record?.email3 || '',
+      email4: record?.email4 || '',
+      phone: record?.phone || '',
+      phone2: record?.phone2 || '',
+      phone3: record?.phone3 || '',
+      phone4: record?.phone4 || '',
+      linkedin: record?.linkedin || '',
+      location: record?.location || '',
+      specialization: record?.specialization || '',
+      notes: record?.notes || '',
+    })
+  }
 
   useEffect(() => {
     const t = setTimeout(async () => {
@@ -233,41 +391,50 @@ export default function AISearch() {
     return () => clearTimeout(t)
   }, [query, filterCompany, filterLocation, filterSpecialization])
 
-  const selected = useMemo(
+  const selectedSummary = useMemo(
     () => results.find((r) => r.recruiter_id === selectedId) || null,
     [results, selectedId]
+  )
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!selectedId) {
+      return
+    }
+    ;(async () => {
+      try {
+        const { data } = await api.get(`/recruiters/${selectedId}`)
+        if (cancelled) return
+        setSelectedDetail(data || null)
+      } catch (err) {
+        if (cancelled) return
+        setSelectedDetail(null)
+        setSelectedDetailError(getErrorMessage(err, 'Could not load recruiter details.'))
+      } finally {
+        if (!cancelled) setSelectedDetailLoading(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [selectedId])
+
+  const selected = useMemo(
+    () => (selectedId ? mergeSelectedRecord(selectedSummary, selectedDetail) : null),
+    [selectedId, selectedSummary, selectedDetail]
   )
 
   const selectedInsight = useMemo(() => buildRecruiterInsight(selected), [selected])
 
   useEffect(() => {
     if (!editOpen) return
-    // Initialize edit state on open
-    setEditError('')
-    setEditPin('')
-    setEditSaving(false)
-    setEditAuthed(false)
 
     ;(async () => {
       const ok = await checkAuth()
       setEditAuthed(ok)
     })()
-
-    setEditForm({
-      recruiter_name: selected?.recruiter_name || '',
-      email: selected?.email || '',
-      email2: selected?.email2 || '',
-      email3: selected?.email3 || '',
-      email4: selected?.email4 || '',
-      phone: selected?.phone || '',
-      phone2: selected?.phone2 || '',
-      phone3: selected?.phone3 || '',
-      phone4: selected?.phone4 || '',
-      linkedin: selected?.linkedin || '',
-      location: selected?.location || '',
-      specialization: selected?.specialization || '',
-      notes: selected?.notes || '',
-    })
   }, [editOpen, selected])
 
   const activeFiltersCount = useMemo(() => {
@@ -287,10 +454,13 @@ export default function AISearch() {
   const clearAll = () => {
     setQuery('')
     setResults([])
-    setSelectedId(null)
-    setError('')
-    setLoading(false)
-    setFilterCompany('')
+      setSelectedId(null)
+      setSelectedDetail(null)
+      setSelectedDetailLoading(false)
+      setSelectedDetailError('')
+      setError('')
+      setLoading(false)
+      setFilterCompany('')
     setFilterLocation('')
     setFilterSpecialization('')
     setShowFilters(false)
@@ -627,7 +797,12 @@ export default function AISearch() {
                         return (
                           <button
                             key={r.recruiter_id}
-                            onClick={() => setSelectedId(r.recruiter_id)}
+                            onClick={() => {
+                              setSelectedDetail(null)
+                              setSelectedDetailLoading(true)
+                              setSelectedDetailError('')
+                              setSelectedId(r.recruiter_id)
+                            }}
                             style={{
                               width: '100%',
                               textAlign: 'left',
@@ -717,7 +892,10 @@ export default function AISearch() {
             <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-primary)' }}>Recruiter Details</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button
-                onClick={() => setEditOpen(true)}
+                onClick={() => {
+                  primeEditState(selected)
+                  setEditOpen(true)
+                }}
                 style={iconButtonStyle(!selected)}
                 title={!selected ? 'Select a recruiter to edit' : 'Edit recruiter (locked)'}
                 disabled={!selected}
@@ -744,7 +922,17 @@ export default function AISearch() {
                 <i className="ti ti-copy" />
               </button>
               
-              <button onClick={() => setSelectedId(null)} style={iconButtonStyle(!selected)} title="Close" disabled={!selected}>
+              <button
+                onClick={() => {
+                  setSelectedId(null)
+                  setSelectedDetail(null)
+                  setSelectedDetailLoading(false)
+                  setSelectedDetailError('')
+                }}
+                style={iconButtonStyle(!selected)}
+                title="Close"
+                disabled={!selected}
+              >
                 <i className="ti ti-x" />
               </button>
             </div>
@@ -762,6 +950,16 @@ export default function AISearch() {
             </div>
           ) : (
             <div style={{ flex: 1, overflow: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {selectedDetailLoading && (
+                <div style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--card-bg)', color: 'var(--text-muted)', fontSize: 12 }}>
+                  Loading full recruiter profile from source data...
+                </div>
+              )}
+              {selectedDetailError && (
+                <div style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.08)', color: '#fca5a5', fontSize: 12 }}>
+                  {selectedDetailError}
+                </div>
+              )}
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
                   <div style={{ width: 52, height: 52, borderRadius: 16, background: 'var(--text-primary)', color: 'var(--text-inverse)', display: 'grid', placeItems: 'center', fontSize: 18, fontWeight: 900 }}>
@@ -1036,6 +1234,7 @@ export default function AISearch() {
                         const { data } = await api.put(`/recruiters/${selected.recruiter_id}`, payload)
                         // Update UI immediately
                         setResults((prev) => prev.map((r) => (r.recruiter_id === selected.recruiter_id ? { ...r, ...data } : r)))
+                        setSelectedDetail(data)
                         setToast('Recruiter updated')
                         setTimeout(() => setToast(''), 1400)
                         setEditOpen(false)

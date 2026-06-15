@@ -5,7 +5,7 @@ Recruitment operations intelligence platform — centralize recruiter and compan
 **Live app**
 
 - Frontend: [talent-ops-ai.vercel.app](https://talent-ops-ai.vercel.app)
-- API: [talentopsai.onrender.com](https://talentopsai.onrender.com)
+- API: [talentopsai-1.onrender.com](https://talentopsai-1.onrender.com)
 
 ## Stack
 
@@ -54,7 +54,8 @@ App: http://localhost:5173
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `SUPABASE_DATABASE_URL` | Yes for Supabase | Preferred production PostgreSQL connection string |
+| `DATABASE_URL` | Fallback | PostgreSQL connection string for local/staging or non-Supabase deployments |
 | `JWT_SECRET` | Prod | Strong random string |
 | `ADMIN_PASSWORD` | Prod | Platform + admin login password |
 | `ENV` | Prod | Set to `production` on Render |
@@ -64,14 +65,15 @@ App: http://localhost:5173
 
 | Variable | Description |
 |----------|-------------|
-| `VITE_API_URL` | Backend URL (e.g. `https://talentopsai.onrender.com`) |
+| `VITE_API_URL` | Backend URL (e.g. `https://talentopsai-1.onrender.com`) |
 
 ## Deploy checklist
 
 1. Push to GitHub `main` (Render + Vercel auto-deploy if connected).
-2. **Render:** set `ENV=production`, `JWT_SECRET`, `ADMIN_PASSWORD`, `DATABASE_URL`, `CORS_ORIGINS`.
-3. **Vercel:** set `VITE_API_URL` to your Render URL.
-4. Change default password — never use `1012` in production.
+2. **Backend host:** set `SUPABASE_DATABASE_URL` or `DATABASE_URL` to the Supabase connection string used by your live database.
+3. **Render:** set `ENV=production`, `JWT_SECRET`, `ADMIN_PASSWORD`, `CORS_ORIGINS`.
+4. **Vercel:** set `VITE_API_URL` to your backend URL.
+5. Change default password — never use `1012` in production.
 
 ## Project structure
 

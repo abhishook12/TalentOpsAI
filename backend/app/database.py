@@ -1,7 +1,5 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 import os
@@ -9,10 +7,10 @@ import os
 load_dotenv()
 
 DATABASE_URL = "sqlite:///./dev.db"
-# For production you can set DATABASE_URL in the environment; SQLite is used for local development.
-if os.getenv("DATABASE_URL"):
-    # If a DATABASE_URL is provided, use it (ensuring proper driver prefix for PostgreSQL)
-    DATABASE_URL = os.getenv("DATABASE_URL")
+raw_database_url = os.getenv("SUPABASE_DATABASE_URL") or os.getenv("DATABASE_URL")
+# For production you can set SUPABASE_DATABASE_URL or DATABASE_URL in the environment; SQLite is used for local development.
+if raw_database_url:
+    DATABASE_URL = raw_database_url
     if DATABASE_URL.startswith("postgresql://"):
         DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://")
 

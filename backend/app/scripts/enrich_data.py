@@ -38,6 +38,65 @@ def extract_city(location: str) -> str:
     
     return None
 
+
+def is_placeholder_location(value: str | None) -> bool:
+    if not value:
+        return True
+    text = str(value).strip().lower()
+    return text in {"-", "—", "n/a", "na", "none", "null", "nil", "#error!", "not available"}
+
+
+def looks_like_phone(value: str | None) -> bool:
+    if not value:
+        return False
+    text = str(value).strip()
+    if re.search(r"[A-Za-z]", text):
+        alpha_count = len(re.findall(r"[A-Za-z]", text))
+        if alpha_count > 6:
+            return False
+    phone_pattern = re.search(r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}", text)
+    if phone_pattern:
+        return True
+    digits = re.sub(r"\D", "", text)
+    return len(digits) == 10 and len(text) <= 20
+
+
+def extract_phone_value(value: str | None) -> str | None:
+    if not value:
+        return None
+    text = str(value).strip()
+    match = re.search(r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}", text)
+    if match:
+        cleaned = re.sub(r"\D", "", match.group(0))
+        if len(cleaned) == 11 and cleaned.startswith("1"):
+            cleaned = cleaned[1:]
+        if len(cleaned) == 10:
+            return f"{cleaned[:3]}-{cleaned[3:6]}-{cleaned[6:]}"
+    digits = re.sub(r"\D", "", text)
+    if len(digits) == 11 and digits.startswith("1"):
+        digits = digits[1:]
+    if len(digits) == 10:
+        return f"{digits[:3]}-{digits[3:6]}-{digits[6:]}"
+    return None
+
+
+def looks_like_email(value: str | None) -> bool:
+    if not value:
+        return False
+    text = str(value).strip()
+    return "@" in text and "." in text
+
+
+def looks_like_location(value: str | None) -> bool:
+    if not value or is_placeholder_location(value):
+        return False
+    text = str(value).strip()
+    if looks_like_phone(text) or looks_like_email(text):
+        return False
+    if re.fullmatch(r"[0-9\-\+\s()./xextEXT#]+", text):
+        return False
+    return any(char.isalpha() for char in text)
+
 def main():
     db = SessionLocal()
     try:
@@ -76,9 +135,30 @@ def main():
                     changed = True
                 
                 # 2. Location enrichment
-                original_loc = r.location or (r.company.location if r.company else None)
+                company_location = r.company.location if r.company else None
+                original_loc = r.location or company_location
                 norm_state = normalize_state(original_loc)
                 norm_city = extract_city(original_loc)
+
+                if company_location and looks_like_location(company_location):
+                    if is_placeholder_location(r.location) or not r.location or not looks_like_location(r.location):
+                        if r.location != company_location:
+                            r.location = company_location
+                            changed = True
+
+                # Salvage obviously misparsed contact data that landed in the location field.
+                if looks_like_phone(r.location):
+                    if not r.phone:
+                        clean_phone = extract_phone_value(r.location)
+                        if clean_phone:
+                            r.phone = clean_phone
+                    r.location = company_location if looks_like_location(company_location) else None
+                    changed = True
+                elif looks_like_email(r.location):
+                    if not r.email:
+                        r.email = r.location.lower()
+                    r.location = company_location if looks_like_location(company_location) else None
+                    changed = True
                 
                 if norm_state and r.state != norm_state:
                     r.state = norm_state

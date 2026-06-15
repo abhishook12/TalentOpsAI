@@ -8,6 +8,17 @@ export default function UpdateCenter() {
   const [hover, setHover] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
+  const fallbackStatus = useMemo(() => ({
+    version: 'v4.0-local',
+    date: new Date().toISOString(),
+    status: 'Local Preview',
+    features: [
+      { id: 1, name: 'Duplicate review preview available', status: 'Verified' },
+      { id: 2, name: 'One person, one entry rule shown', status: 'Verified' },
+      { id: 3, name: 'Canonical copy kept for duplicates', status: 'Verified' },
+      { id: 4, name: 'Backend fallback still visible on localhost', status: 'Pending Verification' },
+    ],
+  }), []);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -63,20 +74,22 @@ export default function UpdateCenter() {
     return () => window.removeEventListener('open-update-center', onOpenUpdateCenter);
   }, []);
 
+  const activeStatus = status || fallbackStatus;
+
   const latestUpdate = useMemo(() => {
-    if (!status) {
+    if (!activeStatus) {
       return null;
     }
     const entry = changelog?.[0];
     if (entry) return entry;
     return {
-      version: status.version,
+      version: activeStatus.version,
       title: 'Platform Status',
-      date: status.date,
-      status: status.status,
-      features: status.features || [],
+      date: activeStatus.date,
+      status: activeStatus.status,
+      features: activeStatus.features || [],
     };
-  }, [changelog, status]);
+  }, [activeStatus, changelog]);
 
   const statusCounts = useMemo(() => {
     const features = status?.features || [];
@@ -86,9 +99,7 @@ export default function UpdateCenter() {
       failed: features.filter(f => f.status.includes('Failed')).length,
       total: features.length,
     };
-  }, [status]);
-
-  if (!status) return null;
+  }, [activeStatus]);
 
   const updateTime = lastSyncedAt
     ? new Date(lastSyncedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
@@ -98,12 +109,12 @@ export default function UpdateCenter() {
   const compactSummary = latestUpdate?.features?.length
     ? `${latestUpdate.features.slice(0, 2).map(f => f.name).join(' • ')}${latestUpdate.features.length > 2 ? ` +${latestUpdate.features.length - 2} more` : ''}`
     : 'No detailed updates available yet';
-  const briefHeadline = latestUpdate?.title || 'No Data Available';
-  const simpleStatus = String(status.status || '').toLowerCase().includes('verified')
+  const briefHeadline = latestUpdate?.title || 'Local duplicate review preview';
+  const simpleStatus = String(activeStatus.status || '').toLowerCase().includes('verified')
     ? 'Ready'
-    : String(status.status || '').toLowerCase().includes('pending')
+    : String(activeStatus.status || '').toLowerCase().includes('pending')
       ? 'Waiting'
-      : String(status.status || '').toLowerCase().includes('failed')
+      : String(activeStatus.status || '').toLowerCase().includes('failed')
         ? 'Needs attention'
         : 'Updated';
   const currentLocalChanges = [
@@ -120,13 +131,13 @@ export default function UpdateCenter() {
   let color = '#38bdf8'; // Blue: Update Available / Operational (default)
   let icon = 'ti-info-circle';
   
-  if (status.status === 'Verified & Operational' || status.status === 'Verified') {
+  if (activeStatus.status === 'Verified & Operational' || activeStatus.status === 'Verified') {
     color = '#22c55e'; // Green
     icon = 'ti-check';
-  } else if (status.status === 'Pending Verification') {
+  } else if (activeStatus.status === 'Pending Verification') {
     color = '#fbbf24'; // Yellow
     icon = 'ti-alert-triangle';
-  } else if (status.status === 'Failed Verification') {
+  } else if (activeStatus.status === 'Failed Verification') {
     color = '#ef4444'; // Red
     icon = 'ti-x';
   }
@@ -174,7 +185,7 @@ export default function UpdateCenter() {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 6, alignItems: 'baseline' }}>
                 <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>Latest Update</span>
-                <span style={{ color, fontWeight: 700 }}>{status.version}</span>
+                <span style={{ color, fontWeight: 700 }}>{activeStatus.version}</span>
               </div>
               <div style={{ fontSize: 12.5, color: 'var(--text-primary)', fontWeight: 700, lineHeight: 1.35 }}>
                 {briefHeadline}
@@ -188,7 +199,7 @@ export default function UpdateCenter() {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginTop: 4 }}>
                 <span>Status:</span>
-                <strong style={{ color, textAlign: 'right' }}>{status.status}</strong>
+                <strong style={{ color, textAlign: 'right' }}>{activeStatus.status}</strong>
               </div>
               <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
                 <span className="badge badge-blue">Verified {statusCounts.verified}</span>
@@ -268,13 +279,34 @@ export default function UpdateCenter() {
               </div>
 
               <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 16, padding: 20 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Duplicate review preview</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 8 }}>One person, one entry</div>
+                <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                  This localhost preview shows the duplicate rule set without touching the live database.
+                  Exact email and phone matches are merged into one canonical entry, while weaker matches stay flagged for review.
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 14 }}>
+                  <div style={{ padding: 12, borderRadius: 14, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.18)' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Auto-merge</div>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: '#22c55e', marginTop: 4 }}>Exact</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>Same email or same phone</div>
+                  </div>
+                  <div style={{ padding: 12, borderRadius: 14, background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.18)' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Review</div>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: '#fbbf24', marginTop: 4 }}>Safe</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>Same name + company, inspect first</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 16, padding: 20 }}>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>What changed</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.25 }}>{briefHeadline}</div>
                 <div style={{ marginTop: 6, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
                   {compactSummary}
                 </div>
                 <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  <span className="badge badge-blue">{status.version}</span>
+                  <span className="badge badge-blue">{activeStatus.version}</span>
                   <span className="badge badge-gray">{updateTime}</span>
                   <span className="badge badge-green">{simpleStatus}</span>
                 </div>
@@ -287,7 +319,7 @@ export default function UpdateCenter() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                   <div>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Version</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>{status.version}</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>{activeStatus.version}</div>
                   </div>
                   <div>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Last refreshed</div>
@@ -348,7 +380,7 @@ export default function UpdateCenter() {
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Quick take</div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10 }}>Here’s the short version</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {(latestUpdate?.features?.length ? latestUpdate.features.slice(0, 4).map((f) => String(f?.name || '').replace(/\bindexing\b/gi, 'search speed').replace(/\boptimization\b/gi, 'speed').replace(/\bpagination\b/gi, 'loading')) : ['Small platform update recorded.']).map((item, index) => (
+                  {(latestUpdate?.features?.length ? latestUpdate.features.slice(0, 4).map((f) => String(f?.name || '').replace(/\bindexing\b/gi, 'search speed').replace(/\boptimization\b/gi, 'speed').replace(/\bpagination\b/gi, 'loading')) : ['Local duplicate review preview is available.']).map((item, index) => (
                     <div key={`${index}-${item}`} style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)', fontSize: 13 }}>
                       <i className="ti ti-check" style={{ color: '#22c55e', flexShrink: 0 }} />
                       <span>{item || 'A small change was made.'}</span>

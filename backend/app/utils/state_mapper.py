@@ -68,7 +68,7 @@ LOCATION_PHRASE_TO_STATE = {
     'WASHINGTON METRO': 'DC',
 }
 
-def extract_state_detailed(location: str):
+def extract_state_detailed(location: str, strict: bool = False):
     """
     Returns (state_abbreviation, source_reason)
     """
@@ -88,17 +88,19 @@ def extract_state_detailed(location: str):
             return abbr, 'location_phrase_match'
             
     # 3. Look for 2-letter word boundaries that match state abbreviations
-    tokens = re.findall(r'\b[A-Z]{2}\b', loc_upper)
-    for token in tokens:
-        if token in ABBR_TO_NAME:
-            return token, 'abbreviation_word_boundary'
+    if not strict:
+        tokens = re.findall(r'\b[A-Z]{2}\b', loc_upper)
+        for token in tokens:
+            if token in ABBR_TO_NAME:
+                return token, 'abbreviation_word_boundary'
             
     # 4. Fallback: Split by commas or spaces, check reversed
-    parts = [p.strip() for p in re.split(r'[,\s]+', loc_upper) if p.strip()]
-    for p in reversed(parts):
-        clean_p = p.replace('.', '')
-        if clean_p in ABBR_TO_NAME:
-            return clean_p, 'abbreviation_comma_split'
+    if not strict:
+        parts = [p.strip() for p in re.split(r'[,\s]+', loc_upper) if p.strip()]
+        for p in reversed(parts):
+            clean_p = p.replace('.', '')
+            if clean_p in ABBR_TO_NAME:
+                return clean_p, 'abbreviation_comma_split'
 
     # 5. City match
     for city, abbr in CITY_TO_STATE.items():

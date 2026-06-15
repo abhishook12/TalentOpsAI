@@ -44,6 +44,19 @@ GENERIC_DOMAINS = {
     "proton.me", "protonmail.com", "mail.com", "msn.com", "live.com", "yandex.com", "gmx.com",
 }
 
+GENERIC_NAME_TOKENS = {
+    "unknown",
+    "n/a",
+    "na",
+    "none",
+    "null",
+    "-",
+    "name",
+    "recruiter",
+    "contact",
+    "person",
+}
+
 AUTO_FILL_CATEGORIES = {
     "exact_email_state",
     "exact_phone_state",
@@ -78,6 +91,51 @@ def norm_company(value: str | None) -> str:
 def norm_phone(value: str | None) -> str | None:
     digits = re.sub(r"[^0-9]", "", value or "")
     return digits[-10:] if len(digits) >= 10 else None
+
+
+def normalize_name(value: str | None) -> str:
+    return re.sub(r"\s+", " ", (value or "").strip())
+
+
+def name_score(value: str | None) -> tuple[int, int, int]:
+    text = normalize_name(value)
+    if not text:
+        return (0, 0, 0)
+    lowered = text.lower()
+    tokens = [token for token in re.split(r"\s+", text) if token]
+    if lowered in GENERIC_NAME_TOKENS or "@" in text or any(char.isdigit() for char in text):
+        return (0, len(tokens), len(text))
+    return (1 if len(tokens) >= 2 else 0, len(tokens), len(text))
+
+
+def should_promote_name(existing: str | None, candidate: str | None, email: str | None = None) -> bool:
+    existing_text = normalize_name(existing)
+    candidate_text = normalize_name(candidate)
+    if not candidate_text:
+        return False
+    candidate_lower = candidate_text.lower()
+    if candidate_lower in GENERIC_NAME_TOKENS or "@" in candidate_text:
+        return False
+    if not existing_text:
+        return True
+
+    email_localpart = (email or "").strip().lower().split("@", 1)[0]
+    existing_lower = existing_text.lower()
+    if existing_lower in GENERIC_NAME_TOKENS or (email_localpart and existing_lower == email_localpart):
+        return True
+
+    existing_score = name_score(existing_text)
+    candidate_score = name_score(candidate_text)
+    if candidate_score > existing_score:
+        return True
+
+    existing_tokens = len([token for token in re.split(r"\s+", existing_text) if token])
+    candidate_tokens = len([token for token in re.split(r"\s+", candidate_text) if token])
+    if candidate_tokens >= 2 and existing_tokens <= 1:
+        return True
+    if len(candidate_text) >= len(existing_text) + 3 and candidate_tokens >= existing_tokens:
+        return True
+    return False
 
 
 def parse_metadata(value):
@@ -773,6 +831,64 @@ def main():
         company_map_by_key = {company_id: company_name for company_id, company_name in company_rows}
         db_company_summary = build_db_company_majority(session)
 
+        # First, do a name-only recovery sweep across the whole local DB.
+        name_only_updates = []
+        all_recruiters = session.query(Recruiter).all()
+        for recruiter in all_recruiters:
+            company_name = company_map.get(recruiter.company_id, "") if recruiter.company_id else ""
+            email = (recruiter.email or "").lower().strip()
+            phone = norm_phone(recruiter.phone)
+            company_key = norm_company(company_name)
+            name_company_key = f"{normalize_name(recruiter.recruiter_name).lower()}::{company_key}" if recruiter.recruiter_name and company_key else None
+            workbook_person = None
+            if email and email in workbook_indices[0]:
+                workbook_person = workbook_indices[0][email]
+            elif phone and phone in workbook_indices[1]:
+                workbook_person = workbook_indices[1][phone]
+            elif name_company_key and name_company_key in workbook_indices[2]:
+                workbook_person = workbook_indices[2][name_company_key]
+
+            if not workbook_person:
+                continue
+
+            workbook_name = normalize_name(workbook_person.get("name"))
+            if not should_promote_name(recruiter.recruiter_name, workbook_name, recruiter.email):
+                continue
+
+            evidence = {
+                "source": "workbook_name_recovery",
+                "workbook_name": workbook_name,
+                "workbook_email": (workbook_person.get("emails") or [None])[0],
+                "workbook_phone": (workbook_person.get("phones") or [None])[0],
+                "workbook_company": workbook_person.get("company"),
+                "workbook_location": workbook_person.get("location"),
+                "workbook_state": derive_workbook_state(workbook_person)[0],
+                "inspected_at": datetime.now(timezone.utc).isoformat(),
+                "existing_name": recruiter.recruiter_name,
+            }
+            name_only_updates.append(
+                {
+                    "id": recruiter.recruiter_id,
+                    "recruiter_name": workbook_name[:150],
+                    "normalized_recruiter_name": workbook_name.lower().replace(" ", "")[:150],
+                    "metadata_json": merge_metadata(recruiter.metadata_json, evidence),
+                    "last_scan_at": datetime.now(timezone.utc),
+                }
+            )
+
+        if name_only_updates:
+            update_sql = text("""
+                UPDATE recruiters
+                SET recruiter_name = COALESCE(:recruiter_name, recruiter_name),
+                    normalized_recruiter_name = COALESCE(:normalized_recruiter_name, normalized_recruiter_name),
+                    metadata_json = :metadata_json,
+                    last_scan_at = :last_scan_at
+                WHERE recruiter_id = :id
+            """)
+            for i in range(0, len(name_only_updates), args.batch_size if 'args' in locals() else 500):
+                session.execute(update_sql, name_only_updates[i:i + (args.batch_size if 'args' in locals() else 500)])
+                session.commit()
+
         recruiter_filter = session.query(Recruiter).filter(
             (Recruiter.state.is_(None)) | (Recruiter.state == "") | (Recruiter.needs_review == True)
         )
@@ -828,6 +944,8 @@ def main():
             evidence["inspected_at"] = datetime.now(timezone.utc).isoformat()
 
             metadata_json = merge_metadata(recruiter.metadata_json, evidence)
+            proposed_name = normalize_name(evidence.get("workbook_name") or evidence.get("matched_name") or evidence.get("workbook_person_name"))
+            name_promoted = should_promote_name(recruiter.recruiter_name, proposed_name, recruiter.email)
 
             if classification["bucket"] == "auto_fill_safe":
                 if current_state is None:
@@ -835,6 +953,8 @@ def main():
                     auto_updates.append(
                         {
                             "id": recruiter.recruiter_id,
+                            "recruiter_name": proposed_name if name_promoted else recruiter.recruiter_name,
+                            "normalized_recruiter_name": normalize_name(proposed_name).lower().replace(" ", "") if name_promoted and proposed_name else recruiter.normalized_recruiter_name,
                             "state": proposed_state,
                             "state_source": classification["source"],
                             "state_confidence": classification["confidence"],
@@ -850,6 +970,8 @@ def main():
                     auto_updates.append(
                         {
                             "id": recruiter.recruiter_id,
+                            "recruiter_name": proposed_name if name_promoted else recruiter.recruiter_name,
+                            "normalized_recruiter_name": normalize_name(proposed_name).lower().replace(" ", "") if name_promoted and proposed_name else recruiter.normalized_recruiter_name,
                             "state": current_state,
                             "state_source": classification["source"],
                             "state_confidence": classification["confidence"],
@@ -870,6 +992,8 @@ def main():
                         auto_updates.append(
                             {
                                 "id": recruiter.recruiter_id,
+                                "recruiter_name": proposed_name if name_promoted else recruiter.recruiter_name,
+                                "normalized_recruiter_name": normalize_name(proposed_name).lower().replace(" ", "") if name_promoted and proposed_name else recruiter.normalized_recruiter_name,
                                 "state": proposed_state,
                                 "state_source": classification["source"],
                                 "state_confidence": classification["confidence"],
@@ -905,6 +1029,8 @@ def main():
                 review_updates.append(
                     {
                         "id": recruiter.recruiter_id,
+                        "recruiter_name": proposed_name if name_promoted else recruiter.recruiter_name,
+                        "normalized_recruiter_name": normalize_name(proposed_name).lower().replace(" ", "") if name_promoted and proposed_name else recruiter.normalized_recruiter_name,
                         "needs_review": True,
                         "review_reason": classification["reason"][:500],
                         "metadata_json": metadata_json,
@@ -918,6 +1044,8 @@ def main():
             review_updates.append(
                 {
                     "id": recruiter.recruiter_id,
+                    "recruiter_name": proposed_name if name_promoted else recruiter.recruiter_name,
+                    "normalized_recruiter_name": normalize_name(proposed_name).lower().replace(" ", "") if name_promoted and proposed_name else recruiter.normalized_recruiter_name,
                     "needs_review": True,
                     "review_reason": classification["reason"][:500],
                     "metadata_json": metadata_json,
@@ -931,6 +1059,8 @@ def main():
             update_sql = text("""
                 UPDATE recruiters
                 SET state = :state,
+                    recruiter_name = COALESCE(:recruiter_name, recruiter_name),
+                    normalized_recruiter_name = COALESCE(:normalized_recruiter_name, normalized_recruiter_name),
                     state_source = :state_source,
                     state_confidence = :state_confidence,
                     state_reason = :state_reason,
@@ -948,6 +1078,8 @@ def main():
             update_sql = text("""
                 UPDATE recruiters
                 SET needs_review = :needs_review,
+                    recruiter_name = COALESCE(:recruiter_name, recruiter_name),
+                    normalized_recruiter_name = COALESCE(:normalized_recruiter_name, normalized_recruiter_name),
                     review_reason = :review_reason,
                     metadata_json = :metadata_json,
                     last_scan_at = :last_scan_at

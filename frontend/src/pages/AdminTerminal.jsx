@@ -592,6 +592,7 @@ export default function AdminTerminal() {
   const [reviewPanelOpen, setReviewPanelOpen] = useState(false)
   const [reviewQueue, setReviewQueue] = useState({ results: [], total_count: 0, page: 1, total_pages: 1 })
   const [reviewQueueLoading, setReviewQueueLoading] = useState(false)
+  const [reviewQueueError, setReviewQueueError] = useState('')
   const [reviewQueuePage, setReviewQueuePage] = useState(1)
   const [editRecruiter, setEditRecruiter] = useState(null)
   const [resolveAfterSave, setResolveAfterSave] = useState(false)
@@ -859,6 +860,7 @@ export default function AdminTerminal() {
   const loadReviewQueue = useCallback(async () => {
     if (!unlocked) return
     setReviewQueueLoading(true)
+    setReviewQueueError('')
     try {
       const params = new URLSearchParams()
       params.set('page', String(reviewQueuePage))
@@ -869,7 +871,9 @@ export default function AdminTerminal() {
       const { data } = await api.get(`/recruiters/?${params.toString()}`)
       setReviewQueue(data || { results: [], total_count: 0, page: 1, total_pages: 1 })
     } catch (e) {
-      log('✗ Failed to load review queue: ' + getErrorMessage(e), 'error')
+      const message = getErrorMessage(e)
+      setReviewQueueError(message)
+      log('✗ Failed to load review queue: ' + message, 'error')
       setReviewQueue({ results: [], total_count: 0, page: 1, total_pages: 1 })
     } finally {
       setReviewQueueLoading(false)
@@ -1046,6 +1050,7 @@ export default function AdminTerminal() {
 
   const openReviewPanel = () => {
     setReviewQueuePage(1)
+    setReviewQueueError('')
     setReviewPanelOpen(true)
   }
 
@@ -2066,15 +2071,30 @@ export default function AdminTerminal() {
                 </div>
                 <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 14 }}>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Status</div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: reviewQueueLoading ? '#fbbf24' : '#22c55e', marginTop: 8 }}>{reviewQueueLoading ? 'Loading' : 'Ready'}</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: reviewQueueError ? '#f87171' : (reviewQueueLoading ? '#fbbf24' : '#22c55e'), marginTop: 8 }}>{reviewQueueError ? 'Unavailable' : (reviewQueueLoading ? 'Loading' : 'Ready')}</div>
                 </div>
               </div>
 
               <div style={{ padding: 18, overflowY: 'auto', flex: 1 }}>
+                {reviewQueueError && (
+                  <div style={{
+                    marginBottom: 14,
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    border: '1px solid rgba(248,113,113,0.32)',
+                    background: 'rgba(127,29,29,0.18)',
+                    color: '#fecaca',
+                    fontSize: 13,
+                    lineHeight: 1.5,
+                  }}>
+                    <div style={{ fontWeight: 800, marginBottom: 4 }}>Review queue unavailable</div>
+                    <div>{reviewQueueError}</div>
+                  </div>
+                )}
                 {reviewQueueLoading && (
                   <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: '18px 4px' }}>Loading review records…</div>
                 )}
-                {!reviewQueueLoading && (reviewQueue.results || []).length === 0 && (
+                {!reviewQueueLoading && !reviewQueueError && (reviewQueue.results || []).length === 0 && (
                   <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: '18px 4px' }}>No flagged records were found.</div>
                 )}
                 <div style={{ display: 'grid', gap: 12 }}>
@@ -2236,3 +2256,4 @@ export default function AdminTerminal() {
     </div>
   )
 }
+

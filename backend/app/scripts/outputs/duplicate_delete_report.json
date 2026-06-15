@@ -1,0 +1,1043 @@
+{
+  "timestamp": "2026-06-10T16:21:11.457492",
+  "dry_run": false,
+  "clusters_selected": 2119,
+  "deleted_copies": 2513,
+  "kept_canonicals": 2119,
+  "cluster_summaries": [
+    {
+      "cluster_id": 7,
+      "size": 10,
+      "canonical_recruiter_id": 50698,
+      "canonical_name": "Yesenia Zacarias",
+      "canonical_email": "wcollins@tpatechnologies.com",
+      "canonical_phone": "617-722-6020",
+      "deleted_count": 9,
+      "member_ids": [
+        48535,
+        50698,
+        53245,
+        53253,
+        58261,
+        59935,
+        79943,
+        83511,
+        87049,
+        96338
+      ]
+    },
+    {
+      "cluster_id": 8,
+      "size": 9,
+      "canonical_recruiter_id": 87307,
+      "canonical_name": "Diane Tabulog",
+      "canonical_email": "dtabulog@vaco.com",
+      "canonical_phone": "469-518-9349",
+      "deleted_count": 8,
+      "member_ids": [
+        78467,
+        82500,
+        82501,
+        82502,
+        85461,
+        85626,
+        85627,
+        87306,
+        87307
+      ]
+    },
+    {
+      "cluster_id": 9,
+      "size": 8,
+      "canonical_recruiter_id": 48817,
+      "canonical_name": "Stephanie Anders",
+      "canonical_email": "stephanie.anders@turnberrysolutions.com",
+      "canonical_phone": "647-697-6090",
+      "deleted_count": 7,
+      "member_ids": [
+        48817,
+        50820,
+        75526,
+        82933,
+        82934,
+        82936,
+        82941,
+        82942
+      ]
+    },
+    {
+      "cluster_id": 10,
+      "size": 8,
+      "canonical_recruiter_id": 53516,
+      "canonical_name": "Juan Martinez",
+      "canonical_email": "juan.martinez@mitchellmartin.com",
+      "canonical_phone": "603-894-7200",
+      "deleted_count": 7,
+      "member_ids": [
+        50371,
+        50388,
+        53516,
+        57354,
+        79722,
+        80069,
+        86184,
+        86186
+      ]
+    },
+    {
+      "cluster_id": 11,
+      "size": 8,
+      "canonical_recruiter_id": 56251,
+      "canonical_name": "Mosadi Goodman",
+      "canonical_email": "mosadi.goodman@topbloc.com",
+      "canonical_phone": "416-483-0766",
+      "deleted_count": 7,
+      "member_ids": [
+        50809,
+        53520,
+        56251,
+        81755,
+        84202,
+        84203,
+        84204,
+        84212
+      ]
+    },
+    {
+      "cluster_id": 12,
+      "size": 8,
+      "canonical_recruiter_id": 51943,
+      "canonical_name": "Nelson Frank",
+      "canonical_email": "a.borrell@nelsonfrank.com",
+      "canonical_phone": "267-297-4558",
+      "deleted_count": 7,
+      "member_ids": [
+        51943,
+        72037,
+        72606,
+        79651,
+        81146,
+        83100,
+        85012,
+        85018
+      ]
+    },
+    {
+      "cluster_id": 13,
+      "size": 8,
+      "canonical_recruiter_id": 81780,
+      "canonical_name": "Instant Alliance",
+      "canonical_email": "tisirov@instantalliance.com",
+      "canonical_phone": "789-456-1237",
+      "deleted_count": 7,
+      "member_ids": [
+        66571,
+        81193,
+        81194,
+        81195,
+        81780,
+        82587,
+        83653,
+        87791
+      ]
+    },
+    {
+      "cluster_id": 14,
+      "size": 7,
+      "canonical_recruiter_id": 48546,
+      "canonical_name": "Belynda Evans",
+      "canonical_email": "bevans@datastaffnc.com",
+      "canonical_phone": "191-987-4000",
+      "deleted_count": 6,
+      "member_ids": [
+        48546,
+        49754,
+        54869,
+        55386,
+        62939,
+        64864,
+        82351
+      ]
+    },
+    {
+      "cluster_id": 15,
+      "size": 7,
+      "canonical_recruiter_id": 48587,
+      "canonical_name": "Lauren Marchica Greb",
+      "canonical_email": "csibley@beaconhillstaffing.com",
+      "canonical_phone": "214-414-2069",
+      "deleted_count": 6,
+      "member_ids": [
+        48587,
+        75476,
+        81121,
+        81667,
+        81771,
+        107887,
+        107937
+      ]
+    },
+    {
+      "cluster_id": 16,
+      "size": 7,
+      "canonical_recruiter_id": 53656,
+      "canonical_name": "Christopher Yap",
+      "canonical_email": "vince.sabatello@mitchellmartin.com",
+      "canonical_phone": "972-419-1622",
+      "deleted_count": 6,
+      "member_ids": [
+        49041,
+        52101,
+        53028,
+        53590,
+        53656,
+        69477,
+        96361
+      ]
+    },
+    {
+      "cluster_id": 17,
+      "size": 7,
+      "canonical_recruiter_id": 50768,
+      "canonical_name": "Connor Mcdermott",
+      "canonical_email": "connor.mcdermott@talentmsh.com",
+      "canonical_phone": "404-539-0405",
+      "deleted_count": 6,
+      "member_ids": [
+        50768,
+        52271,
+        52566,
+        53497,
+        68195,
+        73235,
+        96915
+      ]
+    },
+    {
+      "cluster_id": 18,
+      "size": 7,
+      "canonical_recruiter_id": 50962,
+      "canonical_name": "Heidi Detweiler",
+      "canonical_email": "heidi@greeneresources.com",
+      "canonical_phone": "980-304-3040",
+      "deleted_count": 6,
+      "member_ids": [
+        50962,
+        61117,
+        79657,
+        81379,
+        81385,
+        81399,
+        81400
+      ]
+    },
+    {
+      "cluster_id": 19,
+      "size": 7,
+      "canonical_recruiter_id": 55600,
+      "canonical_name": "John Pearce",
+      "canonical_email": "allison.toomy@roberthalf.com",
+      "canonical_phone": "513-725-1168",
+      "deleted_count": 6,
+      "member_ids": [
+        55600,
+        57668,
+        75529,
+        78622,
+        80114,
+        80149,
+        96713
+      ]
+    },
+    {
+      "cluster_id": 20,
+      "size": 7,
+      "canonical_recruiter_id": 81934,
+      "canonical_name": "Daniela Celano Gomez",
+      "canonical_email": "dgomez@iqtalentpartners.com",
+      "canonical_phone": "629-255-0709",
+      "deleted_count": 6,
+      "member_ids": [
+        64217,
+        81934,
+        81935,
+        81936,
+        81937,
+        81938,
+        81939
+      ]
+    },
+    {
+      "cluster_id": 21,
+      "size": 6,
+      "canonical_recruiter_id": 48589,
+      "canonical_name": "Lauren Mcdonald",
+      "canonical_email": "ssmall@beaconhillstaffing.com",
+      "canonical_phone": "214-414-2462",
+      "deleted_count": 5,
+      "member_ids": [
+        48498,
+        48589,
+        80288,
+        85835,
+        96677,
+        96980
+      ]
+    },
+    {
+      "cluster_id": 22,
+      "size": 6,
+      "canonical_recruiter_id": 48789,
+      "canonical_name": "Ed M",
+      "canonical_email": "ed.moran@innovasolutions.com",
+      "canonical_phone": "562-463-4543",
+      "deleted_count": 5,
+      "member_ids": [
+        48789,
+        83969,
+        83971,
+        83972,
+        83982,
+        83984
+      ]
+    },
+    {
+      "cluster_id": 23,
+      "size": 6,
+      "canonical_recruiter_id": 49839,
+      "canonical_name": "Vice President",
+      "canonical_email": "sosman@myticas.com",
+      "canonical_phone": "770-205-7160",
+      "deleted_count": 5,
+      "member_ids": [
+        49839,
+        52116,
+        80781,
+        82661,
+        85293,
+        86747
+      ]
+    },
+    {
+      "cluster_id": 24,
+      "size": 6,
+      "canonical_recruiter_id": 50484,
+      "canonical_name": "Jacob Fontana",
+      "canonical_email": "jacob.fontana@insightglobal.com",
+      "canonical_phone": "804-591-2120",
+      "deleted_count": 5,
+      "member_ids": [
+        50484,
+        65636,
+        80573,
+        81719,
+        81744,
+        106410
+      ]
+    },
+    {
+      "cluster_id": 25,
+      "size": 6,
+      "canonical_recruiter_id": 55283,
+      "canonical_name": "A. Aponte",
+      "canonical_email": "no-email-2026260250@missing.local",
+      "canonical_phone": "202-626-0250",
+      "deleted_count": 5,
+      "member_ids": [
+        55283,
+        84784,
+        84803,
+        84829,
+        84948,
+        85052
+      ]
+    },
+    {
+      "cluster_id": 26,
+      "size": 6,
+      "canonical_recruiter_id": 65925,
+      "canonical_name": "Insight Global",
+      "canonical_email": "kayleigh.watson@insightglobal.com",
+      "canonical_phone": "913-687-6223",
+      "deleted_count": 5,
+      "member_ids": [
+        65925,
+        105714,
+        105751,
+        106195,
+        106351,
+        107346
+      ]
+    },
+    {
+      "cluster_id": 27,
+      "size": 6,
+      "canonical_recruiter_id": 83216,
+      "canonical_name": "Charles Rein",
+      "canonical_email": "charles.rein@momentumcc.com",
+      "canonical_phone": "336-350-7075",
+      "deleted_count": 5,
+      "member_ids": [
+        68718,
+        83214,
+        83216,
+        83217,
+        83219,
+        83221
+      ]
+    },
+    {
+      "cluster_id": 28,
+      "size": 5,
+      "canonical_recruiter_id": 48651,
+      "canonical_name": "Lori Gruenwald",
+      "canonical_email": "jperez@beaconhillstaffing.com",
+      "canonical_phone": "626-514-3722",
+      "deleted_count": 4,
+      "member_ids": [
+        48651,
+        52963,
+        69084,
+        74521,
+        76202
+      ]
+    },
+    {
+      "cluster_id": 29,
+      "size": 5,
+      "canonical_recruiter_id": 48783,
+      "canonical_name": "Wes Francisco",
+      "canonical_email": "wes.francisco@turnberrysolutions.com",
+      "canonical_phone": "646-495-9033",
+      "deleted_count": 4,
+      "member_ids": [
+        48783,
+        84790,
+        84843,
+        84864,
+        84888
+      ]
+    },
+    {
+      "cluster_id": 30,
+      "size": 5,
+      "canonical_recruiter_id": 48945,
+      "canonical_name": "Jordyn Adler",
+      "canonical_email": "jadler@brooksource.com",
+      "canonical_phone": "704-719-2801",
+      "deleted_count": 4,
+      "member_ids": [
+        48945,
+        51406,
+        51409,
+        53585,
+        80432
+      ]
+    },
+    {
+      "cluster_id": 31,
+      "size": 5,
+      "canonical_recruiter_id": 53247,
+      "canonical_name": "Stephen Ryerson",
+      "canonical_email": "stephen.ryerson@mitchellmartin.com",
+      "canonical_phone": "980-666-4197",
+      "deleted_count": 4,
+      "member_ids": [
+        48961,
+        53247,
+        53603,
+        54658,
+        65495
+      ]
+    },
+    {
+      "cluster_id": 32,
+      "size": 5,
+      "canonical_recruiter_id": 56114,
+      "canonical_name": "Holli Kirsch",
+      "canonical_email": "mmeldau@idr-inc.com",
+      "canonical_phone": "469-484-7326",
+      "deleted_count": 4,
+      "member_ids": [
+        49153,
+        56114,
+        66129,
+        71235,
+        83032
+      ]
+    },
+    {
+      "cluster_id": 33,
+      "size": 5,
+      "canonical_recruiter_id": 50236,
+      "canonical_name": "Apex Systems",
+      "canonical_email": "ngoldstein@apexsystems.com",
+      "canonical_phone": "918-760-5018",
+      "deleted_count": 4,
+      "member_ids": [
+        50236,
+        80520,
+        96916,
+        100237,
+        100282
+      ]
+    },
+    {
+      "cluster_id": 34,
+      "size": 5,
+      "canonical_recruiter_id": 50502,
+      "canonical_name": "Insight Global",
+      "canonical_email": "audriana.garcia@insightglobal.com",
+      "canonical_phone": "713-398-2197",
+      "deleted_count": 4,
+      "member_ids": [
+        50502,
+        105848,
+        106982,
+        107244,
+        107305
+      ]
+    },
+    {
+      "cluster_id": 35,
+      "size": 5,
+      "canonical_recruiter_id": 51579,
+      "canonical_name": "S Lee",
+      "canonical_email": "jbunge@southseasdata.com",
+      "canonical_phone": "810-652-0800",
+      "deleted_count": 4,
+      "member_ids": [
+        51579,
+        56950,
+        74021,
+        82391,
+        86848
+      ]
+    },
+    {
+      "cluster_id": 36,
+      "size": 5,
+      "canonical_recruiter_id": 52066,
+      "canonical_name": "Tek Systems",
+      "canonical_email": "jdacay@teksystems.com",
+      "canonical_phone": "317-270-7017",
+      "deleted_count": 4,
+      "member_ids": [
+        52066,
+        76968,
+        77931,
+        79720,
+        80825
+      ]
+    },
+    {
+      "cluster_id": 37,
+      "size": 5,
+      "canonical_recruiter_id": 58307,
+      "canonical_name": "Ed Han",
+      "canonical_email": "ehan@mercurysystemsinc.com",
+      "canonical_phone": "609-243-0230",
+      "deleted_count": 4,
+      "member_ids": [
+        58307,
+        81979,
+        82894,
+        82900,
+        82902
+      ]
+    },
+    {
+      "cluster_id": 38,
+      "size": 5,
+      "canonical_recruiter_id": 82860,
+      "canonical_name": "Mediant Health Resource",
+      "canonical_email": "jsmith@medianthealthcare.com",
+      "canonical_phone": "602-903-5679",
+      "deleted_count": 4,
+      "member_ids": [
+        64025,
+        65234,
+        73273,
+        79856,
+        82860
+      ]
+    },
+    {
+      "cluster_id": 39,
+      "size": 5,
+      "canonical_recruiter_id": 76340,
+      "canonical_name": "K Force",
+      "canonical_email": "dmitchell@kforce.com",
+      "canonical_phone": "512-231-3652",
+      "deleted_count": 4,
+      "member_ids": [
+        76340,
+        80220,
+        80771,
+        81070,
+        97609
+      ]
+    },
+    {
+      "cluster_id": 40,
+      "size": 5,
+      "canonical_recruiter_id": 76698,
+      "canonical_name": "Insight Global",
+      "canonical_email": "gianna.battaglia@insightglobal.com",
+      "canonical_phone": "856-449-0120",
+      "deleted_count": 4,
+      "member_ids": [
+        76698,
+        91599,
+        106304,
+        106389,
+        107791
+      ]
+    },
+    {
+      "cluster_id": 41,
+      "size": 5,
+      "canonical_recruiter_id": 85675,
+      "canonical_name": "Dulcinea Gavelli",
+      "canonical_email": "dgavelli@stillwaterhc.com",
+      "canonical_phone": "571-525-2482",
+      "deleted_count": 4,
+      "member_ids": [
+        85674,
+        85675,
+        85676,
+        85677,
+        85678
+      ]
+    },
+    {
+      "cluster_id": 42,
+      "size": 4,
+      "canonical_recruiter_id": 48549,
+      "canonical_name": "Bill Courtney",
+      "canonical_email": "bill.courtney@tdktech.com",
+      "canonical_phone": "636-778-1404",
+      "deleted_count": 3,
+      "member_ids": [
+        48549,
+        72491,
+        86077,
+        86078
+      ]
+    },
+    {
+      "cluster_id": 43,
+      "size": 4,
+      "canonical_recruiter_id": 48803,
+      "canonical_name": "Elizabeth Garley",
+      "canonical_email": "elizabeth.garley@innovasolutions.com",
+      "canonical_phone": "732-759-6074",
+      "deleted_count": 3,
+      "member_ids": [
+        48803,
+        50559,
+        74524,
+        96691
+      ]
+    },
+    {
+      "cluster_id": 44,
+      "size": 4,
+      "canonical_recruiter_id": 48931,
+      "canonical_name": "Emma Simmons",
+      "canonical_email": "esimmons@brooksource.com",
+      "canonical_phone": "630-413-3874",
+      "deleted_count": 3,
+      "member_ids": [
+        48931,
+        54620,
+        80448,
+        86777
+      ]
+    },
+    {
+      "cluster_id": 45,
+      "size": 4,
+      "canonical_recruiter_id": 51702,
+      "canonical_name": "Fraktl Digital",
+      "canonical_email": "suzie@espocorp.com",
+      "canonical_phone": "847-977-9340",
+      "deleted_count": 3,
+      "member_ids": [
+        48943,
+        51702,
+        69990,
+        86564
+      ]
+    },
+    {
+      "cluster_id": 46,
+      "size": 4,
+      "canonical_recruiter_id": 48972,
+      "canonical_name": "Caroline Coutant",
+      "canonical_email": "caroline.coutant@systemone.com",
+      "canonical_phone": "646-755-9790",
+      "deleted_count": 3,
+      "member_ids": [
+        48972,
+        82023,
+        82024,
+        82025
+      ]
+    },
+    {
+      "cluster_id": 47,
+      "size": 4,
+      "canonical_recruiter_id": 49449,
+      "canonical_name": "Rachael Sheridan",
+      "canonical_email": "tyrat@redtech.com",
+      "canonical_phone": "120-623-2308",
+      "deleted_count": 3,
+      "member_ids": [
+        49269,
+        49449,
+        49813,
+        53630
+      ]
+    },
+    {
+      "cluster_id": 48,
+      "size": 4,
+      "canonical_recruiter_id": 49273,
+      "canonical_name": "Kendra Murphy",
+      "canonical_email": "kendra.murphy@systemone.com",
+      "canonical_phone": "630-522-3022",
+      "deleted_count": 3,
+      "member_ids": [
+        49273,
+        80726,
+        81241,
+        96302
+      ]
+    },
+    {
+      "cluster_id": 49,
+      "size": 4,
+      "canonical_recruiter_id": 50963,
+      "canonical_name": "Daniel Konieczny",
+      "canonical_email": "dkonieczny@launchcg.com",
+      "canonical_phone": "732-616-5656",
+      "deleted_count": 3,
+      "member_ids": [
+        49454,
+        50963,
+        74529,
+        86401
+      ]
+    },
+    {
+      "cluster_id": 50,
+      "size": 4,
+      "canonical_recruiter_id": 49609,
+      "canonical_name": "Travis Howard",
+      "canonical_email": "thoward@trustvip.com",
+      "canonical_phone": "916-608-8339",
+      "deleted_count": 3,
+      "member_ids": [
+        49609,
+        67036,
+        84942,
+        85261
+      ]
+    },
+    {
+      "cluster_id": 51,
+      "size": 4,
+      "canonical_recruiter_id": 49711,
+      "canonical_name": "Isuccess Mantra",
+      "canonical_email": "mclinton@epitec.com",
+      "canonical_phone": "925-434-9410",
+      "deleted_count": 3,
+      "member_ids": [
+        49711,
+        67135,
+        76882,
+        86044
+      ]
+    },
+    {
+      "cluster_id": 52,
+      "size": 4,
+      "canonical_recruiter_id": 49909,
+      "canonical_name": "Mehran Mehtab",
+      "canonical_email": "mehran.mehtab@nextgengr.com",
+      "canonical_phone": "706-514-7105",
+      "deleted_count": 3,
+      "member_ids": [
+        49909,
+        69272,
+        80998,
+        86091
+      ]
+    },
+    {
+      "cluster_id": 53,
+      "size": 4,
+      "canonical_recruiter_id": 50553,
+      "canonical_name": "Lukas Slivinsky",
+      "canonical_email": "lukas.slivinsky@cypresshcm.com",
+      "canonical_phone": "469-647-3047",
+      "deleted_count": 3,
+      "member_ids": [
+        50553,
+        52590,
+        53395,
+        58754
+      ]
+    },
+    {
+      "cluster_id": 54,
+      "size": 4,
+      "canonical_recruiter_id": 50574,
+      "canonical_name": "Rachel Viss",
+      "canonical_email": "rachel.viss@cypresshcm.com",
+      "canonical_phone": "425-440-9028",
+      "deleted_count": 3,
+      "member_ids": [
+        50574,
+        72080,
+        80070,
+        96319
+      ]
+    },
+    {
+      "cluster_id": 55,
+      "size": 4,
+      "canonical_recruiter_id": 50601,
+      "canonical_name": "Harrison Jones",
+      "canonical_email": "harrison.jones@odysseyis.com",
+      "canonical_phone": "708-505-4039",
+      "deleted_count": 3,
+      "member_ids": [
+        50601,
+        84056,
+        84057,
+        84059
+      ]
+    },
+    {
+      "cluster_id": 56,
+      "size": 4,
+      "canonical_recruiter_id": 51196,
+      "canonical_name": "Mark Howland",
+      "canonical_email": "bgamel@planetinteractive.com",
+      "canonical_phone": "603-370-3182",
+      "deleted_count": 3,
+      "member_ids": [
+        51196,
+        81173,
+        81801,
+        81802
+      ]
+    }
+  ],
+  "deleted_ids_sample": [
+    48535,
+    53245,
+    53253,
+    58261,
+    59935,
+    79943,
+    83511,
+    87049,
+    96338,
+    78467,
+    82500,
+    82501,
+    82502,
+    85461,
+    85626,
+    85627,
+    87306,
+    50820,
+    75526,
+    82933,
+    82934,
+    82936,
+    82941,
+    82942,
+    50371,
+    50388,
+    57354,
+    79722,
+    80069,
+    86184,
+    86186,
+    50809,
+    53520,
+    81755,
+    84202,
+    84203,
+    84204,
+    84212,
+    72037,
+    72606,
+    79651,
+    81146,
+    83100,
+    85012,
+    85018,
+    66571,
+    81193,
+    81194,
+    81195,
+    82587,
+    83653,
+    87791,
+    49754,
+    54869,
+    55386,
+    62939,
+    64864,
+    82351,
+    75476,
+    81121,
+    81667,
+    81771,
+    107887,
+    107937,
+    49041,
+    52101,
+    53028,
+    53590,
+    69477,
+    96361,
+    52271,
+    52566,
+    53497,
+    68195,
+    73235,
+    96915,
+    61117,
+    79657,
+    81379,
+    81385,
+    81399,
+    81400,
+    57668,
+    75529,
+    78622,
+    80114,
+    80149,
+    96713,
+    64217,
+    81935,
+    81936,
+    81937,
+    81938,
+    81939,
+    48498,
+    80288,
+    85835,
+    96677,
+    96980,
+    83969
+  ],
+  "kept_ids_sample": [
+    50698,
+    87307,
+    48817,
+    53516,
+    56251,
+    51943,
+    81780,
+    48546,
+    48587,
+    53656,
+    50768,
+    50962,
+    55600,
+    81934,
+    48589,
+    48789,
+    49839,
+    50484,
+    55283,
+    65925,
+    83216,
+    48651,
+    48783,
+    48945,
+    53247,
+    56114,
+    50236,
+    50502,
+    51579,
+    52066,
+    58307,
+    82860,
+    76340,
+    76698,
+    85675,
+    48549,
+    48803,
+    48931,
+    51702,
+    48972,
+    49449,
+    49273,
+    50963,
+    49609,
+    49711,
+    49909,
+    50553,
+    50574,
+    50601,
+    51196,
+    51293,
+    51637,
+    51653,
+    51837,
+    53263,
+    53564,
+    53573,
+    53597,
+    53625,
+    54071,
+    55580,
+    70502,
+    77276,
+    83975,
+    84913,
+    64045,
+    64208,
+    83829,
+    83963,
+    70425,
+    81962,
+    76694,
+    84547,
+    82231,
+    84791,
+    84536,
+    83223,
+    83359,
+    83731,
+    85961,
+    82062,
+    82617,
+    85652,
+    96865,
+    48503,
+    48513,
+    49849,
+    48554,
+    48594,
+    48624,
+    48630,
+    48715,
+    48721,
+    48821,
+    48835,
+    48845,
+    48854,
+    48967,
+    49019,
+    49104
+  ]
+}

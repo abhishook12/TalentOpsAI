@@ -119,7 +119,8 @@ def recover_recruiters_pass(session, domain_index, majority_map, batch_size):
                 flat = flatten_text(value)
                 if not flat:
                     continue
-                extracted_state, extracted_reason = extract_state_detailed(flat)
+                is_strict = label in {"notes", "review_reason", "metadata_json", "raw_data"}
+                extracted_state, extracted_reason = extract_state_detailed(flat, strict=is_strict)
                 if extracted_state:
                     state = extracted_state
                     source = label

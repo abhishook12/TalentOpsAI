@@ -199,7 +199,7 @@ export default function Recruiters() {
     setLoading(true)
     const params = new URLSearchParams()
     params.append('page', page)
-    params.append('limit', 100)
+    params.append('limit', 10)
     
     if (debouncedSearch) params.append('search', debouncedSearch)
     if (debouncedFilters.state) params.append('state', debouncedFilters.state)
@@ -461,7 +461,7 @@ export default function Recruiters() {
                 {/* Server-Side Pagination Footer */}
                 <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--card-border)', background: 'var(--main-bg)' }}>
                   <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
-                    Showing {(page - 1) * 100 + 1} to {Math.min(page * 100, totalCount)} of <strong style={{ color: 'var(--text-primary)' }}>{totalCount.toLocaleString()}</strong> results
+                  Showing {(page - 1) * 10 + 1} to {Math.min(page * 10, totalCount)} of <strong style={{ color: 'var(--text-primary)' }}>{totalCount.toLocaleString()}</strong> results
                   </span>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <span style={{ fontSize: 12, color: 'var(--text-muted)', marginRight: 10 }}>Page {page} of {totalPages}</span>

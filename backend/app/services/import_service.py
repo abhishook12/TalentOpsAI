@@ -509,7 +509,7 @@ def process_commit(job_id: str):
                     is_active=True,
                     data_source="smart_import",
                     source_job_id=job_id,
-                    raw_data=r.raw_json,
+                    raw_data=r.raw_json[:500] if r.raw_json else None,
                     metadata_json=metadata_json,
                     needs_review=needs_review,
                     review_reason=review_reason

@@ -25,19 +25,35 @@ class CompanyUpdate(BaseModel):
     notes: Optional[str] = None
     is_active: Optional[bool] = None
 
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+
 @router.get("/")
 def get_companies(
+    response: Response,
     skip: int = 0, 
-    limit: int = 100, 
+    limit: int = Query(50, ge=1, le=100), 
     state: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    query = db.query(Company)
+    query = db.query(Company.company_id, Company.company_name, Company.location, Company.industry, Company.state)
     if state:
         abbr = normalize_state(state)
         if abbr:
             query = query.filter(Company.state == abbr)
-    return query.offset(skip).limit(limit).all()
+            
+    total = query.count()
+    response.headers["X-Total-Count"] = str(total)
+    
+    results = query.offset(skip).limit(limit).all()
+    return [
+        {
+            "company_id": r.company_id,
+            "company_name": r.company_name,
+            "location": r.location,
+            "industry": r.industry,
+            "state": r.state
+        } for r in results
+    ]
 
 @router.get("/{company_id}")
 def get_company(company_id: int, db: Session = Depends(get_db)):

@@ -1,0 +1,13 @@
+{
+  "mode": "apply",
+  "timestamp": "2026-06-10T17:31:59.403404+00:00",
+  "records_with_phone": 13908,
+  "safe_primary_swaps": 0,
+  "all_slots_suspicious": 1360,
+  "already_has_plausible": 12548,
+  "primary_flagged": 1360,
+  "examples": [],
+  "report_path": "C:\\TalentOpsAI\\backend\\app\\scripts\\outputs\\phone_salvage_report.json",
+  "changes_path": "C:\\TalentOpsAI\\backend\\app\\scripts\\outputs\\phone_salvage_changes.csv",
+  "flags_path": "C:\\TalentOpsAI\\backend\\app\\scripts\\outputs\\phone_salvage_flags.csv"
+}

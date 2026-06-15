@@ -1,0 +1,1413 @@
+{
+  "timestamp": "2026-06-10T16:23:56.109836",
+  "dry_run": true,
+  "total_recruiters_scanned": 62750,
+  "duplicate_clusters": 5,
+  "same_name_company_review_groups": 291,
+  "records_marked_for_review": 78,
+  "records_marked_review_candidate": 690,
+  "cluster_counts_by_confidence": {
+    "low": 1,
+    "medium": 5
+  },
+  "cluster_records_by_confidence": {
+    "low": 4152,
+    "medium": 83
+  },
+  "duplicate_records_by_confidence": {
+    "low": 4151,
+    "medium": 78
+  },
+  "safe_duplicate_total": 0,
+  "review_duplicate_total": 78,
+  "weak_duplicate_total": 4151,
+  "estimated_canonical_survivors": 58521,
+  "strong_clusters": [
+    {
+      "cluster_id": 2,
+      "size": 22,
+      "confidence": "medium",
+      "strong_signals": [
+        "email",
+        "phone"
+      ],
+      "canonical_recruiter_id": 61048,
+      "canonical_name": "Insight Global",
+      "canonical_email": null,
+      "canonical_company": "Insightglobal",
+      "distinct_names": 22,
+      "distinct_companies": 3,
+      "distinct_states": 9,
+      "distinct_emails": 0,
+      "distinct_phones": 0,
+      "members": [
+        {
+          "recruiter_id": 61048,
+          "recruiter_name": "Insight Global",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insightglobal",
+          "state": "GA"
+        },
+        {
+          "recruiter_id": 91193,
+          "recruiter_name": "Jessica Britton Cantrell",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Deloitte Consulting",
+          "state": "TX"
+        },
+        {
+          "recruiter_id": 96904,
+          "recruiter_name": "Emma Hamilton",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insightglobal",
+          "state": null
+        },
+        {
+          "recruiter_id": 96909,
+          "recruiter_name": "Haley Sutliff",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insightglobal",
+          "state": "CO"
+        },
+        {
+          "recruiter_id": 106044,
+          "recruiter_name": "Katie Wasko",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "GA"
+        },
+        {
+          "recruiter_id": 106086,
+          "recruiter_name": "Katie Hillary",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "GA"
+        },
+        {
+          "recruiter_id": 106163,
+          "recruiter_name": "Brittney Moore",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "GA"
+        },
+        {
+          "recruiter_id": 106349,
+          "recruiter_name": "Hayley Michael",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "NC"
+        },
+        {
+          "recruiter_id": 106438,
+          "recruiter_name": "Kate Loughlin",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "VA"
+        },
+        {
+          "recruiter_id": 106453,
+          "recruiter_name": "Clay Blackwell",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "VA"
+        },
+        {
+          "recruiter_id": 106521,
+          "recruiter_name": "Jules Clayton",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "VA"
+        },
+        {
+          "recruiter_id": 106813,
+          "recruiter_name": "Julia Bosso",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "NY"
+        },
+        {
+          "recruiter_id": 106831,
+          "recruiter_name": "Kassie Dunn",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "NY"
+        },
+        {
+          "recruiter_id": 106836,
+          "recruiter_name": "Allie Kolb",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "NY"
+        },
+        {
+          "recruiter_id": 106929,
+          "recruiter_name": "Mackenzie Burros",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "WA"
+        },
+        {
+          "recruiter_id": 106944,
+          "recruiter_name": "Jenny Buchanan",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "WA"
+        },
+        {
+          "recruiter_id": 107089,
+          "recruiter_name": "Jean Marie Portocarrero",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "CT"
+        },
+        {
+          "recruiter_id": 107260,
+          "recruiter_name": "Katherine Gilson",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "WA"
+        },
+        {
+          "recruiter_id": 107460,
+          "recruiter_name": "Kara Matkins",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "CA"
+        },
+        {
+          "recruiter_id": 107818,
+          "recruiter_name": "Isabella Nolen",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "TX"
+        },
+        {
+          "recruiter_id": 107921,
+          "recruiter_name": "Cydney Black",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "TX"
+        },
+        {
+          "recruiter_id": 107971,
+          "recruiter_name": "Kaitlyn Kirby",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "TX"
+        }
+      ]
+    },
+    {
+      "cluster_id": 3,
+      "size": 17,
+      "confidence": "medium",
+      "strong_signals": [
+        "email",
+        "phone"
+      ],
+      "canonical_recruiter_id": 74631,
+      "canonical_name": "Robert Half",
+      "canonical_email": null,
+      "canonical_company": "Roberthalf",
+      "distinct_names": 17,
+      "distinct_companies": 1,
+      "distinct_states": 11,
+      "distinct_emails": 0,
+      "distinct_phones": 0,
+      "members": [
+        {
+          "recruiter_id": 74631,
+          "recruiter_name": "Robert Half",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Roberthalf",
+          "state": "TX"
+        },
+        {
+          "recruiter_id": 96900,
+          "recruiter_name": "Madison Carey",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Roberthalf",
+          "state": "MN"
+        },
+        {
+          "recruiter_id": 96907,
+          "recruiter_name": "Kenneth Eterno",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Roberthalf",
+          "state": null
+        },
+        {
+          "recruiter_id": 96928,
+          "recruiter_name": "Megan Holstine",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Roberthalf",
+          "state": "NC"
+        },
+        {
+          "recruiter_id": 108452,
+          "recruiter_name": "Lisa Guiliano",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Roberthalf",
+          "state": "NY"
+        },
+        {
+          "recruiter_id": 108793,
+          "recruiter_name": "Trina Allen",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Roberthalf",
+          "state": "VA"
+        },
+        {
+          "recruiter_id": 109394,
+          "recruiter_name": "Michelle Richard",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Roberthalf",
+          "state": "NH"
+        },
+        {
+          "recruiter_id": 109609,
+          "recruiter_name": "Kara Ahern",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Roberthalf",
+          "state": "CT"
+        },
+        {
+          "recruiter_id": 109789,
+          "recruiter_name": "Maggie Diamond",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Roberthalf",
+          "state": "NJ"
+        },
+        {
+          "recruiter_id": 110965,
+          "recruiter_name": "Karina Varian",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Roberthalf",
+          "state": "TX"
+        },
+        {
+          "recruiter_id": 111116,
+          "recruiter_name": "Bree Smith",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Roberthalf",
+          "state": "TX"
+        },
+        {
+          "recruiter_id": 111249,
+          "recruiter_name": "Brandi Clark",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Roberthalf",
+          "state": "TX"
+        },
+        {
+          "recruiter_id": 112136,
+          "recruiter_name": "Leasha Carpenter",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Roberthalf",
+          "state": "IA"
+        },
+        {
+          "recruiter_id": 112480,
+          "recruiter_name": "Lisette Wanerman",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Roberthalf",
+          "state": "CA"
+        },
+        {
+          "recruiter_id": 112858,
+          "recruiter_name": "Cyndi Karapogosian",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Roberthalf",
+          "state": "CA"
+        },
+        {
+          "recruiter_id": 113018,
+          "recruiter_name": "Brittnie Rhodes",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Roberthalf",
+          "state": "WA"
+        },
+        {
+          "recruiter_id": 113085,
+          "recruiter_name": "Jennifer Koenig",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Roberthalf",
+          "state": "WA"
+        }
+      ]
+    },
+    {
+      "cluster_id": 4,
+      "size": 16,
+      "confidence": "medium",
+      "strong_signals": [
+        "phone"
+      ],
+      "canonical_recruiter_id": 48689,
+      "canonical_name": "Bruce Trahant",
+      "canonical_email": null,
+      "canonical_company": "Turnberrysolutions",
+      "distinct_names": 13,
+      "distinct_companies": 10,
+      "distinct_states": 5,
+      "distinct_emails": 0,
+      "distinct_phones": 0,
+      "members": [
+        {
+          "recruiter_id": 48689,
+          "recruiter_name": "Bruce Trahant",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Turnberrysolutions",
+          "state": "TX"
+        },
+        {
+          "recruiter_id": 49770,
+          "recruiter_name": "Deneile Cesar",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Aprconsulting",
+          "state": "CA"
+        },
+        {
+          "recruiter_id": 52673,
+          "recruiter_name": "Shawn D Spencer",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Hirevergence",
+          "state": null
+        },
+        {
+          "recruiter_id": 52698,
+          "recruiter_name": "Elizabeth Burmis",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Blackstone Technology Group",
+          "state": null
+        },
+        {
+          "recruiter_id": 55715,
+          "recruiter_name": "Russ Klitchman",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Adagetech",
+          "state": "IL"
+        },
+        {
+          "recruiter_id": 58281,
+          "recruiter_name": "Ashlee Henderson",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Mdmsrecruiting",
+          "state": "MO"
+        },
+        {
+          "recruiter_id": 65546,
+          "recruiter_name": "Terry Gogets",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "YOH, A DAY & ZIMMERMANN COMPANY",
+          "state": null
+        },
+        {
+          "recruiter_id": 67346,
+          "recruiter_name": "Bryan Stanley",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Frankgroup",
+          "state": null
+        },
+        {
+          "recruiter_id": 69581,
+          "recruiter_name": "Jorge Lopez",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Bstone Talent",
+          "state": null
+        },
+        {
+          "recruiter_id": 70958,
+          "recruiter_name": "Unknown",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": null,
+          "state": null
+        },
+        {
+          "recruiter_id": 74536,
+          "recruiter_name": "Unknown",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": null,
+          "state": null
+        },
+        {
+          "recruiter_id": 80036,
+          "recruiter_name": "Unknown",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": null,
+          "state": null
+        },
+        {
+          "recruiter_id": 85866,
+          "recruiter_name": "Erin Hoke",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Syndicus, Inc",
+          "state": "PA"
+        },
+        {
+          "recruiter_id": 85867,
+          "recruiter_name": "John Sipes",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Syndicus, Inc",
+          "state": null
+        },
+        {
+          "recruiter_id": 87774,
+          "recruiter_name": "Caroline Golomb",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "YOH, A DAY & ZIMMERMANN COMPANY",
+          "state": null
+        },
+        {
+          "recruiter_id": 96669,
+          "recruiter_name": "Jorge Lopez",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Blackstone Technology Group",
+          "state": null
+        }
+      ]
+    },
+    {
+      "cluster_id": 5,
+      "size": 15,
+      "confidence": "medium",
+      "strong_signals": [
+        "phone"
+      ],
+      "canonical_recruiter_id": 51221,
+      "canonical_name": "Briana Hamill",
+      "canonical_email": null,
+      "canonical_company": "Launch Consulting",
+      "distinct_names": 11,
+      "distinct_companies": 6,
+      "distinct_states": 3,
+      "distinct_emails": 0,
+      "distinct_phones": 0,
+      "members": [
+        {
+          "recruiter_id": 49257,
+          "recruiter_name": "Alina Rotariu",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "The Judge Group",
+          "state": "PA"
+        },
+        {
+          "recruiter_id": 51221,
+          "recruiter_name": "Briana Hamill",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Launch Consulting",
+          "state": "WA"
+        },
+        {
+          "recruiter_id": 51897,
+          "recruiter_name": "Thomas Stoeckel",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Nextlap",
+          "state": null
+        },
+        {
+          "recruiter_id": 51946,
+          "recruiter_name": "Unknown",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Amplifyps",
+          "state": null
+        },
+        {
+          "recruiter_id": 70633,
+          "recruiter_name": "Unknown",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": null,
+          "state": null
+        },
+        {
+          "recruiter_id": 79686,
+          "recruiter_name": "Unknown",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": null,
+          "state": null
+        },
+        {
+          "recruiter_id": 81396,
+          "recruiter_name": "Sara Brumbeloe",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Idr Inc",
+          "state": "TX"
+        },
+        {
+          "recruiter_id": 86602,
+          "recruiter_name": "Garrett Van Schaick",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "The Judge Group",
+          "state": "PA"
+        },
+        {
+          "recruiter_id": 86605,
+          "recruiter_name": "Juan Homs",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "The Judge Group",
+          "state": "PA"
+        },
+        {
+          "recruiter_id": 86606,
+          "recruiter_name": "Philip Oppenheim",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "The Judge Group",
+          "state": "PA"
+        },
+        {
+          "recruiter_id": 86609,
+          "recruiter_name": "Quincy Christian",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "The Judge Group",
+          "state": "PA"
+        },
+        {
+          "recruiter_id": 86612,
+          "recruiter_name": "Unknown",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "The Judge Group",
+          "state": "PA"
+        },
+        {
+          "recruiter_id": 86632,
+          "recruiter_name": "Bryan M. Rebhahn",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "The Judge Group",
+          "state": "PA"
+        },
+        {
+          "recruiter_id": 86640,
+          "recruiter_name": "Unknown",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "The Judge Group",
+          "state": "PA"
+        },
+        {
+          "recruiter_id": 87119,
+          "recruiter_name": "Gwendolyn Wood",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Trillium Technical Staffing",
+          "state": null
+        }
+      ]
+    },
+    {
+      "cluster_id": 6,
+      "size": 13,
+      "confidence": "medium",
+      "strong_signals": [
+        "email"
+      ],
+      "canonical_recruiter_id": 67422,
+      "canonical_name": "Insight Global",
+      "canonical_email": null,
+      "canonical_company": "Insightglobal",
+      "distinct_names": 13,
+      "distinct_companies": 2,
+      "distinct_states": 9,
+      "distinct_emails": 0,
+      "distinct_phones": 0,
+      "members": [
+        {
+          "recruiter_id": 67422,
+          "recruiter_name": "Insight Global",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insightglobal",
+          "state": "NY"
+        },
+        {
+          "recruiter_id": 105934,
+          "recruiter_name": "Nicolette Conte",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "GA"
+        },
+        {
+          "recruiter_id": 105985,
+          "recruiter_name": "Olivia Graffham",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "GA"
+        },
+        {
+          "recruiter_id": 106517,
+          "recruiter_name": "Olivia Pearson",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "VA"
+        },
+        {
+          "recruiter_id": 106940,
+          "recruiter_name": "Patrick Conroy",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "WA"
+        },
+        {
+          "recruiter_id": 107014,
+          "recruiter_name": "Julianna Riggitano",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "NJ"
+        },
+        {
+          "recruiter_id": 107078,
+          "recruiter_name": "Mike Cellitti",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "NJ"
+        },
+        {
+          "recruiter_id": 107122,
+          "recruiter_name": "Paige Santos",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "CT"
+        },
+        {
+          "recruiter_id": 107143,
+          "recruiter_name": "Peter Sullivan",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "TX"
+        },
+        {
+          "recruiter_id": 107217,
+          "recruiter_name": "Malcolm Duncan",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "WA"
+        },
+        {
+          "recruiter_id": 107255,
+          "recruiter_name": "Oscar Rozanski",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "WA"
+        },
+        {
+          "recruiter_id": 107578,
+          "recruiter_name": "Megan Kane",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "AZ"
+        },
+        {
+          "recruiter_id": 107691,
+          "recruiter_name": "Maggie Bussey",
+          "email": null,
+          "phone": null,
+          "linkedin": null,
+          "company_name": "Insght global",
+          "state": "CO"
+        }
+      ]
+    }
+  ],
+  "review_groups": [
+    {
+      "group_key": "chimangomwandira|mwidminc",
+      "size": 2,
+      "shared_contact_overlap": true,
+      "records": [
+        {
+          "recruiter_id": 48501,
+          "recruiter_name": "Chimango Mwandira",
+          "email": null,
+          "phone": null,
+          "company_name": "Mwidm Inc.",
+          "state": "OH"
+        },
+        {
+          "recruiter_id": 83313,
+          "recruiter_name": "Chimango Mwandira",
+          "email": null,
+          "phone": null,
+          "company_name": "Mwidm Inc",
+          "state": null
+        }
+      ]
+    },
+    {
+      "group_key": "tekconnexion|tekconnexion",
+      "size": 4,
+      "shared_contact_overlap": true,
+      "records": [
+        {
+          "recruiter_id": 48523,
+          "recruiter_name": "Tek Connexion",
+          "email": null,
+          "phone": null,
+          "company_name": "Tek-Connexion",
+          "state": "NC"
+        },
+        {
+          "recruiter_id": 86211,
+          "recruiter_name": "Tek Connexion",
+          "email": null,
+          "phone": null,
+          "company_name": "Tek-Connexion",
+          "state": null
+        },
+        {
+          "recruiter_id": 86212,
+          "recruiter_name": "Tek Connexion",
+          "email": null,
+          "phone": null,
+          "company_name": "Tek-Connexion",
+          "state": null
+        },
+        {
+          "recruiter_id": 86213,
+          "recruiter_name": "Tek Connexion",
+          "email": null,
+          "phone": null,
+          "company_name": "Tek-Connexion",
+          "state": null
+        }
+      ]
+    },
+    {
+      "group_key": "prosourceit|prosourceit",
+      "size": 6,
+      "shared_contact_overlap": true,
+      "records": [
+        {
+          "recruiter_id": 48533,
+          "recruiter_name": "Prosource It",
+          "email": null,
+          "phone": null,
+          "company_name": "Prosourceit",
+          "state": "PA"
+        },
+        {
+          "recruiter_id": 65760,
+          "recruiter_name": "Prosource It",
+          "email": null,
+          "phone": null,
+          "company_name": "Prosourceit",
+          "state": "FL"
+        },
+        {
+          "recruiter_id": 71564,
+          "recruiter_name": "Prosource It",
+          "email": null,
+          "phone": null,
+          "company_name": "Prosourceit",
+          "state": "FL"
+        },
+        {
+          "recruiter_id": 78173,
+          "recruiter_name": "Prosource It",
+          "email": null,
+          "phone": null,
+          "company_name": "Prosourceit",
+          "state": "FL"
+        },
+        {
+          "recruiter_id": 78182,
+          "recruiter_name": "Prosource It",
+          "email": null,
+          "phone": null,
+          "company_name": "Prosourceit",
+          "state": "FL"
+        },
+        {
+          "recruiter_id": 78744,
+          "recruiter_name": "Prosource It",
+          "email": null,
+          "phone": null,
+          "company_name": "Prosourceit",
+          "state": "FL"
+        }
+      ]
+    },
+    {
+      "group_key": "brandonarrington|meridiantechnologies",
+      "size": 2,
+      "shared_contact_overlap": true,
+      "records": [
+        {
+          "recruiter_id": 48552,
+          "recruiter_name": "Brandon Arrington",
+          "email": null,
+          "phone": null,
+          "company_name": "Meridian Technologies",
+          "state": "IL"
+        },
+        {
+          "recruiter_id": 70030,
+          "recruiter_name": "Brandon Arrington",
+          "email": null,
+          "phone": null,
+          "company_name": "Meridian Technologies",
+          "state": null
+        }
+      ]
+    },
+    {
+      "group_key": "brianhodge|tricomtechnicalservices",
+      "size": 2,
+      "shared_contact_overlap": true,
+      "records": [
+        {
+          "recruiter_id": 48572,
+          "recruiter_name": "Brian Hodge",
+          "email": null,
+          "phone": null,
+          "company_name": "Tricom Technical Services",
+          "state": "IL"
+        },
+        {
+          "recruiter_id": 70420,
+          "recruiter_name": "Brian Hodge",
+          "email": null,
+          "phone": null,
+          "company_name": "Tricom Technical Services",
+          "state": null
+        }
+      ]
+    },
+    {
+      "group_key": "justnravit|inspyrsolutions",
+      "size": 2,
+      "shared_contact_overlap": true,
+      "records": [
+        {
+          "recruiter_id": 48630,
+          "recruiter_name": "Justn Ravit",
+          "email": null,
+          "phone": null,
+          "company_name": "Inspyr Solutions",
+          "state": "FL"
+        },
+        {
+          "recruiter_id": 80455,
+          "recruiter_name": "Justn Ravit",
+          "email": null,
+          "phone": null,
+          "company_name": "Inspyr Solutions",
+          "state": "IL"
+        }
+      ]
+    },
+    {
+      "group_key": "solomonpage|solomonpage",
+      "size": 2,
+      "shared_contact_overlap": true,
+      "records": [
+        {
+          "recruiter_id": 48650,
+          "recruiter_name": "Solomon Page",
+          "email": null,
+          "phone": null,
+          "company_name": "Solomonpage",
+          "state": "OH"
+        },
+        {
+          "recruiter_id": 58023,
+          "recruiter_name": "Solomon Page",
+          "email": null,
+          "phone": null,
+          "company_name": "Solomonpage",
+          "state": "NY"
+        }
+      ]
+    },
+    {
+      "group_key": "daniellelopez|idrinc",
+      "size": 2,
+      "shared_contact_overlap": true,
+      "records": [
+        {
+          "recruiter_id": 48660,
+          "recruiter_name": "Danielle Lopez",
+          "email": null,
+          "phone": null,
+          "company_name": "Idr, Inc.",
+          "state": "TX"
+        },
+        {
+          "recruiter_id": 89536,
+          "recruiter_name": "Danielle Lopez",
+          "email": null,
+          "phone": null,
+          "company_name": "Idr Inc",
+          "state": "TX"
+        }
+      ]
+    },
+    {
+      "group_key": "darinboots|aureonconsulting",
+      "size": 2,
+      "shared_contact_overlap": true,
+      "records": [
+        {
+          "recruiter_id": 48673,
+          "recruiter_name": "Darin Boots",
+          "email": null,
+          "phone": null,
+          "company_name": "Aureonconsulting",
+          "state": null
+        },
+        {
+          "recruiter_id": 65150,
+          "recruiter_name": "Darin Boots",
+          "email": null,
+          "phone": null,
+          "company_name": "Aureonconsulting",
+          "state": null
+        }
+      ]
+    },
+    {
+      "group_key": "darrenguion|strategicstaffingsolutions",
+      "size": 2,
+      "shared_contact_overlap": true,
+      "records": [
+        {
+          "recruiter_id": 48675,
+          "recruiter_name": "Darren Guion",
+          "email": null,
+          "phone": null,
+          "company_name": "Strategic Staffing Solutions",
+          "state": null
+        },
+        {
+          "recruiter_id": 80843,
+          "recruiter_name": "Darren Guion",
+          "email": null,
+          "phone": null,
+          "company_name": "Strategic Staffing Solutions--",
+          "state": null
+        }
+      ]
+    },
+    {
+      "group_key": "sharonpletcher|turnberrysolutions",
+      "size": 3,
+      "shared_contact_overlap": true,
+      "records": [
+        {
+          "recruiter_id": 48676,
+          "recruiter_name": "Sharon Pletcher",
+          "email": null,
+          "phone": null,
+          "company_name": "Turnberrysolutions",
+          "state": "TX"
+        },
+        {
+          "recruiter_id": 51295,
+          "recruiter_name": "Sharon Pletcher",
+          "email": null,
+          "phone": null,
+          "company_name": "Turnberrysolutions",
+          "state": null
+        },
+        {
+          "recruiter_id": 90467,
+          "recruiter_name": "Sharon Pletcher",
+          "email": null,
+          "phone": null,
+          "company_name": "Turnberry Solutions",
+          "state": null
+        }
+      ]
+    },
+    {
+      "group_key": "reginabari|turnberrysolutions",
+      "size": 2,
+      "shared_contact_overlap": true,
+      "records": [
+        {
+          "recruiter_id": 48679,
+          "recruiter_name": "Regina Bari",
+          "email": null,
+          "phone": null,
+          "company_name": "Turnberrysolutions",
+          "state": "TX"
+        },
+        {
+          "recruiter_id": 71959,
+          "recruiter_name": "Regina Bari",
+          "email": null,
+          "phone": null,
+          "company_name": "Turnberry Solutions",
+          "state": null
+        }
+      ]
+    },
+    {
+      "group_key": "davemclean|liberainc",
+      "size": 2,
+      "shared_contact_overlap": true,
+      "records": [
+        {
+          "recruiter_id": 48685,
+          "recruiter_name": "Dave Mclean",
+          "email": null,
+          "phone": null,
+          "company_name": "Libera Inc.",
+          "state": null
+        },
+        {
+          "recruiter_id": 48688,
+          "recruiter_name": "Dave Mclean",
+          "email": null,
+          "phone": null,
+          "company_name": "Libera, Inc",
+          "state": null
+        }
+      ]
+    },
+    {
+      "group_key": "jeffschleyer|turnberrysolutions",
+      "size": 2,
+      "shared_contact_overlap": true,
+      "records": [
+        {
+          "recruiter_id": 48706,
+          "recruiter_name": "Jeff Schleyer",
+          "email": null,
+          "phone": null,
+          "company_name": "Turnberrysolutions",
+          "state": "NC"
+        },
+        {
+          "recruiter_id": 49464,
+          "recruiter_name": "Jeff Schleyer",
+          "email": null,
+          "phone": null,
+          "company_name": "Turn Berry Solutions",
+          "state": null
+        }
+      ]
+    },
+    {
+      "group_key": "troyschmidt|turnberrysolutions",
+      "size": 2,
+      "shared_contact_overlap": true,
+      "records": [
+        {
+          "recruiter_id": 48769,
+          "recruiter_name": "Troy Schmidt",
+          "email": null,
+          "phone": null,
+          "company_name": "Turnberrysolutions",
+          "state": "IA"
+        },
+        {
+          "recruiter_id": 90469,
+          "recruiter_name": "Troy Schmidt",
+          "email": null,
+          "phone": null,
+          "company_name": "Turnberry Solutions",
+          "state": null
+        }
+      ]
+    },
+    {
+      "group_key": "heidibauman|turnberrysolutions",
+      "size": 2,
+      "shared_contact_overlap": true,
+      "records": [
+        {
+          "recruiter_id": 48792,
+          "recruiter_name": "Heidi Bauman",
+          "email": null,
+          "phone": null,
+          "company_name": "Turnberrysolutions",
+          "state": "MN"
+        },
+        {
+          "recruiter_id": 90458,
+          "recruiter_name": "Heidi Bauman",
+          "email": null,
+          "phone": null,
+          "company_name": "Turnberry Solutions",
+          "state": null
+        }
+      ]
+    },
+    {
+      "group_key": "computerfutures|computerfutures",
+      "size": 5,
+      "shared_contact_overlap": true,
+      "records": [
+        {
+          "recruiter_id": 48824,
+          "recruiter_name": "Computer Futures",
+          "email": null,
+          "phone": null,
+          "company_name": "Computerfutures",
+          "state": null
+        },
+        {
+          "recruiter_id": 67362,
+          "recruiter_name": "Computer Futures",
+          "email": null,
+          "phone": null,
+          "company_name": "Computerfutures",
+          "state": "TX"
+        },
+        {
+          "recruiter_id": 72202,
+          "recruiter_name": "Computer Futures",
+          "email": null,
+          "phone": null,
+          "company_name": "Computerfutures",
+          "state": null
+        },
+        {
+          "recruiter_id": 77865,
+          "recruiter_name": "Computer Futures",
+          "email": null,
+          "phone": null,
+          "company_name": "Computerfutures",
+          "state": null
+        },
+        {
+          "recruiter_id": 78696,
+          "recruiter_name": "Computer Futures",
+          "email": null,
+          "phone": null,
+          "company_name": "Computerfutures",
+          "state": null
+        }
+      ]
+    },
+    {
+      "group_key": "ericgunn|vacotechnology",
+      "size": 2,
+      "shared_contact_overlap": true,
+      "records": [
+        {
+          "recruiter_id": 48826,
+          "recruiter_name": "Eric Gunn",
+          "email": null,
+          "phone": null,
+          "company_name": "Vaco Technology",
+          "state": "CA"
+        },
+        {
+          "recruiter_id": 73659,
+          "recruiter_name": "Eric Gunn",
+          "email": null,
+          "phone": null,
+          "company_name": "Vaco Technology",
+          "state": "CA"
+        }
+      ]
+    },
+    {
+      "group_key": "ericwegfahrt|sharpdecisionsinc",
+      "size": 2,
+      "shared_contact_overlap": true,
+      "records": [
+        {
+          "recruiter_id": 48831,
+          "recruiter_name": "Eric Wegfahrt",
+          "email": null,
+          "phone": null,
+          "company_name": "Sharp Decisions Inc",
+          "state": null
+        },
+        {
+          "recruiter_id": 85303,
+          "recruiter_name": "Eric Wegfahrt,",
+          "email": null,
+          "phone": null,
+          "company_name": "Sharp Decisions Inc",
+          "state": null
+        }
+      ]
+    },
+    {
+      "group_key": "mariyacarpenter|sondhisolutions",
+      "size": 2,
+      "shared_contact_overlap": true,
+      "records": [
+        {
+          "recruiter_id": 48843,
+          "recruiter_name": "Mariya Carpenter",
+          "email": null,
+          "phone": null,
+          "company_name": "Sondhisolutions",
+          "state": "IN"
+        },
+        {
+          "recruiter_id": 80724,
+          "recruiter_name": "Mariya Carpenter",
+          "email": null,
+          "phone": null,
+          "company_name": "Sondhi Solutions",
+          "state": "IL"
+        }
+      ]
+    }
+  ]
+}

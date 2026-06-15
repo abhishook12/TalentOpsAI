@@ -1,0 +1,109 @@
+{
+  "mode": "apply",
+  "timestamp": "2026-06-10T19:47:40.569291+00:00",
+  "total_candidates": 1000,
+  "updated_rows": 1000,
+  "already_flagged": 1000,
+  "state_counts": {
+    "NY": 26,
+    "PA": 6,
+    "TX": 6,
+    "NC": 5,
+    "IL": 4,
+    "GA": 4,
+    "NJ": 3,
+    "VA": 3,
+    "WI": 3,
+    "WA": 2,
+    "OH": 2,
+    "IN": 2,
+    "MI": 2,
+    "NV": 1,
+    "AZ": 1,
+    "CA": 1,
+    "IA": 1,
+    "CT": 1,
+    "FL": 1
+  },
+  "source_counts": {
+    "no_state": 926,
+    "recruiter_location_soft": 50,
+    "company_location_soft": 24
+  },
+  "last_processed_id": 62915,
+  "next_after_id": 62915,
+  "samples": [
+    {
+      "recruiter_id": 51866,
+      "recruiter_name": "Unknown",
+      "email": "lblenio@ascentsg.com",
+      "company": "Ascent Services Group",
+      "location": "925 627-4984",
+      "old_state": null,
+      "new_state": null,
+      "state_source": null,
+      "review_reason": "Workbook email matched but no explicit state present; Suspicious placement candidate: has location text but no clear state match",
+      "city": "925 627",
+      "already_flagged": true
+    },
+    {
+      "recruiter_id": 51873,
+      "recruiter_name": "Michael Cimarusti",
+      "email": "jgattis@gdhinc.com",
+      "company": "Gdh Consulting",
+      "location": "-",
+      "old_state": null,
+      "new_state": null,
+      "state_source": null,
+      "review_reason": "Workbook email matched but no explicit state present; Suspicious placement candidate: has location text but no clear state match",
+      "city": null,
+      "already_flagged": true
+    },
+    {
+      "recruiter_id": 51874,
+      "recruiter_name": "Daniel Falzarano",
+      "email": "dfalzarano@ostny.com",
+      "company": "Open Systems Technologies",
+      "location": "469-518-9909",
+      "old_state": null,
+      "new_state": null,
+      "state_source": null,
+      "review_reason": "Workbook email matched but no explicit state present; Suspicious placement candidate: has location text but no clear state match",
+      "city": "469",
+      "already_flagged": true
+    },
+    {
+      "recruiter_id": 51893,
+      "recruiter_name": "Emmanuel Esukpa",
+      "email": "emmanuel@beckerwrightconsultants.com",
+      "company": "Beckerwrightconsultants",
+      "location": "Philadelphia, Pa",
+      "old_state": "PA",
+      "new_state": "PA",
+      "state_source": "recruiter_location_soft",
+      "review_reason": "no_workbook_match; Suspicious soft placement from location/company evidence",
+      "city": "Philadelphia",
+      "already_flagged": true
+    },
+    {
+      "recruiter_id": 51904,
+      "recruiter_name": "Vice President",
+      "email": "divya@talentgroups.com",
+      "company": "Talentgroups",
+      "location": "New Jersey",
+      "old_state": "NJ",
+      "new_state": "NJ",
+      "state_source": "recruiter_location_soft",
+      "review_reason": "workbook_match_found_no_state; Suspicious soft placement from location/company evidence",
+      "city": null,
+      "already_flagged": true
+    }
+  ],
+  "notes": [
+    "Soft-placed people with location evidence into the most likely state when possible.",
+    "Every updated record stays flagged for manual review.",
+    "No record was unflagged by this pass."
+  ],
+  "report_path": "C:\\TalentOpsAI\\backend\\app\\scripts\\outputs\\soft_place_review_candidates_report.json",
+  "csv_path": "C:\\TalentOpsAI\\backend\\app\\scripts\\outputs\\soft_place_review_candidates.csv"
+}

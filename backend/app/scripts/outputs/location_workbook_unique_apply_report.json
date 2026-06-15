@@ -1,0 +1,773 @@
+{
+  "batch_id": "locwbuniq_20260609214133",
+  "source_file": "C:\\Users\\User\\Desktop\\for location by claude\\1 the below all compny but location wise\\Recruiter_Contacts_Master.xlsx",
+  "source_row_count": 14862,
+  "merged_profiles": 11645,
+  "existing_matches": 5887,
+  "unique_candidates": 0,
+  "skipped_no_phone_or_location": 5757,
+  "ambiguous_existing": 1,
+  "stats": {
+    "matched_email": 4992,
+    "matched_name_company": 87,
+    "matched_phone": 808,
+    "skipped_no_phone_or_location": 5757,
+    "ambiguous_existing": 1
+  },
+  "created_company_keys": [],
+  "new_company_count": 0,
+  "enriched_existing_count": 0,
+  "inserted_recruiters": 0,
+  "total_recruiters": 48320,
+  "total_companies": 8699,
+  "state_before": 12721,
+  "unknown_before": 35599,
+  "state_counts": {
+    "IL": 2518,
+    "TX": 1765,
+    "CA": 1611,
+    "PA": 1327,
+    "NC": 658,
+    "CO": 653,
+    "AZ": 560,
+    "NY": 549,
+    "GA": 473,
+    "VA": 314,
+    "MA": 288,
+    "FL": 249,
+    "WA": 188,
+    "OK": 144,
+    "MN": 134,
+    "MO": 134,
+    "OH": 134,
+    "MI": 133,
+    "NJ": 116,
+    "IN": 102,
+    "KS": 101,
+    "UT": 90,
+    "MD": 83,
+    "SC": 66,
+    "TN": 58,
+    "KY": 32,
+    "CT": 31,
+    "WV": 27,
+    "DE": 26,
+    "WI": 24,
+    "AL": 23,
+    "IA": 19,
+    "NH": 18,
+    "NV": 18,
+    "OR": 11,
+    "ME": 7,
+    "ID": 6,
+    "MS": 6,
+    "AR": 4,
+    "HI": 4,
+    "LA": 4,
+    "MT": 3,
+    "AK": 2,
+    "DC": 2,
+    "NM": 2,
+    "RI": 2,
+    "NE": 1,
+    "VT": 1
+  },
+  "inserted_examples": [],
+  "skipped_examples": [
+    {
+      "identity_key": "email::contractors@strategicdecisionsolutions.com",
+      "name": "Carol Williams",
+      "email": "contractors@strategicdecisionsolutions.com",
+      "phone": null,
+      "company": "StrategicDecisionSolutions",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 4,
+          "name": "Carol Williams",
+          "email": "contractors@strategicdecisionsolutions.com",
+          "phone": null,
+          "company": "StrategicDecisionSolutions",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0
+    },
+    {
+      "identity_key": "email::drew@mystratice.com",
+      "name": "Drew Wade",
+      "email": "drew@mystratice.com",
+      "phone": null,
+      "company": "Stratice Consulting",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 6,
+          "name": "Drew Wade",
+          "email": "drew@mystratice.com",
+          "phone": null,
+          "company": "Stratice Consulting",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0
+    },
+    {
+      "identity_key": "email::grant@mystratice.com",
+      "name": "Grant Till",
+      "email": "grant@mystratice.com",
+      "phone": null,
+      "company": "Stratice Consulting",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 8,
+          "name": "Grant Till",
+          "email": "grant@mystratice.com",
+          "phone": null,
+          "company": "Stratice Consulting",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0
+    },
+    {
+      "identity_key": "email::jake@mystratice.com",
+      "name": "Jake",
+      "email": "jake@mystratice.com",
+      "phone": null,
+      "company": "Stratice, LLC",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 9,
+          "name": "Jake",
+          "email": "jake@mystratice.com",
+          "phone": null,
+          "company": "Stratice, LLC",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0
+    },
+    {
+      "identity_key": "email::omar@mystratice.com",
+      "name": "Omar",
+      "email": "omar@mystratice.com",
+      "phone": null,
+      "company": "Stratice, LLC",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 10,
+          "name": "Omar",
+          "email": "omar@mystratice.com",
+          "phone": null,
+          "company": "Stratice, LLC",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0
+    },
+    {
+      "identity_key": "email::mcohen@stratustech.com",
+      "name": "Michelle Cohen",
+      "email": "mcohen@stratustech.com",
+      "phone": null,
+      "company": "Stratus Technology Services",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 14,
+          "name": "Michelle Cohen",
+          "email": "mcohen@stratustech.com",
+          "phone": null,
+          "company": "Stratus Technology Services",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0
+    },
+    {
+      "identity_key": "email::kcampbell@stratustech.com",
+      "name": "Kathleen Campbell",
+      "email": "kcampbell@stratustech.com",
+      "phone": null,
+      "company": "Stratus Technology Services",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 17,
+          "name": "Kathleen Campbell",
+          "email": "kcampbell@stratustech.com",
+          "phone": null,
+          "company": "Stratus Technology Services",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0
+    },
+    {
+      "identity_key": "email::cledbetter@stratustech.com",
+      "name": "Cal Ledbetter",
+      "email": "cledbetter@stratustech.com",
+      "phone": null,
+      "company": "Stratus Technology Services",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 18,
+          "name": "Cal Ledbetter",
+          "email": "cledbetter@stratustech.com",
+          "phone": null,
+          "company": "Stratus Technology Services",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0
+    },
+    {
+      "identity_key": "email::matt.bennett@screc.co.uk",
+      "name": "Matt Bennett",
+      "email": "matt.bennett@screc.co.uk",
+      "phone": null,
+      "company": "Streamline ....the recruitment process",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 19,
+          "name": "Matt Bennett",
+          "email": "matt.bennett@screc.co.uk",
+          "phone": null,
+          "company": "Streamline ....the recruitment process",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        },
+        {
+          "sheet": "Talenot Ops",
+          "row": 5215,
+          "name": "Matt Bennett",
+          "email": "matt.bennett@screc.co.uk",
+          "phone": null,
+          "company": "Streamline ....the recruitment process",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "source_row_count": 2,
+      "dominant_state": null,
+      "dominant_state_count": 0
+    },
+    {
+      "identity_key": "email::matt.bennett@sc-rec.com",
+      "name": "Matt _ Bennett",
+      "email": "matt.bennett@sc-rec.com",
+      "phone": null,
+      "company": "Streamline ....the recruitment process",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 20,
+          "name": "Matt _ Bennett",
+          "email": "matt.bennett@sc-rec.com",
+          "phone": null,
+          "company": "Streamline ....the recruitment process",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        },
+        {
+          "sheet": "Talenot Ops",
+          "row": 5216,
+          "name": "Matt _ Bennett",
+          "email": "matt.bennett@sc-rec.com",
+          "phone": null,
+          "company": "Streamline ....the recruitment process",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "source_row_count": 2,
+      "dominant_state": null,
+      "dominant_state_count": 0
+    },
+    {
+      "identity_key": "email::jmarrus@streetidtech.com",
+      "name": "Jesse",
+      "email": "jmarrus@streetidtech.com",
+      "phone": null,
+      "company": "StreetID",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 21,
+          "name": "Jesse",
+          "email": "jmarrus@streetidtech.com",
+          "phone": null,
+          "company": "StreetID",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        },
+        {
+          "sheet": "Talenot Ops",
+          "row": 5217,
+          "name": "Jesse",
+          "email": "jmarrus@streetidtech.com",
+          "phone": null,
+          "company": "StreetID",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "source_row_count": 2,
+      "dominant_state": null,
+      "dominant_state_count": 0
+    },
+    {
+      "identity_key": "email::mark.blitzer@strikeusa.com",
+      "name": "Mark Blitzer",
+      "email": "mark.blitzer@strikeusa.com",
+      "phone": null,
+      "company": "Strike Recruitment Group",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 24,
+          "name": "Mark Blitzer",
+          "email": "mark.blitzer@strikeusa.com",
+          "phone": null,
+          "company": "Strike Recruitment Group",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0
+    },
+    {
+      "identity_key": "email::gilbertandersonwork@gmail.com",
+      "name": "Gilbert Anderson",
+      "email": "gilbertandersonwork@gmail.com",
+      "phone": null,
+      "company": "Strike Works",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 25,
+          "name": "Gilbert Anderson",
+          "email": "gilbertandersonwork@gmail.com",
+          "phone": null,
+          "company": "Strike Works",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0
+    },
+    {
+      "identity_key": "email::bstieber@striveconsulting.com",
+      "name": "Brennan Stieber",
+      "email": "bstieber@striveconsulting.com",
+      "phone": null,
+      "company": "Strive Consulting",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 26,
+          "name": "Brennan Stieber",
+          "email": "bstieber@striveconsulting.com",
+          "phone": null,
+          "company": "Strive Consulting",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0
+    },
+    {
+      "identity_key": "email::alomas@striveconsulting.com",
+      "name": "Antonio",
+      "email": "alomas@striveconsulting.com",
+      "phone": null,
+      "company": "Strive Consulting",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 27,
+          "name": "Antonio",
+          "email": "alomas@striveconsulting.com",
+          "phone": null,
+          "company": "Strive Consulting",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0
+    },
+    {
+      "identity_key": "email::tmiller@striveconsulting.com",
+      "name": "Travis Miller",
+      "email": "tmiller@striveconsulting.com",
+      "phone": null,
+      "company": "Strive Consulting, LLC",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 31,
+          "name": "Travis Miller",
+          "email": "tmiller@striveconsulting.com",
+          "phone": null,
+          "company": "Strive Consulting, LLC",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0
+    },
+    {
+      "identity_key": "email::kwilkerson@striveconsulting.com",
+      "name": "Katie Wilkerson",
+      "email": "kwilkerson@striveconsulting.com",
+      "phone": null,
+      "company": "Strive Consulting, LLC",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 32,
+          "name": "Katie Wilkerson",
+          "email": "kwilkerson@striveconsulting.com",
+          "phone": null,
+          "company": "Strive Consulting, LLC",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0
+    },
+    {
+      "identity_key": "email::rstovall@striveconsulting.com",
+      "name": "Ray Stovall",
+      "email": "rstovall@striveconsulting.com",
+      "phone": null,
+      "company": "Strive Consulting, LLC",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 33,
+          "name": "Ray Stovall",
+          "email": "rstovall@striveconsulting.com",
+          "phone": null,
+          "company": "Strive Consulting, LLC",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0
+    },
+    {
+      "identity_key": "email::rkuenstler@striveconsulting.com",
+      "name": "Rachel Kuenstler",
+      "email": "rkuenstler@striveconsulting.com",
+      "phone": null,
+      "company": "Strive Consulting, LLC",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 36,
+          "name": "Rachel Kuenstler",
+          "email": "rkuenstler@striveconsulting.com",
+          "phone": null,
+          "company": "Strive Consulting, LLC",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0
+    },
+    {
+      "identity_key": "email::ltonkovich@striveconsulting.com",
+      "name": "lauren",
+      "email": "ltonkovich@striveconsulting.com",
+      "phone": null,
+      "company": "Strive Consulting, LLC",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 38,
+          "name": "lauren",
+          "email": "ltonkovich@striveconsulting.com",
+          "phone": null,
+          "company": "Strive Consulting, LLC",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0
+    }
+  ],
+  "ambiguous_examples": [
+    {
+      "identity_key": "email::ewrisley@jtechstaffing.com",
+      "name": "Eric Wrisley",
+      "email": "ewrisley@jtechstaffing.com",
+      "phone": "3300000000",
+      "company": "JTech Staffing",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 4499,
+          "name": "Eric Wrisley",
+          "email": "ewrisley@jtechstaffing.com",
+          "phone": "3300000000",
+          "company": "JTech Staffing",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0
+    }
+  ]
+}

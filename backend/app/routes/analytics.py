@@ -136,7 +136,7 @@ def get_data_quality(db: Session = Depends(get_db)):
         "text_inferred_state_count": text_inferred_count,
     }
 
-    analytics_cache.set("data_quality", result, ttl=60)
+    analytics_cache.set("data_quality", result, ttl=300)
     return result
 
 
@@ -192,7 +192,7 @@ def get_dashboard_kpis(db: Session = Depends(get_db)):
         "companies": {"total": total_companies},
         "vendors": {"total": total_vendors},
     }
-    analytics_cache.set("dashboard_kpis", result, ttl=30)
+    analytics_cache.set("dashboard_kpis", result, ttl=300)
     return result
 
 
@@ -231,7 +231,7 @@ def recruiters_by_state(db: Session = Depends(get_db)):
     """)).mappings().all()
 
     res_list = [{"state": row["state"], "count": int(row["count"])} for row in results]
-    analytics_cache.set("recruiters_by_state", res_list, ttl=30)
+    analytics_cache.set("recruiters_by_state", res_list, ttl=300)
     return res_list
 
 
@@ -265,7 +265,7 @@ def companies_count_by_state(db: Session = Depends(get_db)):
         state = row["state"] or "Unknown"
         counts[state] = int(row["count"])
 
-    analytics_cache.set("companies_count_by_state", counts, ttl=30)
+    analytics_cache.set("companies_count_by_state", counts, ttl=300)
     return counts
 
 
@@ -347,9 +347,9 @@ def companies_search(
         })
 
     if dashboard_query:
-        analytics_cache.set("companies_search_dashboard", {"total_count": total_count, "rows": res}, ttl=60)
+        analytics_cache.set("companies_search_dashboard", {"total_count": total_count, "rows": res}, ttl=300)
     elif not q and not state and min_recruiters == 0 and limit == 100 and skip == 0:
-        analytics_cache.set("companies_search", {"total_count": total_count, "rows": res}, ttl=30)
+        analytics_cache.set("companies_search", {"total_count": total_count, "rows": res}, ttl=300)
 
     return res
 
@@ -432,5 +432,5 @@ def visit_stats(db: Session = Depends(get_db)):
         "weekly": [{"week": str(r["week_start"]), "visits": r["visits"]} for r in weekly],
         "top_pages": [{"page": r["page"], "visits": r["visits"]} for r in top_pages],
     }
-    analytics_cache.set("visit_stats", result, ttl=30)
+    analytics_cache.set("visit_stats", result, ttl=300)
     return result

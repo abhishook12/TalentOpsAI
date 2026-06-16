@@ -20,144 +20,148 @@ logger = logging.getLogger("talentops")
 RUN_STARTUP_MIGRATIONS = os.getenv("RUN_STARTUP_MIGRATIONS", "false").lower() in ("1", "true", "yes")
 
 if RUN_STARTUP_MIGRATIONS:
-    models.Base.metadata.create_all(bind=engine)
     try:
-        create_performance_indexes()
+        models.Base.metadata.create_all(bind=engine)
+        try:
+            create_performance_indexes()
+        except Exception as e:
+            logger.warning("Error creating indexes at startup: %s", e)
     except Exception as e:
-        logger.warning("Error creating indexes at startup: %s", e)
+        logger.warning("Startup migrations skipped due to database error: %s", e)
 else:
     logger.info("Skipping startup migrations/index creation (RUN_STARTUP_MIGRATIONS=false)")
 
-try:
-    from sqlalchemy.orm import Session as OrmSession
-    with OrmSession(engine) as _db:
-        try:
-            _db.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
-            _db.commit()
-        except Exception:
-            _db.rollback()
-            
-        # Ensure any missing tables (like smart_import_jobs) are created
-        models.Base.metadata.create_all(bind=engine)
-        
-        admin.migrate_page_visits(_db)
-        try:
-            def _ensure_columns(table_name: str, columns: dict[str, str]) -> None:
-                existing = set(
-                    row[0]
-                    for row in _db.execute(text("""
-                        SELECT column_name
-                        FROM information_schema.columns
-                        WHERE table_name = :table_name
-                    """), {"table_name": table_name}).all()
-                )
-                adds = [f"ADD COLUMN {column} {definition}" for column, definition in columns.items() if column not in existing]
-                if adds:
-                    _db.execute(text(f"ALTER TABLE {table_name} {', '.join(adds)}"))
-                    _db.commit()
+if RUN_STARTUP_MIGRATIONS:
+    try:
+        from sqlalchemy.orm import Session as OrmSession
+        with OrmSession(engine) as _db:
+            try:
+                _db.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+                _db.commit()
+            except Exception:
+                _db.rollback()
 
-            _ensure_columns("recruiters", {
-                "source_job_id": "VARCHAR(36)",
-                "raw_data": "TEXT",
-                "metadata_json": "TEXT",
-                "tags": "TEXT",
-                "title": "VARCHAR(150)",
-                "email2": "VARCHAR(150)",
-                "phone2": "VARCHAR(30)",
-                "email3": "VARCHAR(150)",
-                "phone3": "VARCHAR(30)",
-                "email4": "VARCHAR(150)",
-                "phone4": "VARCHAR(30)",
-                "alternate_emails": "TEXT",
-                "alternate_phones": "TEXT",
-                "review_reason": "TEXT",
-                "linkedin": "VARCHAR(255)",
-                "notes": "TEXT",
-                "location_confidence": "VARCHAR(20) DEFAULT 'high'",
-                "completeness_score": "INTEGER DEFAULT 0",
-                "needs_review": "BOOLEAN DEFAULT FALSE",
-                "is_active": "BOOLEAN DEFAULT TRUE",
-                "data_source": "VARCHAR(100) DEFAULT 'manual'",
-                "trust_score": "INTEGER DEFAULT 100",
-                "state_source": "VARCHAR(100)",
-                "state_confidence": "VARCHAR(20)",
-                "state_reason": "TEXT",
-                "last_scan_at": "TIMESTAMP",
-            })
+            # Ensure any missing tables (like smart_import_jobs) are created
+            models.Base.metadata.create_all(bind=engine)
 
-            _ensure_columns("companies", {
-                "source_job_id": "VARCHAR(36)",
-                "raw_data": "TEXT",
-                "metadata_json": "TEXT",
-                "tags": "TEXT",
-                "normalized_company_name": "VARCHAR(255)",
-                "state": "VARCHAR(2)",
-                "trust_score": "INTEGER DEFAULT 100",
-                "data_source": "VARCHAR(100) DEFAULT 'manual'",
-            })
+            admin.migrate_page_visits(_db)
+            try:
+                def _ensure_columns(table_name: str, columns: dict[str, str]) -> None:
+                    existing = set(
+                        row[0]
+                        for row in _db.execute(text("""
+                            SELECT column_name
+                            FROM information_schema.columns
+                            WHERE table_name = :table_name
+                        """), {"table_name": table_name}).all()
+                    )
+                    adds = [f"ADD COLUMN {column} {definition}" for column, definition in columns.items() if column not in existing]
+                    if adds:
+                        _db.execute(text(f"ALTER TABLE {table_name} {', '.join(adds)}"))
+                        _db.commit()
 
-            _ensure_columns("upload_jobs", {
-                "current_step": "VARCHAR(100)",
-                "progress_percent": "INTEGER DEFAULT 0",
-                "file_size_bytes": "INTEGER DEFAULT 0",
-                "valid_rows": "INTEGER DEFAULT 0",
-                "warning_rows": "INTEGER DEFAULT 0",
-                "duplicate_rows": "INTEGER DEFAULT 0",
-                "possible_duplicate_rows": "INTEGER DEFAULT 0",
-                "enriched_rows": "INTEGER DEFAULT 0",
-                "failed_rows": "INTEGER DEFAULT 0",
-                "error_message": "TEXT",
-                "last_heartbeat_at": "TIMESTAMP",
-                "updated_at": "TIMESTAMP DEFAULT NOW()",
-            })
-            _ensure_columns("smart_import_jobs", {
-                "filename": "VARCHAR(255)",
-                "status": "VARCHAR(50) DEFAULT 'mapping'",
-                "current_step": "VARCHAR(100)",
-                "progress_percent": "INTEGER DEFAULT 0",
-                "file_size_bytes": "INTEGER DEFAULT 0",
-                "total_rows": "INTEGER DEFAULT 0",
-                "processed_rows": "INTEGER DEFAULT 0",
-                "valid_rows": "INTEGER DEFAULT 0",
-                "warning_rows": "INTEGER DEFAULT 0",
-                "error_rows": "INTEGER DEFAULT 0",
-                "duplicate_rows": "INTEGER DEFAULT 0",
-                "possible_duplicate_rows": "INTEGER DEFAULT 0",
-                "enriched_rows": "INTEGER DEFAULT 0",
-                "inserted_rows": "INTEGER DEFAULT 0",
-                "skipped_rows": "INTEGER DEFAULT 0",
-                "failed_rows": "INTEGER DEFAULT 0",
-                "started_at": "TIMESTAMP DEFAULT NOW()",
-                "completed_at": "TIMESTAMP",
-                "error_message": "TEXT",
-                "last_heartbeat_at": "TIMESTAMP",
-                "updated_at": "TIMESTAMP DEFAULT NOW()",
-                "user_email": "VARCHAR(150)",
-                "column_mapping": "TEXT",
-                "detected_format": "VARCHAR(100)",
-                "format_confidence": "INTEGER DEFAULT 100",
-            })
-            _ensure_columns("smart_import_rows", {
-                "job_id": "VARCHAR(36)",
-                "original_row_index": "INTEGER",
-                "recruiter_name": "VARCHAR(255)",
-                "email": "VARCHAR(255)",
-                "phone": "VARCHAR(50)",
-                "company_name": "VARCHAR(255)",
-                "state": "VARCHAR(100)",
-                "location": "VARCHAR(255)",
-                "linkedin": "VARCHAR(255)",
-                "title": "VARCHAR(255)",
-                "specialization": "VARCHAR(255)",
-                "notes": "TEXT",
-                "raw_json": "TEXT",
-                "status": "VARCHAR(50) DEFAULT 'Ready'",
-                "validation_issues": "TEXT",
-            })
-        except Exception as e:
-            logger.warning("Import batch column migration warning: %s", e)
-except Exception as e:
-    logger.warning("Migration warning: %s", e)
+                _ensure_columns("recruiters", {
+                    "source_job_id": "VARCHAR(36)",
+                    "raw_data": "TEXT",
+                    "metadata_json": "TEXT",
+                    "tags": "TEXT",
+                    "title": "VARCHAR(150)",
+                    "email2": "VARCHAR(150)",
+                    "phone2": "VARCHAR(30)",
+                    "email3": "VARCHAR(150)",
+                    "phone3": "VARCHAR(30)",
+                    "email4": "VARCHAR(150)",
+                    "phone4": "VARCHAR(30)",
+                    "alternate_emails": "TEXT",
+                    "alternate_phones": "TEXT",
+                    "review_reason": "TEXT",
+                    "linkedin": "VARCHAR(255)",
+                    "notes": "TEXT",
+                    "location_confidence": "VARCHAR(20) DEFAULT 'high'",
+                    "completeness_score": "INTEGER DEFAULT 0",
+                    "needs_review": "BOOLEAN DEFAULT FALSE",
+                    "is_active": "BOOLEAN DEFAULT TRUE",
+                    "data_source": "VARCHAR(100) DEFAULT 'manual'",
+                    "trust_score": "INTEGER DEFAULT 100",
+                    "state_source": "VARCHAR(100)",
+                    "state_confidence": "VARCHAR(20)",
+                    "state_reason": "TEXT",
+                    "last_scan_at": "TIMESTAMP",
+                })
+
+                _ensure_columns("companies", {
+                    "source_job_id": "VARCHAR(36)",
+                    "raw_data": "TEXT",
+                    "metadata_json": "TEXT",
+                    "tags": "TEXT",
+                    "normalized_company_name": "VARCHAR(255)",
+                    "state": "VARCHAR(2)",
+                    "trust_score": "INTEGER DEFAULT 100",
+                    "data_source": "VARCHAR(100) DEFAULT 'manual'",
+                })
+
+                _ensure_columns("upload_jobs", {
+                    "current_step": "VARCHAR(100)",
+                    "progress_percent": "INTEGER DEFAULT 0",
+                    "file_size_bytes": "INTEGER DEFAULT 0",
+                    "valid_rows": "INTEGER DEFAULT 0",
+                    "warning_rows": "INTEGER DEFAULT 0",
+                    "duplicate_rows": "INTEGER DEFAULT 0",
+                    "possible_duplicate_rows": "INTEGER DEFAULT 0",
+                    "enriched_rows": "INTEGER DEFAULT 0",
+                    "failed_rows": "INTEGER DEFAULT 0",
+                    "error_message": "TEXT",
+                    "last_heartbeat_at": "TIMESTAMP",
+                    "updated_at": "TIMESTAMP DEFAULT NOW()",
+                })
+                _ensure_columns("smart_import_jobs", {
+                    "filename": "VARCHAR(255)",
+                    "status": "VARCHAR(50) DEFAULT 'mapping'",
+                    "current_step": "VARCHAR(100)",
+                    "progress_percent": "INTEGER DEFAULT 0",
+                    "file_size_bytes": "INTEGER DEFAULT 0",
+                    "total_rows": "INTEGER DEFAULT 0",
+                    "processed_rows": "INTEGER DEFAULT 0",
+                    "valid_rows": "INTEGER DEFAULT 0",
+                    "warning_rows": "INTEGER DEFAULT 0",
+                    "error_rows": "INTEGER DEFAULT 0",
+                    "duplicate_rows": "INTEGER DEFAULT 0",
+                    "possible_duplicate_rows": "INTEGER DEFAULT 0",
+                    "enriched_rows": "INTEGER DEFAULT 0",
+                    "inserted_rows": "INTEGER DEFAULT 0",
+                    "skipped_rows": "INTEGER DEFAULT 0",
+                    "failed_rows": "INTEGER DEFAULT 0",
+                    "started_at": "TIMESTAMP DEFAULT NOW()",
+                    "completed_at": "TIMESTAMP",
+                    "error_message": "TEXT",
+                    "last_heartbeat_at": "TIMESTAMP",
+                    "updated_at": "TIMESTAMP DEFAULT NOW()",
+                    "user_email": "VARCHAR(150)",
+                    "column_mapping": "TEXT",
+                    "detected_format": "VARCHAR(100)",
+                    "format_confidence": "INTEGER DEFAULT 100",
+                })
+                _ensure_columns("smart_import_rows", {
+                    "job_id": "VARCHAR(36)",
+                    "original_row_index": "INTEGER",
+                    "recruiter_name": "VARCHAR(255)",
+                    "email": "VARCHAR(255)",
+                    "phone": "VARCHAR(50)",
+                    "company_name": "VARCHAR(255)",
+                    "state": "VARCHAR(100)",
+                    "location": "VARCHAR(255)",
+                    "linkedin": "VARCHAR(255)",
+                    "title": "VARCHAR(255)",
+                    "specialization": "VARCHAR(255)",
+                    "notes": "TEXT",
+                    "raw_json": "TEXT",
+                    "status": "VARCHAR(50) DEFAULT 'Ready'",
+                    "validation_issues": "TEXT",
+                })
+            except Exception as e:
+                logger.warning("Import batch column migration warning: %s", e)
+    except Exception as e:
+        logger.warning("Migration warning: %s", e)
 
 app = FastAPI(
     title="TalentOps AI",

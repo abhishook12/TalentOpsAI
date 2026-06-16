@@ -7,8 +7,8 @@ import os
 load_dotenv()
 
 DATABASE_URL = "sqlite:///./dev.db"
-raw_database_url = os.getenv("SUPABASE_DATABASE_URL") or os.getenv("DATABASE_URL")
-# For production you can set SUPABASE_DATABASE_URL or DATABASE_URL in the environment; SQLite is used for local development.
+raw_database_url = os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DATABASE_URL")
+# For production you can set DATABASE_URL or SUPABASE_DATABASE_URL in the environment; SQLite is used for local development.
 if raw_database_url:
     DATABASE_URL = raw_database_url
     if DATABASE_URL.startswith("postgresql://"):

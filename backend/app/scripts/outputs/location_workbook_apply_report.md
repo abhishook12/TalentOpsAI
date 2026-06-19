@@ -1,37 +1,49 @@
 # Location Workbook Apply Report
 
-Source workbook: `C:\Users\User\Desktop\for yatin sir , may 28 ,2026.xlsx`
-Batch id: `location_workbook_20260612T192515Z`
+Source workbook: `C:\Users\User\Desktop\for location by claude\1 the below all compny but location wise\Recruiter_Contacts_Master.xlsx`
+Batch id: `location_workbook_20260617T184557Z`
 
 ## Results
-- Source rows: `6721`
-- Merged profiles: `4256`
-- Existing matches: `3267`
-- Unique candidates: `901`
-- Skipped missing email/phone/location: `87`
-- Ambiguous existing matches: `1`
-- Inserted recruiters: `901`
-- Updated recruiters: `14`
+- Source rows: `14990`
+- Merged profiles: `11871`
+- Existing matches: `72`
+- Unique candidates: `10162`
+- Skipped missing email/phone/location: `1637`
+- Ambiguous existing matches: `0`
+- Inserted recruiters: `10162`
+- Updated recruiters: `72`
 - Companies created: `0`
 - Companies updated: `0`
 
 ## Database impact
-- State before: `24167`
-- State after: `24188`
-- Unknown before: `50851`
-- Unknown after: `51731`
+- State before: `42032`
+- State after: `45382`
+- Unknown before: `33875`
+- Unknown after: `40687`
 - Companies before: `28459`
-- Companies after: `28459`
+- Companies after: `33279`
 
 ## Top state evidence
-- IN: `15`
-- NY: `2`
-- VA: `2`
-- ME: `1`
-- DE: `1`
-- LA: `1`
-- MN: `1`
-- MI: `1`
+- CO: `551`
+- AZ: `476`
+- TX: `433`
+- IL: `361`
+- CA: `282`
+- PA: `122`
+- GA: `115`
+- FL: `112`
+- NY: `102`
+- VA: `97`
+- UT: `89`
+- MN: `79`
+- MA: `62`
+- NJ: `51`
+- NC: `51`
+- WA: `50`
+- MD: `46`
+- IN: `45`
+- OH: `39`
+- TN: `34`
 
 ## Files
 - JSON: `C:\TalentOpsAI\backend\app\scripts\outputs\location_workbook_apply_report.json`

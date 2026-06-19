@@ -8,8 +8,7 @@ const Recruiters = lazy(() => import('./pages/Recruiters'))
 const Analytics = lazy(() => import('./pages/Analytics'))
 const AISearch = lazy(() => import('./pages/AISearch'))
 const Upload = lazy(() => import('./pages/Upload'))
-const StateDirectory = lazy(() => import('./pages/StateDirectory'))
-const CompanyDirectory = lazy(() => import('./pages/CompanyDirectory'))
+const Directory = lazy(() => import('./pages/Directory'))
 const AdminTerminal = lazy(() => import('./pages/AdminTerminal'))
 
 class GlobalErrorBoundary extends Component {
@@ -644,9 +643,9 @@ const PAGE_NAMES = {
   '/recruiters': 'Recruiters',
   '/analytics': 'Analytics',
   '/ai-search': 'AI Search',
-  '/directory': 'States',
-  '/states': 'States',
-  '/companies': 'Companies',
+  '/directory': 'Directory',
+  '/states': 'Directory',
+  '/companies': 'Directory',
   '/upload': 'ETL',
   '/admin': 'Admin Ops',
 }
@@ -706,19 +705,6 @@ function PageTracker() {
   return null
 }
 
-function UtcClock() {
-  const [utcTime, setUtcTime] = useState(() => new Date().toUTCString().slice(17, 25))
-
-  useEffect(() => {
-    const tick = window.setInterval(() => {
-      setUtcTime(new Date().toUTCString().slice(17, 25))
-    }, 1000)
-    return () => window.clearInterval(tick)
-  }, [])
-
-  return <div className="cc-session-time">UTC {utcTime}</div>
-}
-
 function AppShell() {
   const location = useLocation()
 
@@ -732,15 +718,8 @@ function AppShell() {
         <Sidebar />
         <div className="cc-main">
           <header className="cc-topbar">
-            <div className="cc-session-strip">
-              <div className="cc-session-pill">
-                <span className="cc-session-dot" />
-                Session: Active
-              </div>
-              <UtcClock />
-              <div style={{ color: 'rgba(255,255,255,0.72)', fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', minWidth: 0 }}>
-                {pageName}
-              </div>
+            <div style={{ color: 'rgba(255,255,255,0.72)', fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', minWidth: 0 }}>
+              {pageName}
             </div>
             <div className="cc-top-actions">
               <div id="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 10 }} />
@@ -764,7 +743,7 @@ function AppShell() {
                 fallback={
                   <div style={{ display: 'grid', placeItems: 'center', minHeight: '60vh', gap: 12, color: 'var(--text-muted)' }}>
                     <i className="ti ti-loader animate-spin" style={{ fontSize: 24, color: 'var(--accent)' }} />
-                    <span>Loading command center…</span>
+                    <span>Loading command center...</span>
                   </div>
                 }
               >
@@ -774,9 +753,9 @@ function AppShell() {
                     <Route path="/recruiters" element={<Recruiters />} />
                     <Route path="/analytics" element={<Analytics />} />
                     <Route path="/ai-search" element={<AISearch />} />
-                    <Route path="/directory" element={<StateDirectory />} />
-                    <Route path="/states" element={<StateDirectory />} />
-                    <Route path="/companies" element={<CompanyDirectory />} />
+                    <Route path="/directory" element={<Directory />} />
+                    <Route path="/states" element={<Directory />} />
+                    <Route path="/companies" element={<Directory />} />
                     <Route path="/upload" element={<Upload />} />
                     <Route path="/admin" element={<AdminTerminal />} />
                   </Routes>
@@ -813,7 +792,7 @@ function AppShell() {
               <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 <span><strong>Version</strong> v4.0.2-Stable</span>
                 <span><strong>Server Node</strong> US-EAST-01A</span>
-                <span>© {new Date().getFullYear()} TalentOpsAI</span>
+                <span>Copyright {new Date().getFullYear()} TalentOpsAI</span>
               </div>
             </footer>
           </div>

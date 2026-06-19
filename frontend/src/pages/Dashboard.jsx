@@ -199,7 +199,7 @@ export default function Dashboard() {
           />
           <div style={{ display: 'grid', gap: 12 }}>
             {alertItems.map((item) => (
-              <ShellCard key={item.title} style={{ padding: 14, boxShadow: 'none', background: 'rgba(255,255,255,0.7)' }}>
+              <ShellCard key={item.title} style={{ padding: 14, boxShadow: 'none', background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>
                 <TimelineItem title={item.title} meta={item.meta} description={item.description} tone={item.tone} icon={item.icon} />
               </ShellCard>
             ))}
@@ -231,7 +231,8 @@ export default function Dashboard() {
                     padding: '12px 14px',
                     borderRadius: 14,
                     border: '1px solid var(--card-border)',
-                    background: 'rgba(255,255,255,0.75)',
+                    background: 'var(--bg-surface)',
+                    color: 'var(--text-primary)',
                     cursor: 'pointer',
                     textAlign: 'left',
                   }}
@@ -268,7 +269,7 @@ export default function Dashboard() {
           {recentJobs.length ? (
             <div style={{ display: 'grid', gap: 10 }}>
               {recentJobs.map((job) => (
-                <ShellCard key={job.job_id} style={{ padding: 12, boxShadow: 'none', background: 'rgba(255,255,255,0.72)' }}>
+                <ShellCard key={job.job_id} style={{ padding: 12, boxShadow: 'none', background: 'var(--bg-surface)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -342,7 +343,7 @@ export default function Dashboard() {
               ['ETL Pipeline', 'PROCESSING', 'warning'],
               ['API Engine', 'HEALTHY', 'success'],
             ].map(([label, status, tone]) => (
-              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderRadius: 14, border: '1px solid var(--card-border)', background: 'rgba(255,255,255,0.72)' }}>
+              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderRadius: 14, border: '1px solid var(--card-border)', background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ width: 10, height: 10, borderRadius: 999, background: tone === 'success' ? 'var(--success)' : 'var(--warning)' }} />
                   <span style={{ fontSize: 13, fontWeight: 800 }}>{label}</span>

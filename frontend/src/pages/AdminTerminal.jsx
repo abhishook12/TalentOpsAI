@@ -1506,6 +1506,9 @@ export default function AdminTerminal() {
                       {selectedRecruiters.length > 0 && ` · ${selectedRecruiters.length} selected`}
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button onClick={() => setSelectedRecruiters([])} disabled={!selectedRecruiters.length} style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: 'var(--text-secondary)', padding: '7px 12px', borderRadius: 8, fontSize: 12, cursor: selectedRecruiters.length ? 'pointer' : 'not-allowed', opacity: selectedRecruiters.length ? 1 : 0.55 }}>
+                        Clear Selected
+                      </button>
                       <button onClick={() => batchUpdateRecruiters({ is_active: true })} disabled={!selectedRecruiters.length} style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: '#22c55e', padding: '7px 12px', borderRadius: 8, fontSize: 12, cursor: selectedRecruiters.length ? 'pointer' : 'not-allowed', opacity: selectedRecruiters.length ? 1 : 0.55 }}>
                         Activate Selected
                       </button>

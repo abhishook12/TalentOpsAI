@@ -13,6 +13,7 @@ from ..utils.state_mapper import normalize_state, extract_state_detailed
 from ..utils.state_recovery import infer_state_from_sources
 from ..utils.filters import apply_state_filter, apply_company_filter
 from ..utils.phone_normalizer import format_us_phone
+from ..utils.normalizer import normalize_text, extract_domain
 router = APIRouter()
 
 EMAIL_PATTERN = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
@@ -131,6 +132,105 @@ def _normalize_email(value):
 
 def _normalize_phone(value):
     return re.sub(r"[^\d+]+", "", str(value)).strip() if value else ""
+
+
+def _search_quality_tier(record):
+    completeness = int(record.get("completeness_score") or 0)
+    if record.get("needs_review"):
+        return "needs_review"
+    if completeness >= 80:
+        return "high"
+    if completeness >= 50:
+        return "medium"
+    return "low"
+
+
+def _match_reason_for_row(row, query: str, normalized_query: str, query_digits: str, query_domain: str) -> str:
+    normalized_recruiter_name = str(row.get("normalized_recruiter_name") or "")
+    normalized_company_name = str(row.get("normalized_company_name") or "")
+    if normalized_query and normalized_recruiter_name == normalized_query:
+        return "recruiter_name_exact"
+    if normalized_query and normalized_company_name == normalized_query:
+        return "company_exact"
+
+    emails = [row.get("email"), row.get("email2"), row.get("email3"), row.get("email4"), row.get("alternate_emails")]
+    if any(_normalize_email(value) == query.lower() for value in emails if value):
+        return "email_exact"
+
+    phones = [row.get("phone"), row.get("phone2"), row.get("phone3"), row.get("phone4"), row.get("alternate_phones")]
+    if query_digits and any(re.sub(r"\D+", "", _normalize_phone(value)) == query_digits for value in phones if value):
+        return "phone_exact"
+
+    if query_domain and (
+        any(extract_domain(value) == query_domain for value in emails if value)
+        or extract_domain(row.get("website") or "") == query_domain
+        or extract_domain(row.get("email_pattern") or "") == query_domain
+    ):
+        return "domain_exact"
+
+    recruiter_name = str(row.get("recruiter_name") or "").lower()
+    company_name = str(row.get("company_name") or "").lower()
+    q_lower = query.lower()
+    if recruiter_name.startswith(q_lower):
+        return "recruiter_name_prefix"
+    if company_name.startswith(q_lower):
+        return "company_prefix"
+    if q_lower in recruiter_name:
+        return "recruiter_name_fuzzy"
+    if q_lower in company_name:
+        return "company_fuzzy"
+    return "metadata_fuzzy"
+
+
+def _refine_search_score(row, query: str, normalized_query: str, query_digits: str, query_domain: str) -> int:
+    score = int(row.get("relevance_score") or 0)
+    normalized_recruiter_name = str(row.get("normalized_recruiter_name") or "")
+    normalized_company_name = str(row.get("normalized_company_name") or "")
+    q_lower = query.lower()
+
+    if normalized_query:
+        if normalized_recruiter_name == normalized_query:
+            score += 120
+        elif normalized_recruiter_name.startswith(normalized_query):
+            score += 45
+        if normalized_company_name == normalized_query:
+            score += 90
+        elif normalized_company_name.startswith(normalized_query):
+            score += 30
+
+    if query_domain:
+        email_values = [row.get("email"), row.get("email2"), row.get("email3"), row.get("email4"), row.get("alternate_emails")]
+        if any(extract_domain(value) == query_domain for value in email_values if value):
+            score += 140
+        if extract_domain(row.get("website") or "") == query_domain or extract_domain(row.get("email_pattern") or "") == query_domain:
+            score += 110
+
+    if query_digits:
+        phone_values = [row.get("phone"), row.get("phone2"), row.get("phone3"), row.get("phone4"), row.get("alternate_phones")]
+        if any(re.sub(r"\D+", "", _normalize_phone(value)) == query_digits for value in phone_values if value):
+            score += 120
+
+    location = str(row.get("location") or "").lower()
+    state = str(row.get("state") or row.get("company_state") or "").lower()
+    if q_lower and q_lower in location:
+        score += 28
+    if q_lower and q_lower == state:
+        score += 36
+
+    completeness = int(row.get("completeness_score") or 0)
+    score += min(completeness // 4, 25)
+    if row.get("is_active"):
+        score += 8
+    if row.get("needs_review"):
+        score -= 20
+    if row.get("location_confidence") == "high":
+        score += 8
+    elif row.get("location_confidence") == "manual_review":
+        score -= 8
+    if row.get("state_source") in {"company_state", "email_domain_company", "location_workbook"}:
+        score += 6
+
+    return score
 
 
 def _extract_emails_from_text(values):
@@ -305,11 +405,14 @@ def search_recruiters(
     Smart weighted search using pg_trgm similarity + ILIKE scoring.
     Results are ranked by relevance_score descending.
     """
+    normalized_query = normalize_text(q)
     q_digits = re.sub(r"\D+", "", q or "")
+    query_domain = extract_domain(q) if ("@" in q or "." in q) else ""
     base_sql = """
         SELECT
             r.recruiter_id,
             r.recruiter_name,
+            r.normalized_recruiter_name,
             r.email,
             r.phone,
             r.email2,
@@ -324,15 +427,25 @@ def search_recruiters(
             r.specialization,
             r.notes,
             r.state,
+            r.location_confidence,
+            r.state_source,
             r.created_at,
             r.is_active,
+            r.completeness_score,
+            r.needs_review,
             r.company_id,
             c.company_name,
+            c.normalized_company_name,
+            c.website,
+            c.email_pattern,
+            c.state AS company_state,
             COALESCE(r.location, c.location) AS location,
             (
                 CASE
                     WHEN LOWER(r.recruiter_name) = LOWER(:q)
                         THEN 200
+                    WHEN r.normalized_recruiter_name = :normalized_query
+                        THEN 190
                     WHEN LOWER(r.recruiter_name) LIKE LOWER(:q) || '%'
                         THEN 130
                     WHEN LOWER(r.recruiter_name) LIKE '%' || LOWER(:q) || '%'
@@ -394,6 +507,8 @@ def search_recruiters(
                 END
                 +
                 CASE
+                    WHEN c.normalized_company_name = :normalized_query
+                        THEN 120
                     WHEN LOWER(COALESCE(c.company_name, '')) LIKE '%' || LOWER(:q) || '%'
                         THEN 60
                     ELSE 0
@@ -438,15 +553,22 @@ def search_recruiters(
                 )
                 OR COALESCE(c.company_name, '') ILIKE '%' || :q || '%'
                 OR COALESCE(r.specialization, '') ILIKE '%' || :q || '%'
+                OR r.normalized_recruiter_name LIKE '%' || :normalized_query || '%'
+                OR c.normalized_company_name LIKE '%' || :normalized_query || '%'
                 OR similarity(r.recruiter_name, :q) > 0.3
                 OR similarity(r.email, :q) > 0.3
             )
     """
 
-    params = {"q": q, "q_digits": q_digits, "limit": limit}
+    params = {
+        "q": q,
+        "normalized_query": normalized_query,
+        "q_digits": q_digits,
+        "limit": limit,
+        "candidate_limit": min(max(limit * 3, limit), 500),
+    }
 
     if company:
-        from app.utils.normalizer import normalize_text
         clean_company = normalize_text(company)
         base_sql += " AND c.normalized_company_name ILIKE '%' || :company || '%'"
         params["company"] = clean_company
@@ -459,9 +581,26 @@ def search_recruiters(
         base_sql += " AND r.specialization ILIKE '%' || :specialization || '%'"
         params["specialization"] = specialization
 
-    base_sql += " ORDER BY relevance_score DESC LIMIT :limit"
+    base_sql += " ORDER BY relevance_score DESC, r.completeness_score DESC NULLS LAST LIMIT :candidate_limit"
 
     rows = db.execute(text(base_sql), params).mappings().all()
+    ranked_rows = []
+    for row in rows:
+        row_dict = dict(row)
+        row_dict["relevance_score"] = _refine_search_score(row_dict, q, normalized_query, q_digits, query_domain)
+        row_dict["match_reason"] = _match_reason_for_row(row_dict, q, normalized_query, q_digits, query_domain)
+        row_dict["quality_tier"] = _search_quality_tier(row_dict)
+        ranked_rows.append(row_dict)
+
+    ranked_rows.sort(
+        key=lambda row: (
+            -(int(row.get("relevance_score") or 0)),
+            -(int(row.get("completeness_score") or 0)),
+            1 if row.get("needs_review") else 0,
+            0 if row.get("is_active") else 1,
+        )
+    )
+    ranked_rows = ranked_rows[:limit]
 
     return [
         {
@@ -485,10 +624,16 @@ def search_recruiters(
             "location": row.get("location"),
             "state": row.get("state"),
             "is_active": row["is_active"],
+            "needs_review": row.get("needs_review"),
+            "completeness_score": row.get("completeness_score"),
+            "location_confidence": row.get("location_confidence"),
+            "state_source": row.get("state_source"),
             "created_at": str(row["created_at"]) if row.get("created_at") else None,
             "relevance_score": int(row["relevance_score"]),
+            "match_reason": row.get("match_reason"),
+            "quality_tier": row.get("quality_tier"),
         }
-        for row in rows
+        for row in ranked_rows
     ]
 
 from sqlalchemy.orm import load_only
@@ -503,6 +648,7 @@ def get_recruiters(
     state_status: Optional[str] = None,
     city: Optional[str] = None,
     company: Optional[str] = None,
+    company_id: Optional[int] = None,
     title: Optional[str] = None,
     has_phone: Optional[bool] = None,
     missing_email: Optional[bool] = None,
@@ -515,17 +661,7 @@ def get_recruiters(
     db: Session = Depends(get_db)
 ):
     print(f"GET /recruiters/ CALLED! needs_review={needs_review}", flush=True)
-    query = db.query(Recruiter).join(Recruiter.company, isouter=True).options(
-        contains_eager(Recruiter.company).load_only(Company.company_id, Company.company_name, Company.location),
-        load_only(
-            Recruiter.recruiter_id, Recruiter.recruiter_name, Recruiter.email, 
-            Recruiter.phone, Recruiter.email2, Recruiter.phone2, Recruiter.email3, Recruiter.phone3,
-            Recruiter.email4, Recruiter.phone4, Recruiter.linkedin,
-            Recruiter.company_id, Recruiter.state, 
-            Recruiter.location, Recruiter.specialization, Recruiter.needs_review, 
-            Recruiter.completeness_score, Recruiter.is_active, Recruiter.created_at
-        )
-    )
+    query = db.query(Recruiter, Company).join(Company, isouter=True)
     
     from ..utils.normalizer import normalize_text
     
@@ -561,7 +697,9 @@ def get_recruiters(
     if city:
         query = query.filter(Recruiter.normalized_city.ilike(f"%{city}%"))
         
-    if company:
+    if company_id is not None:
+        query = query.filter(Recruiter.company_id == company_id)
+    elif company:
         query = apply_company_filter(query, company)
         
     if title:
@@ -615,11 +753,55 @@ def get_recruiters(
     import math
     total_pages = math.ceil(total_count / limit) if limit else 1
     
+    def _basic_company(company_row):
+        return {
+            "company_id": company_row.company_id,
+            "company_name": company_row.company_name,
+            "location": company_row.location,
+            "state": company_row.state,
+        } if company_row else None
+
     return {
         "total_count": total_count,
         "page": page,
         "total_pages": total_pages,
-        "results": [serialize_recruiter(r) for r in results]
+        "results": [
+            {
+                "recruiter_id": recruiter.recruiter_id,
+                "recruiter_name": recruiter.recruiter_name,
+                "email": recruiter.email,
+                "phone": recruiter.phone,
+                "email2": recruiter.email2,
+                "phone2": recruiter.phone2,
+                "email3": recruiter.email3,
+                "phone3": recruiter.phone3,
+                "email4": recruiter.email4,
+                "phone4": recruiter.phone4,
+                "alternate_emails": recruiter.alternate_emails,
+                "alternate_phones": recruiter.alternate_phones,
+                "linkedin": recruiter.linkedin,
+                "specialization": recruiter.specialization,
+                "notes": recruiter.notes,
+                "company_id": recruiter.company_id,
+                "company_name": company.company_name if company else None,
+                "company": _basic_company(company),
+                "location": recruiter.location or (company.location if company else None),
+                "state": recruiter.state,
+                "normalized_city": recruiter.normalized_city,
+                "completeness_score": recruiter.completeness_score,
+                "needs_review": recruiter.needs_review,
+                "review_reason": recruiter.review_reason,
+                "location_confidence": recruiter.location_confidence,
+                "state_source": recruiter.state_source,
+                "state_confidence": recruiter.state_confidence,
+                "state_reason": recruiter.state_reason,
+                "last_scan_at": str(recruiter.last_scan_at) if recruiter.last_scan_at else None,
+                "is_active": recruiter.is_active,
+                "source_job_id": recruiter.source_job_id,
+                "created_at": str(recruiter.created_at) if recruiter.created_at else None,
+            }
+            for recruiter, company in results
+        ]
     }
 
 @router.get("/{recruiter_id}")
@@ -722,6 +904,7 @@ def export_recruiters(
     state_status: Optional[str] = None,
     city: Optional[str] = None,
     company: Optional[str] = None,
+    company_id: Optional[int] = None,
     title: Optional[str] = None,
     has_phone: Optional[bool] = None,
     missing_email: Optional[bool] = None,
@@ -764,7 +947,9 @@ def export_recruiters(
             )
     if city:
         query = query.filter(Recruiter.normalized_city.ilike(f"%{city}%"))
-    if company:
+    if company_id is not None:
+        query = query.filter(Recruiter.company_id == company_id)
+    elif company:
         query = apply_company_filter(query, company)
     if title:
         query = query.filter(Recruiter.specialization.ilike(f"%{title}%"))

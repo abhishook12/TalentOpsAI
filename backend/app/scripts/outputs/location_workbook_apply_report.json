@@ -1,353 +1,437 @@
 {
-  "batch_id": "location_workbook_20260612T192515Z",
-  "source_file": "C:\\Users\\User\\Desktop\\for yatin sir , may 28 ,2026.xlsx",
+  "batch_id": "location_workbook_20260617T184557Z",
+  "source_file": "C:\\Users\\User\\Desktop\\for location by claude\\1 the below all compny but location wise\\Recruiter_Contacts_Master.xlsx",
   "apply": true,
-  "source_row_count": 6721,
-  "merged_profiles": 4256,
-  "existing_matches": 3267,
-  "unique_candidates": 901,
-  "skipped_no_email_phone_or_location": 87,
-  "ambiguous_existing": 1,
+  "source_row_count": 14990,
+  "merged_profiles": 11871,
+  "existing_matches": 72,
+  "unique_candidates": 10162,
+  "skipped_no_email_phone_or_location": 1637,
+  "ambiguous_existing": 0,
   "stats": {
-    "matched_email": 3242,
-    "matched_name_company": 25,
-    "unique": 901,
-    "ambiguous_existing": 1,
-    "skipped_no_email_phone_or_location": 87
+    "matched_name_company": 72,
+    "unique": 10162,
+    "skipped_no_email_phone_or_location": 1637
   },
   "source_state_counts": {
-    "NY": 2,
-    "VA": 2,
-    "IN": 15,
-    "ME": 1,
-    "DE": 1,
-    "LA": 1,
-    "MN": 1,
-    "MI": 1
+    "CO": 551,
+    "CA": 282,
+    "NV": 18,
+    "TX": 433,
+    "NY": 102,
+    "MN": 79,
+    "NJ": 51,
+    "AZ": 476,
+    "GA": 115,
+    "IL": 361,
+    "VA": 97,
+    "FL": 112,
+    "MO": 32,
+    "WA": 50,
+    "TN": 34,
+    "PA": 122,
+    "MA": 62,
+    "UT": 89,
+    "MD": 46,
+    "NH": 15,
+    "NC": 51,
+    "MI": 26,
+    "OH": 39,
+    "OR": 8,
+    "WI": 13,
+    "IA": 2,
+    "IN": 45,
+    "AL": 6,
+    "MT": 2,
+    "KY": 10,
+    "DE": 3,
+    "CT": 7,
+    "NM": 1,
+    "RI": 1,
+    "NE": 2,
+    "OK": 1,
+    "HI": 1,
+    "KS": 1,
+    "SC": 1,
+    "ME": 3
   },
-  "state_before": 24167,
-  "state_after": 24188,
-  "unknown_before": 50851,
-  "unknown_after": 51731,
+  "state_before": 42032,
+  "state_after": 45382,
+  "unknown_before": 33875,
+  "unknown_after": 40687,
   "company_count_before": 28459,
-  "company_count_after": 28459,
-  "inserted_recruiters": 901,
-  "updated_recruiters": 14,
+  "company_count_after": 33279,
+  "inserted_recruiters": 10162,
+  "updated_recruiters": 72,
   "companies_created": 0,
   "companies_updated": 0,
   "inserted_examples": [
     {
-      "name": "Alex Waugh",
-      "email": "no-email-e9d97af3d679c64e@missing.local",
-      "company": "Whitehall Resources",
+      "name": "ckim@247networks.com",
+      "email": "no-email-841b856143b22205@missing.local",
+      "company": "Chuck Kim",
       "phone": null,
-      "state": null,
-      "location": "412-947-7271"
+      "state": "CO",
+      "location": "Englewood, CO, USA"
     },
     {
-      "name": "Allison Shoemaker",
-      "email": "no-email-b9fa0c93b6da78d9@missing.local",
-      "company": "Forum Group",
+      "name": "kswenson@247networks.com",
+      "email": "no-email-f437c453ef93ff42@missing.local",
+      "company": "Kacey Swenson",
       "phone": null,
-      "state": null,
-      "location": "212-687-4050 ext. 358"
+      "state": "CO",
+      "location": "Englewood, CO, USA"
     },
     {
-      "name": "Amanda Allen",
-      "email": "no-email-3b5b81db3c0c74e2@missing.local",
-      "company": "NextDeavor Services",
+      "name": "dliden@247networks.com",
+      "email": "no-email-0181658b1abf75bc@missing.local",
+      "company": "Dustin Liden",
       "phone": null,
-      "state": null,
-      "location": "888-727-4977 / 512-887-1552"
+      "state": "CO",
+      "location": "Englewood, CO, USA"
     },
     {
-      "name": "Amanda Bazurto Middleton",
-      "email": "no-email-d30d6ce9a6ff8d3f@missing.local",
-      "company": "Clapself",
+      "name": "bsouthard@247networks.com",
+      "email": "no-email-c752c126ee1b5a7a@missing.local",
+      "company": "Bill Southard",
       "phone": null,
-      "state": null,
-      "location": "916-234-3699 / 530-513-7765"
+      "state": "CO",
+      "location": "Englewood, CO, USA"
     },
     {
-      "name": "Bailey Rodkey",
-      "email": "no-email-c90be6ee41b086c1@missing.local",
-      "company": "Medasource",
+      "name": "mharmon@247networks.com",
+      "email": "no-email-3e6768c1772afa46@missing.local",
+      "company": "Mark Harmon",
       "phone": null,
-      "state": null,
-      "location": "317-708-4273"
+      "state": "CO",
+      "location": "Englewood, CO, USA"
     },
     {
-      "name": "Belle Banta",
-      "email": "no-email-ea5dd923e20e9367@missing.local",
-      "company": "Medasource",
+      "name": "rdeterman@247networks.com",
+      "email": "no-email-91675eac4fd65927@missing.local",
+      "company": "Ryan Determan",
       "phone": null,
-      "state": null,
-      "location": "972-541-0099 / 571-455-5803"
+      "state": "CO",
+      "location": "Englewood, CO, USA"
     },
     {
-      "name": "Bonnie Hambor",
-      "email": "no-email-097921ab6b2d8ccb@missing.local",
-      "company": "Revel IT",
+      "name": "ablady@247networks.com",
+      "email": "no-email-bea959d26e9846cc@missing.local",
+      "company": "Andrea Blady",
       "phone": null,
-      "state": null,
-      "location": "614-530-4248 / 614-495-3706"
+      "state": "CO",
+      "location": "Englewood, CO, USA"
     },
     {
-      "name": "Brad Hensley",
-      "email": "no-email-8b5bc629cf95ccb1@missing.local",
-      "company": "Softworld Inc.",
+      "name": "blachman@247networks.com",
+      "email": "no-email-daa03747be07b4b6@missing.local",
+      "company": "Brian Lachman",
       "phone": null,
-      "state": null,
-      "location": "781-833-0279"
+      "state": "CO",
+      "location": "Englewood, CO, USA"
     },
     {
-      "name": "Brittney Carnes",
-      "email": "no-email-5f6d33383749ad87@missing.local",
-      "company": "Softworld, LLC",
+      "name": "cmcjunkins@247networks.com",
+      "email": "no-email-0989e47e38362c82@missing.local",
+      "company": "Clay McJunkins",
       "phone": null,
-      "state": null,
-      "location": "781-833-0226 / 617-803-3113"
+      "state": "CO",
+      "location": "Englewood, CO, USA"
     },
     {
-      "name": "Callum Harrison",
-      "email": "no-email-e926e5fbdd385e1a@missing.local",
-      "company": "Whitehall Resources",
+      "name": "snadig@247networks.com",
+      "email": "no-email-f630c12d021ce3ae@missing.local",
+      "company": "Srinath Nadig",
       "phone": null,
-      "state": null,
-      "location": "#ERROR!"
+      "state": "CO",
+      "location": "Englewood, CO, USA"
     },
     {
-      "name": "Camilla",
-      "email": "no-email-710a306db28a8370@missing.local",
-      "company": "Bluestone Staffing",
+      "name": "cking@247networks.com",
+      "email": "no-email-fc3dd2cc341d2316@missing.local",
+      "company": "Colleen King",
       "phone": null,
-      "state": null,
-      "location": "847.382.3559"
+      "state": "CO",
+      "location": "Englewood, CO, USA"
     },
     {
-      "name": "Cari Basaldua",
-      "email": "no-email-fcce560b4476a76e@missing.local",
-      "company": "Planet Technology",
+      "name": "knetworks@247networks.com",
+      "email": "no-email-20e8b11eb79d6a3b@missing.local",
+      "company": "Keshav Networks",
       "phone": null,
-      "state": null,
-      "location": "650-305-3083"
+      "state": "CO",
+      "location": "Englewood, CO, USA"
     },
     {
-      "name": "Carly Miller",
-      "email": "no-email-9982b62097a08870@missing.local",
-      "company": "Insight Global",
+      "name": "bmason@247networks.com",
+      "email": "no-email-a7bc72b2b6962d7c@missing.local",
+      "company": "Brooke Mason",
       "phone": null,
-      "state": null,
-      "location": "954-604-1066 / 813-549-7214"
+      "state": "CO",
+      "location": "Englewood, CO, USA"
     },
     {
-      "name": "Carole Logvin",
-      "email": "no-email-ebd5baafa7d4d571@missing.local",
-      "company": "OrangePeople",
+      "name": "cbartsch@247networks.com",
+      "email": "no-email-e502f5e26f901bca@missing.local",
+      "company": "Carson Bartsch",
       "phone": null,
-      "state": null,
-      "location": "407-493-8498 / 949-535-1308"
+      "state": "CO",
+      "location": "Englewood, CO, USA"
     },
     {
-      "name": "Brad Rosenthal",
-      "email": "no-email-974a4a0584d40d45@missing.local",
-      "company": "Synergy Consulting Group",
+      "name": "jjameson@247networks.com",
+      "email": "no-email-f9b9a459f8c42f6f@missing.local",
+      "company": "Jill L. Jameson",
       "phone": null,
-      "state": null,
-      "location": "Brad@synergycgi.com"
+      "state": "CO",
+      "location": "Englewood, CO, USA"
     },
     {
-      "name": "Brien Harmon",
-      "email": "no-email-3d0dd218e39040ae@missing.local",
-      "company": "Planet Technology",
+      "name": "nshendige@247networks.com",
+      "email": "no-email-3e47b97e53f5737d@missing.local",
+      "company": "Narendra Shendige",
       "phone": null,
-      "state": null,
-      "location": "(858) 221-9289"
+      "state": "CO",
+      "location": "Englewood, CO, USA"
     },
     {
-      "name": "Cara Curtin",
-      "email": "no-email-11e9e500d2450fca@missing.local",
-      "company": "Medix",
+      "name": "harry@koobriklabs.com",
+      "email": "no-email-ab8d15c59c30768d@missing.local",
+      "company": "Harry Skehel",
       "phone": null,
-      "state": null,
-      "location": "301-591-9514"
+      "state": "CA",
+      "location": "California"
     },
     {
-      "name": "Dale Pedder",
-      "email": "no-email-7b48d5aae72175b2@missing.local",
-      "company": "Austin Fraser",
+      "name": "jake@koobriklabs.com",
+      "email": "no-email-79c135ea20ff6ee8@missing.local",
+      "company": "Jake Sinclair",
       "phone": null,
-      "state": null,
-      "location": "2030040216"
+      "state": "CA",
+      "location": "California"
     },
     {
-      "name": "Dan C. Cohen",
-      "email": "no-email-8afa0fdc287916d9@missing.local",
-      "company": "Toyota/Lexus Financial Services, Mazda Financial Services",
+      "name": "dillon@koobriklabs.com",
+      "email": "no-email-0222956c81b9fc3c@missing.local",
+      "company": "Dillon Shelton",
       "phone": null,
-      "state": null,
-      "location": "(469)-786-8003 / (319)-221-3567"
+      "state": "CA",
+      "location": "California"
     },
     {
-      "name": "Deanna Saulsbury",
-      "email": "no-email-9fc91396fe72648e@missing.local",
-      "company": "Kelly Engineering",
+      "name": "nathaniel@koobriklabs.com",
+      "email": "no-email-2ce27d78c3b783e7@missing.local",
+      "company": "Nathaniel Chadwick",
       "phone": null,
-      "state": null,
-      "location": "720-841-9861"
+      "state": "CA",
+      "location": "California"
     }
   ],
   "enriched_examples": [
     {
-      "recruiter_id": 23987,
-      "recruiter_name": "Lee",
-      "email": "lee@etekserve.com",
-      "company": "EtekServe",
-      "match_type": "email",
+      "recruiter_id": 144024,
+      "recruiter_name": "Email",
+      "email": "no-email-962bbda3e50f915c@missing.local",
+      "company": "Name",
+      "match_type": "name_company",
       "state": null,
-      "location": "737-239-0972"
+      "location": "Company"
     },
     {
-      "recruiter_id": 24048,
-      "recruiter_name": "Ryan",
-      "email": "ryan@aceintegrator.com",
-      "company": "ACE Integrator Inc.",
-      "match_type": "email",
+      "recruiter_id": 144356,
+      "recruiter_name": "justin@bridgeviewit.com",
+      "email": "no-email-bf5b384b522057e8@missing.local",
+      "company": "Justin Noack",
+      "match_type": "name_company",
+      "state": "IL",
+      "location": "BridgeView IT"
+    },
+    {
+      "recruiter_id": 144350,
+      "recruiter_name": "tommy@bridgeviewit.com",
+      "email": "no-email-ae1c9a89bbafa286@missing.local",
+      "company": "Tommy Phillips",
+      "match_type": "name_company",
+      "state": "IL",
+      "location": "BridgeView IT"
+    },
+    {
+      "recruiter_id": 144482,
+      "recruiter_name": "kmarion@compri.com",
+      "email": "no-email-ff049d75972ee580@missing.local",
+      "company": "Kristen Marion",
+      "match_type": "name_company",
+      "state": "MN",
+      "location": "3363106698"
+    },
+    {
+      "recruiter_id": 143920,
+      "recruiter_name": "Dreeves@synergishr.com",
+      "email": "no-email-f776754c9a47e952@missing.local",
+      "company": "Danielle Reeves",
+      "match_type": "name_company",
       "state": null,
-      "location": "#ERROR!"
+      "location": "Synergis IT"
     },
     {
-      "recruiter_id": 24197,
-      "recruiter_name": "Fardeen",
-      "email": "fardeen@arthurlawrence.net",
-      "company": "Arthur Lawrence",
-      "match_type": "email",
+      "recruiter_id": 144491,
+      "recruiter_name": "janderson@technical-link.com",
+      "email": "no-email-5b1fd9c6ba52bd2a@missing.local",
+      "company": "Jeff Anderson",
+      "match_type": "name_company",
       "state": null,
-      "location": "#ERROR!"
+      "location": "7029689228"
     },
     {
-      "recruiter_id": 6879,
-      "recruiter_name": "Suvarna",
-      "email": "suvarna@qatos.net",
-      "company": "QATOS",
-      "match_type": "email",
+      "recruiter_id": 143788,
+      "recruiter_name": "jim@techperm.com",
+      "email": "no-email-bd2f204d2b174302@missing.local",
+      "company": "Jim Huelskamp",
+      "match_type": "name_company",
       "state": null,
-      "location": "916-516-1196 x206"
+      "location": "TechPerm Inc"
     },
     {
-      "recruiter_id": 1871,
-      "recruiter_name": "Sandeep",
-      "email": "sandeep@suncaptech.com",
-      "company": "Suncap Tech",
-      "match_type": "email",
-      "state": "GA",
-      "location": "Atlanta, Georgia"
-    },
-    {
-      "recruiter_id": 23140,
-      "recruiter_name": "Belem",
-      "email": "belem@atlanticpartnerscorp.com",
-      "company": "Atlantic Partners",
-      "match_type": "email",
+      "recruiter_id": 144030,
+      "recruiter_name": "melanie.gillot@tek-connexion.com",
+      "email": "no-email-97de0470b547f627@missing.local",
+      "company": "Melanie Gillot",
+      "match_type": "name_company",
       "state": null,
-      "location": "NIL"
+      "location": "Tek Connexion"
     },
     {
-      "recruiter_id": 50796,
-      "recruiter_name": "Amedina",
-      "email": "amedina@actalentservices.com",
-      "company": "Actalent",
-      "match_type": "email",
+      "recruiter_id": 144444,
+      "recruiter_name": "patti@theconnorsgroup.com",
+      "email": "no-email-87fd9041b78e5759@missing.local",
+      "company": "Patti Richards",
+      "match_type": "name_company",
       "state": null,
-      "location": "916-754-4066"
+      "location": "\u2014"
     },
     {
-      "recruiter_id": 7441,
-      "recruiter_name": "Pocket",
-      "email": "pocket@hanselltierney.com",
-      "company": "HansellTierney",
-      "match_type": "email",
-      "state": "WA",
-      "location": "253-576-1016"
-    },
-    {
-      "recruiter_id": 20517,
-      "recruiter_name": "Tameem",
-      "email": "tameem@xyloconsultingllc.com",
-      "company": "",
-      "match_type": "email",
+      "recruiter_id": 144329,
+      "recruiter_name": "mlove@evolversgroup.com",
+      "email": "no-email-621e67560b965634@missing.local",
+      "company": "Michelle Love",
+      "match_type": "name_company",
       "state": null,
-      "location": "510-902-6065"
+      "location": "The Evolvers Group"
     },
     {
-      "recruiter_id": 25271,
-      "recruiter_name": "Daniel",
-      "email": "daniel@bitsoft.com",
-      "company": "Bitsoft",
-      "match_type": "email",
+      "recruiter_id": 144375,
+      "recruiter_name": "cbeasty@judge.com",
+      "email": "no-email-fd5084531c3b8485@missing.local",
+      "company": "Connor Beasty",
+      "match_type": "name_company",
       "state": null,
-      "location": "630-313-6780"
+      "location": "610-667-7700"
     },
     {
-      "recruiter_id": 8039,
-      "recruiter_name": "Penny",
-      "email": "penny@impactbusinessgroup.com",
-      "company": "Impact Business Group",
-      "match_type": "email",
+      "recruiter_id": 144217,
+      "recruiter_name": "rhoffner@judge.com",
+      "email": "no-email-7929fa85b8907fc9@missing.local",
+      "company": "Robert Hoffner",
+      "match_type": "name_company",
       "state": null,
-      "location": "616-254-8586"
+      "location": "The Judge Group"
     },
     {
-      "recruiter_id": 25310,
-      "recruiter_name": "Brian",
-      "email": "brian@prostaffingfl.com",
-      "company": "Pro Staffing FL",
-      "match_type": "email",
+      "recruiter_id": 143937,
+      "recruiter_name": "shanecmcginley@gmail.com",
+      "email": "no-email-3808544626412374@missing.local",
+      "company": "Shane McGinley",
+      "match_type": "name_company",
       "state": null,
-      "location": "847-712-0363"
+      "location": "The Judge Group"
     },
     {
-      "recruiter_id": 25316,
-      "recruiter_name": "Dhylan",
-      "email": "dhylan@coltech.io",
-      "company": "Coltech",
-      "match_type": "email",
+      "recruiter_id": 144503,
+      "recruiter_name": "cheryl.black@themidtowngroup.com",
+      "email": "no-email-eae6543bd0236e16@missing.local",
+      "company": "Cheryl Black",
+      "match_type": "name_company",
       "state": null,
-      "location": "-562769"
+      "location": "5714884114"
     },
     {
-      "recruiter_id": 26005,
-      "recruiter_name": "Peter",
-      "email": "peter@eminencets.com",
-      "company": "Eminence Technology Solutions",
-      "match_type": "email",
+      "recruiter_id": 144322,
+      "recruiter_name": "melissa@tricomgroup.com",
+      "email": "no-email-6d50558406da82ae@missing.local",
+      "company": "Melissa Houck",
+      "match_type": "name_company",
       "state": null,
-      "location": "peter.eminencets@gmail.com"
+      "location": "Tri-Com Consulting"
+    },
+    {
+      "recruiter_id": 144048,
+      "recruiter_name": "kallen@vaco.com",
+      "email": "no-email-7c99e298f67123fa@missing.local",
+      "company": "Kyle Allen",
+      "match_type": "name_company",
+      "state": null,
+      "location": "Vaco"
+    },
+    {
+      "recruiter_id": 144544,
+      "recruiter_name": "andrew.owen@vanderhouwen.com",
+      "email": "no-email-25078b286b86c8f7@missing.local",
+      "company": "Andrew Owen",
+      "match_type": "name_company",
+      "state": "OR",
+      "location": "9715015117"
+    },
+    {
+      "recruiter_id": 144410,
+      "recruiter_name": "agoswami@yorksolutions.net",
+      "email": "no-email-bb3ba658fadbde41@missing.local",
+      "company": "Ambuja Goswami",
+      "match_type": "name_company",
+      "state": null,
+      "location": "16518952298"
+    },
+    {
+      "recruiter_id": 144109,
+      "recruiter_name": "jhopwood@atrilogy.com",
+      "email": "no-email-b223accc5b0ac438@missing.local",
+      "company": "Jessica Hopwood",
+      "match_type": "name_company",
+      "state": null,
+      "location": "Atrilogy"
+    },
+    {
+      "recruiter_id": 144505,
+      "recruiter_name": "jorge.lopez@bstonetech.com",
+      "email": "no-email-e3960005c960f15c@missing.local",
+      "company": "Jorge Lopez",
+      "match_type": "name_company",
+      "state": null,
+      "location": "4155183191"
     }
   ],
   "skipped_examples": [
     {
-      "identity_key": "name_company::kellywetter::psci",
-      "name": "Kelly Wetter",
+      "identity_key": "name_company::drewmystraticecom::drewwade",
+      "name": "drew@mystratice.com",
       "names": [
-        "Kelly Wetter"
+        "drew@mystratice.com"
       ],
       "email": null,
       "phone": null,
-      "company": "PSCI",
+      "company": "Drew Wade",
       "locations": [],
       "states": {},
       "sheet_names": [
-        "Sheet1"
+        "Talenot Ops"
       ],
       "source_rows": [
         {
-          "sheet": "Sheet1",
-          "row": 2547,
-          "name": "Kelly Wetter",
+          "sheet": "Talenot Ops",
+          "row": 6,
+          "name": "drew@mystratice.com",
           "email": null,
           "phone": null,
-          "company": "PSCI",
+          "company": "Drew Wade",
           "location": "",
           "office_location": "",
           "hq_location": "",
@@ -356,34 +440,610 @@
           "state_reason": null
         }
       ],
-      "preferred_name": "Kelly Wetter",
+      "preferred_name": "drew@mystratice.com",
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0,
+      "company_group_size": 1
+    },
+    {
+      "identity_key": "name_company::kdesenbergstriveconsultingcom::kristinadesenberg",
+      "name": "kdesenberg@striveconsulting.com",
+      "names": [
+        "kdesenberg@striveconsulting.com"
+      ],
+      "email": null,
+      "phone": null,
+      "company": "Kristina Desenberg",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 41,
+          "name": "kdesenberg@striveconsulting.com",
+          "email": null,
+          "phone": null,
+          "company": "Kristina Desenberg",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "preferred_name": "kdesenberg@striveconsulting.com",
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0,
+      "company_group_size": 1
+    },
+    {
+      "identity_key": "name_company::reynoldswiztechinccom::reynoldrubin",
+      "name": "reynold@swiztechinc.com",
+      "names": [
+        "reynold@swiztechinc.com"
+      ],
+      "email": null,
+      "phone": null,
+      "company": "Reynold Rubin",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 86,
+          "name": "reynold@swiztechinc.com",
+          "email": null,
+          "phone": null,
+          "company": "Reynold Rubin",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "preferred_name": "reynold@swiztechinc.com",
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0,
+      "company_group_size": 1
+    },
+    {
+      "identity_key": "name_company::lisahamettsyndicusinccom::lisahamett",
+      "name": "lisa.hamett@syndicusinc.com",
+      "names": [
+        "lisa.hamett@syndicusinc.com"
+      ],
+      "email": null,
+      "phone": null,
+      "company": "Lisa Hamett",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 154,
+          "name": "lisa.hamett@syndicusinc.com",
+          "email": null,
+          "phone": null,
+          "company": "Lisa Hamett",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "preferred_name": "lisa.hamett@syndicusinc.com",
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0,
+      "company_group_size": 1
+    },
+    {
+      "identity_key": "name_company::jessiwielocksyndicusinccom::jessiwielock",
+      "name": "jessi.wielock@syndicusinc.com",
+      "names": [
+        "jessi.wielock@syndicusinc.com"
+      ],
+      "email": null,
+      "phone": null,
+      "company": "Jessi Wielock",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 155,
+          "name": "jessi.wielock@syndicusinc.com",
+          "email": null,
+          "phone": null,
+          "company": "Jessi Wielock",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "preferred_name": "jessi.wielock@syndicusinc.com",
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0,
+      "company_group_size": 1
+    },
+    {
+      "identity_key": "name_company::jcarpentersynergishrcom::jennacarpenter",
+      "name": "jcarpenter@synergishr.com",
+      "names": [
+        "jcarpenter@synergishr.com"
+      ],
+      "email": null,
+      "phone": null,
+      "company": "Jenna Carpenter",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 183,
+          "name": "jcarpenter@synergishr.com",
+          "email": null,
+          "phone": null,
+          "company": "Jenna Carpenter",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "preferred_name": "jcarpenter@synergishr.com",
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0,
+      "company_group_size": 1
+    },
+    {
+      "identity_key": "name_company::arentfrowsynergycomcom::andy",
+      "name": "arentfrow@synergycom.com",
+      "names": [
+        "arentfrow@synergycom.com"
+      ],
+      "email": null,
+      "phone": null,
+      "company": "Andy",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 222,
+          "name": "arentfrow@synergycom.com",
+          "email": null,
+          "phone": null,
+          "company": "Andy",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "preferred_name": "arentfrow@synergycom.com",
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0,
+      "company_group_size": 3
+    },
+    {
+      "identity_key": "name_company::stevencreamersynergynatlcom::steve",
+      "name": "steven.creamer@synergynatl.com",
+      "names": [
+        "steven.creamer@synergynatl.com"
+      ],
+      "email": null,
+      "phone": null,
+      "company": "Steve",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 256,
+          "name": "steven.creamer@synergynatl.com",
+          "email": null,
+          "phone": null,
+          "company": "Steve",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "preferred_name": "steven.creamer@synergynatl.com",
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0,
+      "company_group_size": 6
+    },
+    {
+      "identity_key": "name_company::lisaweltzsyntelligentcom::lisaweltzarmstrong",
+      "name": "lisa.weltz@syntelligent.com",
+      "names": [
+        "lisa.weltz@syntelligent.com"
+      ],
+      "email": null,
+      "phone": null,
+      "company": "Lisa (Weltz) Armstrong",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 274,
+          "name": "lisa.weltz@syntelligent.com",
+          "email": null,
+          "phone": null,
+          "company": "Lisa (Weltz) Armstrong",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "preferred_name": "lisa.weltz@syntelligent.com",
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0,
+      "company_group_size": 1
+    },
+    {
+      "identity_key": "name_company::mmckeonsyrinxcom::mikemckeon",
+      "name": "mmckeon@syrinx.com",
+      "names": [
+        "mmckeon@syrinx.com"
+      ],
+      "email": null,
+      "phone": null,
+      "company": "Mike McKeon",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 277,
+          "name": "mmckeon@syrinx.com",
+          "email": null,
+          "phone": null,
+          "company": "Mike McKeon",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "preferred_name": "mmckeon@syrinx.com",
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0,
+      "company_group_size": 1
+    },
+    {
+      "identity_key": "name_company::mattmcdillsystemonecom::mattmcdill",
+      "name": "matt.mcdill@systemone.com",
+      "names": [
+        "matt.mcdill@systemone.com"
+      ],
+      "email": null,
+      "phone": null,
+      "company": "Matt McDill",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 320,
+          "name": "matt.mcdill@systemone.com",
+          "email": null,
+          "phone": null,
+          "company": "Matt McDill",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "preferred_name": "matt.mcdill@systemone.com",
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0,
+      "company_group_size": 1
+    },
+    {
+      "identity_key": "name_company::ealbaosystemsstaffinggroupcom::elviraalbao",
+      "name": "ealbao@systemsstaffinggroup.com",
+      "names": [
+        "ealbao@systemsstaffinggroup.com"
+      ],
+      "email": null,
+      "phone": null,
+      "company": "Elvira Albao",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 360,
+          "name": "ealbao@systemsstaffinggroup.com",
+          "email": null,
+          "phone": null,
+          "company": "Elvira Albao",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "preferred_name": "ealbao@systemsstaffinggroup.com",
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0,
+      "company_group_size": 1
+    },
+    {
+      "identity_key": "name_company::jushertailoredmanagementcom::johnusher",
+      "name": "jusher@tailoredmanagement.com",
+      "names": [
+        "jusher@tailoredmanagement.com"
+      ],
+      "email": null,
+      "phone": null,
+      "company": "John Usher",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 371,
+          "name": "jusher@tailoredmanagement.com",
+          "email": null,
+          "phone": null,
+          "company": "John Usher",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "preferred_name": "jusher@tailoredmanagement.com",
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0,
+      "company_group_size": 1
+    },
+    {
+      "identity_key": "name_company::cyetteratrilogycom::christina",
+      "name": "cyetter@atrilogy.com",
+      "names": [
+        "cyetter@atrilogy.com"
+      ],
+      "email": null,
+      "phone": null,
+      "company": "Christina",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 405,
+          "name": "cyetter@atrilogy.com",
+          "email": null,
+          "phone": null,
+          "company": "Christina",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "preferred_name": "cyetter@atrilogy.com",
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0,
+      "company_group_size": 1
+    },
+    {
+      "identity_key": "name_company::bryanklinetstrategycom::bryankline",
+      "name": "bryan.kline@t-strategy.com",
+      "names": [
+        "bryan.kline@t-strategy.com"
+      ],
+      "email": null,
+      "phone": null,
+      "company": "Bryan Kline",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 441,
+          "name": "bryan.kline@t-strategy.com",
+          "email": null,
+          "phone": null,
+          "company": "Bryan Kline",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "preferred_name": "bryan.kline@t-strategy.com",
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0,
+      "company_group_size": 1
+    },
+    {
+      "identity_key": "name_company::lraftopoulostalonprocom::lillianraftopoulos",
+      "name": "lraftopoulos@talonpro.com",
+      "names": [
+        "lraftopoulos@talonpro.com"
+      ],
+      "email": null,
+      "phone": null,
+      "company": "Lillian Raftopoulos",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 479,
+          "name": "lraftopoulos@talonpro.com",
+          "email": null,
+          "phone": null,
+          "company": "Lillian Raftopoulos",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "preferred_name": "lraftopoulos@talonpro.com",
+      "source_row_count": 1,
+      "dominant_state": null,
+      "dominant_state_count": 0,
+      "company_group_size": 1
+    },
+    {
+      "identity_key": "name_company::billcourtneytdktechcom::billcourtney",
+      "name": "bill.courtney@tdktech.com",
+      "names": [
+        "bill.courtney@tdktech.com"
+      ],
+      "email": null,
+      "phone": null,
+      "company": "Bill Courtney",
+      "locations": [],
+      "states": {},
+      "sheet_names": [
+        "Talenot Ops"
+      ],
+      "source_rows": [
+        {
+          "sheet": "Talenot Ops",
+          "row": 540,
+          "name": "bill.courtney@tdktech.com",
+          "email": null,
+          "phone": null,
+          "company": "Bill Courtney",
+          "location": "",
+          "office_location": "",
+          "hq_location": "",
+          "country": "",
+          "state": null,
+          "state_reason": null
+        }
+      ],
+      "preferred_name": "bill.courtney@tdktech.com",
       "source_row_count": 1,
       "dominant_state": null,
       "dominant_state_count": 0,
       "company_group_size": 2
     },
     {
-      "identity_key": "name_company::liamhirephazecom::liamhiggins",
-      "name": "liam@hirephaze.com",
+      "identity_key": "name_company::smisamentechlinksystemscom::sharonmisamen",
+      "name": "smisamen@techlinksystems.com",
       "names": [
-        "liam@hirephaze.com"
+        "smisamen@techlinksystems.com"
       ],
       "email": null,
       "phone": null,
-      "company": "Liam Higgins",
+      "company": "Sharon Misamen",
       "locations": [],
       "states": {},
       "sheet_names": [
-        "Sheet1"
+        "Talenot Ops"
       ],
       "source_rows": [
         {
-          "sheet": "Sheet1",
-          "row": 2812,
-          "name": "liam@hirephaze.com",
+          "sheet": "Talenot Ops",
+          "row": 571,
+          "name": "smisamen@techlinksystems.com",
           "email": null,
           "phone": null,
-          "company": "Liam Higgins",
+          "company": "Sharon Misamen",
           "location": "",
           "office_location": "",
           "hq_location": "",
@@ -392,34 +1052,34 @@
           "state_reason": null
         }
       ],
-      "preferred_name": "liam@hirephaze.com",
+      "preferred_name": "smisamen@techlinksystems.com",
       "source_row_count": 1,
       "dominant_state": null,
       "dominant_state_count": 0,
       "company_group_size": 1
     },
     {
-      "identity_key": "name_company::tedabramstechcom::tedabrams",
-      "name": "ted@abramstech.com",
+      "identity_key": "name_company::blunatechusanet::britany",
+      "name": "bluna@techusa.net",
       "names": [
-        "ted@abramstech.com"
+        "bluna@techusa.net"
       ],
       "email": null,
       "phone": null,
-      "company": "Ted Abrams",
+      "company": "Britany",
       "locations": [],
       "states": {},
       "sheet_names": [
-        "Sheet1"
+        "Talenot Ops"
       ],
       "source_rows": [
         {
-          "sheet": "Sheet1",
-          "row": 2823,
-          "name": "ted@abramstech.com",
+          "sheet": "Talenot Ops",
+          "row": 604,
+          "name": "bluna@techusa.net",
           "email": null,
           "phone": null,
-          "company": "Ted Abrams",
+          "company": "Britany",
           "location": "",
           "office_location": "",
           "hq_location": "",
@@ -428,34 +1088,34 @@
           "state_reason": null
         }
       ],
-      "preferred_name": "ted@abramstech.com",
+      "preferred_name": "bluna@techusa.net",
       "source_row_count": 1,
       "dominant_state": null,
       "dominant_state_count": 0,
       "company_group_size": 1
     },
     {
-      "identity_key": "name_company::tiffinylspiperstaffingcom::tiffinysmith",
-      "name": "tiffinyl@spiperstaffing.com",
+      "identity_key": "name_company::nikhilktechnogeninccom::nikhiltejk",
+      "name": "nikhil.k@technogeninc.com",
       "names": [
-        "tiffinyl@spiperstaffing.com"
+        "nikhil.k@technogeninc.com"
       ],
       "email": null,
       "phone": null,
-      "company": "Tiffiny Smith",
+      "company": "NikhilTej K",
       "locations": [],
       "states": {},
       "sheet_names": [
-        "Sheet1"
+        "Talenot Ops"
       ],
       "source_rows": [
         {
-          "sheet": "Sheet1",
-          "row": 2825,
-          "name": "tiffinyl@spiperstaffing.com",
+          "sheet": "Talenot Ops",
+          "row": 684,
+          "name": "nikhil.k@technogeninc.com",
           "email": null,
           "phone": null,
-          "company": "Tiffiny Smith",
+          "company": "NikhilTej K",
           "location": "",
           "office_location": "",
           "hq_location": "",
@@ -464,583 +1124,7 @@
           "state_reason": null
         }
       ],
-      "preferred_name": "tiffinyl@spiperstaffing.com",
-      "source_row_count": 1,
-      "dominant_state": null,
-      "dominant_state_count": 0,
-      "company_group_size": 1
-    },
-    {
-      "identity_key": "name_company::gilanmoussariospartnerscom::gilanmoussa",
-      "name": "gilan.moussa@riospartners.com",
-      "names": [
-        "gilan.moussa@riospartners.com"
-      ],
-      "email": null,
-      "phone": null,
-      "company": "Gilan Moussa",
-      "locations": [],
-      "states": {},
-      "sheet_names": [
-        "Sheet1"
-      ],
-      "source_rows": [
-        {
-          "sheet": "Sheet1",
-          "row": 2831,
-          "name": "gilan.moussa@riospartners.com",
-          "email": null,
-          "phone": null,
-          "company": "Gilan Moussa",
-          "location": "",
-          "office_location": "",
-          "hq_location": "",
-          "country": "",
-          "state": null,
-          "state_reason": null
-        }
-      ],
-      "preferred_name": "gilan.moussa@riospartners.com",
-      "source_row_count": 1,
-      "dominant_state": null,
-      "dominant_state_count": 0,
-      "company_group_size": 1
-    },
-    {
-      "identity_key": "name_company::mikerhodes::",
-      "name": "Mike Rhodes",
-      "names": [
-        "Mike Rhodes"
-      ],
-      "email": null,
-      "phone": null,
-      "company": "\u2014",
-      "locations": [],
-      "states": {},
-      "sheet_names": [
-        "Sheet1"
-      ],
-      "source_rows": [
-        {
-          "sheet": "Sheet1",
-          "row": 2842,
-          "name": "Mike Rhodes",
-          "email": null,
-          "phone": null,
-          "company": "\u2014",
-          "location": "",
-          "office_location": "",
-          "hq_location": "",
-          "country": "",
-          "state": null,
-          "state_reason": null
-        }
-      ],
-      "preferred_name": "Mike Rhodes",
-      "source_row_count": 1,
-      "dominant_state": null,
-      "dominant_state_count": 0,
-      "company_group_size": 101
-    },
-    {
-      "identity_key": "name_company::arslanqureshi::",
-      "name": "Arslan Qureshi",
-      "names": [
-        "Arslan Qureshi"
-      ],
-      "email": null,
-      "phone": null,
-      "company": "\u2014",
-      "locations": [],
-      "states": {},
-      "sheet_names": [
-        "Sheet1"
-      ],
-      "source_rows": [
-        {
-          "sheet": "Sheet1",
-          "row": 2844,
-          "name": "Arslan Qureshi",
-          "email": null,
-          "phone": null,
-          "company": "\u2014",
-          "location": "",
-          "office_location": "",
-          "hq_location": "",
-          "country": "",
-          "state": null,
-          "state_reason": null
-        }
-      ],
-      "preferred_name": "Arslan Qureshi",
-      "source_row_count": 1,
-      "dominant_state": null,
-      "dominant_state_count": 0,
-      "company_group_size": 101
-    },
-    {
-      "identity_key": "name_company::twilsonrevolutiontechnologiescomtraneisewilson1gmailcomtraneisewilson1yahoocomaliwln0002gmailcomwtrevolutiontechnologiescomwrevolutiontechnologiescomtwrevolutiontechnologiescomteewrevolutiontechnologiescomteerevolutiontechnologiescom::teewtraneisewilson",
-      "name": "twilson@revolutiontechnologies.com; traneisewilson1@gmail.com; traneisewilson1@yahoo.com; aliwln0002@gmail.com; wt@revolutiontechnologies.com; w@revolutiontechnologies.com; tw@revolutiontechnologies.com; teew@revolutiontechnologies.com; tee@revolutiontechnologies.com",
-      "names": [
-        "twilson@revolutiontechnologies.com; traneisewilson1@gmail.com; traneisewilson1@yahoo.com; aliwln0002@gmail.com; wt@revolutiontechnologies.com; w@revolutiontechnologies.com; tw@revolutiontechnologies.com; teew@revolutiontechnologies.com; tee@revolutiontechnologies.com"
-      ],
-      "email": null,
-      "phone": null,
-      "company": "Tee W (Traneise Wilson)",
-      "locations": [],
-      "states": {},
-      "sheet_names": [
-        "Sheet1"
-      ],
-      "source_rows": [
-        {
-          "sheet": "Sheet1",
-          "row": 2889,
-          "name": "twilson@revolutiontechnologies.com; traneisewilson1@gmail.com; traneisewilson1@yahoo.com; aliwln0002@gmail.com; wt@revolutiontechnologies.com; w@revolutiontechnologies.com; tw@revolutiontechnologies.com; teew@revolutiontechnologies.com; tee@revolutiontechnologies.com",
-          "email": null,
-          "phone": null,
-          "company": "Tee W (Traneise Wilson)",
-          "location": "",
-          "office_location": "",
-          "hq_location": "",
-          "country": "",
-          "state": null,
-          "state_reason": null
-        }
-      ],
-      "preferred_name": "twilson@revolutiontechnologies.com; traneisewilson1@gmail.com; traneisewilson1@yahoo.com; aliwln0002@gmail.com; wt@revolutiontechnologies.com; w@revolutiontechnologies.com; tw@revolutiontechnologies.com; teew@revolutiontechnologies.com; tee@revolutiontechnologies.com",
-      "source_row_count": 1,
-      "dominant_state": null,
-      "dominant_state_count": 0,
-      "company_group_size": 2
-    },
-    {
-      "identity_key": "name_company::denicegaleasinitiatesolutionscom::deniceg",
-      "name": "denice.galeas@initiatesolutions.com",
-      "names": [
-        "denice.galeas@initiatesolutions.com"
-      ],
-      "email": null,
-      "phone": null,
-      "company": "Denice G.",
-      "locations": [],
-      "states": {},
-      "sheet_names": [
-        "Sheet1"
-      ],
-      "source_rows": [
-        {
-          "sheet": "Sheet1",
-          "row": 2890,
-          "name": "denice.galeas@initiatesolutions.com",
-          "email": null,
-          "phone": null,
-          "company": "Denice G.",
-          "location": "",
-          "office_location": "",
-          "hq_location": "",
-          "country": "",
-          "state": null,
-          "state_reason": null
-        }
-      ],
-      "preferred_name": "denice.galeas@initiatesolutions.com",
-      "source_row_count": 1,
-      "dominant_state": null,
-      "dominant_state_count": 0,
-      "company_group_size": 1
-    },
-    {
-      "identity_key": "name_company::apharissparadigminfoservicescomaaronpharissgmailcom::aaronphariss",
-      "name": "aphariss@paradigminfoservices.com; aaronphariss@gmail.com",
-      "names": [
-        "aphariss@paradigminfoservices.com; aaronphariss@gmail.com"
-      ],
-      "email": null,
-      "phone": null,
-      "company": "Aaron Phariss",
-      "locations": [],
-      "states": {},
-      "sheet_names": [
-        "Sheet1"
-      ],
-      "source_rows": [
-        {
-          "sheet": "Sheet1",
-          "row": 2891,
-          "name": "aphariss@paradigminfoservices.com; aaronphariss@gmail.com",
-          "email": null,
-          "phone": null,
-          "company": "Aaron Phariss",
-          "location": "",
-          "office_location": "",
-          "hq_location": "",
-          "country": "",
-          "state": null,
-          "state_reason": null
-        }
-      ],
-      "preferred_name": "aphariss@paradigminfoservices.com; aaronphariss@gmail.com",
-      "source_row_count": 1,
-      "dominant_state": null,
-      "dominant_state_count": 0,
-      "company_group_size": 2
-    },
-    {
-      "identity_key": "name_company::rjacksoncampbellhealthorg::richardojackson",
-      "name": "rjackson@campbellhealth.org",
-      "names": [
-        "rjackson@campbellhealth.org"
-      ],
-      "email": null,
-      "phone": null,
-      "company": "Richardo Jackson",
-      "locations": [],
-      "states": {},
-      "sheet_names": [
-        "Sheet1"
-      ],
-      "source_rows": [
-        {
-          "sheet": "Sheet1",
-          "row": 2893,
-          "name": "rjackson@campbellhealth.org",
-          "email": null,
-          "phone": null,
-          "company": "Richardo Jackson",
-          "location": "",
-          "office_location": "",
-          "hq_location": "",
-          "country": "",
-          "state": null,
-          "state_reason": null
-        }
-      ],
-      "preferred_name": "rjackson@campbellhealth.org",
-      "source_row_count": 1,
-      "dominant_state": null,
-      "dominant_state_count": 0,
-      "company_group_size": 2
-    },
-    {
-      "identity_key": "name_company::elliotspudmomyahoocom::whittneyschmidt",
-      "name": "elliotspudmom@yahoo.com",
-      "names": [
-        "elliotspudmom@yahoo.com"
-      ],
-      "email": null,
-      "phone": null,
-      "company": "Whittney Schmidt",
-      "locations": [],
-      "states": {},
-      "sheet_names": [
-        "Sheet1"
-      ],
-      "source_rows": [
-        {
-          "sheet": "Sheet1",
-          "row": 2909,
-          "name": "elliotspudmom@yahoo.com",
-          "email": null,
-          "phone": null,
-          "company": "Whittney Schmidt",
-          "location": "",
-          "office_location": "",
-          "hq_location": "",
-          "country": "",
-          "state": null,
-          "state_reason": null
-        }
-      ],
-      "preferred_name": "elliotspudmom@yahoo.com",
-      "source_row_count": 1,
-      "dominant_state": null,
-      "dominant_state_count": 0,
-      "company_group_size": 2
-    },
-    {
-      "identity_key": "name_company::kninfosolutechnologycom::kristyninfo",
-      "name": "kninfo@solutechnology.com",
-      "names": [
-        "kninfo@solutechnology.com"
-      ],
-      "email": null,
-      "phone": null,
-      "company": "Kristy Ninfo",
-      "locations": [],
-      "states": {},
-      "sheet_names": [
-        "Sheet1"
-      ],
-      "source_rows": [
-        {
-          "sheet": "Sheet1",
-          "row": 2912,
-          "name": "kninfo@solutechnology.com",
-          "email": null,
-          "phone": null,
-          "company": "Kristy Ninfo",
-          "location": "",
-          "office_location": "",
-          "hq_location": "",
-          "country": "",
-          "state": null,
-          "state_reason": null
-        }
-      ],
-      "preferred_name": "kninfo@solutechnology.com",
-      "source_row_count": 1,
-      "dominant_state": null,
-      "dominant_state_count": 0,
-      "company_group_size": 2
-    },
-    {
-      "identity_key": "name_company::pstemarie82gmailcomphilscorgtacom::philipstemarie",
-      "name": "pstemarie82@gmail.com; phils@corgta.com",
-      "names": [
-        "pstemarie82@gmail.com; phils@corgta.com"
-      ],
-      "email": null,
-      "phone": null,
-      "company": "Philip SteMarie",
-      "locations": [],
-      "states": {},
-      "sheet_names": [
-        "Sheet1"
-      ],
-      "source_rows": [
-        {
-          "sheet": "Sheet1",
-          "row": 2913,
-          "name": "pstemarie82@gmail.com; phils@corgta.com",
-          "email": null,
-          "phone": null,
-          "company": "Philip SteMarie",
-          "location": "",
-          "office_location": "",
-          "hq_location": "",
-          "country": "",
-          "state": null,
-          "state_reason": null
-        }
-      ],
-      "preferred_name": "pstemarie82@gmail.com; phils@corgta.com",
-      "source_row_count": 1,
-      "dominant_state": null,
-      "dominant_state_count": 0,
-      "company_group_size": 1
-    },
-    {
-      "identity_key": "name_company::jlewismagnitudeitcomjeffreylewis12gmailcom::jeffslewis",
-      "name": "jlewis@magnitudeit.com; jeffreylewis12@gmail.com",
-      "names": [
-        "jlewis@magnitudeit.com; jeffreylewis12@gmail.com"
-      ],
-      "email": null,
-      "phone": null,
-      "company": "Jeff S. Lewis",
-      "locations": [],
-      "states": {},
-      "sheet_names": [
-        "Sheet1"
-      ],
-      "source_rows": [
-        {
-          "sheet": "Sheet1",
-          "row": 2914,
-          "name": "jlewis@magnitudeit.com; jeffreylewis12@gmail.com",
-          "email": null,
-          "phone": null,
-          "company": "Jeff S. Lewis",
-          "location": "",
-          "office_location": "",
-          "hq_location": "",
-          "country": "",
-          "state": null,
-          "state_reason": null
-        }
-      ],
-      "preferred_name": "jlewis@magnitudeit.com; jeffreylewis12@gmail.com",
-      "source_row_count": 1,
-      "dominant_state": null,
-      "dominant_state_count": 0,
-      "company_group_size": 1
-    },
-    {
-      "identity_key": "name_company::anilamoledinasoaltechcomamoledinaameritradecom::anilamoledina",
-      "name": "anilamoledina@soaltech.com; amoledina@ameritrade.com",
-      "names": [
-        "anilamoledina@soaltech.com; amoledina@ameritrade.com"
-      ],
-      "email": null,
-      "phone": null,
-      "company": "Anila Moledina",
-      "locations": [],
-      "states": {},
-      "sheet_names": [
-        "Sheet1"
-      ],
-      "source_rows": [
-        {
-          "sheet": "Sheet1",
-          "row": 2917,
-          "name": "anilamoledina@soaltech.com; amoledina@ameritrade.com",
-          "email": null,
-          "phone": null,
-          "company": "Anila Moledina",
-          "location": "",
-          "office_location": "",
-          "hq_location": "",
-          "country": "",
-          "state": null,
-          "state_reason": null
-        }
-      ],
-      "preferred_name": "anilamoledina@soaltech.com; amoledina@ameritrade.com",
-      "source_row_count": 1,
-      "dominant_state": null,
-      "dominant_state_count": 0,
-      "company_group_size": 1
-    },
-    {
-      "identity_key": "name_company::mysteenchiongvsolvitcomperfecteve24yahoocom::mysteenchiong",
-      "name": "mysteen.chiong@vsolvit.com; perfecteve24@yahoo.com",
-      "names": [
-        "mysteen.chiong@vsolvit.com; perfecteve24@yahoo.com"
-      ],
-      "email": null,
-      "phone": null,
-      "company": "Mysteen Chiong",
-      "locations": [],
-      "states": {},
-      "sheet_names": [
-        "Sheet1"
-      ],
-      "source_rows": [
-        {
-          "sheet": "Sheet1",
-          "row": 2918,
-          "name": "mysteen.chiong@vsolvit.com; perfecteve24@yahoo.com",
-          "email": null,
-          "phone": null,
-          "company": "Mysteen Chiong",
-          "location": "",
-          "office_location": "",
-          "hq_location": "",
-          "country": "",
-          "state": null,
-          "state_reason": null
-        }
-      ],
-      "preferred_name": "mysteen.chiong@vsolvit.com; perfecteve24@yahoo.com",
-      "source_row_count": 1,
-      "dominant_state": null,
-      "dominant_state_count": 0,
-      "company_group_size": 1
-    },
-    {
-      "identity_key": "name_company::matthewkinsmanpandescocom::matthewkinsman",
-      "name": "matthew.kinsman@pandesco.com",
-      "names": [
-        "matthew.kinsman@pandesco.com"
-      ],
-      "email": null,
-      "phone": null,
-      "company": "Matthew Kinsman",
-      "locations": [],
-      "states": {},
-      "sheet_names": [
-        "Sheet1"
-      ],
-      "source_rows": [
-        {
-          "sheet": "Sheet1",
-          "row": 2919,
-          "name": "matthew.kinsman@pandesco.com",
-          "email": null,
-          "phone": null,
-          "company": "Matthew Kinsman",
-          "location": "",
-          "office_location": "",
-          "hq_location": "",
-          "country": "",
-          "state": null,
-          "state_reason": null
-        }
-      ],
-      "preferred_name": "matthew.kinsman@pandesco.com",
-      "source_row_count": 1,
-      "dominant_state": null,
-      "dominant_state_count": 0,
-      "company_group_size": 1
-    },
-    {
-      "identity_key": "name_company::fabairchcborgmn2608comcastnet::faithabair",
-      "name": "fabair@chcb.org; mn2608@comcast.net",
-      "names": [
-        "fabair@chcb.org; mn2608@comcast.net"
-      ],
-      "email": null,
-      "phone": null,
-      "company": "Faith Abair",
-      "locations": [],
-      "states": {},
-      "sheet_names": [
-        "Sheet1"
-      ],
-      "source_rows": [
-        {
-          "sheet": "Sheet1",
-          "row": 2921,
-          "name": "fabair@chcb.org; mn2608@comcast.net",
-          "email": null,
-          "phone": null,
-          "company": "Faith Abair",
-          "location": "",
-          "office_location": "",
-          "hq_location": "",
-          "country": "",
-          "state": null,
-          "state_reason": null
-        }
-      ],
-      "preferred_name": "fabair@chcb.org; mn2608@comcast.net",
-      "source_row_count": 1,
-      "dominant_state": null,
-      "dominant_state_count": 0,
-      "company_group_size": 2
-    },
-    {
-      "identity_key": "name_company::::lararyan",
-      "name": "\u2014",
-      "names": [
-        "\u2014"
-      ],
-      "email": null,
-      "phone": null,
-      "company": "Lara Ryan",
-      "locations": [],
-      "states": {},
-      "sheet_names": [
-        "Sheet1"
-      ],
-      "source_rows": [
-        {
-          "sheet": "Sheet1",
-          "row": 3052,
-          "name": "\u2014",
-          "email": null,
-          "phone": null,
-          "company": "Lara Ryan",
-          "location": "",
-          "office_location": "",
-          "hq_location": "",
-          "country": "",
-          "state": null,
-          "state_reason": null
-        }
-      ],
-      "preferred_name": "\u2014",
+      "preferred_name": "nikhil.k@technogeninc.com",
       "source_row_count": 1,
       "dominant_state": null,
       "dominant_state_count": 0,
@@ -1048,130 +1132,140 @@
     }
   ],
   "state_counts": {
-    "TX": 2650,
-    "IL": 2322,
-    "CA": 1940,
-    "FL": 1683,
-    "NY": 1263,
-    "GA": 1184,
-    "NC": 1134,
-    "AZ": 1057,
-    "CO": 997,
-    "WI": 879,
-    "WA": 878,
-    "VA": 875,
-    "PA": 838,
-    "OH": 832,
-    "MI": 606,
-    "NJ": 602,
-    "MN": 568,
-    "MA": 376,
-    "MO": 361,
-    "MD": 351,
-    "IN": 291,
-    "SC": 241,
-    "CT": 218,
-    "UT": 193,
-    "TN": 190,
-    "IA": 170,
-    "KY": 163,
-    "NV": 160,
-    "OR": 146,
-    "AL": 131,
-    "OK": 124,
-    "KS": 122,
-    "NE": 93,
-    "NH": 90,
+    "CA": 3994,
+    "NY": 3616,
+    "TX": 3463,
+    "IL": 3389,
+    "GA": 3221,
+    "FL": 3045,
+    "PA": 2454,
+    "VA": 1887,
+    "MA": 1857,
+    "NC": 1711,
+    "AZ": 1643,
+    "CO": 1606,
+    "OH": 1330,
+    "WI": 1307,
+    "MI": 1168,
+    "IN": 1033,
+    "WA": 980,
+    "NJ": 926,
+    "TN": 854,
+    "MD": 837,
+    "MN": 814,
+    "MO": 509,
+    "UT": 378,
+    "CT": 286,
+    "UK": 269,
+    "OK": 246,
+    "SC": 243,
+    "CH": 241,
+    "KY": 224,
+    "DE": 194,
+    "IA": 187,
+    "NV": 177,
+    "NL": 167,
+    "OR": 157,
+    "AL": 143,
+    "KS": 130,
+    "NH": 109,
+    "NE": 96,
     "ID": 81,
-    "LA": 60,
-    "AR": 57,
-    "DE": 49,
-    "RI": 47,
-    "ME": 46,
-    "NM": 37,
-    "MS": 30,
+    "LA": 64,
+    "AR": 58,
+    "BR": 53,
+    "RI": 52,
+    "ME": 50,
+    "NM": 39,
+    "MS": 32,
+    "MT": 13,
     "VT": 12,
-    "MT": 10,
     "SD": 9,
     "WY": 8,
     "AK": 5,
     "DC": 4,
-    "ND": 3,
-    "HI": 2
+    "HI": 4,
+    "ND": 4,
+    "WV": 3
   },
   "top_company_state_breakdown": {
-    "adriannawurtz": {
-      "IN": 1
+    "adarshmodi": {
+      "IL": 3
     },
-    "avareluzco": {
-      "NY": 1
+    "bradfisch": {
+      "OR": 3
     },
-    "cherylhanes": {
-      "IN": 1
+    "abhishekagarwal": {
+      "PA": 2
     },
-    "chrisbyrd": {
-      "IN": 1
+    "aidanclemence": {
+      "MN": 2
     },
-    "clearancejobs": {
-      "ME": 1
+    "ajaidebose": {
+      "PA": 2
     },
-    "coellencamat": {
-      "IN": 1
+    "alexwaugh": {
+      "NY": 2
     },
-    "davearonofsky": {
-      "IN": 1
+    "alysonkaye": {
+      "NY": 2
     },
-    "dougirwin": {
-      "DE": 1
+    "amandanicchitta": {
+      "IL": 2
     },
-    "gabrielleciemny": {
-      "IN": 1
+    "anneerpenbeck": {
+      "OH": 2
     },
-    "glencoco": {
-      "NY": 1
+    "bradhensley": {
+      "MA": 2
     },
-    "karolinabartos": {
-      "IN": 1
+    "bradrosenthal": {
+      "OH": 2
     },
-    "kyleclack": {
-      "IN": 1
+    "brittsutton": {
+      "KY": 2
     },
-    "kylegiltner": {
-      "IN": 1
+    "carlythomas": {
+      "MA": 2
     },
-    "laurenmooney": {
-      "MI": 1
+    "danbentivenga": {
+      "NJ": 2
     },
-    "mayamjacobo": {
-      "IN": 1
+    "derekolson": {
+      "WA": 1,
+      "CO": 1
     },
-    "oscarsaadet": {
-      "LA": 1
+    "ericwegfahrt": {
+      "NY": 2
     },
-    "patmunday": {
-      "IN": 1
+    "irenemarkantonis": {
+      "TX": 2
     },
-    "racheldopson": {
-      "MN": 1
+    "matthewm": {
+      "FL": 1,
+      "CO": 1
     },
-    "robertafried": {
-      "IN": 1
+    "melissazizzi": {
+      "VA": 1,
+      "OH": 1
     },
-    "sydneycain": {
-      "IN": 1
+    "nelsondcosta": {
+      "NY": 2
     },
-    "thomasnacnodovitz": {
-      "IN": 1
+    "oswaldovelasquez": {
+      "VA": 2
     },
-    "virginiamccallum": {
-      "VA": 1
+    "aaronacker": {
+      "IL": 1
     },
-    "vyzeinc": {
-      "VA": 1
+    "aaronbonati": {
+      "CA": 1
     },
-    "wendyfishka": {
-      "IN": 1
+    "aaroncase": {
+      "AZ": 1
     },
-    "10up": {}
+    "aarondvorin": {
+      "CA": 1
+    }
   }
 }

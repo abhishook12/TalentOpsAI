@@ -269,6 +269,49 @@ def companies_count_by_state(db: Session = Depends(get_db)):
     return counts
 
 
+@router.get("/company-states")
+def company_states(
+    company_id: int = Query(..., ge=1),
+    db: Session = Depends(get_db),
+):
+    cached = analytics_cache.get(f"company_states_{company_id}")
+    if cached is not None:
+        return cached
+
+    computed_state_sql = """
+        COALESCE(
+            NULLIF(TRIM(r.state), ''),
+            CASE
+                WHEN r.location ~ '^[A-Za-z]{2}$' THEN UPPER(r.location)
+                WHEN r.location ~ '.*[ ,]([A-Za-z]{2})$' THEN UPPER(SUBSTRING(r.location FROM '([A-Za-z]{2})$'))
+                ELSE NULL
+            END,
+            NULLIF(TRIM(c.state), ''),
+            CASE
+                WHEN c.location ~ '^[A-Za-z]{2}$' THEN UPPER(c.location)
+                WHEN c.location ~ '.*[ ,]([A-Za-z]{2})$' THEN UPPER(SUBSTRING(c.location FROM '([A-Za-z]{2})$'))
+                ELSE NULL
+            END
+        )
+    """
+
+    rows = db.execute(text(f"""
+        SELECT
+            {computed_state_sql} AS state,
+            COUNT(r.recruiter_id) AS count
+        FROM recruiters r
+        LEFT JOIN companies c ON c.company_id = r.company_id
+        WHERE r.company_id = :company_id
+          AND {computed_state_sql} IS NOT NULL
+        GROUP BY {computed_state_sql}
+        ORDER BY count DESC, state ASC
+    """), {"company_id": company_id}).mappings().all()
+
+    result = [{"state": row["state"], "count": int(row["count"])} for row in rows]
+    analytics_cache.set(f"company_states_{company_id}", result, ttl=300)
+    return result
+
+
 @router.get("/companies-search")
 def companies_search(
     response: Response,

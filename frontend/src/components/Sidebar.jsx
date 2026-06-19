@@ -5,8 +5,7 @@ import api, { clearStoredToken } from '../services/api'
 const nav = [
   { to: '/', label: 'Dashboard', icon: 'ti-layout-dashboard' },
   { to: '/recruiters', label: 'Recruiters', icon: 'ti-users' },
-  { to: '/companies', label: 'Companies', icon: 'ti-building' },
-  { to: '/directory', label: 'States', icon: 'ti-map-2' },
+  { to: '/directory', label: 'Directory', icon: 'ti-map-2', aliases: ['/states', '/companies'] },
   { to: '/analytics', label: 'Analytics', icon: 'ti-chart-bar' },
   { to: '/upload', label: 'ETL', icon: 'ti-upload' },
   { to: '/ai-search', label: 'AI Search', icon: 'ti-search' },
@@ -96,17 +95,19 @@ export default function Sidebar() {
             <i className="ti ti-radar" style={{ fontSize: 20 }} />
           </div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ color: '#f3f3f3', fontSize: 18, fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.05 }}>REC-INTEL v4.0</div>
+            <div style={{ color: '#f3f3f3', fontSize: 18, fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.05 }}>TalentOps AI</div>
             <div style={{ color: 'rgba(255,255,255,0.62)', fontSize: 12, fontWeight: 700, marginTop: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-              Operational Command
+              Recruiter Intel
             </div>
           </div>
         </div>
       </div>
 
       <nav style={{ flex: 1, minHeight: 0, padding: '14px 12px', overflowY: 'auto' }}>
-        {nav.map(({ to, label, icon }) => {
-          const active = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to)
+        {nav.map(({ to, label, icon, aliases = [] }) => {
+          const active = to === '/'
+            ? location.pathname === '/'
+            : location.pathname.startsWith(to) || aliases.some((alias) => location.pathname.startsWith(alias))
           return (
             <NavLink
               key={to}

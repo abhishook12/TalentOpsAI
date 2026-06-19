@@ -170,6 +170,11 @@ function PasteParser() {
 
   const toggle = (id) => setParsed(p => p.map(r => r.id === id ? { ...r, selected: !r.selected } : r))
   const updateField = (id, field, val) => setParsed(p => p.map(r => r.id === id ? { ...r, [field]: val } : r))
+  const removeSelectedRows = () => {
+    setParsed(p => p.filter(r => !r.selected))
+    setSaveResult(null)
+    setPage(1)
+  }
 
   const handleSave = async () => {
     const toSave = parsed.filter(r => r.selected && r.email)
@@ -280,6 +285,9 @@ function PasteParser() {
               )}
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <button onClick={removeSelectedRows} disabled={!parsed.some(r => r.selected)} className="btn-secondary">
+                  Remove Selected
+                </button>
                 <button onClick={handleSave} disabled={saving} className="btn-primary" style={{ background: 'linear-gradient(135deg, #0F6E56, #185FA5)' }}>
                   {saving ? 'Saving...' : `Save ${parsed.filter(r => r.selected).length} Contacts`}
                 </button>

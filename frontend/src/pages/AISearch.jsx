@@ -33,6 +33,17 @@ function safe(v) {
   return v && String(v).trim() ? String(v).trim() : 'Not available'
 }
 
+const CONTACT_SLOT_COUNT = 3
+
+function contactSlots(values, fallback) {
+  const list = Array.isArray(values) && values.length
+    ? values
+    : fallback && String(fallback).trim()
+      ? [String(fallback).trim()]
+      : []
+  return Array.from({ length: CONTACT_SLOT_COUNT }, (_, index) => list[index] || '')
+}
+
 function badgeForMatch(matchType) {
   const exact = matchType === 'Exact'
   return {
@@ -41,6 +52,12 @@ function badgeForMatch(matchType) {
     fg: exact ? '#2f8f53' : '#b07843',
     border: exact ? 'rgba(22, 163, 74, 0.25)' : 'rgba(245, 158, 11, 0.28)',
   }
+}
+
+function labelizeMatchReason(reason) {
+  return String(reason || 'metadata_fuzzy')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
 }
 
 function parseLooseJson(value) {
@@ -841,7 +858,12 @@ export default function AISearch() {
                                 >
                                   {initials(r.recruiter_name)}
                                 </div>
-                                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.recruiter_name)}</span>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.recruiter_name)}</div>
+                                  <div style={{ marginTop: 2, fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {labelizeMatchReason(r.match_reason)} · Quality {String(r.quality_tier || 'unknown').toUpperCase()} · Score {r.relevance_score || 0}
+                                  </div>
+                                </div>
                               </div>
                               <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.email)}</div>
                               <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.phone)}</div>
@@ -994,28 +1016,46 @@ export default function AISearch() {
               <div style={{ border: '1px solid var(--card-border)', borderRadius: 14, padding: 12, background: 'var(--card-bg)' }}>
                 <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>Contact info</div>
                 <div style={{ display: 'grid', gap: 10 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'start' }}>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Emails</div>
                     <div style={{ display: 'grid', gap: 6 }}>
-                      {selectedInsight.emails.length ? selectedInsight.emails.map((email, index) => (
-                        <div key={`${email}-${index}`} style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {contactSlots(selectedInsight.emails, selected.email).map((email, index) => (
+                        <div
+                          key={`email-slot-${index}`}
+                          style={{
+                            fontSize: 12,
+                            color: email ? 'var(--text-primary)' : 'var(--text-muted)',
+                            fontWeight: 700,
+                            minHeight: 18,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
                           {index + 1}. {email}
                         </div>
-                      )) : (
-                        <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700 }}>{safe(selected.email)}</div>
-                      )}
+                      ))}
                     </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'start' }}>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Phones</div>
                     <div style={{ display: 'grid', gap: 6 }}>
-                      {selectedInsight.phones.length ? selectedInsight.phones.map((phone, index) => (
-                        <div key={`${phone}-${index}`} style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {contactSlots(selectedInsight.phones, selected.phone).map((phone, index) => (
+                        <div
+                          key={`phone-slot-${index}`}
+                          style={{
+                            fontSize: 12,
+                            color: phone ? 'var(--text-primary)' : 'var(--text-muted)',
+                            fontWeight: 700,
+                            minHeight: 18,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
                           {index + 1}. {phone}
                         </div>
-                      )) : (
-                        <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 700 }}>{safe(selected.phone)}</div>
-                      )}
+                      ))}
                     </div>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>

@@ -11,6 +11,7 @@ from pathlib import Path
 
 from openpyxl import load_workbook
 from sqlalchemy import text
+from sqlalchemy.orm import load_only
 
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
@@ -160,10 +161,15 @@ def parse_workbook():
 
 
 def build_indexes(session):
-    companies = session.query(Company).all()
+    companies = session.query(Company).options(
+        load_only(Company.company_id, Company.company_name, Company.normalized_company_name)
+    ).all()
     company_by_norm = {row.normalized_company_name or norm_key(row.company_name): row for row in companies if row.company_name}
     company_by_id = {row.company_id: row for row in companies}
-    recruiters = session.query(Recruiter).all()
+
+    recruiters = session.query(Recruiter).options(
+        load_only(Recruiter.recruiter_id, Recruiter.recruiter_name, Recruiter.email, Recruiter.phone, Recruiter.company_id)
+    ).all()
 
     email_index = {}
     phone_index = {}
@@ -175,7 +181,8 @@ def build_indexes(session):
             phone_key = norm_phone(recruiter.phone)
             if phone_key:
                 phone_index[phone_key] = recruiter
-        company_name = company_by_id.get(recruiter.company_id).company_name if recruiter.company_id and company_by_id.get(recruiter.company_id) else ""
+        company_row = company_by_id.get(recruiter.company_id) if recruiter.company_id else None
+        company_name = company_row.company_name if company_row else ""
         if recruiter.recruiter_name and company_name:
             name_company_index[f"{norm_key(recruiter.recruiter_name)}::{norm_key(company_name)}"].append(recruiter)
     return company_by_norm, company_by_id, email_index, phone_index, name_company_index

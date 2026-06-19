@@ -1,0 +1,449 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import * as XLSX from 'xlsx'
+import api, { getErrorMessage } from '../services/api'
+
+const STATES = [
+  { abbr: 'AL', name: 'Alabama' }, { abbr: 'AK', name: 'Alaska' },
+  { abbr: 'AZ', name: 'Arizona' }, { abbr: 'AR', name: 'Arkansas' },
+  { abbr: 'CA', name: 'California' }, { abbr: 'CO', name: 'Colorado' },
+  { abbr: 'CT', name: 'Connecticut' }, { abbr: 'DE', name: 'Delaware' },
+  { abbr: 'FL', name: 'Florida' }, { abbr: 'GA', name: 'Georgia' },
+  { abbr: 'HI', name: 'Hawaii' }, { abbr: 'ID', name: 'Idaho' },
+  { abbr: 'IL', name: 'Illinois' }, { abbr: 'IN', name: 'Indiana' },
+  { abbr: 'IA', name: 'Iowa' }, { abbr: 'KS', name: 'Kansas' },
+  { abbr: 'KY', name: 'Kentucky' }, { abbr: 'LA', name: 'Louisiana' },
+  { abbr: 'ME', name: 'Maine' }, { abbr: 'MD', name: 'Maryland' },
+  { abbr: 'MA', name: 'Massachusetts' }, { abbr: 'MI', name: 'Michigan' },
+  { abbr: 'MN', name: 'Minnesota' }, { abbr: 'MS', name: 'Mississippi' },
+  { abbr: 'MO', name: 'Missouri' }, { abbr: 'MT', name: 'Montana' },
+  { abbr: 'NE', name: 'Nebraska' }, { abbr: 'NV', name: 'Nevada' },
+  { abbr: 'NH', name: 'New Hampshire' }, { abbr: 'NJ', name: 'New Jersey' },
+  { abbr: 'NM', name: 'New Mexico' }, { abbr: 'NY', name: 'New York' },
+  { abbr: 'NC', name: 'North Carolina' }, { abbr: 'ND', name: 'North Dakota' },
+  { abbr: 'OH', name: 'Ohio' }, { abbr: 'OK', name: 'Oklahoma' },
+  { abbr: 'OR', name: 'Oregon' }, { abbr: 'PA', name: 'Pennsylvania' },
+  { abbr: 'RI', name: 'Rhode Island' }, { abbr: 'SC', name: 'South Carolina' },
+  { abbr: 'SD', name: 'South Dakota' }, { abbr: 'TN', name: 'Tennessee' },
+  { abbr: 'TX', name: 'Texas' }, { abbr: 'UT', name: 'Utah' },
+  { abbr: 'VT', name: 'Vermont' }, { abbr: 'VA', name: 'Virginia' },
+  { abbr: 'WA', name: 'Washington' }, { abbr: 'WV', name: 'West Virginia' },
+  { abbr: 'WI', name: 'Wisconsin' }, { abbr: 'WY', name: 'Wyoming' },
+]
+
+const PAGE_SIZE = 100
+
+function exportWorkbook(rows, sheetName = 'Recruiters') {
+  const worksheet = XLSX.utils.json_to_sheet(rows)
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
+  return workbook
+}
+
+function stateName(abbr) {
+  return STATES.find((state) => state.abbr === abbr)?.name || abbr || 'Unknown'
+}
+
+export default function Directory() {
+  const [companyQuery, setCompanyQuery] = useState('')
+  const [debouncedCompanyQuery, setDebouncedCompanyQuery] = useState('')
+  const [companies, setCompanies] = useState([])
+  const [companiesLoading, setCompaniesLoading] = useState(false)
+  const [selectedCompany, setSelectedCompany] = useState(null)
+
+  const [companyStates, setCompanyStates] = useState([])
+  const [statesLoading, setStatesLoading] = useState(false)
+  const [selectedState, setSelectedState] = useState(null)
+
+  const [recruiterQuery, setRecruiterQuery] = useState('')
+  const [debouncedRecruiterQuery, setDebouncedRecruiterQuery] = useState('')
+  const [recruiters, setRecruiters] = useState([])
+  const [recruitersLoading, setRecruitersLoading] = useState(false)
+  const [recruitersTotal, setRecruitersTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [selectedRecruiters, setSelectedRecruiters] = useState(new Map())
+  const [toast, setToast] = useState(null)
+  const toastRef = useRef(null)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedCompanyQuery(companyQuery), 250)
+    return () => clearTimeout(timer)
+  }, [companyQuery])
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedRecruiterQuery(recruiterQuery), 250)
+    return () => clearTimeout(timer)
+  }, [recruiterQuery])
+
+  useEffect(() => {
+    let alive = true
+
+    ;(async () => {
+      setCompaniesLoading(true)
+      try {
+        const { data } = await api.get('/analytics/companies-search', {
+          params: {
+            q: debouncedCompanyQuery || undefined,
+            limit: 200,
+            skip: 0,
+            min_recruiters: 1,
+          },
+        })
+        if (!alive) return
+        setCompanies(Array.isArray(data) ? data : [])
+      } catch (err) {
+        if (alive) setToast({ type: 'error', message: getErrorMessage(err, 'Failed to load companies') })
+      } finally {
+        if (alive) setCompaniesLoading(false)
+      }
+    })()
+
+    return () => { alive = false }
+  }, [debouncedCompanyQuery])
+
+  useEffect(() => {
+    setSelectedState(null)
+    setCompanyStates([])
+    setRecruiters([])
+    setRecruitersTotal(0)
+    setPage(1)
+    setSelectedRecruiters(new Map())
+    if (!selectedCompany?.company_id) return
+
+    let alive = true
+
+    ;(async () => {
+      setStatesLoading(true)
+      try {
+        const { data } = await api.get('/analytics/company-states', {
+          params: { company_id: selectedCompany.company_id },
+        })
+        if (!alive) return
+        setCompanyStates(Array.isArray(data) ? data : [])
+      } catch (err) {
+        if (alive) setToast({ type: 'error', message: getErrorMessage(err, 'Failed to load states') })
+      } finally {
+        if (alive) setStatesLoading(false)
+      }
+    })()
+
+    return () => { alive = false }
+  }, [selectedCompany])
+
+  useEffect(() => {
+    if (!selectedCompany?.company_id) return
+
+    let alive = true
+    const controller = new AbortController()
+
+    ;(async () => {
+      setRecruitersLoading(true)
+      try {
+        const { data, headers } = await api.get('/recruiters', {
+          params: {
+            page,
+            limit: PAGE_SIZE,
+            company_id: selectedCompany.company_id,
+            state: selectedState || undefined,
+            search: debouncedRecruiterQuery || undefined,
+            sort_by: 'created_at',
+            sort_desc: true,
+          },
+          signal: controller.signal,
+        })
+        if (!alive) return
+
+        const results = Array.isArray(data) ? data : (data?.results || [])
+        setRecruiters(results)
+
+        const count = data?.total_count ?? parseInt(headers?.['x-total-count'] || results.length, 10)
+        setRecruitersTotal(Number.isFinite(count) ? count : results.length)
+      } catch (err) {
+        if (err?.name !== 'CanceledError' && alive) {
+          setToast({ type: 'error', message: getErrorMessage(err, 'Failed to load recruiters') })
+        }
+      } finally {
+        if (alive) setRecruitersLoading(false)
+      }
+    })()
+
+    return () => {
+      alive = false
+      controller.abort()
+    }
+  }, [selectedCompany, selectedState, page, debouncedRecruiterQuery])
+
+  const totalPages = Math.max(1, Math.ceil((recruitersTotal || 0) / PAGE_SIZE))
+  const selectedCount = selectedRecruiters.size
+  const selectedCompanyName = selectedCompany?.company_name || ''
+  const selectedStateCount = companyStates.find((state) => state.state === selectedState)?.count || 0
+  const maxCompanies = Math.max(...companies.map((company) => company.recruiter_count || 0), 1)
+
+  const companyRows = useMemo(() => {
+    const query = debouncedCompanyQuery.trim().toLowerCase()
+    const rows = [...companies]
+    rows.sort((a, b) => (b.recruiter_count || 0) - (a.recruiter_count || 0))
+    return query ? rows.filter((row) => String(row.company_name || '').toLowerCase().includes(query)) : rows
+  }, [companies, debouncedCompanyQuery])
+
+  const showToast = (message, type = 'info') => {
+    setToast({ message, type })
+    if (toastRef.current) clearTimeout(toastRef.current)
+    toastRef.current = setTimeout(() => setToast(null), 2500)
+  }
+
+  const exportRows = recruiters.map((recruiter) => ({
+    Name: recruiter.recruiter_name || '',
+    Email: recruiter.email || '',
+    Phone: recruiter.phone || '',
+    Company: recruiter.company_name || selectedCompanyName || '',
+    Location: recruiter.location || '',
+    State: recruiter.state || selectedState || '',
+  }))
+
+  const exportCurrentPage = () => {
+    if (!recruiters.length) return showToast('No recruiters on this page', 'error')
+    XLSX.writeFile(exportWorkbook(exportRows), `${(selectedCompanyName || 'company').replace(/[^a-z0-9]+/gi, '_')}_page.xlsx`)
+  }
+
+  const exportSelected = () => {
+    if (!selectedRecruiters.size) return showToast('No recruiters selected', 'error')
+
+    const rows = Array.from(selectedRecruiters.values()).map((recruiter) => ({
+      Name: recruiter.recruiter_name || '',
+      Email: recruiter.email || '',
+      Phone: recruiter.phone || '',
+      Company: recruiter.company_name || selectedCompanyName || '',
+      Location: recruiter.location || '',
+      State: recruiter.state || selectedState || '',
+    }))
+
+    XLSX.writeFile(exportWorkbook(rows), `${(selectedCompanyName || 'company').replace(/[^a-z0-9]+/gi, '_')}_selected.xlsx`)
+  }
+
+  const clearSelectedRecruiters = () => setSelectedRecruiters(new Map())
+
+  return (
+    <div className="page-enter" style={{ minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 950, margin: 0 }}>Directory</h1>
+          <div style={{ marginTop: 6, color: 'var(--text-muted)', fontSize: 13 }}>
+            Search a company, pick a state, then browse the recruiters in that location.
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-secondary" onClick={clearSelectedRecruiters} disabled={!selectedCount}>Clear Selected</button>
+          <button className="btn-secondary" onClick={exportSelected} disabled={!selectedCount}>Export Selected</button>
+          <button className="btn-primary" onClick={exportCurrentPage} disabled={!recruiters.length}>Export Page</button>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '340px 300px 1fr', gap: 12, minHeight: 0, alignItems: 'start' }}>
+        <div className="card" style={{ padding: 14, minHeight: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 10 }}>1. Search Company</div>
+          <input
+            value={companyQuery}
+            onChange={(event) => setCompanyQuery(event.target.value)}
+            placeholder="Search company..."
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', caretColor: 'var(--text-primary)' }}
+          />
+          <div style={{ marginTop: 10, maxHeight: 'calc(100vh - 240px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {companiesLoading ? <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Loading companies...</div> : null}
+            {companyRows.map((company) => {
+              const active = selectedCompany?.company_id === company.company_id
+              const pct = Math.max((company.recruiter_count || 0) / maxCompanies * 100, 4)
+
+              return (
+                <button
+                  key={company.company_id}
+                  onClick={() => setSelectedCompany(company)}
+                  style={{
+                    textAlign: 'left',
+                    padding: 12,
+                    borderRadius: 14,
+                    border: active ? '1px solid rgba(24,95,165,0.35)' : '1px solid var(--card-border)',
+                    background: active ? 'rgba(24,95,165,0.08)' : 'var(--panel-bg)',
+                    cursor: 'pointer',
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{company.company_name}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{company.location || 'Not available'}</div>
+                    </div>
+                    <div style={{ fontFamily: 'var(--mono)', fontWeight: 900 }}>{company.recruiter_count || 0}</div>
+                  </div>
+                  <div style={{ marginTop: 8, height: 5, borderRadius: 99, background: 'var(--card-border)', overflow: 'hidden' }}>
+                    <div style={{ width: `${pct}%`, height: '100%', background: active ? 'var(--accent)' : '#4f46e5', borderRadius: 99 }} />
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: 14, minHeight: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 10 }}>2. Select State</div>
+          {!selectedCompany ? (
+            <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Pick a company first.</div>
+          ) : (
+            <>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>{selectedCompany.company_name}</div>
+              <button
+                onClick={() => {
+                  setSelectedState(null)
+                  setPage(1)
+                }}
+                style={{
+                  width: '100%',
+                  padding: 10,
+                  borderRadius: 12,
+                  marginBottom: 8,
+                  border: !selectedState ? '1px solid rgba(24,95,165,0.35)' : '1px solid var(--card-border)',
+                  background: !selectedState ? 'rgba(24,95,165,0.08)' : 'var(--panel-bg)',
+                  color: 'var(--text-primary)',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                All states
+              </button>
+              <div style={{ maxHeight: 'calc(100vh - 260px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {statesLoading ? <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Loading states...</div> : null}
+                {companyStates.map((row) => {
+                  const active = selectedState === row.state
+
+                  return (
+                    <button
+                      key={row.state}
+                      onClick={() => {
+                        setSelectedState(row.state)
+                        setPage(1)
+                      }}
+                      style={{
+                        textAlign: 'left',
+                        padding: 10,
+                        borderRadius: 12,
+                        border: active ? '1px solid rgba(24,95,165,0.35)' : '1px solid var(--card-border)',
+                        background: active ? 'rgba(24,95,165,0.08)' : 'var(--panel-bg)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: 10,
+                        color: 'var(--text-primary)',
+                      }}
+                    >
+                      <span><strong>{row.state}</strong> - {stateName(row.state)}</span>
+                      <span style={{ fontFamily: 'var(--mono)', fontWeight: 900 }}>{row.count}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="card" style={{ padding: 14, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 900 }}>3. Recruiters</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                {selectedCompanyName ? `${selectedCompanyName}${selectedState ? ` - ${selectedState}` : ''}` : 'Select a company to load recruiters.'}
+              </div>
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--text-muted)' }}>{recruitersTotal.toLocaleString()} recruiters</div>
+          </div>
+
+          <input
+            value={recruiterQuery}
+            onChange={(event) => {
+              setRecruiterQuery(event.target.value)
+              setPage(1)
+            }}
+            disabled={!selectedCompany}
+            placeholder={selectedCompany ? 'Search recruiters by name, email, company, location...' : 'Select a company first'}
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', caretColor: 'var(--text-primary)' }}
+          />
+
+          <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', borderRadius: 14, border: '1px solid var(--card-border)', background: 'var(--panel-bg)' }}>
+            {!selectedCompany ? (
+              <div style={{ padding: 16, color: 'var(--text-muted)', fontSize: 12 }}>Pick a company to see recruiters.</div>
+            ) : recruitersLoading ? (
+              <div style={{ padding: 16, color: 'var(--text-muted)', fontSize: 12 }}>Loading recruiters...</div>
+            ) : recruiters.length === 0 ? (
+              <div style={{ padding: 16, color: 'var(--text-muted)', fontSize: 12 }}>No recruiters for this filter.</div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+                <thead>
+                  <tr style={{ background: 'var(--bg-hover)' }}>
+                    <th style={{ width: 36, padding: '10px 12px', borderBottom: '1px solid var(--card-border)' }} />
+                    <th style={{ padding: '10px 12px', borderBottom: '1px solid var(--card-border)' }}>Name</th>
+                    <th style={{ padding: '10px 12px', borderBottom: '1px solid var(--card-border)' }}>Email</th>
+                    <th style={{ padding: '10px 12px', borderBottom: '1px solid var(--card-border)' }}>Location</th>
+                    <th style={{ padding: '10px 12px', borderBottom: '1px solid var(--card-border)' }}>Phone</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recruiters.map((recruiter) => (
+                    <tr key={recruiter.recruiter_id} style={{ borderBottom: '1px solid var(--card-border)' }}>
+                      <td style={{ padding: '10px 12px' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedRecruiters.has(recruiter.recruiter_id)}
+                          onChange={(event) => {
+                            setSelectedRecruiters((prev) => {
+                              const next = new Map(prev)
+                              if (event.target.checked) next.set(recruiter.recruiter_id, recruiter)
+                              else next.delete(recruiter.recruiter_id)
+                              return next
+                            })
+                          }}
+                        />
+                      </td>
+                      <td style={{ padding: '10px 12px', fontWeight: 900, color: 'var(--text-primary)' }}>{recruiter.recruiter_name || ''}</td>
+                      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{recruiter.email || ''}</td>
+                      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{recruiter.location || recruiter.state || ''}</td>
+                      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{recruiter.phone || ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {selectedCompany && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--text-muted)' }}>
+              <div>
+                Page {page} / {totalPages}
+                {selectedState ? ` - ${selectedStateCount} recruiters in ${selectedState}` : ''}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => setPage((currentPage) => Math.max(1, currentPage - 1))}
+                  disabled={page <= 1}
+                  style={{ padding: '8px 10px', borderRadius: 10, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', cursor: page <= 1 ? 'not-allowed' : 'pointer' }}
+                >
+                  Prev
+                </button>
+                <button
+                  onClick={() => setPage((currentPage) => Math.min(totalPages, currentPage + 1))}
+                  disabled={page >= totalPages}
+                  style={{ padding: '8px 10px', borderRadius: 10, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', cursor: page >= totalPages ? 'not-allowed' : 'pointer' }}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {toast && (
+        <div style={{ position: 'fixed', bottom: 18, right: 18, zIndex: 50 }}>
+          <div className="card" style={{ padding: '10px 12px' }}>{toast.message}</div>
+        </div>
+      )}
+    </div>
+  )
+}

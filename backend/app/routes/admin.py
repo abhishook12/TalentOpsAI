@@ -775,7 +775,7 @@ def admin_sql(body: SqlQuery, db: Session = Depends(get_db), _=Depends(verify_ad
     try:
         t0 = time.time()
         result = db.execute(text(body.sql))
-        rows = result.mappings().all()
+        rows = result.mappings().fetchmany(1000)
         elapsed = round((time.time() - t0) * 1000, 1)
         columns = list(rows[0].keys()) if rows else []
         return {

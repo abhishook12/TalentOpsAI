@@ -970,7 +970,8 @@ def export_recruiters(
     if source_job_id:
         query = query.filter(Recruiter.source_job_id == source_job_id)
 
-    recruiters = query.all()
+    # Prevent bandwidth explosion by limiting exports
+    recruiters = query.limit(10000).all()
 
     output = StringIO()
     writer = csv.writer(output)

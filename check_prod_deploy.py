@@ -10,12 +10,13 @@ r = requests.get('https://api.render.com/v1/services', headers={'Authorization':
 all_live = True
 if r.status_code == 200:
     for s in r.json():
-        dep = requests.get(f"https://api.render.com/v1/services/{s['service']['id']}/deploys", headers={'Authorization': f'Bearer {render_key}', 'Accept': 'application/json'})
-        latest = dep.json()[0]['deploy']
-        status = latest['status']
-        print(f"{s['service']['name']} -> {status}")
-        if status not in ['live', 'canceled']:
-            all_live = False
+        if s['service']['name'] in ['talentops-api', 'TalentOpsAI-1']:
+            dep = requests.get(f"https://api.render.com/v1/services/{s['service']['id']}/deploys", headers={'Authorization': f'Bearer {render_key}', 'Accept': 'application/json'})
+            latest = dep.json()[0]['deploy']
+            status = latest['status']
+            print(f"{s['service']['name']} -> {status}")
+            if status != 'live':
+                all_live = False
 else:
     print("Failed")
     all_live = False

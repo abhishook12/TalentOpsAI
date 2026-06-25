@@ -324,10 +324,27 @@ def serialize_recruiter(r):
         "state_source": getattr(r, "state_source", None),
         "state_confidence": getattr(r, "state_confidence", None),
         "state_reason": getattr(r, "state_reason", None),
+        "email_status": getattr(r, "email_status", "unknown"),
+        "email_confidence": getattr(r, "email_confidence", 0),
+        "email_generated": getattr(r, "email_generated", False),
+        "raw_email_value": getattr(r, "raw_email_value", None),
+        "repair_reason": getattr(r, "repair_reason", None),
         "last_scan_at": str(r.last_scan_at) if getattr(r, "last_scan_at", None) else None,
         "is_active": r.is_active,
         "source_job_id": getattr(r, "source_job_id", None),
         "created_at": str(r.created_at) if getattr(r, "created_at", None) else None,
+        "structured_emails": [{
+            "id": e.id, "email": e.email, "email_type": e.email_type, "status": e.status, 
+            "confidence_score": e.confidence_score, "is_primary": e.is_primary, "source": e.source
+        } for e in getattr(r, "structured_emails", [])],
+        "structured_phones": [{
+            "id": p.id, "phone_number": p.phone_number, "phone_type": p.phone_type,
+            "is_primary": p.is_primary, "belongs_to_person": p.belongs_to_person, "source": p.source
+        } for p in getattr(r, "structured_phones", [])],
+        "structured_locations": [{
+            "id": l.id, "city": l.city, "state": l.state, "location_type": l.location_type,
+            "is_fallback": l.is_fallback, "source": l.source
+        } for l in getattr(r, "structured_locations", [])],
     }
 
 
@@ -655,13 +672,21 @@ def get_recruiters(
     is_active: Optional[bool] = None,
     min_completeness: Optional[int] = None,
     needs_review: Optional[bool] = None,
+    email_inference_status: Optional[str] = None,
     source_job_id: Optional[str] = None,
+    data_source: Optional[str] = None,
     sort_by: Optional[str] = "created_at",
     sort_desc: Optional[bool] = True,
     db: Session = Depends(get_db)
 ):
     print(f"GET /recruiters/ CALLED! needs_review={needs_review}", flush=True)
-    query = db.query(Recruiter, Company).join(Company, isouter=True)
+    query = db.query(Recruiter, Company)\
+              .join(Company, Recruiter.company_id == Company.company_id, isouter=True)\
+              .options(
+                  joinedload(Recruiter.structured_emails),
+                  joinedload(Recruiter.structured_phones),
+                  joinedload(Recruiter.structured_locations)
+              )
     
     from ..utils.normalizer import normalize_text
     
@@ -723,9 +748,15 @@ def get_recruiters(
         
     if needs_review is not None:
         query = query.filter(Recruiter.needs_review == needs_review)
+        
+    if email_inference_status:
+        query = query.filter(Recruiter.email_status == email_inference_status)
 
     if source_job_id:
         query = query.filter(Recruiter.source_job_id == source_job_id)
+
+    if data_source:
+        query = query.filter(Recruiter.data_source == data_source)
         
     total_count = query.count()
     response.headers["X-Total-Count"] = str(total_count)
@@ -739,6 +770,8 @@ def get_recruiters(
         order_col = Recruiter.state
     elif sort_by == "completeness":
         order_col = Recruiter.completeness_score
+    elif sort_by == "last_scan_at":
+        order_col = Recruiter.last_scan_at
     else:
         order_col = Recruiter.created_at
         
@@ -792,13 +825,31 @@ def get_recruiters(
                 "needs_review": recruiter.needs_review,
                 "review_reason": recruiter.review_reason,
                 "location_confidence": recruiter.location_confidence,
+                "email_status": getattr(recruiter, "email_status", "unknown"),
+                "email_confidence": getattr(recruiter, "email_confidence", 0),
+                "email_generated": getattr(recruiter, "email_generated", False),
+                "raw_email_value": getattr(recruiter, "raw_email_value", None),
+                "repair_reason": getattr(recruiter, "repair_reason", None),
                 "state_source": recruiter.state_source,
                 "state_confidence": recruiter.state_confidence,
                 "state_reason": recruiter.state_reason,
                 "last_scan_at": str(recruiter.last_scan_at) if recruiter.last_scan_at else None,
                 "is_active": recruiter.is_active,
+                "data_source": recruiter.data_source,
                 "source_job_id": recruiter.source_job_id,
                 "created_at": str(recruiter.created_at) if recruiter.created_at else None,
+                "structured_emails": [{
+                    "id": e.id, "email": e.email, "email_type": e.email_type, "status": e.status, 
+                    "confidence_score": e.confidence_score, "is_primary": e.is_primary, "source": e.source
+                } for e in getattr(recruiter, "structured_emails", [])],
+                "structured_phones": [{
+                    "id": p.id, "phone_number": p.phone_number, "phone_type": p.phone_type,
+                    "is_primary": p.is_primary, "belongs_to_person": p.belongs_to_person, "source": p.source
+                } for p in getattr(recruiter, "structured_phones", [])],
+                "structured_locations": [{
+                    "id": l.id, "city": l.city, "state": l.state, "location_type": l.location_type,
+                    "is_fallback": l.is_fallback, "source": l.source
+                } for l in getattr(recruiter, "structured_locations", [])],
             }
             for recruiter, company in results
         ]
@@ -809,6 +860,41 @@ def get_recruiter(recruiter_id: int, db: Session = Depends(get_db)):
     r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
+    return serialize_recruiter(r)
+
+@router.post("/{recruiter_id}/email/approve")
+def approve_email(recruiter_id: int, db: Session = Depends(get_db)):
+    r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Recruiter not found")
+    
+    # Approve means the email is verified
+    r.email_status = "verified"
+    r.email_confidence = 100
+    r.repair_reason = "Manually approved by user"
+    
+    db.commit()
+    db.refresh(r)
+    return serialize_recruiter(r)
+
+@router.post("/{recruiter_id}/email/reject")
+def reject_email(recruiter_id: int, db: Session = Depends(get_db)):
+    r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Recruiter not found")
+    
+    # Reject means revert to raw_email_value and set status to unknown or rejected
+    if getattr(r, "raw_email_value", None):
+        r.email = r.raw_email_value
+    else:
+        r.email = None
+        
+    r.email_status = "rejected"
+    r.email_confidence = 0
+    r.repair_reason = "Manually rejected by user"
+    
+    db.commit()
+    db.refresh(r)
     return serialize_recruiter(r)
 
 @router.post("/", status_code=201)
@@ -914,7 +1000,12 @@ def export_recruiters(
     source_job_id: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    query = db.query(Recruiter).join(Recruiter.company, isouter=True)
+    query = db.query(Recruiter).join(Recruiter.company, isouter=True)\
+              .options(
+                  joinedload(Recruiter.structured_emails),
+                  joinedload(Recruiter.structured_phones),
+                  joinedload(Recruiter.structured_locations)
+              )
     
     from ..utils.normalizer import normalize_text
     
@@ -976,38 +1067,36 @@ def export_recruiters(
     output = StringIO()
     writer = csv.writer(output)
     writer.writerow([
-        "Recruiter ID", "Name", "Email", "Email 2", "Email 3", "Email 4",
-        "Phone", "Phone 2", "Phone 3", "Phone 4", "Alternate Emails", "Alternate Phones", 
-        "Company", "Location", "State", "State Source", "State Confidence", "State Reason", "Title", "LinkedIn", "Needs Review", "Review Reason", "Metadata JSON", "Raw Data", "Source Job ID", "Duplicate Match Type"
+        "Recruiter ID", "Name", "Verified Email", "Likely Email", "Inferred Email", 
+        "Direct Phone", "Company Phone", "Location", "State", 
+        "State Source", "State Confidence", "State Reason", "Title", "Company", "Needs Review", "Review Reason", "Duplicate Match Type"
     ])
     
     for r in recruiters:
+        verified_emails = [e.email for e in r.structured_emails if e.status == 'verified']
+        likely_emails = [e.email for e in r.structured_emails if e.status == 'likely']
+        inferred_emails = [e.email for e in r.structured_emails if e.status == 'inferred']
+        
+        direct_phones = [p.phone_number for p in r.structured_phones if p.belongs_to_person]
+        company_phones = [p.phone_number for p in r.structured_phones if not p.belongs_to_person]
+
         writer.writerow([
             r.recruiter_id,
             r.recruiter_name or "",
-            r.email or "",
-            getattr(r, "email2", ""),
-            getattr(r, "email3", ""),
-            getattr(r, "email4", ""),
-            r.phone or "",
-            getattr(r, "phone2", ""),
-            getattr(r, "phone3", ""),
-            getattr(r, "phone4", ""),
-            getattr(r, "alternate_emails", ""),
-            getattr(r, "alternate_phones", ""),
-            r.company.company_name if r.company else "",
+            ", ".join(verified_emails),
+            ", ".join(likely_emails),
+            ", ".join(inferred_emails),
+            ", ".join(direct_phones),
+            ", ".join(company_phones),
             r.location or (r.company.location if r.company else ""),
             r.state or "",
             getattr(r, "state_source", ""),
             getattr(r, "state_confidence", ""),
             getattr(r, "state_reason", ""),
             r.title or r.specialization or "",
-            r.linkedin or "",
+            r.company.company_name if r.company else "",
             getattr(r, "needs_review", False),
             getattr(r, "review_reason", ""),
-            getattr(r, "metadata_json", ""),
-            getattr(r, "raw_data", ""),
-            getattr(r, "source_job_id", ""),
             getattr(r, "duplicate_match_type", "")
         ])
 
@@ -1017,3 +1106,206 @@ def export_recruiters(
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=recruiters_export.csv"}
     )
+
+
+@router.post("/{recruiter_id}/report")
+def report_recruiter(recruiter_id: int, db: Session = Depends(get_db)):
+    from sqlalchemy import text
+    try:
+        res = db.execute(
+            text("UPDATE recruiters SET report_count = report_count + 1 WHERE recruiter_id = :id RETURNING report_count"),
+            {"id": recruiter_id}
+        ).fetchone()
+        if not res:
+            raise HTTPException(status_code=404, detail="Recruiter not found")
+        count = res[0]
+        if count >= 3:
+            db.execute(
+                text("UPDATE recruiters SET needs_review = true, review_reason = 'Flagged by users 3 times', is_active = false WHERE recruiter_id = :id"),
+                {"id": recruiter_id}
+            )
+        db.commit()
+        return {"message": "Report logged successfully", "report_count": count}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+from ..services.scraper import auto_enhance_recruiter_data
+
+@router.post("/{recruiter_id}/enhance")
+def enhance_recruiter(recruiter_id: int, db: Session = Depends(get_db)):
+    recruiter = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
+    if not recruiter:
+        raise HTTPException(status_code=404, detail="Recruiter not found")
+        
+    company_name = None
+    company_domain = None
+    if recruiter.company_id:
+        company = db.query(Company).filter(Company.company_id == recruiter.company_id).first()
+        if company:
+            company_name = company.company_name
+            if company.website:
+                company_domain = company.website.replace("https://", "").replace("http://", "").replace("www.", "").split('/')[0]
+                
+    result = auto_enhance_recruiter_data(recruiter.recruiter_name, company_name, company_domain)
+    
+    if not result.get('email') and company_domain and recruiter.company_id and " " in recruiter.recruiter_name:
+        first = recruiter.recruiter_name.split(' ')[0].lower()
+        last = recruiter.recruiter_name.split(' ')[-1].lower()
+        
+        # 1. Use cached pattern if available
+        if company and company.email_pattern:
+            fmt = company.email_pattern
+            if fmt == "{first}.{last}":
+                result['email'] = f"{first}.{last}@{company_domain}"
+            elif fmt == "{f}{last}":
+                result['email'] = f"{first[0]}{last}@{company_domain}"
+            elif fmt == "{first}{l}":
+                result['email'] = f"{first}{last[0]}@{company_domain}"
+            elif fmt == "{first}_{last}":
+                result['email'] = f"{first}_{last}@{company_domain}"
+            elif fmt == "{first}":
+                result['email'] = f"{first}@{company_domain}"
+            elif fmt == "{last}":
+                result['email'] = f"{last}@{company_domain}"
+        else:
+            # 2. Derive pattern from peers if not cached
+            peers = db.query(Recruiter).filter(
+                Recruiter.company_id == recruiter.company_id,
+                Recruiter.email.notlike('%@missing.local'),
+                Recruiter.email.notlike('%@talentops.ai'),
+                Recruiter.email != None,
+                Recruiter.recruiter_name.like('% %')
+            ).limit(10).all()
+            
+            for peer in peers:
+                parts = peer.recruiter_name.split(' ')
+                if len(parts) >= 2:
+                    p_first = parts[0].lower()
+                    p_last = parts[-1].lower()
+                    e_local = peer.email.split('@')[0].lower()
+                    
+                    format_found = None
+                    if e_local == f"{p_first}.{p_last}":
+                        format_found = "{first}.{last}"
+                        result['email'] = f"{first}.{last}@{company_domain}"
+                    elif e_local == f"{p_first[0]}{p_last}":
+                        format_found = "{f}{last}"
+                        result['email'] = f"{first[0]}{last}@{company_domain}"
+                    elif e_local == f"{p_first}{p_last[0]}":
+                        format_found = "{first}{l}"
+                        result['email'] = f"{first}{last[0]}@{company_domain}"
+                    elif e_local == f"{p_first}_{p_last}":
+                        format_found = "{first}_{last}"
+                        result['email'] = f"{first}_{last}@{company_domain}"
+                    elif e_local == f"{p_first}":
+                        format_found = "{first}"
+                        result['email'] = f"{first}@{company_domain}"
+                    elif e_local == f"{p_last}":
+                        format_found = "{last}"
+                        result['email'] = f"{last}@{company_domain}"
+                    
+                    if format_found and company:
+                        company.email_pattern = format_found
+                        break
+
+    updated = []
+    if result.get('email') and (not recruiter.email or recruiter.email.endswith('@missing.local')):
+        recruiter.email = result['email']
+        updated.append("email")
+    if result.get('phone') and not recruiter.phone:
+        recruiter.phone = result['phone']
+        updated.append("phone")
+    if result.get('location'):
+        state_abbr = result['location']
+        if not recruiter.location or not recruiter.state:
+            from ..utils.state_mapper import ABBR_TO_NAME
+            full_state = ABBR_TO_NAME.get(state_abbr, state_abbr)
+            recruiter.location = full_state
+            recruiter.state = state_abbr
+            recruiter.state_source = "ddg_enhancement"
+            recruiter.state_confidence = "medium"
+            updated.append("location")
+        
+    from sqlalchemy.sql import func
+    recruiter.last_scan_at = func.now()
+    db.commit()
+
+    if updated:
+        return {"message": f"Successfully enhanced {', '.join(updated)}!", "data": result}
+    else:
+        return {"message": "No new verified data found.", "data": result}
+
+from pydantic import BaseModel
+class ChromeExtensionPayload(BaseModel):
+    recruiter_name: str
+    title: str | None = None
+    location: str | None = None
+    company_name: str | None = None
+    linkedin_url: str | None = None
+    source: str | None = None
+    scraped_at: str | None = None
+    tags: list[str] | None = None
+
+import uuid
+import json
+from ..utils.state_mapper import extract_state_detailed
+from ..utils.normalizer import normalize_text
+
+@router.post("/extension", status_code=201)
+def extension_webhook(data: ChromeExtensionPayload, db: Session = Depends(get_db)):
+    # 1. Resolve Company
+    company_id = None
+    if data.company_name:
+        norm_comp = normalize_text(data.company_name)
+        company = db.query(Company).filter(Company.normalized_company_name == norm_comp).first()
+        if company:
+            company_id = company.company_id
+        else:
+            new_comp = Company(
+                company_name=data.company_name,
+                normalized_company_name=norm_comp,
+                is_active=True,
+                data_source="chrome_extension"
+            )
+            db.add(new_comp)
+            db.commit()
+            db.refresh(new_comp)
+            company_id = new_comp.company_id
+            
+    # 2. Extract state from location if available
+    state = None
+    state_source = None
+    state_confidence = None
+    state_reason = None
+    if data.location:
+        state, state_reason = extract_state_detailed(data.location)
+        if state:
+            state_source = "extension_location"
+            state_confidence = "high"
+
+    # 3. Create placeholder email
+    email = f"linkedin_{uuid.uuid4().hex[:8]}@missing.local"
+
+    # 4. Create Recruiter
+    new_rec = Recruiter(
+        recruiter_name=data.recruiter_name[:150] if data.recruiter_name else "",
+        normalized_recruiter_name=normalize_text(data.recruiter_name)[:150] if data.recruiter_name else "",
+        email=email[:150] if email else "",
+        title=data.title[:150] if data.title else None,
+        company_id=company_id,
+        location=data.location[:255] if data.location else None,
+        state=state[:2] if state else None,
+        state_source=state_source[:150] if state_source else None,
+        state_confidence=state_confidence[:50] if state_confidence else None,
+        state_reason=state_reason,
+        linkedin=data.linkedin_url[:255] if data.linkedin_url else None,
+        data_source=(data.source or "chrome_extension")[:100],
+        tags=data.tags,
+        is_active=True
+    )
+    db.add(new_rec)
+    db.commit()
+    db.refresh(new_rec)
+    
+

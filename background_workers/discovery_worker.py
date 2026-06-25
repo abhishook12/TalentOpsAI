@@ -7,6 +7,8 @@ import random
 import re
 import sys
 import time
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
 from html import unescape
@@ -26,11 +28,11 @@ from sqlalchemy import text
 
 DEFAULT_DATABASE_ENV_KEYS = ("DATABASE_URL", "TALENTOPS_DATABASE_URL")
 DEFAULT_WEBHOOK_URL = "http://localhost:8000/recruiters/extension"
-DEFAULT_SCAN_INTERVAL_HOURS = 24.0
-DEFAULT_COMPANY_DELAY_MIN = 0.5
-DEFAULT_COMPANY_DELAY_MAX = 1.0
-DEFAULT_POST_DELAY_MIN = 0.1
-DEFAULT_POST_DELAY_MAX = 0.2
+DEFAULT_SCAN_INTERVAL_HOURS = 0.0001
+DEFAULT_COMPANY_DELAY_MIN = 0.0
+DEFAULT_COMPANY_DELAY_MAX = 0.0
+DEFAULT_POST_DELAY_MIN = 0.0
+DEFAULT_POST_DELAY_MAX = 0.0
 DEFAULT_REQUEST_TIMEOUT = 30.0
 DEFAULT_CONNECT_TIMEOUT = 10.0
 DEFAULT_SEARCH_RESULTS = 10
@@ -69,12 +71,25 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-companies", type=int, default=None, help="Optional cap for one scan cycle.")
     parser.add_argument("--run-once", action="store_true", help="Run one scan cycle and exit.")
     parser.add_argument("--dry-run", action="store_true", help="Discover and print candidates without posting.")
+    parser.add_argument("--concurrency", type=int, default=8, help="Number of concurrent company processing threads.")
     return parser.parse_args()
 
 
+_print_lock = threading.Lock()
+
 def log(message: str, level: str = "INFO") -> None:
     stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{stamp}] [{level}] {message}", flush=True)
+    msg = f"[{stamp}] [{level}] {message}"
+    with _print_lock:
+        try:
+            print(msg, flush=True)
+        except UnicodeEncodeError:
+            enc = sys.stdout.encoding or 'utf-8'
+            try:
+                print(msg.encode(enc, errors='replace').decode(enc), flush=True)
+            except Exception:
+                # Last resort fallback if decoding also fails
+                print(f"[{stamp}] [{level}] [Log Error] Message contains un-printable characters", flush=True)
 
 
 def load_database_url(explicit_url: str | None) -> str:
@@ -239,25 +254,29 @@ def load_tavily_keys() -> list[str]:
 _TAVILY_KEYS: list[str] = []
 _CURRENT_TAVILY_INDEX = 0
 
+_tavily_lock = threading.Lock()
+
 def get_next_tavily_client() -> Any:
     global _TAVILY_KEYS, _CURRENT_TAVILY_INDEX
     from tavily import TavilyClient
-    if not _TAVILY_KEYS:
-        _TAVILY_KEYS = load_tavily_keys()
-    
-    if _CURRENT_TAVILY_INDEX >= len(_TAVILY_KEYS):
-        return None
-    
-    key = _TAVILY_KEYS[_CURRENT_TAVILY_INDEX]
-    return TavilyClient(key)
+    with _tavily_lock:
+        if not _TAVILY_KEYS:
+            _TAVILY_KEYS = load_tavily_keys()
+        
+        if _CURRENT_TAVILY_INDEX >= len(_TAVILY_KEYS):
+            return None
+        
+        key = _TAVILY_KEYS[_CURRENT_TAVILY_INDEX]
+        return TavilyClient(key)
 
 def rotate_tavily_key():
     global _CURRENT_TAVILY_INDEX, _TAVILY_KEYS
-    _CURRENT_TAVILY_INDEX += 1
-    if _CURRENT_TAVILY_INDEX < len(_TAVILY_KEYS):
-        log(f"Rotated Tavily API key. Now using key index {_CURRENT_TAVILY_INDEX + 1}/{len(_TAVILY_KEYS)}", level="WARN")
-    else:
-        log("All Tavily API keys have been exhausted! Will need to wait until limits reset.", level="ERROR")
+    with _tavily_lock:
+        _CURRENT_TAVILY_INDEX += 1
+        if _CURRENT_TAVILY_INDEX < len(_TAVILY_KEYS):
+            log(f"Rotated Tavily API key. Now using key index {_CURRENT_TAVILY_INDEX + 1}/{len(_TAVILY_KEYS)}", level="WARN")
+        else:
+            log("All Tavily API keys have been exhausted! Will need to wait until limits reset.", level="ERROR")
 
 def discover_names_for_company(
     session: Session,
@@ -417,6 +436,155 @@ def post_new_recruiter(
     except ValueError:
         return response.text
 
+_stats_lock = threading.Lock()
+
+def process_single_company(
+    engine: Engine,
+    companies: Table,
+    recruiters: Table,
+    company: dict[str, Any],
+    index: int,
+    total_companies: int,
+    args: argparse.Namespace,
+    stats: Stats,
+) -> None:
+    company_name = str(company.get("company_name") or "").strip()
+    if not company_name:
+        return
+        
+    people_count = company.get("people_count", 0)
+    company_id = company.get("company_id", "N/A")
+    company_linkedin_url = company.get("linkedin_url")
+    
+    log(f"[Discovery] Company {index}/{total_companies}: {company_name}")
+    log(f"[Discovery] Company ID: {company_id}")
+    log(f"[Discovery] Existing people count: {people_count}")
+    log(f"[Discovery] Priority rank: {index}")
+
+    with _stats_lock:
+        stats.companies_scanned += 1
+    
+    start_time = time.time()
+    
+    duplicates_skipped = 0
+    success_count = 0
+    post_fails = 0
+    search_fails = 0
+    db_fails = 0
+    
+    query_str = f"site:linkedin.com/in \"{company_name}\" recruiter"
+    if company_linkedin_url:
+        query_str = f"Targeted: {company_linkedin_url}"
+        
+    log(f"[Discovery] Search query: {query_str}")
+
+    thread_session = build_session()
+    try:
+        try:
+            names_data = discover_names_for_company(thread_session, company_name, company_linkedin_url, args)
+        except Timeout as exc:
+            search_fails += 1
+            with _stats_lock:
+                stats.search_failures += 1
+            log(f"DuckDuckGo timeout for {company_name}: {exc}", level="WARN")
+            if args.company_delay_min > 0 or args.company_delay_max > 0:
+                sleep_jitter(args.company_delay_min, args.company_delay_max)
+            names_data = []
+        except RequestException as exc:
+            search_fails += 1
+            with _stats_lock:
+                stats.search_failures += 1
+            log(f"DuckDuckGo request failed for {company_name}: {exc}", level="WARN")
+            if args.company_delay_min > 0 or args.company_delay_max > 0:
+                sleep_jitter(args.company_delay_min, args.company_delay_max)
+            names_data = []
+        except Exception as exc:
+            search_fails += 1
+            with _stats_lock:
+                stats.search_failures += 1
+            log(f"Unexpected discovery error for {company_name}: {exc}", level="ERROR")
+            if args.company_delay_min > 0 or args.company_delay_max > 0:
+                sleep_jitter(args.company_delay_min, args.company_delay_max)
+            names_data = []
+
+        log(f"[Discovery] Number of search results received: {len(names_data) if names_data else 0}")
+        
+        if names_data:
+            valid_extracted = 0
+            for item in names_data:
+                name = item["name"]
+                recruiter_linkedin_url = item.get("linkedin_url")
+                extracted_title = item.get("title")
+                extracted_location = item.get("location")
+                valid_extracted += 1
+                with _stats_lock:
+                    stats.names_found += 1
+                try:
+                    exists = recruiter_exists(engine, recruiters, name, company_name)
+                except SQLAlchemyError as exc:
+                    db_fails += 1
+                    with _stats_lock:
+                        stats.db_failures += 1
+                    log(f"DB lookup failed for {name} / {company_name}: {exc}", level="ERROR")
+                    continue
+
+                if exists:
+                    duplicates_skipped += 1
+                    with _stats_lock:
+                        stats.existing_matches += 1
+                    continue
+
+                if args.dry_run:
+                    success_count += 1
+                    with _stats_lock:
+                        stats.posted_new += 1
+                else:
+                    try:
+                        post_new_recruiter(thread_session, args.webhook_url, name, company_name, recruiter_linkedin_url, args, extracted_title, extracted_location)
+                        success_count += 1
+                        with _stats_lock:
+                            stats.posted_new += 1
+                    except Timeout as exc:
+                        post_fails += 1
+                        with _stats_lock:
+                            stats.post_failures += 1
+                    except RequestException as exc:
+                        post_fails += 1
+                        with _stats_lock:
+                            stats.post_failures += 1
+                    except Exception as exc:
+                        post_fails += 1
+                        with _stats_lock:
+                            stats.post_failures += 1
+
+                if args.post_delay_min > 0 or args.post_delay_max > 0:
+                    sleep_jitter(args.post_delay_min, args.post_delay_max)
+
+            log(f"[Discovery] Number of valid names extracted: {valid_extracted}")
+        else:
+            log(f"[Discovery] Number of valid names extracted: 0")
+        
+        duration = time.time() - start_time
+        
+        if not args.dry_run:
+            try:
+                with engine.begin() as conn:
+                    stmt = companies.update().where(companies.c.company_id == company_id).values(updated_at=func.now())
+                    conn.execute(stmt)
+            except Exception as e:
+                log(f"Failed to update updated_at for {company_name}: {e}", level="ERROR")
+        
+        log(f"[Discovery] Number of duplicates skipped: {duplicates_skipped}")
+        log(f"[Discovery] Number of new people successfully saved: {success_count}")
+        log(f"[Discovery] Number of failed webhook requests: {post_fails}")
+        log(f"[Discovery] Processing duration per company: {duration:.2f}s")
+        
+        if args.company_delay_min > 0 or args.company_delay_max > 0:
+            slept = sleep_jitter(args.company_delay_min, args.company_delay_max)
+            log(f"Cooling down {slept:.2f}s before next company.", level="DEBUG")
+    finally:
+        thread_session.close()
+
 def run_scan_cycle(
     engine: Engine,
     companies: Table,
@@ -433,121 +601,30 @@ def run_scan_cycle(
     total_companies = len(tracked_companies)
     log(f"Starting discovery cycle for {total_companies} tracked companies.")
 
-    for index, company in enumerate(tracked_companies, start=1):
-        company_name = str(company.get("company_name") or "").strip()
-        if not company_name:
-            continue
-            
-        people_count = company.get("people_count", 0)
-        company_id = company.get("company_id", "N/A")
-        company_linkedin_url = company.get("linkedin_url")
-        
-        log(f"[Discovery] Company {index}/{total_companies}: {company_name}")
-        log(f"[Discovery] Company ID: {company_id}")
-        log(f"[Discovery] Existing people count: {people_count}")
-        log(f"[Discovery] Priority rank: {index}")
+    concurrency = getattr(args, "concurrency", 8)
+    log(f"Running cycle with concurrency = {concurrency} threads.")
 
-        stats.companies_scanned += 1
-        
-        start_time = time.time()
-        
-        duplicates_skipped = 0
-        success_count = 0
-        post_fails = 0
-        search_fails = 0
-        db_fails = 0
-        
-        query_str = f"site:linkedin.com/in \"{company_name}\" recruiter"
-        if company_linkedin_url:
-            query_str = f"Targeted: {company_linkedin_url}"
-            
-        log(f"[Discovery] Search query: {query_str}")
-
-        try:
-            names_data = discover_names_for_company(session, company_name, company_linkedin_url, args)
-        except Timeout as exc:
-            search_fails += 1
-            stats.search_failures += 1
-            log(f"DuckDuckGo timeout for {company_name}: {exc}", level="WARN")
-            sleep_jitter(args.company_delay_min, args.company_delay_max)
-            names_data = []
-        except RequestException as exc:
-            search_fails += 1
-            stats.search_failures += 1
-            log(f"DuckDuckGo request failed for {company_name}: {exc}", level="WARN")
-            sleep_jitter(args.company_delay_min, args.company_delay_max)
-            names_data = []
-        except Exception as exc:
-            search_fails += 1
-            stats.search_failures += 1
-            log(f"Unexpected discovery error for {company_name}: {exc}", level="ERROR")
-            sleep_jitter(args.company_delay_min, args.company_delay_max)
-            names_data = []
-
-        log(f"[Discovery] Number of search results received: {len(names_data) if names_data else 0}")
-        
-        if names_data:
-            valid_extracted = 0
-            for item in names_data:
-                name = item["name"]
-                recruiter_linkedin_url = item.get("linkedin_url")
-                extracted_title = item.get("title")
-                extracted_location = item.get("location")
-                valid_extracted += 1
-                stats.names_found += 1
-                try:
-                    exists = recruiter_exists(engine, recruiters, name, company_name)
-                except SQLAlchemyError as exc:
-                    db_fails += 1
-                    stats.db_failures += 1
-                    log(f"DB lookup failed for {name} / {company_name}: {exc}", level="ERROR")
-                    continue
-
-                if exists:
-                    duplicates_skipped += 1
-                    stats.existing_matches += 1
-                    continue
-
-                if args.dry_run:
-                    success_count += 1
-                    stats.posted_new += 1
-                else:
-                    try:
-                        post_new_recruiter(session, args.webhook_url, name, company_name, recruiter_linkedin_url, args, extracted_title, extracted_location)
-                        success_count += 1
-                        stats.posted_new += 1
-                    except Timeout as exc:
-                        post_fails += 1
-                        stats.post_failures += 1
-                    except RequestException as exc:
-                        post_fails += 1
-                        stats.post_failures += 1
-                    except Exception as exc:
-                        post_fails += 1
-                        stats.post_failures += 1
-
-                sleep_jitter(args.post_delay_min, args.post_delay_max)
-
-            log(f"[Discovery] Number of valid names extracted: {valid_extracted}")
-        else:
-            log(f"[Discovery] Number of valid names extracted: 0")
-        duration = time.time() - start_time
-        
-        if not args.dry_run:
+    with ThreadPoolExecutor(max_workers=concurrency) as executor:
+        futures = [
+            executor.submit(
+                process_single_company,
+                engine,
+                companies,
+                recruiters,
+                company,
+                index,
+                total_companies,
+                args,
+                stats
+            )
+            for index, company in enumerate(tracked_companies, start=1)
+        ]
+        # Wait for all futures to complete
+        for future in futures:
             try:
-                with engine.begin() as conn:
-                    stmt = companies.update().where(companies.c.company_id == company_id).values(updated_at=func.now())
-                    conn.execute(stmt)
-            except Exception as e:
-                log(f"Failed to update updated_at for {company_name}: {e}", level="ERROR")
-        
-        log(f"[Discovery] Number of duplicates skipped: {duplicates_skipped}")
-        log(f"[Discovery] Number of new people successfully saved: {success_count}")
-        log(f"[Discovery] Number of failed webhook requests: {post_fails}")
-        log(f"[Discovery] Processing duration per company: {duration:.2f}s")
-        
-        slept = sleep_jitter(args.company_delay_min, args.company_delay_max)
-        log(f"Cooling down {slept:.2f}s before next company.", level="DEBUG")
+                future.result()
+            except Exception as exc:
+                log(f"Unhandled company processing error: {exc}", level="ERROR")
 
 
 def main() -> int:

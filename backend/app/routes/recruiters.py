@@ -1251,9 +1251,14 @@ import uuid
 import json
 from ..utils.state_mapper import extract_state_detailed
 from ..utils.normalizer import normalize_text
+from ..utils.location_validator import is_location_north_america
 
 @router.post("/extension", status_code=201)
 def extension_webhook(data: ChromeExtensionPayload, db: Session = Depends(get_db)):
+    # Check location filter
+    if data.location and not is_location_north_america(data.location):
+        return {"message": "Ignored - location outside North America", "saved": False}
+
     # 1. Resolve Company
     company_id = None
     if data.company_name:

@@ -4,6 +4,7 @@ import api, { clearStoredToken } from '../services/api'
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: 'ti-layout-dashboard' },
+  { to: '/activity', label: 'Activity Log', icon: 'ti-activity' },
   { to: '/recruiters', label: 'Recruiters', icon: 'ti-users' },
   { to: '/directory', label: 'Directory', icon: 'ti-map-2', aliases: ['/states', '/companies'] },
   { to: '/analytics', label: 'Analytics', icon: 'ti-chart-bar' },

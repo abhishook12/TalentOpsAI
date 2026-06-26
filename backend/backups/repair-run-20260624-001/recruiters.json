@@ -1,0 +1,47 @@
+[
+  {
+    "recruiter_id": 202580,
+    "recruiter_name": "Freddy Engel",
+    "email": "linkedin_92aee3c9@missing.local",
+    "email_status": "placeholder",
+    "email_confidence": 0,
+    "updated_at": "2026-06-23T17:32:37.158725",
+    "company_name": "TekPartners"
+  },
+  {
+    "recruiter_id": 202579,
+    "recruiter_name": "Dennys Hernandez",
+    "email": "dhernandez@tekpartners.com",
+    "email_status": "likely",
+    "email_confidence": 70,
+    "updated_at": "2026-06-23T19:54:42.907126",
+    "company_name": "TekPartners"
+  },
+  {
+    "recruiter_id": 202583,
+    "recruiter_name": "Caren Galit",
+    "email": "cgalit@tekpartners.com",
+    "email_status": "likely",
+    "email_confidence": 70,
+    "updated_at": "2026-06-23T19:54:42.907126",
+    "company_name": "TekPartners"
+  },
+  {
+    "recruiter_id": 202584,
+    "recruiter_name": "Vito Scutero",
+    "email": "vscutero@tekpartners.com",
+    "email_status": "likely",
+    "email_confidence": 70,
+    "updated_at": "2026-06-23T19:54:42.907126",
+    "company_name": "TekPartners"
+  },
+  {
+    "recruiter_id": 16488,
+    "recruiter_name": "Fred Engel",
+    "email": "fengel@tekpartners.com",
+    "email_status": "unknown",
+    "email_confidence": 0,
+    "updated_at": "2026-06-23T19:18:10.922753",
+    "company_name": "TekPartners"
+  }
+]

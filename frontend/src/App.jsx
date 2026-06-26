@@ -10,6 +10,7 @@ const AISearch = lazy(() => import('./pages/AISearch'))
 const Upload = lazy(() => import('./pages/Upload'))
 const Directory = lazy(() => import('./pages/Directory'))
 const AdminTerminal = lazy(() => import('./pages/AdminTerminal'))
+const ActivityLog = lazy(() => import('./pages/ActivityLog'))
 
 class GlobalErrorBoundary extends Component {
   constructor(props) {
@@ -648,6 +649,7 @@ const PAGE_NAMES = {
   '/companies': 'Directory',
   '/upload': 'ETL',
   '/admin': 'Admin Ops',
+  '/activity': 'Global Activity Log',
 }
 
 function getSessionId() {
@@ -758,6 +760,7 @@ function AppShell() {
                     <Route path="/companies" element={<Directory />} />
                     <Route path="/upload" element={<Upload />} />
                     <Route path="/admin" element={<AdminTerminal />} />
+                    <Route path="/activity" element={<ActivityLog />} />
                   </Routes>
                 </GlobalErrorBoundary>
               </Suspense>

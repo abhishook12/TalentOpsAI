@@ -15,8 +15,26 @@ from collections import defaultdict
 from functools import wraps
 import time
 from ..routes.auth import verify_admin
+from .admin_utils import get_status, start_worker, stop_worker, get_logs
 
 router = APIRouter()
+
+# Worker management endpoints
+@router.get("/workers/status")
+def workers_status():
+    return get_status()
+
+@router.get("/workers/logs/{name}")
+def workers_logs(name: str):
+    return get_logs(name)
+
+@router.post("/workers/start")
+def workers_start(name: str):
+    return start_worker(name)
+
+@router.post("/workers/stop")
+def workers_stop(name: str):
+    return stop_worker(name)
 
 
 class SimpleCache:

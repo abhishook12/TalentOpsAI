@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMemo, useState, useCallback, useRef } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import api, { getErrorMessage } from '../services/api'
 import {
@@ -14,6 +14,8 @@ import {
   TimelineItem,
 } from '../components/CommandCenter'
 
+const REFRESH_INTERVAL = 60_000 // 60 seconds
+
 function formatCount(value) {
   return typeof value === 'number' ? value.toLocaleString() : 'Not available'
 }
@@ -22,53 +24,83 @@ function percentText(value) {
   return typeof value === 'number' ? `${value}%` : 'Not available'
 }
 
+function formatTime(date) {
+  if (!date) return '—'
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
+
 export default function Dashboard() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const [lastUpdated, setLastUpdated] = useState(() => new Date())
+  const [refreshError, setRefreshError] = useState(null)
+  const isManualRefreshing = useRef(false)
 
-  const { data: kpis, isLoading: kpisLoading, error: kpisError } = useQuery({
-    queryKey: ['dashboard-kpis'],
-    queryFn: async () => (await api.get('/analytics/dashboard')).data,
-    staleTime: 5 * 60 * 1000,
-    refetchOnMount: false,
+  const sharedQueryOpts = {
+    staleTime: 30_000,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
+    refetchInterval: REFRESH_INTERVAL,
+    keepPreviousData: true,
     retry: 1,
+  }
+
+  const { data: kpis, isLoading: kpisLoading, error: kpisError, isFetching: kpisFetching } = useQuery({
+    queryKey: ['dashboard-kpis'],
+    queryFn: async () => {
+      const res = (await api.get('/analytics/dashboard')).data
+      setLastUpdated(new Date())
+      setRefreshError(null)
+      return res
+    },
+    ...sharedQueryOpts,
   })
 
-  const { data: dataQuality, isLoading: dqLoading, error: dqError } = useQuery({
+  const { data: dataQuality, isLoading: dqLoading, error: dqError, isFetching: dqFetching } = useQuery({
     queryKey: ['dashboard-data-quality'],
     queryFn: async () => (await api.get('/analytics/data-quality')).data,
-    staleTime: 5 * 60 * 1000,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    retry: 1,
+    ...sharedQueryOpts,
   })
 
-  const { data: visits, isLoading: visitsLoading, error: visitsError } = useQuery({
+  const { data: visits, isLoading: visitsLoading, error: visitsError, isFetching: visitsFetching } = useQuery({
     queryKey: ['dashboard-visits'],
     queryFn: async () => (await api.get('/analytics/visit-stats')).data,
-    staleTime: 5 * 60 * 1000,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    retry: 1,
+    ...sharedQueryOpts,
   })
 
-  const { data: topCompanies, isLoading: companiesLoading, error: companiesError } = useQuery({
+  const { data: topCompanies, isLoading: companiesLoading, error: companiesError, isFetching: companiesFetching } = useQuery({
     queryKey: ['dashboard-top-companies'],
     queryFn: async () => (await api.get('/analytics/companies-search', { params: { state: 'ALL', limit: 6, skip: 0, min_recruiters: 1 } })).data,
-    staleTime: 5 * 60 * 1000,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    retry: 1,
+    ...sharedQueryOpts,
   })
 
-  const { data: jobs, isLoading: jobsLoading, error: jobsError } = useQuery({
+  const { data: jobs, isLoading: jobsLoading, error: jobsError, isFetching: jobsFetching } = useQuery({
     queryKey: ['dashboard-upload-jobs'],
     queryFn: async () => (await api.get('/upload/jobs')).data,
-    staleTime: 5 * 60 * 1000,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    retry: 1,
+    ...sharedQueryOpts,
   })
+
+  const isFetchingAny = kpisFetching || dqFetching || visitsFetching || companiesFetching || jobsFetching
+
+  const handleRefresh = useCallback(async () => {
+    if (isManualRefreshing.current || isFetchingAny) return
+    isManualRefreshing.current = true
+    setRefreshError(null)
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] }),
+        queryClient.invalidateQueries({ queryKey: ['dashboard-data-quality'] }),
+        queryClient.invalidateQueries({ queryKey: ['dashboard-visits'] }),
+        queryClient.invalidateQueries({ queryKey: ['dashboard-top-companies'] }),
+        queryClient.invalidateQueries({ queryKey: ['dashboard-upload-jobs'] }),
+      ])
+      setLastUpdated(new Date())
+    } catch (err) {
+      setRefreshError(getErrorMessage(err, 'Refresh failed. Previous data preserved.'))
+    } finally {
+      isManualRefreshing.current = false
+    }
+  }, [queryClient, isFetchingAny])
 
   const topPages = Array.isArray(visits?.top_pages) ? visits.top_pages.slice(0, 5) : []
   const recentJobs = Array.isArray(jobs) ? [...jobs].sort((a, b) => new Date(b.started_at || 0) - new Date(a.started_at || 0)).slice(0, 5) : []
@@ -141,7 +173,25 @@ export default function Dashboard() {
         title="Command Center Dashboard"
         subtitle="Real database data only. The layout mirrors a control-room interface while keeping existing workflows intact."
         action={(
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--mono)', marginRight: 4 }}>
+              {isFetchingAny && (
+                <span style={{
+                  display: 'inline-block', width: 12, height: 12, border: '2px solid var(--text-muted)',
+                  borderTopColor: 'var(--accent)', borderRadius: '50%',
+                  animation: 'spin 0.8s linear infinite',
+                }} />
+              )}
+              <span>Updated {formatTime(lastUpdated)}</span>
+            </div>
+            <GhostButton
+              onClick={handleRefresh}
+              disabled={isFetchingAny}
+              title={isFetchingAny ? 'Refresh in progress…' : 'Refresh all dashboard data from the database'}
+              style={isFetchingAny ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
+            >
+              <i className="ti ti-refresh" style={isFetchingAny ? { animation: 'spin 0.8s linear infinite', display: 'inline-block' } : {}} /> Refresh Data
+            </GhostButton>
             <PrimaryButton onClick={() => navigate('/ai-search')}>
               <i className="ti ti-sparkles" /> Open AI Search
             </PrimaryButton>
@@ -152,7 +202,15 @@ export default function Dashboard() {
         )}
       />
 
-      {isError && (
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
+      {refreshError && (
+        <ShellCard style={{ padding: 14, borderColor: 'rgba(196,58,50,0.2)', background: 'rgba(196,58,50,0.05)' }}>
+          <div style={{ color: 'var(--danger)', fontSize: 13, fontWeight: 700 }}>{refreshError}</div>
+        </ShellCard>
+      )}
+
+      {isError && !refreshError && (
         <ShellCard style={{ padding: 14, borderColor: 'rgba(196,58,50,0.2)', background: 'rgba(196,58,50,0.05)' }}>
           <div style={{ color: 'var(--danger)', fontSize: 13, fontWeight: 700 }}>{getErrorMessage(isError, 'Failed to load dashboard data')}</div>
         </ShellCard>
@@ -163,8 +221,8 @@ export default function Dashboard() {
           <MetricCard
             key={metric.label}
             {...metric}
-            value={kpisLoading ? 'Loading…' : metric.value}
-            sublabel={kpisLoading ? 'Syncing…' : metric.sublabel}
+            value={kpisLoading && !kpis ? 'Loading…' : metric.value}
+            sublabel={kpisLoading && !kpis ? 'Syncing…' : metric.sublabel}
           />
         ))}
       </div>

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TalentOps AI - Activity Log</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&amp;family=JetBrains+Mono:wght@500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-background": "#e2e2e2",
+                    "inverse-surface": "#e2e2e2",
+                    "primary": "#ffffff",
+                    "primary-fixed-dim": "#c6c6c6",
+                    "secondary-container": "#00eefc",
+                    "surface-container-high": "#282a2b",
+                    "on-tertiary-container": "#757575",
+                    "tertiary": "#c6c6c6",
+                    "on-secondary-fixed": "#002022",
+                    "on-tertiary": "#303030",
+                    "surface-container-highest": "#333535",
+                    "on-tertiary-fixed": "#1b1b1b",
+                    "on-surface": "#ffffff",
+                    "on-secondary-container": "#00686f",
+                    "inverse-on-surface": "#2f3131",
+                    "on-primary-fixed": "#1b1b1b",
+                    "surface-variant": "#333535",
+                    "secondary-fixed-dim": "#00dbe9",
+                    "on-error-container": "#ffdad6",
+                    "secondary": "#d3fbff",
+                    "on-primary-container": "#000000",
+                    "on-tertiary-fixed-variant": "#474747",
+                    "surface-tint": "#c6c6c6",
+                    "tertiary-container": "#000000",
+                    "on-secondary": "#00363a",
+                    "surface-container": "#1a1c1c",
+                    "primary-container": "#ffffff",
+                    "inverse-primary": "#5e5e5e",
+                    "outline": "#4c4546",
+                    "surface-container-low": "#0c0f0f",
+                    "secondary-fixed": "#7df4ff",
+                    "on-primary": "#000000",
+                    "error": "#ffb4ab",
+                    "surface-dim": "#000000",
+                    "primary-fixed": "#e2e2e2",
+                    "tertiary-fixed-dim": "#c6c6c6",
+                    "error-container": "#93000a",
+                    "on-primary-fixed-variant": "#474747",
+                    "background": "#000000",
+                    "surface-bright": "#37393a",
+                    "outline-variant": "#333535",
+                    "on-surface-variant": "#988e90",
+                    "on-secondary-fixed-variant": "#004f54",
+                    "on-error": "#690005",
+                    "surface-container-lowest": "#000000",
+                    "surface": "#000000",
+                    "tertiary-fixed": "#e2e2e2"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-margin": "24px",
+                    "gutter": "16px",
+                    "xl": "40px",
+                    "sm": "8px",
+                    "md": "16px",
+                    "unit": "4px",
+                    "xs": "4px",
+                    "lg": "24px"
+            },
+            "fontFamily": {
+                    "body-lg": ["Geist"],
+                    "body-md": ["Geist"],
+                    "headline-md": ["Geist"],
+                    "headline-lg": ["Geist"],
+                    "display-lg": ["Geist"],
+                    "label-sm": ["JetBrains Mono"],
+                    "label-md": ["JetBrains Mono"]
+            },
+            "fontSize": {
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-sm": ["12px", {"lineHeight": "1.4", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "label-md": ["14px", {"lineHeight": "1.4", "letterSpacing": "0.05em", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            -webkit-font-smoothing: antialiased;
+            font-family: 'Geist', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #000000;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #333535;
+            border-radius: 2px;
+        }
+        .activity-pulse {
+            position: relative;
+        }
+        .activity-pulse::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #ffffff;
+            box-shadow: 0 0 8px rgba(255,255,255,0.3);
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface selection:bg-primary selection:text-on-primary">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 right-0 z-50 bg-surface border-b border-outline-variant flex justify-between items-center w-full px-4 py-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="hub">hub</span>
+<h1 class="text-xl font-bold text-on-surface tracking-tighter">TalentOps AI</h1>
+</div>
+<button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-surface-container transition-transform active:scale-95 duration-150">
+<span class="material-symbols-outlined text-primary" data-icon="search">search</span>
+</button>
+</header>
+<main class="pt-24 pb-24 px-4 min-h-screen max-w-2xl mx-auto">
+<!-- Breadcrumb / Secondary Header -->
+<div class="mb-8">
+<p class="text-xs font-mono text-on-surface-variant mb-1 uppercase tracking-[0.2em]">Global Activity Log</p>
+<div class="flex items-baseline justify-between">
+<h2 class="text-3xl font-bold text-on-surface">Activity Log</h2>
+<div class="flex items-center gap-1.5 px-2 py-1 bg-surface-container-low rounded-full border border-outline-variant">
+<span class="w-2 h-2 rounded-full bg-[#00eefc] animate-pulse"></span>
+<span class="text-[10px] font-mono text-[#00eefc] tracking-widest">LIVE FEED</span>
+</div>
+</div>
+<p class="text-sm text-on-surface-variant mt-1">Real-time database changes</p>
+</div>
+<!-- Summary Bento Row -->
+<div class="grid grid-cols-2 gap-3 mb-8">
+<div class="p-4 bg-surface-container border border-outline-variant rounded-lg">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[10px] font-mono text-on-surface-variant uppercase">NEW ADDITIONS</span>
+<span class="material-symbols-outlined text-[16px] text-primary" data-icon="person_add">person_add</span>
+</div>
+<div class="text-2xl font-bold text-primary">123</div>
+</div>
+<div class="p-4 bg-surface-container border border-outline-variant rounded-lg">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[10px] font-mono text-on-surface-variant uppercase">IMPROVED</span>
+<span class="material-symbols-outlined text-[16px] text-primary" data-icon="trending_up">trending_up</span>
+</div>
+<div class="text-2xl font-bold text-primary">77</div>
+</div>
+<div class="p-4 bg-surface-container-low border border-outline-variant rounded-lg opacity-60">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[10px] font-mono text-on-surface-variant uppercase">NEEDS IMPR.</span>
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant" data-icon="error_outline">error_outline</span>
+</div>
+<div class="text-2xl font-bold text-on-surface-variant">0</div>
+</div>
+<div class="p-4 bg-surface-container-low border border-outline-variant rounded-lg opacity-60">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[10px] font-mono text-on-surface-variant uppercase">REMOVED</span>
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant" data-icon="flag">flag</span>
+</div>
+<div class="text-2xl font-bold text-on-surface-variant">0</div>
+</div>
+</div>
+<!-- Filter Bar -->
+<div class="flex gap-2 overflow-x-auto pb-4 mb-6 no-scrollbar">
+<button class="whitespace-nowrap px-4 py-1.5 bg-primary text-on-primary rounded-full font-mono text-xs font-bold">All Activity</button>
+<button class="whitespace-nowrap px-4 py-1.5 bg-surface-container border border-outline-variant text-on-surface rounded-full font-mono text-xs hover:bg-surface-container-highest transition-colors">New Additions</button>
+<button class="whitespace-nowrap px-4 py-1.5 bg-surface-container border border-outline-variant text-on-surface rounded-full font-mono text-xs hover:bg-surface-container-highest transition-colors">Improved</button>
+<button class="whitespace-nowrap px-4 py-1.5 bg-surface-container border border-outline-variant text-on-surface rounded-full font-mono text-xs hover:bg-surface-container-highest transition-colors">Needs Improvement</button>
+</div>
+<!-- Activity List -->
+<div class="space-y-3">
+<!-- Card 1 -->
+<div class="activity-pulse bg-surface-container border border-outline-variant p-4 rounded-lg flex flex-col gap-2 transition-all hover:bg-surface-container-high active:scale-[0.98]">
+<div class="flex justify-between items-start">
+<span class="px-2 py-0.5 bg-white text-black font-mono text-[10px] rounded uppercase font-bold tracking-wider">ADDED</span>
+<span class="text-[10px] font-mono text-on-surface-variant">12:54 AM</span>
+</div>
+<div>
+<h3 class="text-base font-bold text-on-surface">Easton Grainer</h3>
+<p class="text-sm text-on-surface-variant leading-tight mt-1">Easton Grainer - Customer Success Specialist | Team Coach and Trainer</p>
+</div>
+<div class="flex items-center gap-4 mt-1">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[14px]" data-icon="business">business</span>
+<span class="text-[11px] font-mono text-primary uppercase">ROCKBOT</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-on-surface-variant text-[14px]" data-icon="location_on">location_on</span>
+<span class="text-[11px] font-mono text-on-surface-variant uppercase">REMOTE</span>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="activity-pulse bg-surface-container border border-outline-variant p-4 rounded-lg flex flex-col gap-2 transition-all hover:bg-surface-container-high active:scale-[0.98]">
+<div class="flex justify-between items-start">
+<span class="px-2 py-0.5 bg-white text-black font-mono text-[10px] rounded uppercase font-bold tracking-wider">ADDED</span>
+<span class="text-[10px] font-mono text-on-surface-variant">12:52 AM</span>
+</div>
+<div>
+<h3 class="text-base font-bold text-on-surface">Naresh Khude</h3>
+<p class="text-sm text-on-surface-variant leading-tight mt-1">Development Engineer 4 (Adams Solver) at MSC Software</p>
+</div>
+<div class="flex items-center gap-4 mt-1">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[14px]" data-icon="business">business</span>
+<span class="text-[11px] font-mono text-primary uppercase">MSCSOFTWARE</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-on-surface-variant text-[14px]" data-icon="location_on">location_on</span>
+<span class="text-[11px] font-mono text-on-surface-variant uppercase">ANN ARBOR, MI</span>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="activity-pulse bg-surface-container border border-outline-variant p-4 rounded-lg flex flex-col gap-2 transition-all hover:bg-surface-container-high active:scale-[0.98]">
+<div class="flex justify-between items-start">
+<span class="px-2 py-0.5 bg-white text-black font-mono text-[10px] rounded uppercase font-bold tracking-wider">ADDED</span>
+<span class="text-[10px] font-mono text-on-surface-variant">12:48 AM</span>
+</div>
+<div>
+<h3 class="text-base font-bold text-on-surface">Darren Mabashov</h3>
+<p class="text-sm text-on-surface-variant leading-tight mt-1">Strategic Employment Partners (SEP, Inc.)</p>
+</div>
+<div class="flex items-center gap-4 mt-1">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[14px]" data-icon="business">business</span>
+<span class="text-[11px] font-mono text-primary uppercase">STRATEGIC EMP...</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-on-surface-variant text-[14px]" data-icon="location_on">location_on</span>
+<span class="text-[11px] font-mono text-on-surface-variant uppercase">LOS ANGELES, CA</span>
+</div>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="activity-pulse bg-surface-container border border-outline-variant p-4 rounded-lg flex flex-col gap-2 transition-all hover:bg-surface-container-high active:scale-[0.98]">
+<div class="flex justify-between items-start">
+<span class="px-2 py-0.5 bg-white text-black font-mono text-[10px] rounded uppercase font-bold tracking-wider">ADDED</span>
+<span class="text-[10px] font-mono text-on-surface-variant">12:40 AM</span>
+</div>
+<div>
+<h3 class="text-base font-bold text-on-surface">Nick Litsis</h3>
+<p class="text-sm text-on-surface-variant leading-tight mt-1">Madison-Davis, LLC New York City Metropolitan Area</p>
+</div>
+<div class="flex items-center gap-4 mt-1">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[14px]" data-icon="business">business</span>
+<span class="text-[11px] font-mono text-primary uppercase">RAMAPO</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-on-surface-variant text-[14px]" data-icon="location_on">location_on</span>
+<span class="text-[11px] font-mono text-on-surface-variant uppercase">NYC</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Info -->
+<div class="mt-16 mb-8 flex flex-col items-center gap-4 text-center">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant text-sm" data-icon="settings_input_component">settings_input_component</span>
+<p class="text-[10px] font-mono text-on-surface-variant uppercase tracking-widest">REC-INTEL v4.0</p>
+</div>
+<p class="text-[10px] text-on-surface-variant/40 font-mono">BUILT BY ABHISHEK • SERVER NODE US-EAST-01A</p>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 bg-surface-container border-t border-outline-variant flex justify-around items-center px-2">
+<a class="flex flex-col items-center justify-center text-on-surface-variant pt-2 pb-3 hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="dashboard">dashboard</span>
+<span class="text-[10px] font-mono uppercase">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#00eefc] border-t-2 border-[#00eefc] pt-2 pb-3" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="pause">pause</span>
+<span class="text-[10px] font-mono uppercase">Activity</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant pt-2 pb-3 hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="folder_shared">folder_shared</span>
+<span class="text-[10px] font-mono uppercase">Directory</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant pt-2 pb-3 hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="analytics">analytics</span>
+<span class="text-[10px] font-mono uppercase">Analytics</span>
+</a>
+</nav>
+<script>
+    // Simple micro-interaction enhancements
+    document.querySelectorAll('.activity-pulse').forEach(card => {
+        card.addEventListener('touchstart', () => {
+            card.style.transform = 'scale(0.98)';
+        });
+        card.addEventListener('touchend', () => {
+            card.style.transform = 'scale(1)';
+        });
+    });
+
+    // Simulated update logic for the live metrics
+    setInterval(() => {
+        const countEl = document.querySelector('.text-2xl.text-primary');
+        if (countEl && Math.random() > 0.8) {
+            const current = parseInt(countEl.innerText);
+            countEl.innerText = current + 1;
+            countEl.classList.add('scale-110');
+            setTimeout(() => countEl.classList.remove('scale-110'), 200);
+        }
+    }, 8000);
+</script>
+</body></html>

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, Numeric, Date, Text, ForeignKey, TIMESTAMP
+from sqlalchemy import Column, Integer, String, Boolean, Numeric, Date, Text, ForeignKey, TIMESTAMP, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from ..database import Base
@@ -37,9 +37,11 @@ class Company(Base):
     location     = Column(String(150))
     state        = Column(String(2), index=True)
     website      = Column(String(255))
+    linkedin_url = Column(String(255), nullable=True)
     email_pattern= Column(String(150))
     notes        = Column(Text)
-    is_active    = Column(Boolean, default=True)
+    is_active    = Column(Boolean, default=True, index=True)
+    is_tracked   = Column(Boolean, default=False, index=True)
     data_source  = Column(String(100), default="manual")
     trust_score  = Column(Integer, default=100)
     source_job_id = Column(String(36), index=True, nullable=True)
@@ -48,8 +50,11 @@ class Company(Base):
     tags         = Column(Text, nullable=True)     # Comma-separated tags or JSON list
     created_at   = Column(TIMESTAMP, server_default=func.now())
     updated_at   = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
-    recruiters   = relationship("Recruiter", back_populates="company")
+    recruiters   = relationship("Recruiter", foreign_keys="[Recruiter.company_id]", back_populates="company")
     submissions  = relationship("Submission", back_populates="company")
+    email_patterns = relationship("CompanyEmailPattern", backref="company", cascade="all, delete-orphan")
+    phones         = relationship("RecruiterPhone", backref="company_ref", cascade="all, delete-orphan")
+    locations      = relationship("RecruiterLocation", backref="company_ref", cascade="all, delete-orphan")
 
 
 class Vendor(Base):
@@ -84,7 +89,7 @@ class Recruiter(Base):
     title            = Column(String(150))
     notes            = Column(Text)                 # any extra info from messages etc.
     review_reason    = Column(Text)                 # Why it needs review
-    company_id       = Column(Integer, ForeignKey("companies.company_id", ondelete="SET NULL"), nullable=True)
+    company_id       = Column(Integer, ForeignKey("companies.company_id", ondelete="SET NULL"), nullable=True, index=True)
     location         = Column(String(255))
     state            = Column(String(2), index=True) # Normalized state
     normalized_city  = Column(String(150), index=True)
@@ -95,7 +100,9 @@ class Recruiter(Base):
     last_scan_at     = Column(TIMESTAMP, nullable=True)
     completeness_score = Column(Integer, default=0, index=True)
     needs_review     = Column(Boolean, default=False, index=True)
-    is_active        = Column(Boolean, default=True)
+    is_active        = Column(Boolean, default=True, index=True)
+    taxonomy_category = Column(String(100), index=True, nullable=True)
+    report_count     = Column(Integer, default=0)
     data_source      = Column(String(100), default="manual")
     trust_score      = Column(Integer, default=100)
     source_job_id    = Column(String(36), index=True, nullable=True)
@@ -104,9 +111,205 @@ class Recruiter(Base):
     tags             = Column(Text, nullable=True)     # Comma-separated tags or JSON list
     created_at       = Column(TIMESTAMP, server_default=func.now())
     updated_at       = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
-    company          = relationship("Company", back_populates="recruiters")
+    email_status     = Column(String(50), default="unknown")
+    email_confidence = Column(Integer, default=0)
+    email_source     = Column(String(100), nullable=True)
+    email_pattern_id = Column(Integer, nullable=True)
+    email_generated  = Column(Boolean, default=False)
+    email_verified_at = Column(TIMESTAMP, nullable=True)
+    email_last_checked_at = Column(TIMESTAMP, nullable=True)
+    canonical_company_id = Column(Integer, ForeignKey("companies.company_id", ondelete="SET NULL"), nullable=True)
+    historical_company_id = Column(Integer, ForeignKey("companies.company_id", ondelete="SET NULL"), nullable=True)
+    company_domain_id = Column(Integer, nullable=True)
+    raw_email_value  = Column(String(255), nullable=True)
+    repair_reason    = Column(Text, nullable=True)
+    company          = relationship("Company", foreign_keys=[company_id], back_populates="recruiters")
+    canonical_company= relationship("Company", foreign_keys=[canonical_company_id])
+    historical_company= relationship("Company", foreign_keys=[historical_company_id])
     candidates       = relationship("Candidate", back_populates="recruiter")
     submissions      = relationship("Submission", back_populates="recruiter")
+    structured_emails = relationship("RecruiterEmail", backref="recruiter", cascade="all, delete-orphan")
+    structured_phones = relationship("RecruiterPhone", backref="recruiter", cascade="all, delete-orphan")
+    structured_locations = relationship("RecruiterLocation", backref="recruiter", cascade="all, delete-orphan")
+    audits            = relationship("EnrichmentAudit", backref="recruiter", cascade="all, delete-orphan")
+
+
+class CompanyEmailPattern(Base):
+    __tablename__ = "company_email_patterns"
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.company_id", ondelete="CASCADE"), nullable=False, index=True)
+    domain = Column(String(255), nullable=False, index=True)
+    pattern = Column(String(150), nullable=False)
+    verified_example_count = Column(Integer, default=0)
+    match_percentage = Column(Numeric(5, 2))
+    confidence_score = Column(Integer, default=0)
+    active = Column(Boolean, default=True)
+    last_verified_at = Column(TIMESTAMP, nullable=True)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+
+class RecruiterEmail(Base):
+    __tablename__ = "recruiter_emails"
+    id = Column(Integer, primary_key=True, index=True)
+    recruiter_id = Column(Integer, ForeignKey("recruiters.recruiter_id", ondelete="CASCADE"), nullable=False, index=True)
+    email = Column(String(150), nullable=False, unique=True)
+    email_type = Column(String(50), default="personal") # personal, work
+    status = Column(String(50), default="unknown")      # verified, likely, inferred, placeholder, invalid, unknown
+    confidence_score = Column(Integer, default=0)
+    source = Column(String(150))
+    company_domain_id = Column(Integer, nullable=True)
+    pattern_id = Column(Integer, ForeignKey("company_email_patterns.id", ondelete="SET NULL"), nullable=True)
+    is_generated = Column(Boolean, default=False)
+    is_primary = Column(Boolean, default=False)
+    verified_at = Column(TIMESTAMP, nullable=True)
+    last_checked_at = Column(TIMESTAMP, nullable=True)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+
+class RecruiterPhone(Base):
+    __tablename__ = "recruiter_phones"
+    id = Column(Integer, primary_key=True, index=True)
+    recruiter_id = Column(Integer, ForeignKey("recruiters.recruiter_id", ondelete="CASCADE"), nullable=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.company_id", ondelete="CASCADE"), nullable=True, index=True)
+    phone_number = Column(String(50), nullable=False)
+    raw_phone = Column(String(100))
+    phone_type = Column(String(50))   # personal_mobile, direct_work, alternate_work, company_main, company_branch, toll_free, fax, unknown
+    extension = Column(String(20))
+    country_code = Column(String(10))
+    belongs_to_person = Column(Boolean, default=True)
+    source = Column(String(150))
+    confidence_score = Column(Integer, default=0)
+    is_verified = Column(Boolean, default=False)
+    is_primary = Column(Boolean, default=False)
+    last_checked_at = Column(TIMESTAMP, nullable=True)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+
+class RecruiterLocation(Base):
+    __tablename__ = "recruiter_locations"
+    id = Column(Integer, primary_key=True, index=True)
+    recruiter_id = Column(Integer, ForeignKey("recruiters.recruiter_id", ondelete="CASCADE"), nullable=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.company_id", ondelete="CASCADE"), nullable=True, index=True)
+    city = Column(String(150))
+    state = Column(String(50))
+    country = Column(String(100))
+    location_type = Column(String(50)) # person, office, company_headquarters, company_branch, company_fallback
+    source = Column(String(150))
+    confidence_score = Column(Integer, default=0)
+    is_verified = Column(Boolean, default=False)
+    is_fallback = Column(Boolean, default=False)
+    last_checked_at = Column(TIMESTAMP, nullable=True)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+
+class EnrichmentAudit(Base):
+    __tablename__ = "enrichment_audit"
+    id = Column(Integer, primary_key=True, index=True)
+    recruiter_id = Column(Integer, ForeignKey("recruiters.recruiter_id", ondelete="CASCADE"), nullable=True, index=True)
+    enrichment_type = Column(String(50)) # email, phone, location, merge
+    original_value = Column(Text, nullable=True)
+    proposed_value = Column(Text, nullable=True)
+    final_value = Column(Text, nullable=True)
+    source = Column(String(150))
+    confidence_score = Column(Integer, default=0)
+    action = Column(String(100))
+    reason = Column(Text)
+    run_id = Column(String(100), index=True)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+
+
+class EnrichmentRun(Base):
+    """Tracks each enrichment execution with checkpoint/resume support."""
+    __tablename__ = "enrichment_runs"
+    run_id             = Column(String(100), primary_key=True)
+    mode               = Column(String(20), nullable=False)        # DRY_RUN or APPLY
+    status             = Column(String(30), nullable=False)        # PLANNED, RUNNING, INSPECTION_COMPLETE, etc.
+    started_at         = Column(TIMESTAMP, nullable=False, server_default=func.now())
+    completed_at       = Column(TIMESTAMP, nullable=True)
+    resumed_at         = Column(TIMESTAMP, nullable=True)
+    total_recruiters   = Column(Integer, nullable=True)
+    total_eligible     = Column(Integer, nullable=True)
+    inspected_count    = Column(Integer, default=0)
+    applied_update_count = Column(Integer, default=0)
+    pending_update_count = Column(Integer, default=0)
+    rejected_count     = Column(Integer, default=0)
+    skipped_count      = Column(Integer, default=0)
+    manual_review_count= Column(Integer, default=0)
+    failed_count       = Column(Integer, default=0)
+    retry_count        = Column(Integer, default=0)
+    last_processed_id  = Column(Integer, nullable=True)
+    current_batch      = Column(Integer, nullable=True)
+    batch_size         = Column(Integer, nullable=True)
+    max_updates        = Column(Integer, nullable=True)
+    backup_path        = Column(String(255), nullable=True)
+    report_path        = Column(String(255), nullable=True)
+    error_summary      = Column(Text, nullable=True)
+    configuration_json = Column(JSON, nullable=True)
+    created_at         = Column(TIMESTAMP, nullable=False, server_default=func.now())
+    updated_at         = Column(TIMESTAMP, nullable=False, server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    results   = relationship("EnrichmentResult", back_populates="run", cascade="all, delete-orphan")
+    proposals = relationship("EnrichmentProposal", back_populates="run", cascade="all, delete-orphan")
+
+
+class EnrichmentResult(Base):
+    """Per-recruiter outcome for a specific enrichment run."""
+    __tablename__ = "enrichment_results"
+    id                    = Column(Integer, primary_key=True, index=True)
+    run_id                = Column(String(100), ForeignKey("enrichment_runs.run_id", ondelete="CASCADE"))
+    recruiter_id          = Column(Integer, nullable=False)
+    company_id            = Column(Integer, nullable=True)
+    email_outcome         = Column(String(30), nullable=True)
+    phone_outcome         = Column(String(30), nullable=True)
+    location_outcome      = Column(String(30), nullable=True)
+    overall_outcome       = Column(String(30), nullable=False)
+    old_values_json       = Column(JSON, nullable=True)
+    proposed_values_json  = Column(JSON, nullable=True)
+    applied_values_json   = Column(JSON, nullable=True)
+    confidence_json       = Column(JSON, nullable=True)
+    evidence_json         = Column(JSON, nullable=True)
+    rejection_reason      = Column(Text, nullable=True)
+    failure_category      = Column(String(30), nullable=True)
+    retry_count           = Column(Integer, default=0)
+    processing_started_at = Column(TIMESTAMP, nullable=True)
+    processing_completed_at = Column(TIMESTAMP, nullable=True)
+    created_at            = Column(TIMESTAMP, nullable=False, server_default=func.now())
+    updated_at            = Column(TIMESTAMP, nullable=False, server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    run = relationship("EnrichmentRun", back_populates="results")
+
+    __table_args__ = (
+        # UNIQUE constraint already exists in DB; declared here for ORM awareness
+    )
+
+
+class EnrichmentProposal(Base):
+    """Individual field-level proposal for a recruiter within an enrichment run."""
+    __tablename__ = "enrichment_proposals"
+    id                 = Column(Integer, primary_key=True, index=True)
+    run_id             = Column(String(100), ForeignKey("enrichment_runs.run_id", ondelete="CASCADE"))
+    recruiter_id       = Column(Integer, nullable=False)
+    enrichment_type    = Column(String(20), nullable=False)        # email, phone, location
+    current_value      = Column(Text, nullable=True)
+    proposed_value     = Column(Text, nullable=False)
+    status             = Column(String(20), nullable=False, default="PROPOSED")  # PROPOSED, APPLIED, PENDING_UPDATE, REJECTED
+    confidence         = Column(Integer, nullable=True)
+    evidence           = Column(JSON, nullable=True)
+    source             = Column(String(150), nullable=True)
+    conflict_record_id = Column(Integer, nullable=True)
+    rejection_reason   = Column(Text, nullable=True)
+    applied_at         = Column(TIMESTAMP, nullable=True)
+    created_at         = Column(TIMESTAMP, nullable=False, server_default=func.now())
+    updated_at         = Column(TIMESTAMP, nullable=False, server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    run = relationship("EnrichmentRun", back_populates="proposals")
+
+    __table_args__ = (
+        # UNIQUE constraint already exists in DB; declared here for ORM awareness
+    )
 
 
 class Candidate(Base):

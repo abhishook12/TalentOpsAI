@@ -39,6 +39,8 @@ class SimpleCache:
 
 
 analytics_cache = SimpleCache()
+# Cache to hold expensive analytical queries
+
 logger = logging.getLogger("talentops.analytics")
 router = APIRouter()
 
@@ -192,7 +194,7 @@ def get_dashboard_kpis(db: Session = Depends(get_db)):
         "companies": {"total": total_companies},
         "vendors": {"total": total_vendors},
     }
-    analytics_cache.set("dashboard_kpis", result, ttl=3600)
+    analytics_cache.set("dashboard_kpis", result, ttl=300)
     return result
 
 
@@ -323,51 +325,45 @@ def companies_search(
     db: Session = Depends(get_db),
 ):
     dashboard_query = not q and (not state or state.upper() == 'ALL') and min_recruiters == 1 and limit == 6 and skip == 0
-    cached = analytics_cache.get("companies_search_dashboard" if dashboard_query else "companies_search")
-    if cached is not None and ((dashboard_query) or (not q and not state and min_recruiters == 0 and limit == 100 and skip == 0)):
+    dir_query = not q and (not state or state.upper() == 'ALL') and min_recruiters == 1 and limit == 200 and skip == 0
+    cache_key = "companies_search_dashboard" if dashboard_query else ("companies_search_dir" if dir_query else "companies_search")
+    cached = analytics_cache.get(cache_key)
+    if cached is not None and (dashboard_query or dir_query or (not q and not state and min_recruiters == 0 and limit == 100 and skip == 0)):
         response.headers["X-Total-Count"] = str(cached["total_count"])
         return cached["rows"]
 
-    sql = """
-        SELECT
-            c.company_id,
-            c.company_name,
-            c.location,
-            c.industry,
-            c.website,
-            COUNT(DISTINCT r.recruiter_id) AS recruiter_count,
-            COALESCE(
-                NULLIF(TRIM(c.state), ''),
-                CASE
-                    WHEN c.location ~ '^[A-Za-z]{2}$' THEN UPPER(c.location)
-                    WHEN c.location ~ '.*[ ,]([A-Za-z]{2})$' THEN UPPER(SUBSTRING(c.location FROM '([A-Za-z]{2})$'))
-                    ELSE MAX(NULLIF(TRIM(r.state), ''))
-                END,
-                'Unknown'
-            ) AS state_abbr,
-            COUNT(CASE WHEN r.state IS NULL OR r.state = '' THEN 1 END) AS missing_state_count,
-            COUNT(CASE WHEN r.needs_review = true THEN 1 END) AS needs_review_count,
-            COUNT(*) OVER() AS full_count
-        FROM companies c
-        LEFT JOIN recruiters r ON r.company_id = c.company_id
-        WHERE 1=1
-    """
+    where_clauses = ["c.is_active = true"]
     params = {"limit": limit, "min_recruiters": min_recruiters, "skip": skip}
 
     if q:
         from app.utils.normalizer import normalize_text
         clean_q = normalize_text(q)
-        sql += " AND c.normalized_company_name ILIKE '%' || :q || '%'"
+        where_clauses.append("c.normalized_company_name ILIKE '%' || :q || '%'")
         params["q"] = clean_q
 
     if state and state.upper() != "ALL":
-        sql += " AND (r.state = :state OR ((r.state IS NULL OR r.state = '') AND c.state = :state))"
+        where_clauses.append("c.state = :state")
         params["state"] = state.upper()
 
-    sql += """
-        GROUP BY c.company_id, c.company_name, c.location, c.industry, c.website, c.state
-        HAVING COUNT(DISTINCT r.recruiter_id) >= :min_recruiters
-        ORDER BY recruiter_count DESC, c.company_name ASC
+    where_sql = " AND ".join(where_clauses)
+
+    sql = f"""
+        WITH comp_stats AS (
+            SELECT
+                c.company_id,
+                c.company_name,
+                c.location,
+                c.industry,
+                c.website,
+                (SELECT count(*) FROM recruiters r WHERE r.company_id = c.company_id) AS recruiter_count,
+                COALESCE(NULLIF(TRIM(c.state), ''), 'US') AS state_abbr
+            FROM companies c
+            WHERE {where_sql}
+        )
+        SELECT *, 0 AS missing_state_count, 0 AS needs_review_count, COUNT(*) OVER() AS full_count
+        FROM comp_stats
+        WHERE recruiter_count >= :min_recruiters
+        ORDER BY recruiter_count DESC, company_name ASC
         LIMIT :limit OFFSET :skip
     """
     rows = db.execute(text(sql), params).mappings().all()
@@ -391,6 +387,8 @@ def companies_search(
 
     if dashboard_query:
         analytics_cache.set("companies_search_dashboard", {"total_count": total_count, "rows": res}, ttl=3600)
+    elif dir_query:
+        analytics_cache.set("companies_search_dir", {"total_count": total_count, "rows": res}, ttl=3600)
     elif not q and not state and min_recruiters == 0 and limit == 100 and skip == 0:
         analytics_cache.set("companies_search", {"total_count": total_count, "rows": res}, ttl=3600)
 
@@ -477,3 +475,156 @@ def visit_stats(db: Session = Depends(get_db)):
     }
     analytics_cache.set("visit_stats", result, ttl=3600)
     return result
+
+@router.get("/enrichment-feed")
+def get_enrichment_feed(db: Session = Depends(get_db)):
+    try:
+        discovered = db.execute(text("""
+            SELECT r.recruiter_name, r.title, r.created_at, 'discovery' as type,
+                   c.company_name, r.email, r.phone, r.location
+            FROM recruiters r
+            JOIN companies c ON r.company_id = c.company_id
+            WHERE r.data_source = 'discovery_worker'
+            AND r.company_id IS NOT NULL
+            ORDER BY r.created_at DESC 
+            LIMIT 50
+        """)).fetchall()
+        
+        enriched = db.execute(text("""
+            SELECT r.recruiter_name, r.title, r.updated_at as created_at, 'enriched' as type,
+                   c.company_name, r.email, r.phone, r.location
+            FROM recruiters r
+            JOIN companies c ON r.company_id = c.company_id
+            WHERE (r.phone IS NOT NULL OR r.email IS NOT NULL) 
+            AND r.company_id IS NOT NULL
+            AND r.updated_at > r.created_at
+            ORDER BY r.updated_at DESC 
+            LIMIT 50
+        """)).fetchall()
+        
+        import re
+        
+        def smart_parse_name(raw_name, existing_phone):
+            raw_name = str(raw_name).strip()
+            # If it's mostly numbers/symbols, it's a phone number
+            if re.match(r'^[\d\s\(\)\-\+\.]+$', raw_name) and len(raw_name) >= 7:
+                return "Unknown Contact", raw_name
+            return raw_name, existing_phone
+
+        feed = []
+        for row in discovered:
+            ts = row[2].isoformat() if row[2] else None
+            if ts and not ts.endswith('Z') and '+' not in ts: ts += 'Z'
+            
+            real_name, smart_phone = smart_parse_name(row[0], row[6])
+            
+            feed.append({
+                "id": f"disc_{hash(str(row[0]) + str(row[2]))}",
+                "name": real_name,
+                "title": row[1] or "Talent Acquisition",
+                "timestamp": ts,
+                "type": row[3],
+                "company": row[4] or "Unknown Company",
+                "email": row[5] or "",
+                "phone": smart_phone or "",
+                "location": row[7] or "",
+                "message": f"AI Discovered: {real_name}"
+            })
+            
+        for row in enriched:
+            ts = row[2].isoformat() if row[2] else None
+            if ts and not ts.endswith('Z') and '+' not in ts: ts += 'Z'
+            
+            real_name, smart_phone = smart_parse_name(row[0], row[6])
+            
+            feed.append({
+                "id": f"enr_{hash(str(row[0]) + str(row[2]))}",
+                "name": real_name,
+                "title": row[1] or "Talent Acquisition",
+                "timestamp": ts,
+                "type": row[3],
+                "company": row[4] or "Unknown Company",
+                "email": row[5] or "",
+                "phone": smart_phone or "",
+                "location": row[7] or "",
+                "message": f"Profile Enriched: {real_name}"
+            })
+            
+        feed.sort(key=lambda x: x["timestamp"] or "", reverse=True)
+        return {"feed": feed[:50]}
+    except Exception as e:
+        return {"feed": []}
+
+@router.get("/global-activity")
+def get_global_activity(
+    limit: int = 200,
+    db: Session = Depends(get_db)
+):
+    try:
+        # Fetch the most recently updated high-quality records
+        records = db.execute(text("""
+            SELECT r.recruiter_id, r.recruiter_name, r.title, r.location, r.phone, r.email, 
+                   r.created_at, r.updated_at, r.is_active, c.company_name
+            FROM recruiters r
+            LEFT JOIN companies c ON r.company_id = c.company_id
+            WHERE r.recruiter_name IS NOT NULL AND r.recruiter_name != ''
+              AND c.company_name IS NOT NULL AND c.company_name != ''
+              AND r.email IS NOT NULL AND r.email != '' AND r.email NOT LIKE '%@missing.local' AND r.email NOT LIKE 'no-email-%' AND r.email NOT LIKE 'linkedin_%'
+              AND r.location IS NOT NULL AND r.location != ''
+            ORDER BY r.updated_at DESC
+            LIMIT :limit
+        """), {"limit": limit}).fetchall()
+        
+        feed = []
+        for row in records:
+            created = row[6]
+            updated = row[7]
+            is_active = row[8]
+            has_contact = bool(row[4]) or bool(row[5])
+            
+            # Determine category
+            category = "unknown"
+            if is_active is False:
+                category = "removed"
+            elif created and updated and (updated - created).total_seconds() < 60:
+                # Created within the last minute of its update = brand new addition
+                category = "added"
+            elif has_contact:
+                category = "improved"
+            else:
+                category = "needs_improvement"
+                
+            ts = updated.isoformat() if updated else None
+            if ts and not ts.endswith('Z') and '+' not in ts: ts += 'Z'
+            
+            feed.append({
+                "id": row[0],
+                "name": row[1] or "Unknown",
+                "title": row[2] or "",
+                "location": row[3] or "",
+                "phone": row[4] or "",
+                "email": row[5] or "",
+                "company": row[9] or "Unknown Company",
+                "timestamp": ts,
+                "category": category
+            })
+            
+        daily_stats_row = db.execute(text("""
+            SELECT 
+                COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE) as added,
+                COUNT(*) FILTER (WHERE updated_at >= CURRENT_DATE AND (phone IS NOT NULL OR email IS NOT NULL) AND created_at < CURRENT_DATE AND is_active = true) as improved,
+                COUNT(*) FILTER (WHERE updated_at >= CURRENT_DATE AND is_active = false) as removed
+            FROM recruiters
+            WHERE updated_at >= CURRENT_DATE OR created_at >= CURRENT_DATE
+        """)).fetchone()
+        
+        daily_stats = {
+            "added": daily_stats_row[0] or 0,
+            "improved": daily_stats_row[1] or 0,
+            "removed": daily_stats_row[2] or 0
+        }
+            
+        return {"activity": feed, "daily_stats": daily_stats}
+    except Exception as e:
+        print(f"Error in global activity: {e}")
+        return {"activity": [], "daily_stats": {"added": 0, "improved": 0, "removed": 0}}

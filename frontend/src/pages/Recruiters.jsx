@@ -85,7 +85,7 @@ function Modal({ title, onClose, onSave, form, setForm, saving }) {
 
 function RecruiterTableRow({ r, toggleActive, openEdit, handleDelete }) {
   const [expanded, setExpanded] = useState(false)
-  const hasExtra = !!(r.email2 || r.phone2 || r.email3 || r.phone3 || r.email4 || r.phone4 || r.notes)
+  const hasExtra = !!((r.structured_emails && r.structured_emails.length > 0) || (r.structured_phones && r.structured_phones.length > 0) || r.notes)
   
   const qcColor = r.needs_review ? '#f59e0b' : (r.completeness_score >= 80 ? '#22c55e' : (r.completeness_score >= 50 ? '#38bdf8' : '#ef4444'))
   
@@ -115,7 +115,18 @@ function RecruiterTableRow({ r, toggleActive, openEdit, handleDelete }) {
             </div>
           </div>
         </td>
-        <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{r.email}</td>
+        <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
+          {r.email_status === 'placeholder' || (r.email && r.email.includes('missing.local')) ? (
+            <span style={{ color: 'var(--warning)', fontStyle: 'italic', fontSize: 11 }}>Missing (System Placeholder)</span>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {r.email}
+              {r.email_status === 'verified' && <i className="ti ti-rosette-discount-check-filled" style={{ color: '#22c55e', fontSize: 14 }} title="Verified" />}
+              {r.email_status === 'likely' && <i className="ti ti-check" style={{ color: '#38bdf8', fontSize: 14 }} title="Likely via MX" />}
+              {r.email_status === 'inferred' && <i className="ti ti-wand" style={{ color: '#a855f7', fontSize: 14 }} title="Inferred via Pattern" />}
+            </div>
+          )}
+        </td>
         <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
             {r.phone || '—'}
         </td>
@@ -146,13 +157,35 @@ function RecruiterTableRow({ r, toggleActive, openEdit, handleDelete }) {
       {expanded && hasExtra && (
         <tr>
           <td colSpan="7" style={{ background: 'var(--main-bg)', padding: '12px 16px 12px 64px', borderBottom: '1px solid var(--card-border)', fontSize: 13, color: 'var(--text-secondary)' }}>
-            {r.email2 && <div style={{ marginBottom: 6 }}><i className="ti ti-mail" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Email 2:</strong> {r.email2}</div>}
-            {r.email3 && <div style={{ marginBottom: 6 }}><i className="ti ti-mail" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Email 3:</strong> {r.email3}</div>}
-            {r.email4 && <div style={{ marginBottom: 6 }}><i className="ti ti-mail" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Email 4:</strong> {r.email4}</div>}
-            {r.phone2 && <div style={{ marginBottom: 6 }}><i className="ti ti-phone" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Phone 2:</strong> {r.phone2}</div>}
-            {r.phone3 && <div style={{ marginBottom: 6 }}><i className="ti ti-phone" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Phone 3:</strong> {r.phone3}</div>}
-            {r.phone4 && <div style={{ marginBottom: 6 }}><i className="ti ti-phone" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Phone 4:</strong> {r.phone4}</div>}
-            {r.state_source && <div style={{ marginBottom: 6 }}><i className="ti ti-map-pin" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>State Inference:</strong> {r.state_source} <span style={{ color: r.state_confidence === 'high' ? 'var(--success)' : 'var(--warning)', marginLeft: 4 }}>({r.state_confidence})</span> — <em>{r.state_reason}</em></div>}
+            {r.structured_emails?.map((e, idx) => (
+              <div key={idx} style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div>
+                  <i className="ti ti-mail" style={{ marginRight: 6, color: 'var(--text-muted)' }}/>
+                  <strong>Email ({e.status}):</strong> {e.email} 
+                  <span style={{ color: e.confidence_score > 80 ? 'var(--success)' : 'var(--warning)', marginLeft: 4 }}>
+                    ({e.confidence_score}% confidence)
+                  </span>
+                </div>
+                {(e.status === 'likely' || e.status === 'inferred') && (
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button onClick={() => window.dispatchEvent(new CustomEvent('approve-email', { detail: r.recruiter_id }))} style={{ padding: '3px 8px', borderRadius: 4, background: 'var(--success)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 11 }}>Approve</button>
+                    <button onClick={() => window.dispatchEvent(new CustomEvent('reject-email', { detail: r.recruiter_id }))} style={{ padding: '3px 8px', borderRadius: 4, background: '#ef4444', color: 'white', border: 'none', cursor: 'pointer', fontSize: 11 }}>Reject</button>
+                  </div>
+                )}
+              </div>
+            ))}
+            {r.structured_phones?.map((p, idx) => (
+               <div key={idx} style={{ marginBottom: 6 }}>
+                 <i className="ti ti-phone" style={{ marginRight: 6, color: 'var(--text-muted)' }}/>
+                 <strong>Phone ({p.phone_type}):</strong> {p.phone_number} {p.belongs_to_person ? '' : '(Company)'}
+               </div>
+            ))}
+            {r.structured_locations?.map((l, idx) => (
+               <div key={idx} style={{ marginBottom: 6 }}>
+                 <i className="ti ti-map-pin" style={{ marginRight: 6, color: 'var(--text-muted)' }}/>
+                 <strong>Location ({l.location_type}):</strong> {l.city}, {l.state} {l.is_fallback ? '(Fallback)' : ''}
+               </div>
+            ))}
             {r.notes && <div><i className="ti ti-notes" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Notes:</strong> {r.notes}</div>}
           </td>
         </tr>
@@ -175,7 +208,7 @@ export default function Recruiters() {
   const [filters, setFilters] = useState({
       state: '', city: '', company: '', title: '',
       has_phone: '', missing_email: '', status: '',
-      needs_review: '', state_status: '', sort_by: 'created_at', sort_desc: 'true'
+      needs_review: '', state_status: '', email_inference_status: '', sort_by: 'created_at', sort_desc: 'true'
   })
   
   const [debouncedSearch, setDebouncedSearch] = useState(search)
@@ -218,6 +251,7 @@ export default function Recruiters() {
     
     if (debouncedFilters.needs_review === 'yes') params.append('needs_review', 'true')
     if (debouncedFilters.state_status) params.append('state_status', debouncedFilters.state_status)
+    if (debouncedFilters.email_inference_status) params.append('email_inference_status', debouncedFilters.email_inference_status)
     
     params.append('sort_by', debouncedFilters.sort_by)
     params.append('sort_desc', debouncedFilters.sort_desc === 'true' ? 'true' : 'false')
@@ -227,10 +261,28 @@ export default function Recruiters() {
         setTotalCount(r.data?.total_count || 0)
         setTotalPages(r.data?.total_pages || 1)
         setLoading(false) 
-    }).catch(() => setLoading(false))
+    }).catch(e => {
+        console.error(e)
+        setLoading(false)
+    })
   }, [page, debouncedSearch, debouncedFilters])
 
   useEffect(() => { fetchRecruiters() }, [fetchRecruiters])
+
+  useEffect(() => {
+    const handleApprove = (e) => {
+      api.post(`/recruiters/${e.detail}/email/approve`).then(() => fetchRecruiters())
+    }
+    const handleReject = (e) => {
+      api.post(`/recruiters/${e.detail}/email/reject`).then(() => fetchRecruiters())
+    }
+    window.addEventListener('approve-email', handleApprove)
+    window.addEventListener('reject-email', handleReject)
+    return () => {
+      window.removeEventListener('approve-email', handleApprove)
+      window.removeEventListener('reject-email', handleReject)
+    }
+  }, [fetchRecruiters])
 
 
   const exportRecruiters = () => {
@@ -346,6 +398,13 @@ export default function Recruiters() {
                   <div>
                       <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Data Quality Checks</label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <select value={filters.email_inference_status} onChange={e => updateFilter('email_inference_status', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }}>
+                            <option value="">Any Email Inference Status</option>
+                            <option value="inferred">Inferred (Requires Review)</option>
+                            <option value="likely">Likely (Requires Review)</option>
+                            <option value="verified">Verified / Approved</option>
+                            <option value="placeholder">Missing Placeholder</option>
+                          </select>
                           <select value={filters.state_status} onChange={e => updateFilter('state_status', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }}>
                             <option value="">Any State Status</option>
                             <option value="known">State Known / Inferred</option>

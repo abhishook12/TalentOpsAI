@@ -307,8 +307,13 @@ function PasteParser() {
 
 // ─── Main Upload Page ─────────────────────────────────────────────────────────
 export default function Upload() {
-  const [activeTab, setActiveTab] = useState('smart') // smart, paste, legacy, history
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem('upload_active_tab') || 'smart'
+  })
 
+  useEffect(() => {
+    localStorage.setItem('upload_active_tab', activeTab)
+  }, [activeTab])
   return (
     <div className="page-container">
       <div style={{ marginBottom: 20 }}>

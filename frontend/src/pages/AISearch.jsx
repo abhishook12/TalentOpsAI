@@ -209,7 +209,7 @@ function buildRecruiterInsight(record) {
     ...extractPhonesFromText(sourceTexts),
   ].filter(Boolean)
 
-  const emails = dedupeValues(emailValues.map((value) => value.trim()).filter(Boolean))
+  const emails = dedupeValues(emailValues.map((value) => value.trim()).filter(val => val && !val.includes('missing.local')))
   const phones = dedupeValues(
     phoneValues.map((value) => value.trim()).filter(Boolean),
     (value) => value.replace(/[^\d+]/g, '')

@@ -1,32 +1,36 @@
-import sys
-import os
-
-# Ensure backend directory is in path
-sys.path.append(os.path.join(os.path.dirname(__file__), "app"))
-
-from app.database import engine
+#!/usr/bin/env python
+"""Database Performance Indexing Engine - TalentOpsAI"""
+import sys, os, time
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from app.database import SessionLocal
 from sqlalchemy import text
 
-def run_migration():
-    print("Adding performance indexes...")
-    commands = [
-        "CREATE INDEX IF NOT EXISTS ix_recruiters_email2 ON recruiters (email2);",
-        "CREATE INDEX IF NOT EXISTS ix_recruiters_email3 ON recruiters (email3);",
-        "CREATE INDEX IF NOT EXISTS ix_recruiters_email4 ON recruiters (email4);",
-        "CREATE INDEX IF NOT EXISTS ix_recruiters_phone ON recruiters (phone);",
-        "CREATE INDEX IF NOT EXISTS ix_recruiters_phone2 ON recruiters (phone2);",
-        "CREATE INDEX IF NOT EXISTS ix_recruiters_phone3 ON recruiters (phone3);",
-        "CREATE INDEX IF NOT EXISTS ix_recruiters_phone4 ON recruiters (phone4);",
-        "CREATE INDEX IF NOT EXISTS ix_recruiters_company_id ON recruiters (company_id);",
-        "CREATE INDEX IF NOT EXISTS ix_recruiters_location ON recruiters (location);"
-    ]
-    
-    with engine.connect() as conn:
-        for cmd in commands:
-            print(f"Executing: {cmd}")
-            conn.execute(text(cmd))
-        conn.commit()
-    print("Done adding indexes!")
+indexes = [
+    ("idx_companies_state", "CREATE INDEX IF NOT EXISTS idx_companies_state ON companies(state) WHERE state IS NOT NULL;"),
+    ("idx_companies_active", "CREATE INDEX IF NOT EXISTS idx_companies_active ON companies(is_active);"),
+    ("idx_recruiters_company", "CREATE INDEX IF NOT EXISTS idx_recruiters_company ON recruiters(company_id);"),
+    ("idx_recruiters_state", "CREATE INDEX IF NOT EXISTS idx_recruiters_state ON recruiters(state) WHERE state IS NOT NULL;"),
+    ("idx_recruiters_active", "CREATE INDEX IF NOT EXISTS idx_recruiters_active ON recruiters(is_active);"),
+    ("idx_recruiters_review", "CREATE INDEX IF NOT EXISTS idx_recruiters_review ON recruiters(needs_review) WHERE needs_review = true;"),
+    ("idx_recruiters_email", "CREATE INDEX IF NOT EXISTS idx_recruiters_email ON recruiters(email) WHERE email IS NOT NULL;")
+]
+
+def create_indexes():
+    start_time = time.time()
+    print("STARTING SUPABASE PERFORMANCE INDEX HARDENING...")
+    db = SessionLocal()
+    try:
+        for name, sql in indexes:
+            print(f"   -> Hardening index: {name}...")
+            db.execute(text(sql))
+            db.commit()
+        elapsed = round(time.time() - start_time, 2)
+        print(f"\nAll 7 Database Performance Indexes Hardened in {elapsed}s!")
+    except Exception as e:
+        db.rollback()
+        print(f"Index hardening error: {e}")
+    finally:
+        db.close()
 
 if __name__ == "__main__":
-    run_migration()
+    create_indexes()

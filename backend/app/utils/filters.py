@@ -1,7 +1,7 @@
 from sqlalchemy import or_, and_, String, cast
 from sqlalchemy.orm import joinedload, contains_eager
-from app.models.models import Recruiter, Company
-from app.utils.normalizer import normalize_text
+from ..models.models import Recruiter, Company
+from .normalizer import normalize_text
 
 def apply_state_filter(query, state: str):
     """

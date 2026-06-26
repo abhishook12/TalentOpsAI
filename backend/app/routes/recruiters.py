@@ -14,6 +14,7 @@ from ..utils.state_recovery import infer_state_from_sources
 from ..utils.filters import apply_state_filter, apply_company_filter
 from ..utils.phone_normalizer import format_us_phone
 from ..utils.normalizer import normalize_text, extract_domain
+from .analytics import analytics_cache
 router = APIRouter()
 
 EMAIL_PATTERN = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
@@ -35,6 +36,8 @@ class RecruiterCreate(BaseModel):
     company_id: Optional[int] = None
     location: Optional[str] = None
     is_active: Optional[bool] = True
+    needs_review: Optional[bool] = False
+    review_reason: Optional[str] = None
 
 class RecruiterUpdate(BaseModel):
     recruiter_name: Optional[str] = None
@@ -680,6 +683,13 @@ def get_recruiters(
     db: Session = Depends(get_db)
 ):
     print(f"GET /recruiters/ CALLED! needs_review={needs_review}", flush=True)
+    is_default = page == 1 and limit in (5, 10, 20, 50, 100) and not any([search, state, state_status, city, company, company_id, title, has_phone, missing_email, is_active, min_completeness, needs_review, email_inference_status, source_job_id, data_source]) and sort_by in ("created_at", "last_scan_at")
+    cache_key = f"rec_list_p1_l{limit}_{sort_by}_{sort_desc}" if is_default else None
+    if cache_key:
+        cached = analytics_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
     query = db.query(Recruiter, Company)\
               .join(Company, Recruiter.company_id == Company.company_id, isouter=True)\
               .options(
@@ -794,7 +804,7 @@ def get_recruiters(
             "state": company_row.state,
         } if company_row else None
 
-    return {
+    ret_data = {
         "total_count": total_count,
         "page": page,
         "total_pages": total_pages,
@@ -854,6 +864,9 @@ def get_recruiters(
             for recruiter, company in results
         ]
     }
+    if cache_key:
+        analytics_cache.set(cache_key, ret_data, ttl=1800)
+    return ret_data
 
 @router.get("/{recruiter_id}")
 def get_recruiter(recruiter_id: int, db: Session = Depends(get_db)):
@@ -1149,7 +1162,8 @@ def enhance_recruiter(recruiter_id: int, db: Session = Depends(get_db)):
                 
     result = auto_enhance_recruiter_data(recruiter.recruiter_name, company_name, company_domain)
     
-    if not result.get('email') and company_domain and recruiter.company_id and " " in recruiter.recruiter_name:
+    from ..services.scraper import is_human_name
+    if is_human_name(recruiter.recruiter_name, company_name) and not result.get('email') and company_domain and recruiter.company_id and " " in recruiter.recruiter_name:
         first = recruiter.recruiter_name.split(' ')[0].lower()
         last = recruiter.recruiter_name.split(' ')[-1].lower()
         
@@ -1227,13 +1241,19 @@ def enhance_recruiter(recruiter_id: int, db: Session = Depends(get_db)):
             recruiter.state_confidence = "medium"
             updated.append("location")
         
-    from sqlalchemy.sql import func
-    recruiter.last_scan_at = func.now()
-    db.commit()
-
     if updated:
+        from sqlalchemy.sql import func
+        recruiter.last_scan_at = func.now()
+        db.commit()
         return {"message": f"Successfully enhanced {', '.join(updated)}!", "data": result}
     else:
+        # Update last_scan_at using raw SQL to prevent SQLAlchemy onupdate trigger from modifying updated_at
+        from sqlalchemy import text
+        db.execute(
+            text("UPDATE recruiters SET last_scan_at = NOW() WHERE recruiter_id = :rid"),
+            {"rid": recruiter.recruiter_id}
+        )
+        db.commit()
         return {"message": "No new verified data found.", "data": result}
 
 from pydantic import BaseModel

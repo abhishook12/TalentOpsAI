@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import api, { checkAuth, getErrorMessage, login, logout, setStoredToken, clearStoredToken } from '../services/api'
 import { exportToExcel } from '../services/export'
+import WorkerDashboard from '../components/WorkerDashboard'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(n) { return n?.toLocaleString?.() ?? '—' }
@@ -615,7 +616,13 @@ export default function AdminTerminal() {
   const [savingRecruiter, setSavingRecruiter] = useState(false)
   const [cacheMsg, setCacheMsg] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem('admin_active_tab') || 'overview'
+  })
+
+  useEffect(() => {
+    localStorage.setItem('admin_active_tab', activeTab)
+  }, [activeTab])
   const [logLines, setLogLines] = useState([])
   const logRef = useRef()
   const [visitorLogs, setVisitorLogs] = useState(null)
@@ -1396,6 +1403,8 @@ export default function AdminTerminal() {
                 </table>
               )}
             </Section>
+                
+                <WorkerDashboard />
 
                 <Section title="Data Operations" icon="ti-tools" action={
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

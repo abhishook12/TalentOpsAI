@@ -1,0 +1,58 @@
+[
+  {
+    "id": 1,
+    "recruiter_id": 202584,
+    "enrichment_type": "email",
+    "original_value": "linkedin_2967af95@missing.local",
+    "proposed_value": "vscutero@tekpartners.com",
+    "final_value": "vscutero@tekpartners.com",
+    "source": null,
+    "confidence_score": 70,
+    "action": "Applied",
+    "reason": "Pattern generation",
+    "run_id": "run_1",
+    "created_at": "2026-06-23T19:54:42.907126"
+  },
+  {
+    "id": 2,
+    "recruiter_id": 202579,
+    "enrichment_type": "email",
+    "original_value": "linkedin_9f2aa962@missing.local",
+    "proposed_value": "dhernandez@tekpartners.com",
+    "final_value": "dhernandez@tekpartners.com",
+    "source": null,
+    "confidence_score": 70,
+    "action": "Applied",
+    "reason": "Pattern generation",
+    "run_id": "run_1",
+    "created_at": "2026-06-23T19:54:42.907126"
+  },
+  {
+    "id": 3,
+    "recruiter_id": 202580,
+    "enrichment_type": "email",
+    "original_value": "linkedin_92aee3c9@missing.local",
+    "proposed_value": "fengel@tekpartners.com",
+    "final_value": "fengel@tekpartners.com",
+    "source": null,
+    "confidence_score": 70,
+    "action": "Applied",
+    "reason": "Pattern generation",
+    "run_id": "run_1",
+    "created_at": "2026-06-23T19:54:42.907126"
+  },
+  {
+    "id": 4,
+    "recruiter_id": 202583,
+    "enrichment_type": "email",
+    "original_value": "linkedin_8956d76b@missing.local",
+    "proposed_value": "cgalit@tekpartners.com",
+    "final_value": "cgalit@tekpartners.com",
+    "source": null,
+    "confidence_score": 70,
+    "action": "Applied",
+    "reason": "Pattern generation",
+    "run_id": "run_1",
+    "created_at": "2026-06-23T19:54:42.907126"
+  }
+]

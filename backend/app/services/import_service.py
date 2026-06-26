@@ -484,6 +484,13 @@ def process_commit(job_id: str):
                         existing_meta.update(metadata)
                         existing.metadata_json = json.dumps(existing_meta)
                         
+                    # Add tag for merged records
+                    existing_tags = existing.tags if getattr(existing, 'tags', None) else ""
+                    tag_list = [t.strip() for t in existing_tags.split(",") if t.strip()]
+                    if "new feature" not in tag_list:
+                        tag_list.append("new feature")
+                    existing.tags = ", ".join(tag_list)
+                        
                     inserted += 1 # Count as successful import/update
             else:
                 # Insert new recruiter (Ready, Warning, Possible Duplicate)
@@ -512,7 +519,8 @@ def process_commit(job_id: str):
                     raw_data=r.raw_json[:500] if r.raw_json else None,
                     metadata_json=metadata_json,
                     needs_review=needs_review,
-                    review_reason=review_reason
+                    review_reason=review_reason,
+                    tags="newly added"
                 )
                 db.add(rec)
                 inserted += 1

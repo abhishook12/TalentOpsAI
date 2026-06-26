@@ -1,0 +1,62 @@
+[
+  {
+    "id": 590,
+    "company_id": 48664,
+    "domain": "tekpartners.com",
+    "pattern": "{f1}{last}",
+    "verified_example_count": 62,
+    "match_percentage": "77.50",
+    "confidence": null,
+    "source": null,
+    "last_verified_at": null,
+    "active": true,
+    "created_at": "2026-06-23T19:52:10.536158",
+    "confidence_score": 70,
+    "updated_at": "2026-06-23T19:52:10.536158"
+  },
+  {
+    "id": 591,
+    "company_id": 48664,
+    "domain": "tekpartners.com",
+    "pattern": "{f1}{last}",
+    "verified_example_count": 62,
+    "match_percentage": "77.50",
+    "confidence": null,
+    "source": null,
+    "last_verified_at": null,
+    "active": true,
+    "created_at": "2026-06-23T19:52:58.805244",
+    "confidence_score": 70,
+    "updated_at": "2026-06-23T19:52:58.805244"
+  },
+  {
+    "id": 592,
+    "company_id": 48664,
+    "domain": "tekpartners.com",
+    "pattern": "{f1}{last}",
+    "verified_example_count": 62,
+    "match_percentage": "77.50",
+    "confidence": null,
+    "source": null,
+    "last_verified_at": null,
+    "active": true,
+    "created_at": "2026-06-23T19:53:56.480368",
+    "confidence_score": 70,
+    "updated_at": "2026-06-23T19:53:56.480368"
+  },
+  {
+    "id": 593,
+    "company_id": 48664,
+    "domain": "tekpartners.com",
+    "pattern": "{f1}{last}",
+    "verified_example_count": 62,
+    "match_percentage": "77.50",
+    "confidence": null,
+    "source": null,
+    "last_verified_at": null,
+    "active": true,
+    "created_at": "2026-06-23T19:54:42.268768",
+    "confidence_score": 70,
+    "updated_at": "2026-06-23T19:54:42.268768"
+  }
+]

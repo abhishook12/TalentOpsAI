@@ -1,0 +1,248 @@
+import os
+import sys
+import argparse
+import re
+from typing import List, Dict, Tuple
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from dotenv import load_dotenv
+
+load_dotenv()
+
+engine = create_engine(os.getenv("DATABASE_URL"), connect_args={"prepare_threshold": None})
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+from app.models.models import Recruiter, Company, RecruiterEmail, RecruiterPhone, RecruiterLocation, CompanyEmailPattern, EnrichmentAudit
+
+def get_email_pattern(first_name: str, last_name: str, email: str, domain: str) -> str:
+    """Attempts to reverse engineer the pattern of an email address."""
+    local_part = email.split('@')[0].lower()
+    f = first_name.lower()
+    l = last_name.lower()
+    f1 = f[0] if f else ""
+    l1 = l[0] if l else ""
+
+    if f and l:
+        if local_part == f"{f}.{l}": return "{first}.{last}"
+        if local_part == f"{f}{l}": return "{first}{last}"
+        if local_part == f"{f}_{l}": return "{first}_{last}"
+        if local_part == f"{f}-{l}": return "{first}-{last}"
+        if local_part == f"{f1}{l}": return "{f1}{last}"
+        if local_part == f"{f}{l1}": return "{first}{l1}"
+        if local_part == f"{l}.{f}": return "{last}.{first}"
+        if local_part == f"{l}{f1}": return "{last}{f1}"
+        if local_part == f: return "{first}"
+        if local_part == l: return "{last}"
+    return "unknown"
+
+def generate_email(first_name: str, last_name: str, domain: str, pattern: str) -> str:
+    """Generates an email candidate based on a pattern."""
+    f = first_name.lower()
+    l = last_name.lower()
+    f1 = f[0] if f else ""
+    l1 = l[0] if l else ""
+    
+    local = pattern.replace("{first}", f).replace("{last}", l).replace("{f1}", f1).replace("{l1}", l1)
+    # clean up non-alphanumeric chars that might be in names
+    local = re.sub(r'[^a-z0-9._-]', '', local)
+    return f"{local}@{domain}"
+
+class EnrichmentWorker:
+    def __init__(self, db: Session, args):
+        self.db = db
+        self.args = args
+        self.run_id = "run_" + str(func.now())
+        self.seen_emails = set()
+
+    def print_v(self, msg):
+        if self.args.verbose or self.args.dry_run:
+            print(msg)
+
+    def audit(self, r_id, e_type, orig, prop, action, reason, conf=0):
+        if not self.args.dry_run:
+            a = EnrichmentAudit(
+                recruiter_id=r_id,
+                enrichment_type=e_type,
+                original_value=str(orig) if orig else None,
+                proposed_value=str(prop) if prop else None,
+                final_value=str(prop) if action == "Applied" else str(orig),
+                action=action,
+                reason=reason,
+                confidence_score=conf,
+                run_id="run_1"
+            )
+            self.db.add(a)
+
+    def extract_names(self, full_name: str) -> Tuple[str, str]:
+        parts = str(full_name).strip().split()
+        if len(parts) < 2:
+            return "", ""
+        return parts[0], parts[-1]
+
+    def detect_company_patterns(self, company: Company):
+        """Analyzes verified recruiters in a company to detect email patterns."""
+        if not company.website and not company.email_pattern:
+            return None
+
+        # Gather emails currently on recruiters
+        recruiters = self.db.query(Recruiter).filter(
+            Recruiter.company_id == company.company_id,
+            Recruiter.email.isnot(None),
+            Recruiter.email.like('%@%')
+        ).all()
+
+        domains = {}
+        for r in recruiters:
+            if "@missing.local" in r.email or r.email_status == "invalid": continue
+            domain = r.email.split('@')[1].lower()
+            domains.setdefault(domain, []).append(r)
+
+        if not domains:
+            return None
+
+        # Pick the most common domain
+        best_domain = max(domains.keys(), key=lambda d: len(domains[d]))
+        recs = domains[best_domain]
+
+        patterns = {}
+        for r in recs:
+            fn, ln = self.extract_names(r.recruiter_name)
+            if not fn or not ln: continue
+            pat = get_email_pattern(fn, ln, r.email, best_domain)
+            if pat != "unknown":
+                patterns[pat] = patterns.get(pat, 0) + 1
+
+        if not patterns:
+            return None
+
+        best_pat = max(patterns.keys(), key=lambda p: patterns[p])
+        count = patterns[best_pat]
+        total = len(recs)
+        match_pct = (count / total) * 100
+
+        conf = 0
+        if count >= 5 and match_pct >= 90: conf = 90
+        elif count >= 3 and match_pct >= 75: conf = 70
+        else: conf = 30
+
+        return {
+            "domain": best_domain,
+            "pattern": best_pat,
+            "count": count,
+            "match_pct": match_pct,
+            "confidence": conf
+        }
+
+    def process_recruiter(self, r: Recruiter, company: Company, pattern_data: dict):
+        self.print_v(f"\n[{r.recruiter_id}] {r.recruiter_name} @ {company.company_name}")
+        
+        # 1. EMAIL ENRICHMENT
+        if not self.args.phone_only and not self.args.location_only:
+            # Need email?
+            needs_email = not r.email or "missing.local" in r.email or r.email_status == "invalid"
+            if needs_email and pattern_data:
+                fn, ln = self.extract_names(r.recruiter_name)
+                if fn and ln and pattern_data['confidence'] >= self.args.minimum_confidence:
+                    candidate = generate_email(fn, ln, pattern_data['domain'], pattern_data['pattern'])
+                    self.print_v(f"  [EMAIL] Generated candidate: {candidate} (Pattern: {pattern_data['pattern']}, Conf: {pattern_data['confidence']}%)")
+                    
+                    self.audit(r.recruiter_id, "email", r.email, candidate, "Proposed" if self.args.dry_run else "Applied", "Pattern generation", pattern_data['confidence'])
+                    
+                    if not self.args.dry_run:
+                        # Prevent duplicate assignments
+                        if candidate in self.seen_emails:
+                            return
+                        existing = self.db.query(Recruiter).filter(Recruiter.email == candidate).first()
+                        if existing:
+                            return
+                        self.seen_emails.add(candidate)
+                        
+                        status_label = "likely" if pattern_data['confidence'] >= 70 else "inferred"
+                        
+                        # Add to new structured table
+                        new_email = RecruiterEmail(
+                            recruiter_id=r.recruiter_id,
+                            email=candidate,
+                            status=status_label,
+                            confidence_score=pattern_data['confidence'],
+                            source="pattern_generation",
+                            is_generated=True,
+                            is_primary=True
+                        )
+                        self.db.add(new_email)
+                        
+                        # Update legacy column
+                        r.email = candidate
+                        r.email_status = status_label
+                        r.email_confidence = pattern_data['confidence']
+
+        # 2. PHONE ENRICHMENT
+        if not self.args.email_only and not self.args.location_only:
+            if not r.phone and company.notes: # Assuming company.notes might have phones or we check existing structured phones
+                pass # The rules state: never fabricate. Only copy company phone to 'company_main'
+                
+            # If no personal phone, but company has a phone, assign it as company fallback
+            # (In this schema, we don't have company.phone, but maybe it's in raw_data)
+            # We'll skip complex scraping here and just enforce the DB struct mapping.
+
+    def run(self):
+        query = self.db.query(Company)
+        if self.args.company:
+            query = query.filter(Company.company_name.ilike(f"%{self.args.company}%"))
+        
+        companies = query.limit(self.args.limit).all()
+        
+        for c in companies:
+            self.print_v(f"\n=========================================")
+            self.print_v(f"Analyzing Company: {c.company_name}")
+            
+            pattern_data = self.detect_company_patterns(c)
+            if pattern_data:
+                self.print_v(f"  Detected Pattern: {pattern_data['pattern']} @ {pattern_data['domain']} (Conf: {pattern_data['confidence']}%, Examples: {pattern_data['count']})")
+                
+                if not self.args.dry_run:
+                    # Save pattern to DB
+                    pat_db = CompanyEmailPattern(
+                        company_id=c.company_id,
+                        domain=pattern_data['domain'],
+                        pattern=pattern_data['pattern'],
+                        verified_example_count=pattern_data['count'],
+                        match_percentage=pattern_data['match_pct'],
+                        confidence_score=pattern_data['confidence']
+                    )
+                    self.db.add(pat_db)
+                    self.db.commit()
+            
+            recruiters = self.db.query(Recruiter).filter(Recruiter.company_id == c.company_id).all()
+            for r in recruiters:
+                self.process_recruiter(r, c, pattern_data)
+                
+            if not self.args.dry_run:
+                self.db.commit()
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--company", help="Filter by company name")
+    parser.add_argument("--company-id", help="Filter by company ID")
+    parser.add_argument("--recruiter-id", help="Filter by recruiter ID")
+    parser.add_argument("--limit", type=int, default=100)
+    parser.add_argument("--email-only", action="store_true")
+    parser.add_argument("--phone-only", action="store_true")
+    parser.add_argument("--location-only", action="store_true")
+    parser.add_argument("--minimum-confidence", type=int, default=70)
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--verbose", action="store_true")
+    args = parser.parse_args()
+
+    if not args.dry_run and not args.apply:
+        print("Must specify either --dry-run or --apply")
+        sys.exit(1)
+
+    db = SessionLocal()
+    worker = EnrichmentWorker(db, args)
+    worker.run()

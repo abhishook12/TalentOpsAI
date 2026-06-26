@@ -758,7 +758,6 @@ function AppShell() {
                     <Route path="/directory" element={<Directory />} />
                     <Route path="/states" element={<Directory />} />
                     <Route path="/companies" element={<Directory />} />
-                    <Route path="/upload" element={<Upload />} />
                     <Route path="/admin" element={<AdminTerminal />} />
                     <Route path="/activity" element={<ActivityLog />} />
                   </Routes>

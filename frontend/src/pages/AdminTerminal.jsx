@@ -1119,7 +1119,6 @@ export default function AdminTerminal() {
   const TABS = [
     { id: 'overview', icon: 'ti-layout-dashboard', label: 'Overview' },
     { id: 'ops', icon: 'ti-database', label: 'Data Operations' },
-    { id: 'uploads', icon: 'ti-cloud-upload', label: 'Upload Ops' },
     { id: 'intel', icon: 'ti-sparkles', label: 'Search Intelligence' },
     { id: 'exports', icon: 'ti-file-export', label: 'Export Analytics' },
     { id: 'system', icon: 'ti-server', label: 'System Health' },
@@ -1702,81 +1701,6 @@ export default function AdminTerminal() {
                 </div>
               </Section>
             )}
-          </div>
-        )}
-
-        {/* ── SQL TAB ── */}
-        {/* Upload Ops */}
-        {activeTab === 'uploads' && (
-          <div style={{ animation: 'fadeUp 0.25s ease' }}>
-            <Section title="Upload Operations Center" icon="ti-cloud-upload" action={<Badge color="#38bdf8">ETL History</Badge>}>
-              {uploadOps?.jobs?.length ? (
-                <div style={{ marginBottom: 14, padding: 14, borderRadius: 12, background: 'var(--panel-bg)', border: '1px solid var(--card-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
-                  <div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>Latest Upload Batch</div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginTop: 4 }}>{uploadOps.jobs[0].filename || 'No Data Available'}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
-                      {fmt(uploadOps.jobs[0].recruiter_count ?? 0)} recruiters · {String(uploadOps.jobs[0].status || 'unknown').toUpperCase()}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <button onClick={() => viewUploadBatch(uploadOps.jobs[0].job_id)} style={{ background: 'linear-gradient(135deg, #0ea5e9, #1d4ed8)', border: '1px solid rgba(59,130,246,0.35)', color: '#fff', padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                      Edit Latest Batch
-                    </button>
-                    <button onClick={() => deleteUploadBatch(uploadOps.jobs[0])} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.22)', color: '#f87171', padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                      Delete Latest Batch
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-              {!(uploadOps?.jobs?.length) ? (
-                <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No Data Available</div>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                    <thead>
-                      <tr style={{ background: 'var(--bg-hover)' }}>
-                        {['File Name', 'Rows', 'Status', 'Date', 'Source', 'Recruiters', 'Actions'].map(h => (
-                          <th key={h} style={{ padding: '10px 12px', textAlign: 'left', color: '#38bdf8', fontSize: 10.5, letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: '1px solid var(--card-border)', whiteSpace: 'nowrap' }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {uploadOps.jobs.slice(0, 30).map((j) => (
-                        <tr key={j.job_id} style={{ borderBottom: '1px solid var(--card-border)' }}
-                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--panel-bg)' }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-                        >
-                          <td style={{ padding: '10px 12px', color: 'var(--text-primary)', maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.filename}</td>
-                          <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', fontFamily: "'DM Mono', monospace" }}>{fmt(j.total_rows)}</td>
-                          <td style={{ padding: '10px 12px' }}>
-                            <Badge color={j.status === 'completed' ? '#22c55e' : j.status === 'failed' ? '#ef4444' : j.status === 'processing' ? '#f59e0b' : '#38bdf8'}>
-                              {String(j.status || 'unknown').toUpperCase()}
-                            </Badge>
-                          </td>
-                          <td style={{ padding: '10px 12px', color: 'var(--text-muted)', fontFamily: "'DM Mono', monospace", whiteSpace: 'nowrap' }}>{String(j.started_at || '').replace('T', ' ').slice(0, 16) || '—'}</td>
-                          <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>{j.source || 'No Data Available'}</td>
-                          <td style={{ padding: '10px 12px', color: 'var(--text-muted)', fontFamily: "'DM Mono', monospace" }}>{fmt(j.recruiter_count ?? 0)}</td>
-                          <td style={{ padding: '10px 12px' }}>
-                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                              <button onClick={() => viewUploadBatch(j.job_id)} style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: '#38bdf8', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer' }}>
-                                Edit Batch
-                              </button>
-                              <button onClick={() => retryImport(j.job_id)} style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: '#38bdf8', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer' }}>
-                                Retry
-                              </button>
-                              <button onClick={() => deleteUploadBatch(j)} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.22)', color: '#f87171', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer' }}>
-                                Delete Batch
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </Section>
           </div>
         )}
 

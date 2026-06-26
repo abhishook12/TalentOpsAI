@@ -8,7 +8,6 @@ const nav = [
   { to: '/recruiters', label: 'Recruiters', icon: 'ti-users' },
   { to: '/directory', label: 'Directory', icon: 'ti-map-2', aliases: ['/states', '/companies'] },
   { to: '/analytics', label: 'Analytics', icon: 'ti-chart-bar' },
-  { to: '/upload', label: 'ETL', icon: 'ti-upload' },
   { to: '/ai-search', label: 'AI Search', icon: 'ti-search' },
   { to: '/admin', label: 'Admin Ops', icon: 'ti-shield-lock' },
 ]

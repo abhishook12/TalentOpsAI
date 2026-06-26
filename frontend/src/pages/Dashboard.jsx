@@ -195,9 +195,6 @@ export default function Dashboard() {
             <PrimaryButton onClick={() => navigate('/ai-search')}>
               <i className="ti ti-sparkles" /> Open AI Search
             </PrimaryButton>
-            <GhostButton onClick={() => navigate('/upload')}>
-              <i className="ti ti-upload" /> Open ETL
-            </GhostButton>
           </div>
         )}
       />
@@ -313,43 +310,6 @@ export default function Dashboard() {
               title="No company intelligence available"
               description="The backend did not return ranked company data yet."
               action={<GhostButton onClick={() => navigate('/companies')}>Open companies</GhostButton>}
-            />
-          )}
-        </ShellCard>
-
-        <ShellCard style={{ padding: 18, minHeight: 0 }}>
-          <SectionHeader
-            eyebrow="Activity"
-            title="Upload History"
-            subtitle="Recent ETL jobs and import states."
-            action={<Badge tone="neutral">{jobsLoading ? 'Syncing' : `${recentJobs.length} jobs`}</Badge>}
-          />
-          {recentJobs.length ? (
-            <div style={{ display: 'grid', gap: 10 }}>
-              {recentJobs.map((job) => (
-                <ShellCard key={job.job_id} style={{ padding: 12, boxShadow: 'none', background: 'var(--bg-surface)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {job.file_name || job.filename || `Job ${job.job_id}`}
-                      </div>
-                      <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-muted)' }}>
-                        {job.current_step || job.status || 'Unknown state'}
-                      </div>
-                    </div>
-                    <Badge tone={job.status === 'failed' ? 'danger' : job.status === 'completed' ? 'success' : 'warning'}>
-                      {job.status || 'unknown'}
-                    </Badge>
-                  </div>
-                </ShellCard>
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              icon="ti-database-import"
-              title="No upload jobs yet"
-              description="Import history will appear after the first upload."
-              action={<GhostButton onClick={() => navigate('/upload')}>Open ETL</GhostButton>}
             />
           )}
         </ShellCard>

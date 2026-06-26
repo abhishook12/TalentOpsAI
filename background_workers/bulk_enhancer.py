@@ -174,6 +174,7 @@ def email_value(payload: Any, recruiter: dict[str, Any]) -> str:
 def fetch_missing_phone_batch(
     session: Session,
     args: argparse.Namespace,
+    company_name: str | None = None,
 ) -> list[dict[str, Any]]:
     url = f"{args.base_url.rstrip('/')}/recruiters/"
     params = {
@@ -182,6 +183,8 @@ def fetch_missing_phone_batch(
         "sort_by": "last_scan_at",
         "sort_desc": "false",
     }
+    if company_name:
+        params["company"] = company_name
     response = session.get(url, params=params, timeout=timeout_tuple(args))
     response.raise_for_status()
     return extract_results(safe_json(response))
@@ -229,6 +232,8 @@ def summarize_failure(
 
 
 def main() -> int:
+    import json
+    import os
     args = parse_args()
     stats = Stats()
     session = build_session()
@@ -239,6 +244,15 @@ def main() -> int:
     )
 
     try:
+        target_companies = []
+        if os.path.exists("target_companies.json"):
+            with open("target_companies.json", "r") as f:
+                target_companies = json.load(f)
+            log(f"Loaded {len(target_companies)} target companies from target_companies.json")
+        else:
+            log("No target_companies.json found. Running in normal mode.", level="WARN")
+            target_companies = [None]
+            
         stop_dt = None
         if args.stop_time:
             from datetime import timedelta
@@ -249,102 +263,82 @@ def main() -> int:
                 stop_dt += timedelta(days=1)
             log(f"Will stop running at: {stop_dt.strftime('%Y-%m-%d %H:%M:%S')}")
 
-        while True:
-            if stop_dt and datetime.now() >= stop_dt:
-                log(f"Reached stop time ({args.stop_time}). Exiting gracefully.")
-                break
-
-            if args.max_recruiters is not None and stats.attempted >= args.max_recruiters:
-                log(f"Reached max recruiter cap for this run: {args.max_recruiters}")
-                break
-
-            stats.loop_count += 1
-
-            # Check IST time window: 6:00 PM to 3:30 AM
-            from datetime import datetime, timezone, timedelta
-            ist_offset = timedelta(hours=5, minutes=30)
-            now_ist = datetime.now(timezone.utc) + ist_offset
-            time_ist = now_ist.time()
+        for company_idx, company_name in enumerate(target_companies):
+            if company_name:
+                log(f"--- Processing company {company_idx+1}/{len(target_companies)}: {company_name} ---")
             
-            # The window is 18:00 to 03:30 next day.
-            # So valid times are >= 18:00 OR <= 03:30
-            is_valid_time = time_ist >= datetime.strptime("18:00", "%H:%M").time() or time_ist <= datetime.strptime("03:30", "%H:%M").time()
-            
-            if not is_valid_time:
-                log(f"Current IST time {time_ist.strftime('%H:%M')} is outside the 18:00 - 03:30 window. Sleeping for 5 minutes.")
-                time.sleep(300)
-                continue
+            while True:
+                if stop_dt and datetime.now() >= stop_dt:
+                    log(f"Reached stop time ({args.stop_time}). Exiting gracefully.")
+                    break
 
-            try:
-                batch = fetch_missing_phone_batch(session, args)
-            except Timeout as exc:
-                log(f"GET batch timed out: {exc}", level="WARN")
-                time.sleep(args.empty_wait)
-                continue
-            except RequestException as exc:
-                log(f"GET batch failed: {exc}", level="WARN")
-                time.sleep(args.empty_wait)
-                continue
-            except Exception as exc:
-                log(f"Unexpected GET batch error: {exc}", level="ERROR")
-                time.sleep(args.empty_wait)
-                continue
-
-            if not batch:
-                stats.empty_batches += 1
-                log(f"GET returned 0 recruiters missing phone numbers. Sleeping for {args.empty_wait}s and will check again.")
-                time.sleep(args.empty_wait)
-                continue
-
-            stats.fetched += len(batch)
-            log(
-                f"Fetched batch #{stats.loop_count} with {len(batch)} recruiters missing phone numbers "
-                f"| total_fetched={stats.fetched}"
-            )
-
-            for recruiter in batch:
                 if args.max_recruiters is not None and stats.attempted >= args.max_recruiters:
                     log(f"Reached max recruiter cap for this run: {args.max_recruiters}")
                     break
 
-                recruiter_id = recruiter.get("recruiter_id")
-                if recruiter_id in (None, ""):
-                    stats.failed += 1
-                    log(
-                        f"[{stats.attempted + 1}] Skipping recruiter with missing recruiter_id: {recruiter}",
-                        level="WARN",
-                    )
-                    continue
-
-                stats.attempted += 1
+                stats.loop_count += 1
 
                 try:
-                    payload = enhance_recruiter(session, recruiter_id, args)
-                    stats.enhanced += 1
-                    log(summarize_success(stats.attempted, recruiter, payload), level="SUCCESS")
+                    batch = fetch_missing_phone_batch(session, args, company_name)
                 except Timeout as exc:
-                    stats.failed += 1
-                    log(summarize_failure(stats.attempted, recruiter, exc), level="WARN")
+                    log(f"GET batch timed out: {exc}", level="WARN")
+                    time.sleep(args.empty_wait)
+                    continue
                 except RequestException as exc:
-                    stats.failed += 1
-                    log(summarize_failure(stats.attempted, recruiter, exc), level="WARN")
+                    log(f"GET batch failed: {exc}", level="WARN")
+                    time.sleep(args.empty_wait)
+                    continue
                 except Exception as exc:
-                    stats.failed += 1
-                    log(summarize_failure(stats.attempted, recruiter, exc), level="ERROR")
+                    log(f"Unexpected GET batch error: {exc}", level="ERROR")
+                    time.sleep(args.empty_wait)
+                    continue
 
-                slept = sleep_with_jitter(args)
+                if not batch:
+                    if company_name:
+                        log(f"No more recruiters for {company_name}. Moving to next company.")
+                    else:
+                        log(f"GET returned 0 recruiters missing phone numbers. Sleeping for {args.empty_wait}s.")
+                        time.sleep(args.empty_wait)
+                    break # Break inner loop, go to next company
+
+                stats.fetched += len(batch)
                 log(
-                    f"Cooling down for {slept:.2f}s to protect DuckDuckGo/SMTP providers "
-                    f"| enhanced={stats.enhanced} failed={stats.failed}",
-                    level="DEBUG",
+                    f"Fetched batch #{stats.loop_count} with {len(batch)} recruiters "
+                    f"| total_fetched={stats.fetched}"
                 )
 
+                for recruiter in batch:
+                    if args.max_recruiters is not None and stats.attempted >= args.max_recruiters:
+                        break
+
+                    recruiter_id = recruiter.get("recruiter_id")
+                    if recruiter_id in (None, ""):
+                        stats.failed += 1
+                        continue
+
+                    stats.attempted += 1
+
+                    try:
+                        payload = enhance_recruiter(session, recruiter_id, args)
+                        stats.enhanced += 1
+                        log(summarize_success(stats.attempted, recruiter, payload), level="SUCCESS")
+                    except Exception as exc:
+                        stats.failed += 1
+                        log(summarize_failure(stats.attempted, recruiter, exc), level="WARN")
+
+                    slept = sleep_with_jitter(args)
+
+                if args.max_recruiters is not None and stats.attempted >= args.max_recruiters:
+                    break
+                    
+            if stop_dt and datetime.now() >= stop_dt:
+                break
             if args.max_recruiters is not None and stats.attempted >= args.max_recruiters:
                 break
 
         log(
             f"Worker finished | fetched={stats.fetched} attempted={stats.attempted} "
-            f"enhanced={stats.enhanced} failed={stats.failed} empty_batches={stats.empty_batches}"
+            f"enhanced={stats.enhanced} failed={stats.failed}"
         )
         return 0
 

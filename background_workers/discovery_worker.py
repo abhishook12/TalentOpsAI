@@ -1,815 +1,193 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
-import argparse
 import os
-import random
-import re
-import sys
+import json
 import time
-import threading
-from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
-from datetime import datetime
-from html import unescape
-from pathlib import Path
-from typing import Any
-from urllib.parse import quote_plus
-
+import random
 import requests
-from requests import Session
-from ddgs import DDGS
-from requests.exceptions import RequestException, Timeout
-from sqlalchemy import MetaData, Table, and_, bindparam, create_engine, func, inspect, select
-from sqlalchemy.engine import Engine
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import text
+from tavily import TavilyClient
+from dotenv import load_dotenv
 
+load_dotenv('C:/TalentOpsAI/backend/.env')
 
-DEFAULT_DATABASE_ENV_KEYS = ("DATABASE_URL", "TALENTOPS_DATABASE_URL")
-DEFAULT_WEBHOOK_URL = "http://localhost:8000/recruiters/extension"
-DEFAULT_SCAN_INTERVAL_HOURS = 0.0001
-DEFAULT_COMPANY_DELAY_MIN = 0.0
-DEFAULT_COMPANY_DELAY_MAX = 0.0
-DEFAULT_POST_DELAY_MIN = 0.0
-DEFAULT_POST_DELAY_MAX = 0.0
-DEFAULT_REQUEST_TIMEOUT = 30.0
-DEFAULT_CONNECT_TIMEOUT = 10.0
-DEFAULT_SEARCH_RESULTS = 10
+BASE_URL = "http://localhost:8000"
 
-NAME_SPLIT_RE = re.compile(r"\s*[·•|,\-–—]+\s*")
-LINKEDIN_PROFILE_RE = re.compile(r"https?://(?:[a-z]{2,3}\.)?linkedin\.com/in/[^/?#\"'>\s]+", re.I)
-LIKELY_NAME_RE = re.compile(r"^[A-Z][A-Za-z'`.-]+(?:\s+[A-Z][A-Za-z'`.-]+){1,3}$")
+def get_tavily_clients():
+    keys = [k.strip() for k in os.environ.get('TAVILY_API_KEYS', '').split(',') if k.strip()]
+    if not keys:
+        return []
+    return [TavilyClient(api_key=k) for k in keys]
 
+import google.generativeai as genai
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
-@dataclass
-class Stats:
-    loops: int = 0
-    companies_scanned: int = 0
-    names_found: int = 0
-    existing_matches: int = 0
-    posted_new: int = 0
-    post_failures: int = 0
-    search_failures: int = 0
-    db_failures: int = 0
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Standalone live roster discovery worker for tracked companies."
-    )
-    parser.add_argument("--database-url", help="PostgreSQL connection string. Overrides environment variables.")
-    parser.add_argument("--webhook-url", default=DEFAULT_WEBHOOK_URL, help="Local webhook URL for new recruiters.")
-    parser.add_argument("--scan-interval-hours", type=float, default=DEFAULT_SCAN_INTERVAL_HOURS)
-    parser.add_argument("--company-delay-min", type=float, default=DEFAULT_COMPANY_DELAY_MIN)
-    parser.add_argument("--company-delay-max", type=float, default=DEFAULT_COMPANY_DELAY_MAX)
-    parser.add_argument("--post-delay-min", type=float, default=DEFAULT_POST_DELAY_MIN)
-    parser.add_argument("--post-delay-max", type=float, default=DEFAULT_POST_DELAY_MAX)
-    parser.add_argument("--request-timeout", type=float, default=DEFAULT_REQUEST_TIMEOUT)
-    parser.add_argument("--connect-timeout", type=float, default=DEFAULT_CONNECT_TIMEOUT)
-    parser.add_argument("--search-results", type=int, default=DEFAULT_SEARCH_RESULTS)
-    parser.add_argument("--max-companies", type=int, default=None, help="Optional cap for one scan cycle.")
-    parser.add_argument("--run-once", action="store_true", help="Run one scan cycle and exit.")
-    parser.add_argument("--dry-run", action="store_true", help="Discover and print candidates without posting.")
-    parser.add_argument("--concurrency", type=int, default=8, help="Number of concurrent company processing threads.")
-    return parser.parse_args()
-
-
-_print_lock = threading.Lock()
-
-def log(message: str, level: str = "INFO") -> None:
-    stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    msg = f"[{stamp}] [{level}] {message}"
-    with _print_lock:
-        try:
-            print(msg, flush=True)
-        except UnicodeEncodeError:
-            enc = sys.stdout.encoding or 'utf-8'
-            try:
-                print(msg.encode(enc, errors='replace').decode(enc), flush=True)
-            except Exception:
-                # Last resort fallback if decoding also fails
-                print(f"[{stamp}] [{level}] [Log Error] Message contains un-printable characters", flush=True)
-
-
-def load_database_url(explicit_url: str | None) -> str:
-    if explicit_url:
-        return explicit_url
-
-    for key in DEFAULT_DATABASE_ENV_KEYS:
-        value = os.getenv(key)
-        if value:
-            return value
-
-    env_file = Path(__file__).resolve().parent.parent / "backend" / ".env"
-    if env_file.exists():
-        for line in env_file.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            if key.strip() in DEFAULT_DATABASE_ENV_KEYS and value.strip():
-                return value.strip().strip('"').strip("'")
-
-    raise RuntimeError("Database URL not found. Pass --database-url or set DATABASE_URL / TALENTOPS_DATABASE_URL.")
-
-
-def build_engine(database_url: str) -> Engine:
-    connect_args: dict[str, Any] = {}
-    if database_url.startswith("postgresql+psycopg://"):
-        connect_args["prepare_threshold"] = None
-
-    return create_engine(database_url, future=True, pool_pre_ping=True, connect_args=connect_args)
-
-
-def reflect_tables(engine: Engine) -> tuple[Table, Table]:
-    inspector = inspect(engine)
-    table_names = set(inspector.get_table_names())
-    for required in ("companies", "recruiters"):
-        if required not in table_names:
-            raise RuntimeError(f"Required table '{required}' was not found.")
-
-    metadata = MetaData()
-    companies = Table("companies", metadata, autoload_with=engine)
-    recruiters = Table("recruiters", metadata, autoload_with=engine)
-
-    for column in ("company_name", "is_tracked", "is_active"):
-        if column not in companies.c:
-            raise RuntimeError(f"Missing companies.{column} column.")
-    if "recruiter_name" not in recruiters.c:
-        raise RuntimeError("Missing recruiters.recruiter_name column.")
-
-    return companies, recruiters
-
-
-def build_session() -> Session:
-    session = requests.Session()
-    session.headers.update(
-        {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Accept-Encoding": "gzip, deflate, br",
-            "DNT": "1",
-            "Connection": "keep-alive",
-            "Upgrade-Insecure-Requests": "1",
-        }
-    )
-    return session
-
-
-def timeout_tuple(args: argparse.Namespace) -> tuple[float, float]:
-    return (args.connect_timeout, args.request_timeout)
-
-
-def sleep_jitter(lower: float, upper: float) -> float:
-    seconds = random.uniform(min(lower, upper), max(lower, upper))
-    time.sleep(seconds)
-    return seconds
-
-
-def normalize_name(value: str) -> str:
-    value = unescape(value or "")
-    value = re.sub(r"\s+", " ", value).strip()
-    return value
-
-
-def normalize_company(value: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "", (value or "").lower())
-
-
-def extract_candidate_name(text: str, company_name: str) -> str | None:
-    if not text:
-        return None
-
-    cleaned = unescape(text)
-    cleaned = re.sub(r"<[^>]+>", " ", cleaned)
-    cleaned = re.sub(r"\s+", " ", cleaned).strip()
-    if not cleaned:
-        return None
-
-    parts = NAME_SPLIT_RE.split(cleaned)
-    blocked_fragments = {
-        "linkedin",
-        "profiles",
-        "profile",
-        "recruiter",
-        "recruiting",
-        "talent acquisition",
-        "duckduckgo",
-        "people",
-        "search",
-        "sr.",
-        "senior",
-        "vp",
-        "vice president",
-        "director",
-        "head",
-        "manager",
-        "phd",
-        "mba",
-        "consultant",
-        "lead",
-        "sourcer",
-        "human resources",
-        "hr",
-    }
-    company_normalized = normalize_company(company_name)
-
-    for part in parts:
-        candidate = normalize_name(part)
-        if not candidate or len(candidate) < 5 or len(candidate) > 60:
-            continue
-        lower = candidate.lower()
-        if any(fragment in lower for fragment in blocked_fragments):
-            continue
-        if normalize_company(candidate) == company_normalized:
-            continue
-        words = candidate.split()
-        if len(words) < 2 or len(words) > 4:
-            continue
-        if not LIKELY_NAME_RE.match(candidate):
-            continue
-        return candidate
-
-    return None
-
-
-US_STATES = {
-    'ALABAMA', 'ALASKA', 'ARIZONA', 'ARKANSAS', 'CALIFORNIA', 'COLORADO', 'CONNECTICUT', 'DELAWARE', 'FLORIDA',
-    'GEORGIA', 'HAWAII', 'IDAHO', 'ILLINOIS', 'INDIANA', 'IOWA', 'KANSAS', 'KENTUCKY', 'LOUISIANA', 'MAINE',
-    'MARYLAND', 'MASSACHUSETTS', 'MICHIGAN', 'MINNESOTA', 'MISSISSIPPI', 'MISSOURI', 'MONTANA', 'NEBRASKA',
-    'NEVADA', 'NEW HAMPSHIRE', 'NEW JERSEY', 'NEW MEXICO', 'NEW YORK', 'NORTH CAROLINA', 'NORTH DAKOTA', 'OHIO',
-    'OKLAHOMA', 'OREGON', 'PENNSYLVANIA', 'RHODE ISLAND', 'SOUTH CAROLINA', 'SOUTH DAKOTA', 'TENNESSEE', 'TEXAS',
-    'UTAH', 'VERMONT', 'VIRGINIA', 'WASHINGTON', 'WEST VIRGINIA', 'WISCONSIN', 'WYOMING',
-    'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA',
-    'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK',
-    'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC', 'D.C.'
-}
-
-CANADIAN_PROVINCES = {
-    'ONTARIO', 'QUEBEC', 'NOVA SCOTIA', 'NEW BRUNSWICK', 'MANITOBA', 'BRITISH COLUMBIA', 'PRINCE EDWARD ISLAND',
-    'SASKATCHEWAN', 'ALBERTA', 'NEWFOUNDLAND AND LABRADOR', 'NEWFOUNDLAND', 'LABRADOR', 'NORTHWEST TERRITORIES',
-    'YUKON', 'NUNAVUT',
-    'ON', 'QC', 'NS', 'NB', 'MB', 'BC', 'PE', 'SK', 'AB', 'NL', 'NT', 'YT', 'NU'
-}
-
-NON_NA_COUNTRIES = {
-    'INDIA', 'UNITED KINGDOM', 'U.K.', 'GREAT BRITAIN', 'GERMANY', 'FRANCE', 'AUSTRALIA', 'BRAZIL', 'PHILIPPINES',
-    'POLAND', 'ROMANIA', 'UKRAINE', 'NETHERLANDS', 'SPAIN', 'ITALY', 'SINGAPORE', 'JAPAN', 'CHINA', 'VIETNAM',
-    'MALAYSIA', 'INDONESIA', 'PAKISTAN', 'BANGLADESH', 'RUSSIA', 'EUROPE', 'APAC', 'EMEA', 'LATAM', 'AFRICA', 'ASIA',
-    'LONDON', 'ENGLAND', 'SCOTLAND', 'WALES', 'IRELAND', 'ARGENTINA', 'UKRAINE'
-}
-
-def extract_clean_location_line(snippet: str) -> str:
-    if not snippet:
-        return ""
-    if '\n' not in snippet:
-        return snippet
-        
-    lines = [line.strip() for line in snippet.split('\n') if line.strip()]
+def verify_profile_with_llm(name, title, content, target_company):
+    prompt = f"""
+    You are a strict data verification AI. 
+    A recruiter profile was found in a search result for the company: "{target_company}".
     
-    countries = {
-        "UNITED STATES", "USA", "CANADA", "INDIA", "UNITED KINGDOM", "UK", "GERMANY", "FRANCE",
-        "AUSTRALIA", "BRAZIL", "PHILIPPINES", "POLAND", "ROMANIA", "UKRAINE", "NETHERLANDS",
-        "SPAIN", "ITALY", "SINGAPORE", "MEXICO", "PUERTO RICO", "ARGENTINA"
-    }
+    Name: {name}
+    Title: {title}
+    Snippet: {content}
     
-    # 1. Look for a line containing a known country
-    for line in lines:
-        line_upper = line.upper()
-        if any(x in line_upper for x in ["CONNECTIONS", "FOLLOWERS", "ABOUT", "EXPERIENCE", "EDUCATION", "PRESENTS"]):
-            continue
-        for country in countries:
-            if re.search(r'\b' + re.escape(country) + r'\b', line_upper):
-                return line
-                
-    # 2. Look for a line with "Area" or "Metro"
-    for line in lines:
-        line_upper = line.upper()
-        if any(x in line_upper for x in ["CONNECTIONS", "FOLLOWERS", "ABOUT", "EXPERIENCE", "EDUCATION"]):
-            continue
-        if "AREA" in line_upper or "METRO" in line_upper:
-            return line
-            
-    # 3. Fallback to non-meta lines
-    non_meta_lines = []
-    for line in lines:
-        line_upper = line.upper()
-        if any(x in line_upper for x in ["CONNECTIONS", "FOLLOWERS", "ABOUT", "EXPERIENCE", "EDUCATION", "N/A"]):
-            continue
-        non_meta_lines.append(line)
-        
-    if len(non_meta_lines) > 2:
-        return non_meta_lines[2]
-    elif len(non_meta_lines) > 1:
-        return non_meta_lines[1]
-        
-    return lines[0] if lines else ""
+    Task 1: Does this person CURRENTLY work at {target_company} as their primary/active job?
+    (If their title says a different company, and the snippet only mentions {target_company} as past experience or a liked post, the answer is NO. They MUST currently work there).
+    
+    Task 2: Is this person located in North America (US/Canada)? 
+    (If the location says India, UK, Philippines, etc., the answer is NO. If it is ambiguous, say YES but flag needsReview).
+    
+    Return a JSON object with:
+    "isValid": boolean (true ONLY if they currently work at the target company AND are in North America)
+    "needsReview": boolean (true if you are unsure or the text is ambiguous)
+    "reason": string (a short 1-sentence explanation of your decision)
+    """
+    try:
+        model = genai.GenerativeModel('gemini-2.5-flash', generation_config={"response_mime_type": "application/json"})
+        response = model.generate_content(prompt)
+        return json.loads(response.text)
+    except Exception as e:
+        print(f"LLM Verification Error: {e}")
+        return {"isValid": True, "needsReview": True, "reason": "LLM Verification Failed."}
 
-def is_location_north_america(location: str) -> bool:
-    if not location:
-        return False
-        
-    clean_loc = extract_clean_location_line(location)
-    loc_upper = clean_loc.upper().strip()
-    
-    if not loc_upper:
-        return False
-        
-    # 1. Check explicit non-NA country/region indicators
-    for country in NON_NA_COUNTRIES:
-        if re.search(r'\b' + re.escape(country) + r'\b', loc_upper):
-            return False
-            
-    # 2. Check explicit NA country indicators
-    na_countries = {'UNITED STATES', 'USA', 'U.S.A.', 'U.S.', 'CANADA', 'MEXICO', 'PUERTO RICO'}
-    for country in na_countries:
-        if re.search(r'\b' + re.escape(country) + r'\b', loc_upper):
-            return True
-            
-    # 3. Check tokens (words) against US state abbreviations and Canadian province abbreviations
-    tokens = set(re.split(r'[^A-Z]+', loc_upper))
-    
-    for token in tokens:
-        if token in US_STATES or token in CANADIAN_PROVINCES:
-            # Special check to exclude Indian state abbreviation/city collision
-            if token in {'UP', 'KA', 'TG', 'MH'}:
-                if any(x in loc_upper for x in ['INDIA', 'NOIDA', 'BANGALORE', 'HYDERABAD', 'PUNE']):
-                    return False
-            return True
-            
-    # 4. Check multi-word state/province names
-    for name in US_STATES.union(CANADIAN_PROVINCES):
-        if len(name) > 2 and re.search(r'\b' + re.escape(name) + r'\b', loc_upper):
-            return True
-            
-    # 5. Check well-known US/Canada cities/metro terms
-    us_cities = {
-        'ATLANTA', 'AUSTIN', 'BALTIMORE', 'BOSTON', 'CHARLOTTE', 'CHICAGO', 'CLEVELAND', 'COLUMBUS', 'DALLAS',
-        'DENVER', 'DETROIT', 'HOUSTON', 'INDIANAPOLIS', 'JACKSONVILLE', 'LOS ANGELES', 'MIAMI', 'MINNEAPOLIS',
-        'NASHVILLE', 'NEW YORK', 'NYC', 'ORLANDO', 'PHILADELPHIA', 'PHOENIX', 'PITTSBURGH', 'PORTLAND',
-        'RALEIGH', 'RICHMOND', 'SACRAMENTO', 'SAN ANTONIO', 'SAN DIEGO', 'SAN FRANCISCO', 'SAN JOSE',
-        'SEATTLE', 'ST. LOUIS', 'TAMPA', 'LAS VEGAS', 'SALT LAKE CITY', 'MILWAUKEE', 'CINCINNATI', 'KANSAS CITY',
-        'OMAHA', 'TORONTO', 'VANCOUVER', 'MONTREAL', 'CALGARY', 'OTTAWA', 'EDMONTON', 'HALIFAX', 'QUEBEC CITY'
-    }
-    for city in us_cities:
-        if re.search(r'\b' + re.escape(city) + r'\b', loc_upper):
-            return True
-            
+def is_duplicate(name, company):
+    try:
+        res = requests.get(f"{BASE_URL}/recruiters/", params={"search": name, "company": company, "limit": 1})
+        if res.status_code == 200:
+            data = res.json()
+            results = data if isinstance(data, list) else data.get("results", [])
+            if len(results) > 0:
+                return True
+    except Exception as e:
+        print(f"Error checking duplicate: {e}")
     return False
 
-
-def load_tavily_keys() -> list[str]:
-    keys = os.getenv("TAVILY_API_KEYS", "")
-    if not keys:
-        env_file = Path(__file__).resolve().parent.parent / "backend" / ".env"
-        if env_file.exists():
-            for line in env_file.read_text(encoding="utf-8").splitlines():
-                line = line.strip()
-                if line.startswith("TAVILY_API_KEYS="):
-                    keys = line.split("=", 1)[1]
-                    break
-    
-    parsed_keys = [k.strip() for k in keys.split(",") if k.strip()]
-    if not parsed_keys:
-        parsed_keys = ["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"]
-    return parsed_keys
-
-_TAVILY_KEYS: list[str] = []
-_CURRENT_TAVILY_INDEX = 0
-
-_tavily_lock = threading.Lock()
-
-def get_next_tavily_client() -> Any:
-    global _TAVILY_KEYS, _CURRENT_TAVILY_INDEX
-    from tavily import TavilyClient
-    with _tavily_lock:
-        if not _TAVILY_KEYS:
-            _TAVILY_KEYS = load_tavily_keys()
+def add_and_enhance_recruiter(name, title, company, location=None, needs_review=False, review_reason=None):
+    print(f"Adding new recruiter: {name} at {company}...")
+    try:
+        company_id = None
+        res_c = requests.get(f"{BASE_URL}/companies/", params={"search": company, "limit": 1})
+        if res_c.status_code == 200:
+            c_data = res_c.json()
+            if len(c_data) > 0:
+                company_id = c_data[0].get("company_id")
         
-        if _CURRENT_TAVILY_INDEX >= len(_TAVILY_KEYS):
-            return None
-        
-        key = _TAVILY_KEYS[_CURRENT_TAVILY_INDEX]
-        return TavilyClient(key)
-
-def rotate_tavily_key():
-    global _CURRENT_TAVILY_INDEX, _TAVILY_KEYS
-    with _tavily_lock:
-        _CURRENT_TAVILY_INDEX += 1
-        if _CURRENT_TAVILY_INDEX < len(_TAVILY_KEYS):
-            log(f"Rotated Tavily API key. Now using key index {_CURRENT_TAVILY_INDEX + 1}/{len(_TAVILY_KEYS)}", level="WARN")
+        payload = {
+            "recruiter_name": name,
+            "email": f"tavily_discovery_{random.randint(100000,999999)}@missing.local",
+            "specialization": title,
+            "company_id": company_id,
+            "location": location,
+            "needs_review": needs_review,
+            "review_reason": review_reason
+        }
+        res = requests.post(f"{BASE_URL}/recruiters/", json=payload)
+        if res.status_code == 201:
+            recruiter = res.json()
+            r_id = recruiter.get("recruiter_id")
+            print(f"Added successfully with ID {r_id}. Now enhancing...")
+            
+            res_e = requests.post(f"{BASE_URL}/recruiters/{r_id}/enhance", timeout=45)
+            if res_e.status_code == 200:
+                e_data = res_e.json()
+                print(f"Enhanced {name} successfully! Email: {e_data.get('email')} | Phone: {e_data.get('phone')}")
+            else:
+                print(f"Enhance failed: {res_e.status_code}")
         else:
-            log("All Tavily API keys have been exhausted! Will need to wait until limits reset.", level="ERROR")
+            print(f"Failed to add recruiter: {res.status_code} - {res.text}")
+    except Exception as e:
+        print(f"Error adding/enhancing: {e}")
 
-def discover_names_for_company(
-    session: Session,
-    company_name: str,
-    linkedin_url: str | None,
-    args: argparse.Namespace,
-) -> list[dict[str, str]]:
-    names: list[dict[str, str]] = []
-    seen: set[str] = set()
+def run_discovery():
+    print("Starting Discovery Worker...")
+    clients = get_tavily_clients()
+    if not clients:
+        print("No Tavily API keys found!")
+        return
+
+    current_client_idx = 0
+    client = clients[current_client_idx]
     
-    queries = []
-    if linkedin_url:
-        clean_url = linkedin_url.replace('https://', '').replace('http://', '').replace('www.', '').rstrip('/')
-        queries.append(f'site:{clean_url} recruiter')
-        queries.append(f'site:linkedin.com/in "{company_name}" recruiter')
-    else:
-        queries = [
-            f'site:linkedin.com/in "{company_name}" recruiter',
-            f'site:linkedin.com/in "{company_name}" talent acquisition',
-        ]
+    try:
+        with open("target_companies.json", "r") as f:
+            companies = json.load(f)
+    except FileNotFoundError:
+        print("target_companies.json not found!")
+        return
 
-    for q in queries:
-        while True:
-            client = get_next_tavily_client()
-            if not client:
-                log("No active Tavily keys available. Skipping search.", level="ERROR")
-                break
-                
+    for i, company in enumerate(companies):
+        print(f"\n--- Discovering recruiters at {company} ({i+1}/{len(companies)}) ---")
+        query = f"\"Recruiter\" OR \"Talent Acquisition\" at \"{company}\" LinkedIn"
+        
+        retry_search = True
+        while retry_search:
             try:
-                response = client.search(query=q, search_depth="basic", max_results=10)
+                response = client.search(query=query, search_depth="advanced")
                 results = response.get("results", [])
+                print(f"Found {len(results)} potential profiles from search.")
                 
-                for r in results:
-                    title = r.get("title", "")
-                    href = r.get("url", "")
-                    content = r.get("content", "")
+                for res in results:
+                    title = res.get("title", "")
+                    content = res.get("content", "")
                     
-                    if 'linkedin.com/in/' in href:
-                        slug = href.rstrip("/").split("/")[-1]
-                        slug = re.sub(r'-[a-f0-9]{6,}$', '', slug)
-                        slug = re.sub(r"[-_]+", " ", slug)
-                        slug = " ".join(word.capitalize() for word in slug.split() if word)
-                        candidate = extract_candidate_name(slug, company_name)
-                        if candidate and candidate.lower() not in seen:
-                            seen.add(candidate.lower())
-                            names.append({"name": candidate, "linkedin_url": href, "title": title, "location": content})
+                    parts = title.split("-")
+                    if len(parts) >= 2:
+                        name = parts[0].strip()
+                        job_title = parts[1].strip()
+                        
+                        if "linkedin" in name.lower():
+                            continue
                             
-                    parts = NAME_SPLIT_RE.split(re.sub(r'<[^>]+>', '', title))
-                    for part in parts:
-                        part = part.strip()
-                        candidate = extract_candidate_name(part, company_name)
-                        if candidate and candidate.lower() not in seen:
-                            seen.add(candidate.lower())
-                            names.append({"name": candidate, "linkedin_url": href if 'linkedin.com/in/' in href else None, "title": title, "location": content})
+                        # Strict junk name filtering
+                        junk_keywords = ["meet", "our", "team", "careers", "jobs", "hiring", "opportunities"]
+                        if any(junk in name.lower() for junk in junk_keywords):
+                            print(f"Skipping junk profile: {name}")
+                            continue
                             
-                if len(names) >= args.search_results:
-                    break
-                break # Search succeeded, stop retry loop
-                
+                        # Name validation: MUST be a human, NOT a company
+                        company_suffixes = ['inc', 'llc', 'ltd', 'global', 'services', 'talent', 'solutions', 'group', 'brands', 'technologies', 'consulting', 'partners']
+                        if any(suffix in name.lower() for suffix in company_suffixes):
+                            print(f"Skipping {name}: Looks like a company name, not a human.")
+                            continue
+
+                        # LLM Verification
+                        print(f"Asking Gemini to verify {name}...")
+                        llm_result = verify_profile_with_llm(name, title, content, company)
+                        if not llm_result.get("isValid"):
+                            print(f"LLM Rejected {name}: {llm_result.get('reason')}")
+                            continue
+                        
+                        print(f"LLM Approved {name}: {llm_result.get('reason')}")
+
+                        location = None # Let LLM fallback handle it or backend state extractor
+                        if len(name.split()) >= 2 and all(part.isalpha() or '-' in part or '.' in part for part in name.split()):
+                            if is_duplicate(name, company):
+                                print(f"Skipping duplicate: {name}")
+                                continue
+                            
+                            add_and_enhance_recruiter(name, job_title, company, location, llm_result.get("needsReview", False), llm_result.get("reason", ""))
+                            time.sleep(5) 
+                    else:
+                        print(f"Could not parse title: {title}")
+                retry_search = False # Success, break out of retry loop
+                        
             except Exception as e:
-                err_msg = str(e).lower()
-                if "429" in err_msg or "quota" in err_msg or "limit" in err_msg or "unauthorized" in err_msg or "400" in err_msg:
-                    log(f"Tavily quota exceeded/invalid key: {e}", level="WARN")
-                    rotate_tavily_key()
+                print(f"Error searching {company}: {e}")
+                if "exceeds your plan" in str(e).lower() or "limit" in str(e).lower():
+                    print(f"API key {current_client_idx + 1} exhausted!")
+                    current_client_idx += 1
+                    if current_client_idx >= len(clients):
+                        print("ALL Tavily credits exhausted! Exiting.")
+                        # Trigger Windows OS Popup Notification
+                        os.system('powershell -Command "[System.Reflection.Assembly]::LoadWithPartialName(\'System.Windows.Forms\'); [System.Windows.Forms.MessageBox]::Show(\'ALL Tavily API Credits Exhausted! Please add a new key.\', \'TalentOps AI Alert\')"')
+                        return # Hard exit
+                    client = clients[current_client_idx]
+                    print(f"Switching to API key {current_client_idx + 1} and retrying {company}...")
                 else:
-                    log(f"Tavily scraper error for query '{q}': {e}", level="WARN")
-                    break
-
-    return names[: args.search_results]
-
-
-def fetch_tracked_companies(
-    engine: Engine,
-    companies: Table,
-    recruiters: Table,
-    limit: int | None,
-) -> list[dict[str, Any]]:
-    stmt = (
-        select(
-            companies.c.company_id,
-            companies.c.company_name,
-            companies.c.linkedin_url,
-            func.count(recruiters.c.recruiter_id).label("people_count")
-        )
-        .select_from(companies)
-        .outerjoin(
-            recruiters,
-            and_(
-                companies.c.company_id == recruiters.c.company_id,
-                recruiters.c.is_active.is_(True)
-            )
-        )
-        .where(
-            companies.c.is_active.is_(True)
-        )
-        .where(
-            companies.c.is_tracked.is_(True)
-        )
-        .group_by(
-            companies.c.company_id,
-            companies.c.company_name,
-            companies.c.linkedin_url,
-            companies.c.trust_score,
-            companies.c.updated_at
-        )
-        .order_by(
-            companies.c.updated_at.asc().nullsfirst(),
-            companies.c.trust_score.desc().nullslast(),
-            text("people_count DESC"),
-            companies.c.company_name.asc()
-        )
-    )
-    if limit:
-        stmt = stmt.limit(limit)
-
-    with engine.connect() as connection:
-        return [dict(row) for row in connection.execute(stmt).mappings().all()]
-
-
-def recruiter_exists(engine: Engine, recruiters: Table, recruiter_name: str, company_name: str) -> bool:
-    recruiter_expr = func.lower(func.trim(recruiters.c.recruiter_name)) == bindparam("recruiter_name")
-    stmt = select(func.count()).select_from(recruiters).where(recruiter_expr)
-
-    params: dict[str, Any] = {"recruiter_name": recruiter_name.strip().lower()}
-    if "company_name" in recruiters.c:
-        stmt = stmt.where(func.lower(func.trim(recruiters.c.company_name)) == bindparam("company_name"))
-        params["company_name"] = company_name.strip().lower()
-
-    with engine.connect() as connection:
-        count = int(connection.execute(stmt, params).scalar_one())
-    return count > 0
-
-
-def post_new_recruiter(
-    session: Session,
-    webhook_url: str,
-    recruiter_name: str,
-    company_name: str,
-    linkedin_url: str | None,
-    args: argparse.Namespace,
-    title: str | None = None,
-    location: str | None = None,
-) -> dict[str, Any] | str | None:
-    payload = {
-        "recruiter_name": recruiter_name,
-        "company_name": company_name,
-        "linkedin_url": linkedin_url,
-        "title": title,
-        "location": location,
-        "source": "discovery_worker",
-        "tags": ["AI Discovered", "Fresh"],
-    }
-    response = session.post(webhook_url, json=payload, timeout=timeout_tuple(args))
-    response.raise_for_status()
-    try:
-        return response.json()
-    except ValueError:
-        return response.text
-
-_stats_lock = threading.Lock()
-
-def process_single_company(
-    engine: Engine,
-    companies: Table,
-    recruiters: Table,
-    company: dict[str, Any],
-    index: int,
-    total_companies: int,
-    args: argparse.Namespace,
-    stats: Stats,
-) -> None:
-    company_name = str(company.get("company_name") or "").strip()
-    if not company_name:
-        return
-        
-    people_count = company.get("people_count", 0)
-    company_id = company.get("company_id", "N/A")
-    company_linkedin_url = company.get("linkedin_url")
-    
-    log(f"[Discovery] Company {index}/{total_companies}: {company_name}")
-    log(f"[Discovery] Company ID: {company_id}")
-    log(f"[Discovery] Existing people count: {people_count}")
-    log(f"[Discovery] Priority rank: {index}")
-
-    with _stats_lock:
-        stats.companies_scanned += 1
-    
-    start_time = time.time()
-    
-    duplicates_skipped = 0
-    success_count = 0
-    post_fails = 0
-    search_fails = 0
-    db_fails = 0
-    
-    query_str = f"site:linkedin.com/in \"{company_name}\" recruiter"
-    if company_linkedin_url:
-        query_str = f"Targeted: {company_linkedin_url}"
-        
-    log(f"[Discovery] Search query: {query_str}")
-
-    thread_session = build_session()
-    try:
-        try:
-            names_data = discover_names_for_company(thread_session, company_name, company_linkedin_url, args)
-        except Timeout as exc:
-            search_fails += 1
-            with _stats_lock:
-                stats.search_failures += 1
-            log(f"DuckDuckGo timeout for {company_name}: {exc}", level="WARN")
-            if args.company_delay_min > 0 or args.company_delay_max > 0:
-                sleep_jitter(args.company_delay_min, args.company_delay_max)
-            names_data = []
-        except RequestException as exc:
-            search_fails += 1
-            with _stats_lock:
-                stats.search_failures += 1
-            log(f"DuckDuckGo request failed for {company_name}: {exc}", level="WARN")
-            if args.company_delay_min > 0 or args.company_delay_max > 0:
-                sleep_jitter(args.company_delay_min, args.company_delay_max)
-            names_data = []
-        except Exception as exc:
-            search_fails += 1
-            with _stats_lock:
-                stats.search_failures += 1
-            log(f"Unexpected discovery error for {company_name}: {exc}", level="ERROR")
-            if args.company_delay_min > 0 or args.company_delay_max > 0:
-                sleep_jitter(args.company_delay_min, args.company_delay_max)
-            names_data = []
-
-        log(f"[Discovery] Number of search results received: {len(names_data) if names_data else 0}")
-        
-        if names_data:
-            valid_extracted = 0
-            for item in names_data:
-                name = item["name"]
-                recruiter_linkedin_url = item.get("linkedin_url")
-                extracted_title = item.get("title")
-                extracted_location = item.get("location")
-                
-                # North America Location Filter
-                if extracted_location and not is_location_north_america(extracted_location):
-                    log(f"[Discovery] Skipping recruiter {name} - Location '{extracted_location.strip()}' is outside North America", level="INFO")
-                    continue
-                    
-                valid_extracted += 1
-                with _stats_lock:
-                    stats.names_found += 1
-                try:
-                    exists = recruiter_exists(engine, recruiters, name, company_name)
-                except SQLAlchemyError as exc:
-                    db_fails += 1
-                    with _stats_lock:
-                        stats.db_failures += 1
-                    log(f"DB lookup failed for {name} / {company_name}: {exc}", level="ERROR")
-                    continue
-
-                if exists:
-                    duplicates_skipped += 1
-                    with _stats_lock:
-                        stats.existing_matches += 1
-                    continue
-
-                if args.dry_run:
-                    success_count += 1
-                    with _stats_lock:
-                        stats.posted_new += 1
-                else:
-                    try:
-                        post_new_recruiter(thread_session, args.webhook_url, name, company_name, recruiter_linkedin_url, args, extracted_title, extracted_location)
-                        success_count += 1
-                        with _stats_lock:
-                            stats.posted_new += 1
-                    except Timeout as exc:
-                        post_fails += 1
-                        with _stats_lock:
-                            stats.post_failures += 1
-                    except RequestException as exc:
-                        post_fails += 1
-                        with _stats_lock:
-                            stats.post_failures += 1
-                    except Exception as exc:
-                        post_fails += 1
-                        with _stats_lock:
-                            stats.post_failures += 1
-
-                if args.post_delay_min > 0 or args.post_delay_max > 0:
-                    sleep_jitter(args.post_delay_min, args.post_delay_max)
-
-            log(f"[Discovery] Number of valid names extracted: {valid_extracted}")
-        else:
-            log(f"[Discovery] Number of valid names extracted: 0")
-        
-        duration = time.time() - start_time
-        
-        if not args.dry_run:
-            try:
-                with engine.begin() as conn:
-                    stmt = companies.update().where(companies.c.company_id == company_id).values(updated_at=func.now())
-                    conn.execute(stmt)
-            except Exception as e:
-                log(f"Failed to update updated_at for {company_name}: {e}", level="ERROR")
-        
-        log(f"[Discovery] Number of duplicates skipped: {duplicates_skipped}")
-        log(f"[Discovery] Number of new people successfully saved: {success_count}")
-        log(f"[Discovery] Number of failed webhook requests: {post_fails}")
-        log(f"[Discovery] Processing duration per company: {duration:.2f}s")
-        
-        if args.company_delay_min > 0 or args.company_delay_max > 0:
-            slept = sleep_jitter(args.company_delay_min, args.company_delay_max)
-            log(f"Cooling down {slept:.2f}s before next company.", level="DEBUG")
-    finally:
-        thread_session.close()
-
-def run_scan_cycle(
-    engine: Engine,
-    companies: Table,
-    recruiters: Table,
-    session: Session,
-    args: argparse.Namespace,
-    stats: Stats,
-) -> None:
-    tracked_companies = fetch_tracked_companies(engine, companies, recruiters, args.max_companies)
-    if not tracked_companies:
-        log("No tracked active companies found for discovery scan.", level="WARN")
-        return
-
-    total_companies = len(tracked_companies)
-    log(f"Starting discovery cycle for {total_companies} tracked companies.")
-
-    concurrency = getattr(args, "concurrency", 8)
-    log(f"Running cycle with concurrency = {concurrency} threads.")
-
-    with ThreadPoolExecutor(max_workers=concurrency) as executor:
-        futures = [
-            executor.submit(
-                process_single_company,
-                engine,
-                companies,
-                recruiters,
-                company,
-                index,
-                total_companies,
-                args,
-                stats
-            )
-            for index, company in enumerate(tracked_companies, start=1)
-        ]
-        # Wait for all futures to complete
-        for future in futures:
-            try:
-                future.result()
-            except Exception as exc:
-                log(f"Unhandled company processing error: {exc}", level="ERROR")
-
-
-def main() -> int:
-    args = parse_args()
-    stats = Stats()
-
-    try:
-        database_url = load_database_url(args.database_url)
-        engine = build_engine(database_url)
-        companies, recruiters = reflect_tables(engine)
-        session = build_session()
-    except Exception as exc:
-        print(f"Startup error: {exc}", file=sys.stderr)
-        return 1
-
-    log(
-        f"Discovery worker started | webhook={args.webhook_url} | "
-        f"scan_interval_hours={args.scan_interval_hours} | dry_run={args.dry_run}"
-    )
-
-    try:
-        while True:
-            stats.loops += 1
-            log(f"Beginning scan loop #{stats.loops}")
-
-            try:
-                run_scan_cycle(engine, companies, recruiters, session, args, stats)
-            except KeyboardInterrupt:
-                raise
-            except Exception as exc:
-                log(f"Top-level scan cycle error: {exc}", level="ERROR")
-
-            log(
-                f"Cycle summary | loops={stats.loops} companies_scanned={stats.companies_scanned} "
-                f"names_found={stats.names_found} existing_matches={stats.existing_matches} "
-                f"posted_new={stats.posted_new} post_failures={stats.post_failures} "
-                f"search_failures={stats.search_failures} db_failures={stats.db_failures}"
-            )
-
-            if args.run_once:
-                break
-
-            sleep_seconds = max(args.scan_interval_hours, 0.01) * 3600
-            log(f"Sleeping for {sleep_seconds / 3600:.2f} hours before next scan cycle.")
-            time.sleep(sleep_seconds)
-
-        return 0
-
-    except KeyboardInterrupt:
-        log("Discovery worker interrupted by user.", level="WARN")
-        return 130
-    finally:
-        session.close()
-
+                    retry_search = False # Other error, skip company
+            
+        print("Cooling down before next company...")
+        time.sleep(10)
 
 if __name__ == "__main__":
-    sys.exit(main())
+    run_discovery()

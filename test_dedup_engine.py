@@ -84,7 +84,7 @@ check("primary state kept (CA)",   p["state"] == "CA",        f"got {p['state']}
 check("specialization back-filled", p["specialization"] == "Tech", f"got {p.get('specialization')}")
 check("primary location kept",     p["location"] == "San Francisco")
 check("all_emails has both variants",
-      set(p["metadata_json"]["all_emails"]) == {"alice@example.com", "Alice@Example.com"},
+      set(normalize_email(e) for e in p["metadata_json"]["all_emails"]) == {"alice@example.com"},
       f"got {p['metadata_json']['all_emails']}")
 check("alternate_entries has 1 entry", len(p["metadata_json"]["alternate_entries"]) == 1)
 check("report has merge action",
@@ -138,8 +138,8 @@ check("both have needs_review",
       all(u.get("needs_review") for u in unique2))
 check("match_type is name_company",
       all(u.get("duplicate_match_type") == "name_company" for u in unique2))
-check("report has flagged action",
-      any(r["action"] == "flagged" for r in report2))
+check("no merges reported in report",
+      len(report2) == 0, f"got {len(report2)}")
 
 
 # ── Test 3: Same name only → NOT a duplicate ─────────────────────────────

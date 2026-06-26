@@ -1,0 +1,24 @@
+{
+  "run_id": "full-enrichment-20260623-214538",
+  "mode": "DRY_RUN",
+  "status": "INSPECTION_COMPLETE",
+  "total_recruiters": 91333,
+  "inspected_count": 90,
+  "applied_update_count": 0,
+  "pending_update_count": 0,
+  "rejected_count": 1,
+  "skipped_count": 83,
+  "failed_count": 0,
+  "manual_review_count": 0,
+  "started_at": "2026-06-23 21:45:38.269218",
+  "completed_at": "2026-06-23 21:46:09.166597",
+  "backup_path": null,
+  "report_path": "C:\\TalentOpsAI\\reports\\enrichment\\full-enrichment-20260623-214538",
+  "outcome_breakdown": {
+    "SKIPPED_ALREADY_ENRICHED": 68,
+    "PROPOSED": 6,
+    "SKIPPED_INVALID_NAME": 14,
+    "REJECTED_DUPLICATE": 1,
+    "SKIPPED_VERIFIED": 1
+  }
+}

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TalentOps Scraper</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">TalentOps Extension</p>
+          <h1>LinkedIn Profile Capture</h1>
+          <p class="subcopy">Scrape the current profile and push it to your backend without touching the core app.</p>
+        </div>
+        <div class="hero-badge">MV3</div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2>Connection</h2>
+          <span id="saveStatus" class="pill muted">Not saved</span>
+        </div>
+        <label class="field">
+          <span>API URL</span>
+          <input id="apiUrl" type="url" placeholder="http://localhost:8000/recruiters/extension" />
+        </label>
+        <label class="field">
+          <span>Bearer token</span>
+          <input id="authToken" type="password" placeholder="Optional" />
+        </label>
+        <button id="saveSettings" class="button button-secondary">Save settings</button>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2>Actions</h2>
+          <span id="actionStatus" class="pill">Ready</span>
+        </div>
+        <div class="actions">
+          <button id="scrapeProfile" class="button">Scrape current profile</button>
+          <button id="sendProfile" class="button button-primary">Send to backend</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2>Preview</h2>
+          <span class="pill muted">Live payload</span>
+        </div>
+        <div id="profilePreview" class="preview empty">Open a LinkedIn profile, then click scrape.</div>
+      </section>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+  </html>

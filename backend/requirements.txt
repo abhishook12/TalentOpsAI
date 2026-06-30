@@ -11,3 +11,5 @@ pandas==2.2.3
 PyJWT==2.10.1
 duckduckgo-search==8.1.1
 tavily-python==0.7.26
+google-generativeai==0.8.6
+dnspython==2.8.0

@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useMemo, useRef, useState, lazy, Suspense, Component } from 'react'
 import Sidebar from './components/Sidebar'
 import UpdateCenter from './components/UpdateCenter'
@@ -7,7 +7,6 @@ const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Recruiters = lazy(() => import('./pages/Recruiters'))
 const Analytics = lazy(() => import('./pages/Analytics'))
 const AISearch = lazy(() => import('./pages/AISearch'))
-const Upload = lazy(() => import('./pages/Upload'))
 const Directory = lazy(() => import('./pages/Directory'))
 const AdminTerminal = lazy(() => import('./pages/AdminTerminal'))
 const ActivityLog = lazy(() => import('./pages/ActivityLog'))
@@ -53,29 +52,29 @@ const globalStyles = `
 
   :root {
     --sidebar-width: 276px;
-    --main-bg: #f4f5f2;
+    --main-bg: #f8fafc;
     --panel-bg: #ffffff;
     --card-bg: #ffffff;
-    --bg-primary: #f4f5f2;
+    --bg-primary: #f8fafc;
     --bg-surface: #ffffff;
-    --card-border: #d5d8d3;
-    --card-border-strong: #b8bcb6;
+    --card-border: #e2e8f0;
+    --card-border-strong: #cbd5e1;
     --sidebar-bg: #0d1527;
     --sidebar-border: #1c2741;
-    --text-primary: #101318;
-    --text-secondary: #4a5563;
-    --text-muted: #788392;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
     --text-inverse: #ffffff;
-    --accent: #c35d08;
-    --accent-strong: #8f4303;
-    --accent-bg: rgba(195, 93, 8, 0.1);
-    --success: #177245;
-    --warning: #cb7a11;
-    --danger: #c43a32;
-    --muted-grid: rgba(16, 19, 24, 0.055);
-    --dark-panel: #111a2f;
-    --shadow: 0 10px 28px rgba(18, 24, 33, 0.08);
-    --shadow-lg: 0 18px 48px rgba(18, 24, 33, 0.14);
+    --accent: #0ea5e9;
+    --accent-strong: #0284c7;
+    --accent-bg: #e0f2fe;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --muted-grid: rgba(0, 0, 0, 0.03);
+    --dark-panel: #f1f5f9;
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.08);
     --radius: 14px;
     --radius-lg: 18px;
     --font: 'Inter', system-ui, sans-serif;
@@ -143,6 +142,10 @@ const globalStyles = `
     background: #1c1c1c !important;
     border-color: #343434 !important;
     box-shadow: none !important;
+  }
+  
+  html[data-theme='dark'] .cc-topbar {
+    background: rgba(21, 21, 21, 0.96) !important;
   }
 
   html[data-theme='dark'] th {
@@ -256,8 +259,8 @@ const globalStyles = `
     gap: 16px;
     align-items: center;
     padding: 10px 14px 10px 12px;
-    background: rgba(21, 21, 21, 0.96);
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255, 255, 255, 0.96);
+    border-bottom: 1px solid var(--card-border);
     backdrop-filter: blur(8px);
   }
 
@@ -274,8 +277,9 @@ const globalStyles = `
     gap: 8px;
     padding: 6px 10px;
     border-radius: 999px;
-    background: rgba(255,255,255,0.08);
-    color: rgba(255,255,255,0.9);
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    color: var(--text-primary);
     font-size: 11px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -293,9 +297,9 @@ const globalStyles = `
   .cc-session-time {
     padding: 7px 11px;
     border-radius: 10px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.08);
-    color: rgba(255,255,255,0.9);
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    color: var(--text-primary);
     font-family: var(--mono);
     font-size: 11px;
     letter-spacing: 0.08em;
@@ -320,9 +324,9 @@ const globalStyles = `
   .cc-icon-button {
     width: 38px;
     height: 38px;
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.1);
-    color: rgba(255,255,255,0.92);
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    color: var(--text-secondary);
   }
 
   .cc-icon-button:hover, .cc-ghost-button:hover, .cc-primary-button:hover { transform: translateY(-1px); }
@@ -645,11 +649,10 @@ const PAGE_NAMES = {
   '/analytics': 'Analytics',
   '/ai-search': 'AI Search',
   '/directory': 'Directory',
-  '/states': 'Directory',
-  '/companies': 'Directory',
-  '/upload': 'ETL',
-  '/admin': 'Admin Ops',
-  '/activity': 'Global Activity Log',
+  '/states': 'Directory > States',
+  '/companies': 'Directory > Companies',
+  '/admin': 'Admin Terminal',
+  '/activity': 'Activity Feed',
 }
 
 function getSessionId() {
@@ -709,7 +712,7 @@ function PageTracker() {
 
 function AppShell() {
   const location = useLocation()
-
+  const navigate = useNavigate()
   const pageName = useMemo(() => PAGE_NAMES[location.pathname] || 'Dashboard', [location.pathname])
 
   return (
@@ -720,7 +723,7 @@ function AppShell() {
         <Sidebar />
         <div className="cc-main">
           <header className="cc-topbar">
-            <div style={{ color: 'rgba(255,255,255,0.72)', fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', minWidth: 0 }}>
+            <div style={{ color: 'var(--text-secondary)', fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', minWidth: 0 }}>
               {pageName}
             </div>
             <div className="cc-top-actions">
@@ -728,11 +731,11 @@ function AppShell() {
               <button className="cc-icon-button" title="Settings" aria-label="Settings">
                 <i className="ti ti-settings" />
               </button>
-              <button className="cc-icon-button" title="Notifications" aria-label="Notifications" style={{ position: 'relative' }}>
+              <button className="cc-icon-button" title="Notifications" aria-label="Notifications" style={{ position: 'relative' }} onClick={() => window.dispatchEvent(new Event('toggle-update-center'))}>
                 <i className="ti ti-bell" />
                 <span style={{ position: 'absolute', top: 7, right: 9, width: 8, height: 8, borderRadius: 999, background: 'var(--danger)' }} />
               </button>
-              <button className="cc-icon-button" title="Account" aria-label="Account">
+              <button className="cc-icon-button" title="Account" aria-label="Account" onClick={() => navigate('/admin')}>
                 <i className="ti ti-user-circle" />
               </button>
               <ThemeSwitcher />

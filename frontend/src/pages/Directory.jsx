@@ -31,6 +31,7 @@ const STATES = [
 ]
 
 const PAGE_SIZE = 100
+const UNKNOWN_STATE = 'Unknown'
 
 function exportWorkbook(rows, sheetName = 'Recruiters') {
   const worksheet = XLSX.utils.json_to_sheet(rows)
@@ -40,7 +41,14 @@ function exportWorkbook(rows, sheetName = 'Recruiters') {
 }
 
 function stateName(abbr) {
+  if (!abbr || abbr === UNKNOWN_STATE) return 'No state mapped'
   return STATES.find((state) => state.abbr === abbr)?.name || abbr || 'Unknown'
+}
+
+function stateLabel(abbr) {
+  if (!abbr || abbr === UNKNOWN_STATE) return UNKNOWN_STATE
+  const name = stateName(abbr)
+  return name === abbr ? abbr : `${abbr} - ${name}`
 }
 
 export default function Directory() {
@@ -53,6 +61,7 @@ export default function Directory() {
   const [companyStates, setCompanyStates] = useState([])
   const [statesLoading, setStatesLoading] = useState(false)
   const [selectedState, setSelectedState] = useState(null)
+  const [stateQuery, setStateQuery] = useState('')
 
   const [recruiterQuery, setRecruiterQuery] = useState('')
   const [debouncedRecruiterQuery, setDebouncedRecruiterQuery] = useState('')
@@ -102,6 +111,9 @@ export default function Directory() {
 
   useEffect(() => {
     setSelectedState(null)
+    setStateQuery('')
+    setRecruiterQuery('')
+    setDebouncedRecruiterQuery('')
     setCompanyStates([])
     setRecruiters([])
     setRecruitersTotal(0)
@@ -128,6 +140,11 @@ export default function Directory() {
 
     return () => { alive = false }
   }, [selectedCompany])
+
+  useEffect(() => {
+    setPage(1)
+    setSelectedRecruiters(new Map())
+  }, [selectedState])
 
   useEffect(() => {
     if (!selectedCompany?.company_id) return
@@ -175,7 +192,6 @@ export default function Directory() {
   const totalPages = Math.max(1, Math.ceil((recruitersTotal || 0) / PAGE_SIZE))
   const selectedCount = selectedRecruiters.size
   const selectedCompanyName = selectedCompany?.company_name || ''
-  const selectedStateCount = companyStates.find((state) => state.state === selectedState)?.count || 0
   const maxCompanies = Math.max(...companies.map((company) => company.recruiter_count || 0), 1)
 
   const companyRows = useMemo(() => {
@@ -185,10 +201,54 @@ export default function Directory() {
     return query ? rows.filter((row) => String(row.company_name || '').toLowerCase().includes(query)) : rows
   }, [companies, debouncedCompanyQuery])
 
+  const mappedStates = useMemo(
+    () => companyStates.filter((row) => row.state !== UNKNOWN_STATE),
+    [companyStates]
+  )
+
+  const unknownStateCount = useMemo(
+    () => companyStates.find((row) => row.state === UNKNOWN_STATE)?.count || 0,
+    [companyStates]
+  )
+
+  const mappedRecruiterCount = useMemo(
+    () => mappedStates.reduce((sum, row) => sum + (row.count || 0), 0),
+    [mappedStates]
+  )
+
+  const allStatesCount = selectedCompany?.recruiter_count || mappedRecruiterCount + unknownStateCount
+
+  const filteredStateRows = useMemo(() => {
+    const query = stateQuery.trim().toLowerCase()
+    const rows = [...companyStates]
+    rows.sort((a, b) => {
+      if (a.state === UNKNOWN_STATE) return 1
+      if (b.state === UNKNOWN_STATE) return -1
+      return (b.count || 0) - (a.count || 0) || String(a.state).localeCompare(String(b.state))
+    })
+    if (!query) return rows
+    return rows.filter((row) => {
+      const label = stateLabel(row.state).toLowerCase()
+      return label.includes(query) || String(row.state || '').toLowerCase().includes(query)
+    })
+  }, [companyStates, stateQuery])
+
+  const activeFilterLabel = selectedState
+    ? stateLabel(selectedState)
+    : 'All states'
+
   const showToast = (message, type = 'info') => {
     setToast({ message, type })
     if (toastRef.current) clearTimeout(toastRef.current)
     toastRef.current = setTimeout(() => setToast(null), 2500)
+  }
+
+  const selectCompany = (company) => {
+    setSelectedCompany(company)
+  }
+
+  const selectState = (state) => {
+    setSelectedState(state)
   }
 
   const exportRows = recruiters.map((recruiter) => ({
@@ -197,7 +257,7 @@ export default function Directory() {
     Phone: recruiter.phone || '',
     Company: recruiter.company_name || selectedCompanyName || '',
     Location: recruiter.location || '',
-    State: recruiter.state || selectedState || '',
+    State: recruiter.state || (selectedState === UNKNOWN_STATE ? '' : selectedState) || '',
   }))
 
   const exportCurrentPage = () => {
@@ -214,13 +274,26 @@ export default function Directory() {
       Phone: recruiter.phone || '',
       Company: recruiter.company_name || selectedCompanyName || '',
       Location: recruiter.location || '',
-      State: recruiter.state || selectedState || '',
+      State: recruiter.state || (selectedState === UNKNOWN_STATE ? '' : selectedState) || '',
     }))
 
     XLSX.writeFile(exportWorkbook(rows), `${(selectedCompanyName || 'company').replace(/[^a-z0-9]+/gi, '_')}_selected.xlsx`)
   }
 
   const clearSelectedRecruiters = () => setSelectedRecruiters(new Map())
+
+  const toggleSelectAllOnPage = (checked) => {
+    setSelectedRecruiters((prev) => {
+      const next = new Map(prev)
+      recruiters.forEach((recruiter) => {
+        if (checked) next.set(recruiter.recruiter_id, recruiter)
+        else next.delete(recruiter.recruiter_id)
+      })
+      return next
+    })
+  }
+
+  const allOnPageSelected = recruiters.length > 0 && recruiters.every((recruiter) => selectedRecruiters.has(recruiter.recruiter_id))
 
   return (
     <div className="page-enter" style={{ minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -249,6 +322,9 @@ export default function Directory() {
           />
           <div style={{ marginTop: 10, maxHeight: 'calc(100vh - 240px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
             {companiesLoading ? <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Loading companies...</div> : null}
+            {!companiesLoading && companyRows.length === 0 ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No companies match this search.</div>
+            ) : null}
             {companyRows.map((company) => {
               const active = selectedCompany?.company_id === company.company_id
               const pct = Math.max((company.recruiter_count || 0) / maxCompanies * 100, 4)
@@ -256,7 +332,7 @@ export default function Directory() {
               return (
                 <button
                   key={company.company_id}
-                  onClick={() => setSelectedCompany(company)}
+                  onClick={() => selectCompany(company)}
                   style={{
                     textAlign: 'left',
                     padding: 12,
@@ -270,7 +346,7 @@ export default function Directory() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{company.company_name}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{company.location || 'Not available'}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{company.location || 'Location not listed'}</div>
                     </div>
                     <div style={{ fontFamily: 'var(--mono)', fontWeight: 900 }}>{company.recruiter_count || 0}</div>
                   </div>
@@ -289,12 +365,19 @@ export default function Directory() {
             <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Pick a company first.</div>
           ) : (
             <>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>{selectedCompany.company_name}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>{selectedCompany.company_name}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
+                {mappedStates.length} mapped state{mappedStates.length === 1 ? '' : 's'}
+                {unknownStateCount ? ` · ${unknownStateCount} unmapped` : ''}
+              </div>
+              <input
+                value={stateQuery}
+                onChange={(event) => setStateQuery(event.target.value)}
+                placeholder="Filter states..."
+                style={{ width: '100%', padding: '9px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', marginBottom: 8 }}
+              />
               <button
-                onClick={() => {
-                  setSelectedState(null)
-                  setPage(1)
-                }}
+                onClick={() => selectState(null)}
                 style={{
                   width: '100%',
                   padding: 10,
@@ -305,22 +388,29 @@ export default function Directory() {
                   color: 'var(--text-primary)',
                   cursor: 'pointer',
                   textAlign: 'left',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: 10,
                 }}
               >
-                All states
+                <span><strong>All states</strong></span>
+                <span style={{ fontFamily: 'var(--mono)', fontWeight: 900 }}>{allStatesCount}</span>
               </button>
-              <div style={{ maxHeight: 'calc(100vh - 260px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ maxHeight: 'calc(100vh - 320px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {statesLoading ? <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Loading states...</div> : null}
-                {companyStates.map((row) => {
+                {!statesLoading && filteredStateRows.length === 0 ? (
+                  <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                    {stateQuery ? 'No states match this filter.' : 'No state breakdown available for this company.'}
+                  </div>
+                ) : null}
+                {filteredStateRows.map((row) => {
                   const active = selectedState === row.state
+                  const isUnknown = row.state === UNKNOWN_STATE
 
                   return (
                     <button
                       key={row.state}
-                      onClick={() => {
-                        setSelectedState(row.state)
-                        setPage(1)
-                      }}
+                      onClick={() => selectState(row.state)}
                       style={{
                         textAlign: 'left',
                         padding: 10,
@@ -334,8 +424,11 @@ export default function Directory() {
                         color: 'var(--text-primary)',
                       }}
                     >
-                      <span><strong>{row.state}</strong> - {stateName(row.state)}</span>
-                      <span style={{ fontFamily: 'var(--mono)', fontWeight: 900 }}>{row.count}</span>
+                      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <strong>{isUnknown ? UNKNOWN_STATE : row.state}</strong>
+                        {!isUnknown ? ` - ${stateName(row.state)}` : ''}
+                      </span>
+                      <span style={{ fontFamily: 'var(--mono)', fontWeight: 900, flexShrink: 0 }}>{row.count}</span>
                     </button>
                   )
                 })}
@@ -349,7 +442,9 @@ export default function Directory() {
             <div>
               <div style={{ fontSize: 13, fontWeight: 900 }}>3. Recruiters</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                {selectedCompanyName ? `${selectedCompanyName}${selectedState ? ` - ${selectedState}` : ''}` : 'Select a company to load recruiters.'}
+                {selectedCompanyName
+                  ? `${selectedCompanyName} · ${activeFilterLabel}`
+                  : 'Select a company to load recruiters.'}
               </div>
             </div>
             <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--text-muted)' }}>{recruitersTotal.toLocaleString()} recruiters</div>
@@ -372,12 +467,24 @@ export default function Directory() {
             ) : recruitersLoading ? (
               <div style={{ padding: 16, color: 'var(--text-muted)', fontSize: 12 }}>Loading recruiters...</div>
             ) : recruiters.length === 0 ? (
-              <div style={{ padding: 16, color: 'var(--text-muted)', fontSize: 12 }}>No recruiters for this filter.</div>
+              <div style={{ padding: 16, color: 'var(--text-muted)', fontSize: 12 }}>
+                {debouncedRecruiterQuery
+                  ? 'No recruiters match this search.'
+                  : selectedState
+                    ? `No recruiters found for ${activeFilterLabel}.`
+                    : 'No recruiters found for this company.'}
+              </div>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
                 <thead>
                   <tr style={{ background: 'var(--bg-hover)' }}>
-                    <th style={{ width: 36, padding: '10px 12px', borderBottom: '1px solid var(--card-border)' }} />
+                    <th style={{ width: 36, padding: '10px 12px', borderBottom: '1px solid var(--card-border)' }}>
+                      <input
+                        type="checkbox"
+                        checked={allOnPageSelected}
+                        onChange={(event) => toggleSelectAllOnPage(event.target.checked)}
+                      />
+                    </th>
                     <th style={{ padding: '10px 12px', borderBottom: '1px solid var(--card-border)' }}>Name</th>
                     <th style={{ padding: '10px 12px', borderBottom: '1px solid var(--card-border)' }}>Email</th>
                     <th style={{ padding: '10px 12px', borderBottom: '1px solid var(--card-border)' }}>Location</th>
@@ -416,20 +523,20 @@ export default function Directory() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--text-muted)' }}>
               <div>
                 Page {page} / {totalPages}
-                {selectedState ? ` - ${selectedStateCount} recruiters in ${selectedState}` : ''}
+                {selectedCount ? ` · ${selectedCount} selected` : ''}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
                   onClick={() => setPage((currentPage) => Math.max(1, currentPage - 1))}
-                  disabled={page <= 1}
-                  style={{ padding: '8px 10px', borderRadius: 10, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', cursor: page <= 1 ? 'not-allowed' : 'pointer' }}
+                  disabled={page <= 1 || recruitersLoading}
+                  style={{ padding: '8px 10px', borderRadius: 10, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', cursor: page <= 1 || recruitersLoading ? 'not-allowed' : 'pointer' }}
                 >
                   Prev
                 </button>
                 <button
                   onClick={() => setPage((currentPage) => Math.min(totalPages, currentPage + 1))}
-                  disabled={page >= totalPages}
-                  style={{ padding: '8px 10px', borderRadius: 10, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', cursor: page >= totalPages ? 'not-allowed' : 'pointer' }}
+                  disabled={page >= totalPages || recruitersLoading}
+                  style={{ padding: '8px 10px', borderRadius: 10, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', cursor: page >= totalPages || recruitersLoading ? 'not-allowed' : 'pointer' }}
                 >
                   Next
                 </button>

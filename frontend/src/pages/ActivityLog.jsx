@@ -108,15 +108,11 @@ export default function ActivityLog() {
 
       <header className="fixed top-0 left-0 right-0 z-50 flex w-full items-center justify-between border-b border-outline-variant bg-surface px-4 py-4">
         <div className="flex items-center gap-3">
-          <span className="material-symbols-outlined text-primary" data-icon="hub">
-            hub
-          </span>
+          <i className="ti ti-cpu text-primary text-2xl" />
           <h1 className="text-xl font-bold tracking-tighter text-on-surface">TalentOps AI</h1>
         </div>
         <button className="flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-150 hover:bg-surface-container active:scale-95">
-          <span className="material-symbols-outlined text-primary" data-icon="search">
-            search
-          </span>
+          <i className="ti ti-search text-primary text-lg" />
         </button>
       </header>
 
@@ -129,9 +125,7 @@ export default function ActivityLog() {
             <h2 className="text-3xl font-bold text-on-surface">Activity Log</h2>
             <div className="flex items-center gap-3">
               <button onClick={fetchActivity} className="flex h-8 w-8 items-center justify-center rounded-full border border-outline-variant bg-surface-container-low transition-colors hover:bg-surface-container-high active:scale-95">
-                <span className="material-symbols-outlined text-[16px] text-on-surface-variant" data-icon="refresh">
-                  refresh
-                </span>
+                <i className="ti ti-refresh text-[16px] text-on-surface-variant" />
               </button>
               <div className="flex items-center gap-1.5 rounded-full border border-outline-variant bg-surface-container-low px-2 py-1">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-[#00eefc]"></span>
@@ -151,36 +145,28 @@ export default function ActivityLog() {
             <div className="rounded-lg border border-outline-variant bg-surface-container p-4">
               <div className="mb-2 flex items-start justify-between">
                 <span className="text-[10px] font-mono uppercase text-on-surface-variant">NEW ADDITIONS</span>
-                <span className="material-symbols-outlined text-[16px] text-primary" data-icon="person_add">
-                  person_add
-                </span>
+                <i className="ti ti-user-plus text-[16px] text-primary" />
               </div>
               <div className="text-2xl font-bold text-primary">{dailyStats.added}</div>
             </div>
             <div className="rounded-lg border border-outline-variant bg-surface-container p-4">
               <div className="mb-2 flex items-start justify-between">
                 <span className="text-[10px] font-mono uppercase text-on-surface-variant">IMPROVED</span>
-                <span className="material-symbols-outlined text-[16px] text-primary" data-icon="trending_up">
-                  trending_up
-                </span>
+                <i className="ti ti-trending-up text-[16px] text-primary" />
               </div>
               <div className="text-2xl font-bold text-primary">{dailyStats.improved}</div>
             </div>
             <div className="rounded-lg border border-outline-variant bg-surface-container-low p-4 opacity-60">
               <div className="mb-2 flex items-start justify-between">
                 <span className="text-[10px] font-mono uppercase text-on-surface-variant">REMOVED</span>
-                <span className="material-symbols-outlined text-[16px] text-on-surface-variant" data-icon="flag">
-                  flag
-                </span>
+                <i className="ti ti-flag text-[16px] text-on-surface-variant" />
               </div>
               <div className="text-2xl font-bold text-on-surface-variant">{dailyStats.removed}</div>
             </div>
             <div className="rounded-lg border border-outline-variant bg-surface-container-low p-4 opacity-60">
               <div className="mb-2 flex items-start justify-between">
                 <span className="text-[10px] font-mono uppercase text-on-surface-variant">RECENT ACTIVITY</span>
-                <span className="material-symbols-outlined text-[16px] text-on-surface-variant" data-icon="history">
-                  history
-                </span>
+                <i className="ti ti-history text-[16px] text-on-surface-variant" />
               </div>
               <div className="text-2xl font-bold text-on-surface-variant">{activity.length}</div>
             </div>
@@ -236,19 +222,19 @@ export default function ActivityLog() {
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-y-2 gap-x-4 text-[11px] font-mono">
                     <div className="flex items-center gap-1.5 overflow-hidden">
-                      <span className="material-symbols-outlined text-[14px] text-on-surface-variant" data-icon="business">business</span>
+                      <i className="ti ti-building text-[14px] text-on-surface-variant" />
                       <span className="truncate uppercase text-on-surface">{item.company || "Unknown Company"}</span>
                     </div>
                     <div className="flex items-center gap-1.5 overflow-hidden">
-                      <span className="material-symbols-outlined text-[14px] text-on-surface-variant" data-icon="location_on">location_on</span>
+                      <i className="ti ti-map-pin text-[14px] text-on-surface-variant" />
                       <span className="truncate uppercase text-on-surface">{item.location || "Unknown Location"}</span>
                     </div>
                     <div className="flex items-center gap-1.5 overflow-hidden">
-                      <span className="material-symbols-outlined text-[14px] text-primary" data-icon="mail">mail</span>
+                      <i className="ti ti-mail text-[14px] text-primary" />
                       <span className="truncate text-on-surface">{item.email || "No Email"}</span>
                     </div>
                     <div className="flex items-center gap-1.5 overflow-hidden opacity-60">
-                      <span className="material-symbols-outlined text-[14px] text-on-surface-variant" data-icon="phone">phone</span>
+                      <i className="ti ti-phone text-[14px] text-on-surface-variant" />
                       <span className="truncate text-on-surface-variant">{item.phone || "No Phone"}</span>
                     </div>
                   </div>
@@ -266,9 +252,7 @@ export default function ActivityLog() {
 
         <div className="mb-8 mt-16 flex flex-col items-center gap-4 text-center">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-sm text-on-surface-variant" data-icon="settings_input_component">
-              settings_input_component
-            </span>
+            <i className="ti ti-settings text-sm text-on-surface-variant" />
             <p className="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant">
               REC-INTEL v4.0
             </p>

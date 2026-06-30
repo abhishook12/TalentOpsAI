@@ -545,7 +545,8 @@ def search_recruiters(
         FROM recruiters r
         LEFT JOIN companies c ON r.company_id = c.company_id
         WHERE
-            (
+            r.is_active = true
+            AND (
                 r.recruiter_name ILIKE '%' || :q || '%'
                 OR r.email ILIKE '%' || :q || '%'
                 OR r.email2 ILIKE '%' || :q || '%'

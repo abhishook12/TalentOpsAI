@@ -1,21 +1,24 @@
-from sqlalchemy import or_, and_, String, cast
+from sqlalchemy import text
 from sqlalchemy.orm import joinedload, contains_eager
 from ..models.models import Recruiter, Company
 from .normalizer import normalize_text
+from .state_sql import EFFECTIVE_RECRUITER_STATE_SQL, UNKNOWN_STATE_SENTINEL
 
 def apply_state_filter(query, state: str):
     """
-    Consistently filters recruiters by state.
-    Matches if the recruiter is explicitly in the state,
-    OR if the recruiter's state is blank/missing AND their company is in the state.
+    Filter recruiters by effective state — same resolution used in analytics
+    and the Directory state picker (explicit state, parsed location, company state).
     """
+    state_value = (state or '').strip()
+    if not state_value:
+        return query
+
+    if state_value.upper() == UNKNOWN_STATE_SENTINEL.upper():
+        return query.filter(text(f"({EFFECTIVE_RECRUITER_STATE_SQL}) IS NULL"))
+
     return query.filter(
-        or_(
-            Recruiter.state == state,
-            and_(
-                or_(Recruiter.state == None, Recruiter.state == ''),
-                Company.state == state
-            )
+        text(f"({EFFECTIVE_RECRUITER_STATE_SQL}) = :effective_state").bindparams(
+            effective_state=state_value.upper()
         )
     )
 

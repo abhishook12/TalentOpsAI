@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import api, { clearStoredToken } from '../services/api'
+import { clearStoredToken } from '../services/api'
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: 'ti-layout-dashboard' },
@@ -9,57 +8,14 @@ const nav = [
   { to: '/directory', label: 'Directory', icon: 'ti-map-2', aliases: ['/states', '/companies'] },
   { to: '/analytics', label: 'Analytics', icon: 'ti-chart-bar' },
   { to: '/ai-search', label: 'AI Search', icon: 'ti-search' },
-  { to: '/admin', label: 'Admin Ops', icon: 'ti-shield-lock' },
 ]
 
 export default function Sidebar() {
   const location = useLocation()
-  const [updateStatus, setUpdateStatus] = useState(null)
-  const [lastSyncedAt, setLastSyncedAt] = useState(null)
-
-  useEffect(() => {
-    let alive = true
-
-    const loadUpdateStatus = async () => {
-      try {
-        const res = await api.get('/updates/status')
-        if (alive) {
-          setUpdateStatus(res.data || null)
-          setLastSyncedAt(new Date().toISOString())
-        }
-      } catch {
-        if (alive) setUpdateStatus(null)
-      }
-    }
-
-    loadUpdateStatus()
-    const timer = setInterval(loadUpdateStatus, 5 * 60 * 1000)
-
-    return () => {
-      alive = false
-      clearInterval(timer)
-    }
-  }, [])
-
-  const updateLabel = useMemo(() => {
-    const stamp = lastSyncedAt ? new Date(lastSyncedAt) : updateStatus?.date ? new Date(updateStatus.date) : null
-    if (!stamp || Number.isNaN(stamp.getTime())) return 'Updated recently'
-    return `Updated ${stamp.toLocaleDateString([], { month: 'short', day: 'numeric' })}`
-  }, [lastSyncedAt, updateStatus])
-
-  const updateDetail = useMemo(() => {
-    const stamp = lastSyncedAt ? new Date(lastSyncedAt) : updateStatus?.date ? new Date(updateStatus.date) : null
-    if (!stamp || Number.isNaN(stamp.getTime())) return 'Click to open the update log'
-    return `${stamp.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })} • ${updateStatus?.version || 'Latest build'}`
-  }, [lastSyncedAt, updateStatus])
-
-  const openUpdateCenter = () => {
-    window.dispatchEvent(new CustomEvent('open-update-center'))
-  }
 
   const logoutSoon = () => {
     localStorage.removeItem('auth_session')
-    sessionStorage.removeItem('auth_session')   
+    sessionStorage.removeItem('auth_session')
     clearStoredToken('admin')
     clearStoredToken('app')
     window.location.reload()
@@ -130,6 +86,22 @@ export default function Sidebar() {
                 fontWeight: active ? 900 : 700,
                 letterSpacing: '0.01em',
               }}
+              onMouseEnter={(event) => {
+                if (active) return
+                event.currentTarget.style.background = 'rgba(255,255,255,0.08)'
+                event.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'
+                event.currentTarget.style.boxShadow = '0 10px 24px rgba(0,0,0,0.16)'
+                event.currentTarget.style.transform = 'translateY(-1px)'
+                event.currentTarget.style.color = '#ffffff'
+              }}
+              onMouseLeave={(event) => {
+                if (active) return
+                event.currentTarget.style.background = 'transparent'
+                event.currentTarget.style.borderColor = 'transparent'
+                event.currentTarget.style.boxShadow = 'none'
+                event.currentTarget.style.transform = 'translateY(0)'
+                event.currentTarget.style.color = 'rgba(255,255,255,0.72)'
+              }}
             >
               <i className={`ti ${icon}`} style={{ fontSize: 18, opacity: active ? 1 : 0.88 }} />
               <span>{label}</span>
@@ -159,6 +131,19 @@ export default function Sidebar() {
             fontWeight: 800,
             textAlign: 'left',
             cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+          onMouseEnter={(event) => {
+            event.currentTarget.style.background = 'rgba(255,255,255,0.09)'
+            event.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)'
+            event.currentTarget.style.boxShadow = '0 10px 24px rgba(0,0,0,0.16)'
+            event.currentTarget.style.transform = 'translateY(-1px)'
+          }}
+          onMouseLeave={(event) => {
+            event.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+            event.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
+            event.currentTarget.style.boxShadow = 'none'
+            event.currentTarget.style.transform = 'translateY(0)'
           }}
         >
           <i className="ti ti-logout" style={{ fontSize: 18 }} />
@@ -193,50 +178,6 @@ export default function Sidebar() {
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.62)', marginTop: 2 }}>Terminal 01-A</div>
           </div>
         </div>
-        <button
-          onClick={openUpdateCenter}
-          title={updateDetail}
-          aria-label="Open update log"
-          style={{
-            width: '100%',
-            marginTop: 10,
-            border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 16,
-            background: 'rgba(255,255,255,0.04)',
-            color: '#f3f3f3',
-            padding: '10px 14px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            cursor: 'pointer',
-            textAlign: 'left',
-          }}
-        >
-          <div style={{
-            width: 34,
-            height: 34,
-            borderRadius: 13,
-            display: 'grid',
-            placeItems: 'center',
-            background: 'rgba(255,255,255,0.08)',
-            border: '1px solid rgba(255,255,255,0.10)',
-            flexShrink: 0,
-          }}>
-            <i className="ti ti-refresh" style={{ fontSize: 16, color: '#ffffff' }} />
-          </div>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.58)' }}>
-              {updateLabel}
-            </div>
-            <div style={{ fontSize: 12, fontWeight: 800, marginTop: 2, color: '#f8f8f8' }}>
-              Latest change log
-            </div>
-            <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.62)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {updateDetail}
-            </div>
-          </div>
-          <i className="ti ti-chevron-right" style={{ fontSize: 16, color: 'rgba(255,255,255,0.45)', flexShrink: 0 }} />
-        </button>
       </div>
     </aside>
   )

@@ -1,306 +1,373 @@
 {
-  "mode": "apply",
-  "timestamp": "2026-06-10T16:43:50.526422+00:00",
-  "scanned": 62750,
-  "changed": 614,
-  "primary_changed": 157,
-  "slot_normalizations": 459,
+  "mode": "dry_run",
+  "timestamp": "2026-06-29T16:29:06.714470+00:00",
+  "scanned": 313143,
+  "changed": 31584,
+  "primary_changed": 24,
+  "slot_normalizations": 31584,
   "source_counts": {
-    "workbook_matched_existing.phone": 158,
-    "metadata_json.workbook_phone": 301
+    "workbook_matched_existing.phone": 24
   },
   "samples": [
     {
       "recruiter_id": 1,
-      "recruiter_name": "Jen Dimond",
-      "email": "jdimond@ledgent.com",
+      "recruiter_name": "Cliff Dreyer",
+      "email": "bob.carlson@ondemandgroup.com",
       "changed": true,
       "primary_changed": false,
       "slot_normalizations": [
         {
           "field": "phone",
-          "before": "+13038022955",
-          "after": "303-802-2955"
-        },
-        {
-          "field": "phone2",
-          "before": "+17206177972",
-          "after": "720-617-7972"
+          "before": "+1 (301) 740-2100",
+          "after": "301-740-2100"
         }
       ],
-      "before_phone": "+13038022955",
-      "after_phone": "303-802-2955",
+      "before_phone": "+1 (301) 740-2100",
+      "after_phone": "+1 (301) 740-2100",
+      "source": null,
+      "source_value": null
+    },
+    {
+      "recruiter_id": 2,
+      "recruiter_name": "Lisa French",
+      "email": "jade.jahner@ondemandgroup.com",
+      "changed": true,
+      "primary_changed": false,
+      "slot_normalizations": [
+        {
+          "field": "phone",
+          "before": "+1 (714) 823-3537",
+          "after": "714-823-3537"
+        }
+      ],
+      "before_phone": "+1 (714) 823-3537",
+      "after_phone": "+1 (714) 823-3537",
+      "source": null,
+      "source_value": null
+    },
+    {
+      "recruiter_id": 3,
+      "recruiter_name": "Justin Alberto",
+      "email": "zgilroy@costar.com",
+      "changed": true,
+      "primary_changed": false,
+      "slot_normalizations": [
+        {
+          "field": "phone",
+          "before": "+1 (630) 717-5865",
+          "after": "630-717-5865"
+        }
+      ],
+      "before_phone": "+1 (630) 717-5865",
+      "after_phone": "+1 (630) 717-5865",
+      "source": null,
+      "source_value": null
+    },
+    {
+      "recruiter_id": 4,
+      "recruiter_name": "Sonata Perez",
+      "email": "sonata.perez@workday.com",
+      "changed": true,
+      "primary_changed": false,
+      "slot_normalizations": [
+        {
+          "field": "phone",
+          "before": "+1 (417) 414-9459",
+          "after": "417-414-9459"
+        }
+      ],
+      "before_phone": "+1 (417) 414-9459",
+      "after_phone": "+1 (417) 414-9459",
       "source": null,
       "source_value": null
     },
     {
       "recruiter_id": 5,
-      "recruiter_name": "Karina Morris",
-      "email": "karina@gygaforce.com",
+      "recruiter_name": "Justin Doboe",
+      "email": "aconnolly@judge.com",
       "changed": true,
       "primary_changed": false,
       "slot_normalizations": [
         {
           "field": "phone",
-          "before": "+16099233806",
-          "after": "609-923-3806"
-        },
-        {
-          "field": "phone2",
-          "before": "+16153844708",
-          "after": "615-384-4708"
+          "before": "+1 (619) 380-6599",
+          "after": "619-380-6599"
         }
       ],
-      "before_phone": "+16099233806",
-      "after_phone": "609-923-3806",
+      "before_phone": "+1 (619) 380-6599",
+      "after_phone": "+1 (619) 380-6599",
       "source": null,
       "source_value": null
     },
     {
       "recruiter_id": 6,
-      "recruiter_name": "Stephanie Keryluk",
-      "email": "stephanie.keryluk@andiamogo.com",
+      "recruiter_name": "Justin Powell",
+      "email": "jsmith@strategicstaff.com",
       "changed": true,
       "primary_changed": false,
       "slot_normalizations": [
         {
           "field": "phone",
-          "before": "+16085775527",
-          "after": "608-577-5527"
+          "before": "+1 (913) 428-2477",
+          "after": "913-428-2477"
         }
       ],
-      "before_phone": "+16085775527",
-      "after_phone": "608-577-5527",
+      "before_phone": "+1 (913) 428-2477",
+      "after_phone": "+1 (913) 428-2477",
       "source": null,
       "source_value": null
     },
     {
       "recruiter_id": 7,
-      "recruiter_name": "Teresa Schefer",
-      "email": "teresa.schefer@theplanetgroup.com",
+      "recruiter_name": "Justin Robertson",
+      "email": "dcottrell@dantechsecurity.com",
       "changed": true,
       "primary_changed": false,
       "slot_normalizations": [
         {
           "field": "phone",
-          "before": "+17037311262",
-          "after": "703-731-1262"
+          "before": "+1 (470) 823-0862",
+          "after": "470-823-0862"
         }
       ],
-      "before_phone": "+17037311262",
-      "after_phone": "703-731-1262",
+      "before_phone": "+1 (470) 823-0862",
+      "after_phone": "+1 (470) 823-0862",
       "source": null,
       "source_value": null
     },
     {
       "recruiter_id": 8,
-      "recruiter_name": "Tanya Apodaca",
-      "email": "tapodaca@adcc.com",
+      "recruiter_name": "Kara Vanlaeke",
+      "email": "kara.vanlaeke@comcentric.com",
       "changed": true,
       "primary_changed": false,
       "slot_normalizations": [
         {
           "field": "phone",
-          "before": "+19283223461",
-          "after": "928-322-3461"
+          "before": "+1 (803) 648-1400",
+          "after": "803-648-1400"
         }
       ],
-      "before_phone": "+19283223461",
-      "after_phone": "928-322-3461",
+      "before_phone": "+1 (803) 648-1400",
+      "after_phone": "+1 (803) 648-1400",
       "source": null,
       "source_value": null
     },
     {
       "recruiter_id": 9,
-      "recruiter_name": "Messy User",
-      "email": "messyuser@example.com",
+      "recruiter_name": "Kaci Railey",
+      "email": "smehlhoff@inceptionfertility.com",
       "changed": true,
       "primary_changed": false,
       "slot_normalizations": [
         {
           "field": "phone",
-          "before": "9999999999",
-          "after": "999-999-9999"
+          "before": "+1 (310) 402-0275",
+          "after": "310-402-0275"
         }
       ],
-      "before_phone": "9999999999",
-      "after_phone": "999-999-9999",
+      "before_phone": "+1 (310) 402-0275",
+      "after_phone": "+1 (310) 402-0275",
       "source": null,
       "source_value": null
     },
     {
       "recruiter_id": 10,
-      "recruiter_name": "Duplicate User",
-      "email": "testuser@example.com",
+      "recruiter_name": "Senior Consultant",
+      "email": "sdickson@brooksource.com",
       "changed": true,
       "primary_changed": false,
       "slot_normalizations": [
         {
           "field": "phone",
-          "before": "8888888888",
-          "after": "888-888-8888"
+          "before": "+1 (312) 600-4281",
+          "after": "312-600-4281"
         }
       ],
-      "before_phone": "8888888888",
-      "after_phone": "888-888-8888",
+      "before_phone": "+1 (312) 600-4281",
+      "after_phone": "+1 (312) 600-4281",
       "source": null,
       "source_value": null
     },
     {
-      "recruiter_id": 48521,
-      "recruiter_name": "Sara Neumeier",
-      "email": "andrea@silversearchinc.com",
+      "recruiter_id": 11,
+      "recruiter_name": "Daniel Bonilla",
+      "email": "ngraves@connectivetalent.com",
       "changed": true,
-      "primary_changed": true,
-      "slot_normalizations": [],
-      "before_phone": "915-342-4314",
-      "after_phone": "201-308-3340",
-      "source": "workbook_matched_existing.phone",
-      "source_value": "2013083340"
+      "primary_changed": false,
+      "slot_normalizations": [
+        {
+          "field": "phone",
+          "before": "+1 (914) 446-2797",
+          "after": "914-446-2797"
+        }
+      ],
+      "before_phone": "+1 (914) 446-2797",
+      "after_phone": "+1 (914) 446-2797",
+      "source": null,
+      "source_value": null
     },
     {
-      "recruiter_id": 48531,
-      "recruiter_name": "Kofi Anim",
-      "email": "pmills@altaits.com",
+      "recruiter_id": 12,
+      "recruiter_name": "Kaley Berens",
+      "email": "srundle@kavaliro.com",
       "changed": true,
-      "primary_changed": true,
-      "slot_normalizations": [],
-      "before_phone": "904-559-1724",
-      "after_phone": "456-231-0932",
-      "source": "workbook_matched_existing.phone",
-      "source_value": "4562310932"
+      "primary_changed": false,
+      "slot_normalizations": [
+        {
+          "field": "phone",
+          "before": "+1 (908) 642-1107",
+          "after": "908-642-1107"
+        }
+      ],
+      "before_phone": "+1 (908) 642-1107",
+      "after_phone": "+1 (908) 642-1107",
+      "source": null,
+      "source_value": null
     },
     {
-      "recruiter_id": 48556,
-      "recruiter_name": "Braun Galisewski",
-      "email": "bgalisewski@intertech.com",
+      "recruiter_id": 13,
+      "recruiter_name": "Michael Press",
+      "email": "lseitz@idr-inc.com",
       "changed": true,
-      "primary_changed": true,
-      "slot_normalizations": [],
-      "before_phone": "651-288-7000",
-      "after_phone": "651-288-7141",
-      "source": "workbook_matched_existing.phone",
-      "source_value": "6512887141"
+      "primary_changed": false,
+      "slot_normalizations": [
+        {
+          "field": "phone",
+          "before": "+1 (443) 528-3492",
+          "after": "443-528-3492"
+        }
+      ],
+      "before_phone": "+1 (443) 528-3492",
+      "after_phone": "+1 (443) 528-3492",
+      "source": null,
+      "source_value": null
     },
     {
-      "recruiter_id": 48635,
-      "recruiter_name": "Joseph Daka",
-      "email": "cbrient@altaits.com",
+      "recruiter_id": 14,
+      "recruiter_name": "Joseph Nullmeyer",
+      "email": "bmccormick@idr-inc.com",
       "changed": true,
-      "primary_changed": true,
-      "slot_normalizations": [],
-      "before_phone": "210-980-0635",
-      "after_phone": "301-740-2119",
-      "source": "workbook_matched_existing.phone",
-      "source_value": "3017402119"
+      "primary_changed": false,
+      "slot_normalizations": [
+        {
+          "field": "phone",
+          "before": "+1 (214) 257-8792",
+          "after": "214-257-8792"
+        }
+      ],
+      "before_phone": "+1 (214) 257-8792",
+      "after_phone": "+1 (214) 257-8792",
+      "source": null,
+      "source_value": null
     },
     {
-      "recruiter_id": 48745,
-      "recruiter_name": "Jamie Kozelka",
-      "email": "jamie.kozelka@turnberrysolutions.com",
+      "recruiter_id": 15,
+      "recruiter_name": "Becky Danielsen",
+      "email": "becky.danielsen@capco.com",
       "changed": true,
-      "primary_changed": true,
-      "slot_normalizations": [],
-      "before_phone": "602-661-2566",
-      "after_phone": "608-306-2138",
-      "source": "workbook_matched_existing.phone",
-      "source_value": "6083062138"
+      "primary_changed": false,
+      "slot_normalizations": [
+        {
+          "field": "phone",
+          "before": "+1 (312) 629-1020",
+          "after": "312-629-1020"
+        }
+      ],
+      "before_phone": "+1 (312) 629-1020",
+      "after_phone": "+1 (312) 629-1020",
+      "source": null,
+      "source_value": null
     },
     {
-      "recruiter_id": 48803,
-      "recruiter_name": "Elizabeth Garley",
-      "email": "elizabeth.garley@innovasolutions.com",
+      "recruiter_id": 16,
+      "recruiter_name": "Associate Vice President",
+      "email": "crepko@nimbldigital.com",
       "changed": true,
-      "primary_changed": true,
-      "slot_normalizations": [],
-      "before_phone": "732-759-6074",
-      "after_phone": "313-500-7701",
-      "source": "workbook_matched_existing.phone",
-      "source_value": "3135007701"
+      "primary_changed": false,
+      "slot_normalizations": [
+        {
+          "field": "phone",
+          "before": "+1 (646) 797-5361",
+          "after": "646-797-5361"
+        }
+      ],
+      "before_phone": "+1 (646) 797-5361",
+      "after_phone": "+1 (646) 797-5361",
+      "source": null,
+      "source_value": null
     },
     {
-      "recruiter_id": 48844,
-      "recruiter_name": "Alex Maroney",
-      "email": "amaroney@brooksource.com",
+      "recruiter_id": 17,
+      "recruiter_name": "Kareen Ayache",
+      "email": "lsarabia@e-logic.us",
       "changed": true,
-      "primary_changed": true,
-      "slot_normalizations": [],
-      "before_phone": null,
-      "after_phone": "207-503-5203",
-      "source": "workbook_matched_existing.phone",
-      "source_value": "2075035203"
+      "primary_changed": false,
+      "slot_normalizations": [
+        {
+          "field": "phone",
+          "before": "+1 (919) 256-6431",
+          "after": "919-256-6431"
+        }
+      ],
+      "before_phone": "+1 (919) 256-6431",
+      "after_phone": "+1 (919) 256-6431",
+      "source": null,
+      "source_value": null
     },
     {
-      "recruiter_id": 48856,
-      "recruiter_name": "Justin Barbee",
-      "email": "jbarbee@stausa.com",
+      "recruiter_id": 18,
+      "recruiter_name": "Karem Ibrahim",
+      "email": "jcardenas@e-logic.us",
       "changed": true,
-      "primary_changed": true,
-      "slot_normalizations": [],
-      "before_phone": "866-782-8720",
-      "after_phone": "212-993-8010",
-      "source": "workbook_matched_existing.phone",
-      "source_value": "2129938010"
+      "primary_changed": false,
+      "slot_normalizations": [
+        {
+          "field": "phone",
+          "before": "+1 (267) 494-9552",
+          "after": "267-494-9552"
+        }
+      ],
+      "before_phone": "+1 (267) 494-9552",
+      "after_phone": "+1 (267) 494-9552",
+      "source": null,
+      "source_value": null
     },
     {
-      "recruiter_id": 48932,
-      "recruiter_name": "Erika Marsek",
-      "email": "emarsek@strategicstaff.com",
+      "recruiter_id": 19,
+      "recruiter_name": "Jaime Wilgus",
+      "email": "ajackson@matlensilver.com",
       "changed": true,
-      "primary_changed": true,
-      "slot_normalizations": [],
-      "before_phone": "938-285-6726",
-      "after_phone": "314-795-4577",
-      "source": "workbook_matched_existing.phone",
-      "source_value": "3147954577"
+      "primary_changed": false,
+      "slot_normalizations": [
+        {
+          "field": "phone",
+          "before": "+1 (210) 394-7723",
+          "after": "210-394-7723"
+        }
+      ],
+      "before_phone": "+1 (210) 394-7723",
+      "after_phone": "+1 (210) 394-7723",
+      "source": null,
+      "source_value": null
     },
     {
-      "recruiter_id": 48974,
-      "recruiter_name": "Hunter Courson",
-      "email": "hunter.courson@catapultsg.com",
+      "recruiter_id": 20,
+      "recruiter_name": "Wendong Yang",
+      "email": "btrinceri@matlensilver.com",
       "changed": true,
-      "primary_changed": true,
-      "slot_normalizations": [],
-      "before_phone": null,
-      "after_phone": "972-834-7534",
-      "source": "workbook_matched_existing.phone",
-      "source_value": "9728347534"
-    },
-    {
-      "recruiter_id": 48997,
-      "recruiter_name": "Sydney Antonio",
-      "email": "meg.peterson@spectraforce.com",
-      "changed": true,
-      "primary_changed": true,
-      "slot_normalizations": [],
-      "before_phone": null,
-      "after_phone": "336-564-5846",
-      "source": "workbook_matched_existing.phone",
-      "source_value": "3365645846"
-    },
-    {
-      "recruiter_id": 49001,
-      "recruiter_name": "Amy Crossland",
-      "email": "jcornuke@idr-inc.com",
-      "changed": true,
-      "primary_changed": true,
-      "slot_normalizations": [],
-      "before_phone": null,
-      "after_phone": "214-814-1315",
-      "source": "workbook_matched_existing.phone",
-      "source_value": "2148141315"
-    },
-    {
-      "recruiter_id": 49030,
-      "recruiter_name": "Cheng Seafong",
-      "email": "csaefong@sisinc.com",
-      "changed": true,
-      "primary_changed": true,
-      "slot_normalizations": [],
-      "before_phone": "925-465-7400",
-      "after_phone": "925-465-7413",
-      "source": "workbook_matched_existing.phone",
-      "source_value": "9254657413"
+      "primary_changed": false,
+      "slot_normalizations": [
+        {
+          "field": "phone",
+          "before": "+1 (734) 249-8543",
+          "after": "734-249-8543"
+        }
+      ],
+      "before_phone": "+1 (734) 249-8543",
+      "after_phone": "+1 (734) 249-8543",
+      "source": null,
+      "source_value": null
     }
   ],
   "report_path": "C:\\TalentOpsAI\\backend\\app\\scripts\\outputs\\phone_repair_report.json",

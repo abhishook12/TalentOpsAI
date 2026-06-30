@@ -6,7 +6,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from .config import CORS_ORIGINS, IS_PRODUCTION, ENV as APP_ENV
-from .routes import recruiters, companies, vendors, analytics, upload, admin, auth, actions, updates, import_engine, ai, campaigns
+from .routes import recruiters, companies, vendors, analytics, admin, auth, actions, updates, ai, campaigns, harvester
 from .database import get_db, engine
 from .models import models
 from .create_indexes import create_performance_indexes
@@ -201,17 +201,16 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 app.include_router(recruiters.router, prefix="/recruiters", tags=["Recruiters"])
-app.include_router(import_engine.router, prefix="/api", tags=["Smart Import"])
 app.include_router(companies.router, prefix="/companies", tags=["Companies"])
 app.include_router(vendors.router, prefix="/vendors", tags=["Vendors"])
 app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
-app.include_router(upload.router, prefix="/upload", tags=["Upload"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(actions.router, prefix="/actions", tags=["Actions"])
 app.include_router(updates.router)
 app.include_router(ai.router, prefix="/ai", tags=["AI"])
 app.include_router(campaigns.router, prefix="/campaigns", tags=["Campaigns"])
+app.include_router(harvester.router, prefix="/api", tags=["Autonomous Spider"])
 
 
 @app.get("/")

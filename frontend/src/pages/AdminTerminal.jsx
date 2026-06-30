@@ -570,7 +570,6 @@ export default function AdminTerminal() {
   const [recentImports, setRecentImports] = useState([])
   const [dupes, setDupes] = useState(null)
   const [dataOps, setDataOps] = useState(null)
-  const [uploadOps, setUploadOps] = useState(null)
   const [features, setFeatures] = useState([])
   const [searchIntel, setSearchIntel] = useState(null)
   const [exportIntel, setExportIntel] = useState(null)
@@ -717,7 +716,6 @@ export default function AdminTerminal() {
       safeGet('/admin/orphan-companies'),
       safeGet('/admin/data-quality'),
       safeGet('/admin/data-operations'),
-      safeGet('/admin/upload-operations'),
       safeGet('/admin/search-activity'),
       safeGet('/admin/export-analytics'),
       safeGet('/admin/alerts'),
@@ -727,7 +725,7 @@ export default function AdminTerminal() {
 
     if (s) setStats(s); if (ok) setOpsKpis(ok); if (ts) setTopStates(ts || []); if (ri) setRecentImports(ri || [])
     if (fa) setFieldAudit(fa); if (tbl) setTableSizes(tbl || []); if (sys) setSysInfo(sys); if (orp) setOrphans(orp); if (dq) setDataQuality(dq)
-    if (dop) setDataOps(dop); if (uop) setUploadOps(uop); if (si) setSearchIntel(si); if (ei) setExportIntel(ei)
+    if (dop) setDataOps(dop); if (si) setSearchIntel(si); if (ei) setExportIntel(ei)
     if (al) setAlerts(al.alerts || []); if (feed) setActivityFeed(feed); if (cov) setStateCoverage(cov)
     
     if (sawUnauthorized) {
@@ -1071,44 +1069,6 @@ export default function AdminTerminal() {
     setLiveRecruiterPage(1)
   }
 
-  const viewUploadBatch = (jobId) => {
-    setActiveTab('ops')
-    setLiveRecruiterJobId(jobId)
-    setLiveRecruiterQuery('')
-    setLiveRecruiterState('')
-    setLiveRecruiterCompany('')
-    setLiveRecruiterPage(1)
-    setSelectedRecruiters([])
-  }
-
-  const deleteUploadBatch = async (job) => {
-    if (!job?.job_id) return
-    const countLabel = job.recruiter_count != null ? `${fmt(job.recruiter_count)} recruiter(s)` : 'the linked recruiter records'
-    if (!window.confirm(`Delete upload batch "${job.filename}" and ${countLabel}? This will remove the imported recruiters.`)) return
-    try {
-      await callWithRetry(() => api.delete(`/admin/upload-operations/${job.job_id}`), { retries: 1, treat404AsSuccess: true })
-      setUploadOps(prev => prev ? {
-        ...prev,
-        jobs: (prev.jobs || []).filter(item => item.job_id !== job.job_id),
-      } : prev)
-      setLiveRecruiters(prev => ({
-        ...prev,
-        results: (prev.results || []).filter(item => item.source_job_id !== job.job_id),
-        total_count: Math.max(0, (prev.total_count || 0) - (job.recruiter_count || 0)),
-      }))
-      log(`✓ Deleted upload batch ${job.filename}`, 'ok')
-      setActionNotice({ type: 'success', text: `Deleted upload batch ${job.filename}` })
-      if (liveRecruiterJobId === job.job_id) clearRecruiterBatchFilter()
-      if (activeTab === 'ops') {
-        await loadLiveRecruiters()
-      }
-      await loadAll()
-    } catch (e) {
-      const msg = getErrorMessage(e)
-      setActionNotice({ type: 'error', text: `Batch delete failed: ${msg}` })
-      log('✗ Failed to delete upload batch: ' + msg, 'error')
-    }
-  }
 
   useEffect(() => {
     if (unlocked && activeTab === 'logbook') {
@@ -1225,7 +1185,7 @@ export default function AdminTerminal() {
               <StatCard icon="ti-building" label="Total Companies" value={opsKpis?.total_companies != null ? fmt(opsKpis.total_companies) : 'No Data Available'} color="#a78bfa" />
               <StatCard icon="ti-map" label="Total States" value={opsKpis?.total_states != null ? fmt(opsKpis.total_states) : 'No Data Available'} color="#34d399" />
               <StatCard icon="ti-search" label="Searches Today" value={opsKpis?.searches_today != null ? fmt(opsKpis.searches_today) : 'No Data Available'} color="#fb923c" />
-              <StatCard icon="ti-cloud-upload" label="New Uploads" value={opsKpis?.new_uploads != null ? fmt(opsKpis.new_uploads) : 'No Data Available'} color="#60a5fa" />
+
               <StatCard icon="ti-database" label="Database Size" value={opsKpis?.database_size != null ? opsKpis.database_size : 'No Data Available'} color="#f472b6" glow />
             </div>
 

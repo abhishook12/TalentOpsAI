@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.models import Company, PageVisit, Recruiter, Vendor
+from app.utils.state_sql import EFFECTIVE_RECRUITER_STATE_SQL_R, UNKNOWN_STATE_SENTINEL
 
 
 class SimpleCache:
@@ -46,100 +47,9 @@ router = APIRouter()
 
 
 @router.get("/data-quality")
-def get_data_quality(db: Session = Depends(get_db)):
-    cached = analytics_cache.get("data_quality")
-    if cached is not None:
-        return cached
-
-    recruiter_counts = db.execute(text("""
-        SELECT
-            COUNT(*) AS total_recruiters,
-            COUNT(*) FILTER (WHERE email IS NOT NULL AND email != '' AND email NOT LIKE '%@missing.local%') AS real_emails,
-            COUNT(*) FILTER (WHERE phone IS NOT NULL AND phone != '') AS phones,
-            COUNT(*) FILTER (WHERE company_id IS NOT NULL) AS companies_linked,
-            COUNT(*) FILTER (WHERE state IS NOT NULL AND state != '') AS with_state,
-            COUNT(DISTINCT state) FILTER (WHERE state IS NOT NULL AND state != '') AS states_covered,
-            COUNT(*) FILTER (WHERE needs_review = true) AS needs_review,
-            COUNT(*) FILTER (WHERE state IS NULL OR state = '') AS unknown_state_count,
-            COUNT(*) FILTER (WHERE state_source IN ('state_column', 'recruiter_state_col', 'abbreviation_exact_match')) AS direct_state_count,
-            COUNT(*) FILTER (WHERE state_source = 'company_state') AS company_state_count,
-            COUNT(*) FILTER (WHERE state_source LIKE 'company_majority_state%') AS company_majority_count,
-            COUNT(*) FILTER (WHERE state_source = 'email_domain') AS domain_state_count,
-            COUNT(*) FILTER (WHERE state_source IN ('recruiter_location', 'company_location', 'notes', 'review_reason', 'metadata_json', 'raw_data')) AS text_inferred_count
-        FROM recruiters
-    """)).mappings().one()
-
-    total_recruiters = int(recruiter_counts["total_recruiters"] or 0)
-    real_emails = int(recruiter_counts["real_emails"] or 0)
-    phones = int(recruiter_counts["phones"] or 0)
-    companies_linked = int(recruiter_counts["companies_linked"] or 0)
-    with_state = int(recruiter_counts["with_state"] or 0)
-    states_covered = int(recruiter_counts["states_covered"] or 0)
-    needs_review = int(recruiter_counts["needs_review"] or 0)
-    unknown_state_count = int(recruiter_counts["unknown_state_count"] or 0)
-    direct_state_count = int(recruiter_counts["direct_state_count"] or 0)
-    company_state_count = int(recruiter_counts["company_state_count"] or 0)
-    company_majority_count = int(recruiter_counts["company_majority_count"] or 0)
-    domain_state_count = int(recruiter_counts["domain_state_count"] or 0)
-    text_inferred_count = int(recruiter_counts["text_inferred_count"] or 0)
-
-    total_companies = db.execute(text("SELECT COUNT(*) FROM companies")).scalar() or 0
-
-    try:
-        db_size = db.execute(text("SELECT pg_size_pretty(pg_database_size(current_database()))")).scalar()
-    except Exception:
-        db_size = "Unknown"
-
-    duplicate_risk = db.execute(
-        text("SELECT COUNT(*) FROM (SELECT phone FROM recruiters WHERE phone IS NOT NULL AND phone != '' GROUP BY phone HAVING COUNT(*) > 1) t")
-    ).scalar() or 0
-
-    explicit_state_count = direct_state_count
-    pre_existing_states = db.execute(text("""
-        SELECT COUNT(*)
-        FROM recruiters
-        WHERE (state IS NOT NULL AND state != '')
-          AND (state_source IS NULL OR state_source = '')
-    """)).scalar() or 0
-    explicit_state_count += pre_existing_states
-    inferred_state_count = max(with_state - explicit_state_count, 0)
-
-    email_cov = round((real_emails / total_recruiters * 100), 1) if total_recruiters else 0
-    phone_cov = round((phones / total_recruiters * 100), 1) if total_recruiters else 0
-    comp_cov = round((companies_linked / total_recruiters * 100), 1) if total_recruiters else 0
-    state_cov = round((with_state / total_recruiters * 100), 1) if total_recruiters else 0
-    review_cov = round((needs_review / total_recruiters * 100), 1) if total_recruiters else 0
-    quality_score = round((email_cov * 0.4) + (phone_cov * 0.2) + (comp_cov * 0.2) + (state_cov * 0.2), 1)
-
-    result = {
-        "total_recruiters": total_recruiters,
-        "total_companies": total_companies,
-        "states_covered": states_covered,
-        "database_size": db_size,
-        "email_coverage": email_cov,
-        "phone_coverage": phone_cov,
-        "company_coverage": comp_cov,
-        "state_coverage": state_cov,
-        "needs_review_percent": review_cov,
-        "quality_score": quality_score,
-        "missing_email_count": total_recruiters - real_emails,
-        "missing_phone_count": total_recruiters - phones,
-        "missing_company_count": total_recruiters - companies_linked,
-        "missing_state_count": unknown_state_count,
-        "duplicate_risk_count": duplicate_risk,
-        "needs_review_count": needs_review,
-        "known_state_count": with_state,
-        "unknown_state_count": unknown_state_count,
-        "explicit_state_count": explicit_state_count,
-        "inferred_state_count": inferred_state_count,
-        "company_state_count": company_state_count,
-        "company_majority_state_count": company_majority_count,
-        "domain_state_count": domain_state_count,
-        "text_inferred_state_count": text_inferred_count,
-    }
-
-    analytics_cache.set("data_quality", result, ttl=3600)
-    return result
+def get_data_quality():
+    from ..olap_sidecar import olap_sidecar
+    return olap_sidecar.get_data_quality()
 
 
 @router.get("/dashboard")
@@ -148,30 +58,34 @@ def get_dashboard_kpis(db: Session = Depends(get_db)):
     if cached is not None:
         return cached
 
-    total_recruiters = db.query(Recruiter).count()
-    active_recruiters = db.query(Recruiter).filter(Recruiter.is_active == True).count()
-    needs_review = db.query(Recruiter).filter(Recruiter.needs_review == True).count()
-    low_quality = db.query(Recruiter).filter(Recruiter.completeness_score < 50).count()
+    sql = text("""
+        SELECT 
+            COUNT(*) as total_recruiters,
+            COUNT(*) FILTER (WHERE is_active = true) as active_recruiters,
+            COUNT(*) FILTER (WHERE needs_review = true) as needs_review,
+            COUNT(*) FILTER (WHERE completeness_score < 50) as low_quality,
+            COUNT(*) FILTER (WHERE 
+                (email IS NOT NULL AND email != '' AND email NOT LIKE '%@missing.local%') OR 
+                (email2 IS NOT NULL AND email2 != '') OR 
+                (email3 IS NOT NULL AND email3 != '') OR 
+                (email4 IS NOT NULL AND email4 != '')
+            ) as with_email,
+            COUNT(*) FILTER (WHERE 
+                (phone IS NOT NULL AND phone != '') OR 
+                (phone2 IS NOT NULL AND phone2 != '') OR 
+                (phone3 IS NOT NULL AND phone3 != '') OR 
+                (phone4 IS NOT NULL AND phone4 != '')
+            ) as with_phone
+        FROM recruiters
+    """)
+    res = db.execute(sql).mappings().first()
 
-    from sqlalchemy import or_
-
-    with_email = db.query(Recruiter).filter(
-        or_(
-            (Recruiter.email.isnot(None)) & (Recruiter.email != "") & (~Recruiter.email.like("%@missing.local%")),
-            (Recruiter.email2.isnot(None)) & (Recruiter.email2 != ""),
-            (Recruiter.email3.isnot(None)) & (Recruiter.email3 != ""),
-            (Recruiter.email4.isnot(None)) & (Recruiter.email4 != ""),
-        )
-    ).count()
-
-    with_phone = db.query(Recruiter).filter(
-        or_(
-            (Recruiter.phone.isnot(None)) & (Recruiter.phone != ""),
-            (Recruiter.phone2.isnot(None)) & (Recruiter.phone2 != ""),
-            (Recruiter.phone3.isnot(None)) & (Recruiter.phone3 != ""),
-            (Recruiter.phone4.isnot(None)) & (Recruiter.phone4 != ""),
-        )
-    ).count()
+    total_recruiters = res["total_recruiters"] or 0
+    active_recruiters = res["active_recruiters"] or 0
+    needs_review = res["needs_review"] or 0
+    low_quality = res["low_quality"] or 0
+    with_email = res["with_email"] or 0
+    with_phone = res["with_phone"] or 0
 
     total_companies = db.query(Company).count()
     total_vendors = db.query(Vendor).count()
@@ -204,22 +118,7 @@ def recruiters_by_state(db: Session = Depends(get_db)):
     if cached is not None:
         return cached
 
-    computed_state_sql = """
-        COALESCE(
-            NULLIF(TRIM(r.state), ''),
-            CASE
-                WHEN r.location ~ '^[A-Za-z]{2}$' THEN UPPER(r.location)
-                WHEN r.location ~ '.*[ ,]([A-Za-z]{2})$' THEN UPPER(SUBSTRING(r.location FROM '([A-Za-z]{2})$'))
-                ELSE NULL
-            END,
-            NULLIF(TRIM(c.state), ''),
-            CASE
-                WHEN c.location ~ '^[A-Za-z]{2}$' THEN UPPER(c.location)
-                WHEN c.location ~ '.*[ ,]([A-Za-z]{2})$' THEN UPPER(SUBSTRING(c.location FROM '([A-Za-z]{2})$'))
-                ELSE NULL
-            END
-        )
-    """
+    computed_state_sql = EFFECTIVE_RECRUITER_STATE_SQL_R
 
     results = db.execute(text(f"""
         SELECT
@@ -280,22 +179,7 @@ def company_states(
     if cached is not None:
         return cached
 
-    computed_state_sql = """
-        COALESCE(
-            NULLIF(TRIM(r.state), ''),
-            CASE
-                WHEN r.location ~ '^[A-Za-z]{2}$' THEN UPPER(r.location)
-                WHEN r.location ~ '.*[ ,]([A-Za-z]{2})$' THEN UPPER(SUBSTRING(r.location FROM '([A-Za-z]{2})$'))
-                ELSE NULL
-            END,
-            NULLIF(TRIM(c.state), ''),
-            CASE
-                WHEN c.location ~ '^[A-Za-z]{2}$' THEN UPPER(c.location)
-                WHEN c.location ~ '.*[ ,]([A-Za-z]{2})$' THEN UPPER(SUBSTRING(c.location FROM '([A-Za-z]{2})$'))
-                ELSE NULL
-            END
-        )
-    """
+    computed_state_sql = EFFECTIVE_RECRUITER_STATE_SQL_R
 
     rows = db.execute(text(f"""
         SELECT
@@ -309,7 +193,19 @@ def company_states(
         ORDER BY count DESC, state ASC
     """), {"company_id": company_id}).mappings().all()
 
+    unknown_row = db.execute(text(f"""
+        SELECT COUNT(r.recruiter_id) AS count
+        FROM recruiters r
+        LEFT JOIN companies c ON c.company_id = r.company_id
+        WHERE r.company_id = :company_id
+          AND {computed_state_sql} IS NULL
+    """), {"company_id": company_id}).mappings().first()
+
     result = [{"state": row["state"], "count": int(row["count"])} for row in rows]
+    unknown_count = int(unknown_row["count"]) if unknown_row and unknown_row["count"] else 0
+    if unknown_count > 0:
+        result.append({"state": UNKNOWN_STATE_SENTINEL, "count": unknown_count})
+
     analytics_cache.set(f"company_states_{company_id}", result, ttl=3600)
     return result
 
@@ -336,10 +232,12 @@ def companies_search(
     params = {"limit": limit, "min_recruiters": min_recruiters, "skip": skip}
 
     if q:
-        from app.utils.normalizer import normalize_text
-        clean_q = normalize_text(q)
-        where_clauses.append("c.normalized_company_name ILIKE '%' || :q || '%'")
-        params["q"] = clean_q
+        # Use pg_trgm similarity (fuzzy matching) and ILIKE fallback for robustness
+        where_clauses.append("(c.company_name % :q OR ca.alias_name % :q OR c.company_name ILIKE '%' || :q || '%' OR ca.alias_name ILIKE '%' || :q || '%')")
+        params["q"] = q
+        sim_col = "GREATEST(similarity(c.company_name, :q), COALESCE(similarity(ca.alias_name, :q), 0))"
+    else:
+        sim_col = "0"
 
     if state and state.upper() != "ALL":
         where_clauses.append("c.state = :state")
@@ -349,23 +247,27 @@ def companies_search(
 
     sql = f"""
         WITH comp_stats AS (
-            SELECT
+            SELECT 
                 c.company_id,
                 c.company_name,
                 c.location,
                 c.industry,
                 c.website,
                 (SELECT count(*) FROM recruiters r WHERE r.company_id = c.company_id) AS recruiter_count,
-                COALESCE(NULLIF(TRIM(c.state), ''), 'US') AS state_abbr
+                COALESCE(NULLIF(TRIM(c.state), ''), 'US') AS state_abbr,
+                MAX({{sim_col}}) AS sim_score
             FROM companies c
-            WHERE {where_sql}
+            LEFT JOIN company_aliases ca ON c.company_id = ca.canonical_company_id
+            WHERE {{where_sql}}
+            GROUP BY c.company_id
         )
         SELECT *, 0 AS missing_state_count, 0 AS needs_review_count, COUNT(*) OVER() AS full_count
         FROM comp_stats
         WHERE recruiter_count >= :min_recruiters
-        ORDER BY recruiter_count DESC, company_name ASC
+        ORDER BY sim_score DESC, recruiter_count DESC, company_name ASC
         LIMIT :limit OFFSET :skip
     """
+    sql = sql.format(sim_col=sim_col, where_sql=where_sql)
     rows = db.execute(text(sql), params).mappings().all()
 
     total_count = rows[0]["full_count"] if rows and "full_count" in rows[0] else 0
@@ -628,3 +530,37 @@ def get_global_activity(
     except Exception as e:
         print(f"Error in global activity: {e}")
         return {"activity": [], "daily_stats": {"added": 0, "improved": 0, "removed": 0}}
+
+
+@router.get("/executive-report")
+def get_executive_report(db: Session = Depends(get_db)):
+    """Generates an executive scorecard across top staffing giants and nationwide coverage."""
+    from fastapi.responses import Response
+    import csv
+    import io
+    
+    computed_state_sql = EFFECTIVE_RECRUITER_STATE_SQL_R
+    results = db.execute(text(f"""
+        SELECT 
+            COALESCE(c.company_name, 'Independent / Unassigned') AS company_name,
+            COUNT(r.recruiter_id) AS total_recruiters,
+            COUNT(*) FILTER (WHERE {computed_state_sql} IS NOT NULL AND {computed_state_sql} != 'US') AS known_state_count,
+            COUNT(*) FILTER (WHERE r.email IS NOT NULL AND r.email != '' AND r.email NOT LIKE '%missing.local%') AS with_email_count
+        FROM recruiters r
+        LEFT JOIN companies c ON r.company_id = c.company_id
+        GROUP BY c.company_name
+        ORDER BY total_recruiters DESC
+        LIMIT 60
+    """)).fetchall()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Agency Name", "Total Recruiters", "Known State Mapped", "State Mapped %", "With Email Count"])
+    for row in results:
+        comp, total, known, email_cnt = row[0], row[1], row[2], row[3]
+        pct = round((known / total * 100), 1) if total > 0 else 0
+        writer.writerow([comp, total, known, f"{pct}%", email_cnt])
+
+    return Response(content=output.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=executive_agency_scorecard.csv"})
+
+

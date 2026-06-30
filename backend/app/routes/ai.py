@@ -8,8 +8,9 @@ import google.generativeai as genai
 from sqlalchemy.orm import Session
 from ..database import get_db
 
-router = APIRouter(prefix="/ai", tags=["AI Integration"])
+router = APIRouter(prefix="", tags=["AI Integration"])
 logger = logging.getLogger(__name__)
+
 
 # Try to initialize Gemini API
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -36,8 +37,47 @@ def get_model():
 def ai_search_filter(payload: AISearchQuery):
     """
     Translates a natural language query into JSON filter parameters.
-    Returns: {"company": "", "state": "", "title": "", "has_phone": null, "missing_email": null}
+    Prioritizes ultra-fast local keyword/state extraction to save API credits.
     """
+    import re
+    q_lower = payload.query.lower()
+    
+    # Ultra-fast local keyword extraction
+    state_match = None
+    state_map = {
+        'texas': 'TX', 'california': 'CA', 'new york': 'NY', 'florida': 'FL', 'illinois': 'IL',
+        'georgia': 'GA', 'massachusetts': 'MA', 'washington': 'WA', 'pennsylvania': 'PA',
+        'north carolina': 'NC', 'virginia': 'VA', 'ohio': 'OH', 'michigan': 'MI', 'colorado': 'CO'
+    }
+    for name, code in state_map.items():
+        if f"in {name}" in q_lower or f"from {name}" in q_lower or f" {name}" in q_lower:
+            state_match = code
+            break
+    if not state_match:
+        m = re.search(r'\b(in|from|at)\s+([a-z]{2})\b', q_lower, re.I)
+        if m and m.group(2).upper() in ['TX','CA','NY','FL','IL','GA','MA','WA','PA','NC','VA','OH','MI','CO','NJ','MD','AZ','OR']:
+            state_match = m.group(2).upper()
+
+    has_phone = True if ("with phone" in q_lower or "phone number" in q_lower) else None
+    missing_email = True if ("missing email" in q_lower or "no email" in q_lower) else None
+    
+    comp_match = None
+    for comp in ['insight global', 'robert half', 'teksystems', 'randstad', 'manpowergroup', 'kforce', 'beacon hill']:
+        if comp in q_lower:
+            comp_match = comp.title()
+            break
+
+    # If local parser found clear filters, return immediately without API call!
+    if state_match or comp_match or has_phone is not None or missing_email is not None:
+        return {
+            "company": comp_match,
+            "state": state_match,
+            "title": None,
+            "has_phone": has_phone,
+            "missing_email": missing_email
+        }
+
+    # Fallback to Gemini if complex query
     model = get_model()
     prompt = f"""
 You are an AI assistant for a recruiter database. Parse the user's natural language search query and return ONLY a valid JSON object. Do NOT use markdown code blocks, return raw JSON string.
@@ -51,27 +91,18 @@ Schema to follow:
   "missing_email": true, false, or null
 }}
 
-Examples:
-Query: "show me healthcare recruiters in texas with a phone number"
-Response: {{"company": null, "state": "TX", "title": "healthcare", "has_phone": true, "missing_email": null}}
-
-Query: "recruiters at microsoft missing an email"
-Response: {{"company": "microsoft", "state": null, "title": null, "has_phone": null, "missing_email": true}}
-
 User Query: "{payload.query}"
 """
     try:
         response = model.generate_content(prompt)
         text_resp = response.text.strip()
-        # Clean up possible markdown code blocks
-        if text_resp.startswith("```json"):
-            text_resp = text_resp[7:]
-        if text_resp.endswith("```"):
-            text_resp = text_resp[:-3]
+        if text_resp.startswith("```json"): text_resp = text_resp[7:]
+        if text_resp.endswith("```"): text_resp = text_resp[:-3]
         return json.loads(text_resp.strip())
     except Exception as e:
         logger.error(f"AI Search error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"company": None, "state": None, "title": None, "has_phone": None, "missing_email": None}
+
 
 
 @router.post("/resolve-duplicate")

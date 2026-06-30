@@ -5,7 +5,6 @@ export default function UpdateCenter() {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState(null);
   const [changelog, setChangelog] = useState([]);
-  const [hover, setHover] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
   const fallbackStatus = useMemo(() => ({
@@ -47,14 +46,12 @@ export default function UpdateCenter() {
   }, []);
 
   useEffect(() => {
-    if (!hover && !open) return undefined;
+    if (!open) return undefined;
 
     if (!loaded) {
       fetchStatus();
       fetchChangelog();
     }
-
-    if (!open) return undefined;
 
     const intv = setInterval(fetchStatus, 300000);
     const changelogIntv = setInterval(fetchChangelog, 600000);
@@ -62,16 +59,12 @@ export default function UpdateCenter() {
       clearInterval(intv);
       clearInterval(changelogIntv);
     };
-  }, [fetchChangelog, fetchStatus, hover, loaded, open]);
+  }, [open, loaded, fetchStatus, fetchChangelog]);
 
   useEffect(() => {
-    if (open) fetchChangelog();
-  }, [open, fetchChangelog]);
-
-  useEffect(() => {
-    const onOpenUpdateCenter = () => setOpen(true);
-    window.addEventListener('open-update-center', onOpenUpdateCenter);
-    return () => window.removeEventListener('open-update-center', onOpenUpdateCenter);
+    const handleToggle = () => setOpen(o => !o);
+    window.addEventListener('toggle-update-center', handleToggle);
+    return () => window.removeEventListener('toggle-update-center', handleToggle);
   }, []);
 
   const activeStatus = status || fallbackStatus;
@@ -144,97 +137,6 @@ export default function UpdateCenter() {
 
   return (
     <>
-      {/* Floating Indicator */}
-      <div 
-        style={{
-          position: 'fixed',
-          bottom: 24,
-          right: 24,
-          zIndex: 9000,
-          display: 'flex',
-          alignItems: 'flex-end',
-          flexDirection: 'column',
-          gap: 8,
-        }}
-        onMouseEnter={() => setHover(true)}
-        onMouseLeave={() => setHover(false)}
-      >
-        <div style={{
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'flex-end',
-        }}>
-          {hover && (
-            <div style={{
-              position: 'absolute',
-              bottom: '100%',
-              right: 0,
-              marginBottom: 12,
-              background: 'var(--panel-bg)',
-              border: '1px solid var(--card-border)',
-              padding: '12px 14px',
-              borderRadius: 12,
-              boxShadow: 'var(--shadow-lg)',
-              fontSize: 12,
-              animation: 'fadeUp 0.2s ease',
-              color: 'var(--text-secondary)',
-              minWidth: 280,
-              maxWidth: 320,
-              zIndex: 100,
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 6, alignItems: 'baseline' }}>
-                <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>Latest Update</span>
-                <span style={{ color, fontWeight: 700 }}>{activeStatus.version}</span>
-              </div>
-              <div style={{ fontSize: 12.5, color: 'var(--text-primary)', fontWeight: 700, lineHeight: 1.35 }}>
-                {briefHeadline}
-              </div>
-              <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.45 }}>
-                {compactSummary}
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginTop: 10 }}>
-                <span>Updated:</span>
-                <span style={{ color: 'var(--text-primary)', textAlign: 'right' }}>{updateTime}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginTop: 4 }}>
-                <span>Status:</span>
-                <strong style={{ color, textAlign: 'right' }}>{activeStatus.status}</strong>
-              </div>
-              <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-                <span className="badge badge-blue">Verified {statusCounts.verified}</span>
-                <span className="badge badge-amber">Pending {statusCounts.pending}</span>
-                <span className="badge badge-red">Failed {statusCounts.failed}</span>
-              </div>
-            </div>
-          )}
-
-          <button
-            onClick={() => setOpen(true)}
-            aria-label="Open update center"
-            title="Open update center"
-            style={{
-              width: 50,
-              height: 50,
-              borderRadius: 16,
-              background: 'var(--card-bg)',
-              border: `2px solid ${color}`,
-              color: color,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 22,
-              cursor: 'pointer',
-              boxShadow: `0 4px 12px ${color}33`,
-              transition: 'all 0.2s ease',
-              transform: hover ? 'scale(1.05)' : 'scale(1)',
-            }}
-          >
-            <i className={`ti ${icon}`} />
-          </button>
-        </div>
-      </div>
-
       {/* Update Center Drawer */}
       {open && (
         <>

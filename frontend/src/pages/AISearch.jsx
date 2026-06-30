@@ -209,9 +209,24 @@ function buildRecruiterInsight(record) {
     ...extractPhonesFromText(sourceTexts),
   ].filter(Boolean)
 
-  const emails = dedupeValues(emailValues.map((value) => value.trim()).filter(val => val && !val.includes('missing.local')))
+  const emails = dedupeValues(
+    emailValues
+      .map((value) => String(value).trim())
+      .filter(val => {
+        if (!val || val.includes('missing.local')) return false
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)
+      })
+  )
   const phones = dedupeValues(
-    phoneValues.map((value) => value.trim()).filter(Boolean),
+    phoneValues
+      .map((value) => String(value).trim())
+      .filter(val => {
+        if (!val) return false
+        const normalized = val.toLowerCase()
+        if (normalized === 'false' || normalized === 'true' || normalized === 'null' || normalized === 'none') return false
+        const digits = val.replace(/[^\d+]/g, '')
+        return digits.length >= 7
+      }),
     (value) => value.replace(/[^\d+]/g, '')
   )
 

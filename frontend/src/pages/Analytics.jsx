@@ -28,6 +28,16 @@ const customTooltipStyle = {
   itemStyle: { color: 'var(--text-secondary)' },
 }
 
+function fadeHex(hex, alpha) {
+  if (!hex?.startsWith('#') || (hex.length !== 7 && hex.length !== 4)) return hex
+  const normalized = hex.length === 4
+    ? `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`
+    : hex
+  const safeAlpha = Math.max(0, Math.min(1, alpha))
+  const alphaHex = Math.round(safeAlpha * 255).toString(16).padStart(2, '0')
+  return `${normalized}${alphaHex}`
+}
+
 function SectionCard({ title, icon, children, style, compact }) {
   return (
     <div className="card" style={{
@@ -145,6 +155,8 @@ function StateTooltip({ active, payload, label }) {
 }
 
 export default function Analytics() {
+  const [selectedStates, setSelectedStates] = useState([])
+
   const { data: analyticsData, isLoading: loading } = useQuery({
     queryKey: ['analytics-dashboard'],
     queryFn: async () => {
@@ -198,6 +210,22 @@ export default function Analytics() {
     topPages.length === 0
 
   const hasStateData = stateData.length > 0
+  const hasStateSelection = selectedStates.length > 0
+  const visibleStateData = hasStateSelection
+    ? stateData.filter((entry) => selectedStates.includes(entry.state))
+    : stateData
+  const stateChartMax = visibleStateData.reduce((max, entry) => Math.max(max, entry.recruiters), 0)
+
+  const toggleStateSelection = (stateCode) => {
+    if (!stateCode) return
+    setSelectedStates((current) => (
+      current.includes(stateCode)
+        ? current.filter((item) => item !== stateCode)
+        : [...current, stateCode]
+    ))
+  }
+
+  const clearStateSelection = () => setSelectedStates([])
 
   return (
     <div
@@ -276,17 +304,92 @@ export default function Analytics() {
             </div>
           ) : (
             <div style={{ position: 'relative', width: '100%', height: 320 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {stateData.map((entry, i) => {
+                    const selected = selectedStates.includes(entry.state)
+                    const color = PAGE_COLORS[i % PAGE_COLORS.length]
+
+                    return (
+                      <button
+                        key={entry.state}
+                        type="button"
+                        onClick={() => toggleStateSelection(entry.state)}
+                        style={{
+                          border: `1px solid ${selected ? color : 'var(--card-border)'}`,
+                          background: selected ? fadeHex(color, 0.16) : 'var(--card-bg)',
+                          color: 'var(--text-primary)',
+                          borderRadius: 999,
+                          padding: '5px 10px',
+                          fontSize: 10.5,
+                          fontWeight: 700,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          cursor: 'pointer',
+                          transition: 'all 160ms ease',
+                        }}
+                        aria-pressed={selected}
+                        title={`${STATE_FULL_NAMES[entry.state] || entry.state}: ${entry.recruiters.toLocaleString()} recruiters`}
+                      >
+                        <span style={{ width: 8, height: 8, borderRadius: 999, background: color, flexShrink: 0 }} />
+                        {entry.state}
+                      </button>
+                    )
+                  })}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+                  <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
+                    {hasStateSelection ? `${visibleStateData.length} selected` : 'Click bars or chips to compare states'}
+                  </span>
+                  {hasStateSelection && (
+                    <button
+                      type="button"
+                      onClick={clearStateSelection}
+                      style={{
+                        border: '1px solid var(--card-border)',
+                        background: 'var(--card-bg)',
+                        color: 'var(--text-primary)',
+                        borderRadius: 999,
+                        padding: '5px 10px',
+                        fontSize: 10.5,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
               <ChartBox>
-                <BarChart data={stateData} margin={{ top: 16, right: 8, left: 0, bottom: 4 }} barCategoryGap="18%">
+                <BarChart data={visibleStateData} margin={{ top: 34, right: 20, left: 12, bottom: 8 }} barCategoryGap="18%">
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
                   <XAxis dataKey="state" tick={CHART_TICK} axisLine={false} tickLine={false} interval={0} />
-                  <YAxis tick={CHART_TICK} axisLine={false} tickLine={false} width={36} allowDecimals={false} />
+                  <YAxis
+                    tick={CHART_TICK}
+                    axisLine={false}
+                    tickLine={false}
+                    width={44}
+                    allowDecimals={false}
+                    domain={[0, Math.max(5, Math.ceil(stateChartMax * 1.12))]}
+                  />
                   <Tooltip content={<StateTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-                  <Bar dataKey="recruiters" radius={[3, 3, 0, 0]} maxBarSize={24}>
+                  <Bar dataKey="recruiters" radius={[3, 3, 0, 0]} maxBarSize={24} onClick={(data) => toggleStateSelection(data?.state)}>
                     <LabelList dataKey="recruiters" position="top" {...BAR_LABEL_PROPS} />
-                    {stateData.map((entry, i) => (
-                      <Cell key={entry.state} fill={PAGE_COLORS[i % PAGE_COLORS.length]} />
-                    ))}
+                    {visibleStateData.map((entry) => {
+                      const colorIndex = stateData.findIndex((item) => item.state === entry.state)
+                      const color = PAGE_COLORS[(colorIndex === -1 ? 0 : colorIndex) % PAGE_COLORS.length]
+                      return (
+                      <Cell
+                        key={entry.state}
+                        fill={color}
+                        stroke={selectedStates.includes(entry.state) ? color : 'transparent'}
+                        strokeWidth={selectedStates.includes(entry.state) ? 1.5 : 0}
+                        style={{ cursor: 'pointer' }}
+                      />
+                      )
+                    })}
                   </Bar>
                 </BarChart>
               </ChartBox>

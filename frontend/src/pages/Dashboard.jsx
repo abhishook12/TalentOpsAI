@@ -74,13 +74,8 @@ export default function Dashboard() {
     ...sharedQueryOpts,
   })
 
-  const { data: jobs, isLoading: jobsLoading, error: jobsError, isFetching: jobsFetching } = useQuery({
-    queryKey: ['dashboard-upload-jobs'],
-    queryFn: async () => (await api.get('/upload/jobs')).data,
-    ...sharedQueryOpts,
-  })
 
-  const isFetchingAny = kpisFetching || dqFetching || visitsFetching || companiesFetching || jobsFetching
+  const isFetchingAny = kpisFetching || dqFetching || visitsFetching || companiesFetching
 
   const handleRefresh = useCallback(async () => {
     if (isManualRefreshing.current || isFetchingAny) return
@@ -92,7 +87,6 @@ export default function Dashboard() {
         queryClient.invalidateQueries({ queryKey: ['dashboard-data-quality'] }),
         queryClient.invalidateQueries({ queryKey: ['dashboard-visits'] }),
         queryClient.invalidateQueries({ queryKey: ['dashboard-top-companies'] }),
-        queryClient.invalidateQueries({ queryKey: ['dashboard-upload-jobs'] }),
       ])
       setLastUpdated(new Date())
     } catch (err) {
@@ -103,7 +97,7 @@ export default function Dashboard() {
   }, [queryClient, isFetchingAny])
 
   const topPages = Array.isArray(visits?.top_pages) ? visits.top_pages.slice(0, 5) : []
-  const recentJobs = Array.isArray(jobs) ? [...jobs].sort((a, b) => new Date(b.started_at || 0) - new Date(a.started_at || 0)).slice(0, 5) : []
+
   const totalPages = Number(visits?.total_visits || 0)
   const today = Number(visits?.today || 0)
   const yesterday = Number(visits?.yesterday || 0)
@@ -159,12 +153,9 @@ export default function Dashboard() {
     dataQuality?.needs_review_count > 0
       ? { title: `${formatCount(dataQuality.needs_review_count)} recruiters need review`, meta: 'Data quality', description: 'Manual review queue is populated from real risky records.', tone: 'warning', icon: 'ti-alert-triangle' }
       : { title: 'No recruiter review queue available', meta: 'Data quality', description: 'The backend did not report a review queue count.', tone: 'success', icon: 'ti-circle-check' },
-    recentJobs[0]
-      ? { title: recentJobs[0].status ? `${String(recentJobs[0].status).toUpperCase()} import job` : 'Recent import job available', meta: recentJobs[0].filename || recentJobs[0].file_name || 'Upload history', description: recentJobs[0].current_step || 'Latest ETL status synced from backend.', tone: recentJobs[0].status === 'failed' || recentJobs[0].status.includes('failed') ? 'danger' : recentJobs[0].status.includes('completed') ? 'success' : 'warning', icon: 'ti-database-import' }
-      : { title: 'No import jobs yet', meta: 'ETL', description: 'Upload history will appear once a file is ingested.', tone: 'neutral', icon: 'ti-upload' },
   ]
 
-  const isError = dqError || visitsError || companiesError || jobsError
+  const isError = dqError || visitsError || companiesError
 
   return (
     <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
@@ -195,6 +186,12 @@ export default function Dashboard() {
             <PrimaryButton onClick={() => navigate('/ai-search')}>
               <i className="ti ti-sparkles" /> Open AI Search
             </PrimaryButton>
+            <GhostButton
+              onClick={() => window.open('http://localhost:8000/analytics/executive-report', '_blank')}
+              title="Download executive scorecard CSV report across top staffing giants"
+            >
+              <i className="ti ti-file-export" /> Executive Report
+            </GhostButton>
           </div>
         )}
       />

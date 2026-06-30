@@ -24,7 +24,8 @@ engine = create_engine(
     pool_timeout=30,          # fail fast instead of hanging too long on pool wait
     pool_use_lifo=True,       # re-use warm connections first
     connect_args={
-        "connect_timeout": 10
+        "connect_timeout": 10,
+        "prepare_threshold": None
     }
 )
 

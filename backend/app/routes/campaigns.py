@@ -21,7 +21,6 @@ from ..models.campaigns import (
 from ..models.models import Recruiter
 
 router = APIRouter()
-ensure_campaign_tables()
 
 
 VARIABLE_PATTERN = re.compile(r"{{\s*([a-zA-Z0-9_]+)\s*}}")

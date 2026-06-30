@@ -379,16 +379,49 @@ export default function Dashboard() {
             <GhostButton onClick={() => navigate('/upload')}>
               <i className="ti ti-database-import" /> Validate Import
             </GhostButton>
-            <GhostButton onClick={() => navigate('/ai-search')}>
+            <GhostButton onClick={() => navigate('/review-queue')}>
               <i className="ti ti-search" /> Open Review Queue
             </GhostButton>
-            <GhostButton disabled title="Requires approval / Coming soon" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+            <GhostButton 
+              onClick={async () => {
+                try {
+                  alert('Rebuilding search indexes concurrently. This happens in the background...')
+                  const res = await api.post('/admin/rebuild-index')
+                  alert(res.data.message || 'Success!')
+                } catch (e) {
+                  alert('Error: ' + getErrorMessage(e))
+                }
+              }}
+              title="Optimize fuzzy search"
+            >
               <i className="ti ti-refresh" /> Rebuild Search Index
             </GhostButton>
-            <GhostButton disabled title="Requires approval / Coming soon" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+            <GhostButton 
+              onClick={async () => {
+                try {
+                  alert('Running safe data cleanup...')
+                  const res = await api.post('/admin/cleanup')
+                  alert(res.data.message || 'Success!')
+                } catch (e) {
+                  alert('Error: ' + getErrorMessage(e))
+                }
+              }}
+              title="Flag bad data"
+            >
               <i className="ti ti-broom" /> Run Data Cleanup
             </GhostButton>
-            <GhostButton disabled title="Requires approval / Coming soon" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+            <GhostButton 
+              onClick={async () => {
+                try {
+                  alert('Triggering master sync...')
+                  const res = await api.post('/admin/sync-master')
+                  alert(res.data.message || 'Success!')
+                } catch (e) {
+                  alert('Error: ' + getErrorMessage(e))
+                }
+              }}
+              title="Sync analytics and flush caches"
+            >
               <i className="ti ti-database" /> Sync Master Database
             </GhostButton>
           </div>

@@ -10,6 +10,7 @@ const AISearch = lazy(() => import('./pages/AISearch'))
 const Directory = lazy(() => import('./pages/Directory'))
 const AdminTerminal = lazy(() => import('./pages/AdminTerminal'))
 const ActivityLog = lazy(() => import('./pages/ActivityLog'))
+const ReviewQueue = lazy(() => import('./pages/ReviewQueue'))
 
 class GlobalErrorBoundary extends Component {
   constructor(props) {
@@ -763,6 +764,7 @@ function AppShell() {
                     <Route path="/companies" element={<Directory />} />
                     <Route path="/admin" element={<AdminTerminal />} />
                     <Route path="/activity" element={<ActivityLog />} />
+                    <Route path="/review-queue" element={<ReviewQueue />} />
                   </Routes>
                 </GlobalErrorBoundary>
               </Suspense>

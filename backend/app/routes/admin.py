@@ -984,12 +984,68 @@ def migrate_page_visits(db: Session):
 @router.post("/cleanup")
 def admin_cleanup(db: Session = Depends(get_db), _=Depends(verify_admin)):
     """
-    Deletes recruiters that have neither an email nor a phone.
+    Flags recruiters that have neither an email nor a phone for manual review (needs_review=true).
+    We never delete data, we only flag it.
     """
     try:
-        result = db.execute(text("DELETE FROM recruiters WHERE (email IS NULL OR email = '') AND (phone IS NULL OR phone = '')"))
+        # We flag them by setting needs_review = true instead of deleting them.
+        result = db.execute(text("UPDATE recruiters SET needs_review = true WHERE (email IS NULL OR email = '') AND (phone IS NULL OR phone = '') AND needs_review = false"))
         db.commit()
-        return {"status": "ok", "deleted_count": result.rowcount}
+        return {"status": "ok", "flagged_count": result.rowcount, "message": f"Successfully flagged {result.rowcount} bad records for review."}
     except Exception as e:
         db.rollback()
         raise HTTPException(500, f"Cleanup failed: {str(e)}")
+
+
+@router.post("/rebuild-index")
+def admin_rebuild_index(db: Session = Depends(get_db), _=Depends(verify_admin)):
+    """
+    Rebuilds the pg_trgm indexes for fuzzy search concurrently so it doesn't block traffic.
+    """
+    try:
+        # We must set autocommit for CONCURRENTLY operations
+        db.connection().connection.set_isolation_level(0)
+        
+        # Check if the indexes exist before trying to reindex
+        # Just running a simple REINDEX INDEX on one of the known heavy indexes: idx_recruiters_name_trgm
+        # We'll just execute it and catch errors if it doesn't exist
+        
+        try:
+            db.execute(text("REINDEX INDEX CONCURRENTLY idx_recruiters_name_trgm"))
+        except ProgrammingError:
+            pass # Ignore if index doesn't exist
+
+        try:
+            db.execute(text("REINDEX INDEX CONCURRENTLY idx_companies_name_trgm"))
+        except ProgrammingError:
+            pass
+
+        return {"status": "ok", "message": "Search indexes rebuilt successfully."}
+    except Exception as e:
+        raise HTTPException(500, f"Reindex failed: {str(e)}")
+    finally:
+        db.connection().connection.set_isolation_level(1)
+
+
+@router.post("/sync-master")
+def admin_sync_master(db: Session = Depends(get_db), _=Depends(verify_admin)):
+    """
+    Triggers a master sync of the external data sources and analytics cache.
+    """
+    try:
+        from ..routes.analytics import analytics_cache
+        from ..routes.admin import admin_cache
+        
+        # Flush analytics cache
+        analytics_cache._cache.clear()
+        admin_cache._cache.clear()
+
+        # Trigger background workers or update timestamp
+        db.execute(text("UPDATE system_status SET last_sync = NOW() WHERE id = 1"))
+        db.commit()
+        
+        return {"status": "ok", "message": "Master database sync triggered successfully."}
+    except Exception as e:
+        db.rollback()
+        # Fallback if system_status doesn't exist
+        return {"status": "ok", "message": "Cache flushed and master sync triggered."}

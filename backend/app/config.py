@@ -26,7 +26,7 @@ CORS_ORIGINS = [
     o.strip()
     for o in os.getenv(
         "CORS_ORIGINS",
-        "https://talent-ops-ai.vercel.app,https://talent-ops-ai-staging.vercel.app,http://localhost:5173,http://127.0.0.1:5173",
+        "https://talent-ops-ai.vercel.app,https://talent-ops-ai-staging.vercel.app,http://localhost:5173,http://127.0.0.1:5173,https://94334d6e-bbcd-4b1a-91a7-46d8884e20ea.lovableproject.com",
     ).split(",")
     if o.strip()
 ]

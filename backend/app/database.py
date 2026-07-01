@@ -15,18 +15,24 @@ if raw_database_url:
         DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://")
 
 
-engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True,       # detects dead connections before using them
-    pool_recycle=300,         # recycle connections every 5 mins
-    pool_size=20,             # Max connections = 20
-    max_overflow=10,          # limit overflows
-    pool_timeout=30,          # fail fast instead of hanging too long on pool wait
-    pool_use_lifo=True,       # re-use warm connections first
-    connect_args={
+connect_args = {}
+if DATABASE_URL.startswith("postgresql"):
+    connect_args = {
         "connect_timeout": 10,
         "prepare_threshold": None
     }
+else:
+    connect_args = {"check_same_thread": False}
+
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,
+    pool_recycle=300,
+    pool_size=20,
+    max_overflow=10,
+    pool_timeout=30,
+    pool_use_lifo=True,
+    connect_args=connect_args
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

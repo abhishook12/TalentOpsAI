@@ -20,7 +20,7 @@ def get_git_commits(limit=10):
         )
     except Exception as e:
         print("Git log error:", e)
-        raise e
+        return []
 
     commits = []
     for line in output.split('\n'):

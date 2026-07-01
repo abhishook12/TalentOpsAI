@@ -33,7 +33,7 @@ const offsets = {
 
 export default function USHeatmap() {
   const [tooltipContent, setTooltipContent] = useState("");
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const tooltipRef = React.useRef(null);
 
   const { data: stateData, isLoading } = useQuery({
     queryKey: ["recruiters-by-state"],
@@ -76,7 +76,10 @@ export default function USHeatmap() {
       y = e.clientY - rect.top - tooltipHeight - 10;
     }
 
-    setMousePosition({ x, y });
+    if (tooltipRef.current) {
+      tooltipRef.current.style.left = `${x}px`;
+      tooltipRef.current.style.top = `${y}px`;
+    }
   };
 
   return (
@@ -178,10 +181,11 @@ export default function USHeatmap() {
         {/* Floating Tooltip */}
         {tooltipContent && (
           <div
+            ref={tooltipRef}
             style={{
               position: "absolute",
-              left: mousePosition.x,
-              top: mousePosition.y,
+              left: "-9999px",
+              top: "-9999px",
               background: "#0d1527",
               color: "#fff",
               padding: "8px 12px",

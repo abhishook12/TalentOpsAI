@@ -146,11 +146,6 @@ def companies_count_by_state(db: Session = Depends(get_db)):
         SELECT
             COALESCE(
                 NULLIF(TRIM(c.state), ''),
-                CASE
-                    WHEN c.location ~ '^[A-Za-z]{2}$' THEN UPPER(c.location)
-                    WHEN c.location ~ '.*[ ,]([A-Za-z]{2})$' THEN UPPER(SUBSTRING(c.location FROM '([A-Za-z]{2})$'))
-                    ELSE NULL
-                END,
                 NULLIF(TRIM(r.state), ''),
                 'Unknown'
             ) AS state,
@@ -342,9 +337,20 @@ def visit_stats(db: Session = Depends(get_db)):
     """), {"since": seven_days_ago}).mappings().all()
 
     thirty_days_ago = now - timedelta(days=30)
-    weekly = db.execute(text("""
+    
+    # Conditional SQL for week truncation based on DB type
+    import os
+    db_url = os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DATABASE_URL") or ""
+    is_sqlite = not db_url.startswith("postgresql")
+
+    if is_sqlite:
+        week_sql = "strftime('%Y-%m-%d', visited_at, 'weekday 0', '-6 days') AS week_start"
+    else:
+        week_sql = "DATE_TRUNC('week', visited_at)::date AS week_start"
+
+    weekly = db.execute(text(f"""
         SELECT
-            DATE_TRUNC('week', visited_at)::date AS week_start,
+            {week_sql},
             COUNT(*) AS visits
         FROM page_visits
         WHERE visited_at >= :since
@@ -564,3 +570,50 @@ def get_executive_report(db: Session = Depends(get_db)):
     return Response(content=output.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=executive_agency_scorecard.csv"})
 
 
+@router.get("/visitor-logs")
+def get_visitor_logs(limit: int = 100, db: Session = Depends(get_db)):
+    try:
+        visits = db.execute(text("""
+            SELECT id, page, path, user_email, session_id, time_on_page, user_agent, ip_address, visited_at
+            FROM page_visits
+            ORDER BY visited_at DESC
+            LIMIT :limit
+        """), {"limit": limit}).mappings().all()
+
+        results = []
+        for v in visits:
+            ts = v["visited_at"].isoformat() if v["visited_at"] else None
+            if ts and not ts.endswith('Z') and '+' not in ts: ts += 'Z'
+            
+            # Simple User Agent Parser
+            ua = v["user_agent"] or ""
+            browser = "Unknown Browser"
+            os = "Unknown OS"
+            if "Edg/" in ua: browser = "Edge"
+            elif "Chrome/" in ua: browser = "Chrome"
+            elif "Firefox/" in ua: browser = "Firefox"
+            elif "Safari/" in ua and "Chrome/" not in ua: browser = "Safari"
+            
+            if "Windows" in ua: os = "Windows"
+            elif "Mac OS X" in ua: os = "macOS"
+            elif "Linux" in ua: os = "Linux"
+            elif "Android" in ua: os = "Android"
+            elif "iPhone" in ua or "iPad" in ua: os = "iOS"
+
+            results.append({
+                "id": v["id"],
+                "page": v["page"],
+                "path": v["path"],
+                "user_email": v["user_email"],
+                "session_id": v["session_id"],
+                "time_on_page": v["time_on_page"],
+                "ip_address": v["ip_address"] or "Unknown IP",
+                "browser": browser,
+                "os": os,
+                "timestamp": ts,
+                "raw_ua": ua
+            })
+        return {"logs": results}
+    except Exception as e:
+        print(f"Error in visitor logs: {e}")
+        return {"logs": []}

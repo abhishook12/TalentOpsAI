@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { Activity, Globe, Monitor, Search, RefreshCw, UserCircle, MapPin } from 'lucide-react'
-import DashboardLayout from '../components/DashboardLayout'
 import api from '../services/api'
 
 export default function VisitorTracking() {
@@ -34,7 +33,7 @@ export default function VisitorTracking() {
   })
 
   return (
-    <DashboardLayout>
+    <>
       <div className="flex flex-col h-full space-y-6 animate-fade-in">
         
         {/* Header Section */}
@@ -158,6 +157,6 @@ export default function VisitorTracking() {
           </div>
         </div>
       </div>
-    </DashboardLayout>
+    </>
   )
 }

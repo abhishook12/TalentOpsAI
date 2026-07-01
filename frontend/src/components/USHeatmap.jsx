@@ -179,31 +179,35 @@ export default function USHeatmap() {
         </ComposableMap>
 
         {/* Floating Tooltip */}
-        {tooltipContent && (
-          <div
-            ref={tooltipRef}
-            style={{
-              position: "absolute",
-              left: "-9999px",
-              top: "-9999px",
-              background: "#0d1527",
-              color: "#fff",
-              padding: "8px 12px",
-              borderRadius: "8px",
-              fontSize: "12px",
-              pointerEvents: "none",
-              fontWeight: "600",
-              border: "1px solid #1c2741",
-              boxShadow: "0 8px 16px rgba(0,0,0,0.5)",
-              whiteSpace: "pre-line",
-              textAlign: "center",
-              zIndex: 10
-            }}
-          >
-            <span style={{ color: "#94a3b8", fontSize: "10px", display: "block", marginBottom: "2px", textTransform: "uppercase" }}>{tooltipContent.split('\n')[0]}</span>
-            <span style={{ color: "#f59e0b", fontSize: "13px" }}>{tooltipContent.split('\n')[1]}</span>
-          </div>
-        )}
+        <div
+          ref={tooltipRef}
+          style={{
+            position: "absolute",
+            left: "-9999px",
+            top: "-9999px",
+            background: "#0d1527",
+            color: "#fff",
+            padding: "8px 12px",
+            borderRadius: "8px",
+            fontSize: "12px",
+            pointerEvents: "none",
+            fontWeight: "600",
+            border: "1px solid #1c2741",
+            boxShadow: "0 8px 16px rgba(0,0,0,0.5)",
+            whiteSpace: "pre-line",
+            textAlign: "center",
+            zIndex: 10,
+            opacity: tooltipContent ? 1 : 0,
+            transition: "opacity 150ms ease-in-out"
+          }}
+        >
+          {tooltipContent && (
+            <>
+              <span style={{ color: "#94a3b8", fontSize: "10px", display: "block", marginBottom: "2px", textTransform: "uppercase" }}>{tooltipContent.split('\n')[0]}</span>
+              <span style={{ color: "#f59e0b", fontSize: "13px" }}>{tooltipContent.split('\n')[1]}</span>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Legend */}

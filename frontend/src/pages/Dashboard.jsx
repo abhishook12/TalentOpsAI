@@ -13,6 +13,7 @@ import {
   ShellCard,
   TimelineItem,
 } from '../components/CommandCenter'
+import USHeatmap from '../components/USHeatmap'
 
 const REFRESH_INTERVAL = 60_000 // 60 seconds
 
@@ -221,6 +222,10 @@ export default function Dashboard() {
         ))}
       </div>
 
+      <div style={{ marginTop: '4px', marginBottom: '4px' }}>
+        <USHeatmap />
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: '1.35fr 0.95fr', gap: 12, minHeight: 0 }}>
         <ShellCard style={{ padding: 18, minHeight: 0 }}>
           <SectionHeader
@@ -427,6 +432,7 @@ export default function Dashboard() {
           </div>
         </ShellCard>
       </div>
+
     </div>
   )
 }

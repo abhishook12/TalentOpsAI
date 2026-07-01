@@ -18,8 +18,8 @@ class GlobalErrorBoundary extends Component {
     this.state = { hasError: false }
   }
 
-  static getDerivedStateFromError() {
-    return { hasError: true }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error }
   }
 
   componentDidCatch(error, errorInfo) {
@@ -36,6 +36,7 @@ class GlobalErrorBoundary extends Component {
           <i className="ti ti-alert-triangle cc-error-icon" />
           <h2>Component crashed</h2>
           <p>The app caught a render error before it could take down the whole session.</p>
+          <pre style={{color: 'red', textAlign: 'left', padding: 20, maxWidth: 800, overflow: 'auto'}}>{String(this.state.error?.stack || this.state.error)}</pre>
           <div className="cc-error-actions">
             <button onClick={() => { window.location.href = '/' }} className="cc-ghost-button">Return to dashboard</button>
             <button onClick={() => window.location.reload()} className="cc-primary-button">Reload page</button>

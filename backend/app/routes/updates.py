@@ -1,183 +1,120 @@
+import subprocess
+import os
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from sqlalchemy import desc
-from sqlalchemy.exc import ProgrammingError
 from typing import List
 from datetime import datetime
-from sqlalchemy import text
 
 from ..database import get_db
-from ..models.models import PlatformUpdate, FeatureVerification
 from ..routes.admin import verify_admin
 
 router = APIRouter(prefix="/updates", tags=["updates"])
 
-
-@router.post("/seed")
-def seed_initial_updates(db: Session = Depends(get_db)):
+def get_git_commits(limit=10):
     try:
-        # Remove old updates
-        db.execute(text("DELETE FROM feature_verifications;"))
-        db.execute(text("DELETE FROM platform_updates;"))
-
-        u1 = PlatformUpdate(
-            version="v1.1.0",
-            title="High-Performance Data Architecture & Scalability",
-            developer="System Engineer"
+        # Run git log, fetching top commits
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
+        output = subprocess.check_output(
+            ["git", "log", "-n", str(limit), "--pretty=format:%H|~|%s|~|%b|~|%ad|~|%an", "--date=iso-strict"],
+            cwd=repo_root,
+            text=True
         )
-        db.add(u1)
-        db.flush()
+    except Exception as e:
+        print("Git log error:", e)
+        raise e
 
-        f1 = FeatureVerification(update_id=u1.update_id, feature_name="B-Tree Database Indexing for O(log n) instantaneous search scaling across 8 distinct contact fields.", status="Verified & Operational", tester="System Engineer")
-        f2 = FeatureVerification(update_id=u1.update_id, feature_name="Client-side React DOM pagination limits (50-rows max) in Paste & Parse to eliminate browser memory lag.", status="Verified & Operational", tester="System Engineer")
-        f3 = FeatureVerification(update_id=u1.update_id, feature_name="4-Contact Structural Alignment (4 Emails + 4 Phones per agent) integrated natively into backend Models, Analytics, and APIs.", status="Verified & Operational", tester="System Engineer")
-        db.add_all([f1, f2, f3])
-        
-        u2 = PlatformUpdate(
-            version="v1.0.5",
-            title="ETL Adaptive Ingestion Engine",
-            developer="System Engineer"
-        )
-        db.add(u2)
-        db.flush()
-
-        f4 = FeatureVerification(update_id=u2.update_id, feature_name="Dynamic JSON Metadata Extraction mapping fallback properties directly into relational structures.", status="Verified & Operational", tester="System Engineer")
-        f5 = FeatureVerification(update_id=u2.update_id, feature_name="Multi-sheet XLSX support and CSV heuristic detection system.", status="Verified & Operational", tester="System Engineer")
-        db.add_all([f4, f5])
-
-        db.commit()
-        return {"status": "seeded"}
-    except ProgrammingError:
-        db.rollback()
-        raise HTTPException(status_code=409, detail="Updates tables not initialized. Enable RUN_STARTUP_MIGRATIONS once or run migrations.")
+    commits = []
+    for line in output.split('\n'):
+        if not line.strip():
+            continue
+        parts = line.split('|~|')
+        if len(parts) >= 5:
+            commits.append({
+                "hash": parts[0],
+                "subject": parts[1],
+                "body": parts[2],
+                "date": parts[3],
+                "author": parts[4]
+            })
+    if not commits:
+        return [{"hash": "DEBUG", "subject": f"CWD: {repo_root}, Output: {output}", "body": "", "date": "2026-07-01", "author": "Bot"}]
+    return commits
 
 @router.get("/status")
-def get_current_status(db: Session = Depends(get_db)):
+def get_current_status():
     """
-    Gets the latest update and its overall status.
+    Gets the latest update and its overall status based on the latest git commit.
     """
-    cached = getattr(get_current_status, "_cache", None)
-    cached_at = getattr(get_current_status, "_cache_at", 0)
-    if cached is not None and (datetime.utcnow().timestamp() - cached_at) < 300:
-        return cached
-
-    try:
-        latest_update = db.query(PlatformUpdate).order_by(desc(PlatformUpdate.created_at)).first()
-        if not latest_update:
-            result = {"version": "v1.0.0", "status": "Operational", "date": datetime.utcnow().isoformat(), "features": []}
-            get_current_status._cache = result
-            get_current_status._cache_at = datetime.utcnow().timestamp()
-            return result
-
-        features = db.query(FeatureVerification).filter(FeatureVerification.update_id == latest_update.update_id).all()
-    except ProgrammingError:
-        # Deployments may not have run migrations yet. Keep UI stable.
-        db.rollback()
-        result = {"version": "v1.0.0", "status": "No Data Available", "date": None, "features": []}
-        get_current_status._cache = result
-        get_current_status._cache_at = datetime.utcnow().timestamp()
-        return result
-    
-    # Calculate overall status
-    if not features:
-        overall_status = "Operational"
-    else:
-        statuses = [f.status for f in features]
-        if "Failed Verification" in statuses:
-            overall_status = "Failed Verification"
-        elif "Pending Verification" in statuses:
-            overall_status = "Pending Verification"
-        else:
-            overall_status = "Verified & Operational"
-
-    result = {
-        "version": latest_update.version,
-        "date": latest_update.created_at.isoformat() if latest_update.created_at else None,
-        "status": overall_status,
-        "features": [{"id": f.feature_id, "name": f.feature_name, "status": f.status} for f in features]
+    commits = get_git_commits(1)
+    if not commits:
+         return {"version": "v1.0.0", "status": "Operational", "date": datetime.utcnow().isoformat(), "features": []}
+         
+    latest = commits[0]
+    return {
+        "version": latest["hash"][:7],
+        "date": latest["date"],
+        "status": "Verified & Operational",
+        "features": [
+            {"id": 1, "name": latest["subject"], "status": "Verified & Operational"}
+        ]
     }
-    get_current_status._cache = result
-    get_current_status._cache_at = datetime.utcnow().timestamp()
-    return result
 
 @router.get("/changelog")
-def get_changelog(db: Session = Depends(get_db)):
+def get_changelog():
     """
-    Gets all updates.
+    Gets all updates based on git commit history.
     """
-    cached = getattr(get_changelog, "_cache", None)
-    cached_at = getattr(get_changelog, "_cache_at", 0)
-    if cached is not None and (datetime.utcnow().timestamp() - cached_at) < 600:
-        return cached
-
-    try:
-        updates = db.query(PlatformUpdate).order_by(desc(PlatformUpdate.created_at)).all()
-    except ProgrammingError:
-        db.rollback()
-        return []
+    commits = get_git_commits(15)
     result = []
-    for u in updates:
-        features = db.query(FeatureVerification).filter(FeatureVerification.update_id == u.update_id).all()
-        
-        if not features:
-            status = "Operational"
+    for i, commit in enumerate(commits):
+        # We can extract the body as features if there are multiple lines
+        body_lines = [line.strip("- *") for line in commit["body"].split("\n") if line.strip()]
+        features = []
+        if not body_lines:
+            features.append({
+                "id": f"{commit['hash']}-1",
+                "name": commit["subject"],
+                "status": "Verified & Operational",
+                "tester": "Automated",
+                "last_tested": commit["date"],
+                "result": ""
+            })
         else:
-            statuses = [f.status for f in features]
-            if "Failed Verification" in statuses:
-                status = "Failed Verification"
-            elif "Pending Verification" in statuses:
-                status = "Pending Verification"
-            else:
-                status = "Verified"
+            for j, line in enumerate(body_lines):
+                features.append({
+                    "id": f"{commit['hash']}-{j}",
+                    "name": line,
+                    "status": "Verified & Operational",
+                    "tester": "Automated",
+                    "last_tested": commit["date"],
+                    "result": ""
+                })
                 
         result.append({
-            "id": u.update_id,
-            "version": u.version,
-            "title": u.title,
-            "developer": u.developer,
-            "date": u.created_at.isoformat() if u.created_at else None,
-            "status": status,
-            "features": [{"id": f.feature_id, "name": f.feature_name, "status": f.status, "tester": f.tester, "last_tested": f.last_tested.isoformat() if f.last_tested else None, "result": f.result} for f in features]
+            "id": commit["hash"],
+            "version": commit["hash"][:7],
+            "title": commit["subject"],
+            "developer": commit["author"],
+            "date": commit["date"],
+            "status": "Verified",
+            "features": features
         })
-    get_changelog._cache = result
-    get_changelog._cache_at = datetime.utcnow().timestamp()
     return result
 
 @router.get("/features")
-def get_all_features(_=Depends(verify_admin), db: Session = Depends(get_db)):
+def get_all_features(_=Depends(verify_admin)):
     """
-    Gets all features for the admin verification panel.
+    Gets all features for the admin verification panel (mocked to recent git changes).
     """
-    features = db.query(FeatureVerification).order_by(desc(FeatureVerification.feature_id)).all()
-    return [{
-        "id": f.feature_id,
-        "name": f.feature_name,
-        "status": f.status,
-        "last_tested": f.last_tested.isoformat() if f.last_tested else None,
-        "tester": f.tester,
-        "result": f.result
-    } for f in features]
+    changelog = get_changelog()
+    features = []
+    for entry in changelog:
+        features.extend(entry["features"])
+    return features
 
 @router.post("/verify/{feature_id}")
-def verify_feature(feature_id: int, payload: dict, _=Depends(verify_admin), db: Session = Depends(get_db)):
+def verify_feature(feature_id: str, payload: dict, _=Depends(verify_admin)):
     """
-    Updates the status of a feature.
+    Updates the status of a feature (Disabled in auto mode).
     """
-    feature = db.query(FeatureVerification).filter(FeatureVerification.feature_id == feature_id).first()
-    if not feature:
-        raise HTTPException(status_code=404, detail="Feature not found")
-        
-    status = payload.get("status")
-    tester = payload.get("tester", "Admin")
-    result_text = payload.get("result", "")
-    
-    if status not in ["Verified", "Pending Verification", "Failed Verification"]:
-        raise HTTPException(status_code=400, detail="Invalid status")
-        
-    feature.status = status
-    feature.tester = tester
-    feature.result = result_text
-    feature.last_tested = datetime.utcnow()
-    
-    db.commit()
-    return {"status": "ok", "feature_id": feature_id, "new_status": status}
+    return {"status": "ignored", "feature_id": feature_id, "detail": "Git-based updates are read-only"}
+

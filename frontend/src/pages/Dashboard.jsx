@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from '@tanstack/react-router'
 import api, { getErrorMessage } from '../services/api'
 import {
   Badge,
@@ -184,7 +184,7 @@ export default function Dashboard() {
             >
               <i className="ti ti-refresh" style={isFetchingAny ? { animation: 'spin 0.8s linear infinite', display: 'inline-block' } : {}} /> Refresh Data
             </GhostButton>
-            <PrimaryButton onClick={() => navigate('/ai-search')}>
+            <PrimaryButton onClick={() => navigate({ to: '/ai-search' })}>
               <i className="ti ti-sparkles" /> Open AI Search
             </PrimaryButton>
             <GhostButton
@@ -279,7 +279,7 @@ export default function Dashboard() {
               {topCompanies.map((company) => (
                 <button
                   key={company.company_id}
-                  onClick={() => navigate('/companies')}
+                  onClick={() => navigate({ to: '/companies' })}
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -311,7 +311,7 @@ export default function Dashboard() {
               icon="ti-building"
               title="No company intelligence available"
               description="The backend did not return ranked company data yet."
-              action={<GhostButton onClick={() => navigate('/companies')}>Open companies</GhostButton>}
+              action={<GhostButton onClick={() => navigate({ to: '/companies' })}>Open companies</GhostButton>}
             />
           )}
         </ShellCard>
@@ -381,10 +381,10 @@ export default function Dashboard() {
             subtitle="Real actions only. Safe controls are enabled; destructive or unimplemented ones stay clearly disabled."
           />
           <div style={{ display: 'grid', gap: 10 }}>
-            <GhostButton onClick={() => navigate('/upload')}>
+            <GhostButton onClick={() => navigate({ to: '/upload' })}>
               <i className="ti ti-database-import" /> Validate Import
             </GhostButton>
-            <GhostButton onClick={() => navigate('/review-queue')}>
+            <GhostButton onClick={() => navigate({ to: '/review-queue' })}>
               <i className="ti ti-search" /> Open Review Queue
             </GhostButton>
             <GhostButton 

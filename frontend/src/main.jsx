@@ -23,10 +23,13 @@ if (!savedTheme) {
 }
 axios.defaults.withCredentials = true
 
+import { RouterProvider } from '@tanstack/react-router'
+import { router } from './router.jsx'
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <App />
+      <RouterProvider router={router} />
     </QueryClientProvider>
   </React.StrictMode>,
 )

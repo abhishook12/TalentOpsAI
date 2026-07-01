@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ComposableMap, Geographies, Geography } from "react-simple-maps";
+import { ComposableMap, Geographies, Geography, Marker, Annotation } from "react-simple-maps";
 import { scaleLinear } from "d3-scale";
+import { geoCentroid } from "d3-geo";
 import api from "../services/api";
 
 const geoUrl = "https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json";
@@ -16,6 +17,18 @@ const fipsToState = {
   "39": "OH", "40": "OK", "41": "OR", "42": "PA", "44": "RI", "45": "SC", "46": "SD",
   "47": "TN", "48": "TX", "49": "UT", "50": "VT", "51": "VA", "53": "WA", "54": "WV",
   "55": "WI", "56": "WY"
+};
+
+const offsets = {
+  VT: [50, -8],
+  NH: [34, 2],
+  MA: [30, -1],
+  RI: [28, 2],
+  CT: [35, 10],
+  NJ: [34, 1],
+  DE: [33, 0],
+  MD: [47, 10],
+  DC: [49, 21]
 };
 
 export default function USHeatmap() {
@@ -49,10 +62,21 @@ export default function USHeatmap() {
   const handleMouseMove = (e) => {
     // Keep tooltip relative to the map container by using nativeEvent offset
     const rect = e.currentTarget.getBoundingClientRect();
-    setMousePosition({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    });
+    let x = e.clientX - rect.left + 15;
+    let y = e.clientY - rect.top + 15;
+
+    // Prevent tooltip from overflowing the container bounds
+    const tooltipWidth = 180; // Safer max width
+    const tooltipHeight = 120; // Safer max height
+
+    if (x + tooltipWidth > rect.width) {
+      x = e.clientX - rect.left - tooltipWidth - 10;
+    }
+    if (y + tooltipHeight > rect.height) {
+      y = e.clientY - rect.top - tooltipHeight - 10;
+    }
+
+    setMousePosition({ x, y });
   };
 
   return (
@@ -84,34 +108,70 @@ export default function USHeatmap() {
         
         <ComposableMap projection="geoAlbersUsa" style={{ width: "100%", height: "100%", maxHeight: "500px" }}>
           <Geographies geography={geoUrl}>
-            {({ geographies }) =>
-              geographies.map((geo) => {
-                const stateAbbr = fipsToState[geo.id];
-                const count = dataMap[stateAbbr] || 0;
-                const fill = count > 0 ? colorScale(count) : "#141a25";
+            {({ geographies }) => (
+              <>
+                {geographies.map((geo) => {
+                  const stateAbbr = fipsToState[geo.id];
+                  const count = dataMap[stateAbbr] || 0;
+                  const fill = count > 0 ? colorScale(count) : "#141a25";
 
-                return (
-                  <Geography
-                    key={geo.rsmKey}
-                    geography={geo}
-                    fill={fill}
-                    stroke="#0b1221"
-                    strokeWidth={1.5}
-                    onMouseEnter={() => {
-                      setTooltipContent(`${geo.properties.name}\n${count} recruiter${count === 1 ? '' : 's'}`);
-                    }}
-                    onMouseLeave={() => {
-                      setTooltipContent("");
-                    }}
-                    style={{
-                      default: { outline: "none", transition: "fill 250ms" },
-                      hover: { fill: "#fcd34d", outline: "none", cursor: "pointer", transition: "fill 150ms" },
-                      pressed: { outline: "none" },
-                    }}
-                  />
-                );
-              })
-            }
+                  return (
+                    <Geography
+                      key={geo.rsmKey}
+                      geography={geo}
+                      fill={fill}
+                      stroke="#0b1221"
+                      strokeWidth={1.5}
+                      onMouseEnter={() => {
+                        setTooltipContent(`${geo.properties.name}\n${count} recruiter${count === 1 ? '' : 's'}`);
+                      }}
+                      onMouseLeave={() => {
+                        setTooltipContent("");
+                      }}
+                      style={{
+                        default: { outline: "none", transition: "fill 250ms" },
+                        hover: { fill: "#fcd34d", outline: "none", cursor: "pointer", transition: "fill 150ms" },
+                        pressed: { outline: "none" },
+                      }}
+                    />
+                  );
+                })}
+                
+                {/* Overlay State Abbreviations */}
+                {geographies.map((geo) => {
+                  const centroid = geoCentroid(geo);
+                  const stateAbbr = fipsToState[geo.id];
+                  if (!stateAbbr) return null;
+
+                  return (
+                    <g key={`${geo.rsmKey}-name`} style={{ pointerEvents: 'none' }}>
+                      {offsets[stateAbbr] ? (
+                        <Annotation
+                          subject={centroid}
+                          dx={offsets[stateAbbr][0]}
+                          dy={offsets[stateAbbr][1]}
+                          connectorProps={{
+                            stroke: "rgba(255,255,255,0.4)",
+                            strokeWidth: 1,
+                            strokeLinecap: "round"
+                          }}
+                        >
+                          <text x={4} fontSize={8.5} fontWeight={700} alignmentBaseline="middle" fill="rgba(255,255,255,0.7)">
+                            {stateAbbr}
+                          </text>
+                        </Annotation>
+                      ) : (
+                        <Marker coordinates={centroid}>
+                          <text y="2" fontSize={10} fontWeight={800} textAnchor="middle" fill="rgba(255,255,255,0.7)">
+                            {stateAbbr}
+                          </text>
+                        </Marker>
+                      )}
+                    </g>
+                  );
+                })}
+              </>
+            )}
           </Geographies>
         </ComposableMap>
 
@@ -120,8 +180,8 @@ export default function USHeatmap() {
           <div
             style={{
               position: "absolute",
-              left: mousePosition.x + 15,
-              top: mousePosition.y + 15,
+              left: mousePosition.x,
+              top: mousePosition.y,
               background: "#0d1527",
               color: "#fff",
               padding: "8px 12px",

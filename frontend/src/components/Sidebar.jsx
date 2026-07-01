@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from 'react-router-dom'
+import { Link as NavLink, useLocation } from '@tanstack/react-router'
 import { clearStoredToken } from '../services/api'
 
 const nav = [
@@ -8,6 +8,7 @@ const nav = [
   { to: '/directory', label: 'Directory', icon: 'ti-map-2', aliases: ['/states', '/companies'] },
   { to: '/analytics', label: 'Analytics', icon: 'ti-chart-bar' },
   { to: '/ai-search', label: 'AI Search', icon: 'ti-search' },
+  { to: '/visitor-logs', label: 'Visitor Logs', icon: 'ti-eye' },
 ]
 
 export default function Sidebar() {

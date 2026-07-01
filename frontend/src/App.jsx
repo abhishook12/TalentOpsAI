@@ -1,16 +1,7 @@
-import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom'
-import { useEffect, useMemo, useRef, useState, lazy, Suspense, Component } from 'react'
+import { useLocation, useNavigate, Outlet } from '@tanstack/react-router'
+import { useEffect, useMemo, useRef, useState, Component } from 'react'
 import Sidebar from './components/Sidebar'
 import UpdateCenter from './components/UpdateCenter'
-
-const Dashboard = lazy(() => import('./pages/Dashboard'))
-const Recruiters = lazy(() => import('./pages/Recruiters'))
-const Analytics = lazy(() => import('./pages/Analytics'))
-const AISearch = lazy(() => import('./pages/AISearch'))
-const Directory = lazy(() => import('./pages/Directory'))
-const AdminTerminal = lazy(() => import('./pages/AdminTerminal'))
-const ActivityLog = lazy(() => import('./pages/ActivityLog'))
-const ReviewQueue = lazy(() => import('./pages/ReviewQueue'))
 
 class GlobalErrorBoundary extends Component {
   constructor(props) {
@@ -714,10 +705,17 @@ function PageTracker() {
   return null
 }
 
-function AppShell() {
+export default function AppShell() {
   const location = useLocation()
   const navigate = useNavigate()
   const pageName = useMemo(() => PAGE_NAMES[location.pathname] || 'Dashboard', [location.pathname])
+
+  useEffect(() => {
+    const style = document.createElement('style')
+    style.textContent = globalStyles
+    document.head.appendChild(style)
+    return () => document.head.removeChild(style)
+  }, [])
 
   return (
     <>
@@ -739,7 +737,7 @@ function AppShell() {
                 <i className="ti ti-bell" />
                 <span style={{ position: 'absolute', top: 7, right: 9, width: 8, height: 8, borderRadius: 999, background: 'var(--danger)' }} />
               </button>
-              <button className="cc-icon-button" title="Account" aria-label="Account" onClick={() => navigate('/admin')}>
+              <button className="cc-icon-button" title="Account" aria-label="Account" onClick={() => navigate({ to: '/admin' })}>
                 <i className="ti ti-user-circle" />
               </button>
               <ThemeSwitcher />
@@ -748,29 +746,9 @@ function AppShell() {
 
           <div className="cc-content">
             <main className="cc-page-body">
-              <Suspense
-                fallback={
-                  <div style={{ display: 'grid', placeItems: 'center', minHeight: '60vh', gap: 12, color: 'var(--text-muted)' }}>
-                    <i className="ti ti-loader animate-spin" style={{ fontSize: 24, color: 'var(--accent)' }} />
-                    <span>Loading command center...</span>
-                  </div>
-                }
-              >
-                <GlobalErrorBoundary>
-                  <Routes>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/recruiters" element={<Recruiters />} />
-                    <Route path="/analytics" element={<Analytics />} />
-                    <Route path="/ai-search" element={<AISearch />} />
-                    <Route path="/directory" element={<Directory />} />
-                    <Route path="/states" element={<Directory />} />
-                    <Route path="/companies" element={<Directory />} />
-                    <Route path="/admin" element={<AdminTerminal />} />
-                    <Route path="/activity" element={<ActivityLog />} />
-                    <Route path="/review-queue" element={<ReviewQueue />} />
-                  </Routes>
-                </GlobalErrorBoundary>
-              </Suspense>
+              <GlobalErrorBoundary>
+                <Outlet />
+              </GlobalErrorBoundary>
             </main>
 
             <footer className="cc-footer">
@@ -812,17 +790,3 @@ function AppShell() {
   )
 }
 
-export default function App() {
-  useEffect(() => {
-    const style = document.createElement('style')
-    style.textContent = globalStyles
-    document.head.appendChild(style)
-    return () => document.head.removeChild(style)
-  }, [])
-
-  return (
-    <Router>
-      <AppShell />
-    </Router>
-  )
-}

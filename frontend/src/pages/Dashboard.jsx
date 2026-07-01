@@ -18,11 +18,11 @@ import USHeatmap from '../components/USHeatmap'
 const REFRESH_INTERVAL = 60_000 // 60 seconds
 
 function formatCount(value) {
-  return typeof value === 'number' ? value.toLocaleString() : 'Not available'
+  return typeof value === 'number' ? value.toLocaleString() : '—'
 }
 
 function percentText(value) {
-  return typeof value === 'number' ? `${value}%` : 'Not available'
+  return typeof value === 'number' ? `${value}%` : '—'
 }
 
 function formatTime(date) {
@@ -108,27 +108,27 @@ export default function Dashboard() {
     {
       label: 'Total Recruiters',
       value: formatCount(dataQuality?.total_recruiters),
-      sublabel: dataQuality?.total_recruiters ? 'Real database count' : 'Not available',
+      sublabel: dataQuality?.total_recruiters ? 'Real database count' : '—',
       icon: 'ti-users',
       tone: 'neutral',
     },
     {
       label: 'States Covered',
-      value: typeof dataQuality?.states_covered === 'number' ? formatCount(dataQuality?.states_covered) : (dataQuality?.states_covered || 'Not available'),
+      value: typeof dataQuality?.states_covered === 'number' ? formatCount(dataQuality?.states_covered) : (dataQuality?.states_covered || '—'),
       sublabel: typeof dataQuality?.state_coverage === 'number' ? `${dataQuality.state_coverage}% mapped coverage` : 'Needs state inference',
       icon: 'ti-map-2',
       tone: 'neutral',
     },
     {
       label: 'Known State Recruiters',
-      value: typeof dataQuality?.known_state_count === 'number' ? formatCount(dataQuality?.known_state_count) : 'Not available',
+      value: typeof dataQuality?.known_state_count === 'number' ? formatCount(dataQuality?.known_state_count) : '—',
       sublabel: 'Mapped via explicit or inferred logic',
       icon: 'ti-map-pin-filled',
       tone: 'success',
     },
     {
       label: 'Unknown State Recruiters',
-      value: typeof dataQuality?.unknown_state_count === 'number' ? formatCount(dataQuality?.unknown_state_count) : 'Not available',
+      value: typeof dataQuality?.unknown_state_count === 'number' ? formatCount(dataQuality?.unknown_state_count) : '—',
       sublabel: 'Missing location/company metadata entirely',
       icon: 'ti-alert-triangle',
       tone: dataQuality?.unknown_state_count > 0 ? 'warning' : 'neutral',

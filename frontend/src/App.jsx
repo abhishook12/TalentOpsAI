@@ -494,6 +494,8 @@ const globalStyles = `
     font-weight: 900;
     letter-spacing: -0.04em;
     color: inherit;
+    word-break: break-word;
+    overflow-wrap: break-word;
   }
 
   .cc-metric-sub {

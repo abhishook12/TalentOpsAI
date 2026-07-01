@@ -35,7 +35,7 @@ export function MetricCard({ label, value, sublabel, tone = 'neutral', icon, con
         <div className="cc-metric-label">{label}</div>
         {icon && <i className={`ti ${icon} cc-metric-icon`} />}
       </div>
-      <div className="cc-metric-value">{value ?? 'Not available'}</div>
+      <div className="cc-metric-value">{value ?? '—'}</div>
       {sublabel && <div className="cc-metric-sub">{sublabel}</div>}
     </div>
   )

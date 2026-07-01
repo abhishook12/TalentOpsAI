@@ -183,8 +183,6 @@ export default function USHeatmap() {
           ref={tooltipRef}
           style={{
             position: "absolute",
-            left: "-9999px",
-            top: "-9999px",
             background: "#0d1527",
             color: "#fff",
             padding: "8px 12px",

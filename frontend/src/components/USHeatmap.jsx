@@ -32,8 +32,9 @@ const offsets = {
 };
 
 export default function USHeatmap() {
-  const [tooltipContent, setTooltipContent] = useState("");
   const tooltipRef = React.useRef(null);
+  const tooltipTitleRef = React.useRef(null);
+  const tooltipValueRef = React.useRef(null);
 
   const { data: stateData, isLoading } = useQuery({
     queryKey: ["recruiters-by-state"],
@@ -65,18 +66,22 @@ export default function USHeatmap() {
     let x = e.clientX - rect.left + 15;
     let y = e.clientY - rect.top + 15;
 
-    // Prevent tooltip from overflowing the container bounds
-    const tooltipWidth = 180; // Safer max width
-    const tooltipHeight = 120; // Safer max height
-
-    if (x + tooltipWidth > rect.width) {
-      x = e.clientX - rect.left - tooltipWidth - 10;
-    }
-    if (y + tooltipHeight > rect.height) {
-      y = e.clientY - rect.top - tooltipHeight - 10;
-    }
-
     if (tooltipRef.current) {
+      const tooltipRect = tooltipRef.current.getBoundingClientRect();
+      const actualWidth = tooltipRect.width || 100;
+      const actualHeight = tooltipRect.height || 50;
+
+      if (x + actualWidth > rect.width) {
+        x = e.clientX - rect.left - actualWidth - 10;
+      }
+      if (y + actualHeight > rect.height) {
+        y = e.clientY - rect.top - actualHeight - 10;
+      }
+      
+      // Prevent going off top or left edges
+      if (x < 0) x = 10;
+      if (y < 0) y = 10;
+
       tooltipRef.current.style.left = `${x}px`;
       tooltipRef.current.style.top = `${y}px`;
     }
@@ -126,10 +131,16 @@ export default function USHeatmap() {
                       stroke="#0b1221"
                       strokeWidth={1.5}
                       onMouseEnter={() => {
-                        setTooltipContent(`${geo.properties.name}\n${count} recruiter${count === 1 ? '' : 's'}`);
+                        if (tooltipRef.current && tooltipTitleRef.current && tooltipValueRef.current) {
+                          tooltipTitleRef.current.innerText = geo.properties.name;
+                          tooltipValueRef.current.innerText = `${count} recruiter${count === 1 ? '' : 's'}`;
+                          tooltipRef.current.style.opacity = 1;
+                        }
                       }}
                       onMouseLeave={() => {
-                        setTooltipContent("");
+                        if (tooltipRef.current) {
+                          tooltipRef.current.style.opacity = 0;
+                        }
                       }}
                       style={{
                         default: { outline: "none", transition: "fill 250ms" },
@@ -195,24 +206,20 @@ export default function USHeatmap() {
             whiteSpace: "pre-line",
             textAlign: "center",
             zIndex: 10,
-            opacity: tooltipContent ? 1 : 0,
+            opacity: 0,
             transition: "opacity 150ms ease-in-out"
           }}
         >
-          {tooltipContent && (
-            <>
-              <span style={{ color: "#94a3b8", fontSize: "10px", display: "block", marginBottom: "2px", textTransform: "uppercase" }}>{tooltipContent.split('\n')[0]}</span>
-              <span style={{ color: "#f59e0b", fontSize: "13px" }}>{tooltipContent.split('\n')[1]}</span>
-            </>
-          )}
+          <span ref={tooltipTitleRef} style={{ color: "#94a3b8", fontSize: "10px", display: "block", marginBottom: "2px", textTransform: "uppercase" }}></span>
+          <span ref={tooltipValueRef} style={{ color: "#f59e0b", fontSize: "13px" }}></span>
         </div>
       </div>
 
       {/* Legend */}
-      <div style={{ position: "absolute", bottom: 20, right: 24, display: "flex", alignItems: "center", gap: "8px", fontSize: "10px", color: "var(--text-muted)", fontWeight: 600 }}>
-        <span>Low</span>
-        <div style={{ width: "120px", height: "4px", background: "linear-gradient(to right, #1e3a5f, #f59e0b)", borderRadius: "4px" }} />
+      <div style={{ position: "absolute", top: 56, right: 20, display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", fontSize: "12px", color: "var(--text-muted)", fontWeight: 600 }}>
         <span>High ({maxCount})</span>
+        <div style={{ width: "8px", height: "140px", background: "linear-gradient(to bottom, #f59e0b, #1e3a5f)", borderRadius: "8px" }} />
+        <span>Low</span>
       </div>
     </div>
   );

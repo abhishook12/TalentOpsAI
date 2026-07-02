@@ -1,0 +1,26 @@
+{
+  "timestamp": "2026-06-29T13:48:47.996552Z",
+  "total_recruiters": 313143,
+  "verified_known_states": 264025,
+  "state_coverage_percent": 84.31,
+  "total_companies": 50133,
+  "top_15_states": {
+    "OR": 31825,
+    "TX": 23476,
+    "NY": 22037,
+    "CA": 21878,
+    "IL": 17695,
+    "FL": 15019,
+    "GA": 10802,
+    "MA": 10591,
+    "MD": 10243,
+    "OH": 9152,
+    "VA": 8944,
+    "PA": 8319,
+    "NC": 8205,
+    "NJ": 6501,
+    "IN": 5843
+  },
+  "system_health": "OVERALL: EXCELLENT",
+  "needs_review_count": 0
+}

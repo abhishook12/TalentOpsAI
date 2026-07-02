@@ -67,15 +67,15 @@ export default function USHeatmap() {
     let y = e.clientY - rect.top + 15;
 
     if (tooltipRef.current) {
-      const tooltipRect = tooltipRef.current.getBoundingClientRect();
-      const actualWidth = tooltipRect.width || 100;
-      const actualHeight = tooltipRect.height || 50;
+      // Use fixed generous dimensions because bounding rect might be stale before text paints
+      const tooltipWidth = 140;
+      const tooltipHeight = 60;
 
-      if (x + actualWidth > rect.width) {
-        x = e.clientX - rect.left - actualWidth - 10;
+      if (x + tooltipWidth > rect.width) {
+        x = e.clientX - rect.left - tooltipWidth - 10;
       }
-      if (y + actualHeight > rect.height) {
-        y = e.clientY - rect.top - actualHeight - 10;
+      if (y + tooltipHeight > rect.height) {
+        y = e.clientY - rect.top - tooltipHeight - 10;
       }
       
       // Prevent going off top or left edges
@@ -97,7 +97,6 @@ export default function USHeatmap() {
         background: "#0b1221", 
         borderRadius: "14px", 
         border: "1px solid var(--card-border)", 
-        overflow: "hidden",
         display: "flex",
         flexDirection: "column"
       }}

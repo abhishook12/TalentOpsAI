@@ -12,6 +12,7 @@ from ..models.models import Recruiter, Company
 from ..utils.state_mapper import normalize_state, extract_state_detailed
 from ..utils.state_recovery import infer_state_from_sources
 from ..utils.filters import apply_state_filter, apply_company_filter
+from ..utils.logo_domains import select_logo_domain
 from ..utils.phone_normalizer import format_us_phone
 from ..utils.normalizer import normalize_text, extract_domain
 from .analytics import analytics_cache
@@ -591,8 +592,15 @@ def search_recruiters(
 
     if company:
         clean_company = normalize_text(company)
-        base_sql += " AND c.normalized_company_name ILIKE '%' || :company || '%'"
+        base_sql += """ AND (
+            c.normalized_company_name ILIKE '%' || :company || '%'
+            OR LOWER(c.company_name) ILIKE '%' || LOWER(:raw_company) || '%'
+            OR similarity(c.company_name, :raw_company) > 0.15
+            OR c.website ILIKE '%' || LOWER(:raw_company) || '%'
+            OR c.email_pattern ILIKE '%' || LOWER(:raw_company) || '%'
+        )"""
         params["company"] = clean_company
+        params["raw_company"] = company
     if location:
         abbr = normalize_state(location)
         if abbr:
@@ -642,6 +650,8 @@ def search_recruiters(
             "notes": row["notes"],
             "company_id": row["company_id"],
             "company_name": row["company_name"],
+            "website": row.get("website"),
+            "email_pattern": row.get("email_pattern"),
             "location": row.get("location"),
             "state": row.get("state"),
             "is_active": row["is_active"],
@@ -769,7 +779,27 @@ def get_recruiters(
     if data_source:
         query = query.filter(Recruiter.data_source == data_source)
         
-    total_count = query.count()
+    is_unfiltered = not any([search, state, state_status, city, company, company_id, title, has_phone, missing_email, is_active is not None, min_completeness, needs_review is not None, email_inference_status, source_job_id, data_source])
+    
+    if is_unfiltered:
+        total_count = analytics_cache.get("total_recruiters_count_base")
+        if total_count is None:
+            # Fallback to fast postgres stats for base count to avoid 2s delay
+            try:
+                from sqlalchemy import text
+                total_count = db.execute(text("SELECT reltuples::bigint FROM pg_class WHERE relname = 'recruiters'")).scalar()
+                analytics_cache.set("total_recruiters_count_base", total_count, ttl=300)
+            except:
+                total_count = query.count()
+                analytics_cache.set("total_recruiters_count_base", total_count, ttl=300)
+    else:
+        # Cache filtered counts too based on URL params to speed up paginating filtered results
+        filter_cache_key = f"rec_count_{search}_{state}_{company_id}_{is_active}_{needs_review}_{has_phone}_{missing_email}"
+        total_count = analytics_cache.get(filter_cache_key)
+        if total_count is None:
+            total_count = query.count()
+            analytics_cache.set(filter_cache_key, total_count, ttl=300)
+            
     response.headers["X-Total-Count"] = str(total_count)
     
     # Sorting
@@ -803,6 +833,8 @@ def get_recruiters(
             "company_name": company_row.company_name,
             "location": company_row.location,
             "state": company_row.state,
+            "website": company_row.website,
+            "email_pattern": company_row.email_pattern
         } if company_row else None
 
     ret_data = {
@@ -828,6 +860,7 @@ def get_recruiters(
                 "notes": recruiter.notes,
                 "company_id": recruiter.company_id,
                 "company_name": company.company_name if company else None,
+                "company_domain": select_logo_domain(company.website, company.email_pattern) if company else None,
                 "company": _basic_company(company),
                 "location": recruiter.location or (company.location if company else None),
                 "state": recruiter.state,

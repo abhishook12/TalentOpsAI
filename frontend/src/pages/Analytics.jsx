@@ -2,7 +2,8 @@ import { useQuery } from '@tanstack/react-query'
 import { cloneElement, useEffect, useRef, useState } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip,
-  CartesianGrid, AreaChart, Area, Cell, LabelList
+  CartesianGrid, AreaChart, Area, Cell, LabelList,
+  PieChart, Pie
 } from 'recharts'
 import api, { API } from '../services/api'
 
@@ -156,6 +157,28 @@ function StateTooltip({ active, payload, label }) {
 
 export default function Analytics() {
   const [selectedStates, setSelectedStates] = useState([])
+  const [syncing, setSyncing] = useState(false)
+  const [syncResult, setSyncResult] = useState(null)
+
+  const { data: taxonomyData, refetch: refetchTaxonomy } = useQuery({
+    queryKey: ['taxonomy-distribution'],
+    queryFn: async () => (await api.get('/analytics/taxonomy-distribution')).data,
+    staleTime: 60_000,
+  })
+
+  const handleTaxonomySync = async () => {
+    setSyncing(true)
+    setSyncResult(null)
+    try {
+      const res = await api.post('/ai/taxonomy-sync')
+      setSyncResult(res.data)
+      refetchTaxonomy()
+    } catch (e) {
+      setSyncResult({ error: e.response?.data?.detail || 'Sync failed' })
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   const { data: analyticsData, isLoading: loading } = useQuery({
     queryKey: ['analytics-dashboard'],
@@ -473,6 +496,162 @@ export default function Analytics() {
       </SectionCard>
         </>
       )}
+
+      {/* Taxonomy Intelligence Row */}
+      {!isEmptyAnalytics && (
+        <SectionCard title="Industry Taxonomy Intelligence" icon="ti-category" compact style={{ gridColumn: '1 / -1', minHeight: 0 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
+            {/* Pie Chart */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              {taxonomyData?.distribution?.length > 0 ? (
+                <ChartBox height={260}>
+                  <PieChart>
+                    <Pie
+                      data={taxonomyData.distribution.filter(d => d.category !== 'Uncategorized')}
+                      dataKey="count"
+                      nameKey="category"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      innerRadius={50}
+                      paddingAngle={2}
+                      label={({ category, percent }) => `${category} ${(percent * 100).toFixed(0)}%`}
+                      labelLine={false}
+                      style={{ fontSize: 10 }}
+                    >
+                      {taxonomyData.distribution.filter(d => d.category !== 'Uncategorized').map((entry, i) => (
+                        <Cell key={entry.category} fill={PAGE_COLORS[i % PAGE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip {...customTooltipStyle} />
+                  </PieChart>
+                </ChartBox>
+              ) : (
+                <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
+                  <i className="ti ti-category" style={{ fontSize: 24, display: 'block', marginBottom: 8, color: 'var(--accent)' }} />
+                  No taxonomy data yet. Run AI Sync to categorize titles.
+                </div>
+              )}
+            </div>
+
+            {/* Stats + Sync Button */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <KPI inline label="Categorized" value={taxonomyData?.categorized?.toLocaleString() || '0'} color="#0F6E56" icon="ti-check" />
+                <KPI inline label="Uncategorized" value={taxonomyData?.uncategorized?.toLocaleString() || '0'} color="#ef4444" icon="ti-alert-triangle" />
+                <KPI inline label="Coverage" value={`${taxonomyData?.coverage_pct || 0}%`} color="#534AB7" icon="ti-percentage" />
+                <KPI inline label="Total Active" value={taxonomyData?.total?.toLocaleString() || '0'} color="#185FA5" icon="ti-users" />
+              </div>
+
+              <div style={{ padding: '14px 16px', background: 'var(--accent-bg)', border: '1px solid rgba(45, 212, 191, 0.15)', borderRadius: 10 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
+                  <i className="ti ti-sparkles" style={{ color: 'var(--accent)', marginRight: 4 }} />
+                  AI Taxonomy Sync
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 10 }}>
+                  Uses Gemini AI to intelligently categorize uncategorized job titles into industry groups (Healthcare, Technology, Finance, etc.).
+                </div>
+                <button
+                  onClick={handleTaxonomySync}
+                  disabled={syncing || (taxonomyData?.uncategorized === 0)}
+                  style={{
+                    padding: '8px 16px', borderRadius: 8, border: 'none',
+                    background: syncing ? 'var(--card-border)' : 'var(--accent)',
+                    color: '#fff', fontSize: 12, fontWeight: 600,
+                    cursor: syncing ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    opacity: (taxonomyData?.uncategorized === 0) ? 0.5 : 1,
+                  }}
+                >
+                  <i className={syncing ? 'ti ti-loader animate-spin' : 'ti ti-wand'} />
+                  {syncing ? 'Syncing with Gemini...' : taxonomyData?.uncategorized === 0 ? 'All Titles Categorized' : `Categorize ${taxonomyData?.uncategorized?.toLocaleString()} Titles`}
+                </button>
+                {syncResult && (
+                  <div style={{ marginTop: 8, fontSize: 11, padding: '8px 10px', borderRadius: 6, background: syncResult.error ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)', color: syncResult.error ? '#ef4444' : '#22c55e', border: `1px solid ${syncResult.error ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)'}` }}>
+                    {syncResult.error || `✓ ${syncResult.message} — ${syncResult.updated_recruiters} recruiters updated.`}
+                  </div>
+                )}
+              </div>
+
+              {/* Category breakdown list */}
+              {taxonomyData?.distribution?.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {taxonomyData.distribution.map((d, i) => {
+                    const pct = taxonomyData.total > 0 ? Math.round(d.count / taxonomyData.total * 100) : 0
+                    return (
+                      <div key={d.category} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: 999, background: d.category === 'Uncategorized' ? '#6b7280' : PAGE_COLORS[i % PAGE_COLORS.length], flexShrink: 0 }} />
+                        <span style={{ flex: 1, color: 'var(--text-primary)', fontWeight: 500 }}>{d.category}</span>
+                        <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--mono)', fontSize: 10 }}>{d.count.toLocaleString()}</span>
+                        <span style={{ color: 'var(--text-muted)', fontSize: 10, width: 32, textAlign: 'right' }}>{pct}%</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Data Health Scorecard Row */}
+      {!isEmptyAnalytics && (
+        <SectionCard title="Data Health & Completeness" icon="ti-heart-rate" compact style={{ gridColumn: '1 / -1', minHeight: 0 }}>
+          <DataHealthScorecard />
+        </SectionCard>
+      )}
+
     </div>
   )
 }
+
+function DataHealthScorecard() {
+  const { data, isLoading } = useQuery({
+    queryKey: ['data-health'],
+    queryFn: async () => (await api.get('/analytics/data-health')).data,
+    staleTime: 60_000,
+  })
+
+  if (isLoading) return <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)' }}>Loading health data...</div>
+  if (!data || !data.metrics) return <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)' }}>No data available</div>
+
+  const getScoreColor = (score) => {
+    if (score >= 90) return '#0F6E56' // Green
+    if (score >= 70) return '#eab308' // Yellow
+    return '#ef4444' // Red
+  }
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 24, alignItems: 'center' }}>
+      <div style={{ textAlign: 'center', padding: '20px 0' }}>
+        <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 140, height: 140, borderRadius: '50%', background: `conic-gradient(${getScoreColor(data.overall_health_score)} ${data.overall_health_score}%, var(--card-border) 0)` }}>
+          <div style={{ position: 'absolute', inset: 8, background: 'var(--card-bg)', borderRadius: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ fontSize: 32, fontWeight: 800, color: getScoreColor(data.overall_health_score), lineHeight: 1 }}>{data.overall_health_score}%</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Overall Health</div>
+          </div>
+        </div>
+        <div style={{ marginTop: 16, fontSize: 13, color: 'var(--text-secondary)' }}>
+          Tracking completeness across <b>{data.total_active?.toLocaleString()}</b> active recruiters.
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {data.metrics.map(m => (
+          <div key={m.field} style={{ background: 'var(--bg-default)', padding: '12px 16px', borderRadius: 8, border: '1px solid var(--card-border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, alignItems: 'baseline' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{m.field} Coverage</span>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'baseline' }}>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}><span style={{ color: '#ef4444', fontWeight: 600 }}>{m.missing.toLocaleString()}</span> missing</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: getScoreColor(m.health_pct) }}>{m.health_pct}%</span>
+              </div>
+            </div>
+            <div style={{ height: 6, background: 'var(--card-border)', borderRadius: 99, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${m.health_pct}%`, background: getScoreColor(m.health_pct), borderRadius: 99, transition: 'width 1s ease-out' }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+

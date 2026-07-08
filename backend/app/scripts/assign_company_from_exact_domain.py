@@ -4,6 +4,7 @@ import csv
 import os
 import re
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -170,78 +171,143 @@ def ensure_company_for_domain(db, domain: str, row: dict[str, str] | None) -> Co
 
 
 def main() -> None:
+    BATCH_SIZE = 100  # smaller batches to stay within Render free-tier limits
+    SLEEP_BETWEEN = 2  # seconds between batches to let DB breathe
+
+    # Load domains list with a throwaway session
     db = SessionLocal()
     try:
         db.execute(text("SET statement_timeout TO 0"))
         review_rows = load_review_domains()
         domains = load_candidate_domains(db)
-        domain_mappings: list[dict[str, int | str]] = []
-        created_companies = 0
-        reused_companies = 0
-        now = datetime.now(timezone.utc)
-
-        for domain in domains:
-            row = review_rows.get(domain)
-            existing = find_company_by_domain(db, domain)
-            company = ensure_company_for_domain(db, domain, row)
-            domain_mappings.append({"domain": domain, "company_id": company.company_id})
-
-            if existing:
-                reused_companies += 1
-            elif company.company_id:
-                top_linked_company_id = clean_top_linked_company_id(row or {})
-                if top_linked_company_id is not None and company.company_id == top_linked_company_id:
-                    reused_companies += 1
-                else:
-                    created_companies += 1
-        db.flush()
-        db.execute(text("DROP TABLE IF EXISTS temp_domain_company_map"))
-        db.execute(
-            text(
-                """
-                CREATE TEMP TABLE temp_domain_company_map (
-                    domain TEXT PRIMARY KEY,
-                    company_id BIGINT NOT NULL
-                ) ON COMMIT DROP
-                """
-            )
-        )
-        if domain_mappings:
-            db.execute(
-                text(
-                    """
-                    INSERT INTO temp_domain_company_map (domain, company_id)
-                    VALUES (:domain, :company_id)
-                    """
-                ),
-                domain_mappings,
-            )
-        result = db.execute(
-            text(
-                """
-                UPDATE recruiters AS r
-                SET company_id = m.company_id,
-                    last_scan_at = :last_scan_at
-                FROM temp_domain_company_map AS m
-                WHERE r.email IS NOT NULL
-                  AND LOWER(SPLIT_PART(r.email, '@', 2)) = m.domain
-                  AND COALESCE(r.company_id, 0) <> m.company_id
-                """
-            ),
-            {"last_scan_at": now},
-        )
-        updated_recruiters = int(result.rowcount or 0)
-
         db.commit()
-        print(f"batch_key={BATCH_KEY}")
-        print(f"updated_recruiters={updated_recruiters}")
-        print(f"created_companies={created_companies}")
-        print(f"reused_companies={reused_companies}")
-    except Exception:
-        db.rollback()
-        raise
     finally:
         db.close()
+
+    total_domains = len(domains)
+    total_created_companies = 0
+    total_reused_companies = 0
+    total_updated_recruiters = 0
+    now = datetime.now(timezone.utc)
+
+    print(f"Total domains to process: {total_domains}")
+    print(f"Batch size: {BATCH_SIZE}")
+    print(f"Estimated batches: {(total_domains + BATCH_SIZE - 1) // BATCH_SIZE}")
+    sys.stdout.flush()
+
+    for batch_start in range(0, total_domains, BATCH_SIZE):
+        batch_domains = domains[batch_start : batch_start + BATCH_SIZE]
+        batch_num = batch_start // BATCH_SIZE + 1
+        max_retries = 3
+        batch_updated = 0
+        created_companies = 0
+        reused_companies = 0
+
+        for attempt in range(1, max_retries + 1):
+            db = SessionLocal()
+            try:
+                db.execute(text("SET statement_timeout TO 0"))
+                domain_mappings: list[dict[str, int | str]] = []
+                created_companies = 0
+                reused_companies = 0
+
+                for domain in batch_domains:
+                    row = review_rows.get(domain)
+                    existing = find_company_by_domain(db, domain)
+                    company = ensure_company_for_domain(db, domain, row)
+                    domain_mappings.append({"domain": domain, "company_id": company.company_id})
+
+                    if existing:
+                        reused_companies += 1
+                    elif company.company_id:
+                        top_linked_company_id = clean_top_linked_company_id(row or {})
+                        if top_linked_company_id is not None and company.company_id == top_linked_company_id:
+                            reused_companies += 1
+                        else:
+                            created_companies += 1
+
+                db.flush()
+
+                if domain_mappings:
+                    db.execute(text("DROP TABLE IF EXISTS temp_domain_company_map"))
+                    db.execute(
+                        text(
+                            """
+                            CREATE TEMP TABLE temp_domain_company_map (
+                                domain TEXT PRIMARY KEY,
+                                company_id BIGINT NOT NULL
+                            )
+                            """
+                        )
+                    )
+                    db.execute(
+                        text(
+                            """
+                            INSERT INTO temp_domain_company_map (domain, company_id)
+                            VALUES (:domain, :company_id)
+                            """
+                        ),
+                        domain_mappings,
+                    )
+                    result = db.execute(
+                        text(
+                            """
+                            UPDATE recruiters AS r
+                            SET company_id = m.company_id,
+                                last_scan_at = :last_scan_at
+                            FROM temp_domain_company_map AS m
+                            WHERE r.email IS NOT NULL
+                              AND LOWER(SPLIT_PART(r.email, '@', 2)) = m.domain
+                              AND COALESCE(r.company_id, 0) <> m.company_id
+                            """
+                        ),
+                        {"last_scan_at": now},
+                    )
+                    batch_updated = int(result.rowcount or 0)
+                    db.execute(text("DROP TABLE IF EXISTS temp_domain_company_map"))
+                else:
+                    batch_updated = 0
+
+                db.commit()
+                break  # success
+
+            except Exception as exc:
+                try:
+                    db.rollback()
+                except Exception:
+                    pass
+                if attempt < max_retries:
+                    wait = attempt * 10
+                    print(f"  [Batch {batch_num}] Error on attempt {attempt}: {str(exc)[:80]}... retrying in {wait}s")
+                    sys.stdout.flush()
+                    time.sleep(wait)
+                    continue
+                print(f"  [Batch {batch_num}] FAILED after {max_retries} attempts, skipping: {str(exc)[:120]}")
+                sys.stdout.flush()
+                batch_updated = 0
+                created_companies = 0
+                reused_companies = 0
+                break  # skip this batch instead of crashing
+            finally:
+                db.close()
+
+        total_created_companies += created_companies
+        total_reused_companies += reused_companies
+        total_updated_recruiters += batch_updated
+        processed = min(batch_start + BATCH_SIZE, total_domains)
+        print(
+            f"[Batch {batch_num}] {processed}/{total_domains} domains | "
+            f"+{created_companies} companies | {batch_updated} recruiters linked | "
+            f"Running totals: {total_created_companies} created, {total_updated_recruiters} linked"
+        )
+        sys.stdout.flush()
+        time.sleep(SLEEP_BETWEEN)
+
+    print(f"\n=== COMPLETE ===")
+    print(f"batch_key={BATCH_KEY}")
+    print(f"updated_recruiters={total_updated_recruiters}")
+    print(f"created_companies={total_created_companies}")
+    print(f"reused_companies={total_reused_companies}")
 
 
 if __name__ == "__main__":

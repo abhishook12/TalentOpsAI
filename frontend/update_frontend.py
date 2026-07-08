@@ -147,7 +147,7 @@ new_ui_chunk = """{/* ── VISITOR LOG BOOK TAB ── */}
                                  {s.user_email}
                                </div>
                                {s.is_active && <Badge color="#22c55e">ACTIVE NOW</Badge>}
-                               {s.actions.length > 0 && <Badge color="#a78bfa">{s.actions.length} ACTIONS</Badge>}
+                               {s.actions.length > 0 && <Badge color="#38bdf8">{s.actions.length} ACTIONS</Badge>}
                                {s.actions.some(a => a.status === 'failed') && <Badge color="#ef4444">ERRORS</Badge>}
                             </div>
                             <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>

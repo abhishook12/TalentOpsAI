@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { exportToExcel } from '../services/export'
 import api from '../services/api'
+import { CompanyLogo } from '../components/CompanyLogo'
 
 const emptyForm = {
   recruiter_name: '', email: '', phone: '', linkedin: '',
@@ -123,7 +124,7 @@ function RecruiterTableRow({ r, toggleActive, openEdit, handleDelete }) {
               {r.email}
               {r.email_status === 'verified' && <i className="ti ti-rosette-discount-check-filled" style={{ color: '#22c55e', fontSize: 14 }} title="Verified" />}
               {r.email_status === 'likely' && <i className="ti ti-check" style={{ color: '#38bdf8', fontSize: 14 }} title="Likely via MX" />}
-              {r.email_status === 'inferred' && <i className="ti ti-wand" style={{ color: '#a855f7', fontSize: 14 }} title="Inferred via Pattern" />}
+              {r.email_status === 'inferred' && <i className="ti ti-wand" style={{ color: '#38bdf8', fontSize: 14 }} title="Inferred via Pattern" />}
             </div>
           )}
         </td>
@@ -134,7 +135,12 @@ function RecruiterTableRow({ r, toggleActive, openEdit, handleDelete }) {
             <div>{r.state || '—'}</div>
             {r.normalized_city && <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{r.normalized_city}</div>}
         </td>
-        <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{r.company_name || '—'}</td>
+        <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <CompanyLogo domain={r.company_domain} name={r.company_name} size={24} />
+            {r.company_name || '—'}
+          </div>
+        </td>
         <td>
           <span className={r.is_active ? "badge badge-green" : "badge badge-red"}>
             {r.is_active ? 'Active' : 'Inactive'}

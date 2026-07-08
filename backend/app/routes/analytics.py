@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.models import Company, PageVisit, Recruiter, Vendor
+from app.utils.logo_domains import select_logo_domain
 from app.utils.state_sql import EFFECTIVE_RECRUITER_STATE_SQL_R, UNKNOWN_STATE_SENTINEL
 
 
@@ -248,6 +249,7 @@ def companies_search(
                 c.location,
                 c.industry,
                 c.website,
+                c.email_pattern,
                 (SELECT count(*) FROM recruiters r WHERE r.company_id = c.company_id) AS recruiter_count,
                 COALESCE(NULLIF(TRIM(c.state), ''), 'US') AS state_abbr,
                 MAX({{sim_col}}) AS sim_score
@@ -276,6 +278,8 @@ def companies_search(
             "location": row["location"],
             "industry": row["industry"],
             "website": row["website"],
+            "email_pattern": row["email_pattern"],
+            "logo_domain": select_logo_domain(row["website"], row["email_pattern"]),
             "recruiter_count": int(row["recruiter_count"]),
             "state_abbr": row["state_abbr"] or "Unknown",
             "missing_state_count": int(row["missing_state_count"]),
@@ -617,3 +621,93 @@ def get_visitor_logs(limit: int = 100, db: Session = Depends(get_db)):
     except Exception as e:
         print(f"Error in visitor logs: {e}")
         return {"logs": []}
+
+@router.get("/taxonomy-distribution")
+def get_taxonomy_distribution(db: Session = Depends(get_db)):
+    """
+    Returns the distribution of recruiter taxonomy categories for a pie chart,
+    plus the count of uncategorized records.
+    """
+    cached = analytics_cache.get("taxonomy_dist")
+    if cached is not None:
+        return cached
+
+    try:
+        rows = db.execute(text("""
+            SELECT
+                COALESCE(taxonomy_category, 'Uncategorized') AS category,
+                COUNT(*) AS count
+            FROM recruiters
+            WHERE is_active = true
+            GROUP BY COALESCE(taxonomy_category, 'Uncategorized')
+            ORDER BY count DESC
+        """)).fetchall()
+
+        distribution = [{"category": r[0], "count": r[1]} for r in rows]
+
+        total = sum(r[1] for r in rows)
+        uncategorized = next((r[1] for r in rows if r[0] == "Uncategorized"), 0)
+
+        result = {
+            "distribution": distribution,
+            "total": total,
+            "categorized": total - uncategorized,
+            "uncategorized": uncategorized,
+            "coverage_pct": round((total - uncategorized) / total * 100, 1) if total > 0 else 0
+        }
+
+        analytics_cache.set("taxonomy_dist", result, ttl=120)
+        return result
+    except Exception as e:
+        logger.error(f"Taxonomy distribution error: {e}")
+        return {"distribution": [], "total": 0, "categorized": 0, "uncategorized": 0, "coverage_pct": 0}
+
+@router.get("/data-health")
+def get_data_health(db: Session = Depends(get_db)):
+    """
+    Returns data health and completeness metrics for the recruiter database.
+    """
+    cached = analytics_cache.get("data_health")
+    if cached is not None:
+        return cached
+
+    try:
+        # We check total active recruiters, and how many are missing core fields
+        row = db.execute(text("""
+            SELECT 
+                COUNT(*) as total,
+                COUNT(*) FILTER (WHERE email IS NULL OR email = '') as missing_email,
+                COUNT(*) FILTER (WHERE phone IS NULL OR phone = '') as missing_phone,
+                COUNT(*) FILTER (WHERE location IS NULL OR location = '') as missing_location,
+                COUNT(*) FILTER (WHERE company_id IS NULL) as missing_company,
+                COUNT(*) FILTER (WHERE linkedin IS NULL OR linkedin = '') as missing_linkedin
+            FROM recruiters
+            WHERE is_active = true
+        """)).fetchone()
+
+        if not row or row[0] == 0:
+            return {"total": 0, "metrics": []}
+            
+        t = row[0]
+        metrics = [
+            {"field": "Email", "missing": row[1], "present": t - row[1], "health_pct": round((t - row[1])/t * 100, 1)},
+            {"field": "Phone", "missing": row[2], "present": t - row[2], "health_pct": round((t - row[2])/t * 100, 1)},
+            {"field": "Location", "missing": row[3], "present": t - row[3], "health_pct": round((t - row[3])/t * 100, 1)},
+            {"field": "Company", "missing": row[4], "present": t - row[4], "health_pct": round((t - row[4])/t * 100, 1)},
+            {"field": "LinkedIn", "missing": row[5], "present": t - row[5], "health_pct": round((t - row[5])/t * 100, 1)}
+        ]
+        
+        # Calculate overall score (average of health percentages)
+        overall_score = sum(m["health_pct"] for m in metrics) / len(metrics)
+        
+        result = {
+            "total_active": t,
+            "overall_health_score": round(overall_score, 1),
+            "metrics": metrics
+        }
+        
+        analytics_cache.set("data_health", result, ttl=300)
+        return result
+    except Exception as e:
+        logger.error(f"Data health error: {e}")
+        return {"total_active": 0, "overall_health_score": 0, "metrics": []}

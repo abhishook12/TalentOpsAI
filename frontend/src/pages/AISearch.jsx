@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { exportToExcel } from '../services/export'
 import api, { API, checkAuth, getErrorMessage, login, logAction } from '../services/api'
+import { CompanyLogo } from '../components/CompanyLogo'
 
 function initials(name) {
   const parts = (name || '').trim().split(' ').filter(Boolean)
@@ -318,7 +319,7 @@ function iconButtonStyle(disabled = false) {
 
 export default function AISearch() {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState([])
+  const [searchResults, setSearchResults] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [selectedId, setSelectedId] = useState(null)
@@ -377,7 +378,7 @@ export default function AISearch() {
   useEffect(() => {
     const t = setTimeout(async () => {
       if (!query.trim()) {
-        setResults([])
+        setSearchResults([])
         setSelectedId(null)
         setLoading(false)
         setError('')
@@ -400,7 +401,7 @@ export default function AISearch() {
           return (b.relevance_score || 0) - (a.relevance_score || 0)
         })
 
-        setResults(sorted)
+        setSearchResults(sorted)
         setSelectedId((prev) => (prev && sorted.some((x) => x.recruiter_id === prev) ? prev : null))
 
         logAction('SEARCH_RECRUITERS', {
@@ -411,9 +412,9 @@ export default function AISearch() {
           results: Array.isArray(sorted) ? sorted.length : 0,
           context: 'ai_search',
         })
-      } catch {
+      } catch (err) {
         setError('Could not load recruiter search results.')
-        setResults([])
+        setSearchResults([])
         setSelectedId(null)
       } finally {
         setLoading(false)
@@ -424,8 +425,8 @@ export default function AISearch() {
   }, [query, filterCompany, filterLocation, filterSpecialization])
 
   const selectedSummary = useMemo(
-    () => results.find((r) => r.recruiter_id === selectedId) || null,
-    [results, selectedId]
+    () => searchResults.find((r) => r.recruiter_id === selectedId) || null,
+    [searchResults, selectedId]
   )
 
   useEffect(() => {
@@ -485,7 +486,7 @@ export default function AISearch() {
 
   const clearAll = () => {
     setQuery('')
-    setResults([])
+    setSearchResults([])
       setSelectedId(null)
       setSelectedDetail(null)
       setSelectedDetailLoading(false)
@@ -545,7 +546,7 @@ export default function AISearch() {
           <button onClick={() => { navigator.clipboard.writeText(window.location.href); setToast('Link copied to clipboard') }} style={{ ...iconButtonStyle(false), width: 38 }} title="Copy Link">
             <i className="ti ti-share" />
           </button>
-          <button onClick={() => exportToExcel(results, 'ai_search_results')} style={{ ...iconButtonStyle(false), width: 38 }} title="Export to Excel">
+          <button onClick={() => exportToExcel(searchResults, 'AI_Search_Results.xlsx')} style={{ ...iconButtonStyle(false), width: 38 }} title="Export to Excel">
             <i className="ti ti-download" />
           </button>
         </div>
@@ -777,7 +778,7 @@ export default function AISearch() {
                   }}
                 >
                   <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                    {loading ? 'Searching…' : `${results.length} result${results.length === 1 ? '' : 's'}`}
+                    {loading ? 'Searching…' : `${searchResults.length} result${searchResults.length === 1 ? '' : 's'}`}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <button onClick={() => fireSoon('Columns')} style={iconButtonStyle(false)} title="Columns (Coming soon)">
@@ -789,7 +790,7 @@ export default function AISearch() {
                   </div>
                 </div>
 
-                {results.length === 0 && !loading ? (
+                {searchResults.length === 0 && !loading ? (
                   <div style={{ padding: 20, color: 'var(--text-muted)' }}>
                     <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>No matches found</div>
                     <div style={{ marginTop: 6, fontSize: 12 }}>Try adjusting filters or refining the query.</div>
@@ -822,7 +823,7 @@ export default function AISearch() {
                     </div>
 
                     <div>
-                      {results.map((r) => {
+                      {searchResults.map((r) => {
                         const active = selectedId === r.recruiter_id
                         const mt = matchTypeFor(r, query)
                         const badge = badgeForMatch(mt)
@@ -882,7 +883,10 @@ export default function AISearch() {
                               </div>
                               <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.email)}</div>
                               <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.phone)}</div>
-                              <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.company_name)}</div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+                                {r.company_name ? <CompanyLogo domain={r.website || r.email_pattern} name={r.company_name} size={24} style={{ flexShrink: 0, borderRadius: 4 }} /> : null}
+                                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.company_name)}</span>
+                              </div>
                               <div>
                                 <span
                                   style={{
@@ -1090,7 +1094,10 @@ export default function AISearch() {
                 <div style={{ display: 'grid', gap: 10 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Company</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(selected.company_name)}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                      {selected.company_name ? <CompanyLogo domain={selected.website || selected.email_pattern} name={selected.company_name} size={32} style={{ flexShrink: 0, borderRadius: 4 }} /> : null}
+                      <span style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(selected.company_name)}</span>
+                    </div>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Address</div>
@@ -1288,7 +1295,7 @@ export default function AISearch() {
                         }
                         const { data } = await api.put(`/recruiters/${selected.recruiter_id}`, payload)
                         // Update UI immediately
-                        setResults((prev) => prev.map((r) => (r.recruiter_id === selected.recruiter_id ? { ...r, ...data } : r)))
+                        setSearchResults((prev) => prev.map((r) => (r.recruiter_id === selected.recruiter_id ? { ...r, ...data } : r)))
                         setSelectedDetail(data)
                         setToast('Recruiter updated')
                         setTimeout(() => setToast(''), 1400)

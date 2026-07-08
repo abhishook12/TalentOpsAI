@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as XLSX from 'xlsx'
 import api, { getErrorMessage } from '../services/api'
-
+import { CompanyLogo } from '../components/CompanyLogo'
 const STATES = [
   { abbr: 'AL', name: 'Alabama' }, { abbr: 'AK', name: 'Alaska' },
   { abbr: 'AZ', name: 'Arizona' }, { abbr: 'AR', name: 'Arkansas' },
@@ -343,10 +343,13 @@ export default function Directory() {
                     color: 'var(--text-primary)',
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{company.company_name}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{company.location || 'Location not listed'}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                      <CompanyLogo domain={company.logo_domain || company.website || company.email_pattern} name={company.company_name} size={32} />
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{company.company_name}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{company.location || 'Location not listed'}</div>
+                      </div>
                     </div>
                     <div style={{ fontFamily: 'var(--mono)', fontWeight: 900 }}>{company.recruiter_count || 0}</div>
                   </div>

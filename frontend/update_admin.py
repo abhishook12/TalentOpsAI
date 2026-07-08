@@ -23,7 +23,7 @@ data_quality_ui = """
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 24 }}>
                   <StatCard icon="ti-alert-triangle" label="Needs Review" value={fmt(dataQuality.needs_review)} color="#f59e0b" glow={dataQuality.needs_review > 0} />
                   <StatCard icon="ti-map-off" label="Low Conf. Locations" value={fmt(dataQuality.low_confidence_location)} color="#f43f5e" />
-                  <StatCard icon="ti-user-off" label="Incomplete Profiles (<50%)" value={fmt(dataQuality.incomplete_profiles)} color="#8b5cf6" />
+                  <StatCard icon="ti-user-off" label="Incomplete Profiles (<50%)" value={fmt(dataQuality.incomplete_profiles)} color="#38bdf8" />
                 </div>
             )}
 """

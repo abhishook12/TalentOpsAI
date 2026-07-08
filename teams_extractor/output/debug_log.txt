@@ -1,0 +1,1759 @@
+
+[2026-07-09 00:37:54.628329] run_extraction_loop started
+Region: (339, 56, 566, 636)
+Gemini client initialized with key 1/5
+Starting scroll 1
+Capturing background window 132462 for region=(339, 56, 566, 636)...
+Saved debug img to output\vision_debug_1.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Checkpoint saved: scroll=1, saved=4, last_person=Courtney Feil
+Scrolling background window 66950 amount: 508
+Starting scroll 2
+Capturing background window 132462 for region=(339, 56, 566, 636)...
+Saved debug img to output\vision_debug_2.png
+Calling Gemini API...
+API Limit Hit on Key 1: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 38.841123734s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '38s'}]}}.
+Swapped to Key 2.
+Gemini API succeeded.
+Parsed 6 contacts
+Checkpoint saved: scroll=2, saved=7, last_person=Bill Peek
+Scrolling background window 66950 amount: 508
+Starting scroll 3
+Capturing background window 132462 for region=(339, 56, 566, 636)...
+Saved debug img to output\vision_debug_3.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 6 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=3, saved=10, last_person=Meredith Mulkey
+Scrolling background window 66950 amount: 508
+Starting scroll 4
+Capturing background window 132462 for region=(339, 56, 566, 636)...
+Saved debug img to output\vision_debug_4.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 5 contacts
+Checkpoint saved: scroll=4, saved=12, last_person=Antony Paul
+Scrolling background window 66950 amount: 508
+Starting scroll 5
+Capturing background window 66732 for region=(339, 56, 566, 636)...
+Saved debug img to output\vision_debug_5.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Checkpoint saved: scroll=5, saved=16, last_person=Thomas Alden
+Scrolling background window 66750 amount: 508
+Starting scroll 6
+Capturing background window 66732 for region=(339, 56, 566, 636)...
+Saved debug img to output\vision_debug_6.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=6, saved=17, last_person=Thomas Alden
+Scrolling background window 330724 amount: 508
+Starting scroll 7
+Capturing background window 1378730 for region=(339, 56, 566, 636)...
+Saved debug img to output\vision_debug_7.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=7, saved=18, last_person=Thomas Alden
+Scrolling background window 1116628 amount: 508
+Starting scroll 8
+Capturing background window 2032242 for region=(339, 56, 566, 636)...
+Saved debug img to output\vision_debug_8.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=8, saved=19, last_person=Thomas Alden
+Scrolling background window 789360 amount: 508
+Starting scroll 9
+Capturing background window 2032242 for region=(339, 56, 566, 636)...
+Saved debug img to output\vision_debug_9.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=9, saved=20, last_person=Thomas Alden
+Scrolling background window 789360 amount: 508
+Starting scroll 10
+Capturing background window 66732 for region=(339, 56, 566, 636)...
+Saved debug img to output\vision_debug_10.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=10, saved=22, last_person=Ri Viguiera
+Scrolling background window 66750 amount: 508
+Starting scroll 11
+Capturing background window 854972 for region=(339, 56, 566, 636)...
+Saved debug img to output\vision_debug_11.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=11, saved=22, last_person=Ri Viguiera
+Scrolling background window 4196564 amount: 508
+Starting scroll 12
+Capturing background window 66732 for region=(339, 56, 566, 636)...
+Saved debug img to output\vision_debug_12.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=12, saved=23, last_person=Ri Viguiera
+Scrolling background window 1312914 amount: 508
+Starting scroll 13
+Capturing background window 66732 for region=(339, 56, 566, 636)...
+Saved debug img to output\vision_debug_13.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=13, saved=25, last_person=Patrick Giscard D'Estaing
+Scrolling background window 66750 amount: 508
+Starting scroll 14
+Capturing background window 66732 for region=(339, 56, 566, 636)...
+Saved debug img to output\vision_debug_14.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 7 contacts
+Checkpoint saved: scroll=14, saved=32, last_person=Sharma
+Scrolling background window 66750 amount: 508
+Starting scroll 15
+Capturing background window 66732 for region=(339, 56, 566, 636)...
+Saved debug img to output\vision_debug_15.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=15, saved=34, last_person=Carson Cole
+Scrolling background window 66750 amount: 508
+Starting scroll 16
+Capturing background window 2032242 for region=(339, 56, 566, 636)...
+Saved debug img to output\vision_debug_16.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=16, saved=35, last_person=Carson Cole
+Scrolling background window 789360 amount: 508
+Starting scroll 17
+Capturing background window 2032242 for region=(339, 56, 566, 636)...
+Saved debug img to output\vision_debug_17.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=17, saved=38, last_person=Carson Cole
+Scrolling background window 789360 amount: 508
+Starting scroll 18
+Capturing background window 66732 for region=(339, 56, 566, 636)...
+Saved debug img to output\vision_debug_18.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=18, saved=39, last_person=Carson Cole
+Scrolling background window 1968982 amount: 508
+Starting scroll 19
+Capturing background window 66732 for region=(339, 56, 566, 636)...
+Saved debug img to output\vision_debug_19.png
+STALL DETECTED (1/3): identical frame to previous scroll
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=19, saved=40, last_person=Carson Cole
+Scrolling background window 1968982 amount: 508
+Starting scroll 20
+Capturing background window 66732 for region=(339, 56, 566, 636)...
+Saved debug img to output\vision_debug_20.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=20, saved=41, last_person=Carson Cole
+Scrolling background window 1968982 amount: 508
+Starting scroll 21
+Capturing background window 2032242 for region=(339, 56, 566, 636)...
+Saved debug img to output\vision_debug_21.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=21, saved=44, last_person=Carson Cole
+Scrolling background window 789360 amount: 508
+Starting scroll 22
+Capturing background window 2032242 for region=(339, 56, 566, 636)...
+Saved debug img to output\vision_debug_22.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=22, saved=45, last_person=Carson Cole
+Scrolling background window 789360 amount: 508
+Starting scroll 23
+Capturing background window 2032242 for region=(339, 56, 566, 636)...
+Saved debug img to output\vision_debug_23.png
+Calling Gemini API...
+API Limit Hit on Key 2: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 9.393472936s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-2.5-flash', 'location': 'global'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '9s'}]}}.
+Swapped to Key 3.
+API Limit Hit on Key 3: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 6.103824139s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '6s'}]}}.
+Swapped to Key 4.
+API Limit Hit on Key 4: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 3.433993853s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '3s'}]}}.
+Swapped to Key 5.
+API Limit Hit on Key 5: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 1.103746848s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '1s'}]}}.
+Swapped to Key 1.
+API Limit Hit on Key 1: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 28.133634225s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '28s'}]}}.
+Swapped to Key 2.
+API Limit Hit on Key 2: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 24.572288096s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '24s'}]}}.
+Swapped to Key 3.
+API Limit Hit on Key 3: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 21.099505477s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-2.5-flash', 'location': 'global'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '21s'}]}}.
+Swapped to Key 4.
+API Limit Hit on Key 4: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 17.78458129s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '17s'}]}}.
+Swapped to Key 5.
+API Limit Hit on Key 5: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 14.440932654s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '14s'}]}}.
+Swapped to Key 1.
+API Limit Hit on Key 1: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 41.066293866s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-2.5-flash', 'location': 'global'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '41s'}]}}.
+Swapped to Key 2.
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=23, saved=46, last_person=Carson Cole
+Scrolling background window 1182544 amount: 508
+Loop Exception: Error: (1400, 'PostMessage', 'Invalid window handle.')
+Traceback (most recent call last):
+  File "C:\TalentOpsAI\teams_extractor\automation.py", line 439, in run_extraction_loop
+    background_scroll(target_hwnd, scroll_amount, center_x, center_y)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\TalentOpsAI\teams_extractor\automation.py", line 63, in background_scroll
+    win32gui.PostMessage(hwnd, win32con.WM_MOUSEWHEEL, wparam, lparam)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pywintypes.error: (1400, 'PostMessage', 'Invalid window handle.')
+
+Writing to crash_log.txt
+
+[2026-07-09 01:02:58.233914] run_extraction_loop started
+Region: (340, 58, 551, 634)
+Gemini client initialized with key 1/10
+Resuming from checkpoint: last_person=Carson Cole, saved=24
+Starting scroll 1
+Capturing background window 132462 for region=(340, 58, 551, 634)...
+Saved debug img to output\vision_debug_1.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=1, saved=3, last_person=Mike MacEachern
+Scrolling background window 66950 amount: 507
+Starting scroll 2
+Capturing background window 132462 for region=(340, 58, 551, 634)...
+Saved debug img to output\vision_debug_2.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 6 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=2, saved=6, last_person=James Drennan
+Scrolling background window 66950 amount: 507
+Starting scroll 3
+Capturing background window 132462 for region=(340, 58, 551, 634)...
+Saved debug img to output\vision_debug_3.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 5 contacts
+Checkpoint saved: scroll=3, saved=6, last_person=James Drennan
+Scrolling background window 66950 amount: 507
+Starting scroll 4
+Capturing background window 132462 for region=(340, 58, 551, 634)...
+Saved debug img to output\vision_debug_4.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 7 contacts
+Checkpoint saved: scroll=4, saved=9, last_person=
+Scrolling background window 66950 amount: 507
+Starting scroll 5
+Capturing background window 132462 for region=(340, 58, 551, 634)...
+Saved debug img to output\vision_debug_5.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 5 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=5, saved=9, last_person=
+Scrolling background window 66950 amount: 507
+Starting scroll 6
+Capturing background window 132462 for region=(340, 58, 551, 634)...
+Saved debug img to output\vision_debug_6.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 5 contacts
+Checkpoint saved: scroll=6, saved=9, last_person=
+Scrolling background window 66950 amount: 507
+Starting scroll 7
+Capturing background window 132462 for region=(340, 58, 551, 634)...
+Saved debug img to output\vision_debug_7.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Checkpoint saved: scroll=7, saved=10, last_person=Jessica A. Keesee
+Scrolling background window 66950 amount: 507
+Building excel at output\vision_extracted_data_01-02 , 9JULY.xlsx
+Done building excel
+
+[2026-07-09 01:12:15.686177] run_extraction_loop started
+Region: (373, 76, 548, 603)
+Gemini client initialized with key 1/10
+Resuming from checkpoint: last_person=Jessica A. Keesee, saved=31
+Starting scroll 1
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_1.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=1, saved=2, last_person=Sara Flood
+Scrolling background window 66950 amount: 482
+Starting scroll 2
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_2.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=2, saved=2, last_person=Sara Flood
+Scrolling background window 66950 amount: 482
+Starting scroll 3
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_3.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=3, saved=2, last_person=Sara Flood
+Scrolling background window 66950 amount: 482
+Starting scroll 4
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_4.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=4, saved=2, last_person=Sara Flood
+Scrolling background window 66950 amount: 482
+Starting scroll 5
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_5.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=5, saved=3, last_person=Sara Flood
+Scrolling background window 66950 amount: 482
+Starting scroll 6
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_6.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=6, saved=3, last_person=Sara Flood
+Scrolling background window 66950 amount: 482
+Starting scroll 7
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_7.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=7, saved=3, last_person=Sara Flood
+Scrolling background window 66950 amount: 482
+Starting scroll 8
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_8.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 5 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=8, saved=3, last_person=Sara Flood
+Scrolling background window 66950 amount: 482
+Starting scroll 9
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_9.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=9, saved=3, last_person=Sara Flood
+Scrolling background window 66950 amount: 482
+Starting scroll 10
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_10.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=10, saved=3, last_person=Sara Flood
+Scrolling background window 66950 amount: 482
+Starting scroll 11
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_11.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=11, saved=4, last_person=Edita Klimentjevaite
+Scrolling background window 66950 amount: 482
+Starting scroll 12
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_12.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=12, saved=4, last_person=Edita Klimentjevaite
+Scrolling background window 66950 amount: 482
+Starting scroll 13
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_13.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=13, saved=5, last_person=Rachel Urbelis
+Scrolling background window 66950 amount: 482
+Starting scroll 14
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_14.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=14, saved=7, last_person=Stephanie Hendrixson
+Scrolling background window 66950 amount: 482
+Starting scroll 15
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_15.png
+Calling Gemini API...
+API Limit Hit on Key 1: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 5.572860057s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '5s'}]}}.
+Swapped to Key 2.
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=15, saved=8, last_person=Michell Casey
+Scrolling background window 66950 amount: 482
+Starting scroll 16
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_16.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=16, saved=10, last_person=Mia Rottman
+Scrolling background window 66950 amount: 482
+Starting scroll 17
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_17.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 6 contacts
+Checkpoint saved: scroll=17, saved=15, last_person=Chloe Van Caesele
+Scrolling background window 66950 amount: 482
+Starting scroll 18
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_18.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 5 contacts
+Checkpoint saved: scroll=18, saved=18, last_person=Collin H.
+Scrolling background window 66950 amount: 482
+Starting scroll 19
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_19.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=19, saved=19, last_person=John Glynn
+Scrolling background window 66950 amount: 482
+Starting scroll 20
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_20.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=20, saved=22, last_person=Alexandra Wilson
+Scrolling background window 66950 amount: 482
+Starting scroll 21
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_21.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=21, saved=24, last_person=David Soltz
+Scrolling background window 66950 amount: 482
+Starting scroll 22
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_22.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Checkpoint saved: scroll=22, saved=26, last_person=Alyssa Williams
+Scrolling background window 66950 amount: 482
+Starting scroll 23
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_23.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=23, saved=26, last_person=Alyssa Williams
+Scrolling background window 66950 amount: 482
+Starting scroll 24
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_24.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 0 contacts
+Checkpoint saved: scroll=24, saved=26, last_person=Alyssa Williams
+Scrolling background window 66950 amount: 482
+Starting scroll 25
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_25.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=25, saved=28, last_person=Chelsea Tate
+Scrolling background window 66950 amount: 482
+Starting scroll 26
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_26.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=26, saved=29, last_person=Enna Omerovic
+Scrolling background window 66950 amount: 482
+Starting scroll 27
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_27.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=27, saved=32, last_person=Erika Andrus
+Scrolling background window 66950 amount: 482
+Starting scroll 28
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_28.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 5 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=28, saved=35, last_person=Saoirse McGarry
+Scrolling background window 66950 amount: 482
+Starting scroll 29
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_29.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=29, saved=35, last_person=Saoirse McGarry
+Scrolling background window 66950 amount: 482
+Starting scroll 30
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_30.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=30, saved=37, last_person=Stephen Gowdy
+Scrolling background window 66950 amount: 482
+Starting scroll 31
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_31.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 0 contacts
+Checkpoint saved: scroll=31, saved=37, last_person=Stephen Gowdy
+Scrolling background window 66950 amount: 482
+Starting scroll 32
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_32.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=32, saved=39, last_person=Michael Luman
+Scrolling background window 66950 amount: 482
+Starting scroll 33
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_33.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=33, saved=39, last_person=Michael Luman
+Scrolling background window 66950 amount: 482
+Starting scroll 34
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_34.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=34, saved=40, last_person=Ashley Patton
+Scrolling background window 66950 amount: 482
+Starting scroll 35
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_35.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=35, saved=41, last_person=Jacob Simmonds
+Scrolling background window 66950 amount: 482
+Starting scroll 36
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_36.png
+Calling Gemini API...
+API Limit Hit on Key 2: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 57.483933209s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-2.5-flash', 'location': 'global'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '57s'}]}}.
+Swapped to Key 3.
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=36, saved=44, last_person=Dana McLaughlin
+Scrolling background window 66950 amount: 482
+Starting scroll 37
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_37.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Checkpoint saved: scroll=37, saved=47, last_person=Rick Haughey
+Scrolling background window 66950 amount: 482
+Starting scroll 38
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_38.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=38, saved=47, last_person=Rick Haughey
+Scrolling background window 66950 amount: 482
+Starting scroll 39
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_39.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=39, saved=48, last_person=Oleg Ivanov
+Scrolling background window 66950 amount: 482
+Starting scroll 40
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_40.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=40, saved=49, last_person=Cole Stremlau
+Scrolling background window 66950 amount: 482
+Starting scroll 41
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_41.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=41, saved=51, last_person=Blane Morri
+Scrolling background window 66950 amount: 482
+Starting scroll 42
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_42.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=42, saved=53, last_person=Jose Jaramillo
+Scrolling background window 66950 amount: 482
+Starting scroll 43
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_43.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=43, saved=54, last_person=Jose Jaramillo
+Scrolling background window 66950 amount: 482
+Starting scroll 44
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_44.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=44, saved=57, last_person=
+Scrolling background window 66950 amount: 482
+Starting scroll 45
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_45.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=45, saved=58, last_person=Scott Kohut
+Scrolling background window 66950 amount: 482
+Starting scroll 46
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_46.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=46, saved=60, last_person=Susan Stephens
+Scrolling background window 66950 amount: 482
+Starting scroll 47
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_47.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=47, saved=61, last_person=Christian Geiger
+Scrolling background window 66950 amount: 482
+Starting scroll 48
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_48.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=48, saved=62, last_person=Kelly Kendall
+Scrolling background window 66950 amount: 482
+Starting scroll 49
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_49.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=49, saved=62, last_person=Kelly Kendall
+Scrolling background window 66950 amount: 482
+Starting scroll 50
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_50.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=50, saved=63, last_person=Meghan LaBree
+Scrolling background window 66950 amount: 482
+Starting scroll 51
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_51.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Checkpoint saved: scroll=51, saved=67, last_person=Sophia Vazquez Dodds
+Scrolling background window 66950 amount: 482
+Starting scroll 52
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_52.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Checkpoint saved: scroll=52, saved=71, last_person=Brianna Fugere
+Scrolling background window 66950 amount: 482
+Starting scroll 53
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_53.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=53, saved=72, last_person=Desa Barnette
+Scrolling background window 66950 amount: 482
+Starting scroll 54
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_54.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=54, saved=73, last_person=Morgan Batesole
+Scrolling background window 66950 amount: 482
+Starting scroll 55
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_55.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=55, saved=73, last_person=Morgan Batesole
+Scrolling background window 66950 amount: 482
+Starting scroll 56
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_56.png
+Calling Gemini API...
+API Limit Hit on Key 3: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 48.129623412s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '48s'}]}}.
+Swapped to Key 4.
+Gemini API succeeded.
+Parsed 16 contacts
+Checkpoint saved: scroll=56, saved=89, last_person=Christy Johnson
+Scrolling background window 66950 amount: 482
+Starting scroll 57
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_57.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 8 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=57, saved=93, last_person=Naomi Sherbahn
+Scrolling background window 66950 amount: 482
+Starting scroll 58
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_58.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=58, saved=94, last_person=Jermaine Barker
+Scrolling background window 66950 amount: 482
+Starting scroll 59
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_59.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=59, saved=97, last_person=James Rappaport
+Scrolling background window 66950 amount: 482
+Starting scroll 60
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_60.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=60, saved=98, last_person=Diana Goggin
+Scrolling background window 66950 amount: 482
+Starting scroll 61
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_61.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=61, saved=100, last_person=Andy Ringer
+Scrolling background window 66950 amount: 482
+Starting scroll 62
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_62.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Checkpoint saved: scroll=62, saved=103, last_person=Lisa Sullivan
+Scrolling background window 66950 amount: 482
+Starting scroll 63
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_63.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=63, saved=104, last_person=David Martini
+Scrolling background window 66950 amount: 482
+Starting scroll 64
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_64.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=64, saved=107, last_person=Thomas Walsh
+Scrolling background window 66950 amount: 482
+Starting scroll 65
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_65.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=65, saved=107, last_person=Thomas Walsh
+Scrolling background window 66950 amount: 482
+Starting scroll 66
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_66.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=66, saved=108, last_person=Brad Thomas
+Scrolling background window 66950 amount: 482
+Starting scroll 67
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_67.png
+Calling Gemini API...
+API Limit Hit on Key 4: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}.
+Swapped to Key 5.
+API Limit Hit on Key 5: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}.
+Swapped to Key 6.
+Gemini API succeeded.
+Parsed 0 contacts
+Checkpoint saved: scroll=67, saved=108, last_person=Brad Thomas
+Scrolling background window 66950 amount: 482
+Starting scroll 68
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_68.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=68, saved=108, last_person=Brad Thomas
+Scrolling background window 66950 amount: 482
+Starting scroll 69
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_69.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Checkpoint saved: scroll=69, saved=111, last_person=Roger Brohimer
+Scrolling background window 66950 amount: 482
+Starting scroll 70
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_70.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=70, saved=112, last_person=Justin Jones
+Scrolling background window 66950 amount: 482
+Starting scroll 71
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_71.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=71, saved=113, last_person=Brad Williamson
+Scrolling background window 66950 amount: 482
+Starting scroll 72
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_72.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=72, saved=114, last_person=Ian Stock
+Scrolling background window 66950 amount: 482
+Starting scroll 73
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_73.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=73, saved=114, last_person=Ian Stock
+Scrolling background window 66950 amount: 482
+Starting scroll 74
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_74.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=74, saved=117, last_person=Austin Parker
+Scrolling background window 66950 amount: 482
+Starting scroll 75
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_75.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=75, saved=120, last_person=Travis Ramos
+Scrolling background window 66950 amount: 482
+Starting scroll 76
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_76.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 6 contacts
+Checkpoint saved: scroll=76, saved=125, last_person=Ross McGinley
+Scrolling background window 66950 amount: 482
+Starting scroll 77
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_77.png
+Calling Gemini API...
+API Limit Hit on Key 6: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}.
+Swapped to Key 7.
+API Limit Hit on Key 7: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}.
+Swapped to Key 8.
+Gemini API succeeded.
+Parsed 5 contacts
+Checkpoint saved: scroll=77, saved=128, last_person=Andi P.
+Scrolling background window 66950 amount: 482
+Starting scroll 78
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_78.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=78, saved=129, last_person=Paula Pierce
+Scrolling background window 66950 amount: 482
+Starting scroll 79
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_79.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=79, saved=132, last_person=Michael Chung
+Scrolling background window 66950 amount: 482
+Starting scroll 80
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_80.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Checkpoint saved: scroll=80, saved=136, last_person=Katie Maqill
+Scrolling background window 66950 amount: 482
+Starting scroll 81
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_81.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 5 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=81, saved=139, last_person=Greg Maldonado
+Scrolling background window 66950 amount: 482
+Starting scroll 82
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_82.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=82, saved=140, last_person=Brandy Pickett
+Scrolling background window 66950 amount: 482
+Starting scroll 83
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_83.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=83, saved=141, last_person=Emerson Irwin
+Scrolling background window 66950 amount: 482
+Starting scroll 84
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_84.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=84, saved=143, last_person=Eric Duncan
+Scrolling background window 66950 amount: 482
+Starting scroll 85
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_85.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=85, saved=145, last_person=Hamza Hussain
+Scrolling background window 66950 amount: 482
+Starting scroll 86
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_86.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=86, saved=146, last_person=Danielle (Kovanci) Denhartog
+Scrolling background window 66950 amount: 482
+Starting scroll 87
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_87.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=87, saved=148, last_person=Maksym Pleskach
+Scrolling background window 66950 amount: 482
+Starting scroll 88
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_88.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=88, saved=150, last_person=Bradley (Brad) Kwiatek
+Scrolling background window 66950 amount: 482
+Starting scroll 89
+Capturing background window 132462 for region=(373, 76, 548, 603)...
+Saved debug img to output\vision_debug_89.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=89, saved=151, last_person=Jaime Figueroa
+Scrolling background window 66950 amount: 482
+Building excel at output\vision_extracted_data_01-12 , 9JULY.xlsx
+Done building excel
+
+[2026-07-09 01:46:35.379663] run_extraction_loop started
+Region: (377, 77, 543, 602)
+Gemini client initialized with key 1/11
+Resuming from checkpoint: last_person=Jaime Figueroa, saved=168
+Starting scroll 1
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_1.png
+Calling Gemini API...
+API Limit Hit on Key 1: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 21.27248314s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '21s'}]}}.
+Swapped to Key 2.
+API Limit Hit on Key 2: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 18.494629836s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '18s'}]}}.
+Swapped to Key 3.
+API Limit Hit on Key 3: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 15.925376223s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '15s'}]}}.
+Swapped to Key 4.
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=1, saved=0, last_person=Jaime Figueroa
+Scrolling background window 66950 amount: 481
+Starting scroll 2
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_2.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=2, saved=0, last_person=Jaime Figueroa
+Scrolling background window 66950 amount: 481
+Starting scroll 3
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_3.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=3, saved=0, last_person=Jaime Figueroa
+Scrolling background window 66950 amount: 481
+Starting scroll 4
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_4.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=4, saved=0, last_person=Jaime Figueroa
+Scrolling background window 66950 amount: 481
+Starting scroll 5
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_5.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=5, saved=2, last_person=Joseph Randall
+Scrolling background window 66950 amount: 481
+Starting scroll 6
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_6.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=6, saved=3, last_person=Ryan Yoneyama
+Scrolling background window 66950 amount: 481
+Starting scroll 7
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_7.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=7, saved=5, last_person=Mark Wilson
+Scrolling background window 66950 amount: 481
+Starting scroll 8
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_8.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=8, saved=6, last_person=John Braiman
+Scrolling background window 66950 amount: 481
+Starting scroll 9
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_9.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=9, saved=8, last_person=Jessica Vazquez
+Scrolling background window 66950 amount: 481
+Starting scroll 10
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_10.png
+Calling Gemini API...
+API Limit Hit on Key 4: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 15.84753869s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '15s'}]}}.
+Swapped to Key 5.
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=10, saved=11, last_person=Aaron Schwander
+Scrolling background window 66950 amount: 481
+Starting scroll 11
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_11.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=11, saved=12, last_person=Jay Wright
+Scrolling background window 66950 amount: 481
+Starting scroll 12
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_12.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=12, saved=15, last_person=Paul Jasina
+Scrolling background window 66950 amount: 481
+Starting scroll 13
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_13.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=13, saved=17, last_person=Ellie (Rae) Talbot
+Scrolling background window 66950 amount: 481
+Starting scroll 14
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_14.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=14, saved=20, last_person=Tess Manderson
+Scrolling background window 66950 amount: 481
+Starting scroll 15
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_15.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=15, saved=20, last_person=Tess Manderson
+Scrolling background window 66950 amount: 481
+Starting scroll 16
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_16.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=16, saved=22, last_person=Jana Lee
+Scrolling background window 66950 amount: 481
+Starting scroll 17
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_17.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=17, saved=22, last_person=Jana Lee
+Scrolling background window 66950 amount: 481
+Starting scroll 18
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_18.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=18, saved=25, last_person=Paul
+Scrolling background window 66950 amount: 481
+Starting scroll 19
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_19.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=19, saved=26, last_person=Paul
+Scrolling background window 66950 amount: 481
+Starting scroll 20
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_20.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=20, saved=28, last_person=Suzanne Simonian
+Scrolling background window 66950 amount: 481
+Starting scroll 21
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_21.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=21, saved=29, last_person=Maelynn Soto
+Scrolling background window 66950 amount: 481
+Starting scroll 22
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_22.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=22, saved=29, last_person=Maelynn Soto
+Scrolling background window 66950 amount: 481
+Starting scroll 23
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_23.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=23, saved=32, last_person=Lily Glander
+Scrolling background window 66950 amount: 481
+Starting scroll 24
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_24.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=24, saved=34, last_person=Doreen Cohen
+Scrolling background window 66950 amount: 481
+Starting scroll 25
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_25.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Checkpoint saved: scroll=25, saved=36, last_person=Leah Lozanic
+Scrolling background window 66950 amount: 481
+Starting scroll 26
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_26.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=26, saved=36, last_person=Leah Lozanic
+Scrolling background window 66950 amount: 481
+Starting scroll 27
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_27.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=27, saved=38, last_person=Lianne L
+Scrolling background window 66950 amount: 481
+Starting scroll 28
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_28.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=28, saved=40, last_person=Trista Chapman
+Scrolling background window 66950 amount: 481
+Starting scroll 29
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_29.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 6 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=29, saved=45, last_person=Warren Mason
+Scrolling background window 66950 amount: 481
+Starting scroll 30
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_30.png
+Calling Gemini API...
+API Limit Hit on Key 5: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 17.855998099s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-2.5-flash', 'location': 'global'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '17s'}]}}.
+Swapped to Key 6.
+Gemini API succeeded.
+Parsed 3 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=30, saved=47, last_person=Tony Blanco
+Scrolling background window 66950 amount: 481
+Starting scroll 31
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_31.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=31, saved=48, last_person=Aman Padam
+Scrolling background window 66950 amount: 481
+Starting scroll 32
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_32.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Checkpoint saved: scroll=32, saved=50, last_person=Arun D'Souza
+Scrolling background window 66950 amount: 481
+Starting scroll 33
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_33.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=33, saved=51, last_person=Harvey Baker
+Scrolling background window 66950 amount: 481
+Starting scroll 34
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_34.png
+STALL DETECTED (1/3): identical frame to previous scroll
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=34, saved=51, last_person=Harvey Baker
+Scrolling background window 66950 amount: 481
+Starting scroll 35
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_35.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=35, saved=52, last_person=Erin Miller
+Scrolling background window 66950 amount: 481
+Starting scroll 36
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_36.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=36, saved=53, last_person=Christopher Hycki
+Scrolling background window 66950 amount: 481
+Starting scroll 37
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_37.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=37, saved=54, last_person=Logan Hinkley
+Scrolling background window 66950 amount: 481
+Starting scroll 38
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_38.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=38, saved=56, last_person=Bailey Sanders
+Scrolling background window 66950 amount: 481
+Starting scroll 39
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_39.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=39, saved=58, last_person=Paige Lopez
+Scrolling background window 66950 amount: 481
+Starting scroll 40
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_40.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 5 contacts
+Checkpoint saved: scroll=40, saved=62, last_person=Brian Anderson
+Scrolling background window 66950 amount: 481
+Starting scroll 41
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_41.png
+Calling Gemini API...
+API Limit Hit on Key 6: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 39.77668018s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '39s'}]}}.
+Swapped to Key 7.
+Gemini API succeeded.
+Parsed 3 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=41, saved=64, last_person=Kasey Couch
+Scrolling background window 66950 amount: 481
+Starting scroll 42
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_42.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=42, saved=66, last_person=Brenda Dexter
+Scrolling background window 66950 amount: 481
+Starting scroll 43
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_43.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=43, saved=67, last_person=Caleb Phillips
+Scrolling background window 66950 amount: 481
+Starting scroll 44
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_44.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 5 contacts
+Checkpoint saved: scroll=44, saved=71, last_person=Bailey Horne
+Scrolling background window 66950 amount: 481
+Starting scroll 45
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_45.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=45, saved=73, last_person=Jeremy Miles
+Scrolling background window 66950 amount: 481
+Starting scroll 46
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_46.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=46, saved=74, last_person=Becky O'Reilly
+Scrolling background window 66950 amount: 481
+Starting scroll 47
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_47.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=47, saved=75, last_person=Felix Carballo
+Scrolling background window 66950 amount: 481
+Starting scroll 48
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_48.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=48, saved=78, last_person=
+Scrolling background window 66950 amount: 481
+Starting scroll 49
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_49.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=49, saved=79, last_person=Steven Castano
+Scrolling background window 66950 amount: 481
+Starting scroll 50
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_50.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=50, saved=81, last_person=Taylor Hilliard
+Scrolling background window 66950 amount: 481
+Starting scroll 51
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_51.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=51, saved=82, last_person=Wendy Golla
+Scrolling background window 66950 amount: 481
+Starting scroll 52
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_52.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 5 contacts
+Checkpoint saved: scroll=52, saved=87, last_person=Barbara Buhs
+Scrolling background window 66950 amount: 481
+Starting scroll 53
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_53.png
+STALL DETECTED (1/3): identical frame to previous scroll
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 5 contacts
+Checkpoint saved: scroll=53, saved=87, last_person=Barbara Buhs
+Scrolling background window 66950 amount: 481
+Starting scroll 54
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_54.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 5 contacts
+Checkpoint saved: scroll=54, saved=90, last_person=Zach Salazar
+Scrolling background window 66950 amount: 481
+Starting scroll 55
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_55.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=55, saved=92, last_person=Donnie Franks
+Scrolling background window 66950 amount: 481
+Starting scroll 56
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_56.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 5 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=56, saved=95, last_person=Lisa Kagy
+Scrolling background window 66950 amount: 481
+Starting scroll 57
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_57.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=57, saved=96, last_person=Jason Alvarado
+Scrolling background window 66950 amount: 481
+Starting scroll 58
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_58.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=58, saved=97, last_person=Daniel van Gemert
+Scrolling background window 66950 amount: 481
+Starting scroll 59
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_59.png
+Calling Gemini API...
+API Limit Hit on Key 7: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 57.515675591s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '57s'}]}}.
+Swapped to Key 8.
+Gemini API succeeded.
+Parsed 5 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=59, saved=99, last_person=Audrey Pratt
+Scrolling background window 66950 amount: 481
+Starting scroll 60
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_60.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=60, saved=100, last_person=Nigel Zeto
+Scrolling background window 66950 amount: 481
+Starting scroll 61
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_61.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=61, saved=101, last_person=Jane Sneed
+Scrolling background window 66950 amount: 481
+Starting scroll 62
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_62.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=62, saved=103, last_person=Megan Tepe
+Scrolling background window 66950 amount: 481
+Starting scroll 63
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_63.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=63, saved=104, last_person=Thomas Iridiyadas
+Scrolling background window 66950 amount: 481
+Starting scroll 64
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_64.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Checkpoint saved: scroll=64, saved=108, last_person=Dave Mankowski
+Scrolling background window 66950 amount: 481
+Starting scroll 65
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_65.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 0 contacts
+Checkpoint saved: scroll=65, saved=108, last_person=Dave Mankowski
+Scrolling background window 66950 amount: 481
+Starting scroll 66
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_66.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=66, saved=111, last_person=Nicole Thomas
+Scrolling background window 66950 amount: 481
+Starting scroll 67
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_67.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 5 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=67, saved=113, last_person=Dory (Zailer) Newman
+Scrolling background window 66950 amount: 481
+Starting scroll 68
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_68.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=68, saved=114, last_person=Erin F
+Scrolling background window 66950 amount: 481
+Starting scroll 69
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_69.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=69, saved=115, last_person=Jeff Warren
+Scrolling background window 66950 amount: 481
+Starting scroll 70
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_70.png
+Calling Gemini API...
+API Limit Hit on Key 8: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 36.194790919s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '36s'}]}}.
+Swapped to Key 9.
+Gemini API succeeded.
+Parsed 2 contacts
+Checkpoint saved: scroll=70, saved=117, last_person=Melanie Kalil
+Scrolling background window 66950 amount: 481
+Starting scroll 71
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_71.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Checkpoint saved: scroll=71, saved=121, last_person=Lashonda Steward
+Scrolling background window 66950 amount: 481
+Starting scroll 72
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_72.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 5 contacts
+Checkpoint saved: scroll=72, saved=125, last_person=Finley Gray
+Scrolling background window 66950 amount: 481
+Starting scroll 73
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_73.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 6 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=73, saved=128, last_person=Scott Redman
+Scrolling background window 66950 amount: 481
+Starting scroll 74
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_74.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 6 contacts
+Checkpoint saved: scroll=74, saved=131, last_person=Ray Stack
+Scrolling background window 66950 amount: 481
+Starting scroll 75
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_75.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 3 contacts
+Checkpoint saved: scroll=75, saved=132, last_person=Oliver Asmus
+Scrolling background window 66950 amount: 481
+Starting scroll 76
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_76.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Merging continuation into previous contact!
+Checkpoint saved: scroll=76, saved=134, last_person=Alex Bilton
+Scrolling background window 66950 amount: 481
+Starting scroll 77
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_77.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Checkpoint saved: scroll=77, saved=136, last_person=Ashley Brening
+Scrolling background window 66950 amount: 481
+Starting scroll 78
+Capturing background window 1378730 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_78.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 4 contacts
+Checkpoint saved: scroll=78, saved=136, last_person=Ashley Brening
+Scrolling background window 1312196 amount: 481
+Building excel at output\vision_extracted_data_01-46AM_09JUL.xlsx
+Done building excel
+
+[2026-07-09 02:30:46.027567] run_extraction_loop started
+Region: (377, 77, 543, 602)
+Gemini client initialized with key 1/19
+Resuming from checkpoint: last_person=Ashley Brening, saved=294
+Starting scroll 1
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_1.png
+Calling Gemini API...
+API Limit Hit on Key 1: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}.
+Swapped to Key 2.
+API Limit Hit on Key 2: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}.
+Swapped to Key 3.
+API Limit Hit on Key 3: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 46.354306365s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '46s'}]}}.
+Swapped to Key 4.
+Gemini API succeeded.
+Parsed 4 contacts
+Checkpoint saved: scroll=1, saved=0, last_person=Ashley Brening
+Scrolling background window 66950 amount: 481
+Starting scroll 2
+Capturing background window 132462 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_2.png
+Calling Gemini API...
+API Limit Hit on Key 4: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 24.093800533s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-2.5-flash', 'location': 'global'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '24s'}]}}.
+Swapped to Key 5.
+API Limit Hit on Key 5: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}.
+Swapped to Key 6.
+API Limit Hit on Key 6: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 10.47147113s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '10s'}]}}.
+Swapped to Key 7.
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=2, saved=1, last_person=Lisa Breslin
+Scrolling background window 66950 amount: 481
+Starting scroll 3
+Capturing background window 854972 for region=(377, 77, 543, 602)...
+Saved debug img to output\vision_debug_3.png
+Calling Gemini API...
+Gemini API succeeded.
+Parsed 1 contacts
+Checkpoint saved: scroll=3, saved=1, last_person=Lisa Breslin
+Scrolling background window 4196564 amount: 481
+Building excel at output\vision_extracted_data_02-30AM_09JUL.xlsx
+Done building excel

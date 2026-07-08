@@ -185,6 +185,43 @@ const globalStyles = `
   button, input, select, textarea { font: inherit; }
   button { border: none; }
 
+  button.btn-secondary,
+  button.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 12px;
+    font-weight: 700;
+    transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+
+  button.btn-secondary {
+    background: var(--card-bg);
+    color: var(--text-primary);
+    border-color: var(--card-border);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+
+  button.btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+    color: var(--text-inverse);
+    box-shadow: 0 10px 22px rgba(195,93,8,0.16);
+  }
+
+  button.btn-secondary:hover:not(:disabled),
+  button.btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+
+  button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
   input, select, textarea {
     background: var(--panel-bg);
     color: var(--text-primary);

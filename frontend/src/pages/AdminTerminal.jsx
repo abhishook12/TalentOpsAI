@@ -1182,7 +1182,7 @@ export default function AdminTerminal() {
             {/* KPI Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 16 }}>
               <StatCard icon="ti-users" label="Total Recruiters" value={opsKpis?.total_recruiters != null ? fmt(opsKpis.total_recruiters) : 'No Data Available'} color="#38bdf8" glow />
-              <StatCard icon="ti-building" label="Total Companies" value={opsKpis?.total_companies != null ? fmt(opsKpis.total_companies) : 'No Data Available'} color="#a78bfa" />
+              <StatCard icon="ti-building" label="Total Companies" value={opsKpis?.total_companies != null ? fmt(opsKpis.total_companies) : 'No Data Available'} color="#38bdf8" />
               <StatCard icon="ti-map" label="Total States" value={opsKpis?.total_states != null ? fmt(opsKpis.total_states) : 'No Data Available'} color="#34d399" />
               <StatCard icon="ti-search" label="Searches Today" value={opsKpis?.searches_today != null ? fmt(opsKpis.searches_today) : 'No Data Available'} color="#fb923c" />
 
@@ -1193,7 +1193,7 @@ export default function AdminTerminal() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
                 <StatCard icon="ti-mail" label="With Email" value={fmt(stats.with_email)} sub={`${pct(stats.with_email, stats.total_recruiters)}% coverage`} color="#fbbf24" />
                 <StatCard icon="ti-phone" label="With Phone" value={fmt(stats.with_phone)} sub={`${pct(stats.with_phone, stats.total_recruiters)}% coverage`} color="#22c55e" />
-                <StatCard icon="ti-map-pin" label="Unique Locations" value={fmt(stats.unique_locations)} color="#a78bfa" />
+                <StatCard icon="ti-map-pin" label="Unique Locations" value={fmt(stats.unique_locations)} color="#38bdf8" />
                 <StatCard icon="ti-calendar-plus" label="Added Today" value={fmt(stats.added_today)} sub={`${fmt(stats.added_week)} this week`} color="#38bdf8" glow={stats.added_today > 0} />
               </div>
             )}
@@ -1272,12 +1272,12 @@ export default function AdminTerminal() {
                   <div style={{ display: 'grid', gap: 10 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'center' }}>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Most Searched States</div>
-                      <Badge color="#a78bfa">Last 24h</Badge>
+                      <Badge color="#38bdf8">Last 24h</Badge>
                     </div>
                     {(searchIntel?.most_searched_states?.length ? searchIntel.most_searched_states : []).slice(0, 5).map((r, i) => (
                       <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid var(--card-border)' }}>
                         <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: "'DM Mono', monospace" }}>{r.key}</span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#a78bfa', fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8', fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
                       </div>
                     ))}
                     {!(searchIntel?.most_searched_states?.length) && <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No Data Available</div>}
@@ -1320,7 +1320,7 @@ export default function AdminTerminal() {
                   <StatCard icon="ti-copy" label="Duplicate Groups" value={fmt(dataOps.counts?.duplicate_email_groups)} sub={`${fmt(dataOps.counts?.duplicate_email_rows)} rows involved`} color="#f87171" glow={(dataOps.counts?.duplicate_email_groups || 0) > 0} />
                   <StatCard icon="ti-mail-off" label="Missing Emails" value={fmt(dataOps.counts?.missing_emails)} color="#fbbf24" glow={(dataOps.counts?.missing_emails || 0) > 0} />
                   <StatCard icon="ti-phone-off" label="Missing Phones" value={fmt(dataOps.counts?.missing_phones)} color="#fb923c" glow={(dataOps.counts?.missing_phones || 0) > 0} />
-                  <StatCard icon="ti-map-pin-off" label="Missing Locations" value={fmt(dataOps.counts?.missing_locations)} color="#a78bfa" glow={(dataOps.counts?.missing_locations || 0) > 0} />
+                  <StatCard icon="ti-map-pin-off" label="Missing Locations" value={fmt(dataOps.counts?.missing_locations)} color="#38bdf8" glow={(dataOps.counts?.missing_locations || 0) > 0} />
                   <StatCard icon="ti-building-off" label="Unknown Companies" value={fmt(dataOps.counts?.unknown_companies)} color="#60a5fa" glow={(dataOps.counts?.unknown_companies || 0) > 0} />
                   <StatCard icon="ti-map-question" label="Unmapped States" value={fmt(dataOps.counts?.unmapped_states)} color="#38bdf8" glow={(dataOps.counts?.unmapped_states || 0) > 0} />
                 </div>
@@ -1682,7 +1682,7 @@ export default function AdminTerminal() {
                 {(searchIntel?.most_searched_companies || []).slice(0, 12).map((r, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid var(--card-border)', marginBottom: 8 }}>
                     <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.key}</span>
-                    <span style={{ color: '#a78bfa', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
+                    <span style={{ color: '#38bdf8', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
                   </div>
                 ))}
                 {!(searchIntel?.most_searched_companies?.length) && <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No Data Available</div>}
@@ -1706,7 +1706,7 @@ export default function AdminTerminal() {
           <div style={{ animation: 'fadeUp 0.25s ease' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14, marginBottom: 20 }}>
               <StatCard icon="ti-file-export" label="Exports (Last 24h)" value={exportIntel?.exports != null ? fmt(exportIntel.exports) : 'No Data Available'} color="#38bdf8" glow />
-              <StatCard icon="ti-building" label="Top Exported Company" value={exportIntel?.most_exported_companies?.[0]?.key || 'No Data Available'} sub={exportIntel?.most_exported_companies?.[0] ? `${fmt(exportIntel.most_exported_companies[0].count)} exports` : null} color="#a78bfa" />
+              <StatCard icon="ti-building" label="Top Exported Company" value={exportIntel?.most_exported_companies?.[0]?.key || 'No Data Available'} sub={exportIntel?.most_exported_companies?.[0] ? `${fmt(exportIntel.most_exported_companies[0].count)} exports` : null} color="#38bdf8" />
               <StatCard icon="ti-map" label="Top Exported State" value={exportIntel?.most_exported_states?.[0]?.key || 'No Data Available'} sub={exportIntel?.most_exported_states?.[0] ? `${fmt(exportIntel.most_exported_states[0].count)} exports` : null} color="#22c55e" />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
@@ -1723,7 +1723,7 @@ export default function AdminTerminal() {
                 {(exportIntel?.most_exported_companies || []).slice(0, 15).map((r, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid var(--card-border)', marginBottom: 8 }}>
                     <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.key}</span>
-                    <span style={{ color: '#a78bfa', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
+                    <span style={{ color: '#38bdf8', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
                   </div>
                 ))}
                 {!(exportIntel?.most_exported_companies?.length) && <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No Data Available</div>}
@@ -1742,7 +1742,7 @@ export default function AdminTerminal() {
         {activeTab === 'system' && sysInfo && (
           <div style={{ animation: 'fadeUp 0.25s ease' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
-              <StatCard icon="ti-database" label="Database Size" value={sysInfo.database_size} color="#a78bfa" glow />
+              <StatCard icon="ti-database" label="Database Size" value={sysInfo.database_size} color="#38bdf8" glow />
               <StatCard icon="ti-clock" label="PG Uptime" value={sysInfo.uptime} color="#34d399" />
               <StatCard icon="ti-users-group" label="Connections" value={sysInfo.active_connections} color="#fb923c" />
               <StatCard icon="ti-alert-triangle" label="Slow Queries" value={sysInfo.slow_queries} color={sysInfo.slow_queries > 0 ? '#ef4444' : '#22c55e'} glow={sysInfo.slow_queries > 0} />
@@ -1811,7 +1811,7 @@ export default function AdminTerminal() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, marginBottom: 20 }}>
                   <StatCard icon="ti-users" label="Unique Sessions" value={fmt(visitorLogs?.total ?? 0)} color="#38bdf8" />
                   <StatCard icon="ti-eye" label="Page Views"
-                    value={fmt(visitorLogs?.total_visits ?? visitorSummary.daily.reduce((s, d) => s + Number(d.page_views), 0))} color="#a78bfa" />
+                    value={fmt(visitorLogs?.total_visits ?? visitorSummary.daily.reduce((s, d) => s + Number(d.page_views), 0))} color="#38bdf8" />
                   <StatCard icon="ti-mail" label="Unique Users"
                     value={fmt(visitorSummary.top_users?.length ?? 0)} color="#34d399" />
                   <StatCard icon="ti-chart-bar" label="Top Page"
@@ -1849,9 +1849,9 @@ export default function AdminTerminal() {
                             <span style={{ fontSize: 11, color: 'var(--text-muted)', minWidth: 16, textAlign: 'right' }}>{i + 1}</span>
                             <span style={{ fontSize: 12, color: 'var(--text-secondary)', minWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.page}</span>
                             <div style={{ flex: 1, height: 5, background: 'var(--bg-hover)', borderRadius: 99, overflow: 'hidden' }}>
-                              <div style={{ width: `${Math.round(p.views / max * 100)}%`, height: '100%', background: 'linear-gradient(90deg, #7c3aed, #a78bfa)', borderRadius: 99 }} />
+                              <div style={{ width: `${Math.round(p.views / max * 100)}%`, height: '100%', background: 'linear-gradient(90deg, #2563eb, #38bdf8)', borderRadius: 99 }} />
                             </div>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: '#a78bfa', minWidth: 28, textAlign: 'right', fontFamily: "'DM Mono', monospace" }}>{p.views}</span>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: '#38bdf8', minWidth: 28, textAlign: 'right', fontFamily: "'DM Mono', monospace" }}>{p.views}</span>
                           </div>
                         )
                       })}

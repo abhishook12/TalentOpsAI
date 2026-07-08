@@ -6,3 +6,22 @@
 4. **Maximum Cost/Credit Optimization:** The maximum API credits, bandwidth, and compute resources that can be saved, MUST be saved. Always opt for the most limit-friendly, budget-conscious architecture.
 5. **Strict Verification & Push Protocol:** Never push anything to production until the user explicitly says so at least 2 times. Apply the strict implementation and verification protocol to every task: Never mark a task as complete based only on code being added; observe real-world outcomes, cross-check through DB/API/UI, and test edge cases.
 6. **Local Verification Loops:** After finishing every task, update, or improvement, verify the change on the local environment at least 4 times with a gap of 1 minute between each check. Provide a screenshot of the local frontend after every check to prove it works. Only after the 4th successful check can you provide the final confirmation to the user.
+
+# Teams Extractor Architecture & Working Logic
+
+The Teams Extractor is a highly sophisticated, silent background Vision AI bot. Here is exactly how it functions:
+
+1. **True Background Capture (win32gui):** 
+   It DOES NOT use standard \pyautogui.screenshot\. It uses Windows deep API (\win32gui.PrintWindow\ with \PW_RENDERFULLCONTENT\) to directly extract the graphics buffer of the Microsoft Teams window. This makes it completely immune to Windows notifications, popups, or being hidden behind other windows.
+
+2. **Background Scrolling (WM_MOUSEWHEEL):**
+   It DOES NOT hijack the user's mouse. It sends \WM_MOUSEWHEEL\ events via \win32gui.PostMessage\ directly to the Teams window queue. The user can freely use their mouse on other monitors while the bot works silently.
+
+3. **API Key Round-Robin Rotation:**
+   To bypass free-tier rate limits (15 RPM), the bot reads from \pi_keys.txt\. If Key A throws a 429 Limit error, the bot instantly catches the exception, updates its internal pointer, and swaps to Key B without skipping a beat.
+
+4. **Stall Detection & Checkpointing:**
+   The bot creates perceptual hashes of the screenshots. If 3 consecutive screenshots are identical, it assumes the scroll is finished or stuck, automatically saves the Excel file, and gracefully exits. It also writes a \checkpoint.json\ file after every scroll so it can resume exactly where it left off if the program crashes.
+
+5. **JSON Flattening:**
+   The Gemini API returns a nested JSON. The Python loop intelligently parses this, flattens the arrays (joining multiple emails with \; \), and dynamically hunts for missing fields like LinkedIn or Location, merging them across screenshot boundaries if a contact is split across two images (\is_continuation_from_above\).

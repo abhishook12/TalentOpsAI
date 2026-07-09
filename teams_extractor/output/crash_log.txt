@@ -1,9 +1,0 @@
-Error: (1400, 'PostMessage', 'Invalid window handle.')
-Traceback (most recent call last):
-  File "C:\TalentOpsAI\teams_extractor\automation.py", line 439, in run_extraction_loop
-    background_scroll(target_hwnd, scroll_amount, center_x, center_y)
-    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\TalentOpsAI\teams_extractor\automation.py", line 63, in background_scroll
-    win32gui.PostMessage(hwnd, win32con.WM_MOUSEWHEEL, wparam, lparam)
-    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-pywintypes.error: (1400, 'PostMessage', 'Invalid window handle.')

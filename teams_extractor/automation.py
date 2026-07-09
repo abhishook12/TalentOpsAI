@@ -43,10 +43,10 @@ def capture_window_bg(hwnd, region):
                 (bmpinfo['bmWidth'], bmpinfo['bmHeight']),
                 bmpstr, 'raw', 'BGRX', 0, 1)
             
-            # Crop to region
-            crop_x = region[0] - left
-            crop_y = region[1] - top
-            im = im.crop((crop_x, crop_y, crop_x + region[2], crop_y + region[3]))
+            # Crop to relative region
+            crop_x = rel_region[0]
+            crop_y = rel_region[1]
+            im = im.crop((crop_x, crop_y, crop_x + rel_region[2], crop_y + rel_region[3]))
         except:
             pass
             
@@ -207,6 +207,22 @@ def run_extraction_loop(ui, config):
             return
         with open(debug_log_path, "a") as f: f.write(f"Region: {region}\n")
         
+        # --- Lock onto the target window ONE TIME at startup ---
+        center_x = region[0] + region[2] // 2
+        center_y = region[1] + region[3] // 2
+        target_hwnd = win32gui.WindowFromPoint((center_x, center_y))
+        scroll_hwnd = target_hwnd  # The child window that actually receives scroll events
+        
+        parent = win32gui.GetParent(target_hwnd)
+        top_hwnd = target_hwnd
+        while parent:
+            top_hwnd = parent
+            parent = win32gui.GetParent(top_hwnd)
+            
+        start_left, start_top, _, _ = win32gui.GetWindowRect(top_hwnd)
+        rel_region = (region[0] - start_left, region[1] - start_top, region[2], region[3])
+        with open(debug_log_path, "a") as f: f.write(f"Locked to top_hwnd: {top_hwnd}, scroll_hwnd: {scroll_hwnd}, rel_region: {rel_region}\n")
+        
         # --- Load API Keys ---
         api_keys = []
         keys_file = "api_keys.txt"
@@ -285,23 +301,13 @@ def run_extraction_loop(ui, config):
             ui.updater.update_action.emit("Analyzing with Gemini...")
 
             try:
-                # Find the target window under the center of the region
-                center_x = region[0] + region[2] // 2
-                center_y = region[1] + region[3] // 2
-                target_hwnd = win32gui.WindowFromPoint((center_x, center_y))
-                
-                # Get the top-level parent window to capture
-                parent = win32gui.GetParent(target_hwnd)
-                top_hwnd = target_hwnd
-                while parent:
-                    top_hwnd = parent
-                    parent = win32gui.GetParent(top_hwnd)
-
-                with open(debug_log_path, "a") as f: f.write(f"Capturing background window {top_hwnd} for region={region}...\n")
-                img = capture_window_bg(top_hwnd, region)
+                with open(debug_log_path, "a") as f: f.write(f"Capturing background window {top_hwnd} for rel_region={rel_region}...\n")
+                img = capture_window_bg(top_hwnd, rel_region)
                 if not img:
                     with open(debug_log_path, "a") as f: f.write(f"Background capture failed, falling back to pyautogui!\n")
-                    img = pyautogui.screenshot(region=region)
+                    curr_left, curr_top, _, _ = win32gui.GetWindowRect(top_hwnd)
+                    abs_region = (curr_left + rel_region[0], curr_top + rel_region[1], rel_region[2], rel_region[3])
+                    img = pyautogui.screenshot(region=abs_region)
                 
                 debug_path = os.path.join(output_dir, f"vision_debug_{scroll_num}.png")
                 img.save(debug_path)
@@ -437,8 +443,11 @@ Only output the raw JSON array.
                     f.write(f"Checkpoint saved: scroll={scroll_num}, saved={total_saved}, last_person={last_person}\n")
 
                 ui.updater.update_action.emit("Scrolling...")
-                with open(debug_log_path, "a") as f: f.write(f"Scrolling background window {target_hwnd} amount: {scroll_amount}\n")
-                background_scroll(target_hwnd, scroll_amount, center_x, center_y)
+                with open(debug_log_path, "a") as f: f.write(f"Scrolling background window {scroll_hwnd} amount: {scroll_amount}\n")
+                curr_left, curr_top, _, _ = win32gui.GetWindowRect(top_hwnd)
+                curr_center_x = curr_left + rel_region[0] + (rel_region[2] // 2)
+                curr_center_y = curr_top + rel_region[1] + (rel_region[3] // 2)
+                background_scroll(scroll_hwnd, scroll_amount, curr_center_x, curr_center_y)
                 time.sleep(config.get("delay", 1.0))
 
             except Exception as e:

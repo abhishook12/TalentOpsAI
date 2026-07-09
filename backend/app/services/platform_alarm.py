@@ -10,7 +10,7 @@ GEMINI_MAX_RPD = 1000.0                  # 1,000 requests per day per key
 SERVER_MAX_RAM_MB = 512.0                # 512 MB memory limit (Render/Free VM)
 
 # 70% ALARM THRESHOLD MARKERS (Rule #8)
-THRESHOLD_STORAGE_MB = SUPABASE_MAX_STORAGE_MB * 0.70    # 350.0 MB (Note: Rule #7 hard cap is 400 MB)
+THRESHOLD_STORAGE_MB = 400.0                              # 400 MB (Aligned with Rule #7 hard cap)
 THRESHOLD_EGRESS_MB = SUPABASE_MAX_EGRESS_MB * 0.70      # 3,584.0 MB (3.5 GB)
 THRESHOLD_RPM = GEMINI_MAX_RPM * 0.70                    # 10.5 RPM
 THRESHOLD_RPD = GEMINI_MAX_RPD * 0.70                    # 700.0 RPD

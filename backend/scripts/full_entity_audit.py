@@ -23,14 +23,18 @@ def run_full_audit():
 
     recruiter_fields = [
         ("recruiter_name", "Name"),
+        ("normalized_recruiter_name", "Normalized Name"),
         ("email", "Primary Email"),
         ("title", "Job Title"),
         ("phone", "Phone Number"),
         ("linkedin", "LinkedIn URL"),
         ("location", "City / Location"),
+        ("normalized_city", "Normalized City"),
         ("state", "State"),
         ("specialization", "Specialization"),
         ("company_id", "Company Link"),
+        ("canonical_company_id", "Canonical Company ID"),
+        ("is_active", "Is Active Status"),
         ("email2", "Email 2"),
         ("phone2", "Phone 2"),
         ("email3", "Email 3"),
@@ -79,6 +83,7 @@ def run_full_audit():
 
     company_fields = [
         ("company_name", "Company Name"),
+        ("normalized_company_name", "Normalized Name"),
         ("website", "Website / Domain"),
         ("industry", "Industry"),
         ("location", "Headquarters Location"),
@@ -88,6 +93,7 @@ def run_full_audit():
         ("notes", "Notes"),
         ("data_source", "Data Source"),
         ("tags", "Tags"),
+        ("trust_score", "Trust Score"),
     ]
 
     for col, label in company_fields:

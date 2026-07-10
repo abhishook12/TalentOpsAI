@@ -98,6 +98,21 @@ const knownStaffingDomains = {
   'meta': 'meta.com',
   'apple': 'apple.com',
   'netflix': 'netflix.com',
+  'stand 8': 'stand8.io',
+  'stand8': 'stand8.io',
+  'talonpro': 'talonpro.com',
+  'anagh technologies': 'anaghtech.com',
+  'anagh technologies inc': 'anaghtech.com',
+  'anaghtech': 'anaghtech.com',
+  'amanda cucinotti': 'medasource.com',
+  'medasource': 'medasource.com',
+  'russelltobin': 'russelltobin.com',
+  'russell tobin': 'russelltobin.com',
+  'kellymitchell': 'kellymitchell.com',
+  'kelly mitchell': 'kellymitchell.com',
+  'brooksource': 'brooksource.com',
+  'kellyscientific': 'kellyscientific.com',
+  'kelly scientific': 'kellyscientific.com',
   'cisco': 'cisco.com',
   'oracle': 'oracle.com',
   'salesforce': 'salesforce.com',
@@ -107,7 +122,7 @@ const knownStaffingDomains = {
 
 function inferDomainFromName(name) {
   if (!name) return null
-  const clean = String(name).trim().toLowerCase()
+  const clean = String(name).trim().toLowerCase().replace(/\[duplicate\]\s*/gi, '').trim()
   if (knownStaffingDomains[clean]) {
     return knownStaffingDomains[clean]
   }
@@ -130,11 +145,14 @@ function normalizeLogoDomain(domain, name) {
   const cleaned = String(target)
     .trim()
     .toLowerCase()
+    .replace(/\.dup\.\d+$/i, '')
+    .replace(/\.\.dup\.\d+$/i, '')
+    .replace(/\[duplicate\]\s*/gi, '')
     .replace(/^https?:\/\//, '')
     .replace(/^www\./, '')
     .split('/')[0]
 
-  if (!cleaned || blockedLogoDomains.has(cleaned)) {
+  if (!cleaned || blockedLogoDomains.has(cleaned) || cleaned.includes('.dup.')) {
     return inferDomainFromName(name)
   }
 

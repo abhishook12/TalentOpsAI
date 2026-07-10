@@ -61,7 +61,9 @@ def run_fast_engine():
     print(f" -> Final whitespace trimmed on {cursor.rowcount:,} names.")
     conn.commit()
     
-    print("\\n✅ All Fast Contact Refinement completed successfully!")
+    print("\n[OK] All Fast Contact Refinement completed successfully!")
+    conn.commit()
+    conn.close()
 
 if __name__ == '__main__':
     run_fast_engine()

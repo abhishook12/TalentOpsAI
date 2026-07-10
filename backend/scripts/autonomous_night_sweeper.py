@@ -67,12 +67,15 @@ def deduplicate_companies(db: Session, dry_run: bool):
                     dup_comp.is_active = False
                     current_notes = dup_comp.notes or ""
                     dup_comp.notes = f"[NIGHT_SWEEPER] Merged into company_id: {golden_id}. " + current_notes
-
-            db.commit()
+            if total_merged % 250 == 0:
+                db.commit()
             
         total_merged += len(duplicate_ids)
 
+    if not dry_run:
+        db.commit()
     logger.info(f"Finished Company Deduplication. Merged {total_merged} companies.")
+
 
 
 def deduplicate_recruiters(db: Session, dry_run: bool):
@@ -150,14 +153,18 @@ def deduplicate_recruiters(db: Session, dry_run: bool):
             db.execute(text("UPDATE enrichment_audit SET recruiter_id = :golden_id WHERE recruiter_id = ANY(:duplicate_ids)"), 
                        {"golden_id": golden_id, "duplicate_ids": duplicate_ids})
 
-            db.commit()
+            if total_merged % 250 == 0:
+                db.commit()
             
         total_merged += len(duplicate_ids)
 
+    if not dry_run:
+        db.commit()
     logger.info(f"Finished Recruiter Deduplication. Merged {total_merged} recruiters.")
 
 
 def main():
+
     parser = argparse.ArgumentParser(description="Autonomous Night Sweeper for Database Deduplication")
     parser.add_argument("--dry-run", action="store_true", help="Run without committing changes to DB")
     args = parser.parse_args()

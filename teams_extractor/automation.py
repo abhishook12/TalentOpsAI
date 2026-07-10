@@ -362,7 +362,7 @@ Only output the raw JSON array.
                         break
                     except Exception as api_e:
                         err_str = str(api_e).lower()
-                        if "429" in err_str or "quota" in err_str or "exhausted" in err_str or "503" in err_str or "unavailable" in err_str:
+                        if "429" in err_str or "quota" in err_str or "exhausted" in err_str or "503" in err_str or "unavailable" in err_str or "404" in err_str or "not found" in err_str or "401" in err_str or "403" in err_str or "invalid" in err_str:
                             with open(debug_log_path, "a") as f: f.write(f"API Limit Hit on Key {current_key_idx + 1}: {api_e}.\n")
                             
                             if len(api_keys) > 1:

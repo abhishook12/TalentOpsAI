@@ -49,6 +49,9 @@ def run_full_audit():
         ("taxonomy_category", "Taxonomy Category"),
         ("email_status", "Email Verification Status"),
         ("email_confidence", "Email Confidence"),
+        ("email_source", "Email Source"),
+        ("last_scan_at", "Last Scan Timestamp"),
+        ("needs_review", "Needs Review Status"),
         ("completeness_score", "Completeness Score"),
         ("trust_score", "Trust Score"),
     ]
@@ -94,6 +97,7 @@ def run_full_audit():
         ("data_source", "Data Source"),
         ("tags", "Tags"),
         ("trust_score", "Trust Score"),
+        ("is_tracked", "Is Tracked Status"),
     ]
 
     for col, label in company_fields:

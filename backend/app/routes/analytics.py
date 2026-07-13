@@ -242,7 +242,13 @@ def companies_search(
     where_sql = " AND ".join(where_clauses)
 
     sql = f"""
-        WITH comp_stats AS (
+        WITH recruiter_counts AS (
+            SELECT company_id, COUNT(recruiter_id) as rc_count
+            FROM recruiters
+            WHERE company_id IS NOT NULL
+            GROUP BY company_id
+        ),
+        comp_stats AS (
             SELECT 
                 c.company_id,
                 c.company_name,
@@ -250,13 +256,14 @@ def companies_search(
                 c.industry,
                 c.website,
                 c.email_pattern,
-                (SELECT count(*) FROM recruiters r WHERE r.company_id = c.company_id) AS recruiter_count,
+                COALESCE(rc.rc_count, 0) AS recruiter_count,
                 COALESCE(NULLIF(TRIM(c.state), ''), 'US') AS state_abbr,
                 MAX({{sim_col}}) AS sim_score
             FROM companies c
+            LEFT JOIN recruiter_counts rc ON c.company_id = rc.company_id
             LEFT JOIN company_aliases ca ON c.company_id = ca.canonical_company_id
             WHERE {{where_sql}}
-            GROUP BY c.company_id
+            GROUP BY c.company_id, rc.rc_count
         )
         SELECT *, 0 AS missing_state_count, 0 AS needs_review_count, COUNT(*) OVER() AS full_count
         FROM comp_stats

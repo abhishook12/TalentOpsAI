@@ -1,7 +1,7 @@
 import json
 import re
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from sqlalchemy.orm import Session, joinedload, contains_eager
+from sqlalchemy.orm import Session, joinedload, contains_eager, selectinload
 from sqlalchemy import text
 from pydantic import BaseModel
 from typing import List, Optional
@@ -704,9 +704,9 @@ def get_recruiters(
     query = db.query(Recruiter, Company)\
               .join(Company, Recruiter.company_id == Company.company_id, isouter=True)\
               .options(
-                  joinedload(Recruiter.structured_emails),
-                  joinedload(Recruiter.structured_phones),
-                  joinedload(Recruiter.structured_locations)
+                  selectinload(Recruiter.structured_emails),
+                  selectinload(Recruiter.structured_phones),
+                  selectinload(Recruiter.structured_locations)
               )
     
     from ..utils.normalizer import normalize_text
@@ -1049,9 +1049,9 @@ def export_recruiters(
 ):
     query = db.query(Recruiter).join(Recruiter.company, isouter=True)\
               .options(
-                  joinedload(Recruiter.structured_emails),
-                  joinedload(Recruiter.structured_phones),
-                  joinedload(Recruiter.structured_locations)
+                  selectinload(Recruiter.structured_emails),
+                  selectinload(Recruiter.structured_phones),
+                  selectinload(Recruiter.structured_locations)
               )
     
     from ..utils.normalizer import normalize_text

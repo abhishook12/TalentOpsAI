@@ -48,6 +48,16 @@ def create_performance_indexes():
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_companies_trgm_name ON companies USING gin (company_name gin_trgm_ops)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_recruiters_trgm_spec ON recruiters USING gin (specialization gin_trgm_ops)"))
         
+        # 4. Indexes for filtering and sorting
+        print("Creating indexes for filtering and sorting...")
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_recruiters_is_active ON recruiters (is_active)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_recruiters_created_at ON recruiters (created_at DESC NULLS LAST)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_recruiters_state ON recruiters (state)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_recruiters_company_id ON recruiters (company_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_recruiters_completeness_score ON recruiters (completeness_score DESC NULLS LAST)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_recruiters_data_source ON recruiters (data_source)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_page_visits_visited_at ON page_visits (visited_at DESC)"))
+        
         print("All indexes created successfully!")
 
 if __name__ == "__main__":

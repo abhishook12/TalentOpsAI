@@ -13,3 +13,4 @@ duckduckgo-search==8.1.1
 tavily-python==0.7.26
 google-generativeai==0.8.6
 dnspython==2.8.0
+psutil==5.9.8

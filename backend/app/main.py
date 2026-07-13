@@ -1,6 +1,7 @@
 import logging
 import os
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy import text
@@ -168,6 +169,23 @@ app = FastAPI(
     description="Recruitment Operations Intelligence Platform",
     version="1.1.0",
 )
+
+from .resource_lockdown import is_locked_down, get_lockdown_reason, check_system_limits
+
+@app.middleware("http")
+async def lockdown_middleware(request: Request, call_next):
+    if request.method != "GET" or request.url.path.startswith("/ai"):
+        if is_locked_down():
+            return JSONResponse(
+                status_code=503,
+                content={"detail": f"System is in Emergency Lockdown: {get_lockdown_reason()}", "type": "lockdown"}
+            )
+    
+    # Check limits on every POST/AI request
+    if request.method != "GET" or request.url.path.startswith("/ai"):
+        check_system_limits()
+        
+    return await call_next(request)
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(

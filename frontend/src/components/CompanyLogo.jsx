@@ -186,15 +186,15 @@ export function CompanyLogo({ domain, name, size = 32, style = {} }) {
   }
 
   // 4-Tier Logo Service Cascade:
-  // Level 0: DuckDuckGo Favicons (Fast, covers millions of domains including smaller consulting firms)
-  // Level 1: Clearbit (High resolution corporate logos)
-  // Level 2: Google Favicon v2 (Reliable fallback for almost all web servers)
+  // Level 0: Clearbit (High resolution corporate logos, transparent PNGs)
+  // Level 1: Google Favicon v2 (Reliable fallback for almost all web servers, scalable)
+  // Level 2: DuckDuckGo Favicons (Covers millions of domains including smaller consulting firms)
   // Level 3: Favicon.im (Final catch-all scraper)
-  let logoUrl = `https://icons.duckduckgo.com/ip3/${cleanDomain}.ico`
+  let logoUrl = `https://logo.clearbit.com/${cleanDomain}?size=${size * 4}`
   if (errorLevel === 1) {
-    logoUrl = `https://logo.clearbit.com/${cleanDomain}?size=${size * 4}`
-  } else if (errorLevel === 2) {
     logoUrl = `https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${cleanDomain}&size=${size * 4}`
+  } else if (errorLevel === 2) {
+    logoUrl = `https://icons.duckduckgo.com/ip3/${cleanDomain}.ico`
   } else if (errorLevel === 3) {
     logoUrl = `https://favicon.im/${cleanDomain}?larger=true`
   }

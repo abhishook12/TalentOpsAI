@@ -27,9 +27,13 @@ class ResolveDuplicateRequest(BaseModel):
 class SmartImportRequest(BaseModel):
     rows: List[Dict[str, Any]]
 
+from ..resource_lockdown import track_gemini_call
+
 def get_model():
     if not GEMINI_API_KEY:
         raise HTTPException(status_code=500, detail="GEMINI_API_KEY is not set.")
+    # Track call to enforce 70% rate limit
+    track_gemini_call()
     # Use flash for speed
     return genai.GenerativeModel('gemini-2.5-flash')
 

@@ -1,14 +1,15 @@
 import { Link as NavLink, useLocation } from '@tanstack/react-router'
 import { clearStoredToken } from '../services/api'
+import { LayoutDashboard, Activity, Users, Map, BarChart2, Search, Eye, Radar, LogOut, ShieldCheck } from 'lucide-react'
 
 const nav = [
-  { to: '/', label: 'Dashboard', icon: 'ti-layout-dashboard' },
-  { to: '/activity', label: 'Activity Log', icon: 'ti-activity' },
-  { to: '/recruiters', label: 'Recruiters', icon: 'ti-users' },
-  { to: '/directory', label: 'Directory', icon: 'ti-map-2', aliases: ['/states', '/companies'] },
-  { to: '/analytics', label: 'Analytics', icon: 'ti-chart-bar' },
-  { to: '/ai-search', label: 'AI Search', icon: 'ti-search' },
-  { to: '/visitor-logs', label: 'Visitor Logs', icon: 'ti-eye' },
+  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/activity', label: 'Activity Log', icon: Activity },
+  { to: '/recruiters', label: 'Recruiters', icon: Users },
+  { to: '/directory', label: 'Directory', icon: Map, aliases: ['/states', '/companies'] },
+  { to: '/analytics', label: 'Analytics', icon: BarChart2 },
+  { to: '/ai-search', label: 'AI Search', icon: Search },
+  { to: '/visitor-logs', label: 'Visitor Logs', icon: Eye },
 ]
 
 export default function Sidebar() {
@@ -49,7 +50,7 @@ export default function Sidebar() {
             boxShadow: '0 12px 28px rgba(0,0,0,0.22)',
             flexShrink: 0,
           }}>
-            <i className="ti ti-radar" style={{ fontSize: 20 }} />
+            <Radar size={20} />
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ color: '#f3f3f3', fontSize: 18, fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.05 }}>TalentOps AI</div>
@@ -61,7 +62,7 @@ export default function Sidebar() {
       </div>
 
       <nav style={{ flex: 1, minHeight: 0, padding: '14px 12px', overflowY: 'auto' }}>
-        {nav.map(({ to, label, icon, aliases = [] }) => {
+        {nav.map(({ to, label, icon: Icon, aliases = [] }) => {
           const active = to === '/'
             ? location.pathname === '/'
             : location.pathname.startsWith(to) || aliases.some((alias) => location.pathname.startsWith(alias))
@@ -104,7 +105,7 @@ export default function Sidebar() {
                 event.currentTarget.style.color = 'rgba(255,255,255,0.72)'
               }}
             >
-              <i className={`ti ${icon}`} style={{ fontSize: 18, opacity: active ? 1 : 0.88 }} />
+              <Icon size={18} strokeWidth={active ? 2.5 : 2} opacity={active ? 1 : 0.88} fill={active ? 'currentColor' : 'none'} />
               <span>{label}</span>
             </NavLink>
           )
@@ -147,8 +148,8 @@ export default function Sidebar() {
             event.currentTarget.style.transform = 'translateY(0)'
           }}
         >
-          <i className="ti ti-logout" style={{ fontSize: 18 }} />
-          Logout
+          <LogOut size={18} />
+          <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.01em' }}>Sign Out</span>
         </button>
       </div>
 
@@ -170,15 +171,14 @@ export default function Sidebar() {
             display: 'grid',
             placeItems: 'center',
             color: '#f2f2f2',
-            border: '1px solid rgba(255,255,255,0.12)',
+            border: '1px solid rgba(255,255,255,0.12)'
           }}>
-            <i className="ti ti-shield-check" style={{ fontSize: 20 }} />
+            <ShieldCheck size={20} />
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 900, color: '#f3f3f3' }}>System Operator</div>
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.62)', marginTop: 2 }}>Terminal 01-A</div>
           </div>
-        </div>
       </div>
     </aside>
   )

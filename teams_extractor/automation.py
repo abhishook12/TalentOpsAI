@@ -250,14 +250,8 @@ def run_extraction_loop(ui, config):
             ui.is_running = False
             return
 
-        # --- Load checkpoint from previous run ---
-        checkpoint = _load_checkpoint(output_dir)
+        # --- Start fresh for every new extraction run ---
         all_extracted_contacts = []
-        if checkpoint and "all_extracted_contacts" in checkpoint:
-            all_extracted_contacts = checkpoint["all_extracted_contacts"]
-            with open(debug_log_path, "a") as f:
-                f.write(f"Resuming from checkpoint: last_person={checkpoint.get('last_person_name')}, saved={len(all_extracted_contacts)}\n")
-            ui.updater.update_status.emit(f"Resuming from: {checkpoint.get('last_person_name', '?')}")
 
         scroll_num = 0
         total_saved = 0

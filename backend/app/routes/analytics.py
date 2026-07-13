@@ -228,9 +228,13 @@ def companies_search(
     params = {"limit": limit, "min_recruiters": min_recruiters, "skip": skip}
 
     if q:
+        q_clean = q.strip()
+        import re
+        q_ilike = re.sub(r'\s+', '%', q_clean)
         # Use pg_trgm similarity (fuzzy matching) and ILIKE fallback for robustness
-        where_clauses.append("(c.company_name % :q OR ca.alias_name % :q OR c.company_name ILIKE '%' || :q || '%' OR ca.alias_name ILIKE '%' || :q || '%')")
-        params["q"] = q
+        where_clauses.append("(c.company_name % :q OR ca.alias_name % :q OR c.company_name ILIKE '%' || :q_ilike || '%' OR ca.alias_name ILIKE '%' || :q_ilike || '%')")
+        params["q"] = q_clean
+        params["q_ilike"] = q_ilike
         sim_col = "GREATEST(similarity(c.company_name, :q), COALESCE(similarity(ca.alias_name, :q), 0))"
     else:
         sim_col = "0"

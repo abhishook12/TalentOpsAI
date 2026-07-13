@@ -179,6 +179,7 @@ export default function Sidebar() {
             <div style={{ fontSize: 12, fontWeight: 900, color: '#f3f3f3' }}>System Operator</div>
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.62)', marginTop: 2 }}>Terminal 01-A</div>
           </div>
+        </div>
       </div>
     </aside>
   )

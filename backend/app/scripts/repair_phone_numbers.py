@@ -233,11 +233,12 @@ def repair_recruiter(recruiter: Recruiter, matched_row: dict[str, str] | None, a
             existing_keys = [phone_compare_key(value) for value in old_slots if value]
             if best_key not in existing_keys:
                 if apply:
-                    recruiter.phone = best_phone
-                    if old_primary and phone_compare_key(old_primary) and phone_compare_key(old_primary) != best_key:
-                        for field in ("phone2", "phone3", "phone4"):
+                    if not old_primary:
+                        recruiter.phone = best_phone
+                    else:
+                        for field in ("phone3", "phone4", "phone2"):
                             if not getattr(recruiter, field):
-                                setattr(recruiter, field, normalize_candidate(old_primary))
+                                setattr(recruiter, field, best_phone)
                                 break
                 applied = True
                 primary_changed = True
@@ -248,7 +249,8 @@ def repair_recruiter(recruiter: Recruiter, matched_row: dict[str, str] | None, a
             elif best_key == current_primary_key and best_phone != current_primary:
                 old_primary = recruiter.phone
                 if apply:
-                    recruiter.phone = best_phone
+                    if not old_primary:
+                        recruiter.phone = best_phone
                 applied = True
                 primary_changed = True
                 evidence["previous_primary"] = current_primary
@@ -259,7 +261,13 @@ def repair_recruiter(recruiter: Recruiter, matched_row: dict[str, str] | None, a
         fallback_key = phone_compare_key(fallback_phone)
         if fallback_key:
             if apply:
-                recruiter.phone = fallback_phone
+                if not current_primary:
+                    recruiter.phone = fallback_phone
+                else:
+                    for field in ("phone3", "phone4", "phone2"):
+                        if not getattr(recruiter, field):
+                            setattr(recruiter, field, fallback_phone)
+                            break
             applied = True
             primary_changed = True
             evidence["previous_primary"] = current_primary

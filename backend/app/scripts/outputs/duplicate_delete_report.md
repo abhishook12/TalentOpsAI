@@ -1,7 +1,7 @@
 # Duplicate Delete Report
 
-- Timestamp: `2026-06-29T16:30:38.292296`
-- Dry run: `True`
-- Clusters selected: `8490`
-- Deleted copies: `13517`
-- Kept canonicals: `8490`
+- Timestamp: `2026-07-13T19:33:02.014561`
+- Dry run: `False`
+- Clusters selected: `7797`
+- Deleted copies: `12716`
+- Kept canonicals: `7797`

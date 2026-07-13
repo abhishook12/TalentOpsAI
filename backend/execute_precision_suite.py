@@ -34,9 +34,9 @@ def format_phone_precision(raw_phone):
         return f"+1 ({ac}) {pre}-{suf}", None
         
     if len(digits) > 10:
-        return f"+{digits}", None
+        return f"+{digits}"[:30], None
         
-    return s, None
+    return s[:30], None
 
 def run_suite():
     t0 = time.time()

@@ -101,8 +101,8 @@ def execute_cleanse():
         phantom_ids = ids[1:]
         
         for p_id in phantom_ids:
-            cur.execute("UPDATE recruiters SET company_id = %s WHERE company_id = %s", (canonical_id, p_id))
-            cur.execute("UPDATE companies SET is_active = false, company_name = %s WHERE company_id = %s", (f"[DUPLICATE] {comp_name}", p_id))
+            cur.execute("UPDATE recruiters SET company_id = %s WHERE company_id = %s", (canonical_id, p_id), prepare=False)
+            cur.execute("UPDATE companies SET is_active = false, company_name = %s WHERE company_id = %s", (f"[DUPLICATE] {comp_name}", p_id), prepare=False)
             merged_count += 1
             
     conn.commit()

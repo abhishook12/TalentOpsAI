@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { cloneElement, useEffect, useRef, useState } from 'react'
+import { useSessionState } from '../hooks/useSessionState'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip,
   CartesianGrid, AreaChart, Area, Cell, LabelList,
@@ -156,7 +157,7 @@ function StateTooltip({ active, payload, label }) {
 }
 
 export default function Analytics() {
-  const [selectedStates, setSelectedStates] = useState([])
+  const [selectedStates, setSelectedStates] = useSessionState('an_selectedStates', [])
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState(null)
 

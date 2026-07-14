@@ -66,7 +66,7 @@ def get_dashboard_kpis(db: Session = Depends(get_db)):
             COUNT(*) FILTER (WHERE needs_review = true) as needs_review,
             COUNT(*) FILTER (WHERE completeness_score < 50) as low_quality,
             COUNT(*) FILTER (WHERE 
-                (email IS NOT NULL AND email != '' AND email NOT LIKE '%@missing.local%') OR 
+                (email IS NOT NULL AND email != '') OR 
                 (email2 IS NOT NULL AND email2 != '') OR 
                 (email3 IS NOT NULL AND email3 != '') OR 
                 (email4 IS NOT NULL AND email4 != '')

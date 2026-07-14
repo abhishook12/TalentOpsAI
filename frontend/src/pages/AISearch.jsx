@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { exportToExcel } from '../services/export'
 import api, { API, checkAuth, getErrorMessage, login, logAction } from '../services/api'
 import { CompanyLogo } from '../components/CompanyLogo'
+import { useSessionState } from '../hooks/useSessionState'
 
 function initials(name) {
   const parts = (name || '').trim().split(' ').filter(Boolean)
@@ -318,19 +319,20 @@ function iconButtonStyle(disabled = false) {
 }
 
 export default function AISearch() {
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useSessionState('ai_query', '')
   const [searchResults, setSearchResults] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [selectedId, setSelectedId] = useState(null)
+  const [selectedId, setSelectedId] = useSessionState('ai_selectedId', null)
   const [showFilters, setShowFilters] = useState(false)
   const [toast, setToast] = useState('')
   const [selectedDetail, setSelectedDetail] = useState(null)
   const [selectedDetailLoading, setSelectedDetailLoading] = useState(false)
   const [selectedDetailError, setSelectedDetailError] = useState('')
-  const [filterCompany, setFilterCompany] = useState('')
-  const [filterLocation, setFilterLocation] = useState('')
-  const [filterSpecialization, setFilterSpecialization] = useState('')
+
+  const [filterCompany, setFilterCompany] = useSessionState('ai_filterCompany', '')
+  const [filterLocation, setFilterLocation] = useSessionState('ai_filterLocation', '')
+  const [filterSpecialization, setFilterSpecialization] = useSessionState('ai_filterSpecialization', '')
 
   const [editOpen, setEditOpen] = useState(false)
   const [editAuthed, setEditAuthed] = useState(false)

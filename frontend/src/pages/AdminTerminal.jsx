@@ -1591,8 +1591,6 @@ export default function AdminTerminal() {
                     </button>
                   </div>
                 </Section>
-              </>
-            )}
             {/* Field Audit */}
             {fieldAudit && (
               <Section title="Field Coverage Audit" icon="ti-clipboard-check">

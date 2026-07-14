@@ -2,6 +2,7 @@ import { useLocation, useNavigate, Outlet } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState, Component } from 'react'
 import Sidebar from './components/Sidebar'
 import UpdateCenter from './components/UpdateCenter'
+import { AuthProvider, useAuth } from './context/AuthContext'
 
 class GlobalErrorBoundary extends Component {
   constructor(props) {
@@ -742,20 +743,46 @@ function PageTracker() {
   return null
 }
 
-export default function AppShell() {
+export default function AppShellWrapper() {
+  return (
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
+  )
+}
+
+function AppShell() {
   const location = useLocation()
   const navigate = useNavigate()
+  const isAuthPage = ['/login', '/register', '/forgot-password'].includes(location.pathname)
+  const { user, loading } = useAuth()
   const pageName = useMemo(() => PAGE_NAMES[location.pathname] || 'Dashboard', [location.pathname])
-
+  
   useEffect(() => {
-    const style = document.createElement('style')
-    style.textContent = globalStyles
-    document.head.appendChild(style)
-    return () => document.head.removeChild(style)
-  }, [])
+    if (!loading && !user && !isAuthPage) {
+      navigate({ to: '/login' })
+    }
+    if (!loading && user && isAuthPage) {
+      navigate({ to: '/' })
+    }
+  }, [user, loading, isAuthPage, navigate])
+
+  if (loading) return null;
+
+  if (isAuthPage) {
+    return (
+      <>
+        <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
+        <GlobalErrorBoundary>
+          <Outlet />
+        </GlobalErrorBoundary>
+      </>
+    )
+  }
 
   return (
     <>
+      <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
       <PageTracker />
       <UpdateCenter />
       <div className="cc-shell">

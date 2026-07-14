@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
+import { useSessionState } from '../hooks/useSessionState'
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { Activity, Globe, Monitor, Search, RefreshCw, UserCircle, MapPin } from 'lucide-react'
 import api from '../services/api'
 
 export default function VisitorTracking() {
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchTerm, setSearchTerm] = useSessionState('vt_searchTerm', '')
 
   const { data, isLoading, isFetching, refetch, error } = useQuery({
     queryKey: ['visitor-logs'],

@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import api from "../services/api";
+import { useSessionState } from '../hooks/useSessionState';
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function ActivityLog() {
-  const [activeTab, setActiveTab] = useState("database"); // 'database' or 'visitors'
+  const [activeTab, setActiveTab] = useSessionState('al_activeTab', "database"); // 'database' or 'visitors'
   
   // Database Activity State
   const [activity, setActivity] = useState([]);
   const [dailyStats, setDailyStats] = useState({added: 0, improved: 0, removed: 0});
   const [dbLoading, setDbLoading] = useState(true);
-  const [dbFilter, setDbFilter] = useState("all");
+  const [dbFilter, setDbFilter] = useSessionState('al_dbFilter', "all");
 
   // Visitor Logs State
   const [visitors, setVisitors] = useState([]);

@@ -91,8 +91,43 @@ const visitorLogsRoute = createRoute({
   component: lazyComponent(() => import('./pages/VisitorTracking')),
 })
 
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/login',
+  component: lazyComponent(() => import('./pages/auth/Login')),
+})
+
+const registerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/register',
+  component: lazyComponent(() => import('./pages/auth/Register')),
+})
+
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/forgot-password',
+  component: lazyComponent(() => import('./pages/auth/ForgotPassword')),
+})
+
+const resetPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/reset-password',
+  component: lazyComponent(() => import('./pages/auth/ResetPassword')),
+})
+
+const verifyEmailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/verify-email',
+  component: lazyComponent(() => import('./pages/auth/VerifyEmail')),
+})
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  loginRoute,
+  registerRoute,
+  forgotPasswordRoute,
+  resetPasswordRoute,
+  verifyEmailRoute,
   recruitersRoute,
   analyticsRoute,
   aiSearchRoute,

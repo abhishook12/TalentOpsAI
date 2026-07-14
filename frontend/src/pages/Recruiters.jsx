@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { exportToExcel } from '../services/export'
 import api from '../services/api'
 import { CompanyLogo } from '../components/CompanyLogo'
+import { useSessionState } from '../hooks/useSessionState'
 
 const emptyForm = {
   recruiter_name: '', email: '', phone: '', linkedin: '',
@@ -205,13 +206,13 @@ export default function Recruiters() {
   const [loading, setLoading] = useState(true)
   
   // Pagination
-  const [page, setPage] = useState(1)
+  const [page, setPage] = useSessionState('recruiters_page', 1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
 
   // Advanced Filters
-  const [search, setSearch] = useState('')
-  const [filters, setFilters] = useState({
+  const [search, setSearch] = useSessionState('recruiters_search', '')
+  const [filters, setFilters] = useSessionState('recruiters_filters', {
       state: '', city: '', company: '', title: '',
       has_phone: '', missing_email: '', status: '',
       needs_review: '', state_status: '', email_inference_status: '', sort_by: 'created_at', sort_desc: 'true'

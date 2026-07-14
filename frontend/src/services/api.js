@@ -4,6 +4,12 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 export const API = String(API_URL).replace(/\/$/, '')
 
 const clientCache = new Map()
+let onUnauthorizedCallback = null;
+
+export const setOnUnauthorizedCallback = (callback) => {
+  onUnauthorizedCallback = callback;
+};
+
 const createClient = (baseURL) => {
   if (!clientCache.has(baseURL)) {
     clientCache.set(baseURL, axios.create({
@@ -94,6 +100,13 @@ async function smartRequest(method, url, data, config = {}) {
         await sleep(retryDelayMs)
         continue
       }
+      
+      if (error.response && error.response.status === 401) {
+        if (onUnauthorizedCallback) {
+          onUnauthorizedCallback();
+        }
+      }
+      
       break
     }
   }
@@ -110,46 +123,8 @@ const api = {
   patch: (url, data, config) => smartRequest('patch', url, data, config),
 }
 
-export async function checkAuth() {
-  try {
-    const { data } = await api.get('/auth/me', { authScope: 'admin' })
-    return data.authenticated === true
-  } catch {
-    return false
-  }
-}
-
-export async function checkAppAuth() {
-  try {
-    const { data } = await api.get('/auth/app-me', { authScope: 'app' })
-    return data.authenticated === true
-  } catch {
-    return false
-  }
-}
-
-export async function login(password, rememberDevice = false) {
-  const { data } = await api.post('/auth/login', {
-    password,
-    remember_device: rememberDevice,
-  }, { authScope: 'none' })
-  return data
-}
-
-export async function appLogin(password, rememberDevice = false) {
-  const { data } = await api.post('/auth/app-login', {
-    password,
-    remember_device: rememberDevice,
-  }, { authScope: 'none' })
-  return data
-}
-
 export async function logout() {
   await api.post('/auth/logout', undefined, { authScope: 'admin' })
-}
-
-export async function appLogout() {
-  await api.post('/auth/app-logout', undefined, { authScope: 'app' })
 }
 
 export async function logAction(actionType, details = {}, status = 'success') {

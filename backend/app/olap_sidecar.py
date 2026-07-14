@@ -32,10 +32,11 @@ class MemoryOLAPSidecar:
             from sqlalchemy import text
             db = SessionLocal()
             try:
+                db.execute(text("SET statement_timeout = '60s'"))
                 recruiter_counts = db.execute(text("""
                     SELECT
                         COUNT(*) AS total_recruiters,
-                        COUNT(*) FILTER (WHERE email IS NOT NULL AND email != '' AND email NOT LIKE '%@missing.local%') AS real_emails,
+                        COUNT(*) FILTER (WHERE email IS NOT NULL AND email != '') AS real_emails,
                         COUNT(*) FILTER (WHERE phone IS NOT NULL AND phone != '') AS phones,
                         COUNT(*) FILTER (WHERE company_id IS NOT NULL) AS companies_linked,
                         COUNT(*) FILTER (WHERE state IS NOT NULL AND state != '') AS with_state,

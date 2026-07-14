@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import * as XLSX from 'xlsx'
 import api, { getErrorMessage } from '../services/api'
 import { CompanyLogo } from '../components/CompanyLogo'
+import { OutlookComposeOverlay } from '../components/OutlookComposeOverlay'
+import { useSessionState } from '../hooks/useSessionState'
+
 const STATES = [
   { abbr: 'AL', name: 'Alabama' }, { abbr: 'AK', name: 'Alaska' },
   { abbr: 'AZ', name: 'Arizona' }, { abbr: 'AR', name: 'Arkansas' },
@@ -51,25 +55,79 @@ function stateLabel(abbr) {
   return name === abbr ? abbr : `${abbr} - ${name}`
 }
 
+function EditableEmail({ recruiter, onUpdate }) {
+  const [editing, setEditing] = useState(false);
+  const [email, setEmail] = useState(recruiter.email || '');
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (email === recruiter.email) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.put(`/recruiters/${recruiter.recruiter_id}`, { email });
+      onUpdate(recruiter.recruiter_id, email);
+      setEditing(false);
+    } catch (e) {
+      alert('Failed to update email: ' + getErrorMessage(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+        <input 
+          autoFocus 
+          value={email} 
+          onChange={e => setEmail(e.target.value)} 
+          onKeyDown={e => e.key === 'Enter' && save()}
+          onBlur={save}
+          disabled={saving}
+          style={{ width: '100%', padding: '4px 6px', borderRadius: 4, border: '1px solid var(--accent)', background: 'var(--main-bg)', color: 'var(--text-primary)', outline: 'none' }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div 
+      title={recruiter.email} 
+      style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', group: 'hover' }}
+      onClick={() => setEditing(true)}
+    >
+      <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: 180, display: 'inline-block' }}>
+        {recruiter.email || <span style={{ opacity: 0.5 }}>No email</span>}
+      </span>
+      <i className="ti ti-pencil" style={{ opacity: 0.3, fontSize: 13 }} />
+    </div>
+  );
+}
+
 export default function Directory() {
-  const [companyQuery, setCompanyQuery] = useState('')
+  const [companyQuery, setCompanyQuery] = useSessionState('dir_companyQuery', '')
   const [debouncedCompanyQuery, setDebouncedCompanyQuery] = useState('')
   const [companies, setCompanies] = useState([])
   const [companiesLoading, setCompaniesLoading] = useState(false)
-  const [selectedCompany, setSelectedCompany] = useState(null)
+  const [selectedCompany, setSelectedCompany] = useSessionState('dir_selectedCompany', null)
 
   const [companyStates, setCompanyStates] = useState([])
   const [statesLoading, setStatesLoading] = useState(false)
-  const [selectedState, setSelectedState] = useState(null)
+  const [selectedState, setSelectedState] = useSessionState('dir_selectedState', null)
   const [stateQuery, setStateQuery] = useState('')
 
-  const [recruiterQuery, setRecruiterQuery] = useState('')
+  const [recruiterQuery, setRecruiterQuery] = useSessionState('dir_recruiterQuery', '')
   const [debouncedRecruiterQuery, setDebouncedRecruiterQuery] = useState('')
   const [recruiters, setRecruiters] = useState([])
   const [recruitersLoading, setRecruitersLoading] = useState(false)
   const [recruitersTotal, setRecruitersTotal] = useState(0)
-  const [page, setPage] = useState(1)
-  const [selectedRecruiters, setSelectedRecruiters] = useState(new Map())
+  const [page, setPage] = useSessionState('dir_page', 1)
+  const [selectedRecruiters, setSelectedRecruiters] = useSessionState('dir_selectedRecruiters', new Map())
+
+  const [isComposeOpen, setIsComposeOpen] = useState(false)
   const [toast, setToast] = useState(null)
   const toastRef = useRef(null)
 
@@ -109,16 +167,23 @@ export default function Directory() {
     return () => { alive = false }
   }, [debouncedCompanyQuery])
 
+  const prevCompanyRef = useRef(selectedCompany?.company_id)
+
   useEffect(() => {
-    setSelectedState(null)
-    setStateQuery('')
-    setRecruiterQuery('')
-    setDebouncedRecruiterQuery('')
-    setCompanyStates([])
-    setRecruiters([])
-    setRecruitersTotal(0)
-    setPage(1)
-    setSelectedRecruiters(new Map())
+    // Only reset state if the company ACTUALLY changed from a previous selection
+    if (prevCompanyRef.current !== undefined && prevCompanyRef.current !== selectedCompany?.company_id) {
+      setSelectedState(null)
+      setStateQuery('')
+      setRecruiterQuery('')
+      setDebouncedRecruiterQuery('')
+      setCompanyStates([])
+      setRecruiters([])
+      setRecruitersTotal(0)
+      setPage(1)
+      setSelectedRecruiters(new Map())
+    }
+    prevCompanyRef.current = selectedCompany?.company_id
+
     if (!selectedCompany?.company_id) return
 
     let alive = true
@@ -141,9 +206,14 @@ export default function Directory() {
     return () => { alive = false }
   }, [selectedCompany])
 
+  const prevStateRef = useRef(selectedState)
+
   useEffect(() => {
-    setPage(1)
-    setSelectedRecruiters(new Map())
+    if (prevStateRef.current !== undefined && prevStateRef.current !== selectedState) {
+      setPage(1)
+      setSelectedRecruiters(new Map())
+    }
+    prevStateRef.current = selectedState
   }, [selectedState])
 
   useEffect(() => {
@@ -512,7 +582,14 @@ export default function Directory() {
                         />
                       </td>
                       <td style={{ padding: '10px 12px', fontWeight: 900, color: 'var(--text-primary)' }}>{recruiter.recruiter_name || ''}</td>
-                      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{recruiter.email || ''}</td>
+                      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>
+                        <EditableEmail 
+                          recruiter={recruiter} 
+                          onUpdate={(id, newEmail) => {
+                            setRecruiters(prev => prev.map(r => r.recruiter_id === id ? { ...r, email: newEmail } : r))
+                          }} 
+                        />
+                      </td>
                       <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{recruiter.location || recruiter.state || ''}</td>
                       <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{recruiter.phone || ''}</td>
                     </tr>
@@ -553,6 +630,54 @@ export default function Directory() {
         <div style={{ position: 'fixed', bottom: 18, right: 18, zIndex: 50 }}>
           <div className="card" style={{ padding: '10px 12px' }}>{toast.message}</div>
         </div>
+      )}
+
+      {/* Floating Prompt for Bulk Mail */}
+      {selectedCount > 0 && !isComposeOpen && createPortal(
+        <div style={{
+          position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)',
+          backgroundColor: '#1e1e1e', border: '1px solid #333', borderRadius: '24px',
+          padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '16px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)', zIndex: 99999,
+        }}>
+          <span style={{ color: '#e0e0e0', fontSize: '13px', fontWeight: 600 }}>
+            Want to send bulk mail to {selectedCount} selected people?
+          </span>
+          <button 
+            onClick={() => setIsComposeOpen(true)}
+            style={{
+              backgroundColor: '#0078d4', color: 'white', border: 'none', padding: '6px 16px',
+              borderRadius: '16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer'
+            }}
+          >
+            Compose
+          </button>
+        </div>,
+        document.body
+      )}
+
+      {/* Outlook Compose Overlay */}
+      {isComposeOpen && createPortal(
+        <OutlookComposeOverlay 
+          recipients={Array.from(selectedRecruiters.values())}
+          onClose={() => setIsComposeOpen(false)}
+          onSend={async (data) => {
+            try {
+              const res = await fetch('http://127.0.0.1:1337/send-bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+              });
+              if (!res.ok) throw new Error('Bridge returned an error');
+              showToast(`Sent ${data.recipients.length} emails via local Outlook`, 'success');
+              setIsComposeOpen(false);
+            } catch (err) {
+              console.error(err);
+              showToast('Error: Is your Local Outlook Bridge running?', 'error');
+            }
+          }}
+        />,
+        document.body
       )}
     </div>
   )

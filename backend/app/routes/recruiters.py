@@ -502,9 +502,6 @@ def search_recruiters(
                             OR regexp_replace(COALESCE(r.phone2, ''), '[^0-9]+', '', 'g') = :q_digits
                             OR regexp_replace(COALESCE(r.phone3, ''), '[^0-9]+', '', 'g') = :q_digits
                             OR regexp_replace(COALESCE(r.phone4, ''), '[^0-9]+', '', 'g') = :q_digits
-                            OR regexp_replace(COALESCE(r.alternate_phones, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
-                            OR regexp_replace(COALESCE(r.metadata_json, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
-                            OR regexp_replace(COALESCE(r.raw_data, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
                         )
                         THEN 180
                     WHEN :q_digits != ''
@@ -513,17 +510,8 @@ def search_recruiters(
                             OR regexp_replace(COALESCE(r.phone2, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
                             OR regexp_replace(COALESCE(r.phone3, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
                             OR regexp_replace(COALESCE(r.phone4, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
-                            OR regexp_replace(COALESCE(r.metadata_json, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
-                            OR regexp_replace(COALESCE(r.raw_data, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
                         )
                         THEN 100
-                    ELSE 0
-                END
-                +
-                CASE
-                    WHEN COALESCE(r.metadata_json, '') ILIKE '%' || :q || '%'
-                        OR COALESCE(r.raw_data, '') ILIKE '%' || :q || '%'
-                        THEN 90
                     ELSE 0
                 END
                 +
@@ -559,18 +547,14 @@ def search_recruiters(
                 OR r.phone4 ILIKE '%' || :q || '%'
                 OR COALESCE(r.alternate_emails, '') ILIKE '%' || :q || '%'
                 OR COALESCE(r.alternate_phones, '') ILIKE '%' || :q || '%'
-                OR r.metadata_json::text ILIKE '%' || :q || '%'
-                OR r.raw_data::text ILIKE '%' || :q || '%'
                 OR (
                     :q_digits != ''
                     AND (
-                        regexp_replace(COALESCE(r.phone, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
-                        OR regexp_replace(COALESCE(r.phone2, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
-                        OR regexp_replace(COALESCE(r.phone3, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
-                        OR regexp_replace(COALESCE(r.phone4, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
-                        OR regexp_replace(COALESCE(r.alternate_phones, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
-                        OR regexp_replace(COALESCE(r.metadata_json, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
-                        OR regexp_replace(COALESCE(r.raw_data, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
+                        r.phone ILIKE '%' || :q_digits || '%'
+                        OR r.phone2 ILIKE '%' || :q_digits || '%'
+                        OR r.phone3 ILIKE '%' || :q_digits || '%'
+                        OR r.phone4 ILIKE '%' || :q_digits || '%'
+                        OR COALESCE(r.alternate_phones, '') ILIKE '%' || :q_digits || '%'
                     )
                 )
                 OR COALESCE(c.company_name, '') ILIKE '%' || :q || '%'

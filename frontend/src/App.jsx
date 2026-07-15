@@ -722,7 +722,8 @@ function AppShell() {
   if (loading) return null;
 
   if (!user && !isAuthPage) {
-    return <Navigate to="/login" replace />
+    const redirectUrl = window.location.pathname + window.location.search;
+    return <Navigate to="/login" search={{ redirect: redirectUrl }} replace />
   }
 
   if (user && isAuthPage) {

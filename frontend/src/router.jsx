@@ -89,6 +89,9 @@ const reviewQueueRoute = createRoute({
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
+  validateSearch: (search) => ({
+    redirect: search.redirect || '/',
+  }),
   component: lazyComponent(() => import('./pages/auth/Login')),
 })
 

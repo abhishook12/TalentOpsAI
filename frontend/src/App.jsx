@@ -656,7 +656,7 @@ const globalStyles = `
 import { AnalyticsProvider } from './context/AnalyticsProvider'
 
 // Global settings
-axios.defaults.withCredentials = true
+// axios credentials set in main.jsx
 
 function ThemeSwitcher() {
   const [theme, setTheme] = useState(() => {

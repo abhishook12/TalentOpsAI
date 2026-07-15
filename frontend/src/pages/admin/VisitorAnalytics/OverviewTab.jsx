@@ -4,17 +4,19 @@ import { Users, Activity, Clock, MousePointerClick } from 'lucide-react'
 import api from '../../../services/api'
 
 export default function OverviewTab() {
-  const { data: stats, isLoading } = useQuery({
+  const { data: stats, isLoading, isError } = useQuery({
     queryKey: ['visitor-analytics-overview'],
     queryFn: async () => {
       const res = await api.get('/admin/visitor-analytics/overview')
       return res.data
     },
-    refetchInterval: 30000
+    refetchInterval: 30000,
+    retry: 2
   })
 
-  if (isLoading) return <div style={{ color: 'rgba(255,255,255,0.6)' }}>Loading overview...</div>
-  if (!stats) return null
+  if (isLoading) return <div style={{ color: 'rgba(255,255,255,0.6)', padding: 40, textAlign: 'center' }}>Loading overview...</div>
+  if (isError) return <div style={{ color: '#f87171', padding: 40, textAlign: 'center', fontSize: 15 }}>Failed to load analytics data. The backend may still be deploying — try refreshing in a minute.</div>
+  if (!stats) return <div style={{ color: 'rgba(255,255,255,0.5)', padding: 40, textAlign: 'center', fontSize: 15 }}>No analytics data available yet. Visitor data will appear here once sessions are tracked.</div>
 
   const formatSecs = (s) => {
     if (!s) return '0s'

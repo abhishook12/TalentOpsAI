@@ -10,10 +10,10 @@ from sqlalchemy import text
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.models.models import Company, PageVisit, Recruiter, Vendor
-from app.utils.logo_domains import select_logo_domain
-from app.utils.state_sql import EFFECTIVE_RECRUITER_STATE_SQL_R, UNKNOWN_STATE_SENTINEL
+from ..database import get_db
+from ..models.models import Company, PageVisit, Recruiter, Vendor
+from ..utils.logo_domains import select_logo_domain
+from ..utils.state_sql import EFFECTIVE_RECRUITER_STATE_SQL_R, UNKNOWN_STATE_SENTINEL
 
 
 class SimpleCache:

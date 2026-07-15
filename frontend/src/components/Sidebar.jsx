@@ -9,6 +9,7 @@ const nav = [
   { to: '/recruiters', label: 'Recruiters', icon: Users },
   { to: '/directory', label: 'Directory', icon: Map, aliases: ['/states', '/companies'] },
   { to: '/analytics', label: 'Analytics', icon: BarChart2 },
+  { to: '/admin/health', label: 'Health Status', icon: ShieldCheck },
   { to: '/ai-search', label: 'AI Search', icon: Search },
   { to: '/visitor-logs', label: 'Visitor Logs', icon: Eye },
   { to: '/sessions', label: 'Sessions', icon: ShieldCheck },

@@ -31,7 +31,13 @@ export default function Login() {
       await login(email, password, rememberMe)
       navigate({ to: '/' })
     } catch (err) {
-      setError(err?.response?.data?.detail || 'Invalid email or password')
+      let errorDetail = err?.response?.data?.detail || 'Invalid email or password'
+      if (Array.isArray(errorDetail)) {
+          errorDetail = errorDetail.map(e => e.msg).join(', ')
+      } else if (typeof errorDetail === 'object') {
+          errorDetail = JSON.stringify(errorDetail)
+      }
+      setError(errorDetail)
     } finally {
       setIsSubmitting(false)
     }

@@ -459,17 +459,30 @@ Only output the raw JSON array.
             with open(os.path.join(output_dir, "crash_log.txt"), "w") as f:
                 f.write(error_msg)
             ui.updater.update_status.emit("Crashed! See output/crash_log.txt")
-        else:
+        
+        # ALWAYS save whatever we extracted, even if it crashed!
+        if len(all_extracted_contacts) > 0:
             out_excel = os.path.join(output_dir, f"vision_extracted_data_{friendly_time}.xlsx")
-            with open(debug_log_path, "a") as f: f.write(f"Building excel at {out_excel}\n")
+            with open(debug_log_path, "a") as f: f.write(f"Building excel at {out_excel} before exit\n")
             build_excel(all_extracted_contacts, out_excel)
-            ui.updater.update_status.emit(f"Done! {total_saved} unique contacts saved to Excel.")
-            with open(debug_log_path, "a") as f: f.write("Done building excel\n")
+            if not error_msg:
+                ui.updater.update_status.emit(f"Done! {len(all_extracted_contacts)} unique contacts saved to Excel.")
+        elif not error_msg:
+            ui.updater.update_status.emit("Done! No contacts found.")
             
     except Exception as outer_e:
         debug_log_path = os.path.join("output", "debug_log.txt")
         with open(debug_log_path, "a") as f: 
             f.write(f"FATAL OUTER ERROR: {outer_e}\n{traceback.format_exc()}\n")
+        
+        # ALWAYS save data if an outer crash happens!
+        try:
+            if 'all_extracted_contacts' in locals() and len(all_extracted_contacts) > 0:
+                out_excel = os.path.join("output", f"vision_extracted_data_{now.strftime('%I-%M%p_%d%b').upper()}_recovered.xlsx")
+                build_excel(all_extracted_contacts, out_excel)
+        except:
+            pass
+
         try:
             ui.updater.update_status.emit(f"Fatal Error: {outer_e}")
             ui.is_running = False

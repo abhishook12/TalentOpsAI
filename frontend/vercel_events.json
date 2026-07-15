@@ -1,0 +1,1650 @@
+[
+  {
+    "type": "stdout",
+    "created": 1784138023811,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "Running build in Washington, D.C., USA (East) – iad1",
+      "id": "1784138023811918397914800000",
+      "date": 1784138023811,
+      "serial": "1784138023811918397914800000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138023815,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "Build machine configuration: 2 cores, 8 GB",
+      "id": "1784138023815918397914800000",
+      "date": 1784138023815,
+      "serial": "1784138023815918397914800000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138024010,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "Cloning github.com/abhishook12/TalentOpsAI (Branch: main, Commit: 04964de)",
+      "id": "1784138024010918397914800000",
+      "date": 1784138024010,
+      "serial": "1784138024010918397914800000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138029838,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "Cloning completed: 5.828s",
+      "id": "1784138029838918397914800000",
+      "date": 1784138029838,
+      "serial": "1784138029838918397914800000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138030479,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "Restored build cache from previous deployment (DKM3yadg8kyew77mYPDBdAnuYc3o)",
+      "id": "1784138030479918397914800000",
+      "date": 1784138030479,
+      "serial": "1784138030479918397914800000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138030774,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "Running \"vercel build\"",
+      "id": "1784138030774690800215300000",
+      "date": 1784138030774,
+      "serial": "1784138030774690800215300000"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138030794,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "Vercel CLI 56.2.0",
+      "id": "1784138030794690800215300000",
+      "date": 1784138030794,
+      "serial": "1784138030794690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138031386,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "Installing dependencies...",
+      "id": "1784138031386690800215300000",
+      "date": 1784138031386,
+      "serial": "1784138031386690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138032349,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "",
+      "id": "1784138032349690800215300000",
+      "date": 1784138032349,
+      "serial": "1784138032349690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138032350,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "up to date in 838ms",
+      "id": "1784138032350690800215300000",
+      "date": 1784138032350,
+      "serial": "1784138032350690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138032350,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "",
+      "id": "1784138032350690800215300001",
+      "date": 1784138032350,
+      "serial": "1784138032350690800215300001"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138032351,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "57 packages are looking for funding",
+      "id": "1784138032351690800215300000",
+      "date": 1784138032351,
+      "serial": "1784138032351690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138032351,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "  run `npm fund` for details",
+      "id": "1784138032351690800215300001",
+      "date": 1784138032351,
+      "serial": "1784138032351690800215300001"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138032394,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "Running \"npm run build\"",
+      "id": "1784138032394690800215300000",
+      "date": 1784138032394,
+      "serial": "1784138032394690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138032497,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "",
+      "id": "1784138032497690800215300000",
+      "date": 1784138032497,
+      "serial": "1784138032497690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138032497,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "> frontend@0.0.0 build",
+      "id": "1784138032497690800215300001",
+      "date": 1784138032497,
+      "serial": "1784138032497690800215300001"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138032497,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "> vite build",
+      "id": "1784138032497690800215300002",
+      "date": 1784138032497,
+      "serial": "1784138032497690800215300002"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138032498,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "",
+      "id": "1784138032498690800215300000",
+      "date": 1784138032498,
+      "serial": "1784138032498690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138032795,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "\u001b[36mvite v8.0.12 \u001b[32mbuilding client environment for production...\u001b[36m\u001b[39m",
+      "id": "1784138032795690800215300000",
+      "date": 1784138032795,
+      "serial": "1784138032795690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138034831,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "\u001b[2K\rtransforming...✓ 3525 modules transformed.",
+      "id": "1784138034831690800215300000",
+      "date": 1784138034831,
+      "serial": "1784138034831690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035017,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "rendering chunks...",
+      "id": "1784138035017690800215300000",
+      "date": 1784138035017,
+      "serial": "1784138035017690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035304,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "computing gzip size...",
+      "id": "1784138035304690800215300000",
+      "date": 1784138035304,
+      "serial": "1784138035304690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035323,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/index.html                                             1.41 kB │ gzip:   0.58 kB",
+      "id": "1784138035323690800215300000",
+      "date": 1784138035323,
+      "serial": "1784138035323690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035324,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/inter-vietnamese-400-normal-DMkecbls.woff2      4.97 kB",
+      "id": "1784138035324690800215300000",
+      "date": 1784138035324,
+      "serial": "1784138035324690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035324,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/inter-greek-ext-400-normal-DGGRlc-M.woff2       5.26 kB",
+      "id": "1784138035324690800215300001",
+      "date": 1784138035324,
+      "serial": "1784138035324690800215300001"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035324,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/inter-vietnamese-400-normal-Bbgyi5SW.woff       6.50 kB",
+      "id": "1784138035324690800215300002",
+      "date": 1784138035324,
+      "serial": "1784138035324690800215300002"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035324,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/inter-greek-ext-400-normal-KugGGMne.woff        7.06 kB",
+      "id": "1784138035324690800215300003",
+      "date": 1784138035324,
+      "serial": "1784138035324690800215300003"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035325,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/inter-cyrillic-400-normal-obahsSVq.woff2        7.71 kB",
+      "id": "1784138035325690800215300000",
+      "date": 1784138035325,
+      "serial": "1784138035325690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035325,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/inter-greek-400-normal-B4URO6DV.woff2           7.77 kB",
+      "id": "1784138035325690800215300001",
+      "date": 1784138035325,
+      "serial": "1784138035325690800215300001"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035325,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/inter-cyrillic-400-normal-HOLc17fK.woff         9.78 kB",
+      "id": "1784138035325690800215300002",
+      "date": 1784138035325,
+      "serial": "1784138035325690800215300002"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035325,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/inter-greek-400-normal-q2sYcFCs.woff            9.92 kB",
+      "id": "1784138035325690800215300003",
+      "date": 1784138035325,
+      "serial": "1784138035325690800215300003"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035325,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/inter-cyrillic-ext-400-normal-BQZuk6qB.woff2   10.23 kB",
+      "id": "1784138035325690800215300004",
+      "date": 1784138035325,
+      "serial": "1784138035325690800215300004"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035326,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/inter-cyrillic-ext-400-normal-DQukG94-.woff    13.33 kB",
+      "id": "1784138035326690800215300000",
+      "date": 1784138035326,
+      "serial": "1784138035326690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035326,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/inter-latin-400-normal-C38fXH4l.woff2          23.66 kB",
+      "id": "1784138035326690800215300001",
+      "date": 1784138035326,
+      "serial": "1784138035326690800215300001"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035326,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/inter-latin-400-normal-CyCys3Eg.woff           30.69 kB",
+      "id": "1784138035326690800215300002",
+      "date": 1784138035326,
+      "serial": "1784138035326690800215300002"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035327,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/inter-latin-ext-400-normal-C1nco2VV.woff2      35.00 kB",
+      "id": "1784138035327690800215300000",
+      "date": 1784138035327,
+      "serial": "1784138035327690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035327,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/inter-latin-ext-400-normal-77YHD8bZ.woff       47.56 kB",
+      "id": "1784138035327690800215300001",
+      "date": 1784138035327,
+      "serial": "1784138035327690800215300001"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035327,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/index-TWuTt5rl.css                             43.18 kB │ gzip:   8.59 kB",
+      "id": "1784138035327690800215300002",
+      "date": 1784138035327,
+      "serial": "1784138035327690800215300002"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035327,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/export-CnMQOiwI.js                              0.23 kB │ gzip:   0.20 kB",
+      "id": "1784138035327690800215300003",
+      "date": 1784138035327,
+      "serial": "1784138035327690800215300003"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035328,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/refresh-cw-BSiWsiFc.js                          0.31 kB │ gzip:   0.22 kB",
+      "id": "1784138035328690800215300000",
+      "date": 1784138035328,
+      "serial": "1784138035328690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035328,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/useSessionState-CenjCZ82.js                     0.53 kB │ gzip:   0.33 kB",
+      "id": "1784138035328690800215300001",
+      "date": 1784138035328,
+      "serial": "1784138035328690800215300001"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035328,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/useNavigate-DltWhsbe.js                         0.81 kB │ gzip:   0.45 kB",
+      "id": "1784138035328690800215300002",
+      "date": 1784138035328,
+      "serial": "1784138035328690800215300002"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035328,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/activity-CykUbULC.js                            1.59 kB │ gzip:   0.91 kB",
+      "id": "1784138035328690800215300003",
+      "date": 1784138035328,
+      "serial": "1784138035328690800215300003"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035328,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/with-selector-QN43P4yL.js                       1.65 kB │ gzip:   0.73 kB",
+      "id": "1784138035328690800215300004",
+      "date": 1784138035328,
+      "serial": "1784138035328690800215300004"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035328,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/SessionManagement-BcrsHJnC.js                   2.63 kB │ gzip:   1.15 kB",
+      "id": "1784138035328690800215300005",
+      "date": 1784138035328,
+      "serial": "1784138035328690800215300005"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035329,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/CommandCenter-CZ37j6fd.js                       2.77 kB │ gzip:   0.79 kB",
+      "id": "1784138035329690800215300000",
+      "date": 1784138035329,
+      "serial": "1784138035329690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035329,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/VerifyEmail-CK9qThWY.js                         2.98 kB │ gzip:   1.09 kB",
+      "id": "1784138035329690800215300001",
+      "date": 1784138035329,
+      "serial": "1784138035329690800215300001"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035329,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/ForgotPassword-B8muieLd.js                      3.32 kB │ gzip:   1.31 kB",
+      "id": "1784138035329690800215300002",
+      "date": 1784138035329,
+      "serial": "1784138035329690800215300002"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035329,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/Login-o91hEr9e.js                               3.38 kB │ gzip:   1.27 kB",
+      "id": "1784138035329690800215300003",
+      "date": 1784138035329,
+      "serial": "1784138035329690800215300003"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035329,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/react-dom-CZJimE4c.js                           3.57 kB │ gzip:   1.36 kB",
+      "id": "1784138035329690800215300004",
+      "date": 1784138035329,
+      "serial": "1784138035329690800215300004"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035330,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/EnrichmentLiveFeed-B6mzCVDy.js                  4.55 kB │ gzip:   1.75 kB",
+      "id": "1784138035330690800215300000",
+      "date": 1784138035330,
+      "serial": "1784138035330690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035330,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/CompanyLogo-DgNA53oJ.js                         4.86 kB │ gzip:   2.11 kB",
+      "id": "1784138035330690800215300001",
+      "date": 1784138035330,
+      "serial": "1784138035330690800215300001"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035330,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/ResetPassword-BtOOVDc0.js                       5.28 kB │ gzip:   1.72 kB",
+      "id": "1784138035330690800215300002",
+      "date": 1784138035330,
+      "serial": "1784138035330690800215300002"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035330,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/AuthContext-Bd67itYo.js                         6.06 kB │ gzip:   2.71 kB",
+      "id": "1784138035330690800215300003",
+      "date": 1784138035330,
+      "serial": "1784138035330690800215300003"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035330,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/ReviewQueue-B1ET5npk.js                         7.02 kB │ gzip:   2.55 kB",
+      "id": "1784138035330690800215300004",
+      "date": 1784138035330,
+      "serial": "1784138035330690800215300004"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035331,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/Register-B4SnTOyA.js                            7.07 kB │ gzip:   2.14 kB",
+      "id": "1784138035331690800215300000",
+      "date": 1784138035331,
+      "serial": "1784138035331690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035331,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/jsx-runtime-Wi7VRbXU.js                         7.88 kB │ gzip:   2.98 kB",
+      "id": "1784138035331690800215300001",
+      "date": 1784138035331,
+      "serial": "1784138035331690800215300001"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035331,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/HealthDashboard-D_uEsIuo.js                     8.76 kB │ gzip:   2.04 kB",
+      "id": "1784138035331690800215300002",
+      "date": 1784138035331,
+      "serial": "1784138035331690800215300002"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035331,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/useQuery-CGRXEzYS.js                            8.81 kB │ gzip:   3.22 kB",
+      "id": "1784138035331690800215300003",
+      "date": 1784138035331,
+      "serial": "1784138035331690800215300003"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035331,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/AuthFrame-D25OtpVm.js                          10.13 kB │ gzip:   2.55 kB",
+      "id": "1784138035331690800215300004",
+      "date": 1784138035331,
+      "serial": "1784138035331690800215300004"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035332,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/ActivityLog-BAzz2_L8.js                        12.92 kB │ gzip:   3.05 kB",
+      "id": "1784138035332690800215300000",
+      "date": 1784138035332,
+      "serial": "1784138035332690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035332,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/QueryClientProvider-DaidEWaM.js                15.13 kB │ gzip:   5.24 kB",
+      "id": "1784138035332690800215300001",
+      "date": 1784138035332,
+      "serial": "1784138035332690800215300001"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035332,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/linear-BV2B0jTe.js                             18.93 kB │ gzip:   7.77 kB",
+      "id": "1784138035332690800215300002",
+      "date": 1784138035332,
+      "serial": "1784138035332690800215300002"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035332,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/Directory-C5QXu-oW.js                          23.88 kB │ gzip:   6.25 kB",
+      "id": "1784138035332690800215300003",
+      "date": 1784138035332,
+      "serial": "1784138035332690800215300003"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035333,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/VisitorTracking-B4bk3nSE.js                    25.64 kB │ gzip:   7.56 kB",
+      "id": "1784138035333690800215300000",
+      "date": 1784138035333,
+      "serial": "1784138035333690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035334,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/Recruiters-y9lpf06v.js                         26.03 kB │ gzip:   5.77 kB",
+      "id": "1784138035334690800215300000",
+      "date": 1784138035334,
+      "serial": "1784138035334690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035334,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/Campaigns-Cb8lKTWr.js                          28.19 kB │ gzip:   7.22 kB",
+      "id": "1784138035334690800215300001",
+      "date": 1784138035334,
+      "serial": "1784138035334690800215300001"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035334,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/AISearch-BYQVyf50.js                           33.87 kB │ gzip:   7.78 kB",
+      "id": "1784138035334690800215300002",
+      "date": 1784138035334,
+      "serial": "1784138035334690800215300002"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035335,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/api-BDs6wTYS.js                                43.92 kB │ gzip:  17.10 kB",
+      "id": "1784138035335690800215300000",
+      "date": 1784138035335,
+      "serial": "1784138035335690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035336,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/AdminTerminal-D2rcDek-.js                      79.09 kB │ gzip:  15.81 kB",
+      "id": "1784138035336690800215300000",
+      "date": 1784138035336,
+      "serial": "1784138035336690800215300000"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035336,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/proxy-DJ03j9Yz.js                             124.38 kB │ gzip:  40.57 kB",
+      "id": "1784138035336690800215300001",
+      "date": 1784138035336,
+      "serial": "1784138035336690800215300001"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035336,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/Dashboard-DjSyAPQa.js                         132.34 kB │ gzip:  44.65 kB",
+      "id": "1784138035336690800215300002",
+      "date": 1784138035336,
+      "serial": "1784138035336690800215300002"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035336,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/index-DdcRXeAk.js                             312.01 kB │ gzip:  95.53 kB",
+      "id": "1784138035336690800215300003",
+      "date": 1784138035336,
+      "serial": "1784138035336690800215300003"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035336,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/Analytics-ThHi3hcQ.js                         377.58 kB │ gzip: 105.24 kB",
+      "id": "1784138035336690800215300004",
+      "date": 1784138035336,
+      "serial": "1784138035336690800215300004"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035336,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "dist/assets/xlsx-S5Hu1bOQ.js                              421.51 kB │ gzip: 140.60 kB",
+      "id": "1784138035336690800215300005",
+      "date": 1784138035336,
+      "serial": "1784138035336690800215300005"
+    }
+  },
+  {
+    "type": "stdout",
+    "created": 1784138035336,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "",
+      "id": "1784138035336690800215300006",
+      "date": 1784138035336,
+      "serial": "1784138035336690800215300006"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035337,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "\u001b[31m✗\u001b[39m Build failed in 2.54s",
+      "id": "1784138035337690800215300000",
+      "date": 1784138035337,
+      "serial": "1784138035337690800215300000"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035337,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "\u001b[31merror during build:",
+      "id": "1784138035337690800215300001",
+      "date": 1784138035337,
+      "serial": "1784138035337690800215300001"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035337,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "\u001b[31mBuild failed with 1 error:",
+      "id": "1784138035337690800215300002",
+      "date": 1784138035337,
+      "serial": "1784138035337690800215300002"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035337,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "",
+      "id": "1784138035337690800215300003",
+      "date": 1784138035337,
+      "serial": "1784138035337690800215300003"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035337,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "Error: [vite]: Rolldown failed to resolve import \"react-hot-toast\" from \"/vercel/path0/frontend/src/pages/Campaigns.jsx\".",
+      "id": "1784138035337690800215300004",
+      "date": 1784138035337,
+      "serial": "1784138035337690800215300004"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035337,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "This is most likely unintended because it can break your application at runtime.",
+      "id": "1784138035337690800215300005",
+      "date": 1784138035337,
+      "serial": "1784138035337690800215300005"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035337,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "If you do want to externalize this module explicitly add it to",
+      "id": "1784138035337690800215300006",
+      "date": 1784138035337,
+      "serial": "1784138035337690800215300006"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035337,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "`build.rolldownOptions.external`",
+      "id": "1784138035337690800215300007",
+      "date": 1784138035337,
+      "serial": "1784138035337690800215300007"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035337,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "    at viteLog (file:///vercel/path0/frontend/node_modules/vite/dist/node/chunks/node.js:33145:57)",
+      "id": "1784138035337690800215300008",
+      "date": 1784138035337,
+      "serial": "1784138035337690800215300008"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035337,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "    at file:///vercel/path0/frontend/node_modules/vite/dist/node/chunks/node.js:33181:71",
+      "id": "1784138035337690800215300009",
+      "date": 1784138035337,
+      "serial": "1784138035337690800215300009"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035343,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "    at onwarn (file:///vercel/path0/frontend/node_modules/@vitejs/plugin-react/dist/index.js:40:7)",
+      "id": "1784138035343690800215300000",
+      "date": 1784138035343,
+      "serial": "1784138035343690800215300000"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035343,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "    at file:///vercel/path0/frontend/node_modules/vite/dist/node/chunks/node.js:33181:28",
+      "id": "1784138035343690800215300001",
+      "date": 1784138035343,
+      "serial": "1784138035343690800215300001"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035344,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "    at onRollupLog (file:///vercel/path0/frontend/node_modules/vite/dist/node/chunks/node.js:33176:63)",
+      "id": "1784138035344690800215300000",
+      "date": 1784138035344,
+      "serial": "1784138035344690800215300000"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035344,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "    at onLog (file:///vercel/path0/frontend/node_modules/vite/dist/node/chunks/node.js:32945:4)",
+      "id": "1784138035344690800215300001",
+      "date": 1784138035344,
+      "serial": "1784138035344690800215300001"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035344,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "    at file:///vercel/path0/frontend/node_modules/rolldown/dist/shared/rolldown-build-D_ShytiL.mjs:50:26",
+      "id": "1784138035344690800215300002",
+      "date": 1784138035344,
+      "serial": "1784138035344690800215300002"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035344,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "    at logger (file:///vercel/path0/frontend/node_modules/rolldown/dist/shared/rolldown-build-D_ShytiL.mjs:41:3)",
+      "id": "1784138035344690800215300003",
+      "date": 1784138035344,
+      "serial": "1784138035344690800215300003"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035344,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "    at onLog (file:///vercel/path0/frontend/node_modules/rolldown/dist/shared/bindingify-input-options-zrVFGksD.mjs:2013:32)\u001b[31m",
+      "id": "1784138035344690800215300004",
+      "date": 1784138035344,
+      "serial": "1784138035344690800215300004"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035344,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "    at aggregateBindingErrorsIntoJsError (file:///vercel/path0/frontend/node_modules/rolldown/dist/shared/error-BrnLyQ-g.mjs:48:18)",
+      "id": "1784138035344690800215300005",
+      "date": 1784138035344,
+      "serial": "1784138035344690800215300005"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035344,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "    at unwrapBindingResult (file:///vercel/path0/frontend/node_modules/rolldown/dist/shared/error-BrnLyQ-g.mjs:18:128)",
+      "id": "1784138035344690800215300006",
+      "date": 1784138035344,
+      "serial": "1784138035344690800215300006"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035344,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "    at #build (file:///vercel/path0/frontend/node_modules/rolldown/dist/shared/rolldown-build-D_ShytiL.mjs:3257:34)",
+      "id": "1784138035344690800215300007",
+      "date": 1784138035344,
+      "serial": "1784138035344690800215300007"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035345,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "    at async buildEnvironment (file:///vercel/path0/frontend/node_modules/vite/dist/node/chunks/node.js:33052:64)",
+      "id": "1784138035345690800215300000",
+      "date": 1784138035345,
+      "serial": "1784138035345690800215300000"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035345,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "    at async Object.build (file:///vercel/path0/frontend/node_modules/vite/dist/node/chunks/node.js:33474:19)",
+      "id": "1784138035345690800215300001",
+      "date": 1784138035345,
+      "serial": "1784138035345690800215300001"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035345,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "    at async Object.buildApp (file:///vercel/path0/frontend/node_modules/vite/dist/node/chunks/node.js:33471:153)",
+      "id": "1784138035345690800215300002",
+      "date": 1784138035345,
+      "serial": "1784138035345690800215300002"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035345,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "    at async CAC.<anonymous> (file:///vercel/path0/frontend/node_modules/vite/dist/node/cli.js:778:3) {",
+      "id": "1784138035345690800215300003",
+      "date": 1784138035345,
+      "serial": "1784138035345690800215300003"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035345,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "  errors: [Getter/Setter]",
+      "id": "1784138035345690800215300004",
+      "date": 1784138035345,
+      "serial": "1784138035345690800215300004"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035345,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "}\u001b[39m",
+      "id": "1784138035345690800215300005",
+      "date": 1784138035345,
+      "serial": "1784138035345690800215300005"
+    }
+  },
+  {
+    "type": "stderr",
+    "created": 1784138035385,
+    "payload": {
+      "deploymentId": "dpl_AKuDXqp99twQEfS7VG1rpAdYpBKW",
+      "info": {
+        "type": "build",
+        "name": "bld_irnyb16gq",
+        "entrypoint": "."
+      },
+      "text": "Error: Command \"npm run build\" exited with 1",
+      "id": "1784138035385690800215300000",
+      "date": 1784138035385,
+      "serial": "1784138035385690800215300000"
+    }
+  }
+]

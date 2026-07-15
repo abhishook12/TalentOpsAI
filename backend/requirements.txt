@@ -14,3 +14,4 @@ tavily-python==0.7.26
 google-generativeai==0.8.6
 dnspython==2.8.0
 psutil==5.9.8
+passlib[bcrypt]==1.7.4user-agents

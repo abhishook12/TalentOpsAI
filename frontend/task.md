@@ -1,0 +1,14 @@
+- `[x]` Update requirements (`user-agents` package)
+- `[x]` Define `VisitorSession` model in `models.py`
+- `[x]` Run schema migration to create `visitor_sessions` table
+- `[x]` Write tracking logic `upsert_visitor_session`
+- `[x]` Update `analytics.py` and `actions.py` to trigger the upsert
+- `[x]` Create Backend `visitor_analytics.py` route
+- `[x]` Register route in `main.py`
+- `[x]` Remove deprecated `HealthDashboard.jsx` and `VisitorTracking.jsx`
+- `[x]` Remove deprecated `/admin/health` route
+- `[x]` Add `/admin/visitor-analytics` to Frontend `router.jsx`
+- `[x]` Restructure `Sidebar.jsx` (Admin grouping)
+- `[x]` Implement `VisitorAnalytics` multi-tab component (Overview, Live Visitors, Sessions)
+- `[x]` Integrate timeline in `VisitorProfileDrawer`
+- `[x]` Verify everything runs without errors (3-times check rule)

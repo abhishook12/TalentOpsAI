@@ -12,7 +12,7 @@ from ..models.auth_models import User, Session as DBSession, Role, LoginHistory,
 from ..services.auth_service import get_password_hash, verify_password, create_access_token, create_refresh_token, get_current_user_from_request, require_role
 from ..services.email_service import send_verification_email, send_password_reset_email
 from pydantic import BaseModel, EmailStr
-from ..config import JWT_SECRET, ADMIN_PASSWORD, APP_PASSWORD, IS_PRODUCTION, FREE_ADMIN_MODE, DEV_AUTO_VERIFY
+from ..config import JWT_SECRET, ADMIN_PASSWORD, APP_PASSWORD, IS_PRODUCTION, DEV_AUTO_VERIFY
 from ..models.models import ActionLog
 
 router = APIRouter()
@@ -305,8 +305,6 @@ def get_me(request: Request, db: Session = Depends(get_db)):
         }
     except HTTPException:
         # Fallback to legacy auth_me behavior
-        if FREE_ADMIN_MODE:
-            return {"authenticated": True, "role": "admin", "free_mode": True}
         cookie_token = request.cookies.get("admin_session")
         if cookie_token:
             try:

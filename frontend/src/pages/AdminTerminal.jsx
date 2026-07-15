@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import api, { checkAuth, getErrorMessage, login, logout, setStoredToken, clearStoredToken } from '../services/api'
+import api, { getErrorMessage, logout, setStoredToken, clearStoredToken } from '../services/api'
 import { exportToExcel } from '../services/export'
 import WorkerDashboard from '../components/WorkerDashboard'
 
@@ -1658,6 +1658,8 @@ export default function AdminTerminal() {
                   {orphans.count === 0 && <span style={{ color: '#22c55e', fontSize: 12.5 }}>✓ All companies have linked recruiters.</span>}
                 </div>
               </Section>
+            )}
+              </>
             )}
           </div>
         )}

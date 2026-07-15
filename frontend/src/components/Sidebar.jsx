@@ -5,11 +5,13 @@ import { LayoutDashboard, Activity, Users, Map, BarChart2, Search, Eye, Radar, L
 const nav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/activity', label: 'Activity Log', icon: Activity },
+  { to: '/campaigns', label: 'Campaigns', icon: Radar },
   { to: '/recruiters', label: 'Recruiters', icon: Users },
   { to: '/directory', label: 'Directory', icon: Map, aliases: ['/states', '/companies'] },
   { to: '/analytics', label: 'Analytics', icon: BarChart2 },
   { to: '/ai-search', label: 'AI Search', icon: Search },
   { to: '/visitor-logs', label: 'Visitor Logs', icon: Eye },
+  { to: '/sessions', label: 'Sessions', icon: ShieldCheck },
 ]
 
 export default function Sidebar() {

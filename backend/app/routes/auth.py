@@ -4,6 +4,7 @@ from datetime import datetime, timezone, timedelta
 import secrets
 import jwt
 import time
+import hashlib
 from collections import defaultdict, deque
 
 from ..database import get_db
@@ -69,6 +70,10 @@ def _log_admin_event(db: Session, request: Request, action_type: str, status_val
     except Exception:
         db.rollback()
 
+def _hash_token(token: str) -> str:
+    """SHA-256 hash a token before storing in DB."""
+    return hashlib.sha256(token.encode()).hexdigest()
+
 # -------- Legacy Authentication Bridge --------
 def verify_admin(request: Request, db: Session = Depends(get_db)):
     if FREE_ADMIN_MODE:
@@ -119,8 +124,29 @@ class UserLogin(BaseModel):
     password: str
     remember_me: bool = False
 
+def _validate_password(password: str):
+    """Validate password strength. Raises HTTPException(400) with details on failure."""
+    issues = []
+    if len(password) < 8:
+        issues.append("at least 8 characters")
+    if not any(c.isupper() for c in password):
+        issues.append("at least 1 uppercase letter")
+    if not any(c.islower() for c in password):
+        issues.append("at least 1 lowercase letter")
+    if not any(c.isdigit() for c in password):
+        issues.append("at least 1 digit")
+    special_chars = set("!@#$%^&*()_+-=[]{}|;:',.<>?/`~")
+    if not any(c in special_chars for c in password):
+        issues.append("at least 1 special character (!@#$%^&*()_+-=[]{}|;:',.<>?/`~)")
+    if issues:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Password too weak. Missing: {'; '.join(issues)}"
+        )
+
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(user: UserRegister, db: Session = Depends(get_db)):
+    _validate_password(user.password)
     existing_user = db.query(User).filter(User.email == user.email.lower().strip()).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -160,7 +186,7 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
         token = secrets.token_hex(32)
         verification = EmailVerificationToken(
             user_id=new_user.id,
-            token_hash=token,
+            token_hash=_hash_token(token),
             expires_at=datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=1)
         )
         db.add(verification)
@@ -219,7 +245,7 @@ def login(login_data: UserLogin, request: Request, response: Response, db: Sessi
     
     db_session = DBSession(
         user_id=user.id,
-        token_hash=session_token,
+        token_hash=_hash_token(session_token),
         device=user_agent,
         browser=user_agent,
         ip_address=ip,
@@ -371,7 +397,7 @@ class VerifyEmailRequest(BaseModel):
 @router.post("/verify-email")
 def verify_email(req: VerifyEmailRequest, db: Session = Depends(get_db)):
     token_record = db.query(EmailVerificationToken).filter(
-        EmailVerificationToken.token_hash == req.token,
+        EmailVerificationToken.token_hash == _hash_token(req.token),
         EmailVerificationToken.is_used == False
     ).first()
     
@@ -400,7 +426,7 @@ def resend_verification(req: ResendVerificationRequest, db: Session = Depends(ge
     token = secrets.token_hex(32)
     verification = EmailVerificationToken(
         user_id=user.id,
-        token_hash=token,
+        token_hash=_hash_token(token),
         expires_at=datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=1)
     )
     db.add(verification)
@@ -421,7 +447,7 @@ def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
     token = secrets.token_hex(32)
     reset_record = PasswordResetToken(
         user_id=user.id,
-        token_hash=token,
+        token_hash=_hash_token(token),
         expires_at=datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=1)
     )
     db.add(reset_record)
@@ -436,8 +462,9 @@ class ResetPasswordRequest(BaseModel):
 
 @router.post("/reset-password")
 def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
+    _validate_password(req.new_password)
     token_record = db.query(PasswordResetToken).filter(
-        PasswordResetToken.token_hash == req.token,
+        PasswordResetToken.token_hash == _hash_token(req.token),
         PasswordResetToken.is_used == False
     ).first()
     
@@ -480,7 +507,7 @@ def refresh_token(request: Request, response: Response, db: Session = Depends(ge
         
         db_session = DBSession(
             user_id=user.id,
-            token_hash=session_token,
+            token_hash=_hash_token(session_token),
             device=request.headers.get("user-agent"),
             browser=request.headers.get("user-agent"),
             ip_address=_client_ip(request),

@@ -39,25 +39,47 @@ class SimpleCache:
             if key in self._cache:
                 del self._cache[key]
 
-
 analytics_cache = SimpleCache()
 # Cache to hold expensive analytical queries
+
+import functools
+
+def cached_endpoint(ttl_seconds=30):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            # Create a cache key from the function name and its arguments
+            key_parts = [func.__name__]
+            # Add kwargs stringified (excluding Db sessions which are unhashable)
+            for k, v in sorted(kwargs.items()):
+                if k != 'db':
+                    key_parts.append(f"{k}={v}")
+            cache_key = ":".join(key_parts)
+            
+            cached = analytics_cache.get(cache_key)
+            if cached is not None:
+                return cached
+            
+            result = func(*args, **kwargs)
+            analytics_cache.set(cache_key, result, ttl=ttl_seconds)
+            return result
+        return wrapper
+    return decorator
 
 logger = logging.getLogger("talentops.analytics")
 router = APIRouter()
 
 
 @router.get("/data-quality")
+@cached_endpoint(ttl_seconds=60)
 def get_data_quality():
     from ..olap_sidecar import olap_sidecar
     return olap_sidecar.get_data_quality()
 
 
 @router.get("/dashboard")
+@cached_endpoint(ttl_seconds=60)
 def get_dashboard_kpis(db: Session = Depends(get_db)):
-    cached = analytics_cache.get("dashboard_kpis")
-    if cached is not None:
-        return cached
 
     sql = text("""
         SELECT 
@@ -109,16 +131,12 @@ def get_dashboard_kpis(db: Session = Depends(get_db)):
         "companies": {"total": total_companies},
         "vendors": {"total": total_vendors},
     }
-    analytics_cache.set("dashboard_kpis", result, ttl=300)
     return result
 
 
 @router.get("/recruiters-by-state")
+@cached_endpoint(ttl_seconds=3600)
 def recruiters_by_state(db: Session = Depends(get_db)):
-    cached = analytics_cache.get("recruiters_by_state")
-    if cached is not None:
-        return cached
-
     computed_state_sql = EFFECTIVE_RECRUITER_STATE_SQL_R
 
     results = db.execute(text(f"""
@@ -133,7 +151,6 @@ def recruiters_by_state(db: Session = Depends(get_db)):
     """)).mappings().all()
 
     res_list = [{"state": row["state"], "count": int(row["count"])} for row in results]
-    analytics_cache.set("recruiters_by_state", res_list, ttl=3600)
     return res_list
 
 

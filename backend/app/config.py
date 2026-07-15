@@ -15,13 +15,19 @@ IS_PRODUCTION = (ENV in ("production", "prod") or IS_RENDER) and not IS_STAGING
 JWT_SECRET = os.getenv("JWT_SECRET", "super-secret-jwt-key-talentops")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "1012")
 APP_PASSWORD = os.getenv("APP_PASSWORD") or ADMIN_PASSWORD
-FREE_ADMIN_MODE = os.getenv("FREE_ADMIN_MODE", "true").lower() in ("1", "true", "yes", "on")
+FREE_ADMIN_MODE = os.getenv("FREE_ADMIN_MODE", "false").lower() in ("1", "true", "yes", "on")
+DEV_AUTO_VERIFY = os.getenv("DEV_AUTO_VERIFY", "true").lower() in ("1", "true", "yes", "on") and not IS_PRODUCTION
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY")
 TAVILY_API_KEYS = [k.strip() for k in os.environ.get("TAVILY_API_KEYS", "").split(",") if k.strip()]
 HUNTER_API_KEY = os.environ.get("HUNTER_API_KEY")
 
+SMTP_HOST = os.getenv("SMTP_HOST", "")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_FROM = os.getenv("SMTP_FROM", "noreply@talentops.ai")
 CORS_ORIGINS = [
     o.strip()
     for o in os.getenv(

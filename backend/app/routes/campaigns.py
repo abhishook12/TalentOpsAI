@@ -3,7 +3,10 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+import os
+import smtplib
+from email.message import EmailMessage
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -22,6 +25,212 @@ from ..models.models import Recruiter
 
 router = APIRouter()
 
+class BulkSendRequest(BaseModel):
+    emails: list[str]
+    subject: str
+    body: str
+    from_email: str
+    cc: Optional[str] = None
+    bcc: Optional[str] = None
+
+def send_bulk_emails_background(request: BulkSendRequest):
+    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
+    smtp_port = int(os.environ.get("SMTP_PORT", 587))
+    smtp_user = os.environ.get("SMTP_USER")
+    smtp_pass = os.environ.get("SMTP_PASS")
+    
+    if not smtp_user or not smtp_pass:
+        print("❌ Cannot send bulk emails: SMTP_USER or SMTP_PASS not set.")
+        return
+
+    try:
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(smtp_user, smtp_pass)
+        
+        for email_addr in request.emails:
+            msg = EmailMessage()
+            msg.set_content(request.body)
+            msg["Subject"] = request.subject
+            msg["From"] = f"TalentOps <{request.from_email}>"
+            msg["To"] = email_addr
+            
+            if request.cc:
+                msg["Cc"] = request.cc
+            if request.bcc:
+                msg["Bcc"] = request.bcc
+                
+            try:
+                server.send_message(msg)
+                print(f"✅ Sent email to {email_addr}")
+            except Exception as e:
+                print(f"❌ Failed to send to {email_addr}: {e}")
+                
+        server.quit()
+        print("✅ Bulk send background task completed.")
+    except Exception as e:
+        print(f"❌ SMTP connection failed: {e}")
+
+@router.post("/bulk-send")
+def bulk_send_emails(request: BulkSendRequest, background_tasks: BackgroundTasks):
+    if not request.emails:
+        raise HTTPException(status_code=400, detail="No recipients provided.")
+    
+    background_tasks.add_task(send_bulk_emails_background, request)
+    return {"status": "queued", "count": len(request.emails)}
+
+
+class ValidateRecipientsRequest(BaseModel):
+    emails: list[str]
+
+@router.post("/validate-recipients")
+def validate_recipients_endpoint(payload: ValidateRecipientsRequest, db: Session = Depends(get_db)):
+    from ..services.recipient_validator import validate_recipients
+    from dataclasses import asdict
+    result = validate_recipients(payload.emails, db)
+    return asdict(result)
+
+@router.post("/{campaign_id}/start")
+async def api_start_campaign(campaign_id: int, db: Session = Depends(get_db)):
+    from ..services.send_engine import start_campaign
+    campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    await start_campaign(campaign_id)
+    return {"status": "started", "campaign_id": campaign_id}
+
+@router.post("/{campaign_id}/pause")
+def api_pause_campaign(campaign_id: int, db: Session = Depends(get_db)):
+    from ..services.send_engine import pause_campaign
+    campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    pause_campaign(campaign_id)
+    return {"status": "paused", "campaign_id": campaign_id}
+
+@router.post("/{campaign_id}/resume")
+async def api_resume_campaign(campaign_id: int, db: Session = Depends(get_db)):
+    from ..services.send_engine import resume_campaign
+    campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    await resume_campaign(campaign_id)
+    return {"status": "resumed", "campaign_id": campaign_id}
+
+class EnrollEmailsRequest(BaseModel):
+    emails: list[str]
+
+@router.post("/{campaign_id}/enroll-emails")
+def enroll_emails(campaign_id: int, payload: EnrollEmailsRequest, db: Session = Depends(get_db)):
+    campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+        
+    first_step = db.query(SequenceStep).filter(SequenceStep.campaign_id == campaign_id).order_by(SequenceStep.step_number.asc()).first()
+    if not first_step:
+        raise HTTPException(status_code=400, detail="Campaign must have at least one sequence step")
+
+    enrolled = 0
+    for email in payload.emails:
+        clean_email = email.strip().lower()
+        if not clean_email:
+            continue
+            
+        # Find or create recruiter
+        rec = db.query(Recruiter).filter(func.lower(Recruiter.email) == clean_email).first()
+        if not rec:
+            rec = Recruiter(
+                email=clean_email,
+                recruiter_name=clean_email.split('@')[0], # Fallback name
+                data_source="campaign_import"
+            )
+            db.add(rec)
+            db.commit()
+            db.refresh(rec)
+            
+        # Check if already enrolled
+        existing = db.query(CampaignRecruiter).filter(
+            CampaignRecruiter.campaign_id == campaign_id,
+            CampaignRecruiter.recruiter_id == rec.recruiter_id
+        ).first()
+        
+        if not existing:
+            cr = CampaignRecruiter(
+                campaign_id=campaign_id,
+                recruiter_id=rec.recruiter_id,
+                current_step_id=first_step.step_id,
+                status=CampaignRecruiterStatus.pending.value,
+                enrolled_at=utcnow(),
+                next_send_at=campaign.start_at or utcnow()
+            )
+            db.add(cr)
+            enrolled += 1
+            
+    db.commit()
+    return {"enrolled_count": enrolled}
+
+@router.get("/{campaign_id}/progress")
+async def stream_campaign_progress(campaign_id: int, db: Session = Depends(get_db)):
+    from fastapi.responses import StreamingResponse
+    import asyncio
+    import json
+    
+    # Check if exists
+    campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+        
+    async def event_generator():
+        # Keep track of what we've already sent to avoid redundant data
+        last_log_id = 0
+        
+        while True:
+            # Re-open session since generator runs for a long time
+            from ..database import SessionLocal
+            with SessionLocal() as s_db:
+                camp = s_db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+                if not camp:
+                    break
+                    
+                # Get counts
+                total = s_db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id).count()
+                sent = s_db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id, CampaignRecruiter.status == 'Sent').count()
+                failed = s_db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id, CampaignRecruiter.status == 'Failed').count()
+                pending = s_db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id, CampaignRecruiter.status == 'Pending').count()
+                
+                # Get latest logs
+                from ..models.campaigns import EmailLog
+                new_logs = s_db.query(EmailLog).filter(EmailLog.campaign_id == campaign_id, EmailLog.log_id > last_log_id).order_by(EmailLog.log_id.asc()).all()
+                
+                logs_data = []
+                for log in new_logs:
+                    logs_data.append({
+                        "log_id": log.log_id,
+                        "email": log.recipient_email,
+                        "status": log.status,
+                        "time": log.sending_at.isoformat() if log.sending_at else None,
+                        "error": log.error_message
+                    })
+                    last_log_id = max(last_log_id, log.log_id)
+                    
+                data = {
+                    "status": camp.status,
+                    "total": total,
+                    "sent": sent,
+                    "failed": failed,
+                    "pending": pending,
+                    "new_logs": logs_data
+                }
+                
+                yield f"data: {json.dumps(data)}\n\n"
+                
+                if camp.status in ['completed', 'failed']:
+                    # One final status, then close
+                    break
+                    
+            await asyncio.sleep(2)
+            
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 VARIABLE_PATTERN = re.compile(r"{{\s*([a-zA-Z0-9_]+)\s*}}")
 

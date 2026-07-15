@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { exportToExcel } from '../services/export'
-import api, { API, checkAuth, getErrorMessage, login, logAction } from '../services/api'
+import api, { API, getErrorMessage, logAction } from '../services/api'
 import { CompanyLogo } from '../components/CompanyLogo'
 import { useSessionState } from '../hooks/useSessionState'
 
@@ -467,8 +467,7 @@ export default function AISearch() {
     if (!editOpen) return
 
     ;(async () => {
-      const ok = await checkAuth()
-      setEditAuthed(ok)
+      setEditAuthed(true)
     })()
   }, [editOpen, selected])
 

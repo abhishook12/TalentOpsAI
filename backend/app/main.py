@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from fastapi import FastAPI, Depends, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,9 +8,9 @@ from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from .config import CORS_ORIGINS, IS_PRODUCTION, ENV as APP_ENV
-from .routes import recruiters, companies, vendors, analytics, admin, auth, actions, updates, ai, campaigns, harvester
+from .routes import recruiters, companies, vendors, analytics, admin, auth, actions, updates, ai, campaigns, harvester, users
 from .database import get_db, engine
-from .models import models
+from .models import models, auth_models
 from .create_indexes import create_performance_indexes
 
 logging.basicConfig(
@@ -44,6 +45,18 @@ if RUN_STARTUP_MIGRATIONS:
 
             # Ensure any missing tables (like smart_import_jobs) are created
             models.Base.metadata.create_all(bind=engine)
+            
+            try:
+                from .seed_roles import seed_roles_and_permissions
+                seed_roles_and_permissions(_db)
+            except Exception as e:
+                logger.error("Error seeding roles: %s", e)
+
+            try:
+                from .services.backup_service import start_backup_service
+                start_backup_service(interval_hours=24)
+            except Exception as e:
+                logger.error("Error starting backup service: %s", e)
 
             admin.migrate_page_visits(_db)
             try:
@@ -185,9 +198,27 @@ async def lockdown_middleware(request: Request, call_next):
     if request.method != "GET" or request.url.path.startswith("/ai"):
         check_system_limits()
         
-    return await call_next(request)
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    response.headers["X-Process-Time"] = str(process_time)
+    
+    if process_time > 1.0:
+        logger.warning(f"Slow request detected: {request.method} {request.url.path} took {process_time:.2f}s")
+        
+    return response
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
@@ -229,6 +260,7 @@ app.include_router(updates.router)
 app.include_router(ai.router, prefix="/ai", tags=["AI"])
 app.include_router(campaigns.router, prefix="/campaigns", tags=["Campaigns"])
 app.include_router(harvester.router, prefix="/api", tags=["Autonomous Spider"])
+app.include_router(users.router, prefix="/users", tags=["Users"])
 
 
 @app.get("/")
@@ -241,12 +273,5 @@ def ping():
     return {"status": "ok"}
 
 
-
-@app.get("/health")
-def health(db: Session = Depends(get_db)):
-    try:
-        db.execute(text("SELECT 1"))
-        return {"status": "healthy", "database": "connected", "environment": APP_ENV}
-    except Exception as e:
-        logger.error("Health check failed: %s", e)
-        return {"status": "degraded", "database": "disconnected", "environment": APP_ENV, "detail": str(e)}
+from .routes import health
+app.include_router(health.router, prefix="/health", tags=["System Health"])

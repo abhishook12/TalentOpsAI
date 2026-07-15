@@ -121,6 +121,24 @@ const verifyEmailRoute = createRoute({
   component: lazyComponent(() => import('./pages/auth/VerifyEmail')),
 })
 
+const sessionManagementRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/sessions',
+  component: lazyComponent(() => import('./pages/auth/SessionManagement')),
+})
+
+const campaignsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/campaigns',
+  component: lazyComponent(() => import('./pages/Campaigns')),
+})
+
+const healthDashboardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/health',
+  component: lazyComponent(() => import('./pages/admin/HealthDashboard')),
+})
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -137,7 +155,10 @@ const routeTree = rootRoute.addChildren([
   adminRoute,
   activityRoute,
   reviewQueueRoute,
-  visitorLogsRoute
+  visitorLogsRoute,
+  sessionManagementRoute,
+  campaignsRoute,
+  healthDashboardRoute
 ])
 
 export const router = createRouter({ routeTree })

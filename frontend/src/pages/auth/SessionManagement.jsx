@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../services/api';
-
 const SessionManagement = () => {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,26 +32,41 @@ const SessionManagement = () => {
   };
 
   if (loading) {
-    return <div className="p-6">Loading sessions...</div>;
+    return <div style={{ display: 'grid', placeItems: 'center', minHeight: '60vh', color: '#a1a1aa' }}><i className="ti ti-loader animate-spin" style={{ fontSize: 24, color: '#3b82f6', marginBottom: 12 }} />Loading sessions...</div>;
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h2 className="text-2xl font-bold mb-4">Active Sessions</h2>
-      {error && <div className="text-red-500 mb-4">{error}</div>}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <ul className="divide-y divide-gray-200">
-          {sessions.map((session) => (
-            <li key={session.id} className="p-4 flex items-center justify-between">
+    <div style={{ maxWidth: '600px', margin: '40px auto', padding: '0 20px' }}>
+      <h2 style={{ fontSize: '24px', fontWeight: '600', color: '#fff', marginBottom: '24px' }}>Active Sessions</h2>
+      {error && <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '12px 16px', borderRadius: '8px', marginBottom: '20px', fontSize: '14px' }}>{error}</div>}
+      
+      <div style={{ background: '#18181b', borderRadius: '12px', border: '1px solid #27272a', overflow: 'hidden' }}>
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          {sessions.map((session, index) => (
+            <li key={session.id} style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              padding: '20px', 
+              borderBottom: index < sessions.length - 1 ? '1px solid #27272a' : 'none' 
+            }}>
               <div>
-                <p className="text-sm font-medium text-gray-900">
+                <p style={{ margin: '0 0 4px 0', color: '#fff', fontSize: '15px', fontWeight: '500' }}>
                   {session.browser || 'Unknown Device'} - {session.ip_address}
                 </p>
-                <p className="text-sm text-gray-500">
+                <p style={{ margin: '0 0 8px 0', color: '#a1a1aa', fontSize: '13px' }}>
                   Started: {new Date(session.created_at).toLocaleString()}
                 </p>
                 {session.is_current && (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  <span style={{ 
+                    display: 'inline-block', 
+                    background: 'rgba(34, 197, 94, 0.1)', 
+                    color: '#22c55e', 
+                    padding: '4px 8px', 
+                    borderRadius: '4px', 
+                    fontSize: '12px', 
+                    fontWeight: '600' 
+                  }}>
                     Current Session
                   </span>
                 )}
@@ -60,7 +74,19 @@ const SessionManagement = () => {
               {!session.is_current && (
                 <button
                   onClick={() => handleLogout(session.id)}
-                  className="ml-4 inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  style={{ 
+                    background: 'rgba(239, 68, 68, 0.1)', 
+                    color: '#ef4444', 
+                    border: 'none', 
+                    padding: '8px 16px', 
+                    borderRadius: '6px', 
+                    cursor: 'pointer', 
+                    fontSize: '13px', 
+                    fontWeight: '500',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={(e) => e.target.style.background = 'rgba(239, 68, 68, 0.2)'}
+                  onMouseOut={(e) => e.target.style.background = 'rgba(239, 68, 68, 0.1)'}
                 >
                   Logout
                 </button>
@@ -68,7 +94,7 @@ const SessionManagement = () => {
             </li>
           ))}
           {sessions.length === 0 && (
-            <li className="p-4 text-gray-500">No active sessions found.</li>
+            <li style={{ padding: '32px', textAlign: 'center', color: '#a1a1aa', fontSize: '14px' }}>No active sessions found.</li>
           )}
         </ul>
       </div>

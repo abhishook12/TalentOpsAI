@@ -95,7 +95,8 @@ async function smartRequest(method, url, data, config = {}) {
       }
       
       if (error.response && error.response.status === 401) {
-        if (onUnauthorizedCallback) {
+        // Do not trigger unauthorized redirect if the failure is on the login endpoint itself
+        if (onUnauthorizedCallback && !url.includes('/auth/login')) {
           onUnauthorizedCallback();
         }
       }

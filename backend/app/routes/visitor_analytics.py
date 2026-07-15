@@ -79,8 +79,8 @@ def visitor_live(db: Session = Depends(get_db), _ = Depends(require_role(['admin
     """Live Visitors Tab (Active in last 10 mins)"""
     active_cutoff = datetime.utcnow() - timedelta(minutes=10)
     live_sessions = db.query(VisitorSession).filter(
-        VisitorSession.ended_at >= active_cutoff
-    ).order_by(VisitorSession.ended_at.desc()).limit(100).all()
+        VisitorSession.last_activity >= active_cutoff
+    ).order_by(VisitorSession.last_activity.desc()).limit(100).all()
     
     return [
         {
@@ -94,9 +94,14 @@ def visitor_live(db: Session = Depends(get_db), _ = Depends(require_role(['admin
             "device": s.device,
             "started_at": s.started_at,
             "ended_at": s.ended_at,
+            "last_activity": s.last_activity,
+            "status": s.status,
+            "current_page": s.current_page,
+            "timezone": s.timezone,
+            "screen_size": s.screen_size,
             "session_score": s.session_score or "Normal",
             "total_page_views": s.total_page_views,
-            "duration": (s.ended_at - s.started_at).total_seconds() if s.ended_at and s.started_at else 0
+            "duration": (s.last_activity - s.started_at).total_seconds() if s.last_activity and s.started_at else 0
         }
         for s in live_sessions
     ]

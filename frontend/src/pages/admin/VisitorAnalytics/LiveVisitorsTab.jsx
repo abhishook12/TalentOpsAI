@@ -54,16 +54,32 @@ export default function LiveVisitorsTab() {
                   <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{s.ip_address}</div>
                 </div>
               </div>
-              <div style={{ 
-                background: s.session_score === 'Power User' ? 'rgba(74, 222, 128, 0.1)' : 'rgba(255,255,255,0.05)',
-                color: s.session_score === 'Power User' ? '#4ade80' : 'rgba(255,255,255,0.6)',
-                padding: '4px 8px', borderRadius: 4, fontSize: 11, fontWeight: 700
-              }}>
-                {s.session_score}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ 
+                  background: s.status === 'Active' ? 'rgba(74, 222, 128, 0.1)' : 'rgba(250, 204, 21, 0.1)',
+                  color: s.status === 'Active' ? '#4ade80' : '#facc15',
+                  padding: '4px 8px', borderRadius: 4, fontSize: 11, fontWeight: 700
+                }}>
+                  {s.status}
+                </div>
+                {s.session_score === 'Power User' && (
+                  <div style={{ 
+                    background: 'rgba(96, 165, 250, 0.1)',
+                    color: '#60a5fa',
+                    padding: '4px 8px', borderRadius: 4, fontSize: 11, fontWeight: 700
+                  }}>
+                    {s.session_score}
+                  </div>
+                )}
               </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
+              {s.current_page && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#fff', fontWeight: 600 }}>
+                  <Monitor size={14} style={{ opacity: 0.5, color: '#60a5fa' }} /> {s.current_page}
+                </div>
+              )}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <MapPin size={14} style={{ opacity: 0.5 }} /> {s.city}, {s.country}
               </div>
@@ -71,7 +87,7 @@ export default function LiveVisitorsTab() {
                 <Monitor size={14} style={{ opacity: 0.5 }} /> {s.browser} on {s.os}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Clock size={14} style={{ opacity: 0.5 }} /> Active {formatDistanceToNow(new Date(s.ended_at))} ago
+                <Clock size={14} style={{ opacity: 0.5 }} /> Last seen {formatDistanceToNow(new Date(s.last_activity || s.started_at))} ago
               </div>
             </div>
           </div>

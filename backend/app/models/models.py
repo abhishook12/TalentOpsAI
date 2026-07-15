@@ -15,11 +15,23 @@ class VisitorSession(Base):
     device              = Column(String(100), nullable=True)
     started_at          = Column(TIMESTAMP, server_default=func.now(), index=True)
     ended_at            = Column(TIMESTAMP, server_default=func.now())
+    last_activity       = Column(TIMESTAMP, server_default=func.now())
     session_score       = Column(String(50), nullable=True)
     total_page_views    = Column(Integer, default=0)
     total_actions       = Column(Integer, default=0)
+    total_searches      = Column(Integer, default=0)
+    total_clicks        = Column(Integer, default=0)
     total_errors        = Column(Integer, default=0)
     idle_time_seconds   = Column(Integer, default=0)
+    
+    anonymous_id        = Column(String(64), index=True, nullable=True)
+    screen_size         = Column(String(50), nullable=True)
+    timezone            = Column(String(100), nullable=True)
+    referrer            = Column(String(500), nullable=True)
+    user_agent          = Column(String(300), nullable=True)
+    current_page        = Column(String(255), nullable=True)
+    previous_page       = Column(String(255), nullable=True)
+    status              = Column(String(20), default="Active") # Active, Idle, Ended
 
 class PageVisit(Base):
     __tablename__ = "page_visits"

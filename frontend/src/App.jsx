@@ -653,6 +653,11 @@ const globalStyles = `
   .animate-spin { animation: ccSpin 0.9s linear infinite; }
 `
 
+import { AnalyticsProvider } from './context/AnalyticsProvider'
+
+// Global settings
+axios.defaults.withCredentials = true
+
 function ThemeSwitcher() {
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem('theme')
@@ -697,57 +702,13 @@ function getSessionId() {
   return sid
 }
 
-function PageTracker() {
-  const location = useLocation()
-  const entryTimeRef = useRef(null)
-  const lastLoggedRef = useRef(null)
-
-  useEffect(() => {
-    if (entryTimeRef.current === null) {
-      entryTimeRef.current = Date.now()
-    }
-    const prevPath = entryTimeRef._prevPath
-    const enteredAt = entryTimeRef.current
-    const timeOnPage = prevPath ? Math.round((Date.now() - enteredAt) / 1000) : null
-    entryTimeRef.current = Date.now()
-    entryTimeRef._prevPath = location.pathname
-    const page = PAGE_NAMES[location.pathname] || location.pathname
-    const session = (() => {
-      try {
-        return JSON.parse(localStorage.getItem('auth_session') || '{}')
-      } catch {
-        return {}
-      }
-    })()
-
-    const apiUrl = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')
-    const logKey = `${location.pathname}:${page}:${session?.email || ''}`
-    if (lastLoggedRef.current === logKey) {
-      return
-    }
-    lastLoggedRef.current = logKey
-    fetch(`${apiUrl}/analytics/log-visit`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      keepalive: true,
-      body: JSON.stringify({
-        page,
-        path: location.pathname,
-        user_email: session.email || null,
-        session_id: getSessionId(),
-        time_on_page: timeOnPage,
-      }),
-    }).catch(() => {})
-  }, [location.pathname])
-
-  return null
-}
-
 export default function AppShellWrapper() {
   return (
-    <AuthProvider>
-      <AppShell />
-    </AuthProvider>
+    <AnalyticsProvider>
+      <AuthProvider>
+        <AppShell />
+      </AuthProvider>
+    </AnalyticsProvider>
   )
 }
 
@@ -782,7 +743,6 @@ function AppShell() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
-      <PageTracker />
       <UpdateCenter />
       <div className="cc-shell">
         <Sidebar />

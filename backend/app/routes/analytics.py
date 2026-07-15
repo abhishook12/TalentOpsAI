@@ -417,10 +417,16 @@ def visit_stats(db: Session = Depends(get_db)):
     ).scalar() or 0
     total_count = db.execute(text("SELECT COUNT(*) FROM page_visits")).scalar() or 0
 
+    searches_today = db.execute(
+        text("SELECT COUNT(*) FROM action_logs WHERE created_at >= :s AND action_type = 'SEARCH_RECRUITERS'"),
+        {"s": today_start}
+    ).scalar() or 0
+
     result = {
         "total_visits": total_count,
         "today": today_count,
         "yesterday": yesterday_count,
+        "searches_today": searches_today,
         "daily": [{"day": str(r["day"]), "visits": r["visits"]} for r in daily],
         "weekly": [{"week": str(r["week_start"]), "visits": r["visits"]} for r in weekly],
         "top_pages": [{"page": r["page"], "visits": r["visits"]} for r in top_pages],

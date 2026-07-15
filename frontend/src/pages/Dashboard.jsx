@@ -137,12 +137,12 @@ export default function Dashboard() {
     },
     {
       label: 'Searches Today',
-      value: formatCount(visits?.today),
-      sublabel: todayChange === null ? 'Not enough data' : `${todayChange >= 0 ? '+' : ''}${todayChange}% vs yesterday`,
+      value: formatCount(visits?.searches_today),
+      sublabel: 'Total AI search queries',
       icon: 'ti-search',
       tone: 'neutral',
     },
-  ]), [dataQuality, todayChange, visits?.today])
+  ]), [dataQuality, todayChange, visits?.searches_today])
 
   const dataHealth = [
     { label: 'Overall Quality Score', value: dataQuality?.quality_score, tone: dataQuality?.quality_score > 70 ? 'success' : (dataQuality?.quality_score > 40 ? 'warning' : 'danger') },

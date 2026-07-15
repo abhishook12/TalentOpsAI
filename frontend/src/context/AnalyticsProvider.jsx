@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { useRouter } from '@tanstack/react-router';
 import { API } from '../services/api';
 
 const AnalyticsContext = createContext({});
@@ -7,8 +6,6 @@ const AnalyticsContext = createContext({});
 export const useAnalytics = () => useContext(AnalyticsContext);
 
 export function AnalyticsProvider({ children }) {
-  const router = useRouter();
-  const location = router.state.location;
   const [anonymousId, setAnonymousId] = useState('');
   const [sessionId, setSessionId] = useState('');
   const idleTimeoutRef = useRef(null);
@@ -21,22 +18,26 @@ export function AnalyticsProvider({ children }) {
 
   // Initialize identity
   useEffect(() => {
-    let aid = localStorage.getItem('talentops_aid');
-    if (!aid) {
-      aid = crypto.randomUUID ? crypto.randomUUID() : `aid_${Math.random().toString(36).slice(2)}${Date.now()}`;
-      localStorage.setItem('talentops_aid', aid);
-    }
-    setAnonymousId(aid);
+    try {
+      let aid = localStorage.getItem('talentops_aid');
+      if (!aid) {
+        aid = crypto.randomUUID ? crypto.randomUUID() : `aid_${Math.random().toString(36).slice(2)}${Date.now()}`;
+        localStorage.setItem('talentops_aid', aid);
+      }
+      setAnonymousId(aid);
 
-    let sid = sessionStorage.getItem('talentops_sid');
-    if (!sid) {
-      sid = crypto.randomUUID ? crypto.randomUUID() : `sid_${Math.random().toString(36).slice(2)}${Date.now()}`;
-      sessionStorage.setItem('talentops_sid', sid);
+      let sid = sessionStorage.getItem('talentops_sid');
+      if (!sid) {
+        sid = crypto.randomUUID ? crypto.randomUUID() : `sid_${Math.random().toString(36).slice(2)}${Date.now()}`;
+        sessionStorage.setItem('talentops_sid', sid);
+      }
+      setSessionId(sid);
+    } catch (e) {
+      console.warn('Analytics init error:', e);
     }
-    setSessionId(sid);
   }, []);
 
-  // API Call Wrapper
+  // API Call Wrapper — fully guarded, never throws
   const sendAnalytics = async (endpoint, payload) => {
     if (!anonymousId || !sessionId) return;
     try {
@@ -53,7 +54,16 @@ export function AnalyticsProvider({ children }) {
         })
       });
     } catch (e) {
-      console.warn('Analytics error:', e);
+      // Silently fail — analytics should never break the app
+    }
+  };
+
+  // Get current path safely without useRouter
+  const getCurrentPath = () => {
+    try {
+      return window.location.pathname;
+    } catch {
+      return '/';
     }
   };
 
@@ -61,30 +71,43 @@ export function AnalyticsProvider({ children }) {
   useEffect(() => {
     if (!anonymousId || !sessionId || sessionStartedRef.current) return;
     sessionStartedRef.current = true;
+    prevPathRef.current = getCurrentPath();
     sendAnalytics('/analytics/session/start', {
       screen_size: `${window.innerWidth}x${window.innerHeight}`,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       referrer: document.referrer,
       user_agent: navigator.userAgent,
-      current_page: location.pathname
+      current_page: getCurrentPath()
     });
   }, [anonymousId, sessionId]);
 
-  // 2. Page Views
+  // 2. Page Views — use popstate + MutationObserver to detect navigation without useRouter
   useEffect(() => {
     if (!sessionStartedRef.current) return;
+
+    const checkPathChange = () => {
+      const currentPath = getCurrentPath();
+      if (prevPathRef.current !== null && prevPathRef.current !== currentPath) {
+        sendAnalytics('/analytics/session/event', {
+          event_type: 'page_view',
+          current_page: currentPath,
+          previous_page: prevPathRef.current
+        });
+      }
+      prevPathRef.current = currentPath;
+    };
+
+    // Listen for browser navigation
+    window.addEventListener('popstate', checkPathChange);
     
-    // Ignore first render since it's handled by session start
-    if (prevPathRef.current !== null && prevPathRef.current !== location.pathname) {
-      sendAnalytics('/analytics/session/event', {
-        event_type: 'page_view',
-        current_page: location.pathname,
-        previous_page: prevPathRef.current
-      });
-    }
-    prevPathRef.current = location.pathname;
-    resetIdle(); // Navigating is activity
-  }, [location.pathname]);
+    // Poll for SPA navigation changes every 2 seconds
+    const pathPoll = setInterval(checkPathChange, 2000);
+
+    return () => {
+      window.removeEventListener('popstate', checkPathChange);
+      clearInterval(pathPoll);
+    };
+  }, [anonymousId, sessionId]);
 
   // 3. Activity Tracking & Heartbeat
   const resetIdle = () => {
@@ -96,6 +119,8 @@ export function AnalyticsProvider({ children }) {
   };
 
   useEffect(() => {
+    if (!anonymousId || !sessionId) return;
+
     const handleActivity = () => resetIdle();
     const handleClick = () => {
       clickCountRef.current += 1;
@@ -120,14 +145,14 @@ export function AnalyticsProvider({ children }) {
       sendAnalytics('/analytics/session/heartbeat', {
         status: isIdleRef.current ? 'Idle' : 'Active',
         clicks_since_last: clickCountRef.current,
-        current_page: location.pathname
+        current_page: getCurrentPath()
       });
-      clickCountRef.current = 0; // Reset counter after flush
+      clickCountRef.current = 0;
     }, 30000);
 
     // Before Unload
     const handleUnload = () => {
-      sendAnalytics('/analytics/session/end', { current_page: location.pathname });
+      sendAnalytics('/analytics/session/end', { current_page: getCurrentPath() });
     };
     window.addEventListener('beforeunload', handleUnload);
 
@@ -140,7 +165,7 @@ export function AnalyticsProvider({ children }) {
       clearInterval(idleTimeoutRef.current);
       clearInterval(heartbeatIntervalRef.current);
     };
-  }, [anonymousId, sessionId, location.pathname]);
+  }, [anonymousId, sessionId]);
 
   return (
     <AnalyticsContext.Provider value={{ sessionId, anonymousId }}>

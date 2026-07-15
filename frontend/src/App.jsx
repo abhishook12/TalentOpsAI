@@ -1,4 +1,4 @@
-import { useLocation, useNavigate, Outlet } from '@tanstack/react-router'
+import { useLocation, useNavigate, Outlet, Navigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState, Component } from 'react'
 import Sidebar from './components/Sidebar'
 import UpdateCenter from './components/UpdateCenter'
@@ -754,20 +754,19 @@ export default function AppShellWrapper() {
 function AppShell() {
   const location = useLocation()
   const navigate = useNavigate()
-  const isAuthPage = ['/login', '/register', '/forgot-password'].includes(location.pathname)
+  const isAuthPage = ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email'].includes(location.pathname)
   const { user, loading } = useAuth()
   const pageName = useMemo(() => PAGE_NAMES[location.pathname] || 'Dashboard', [location.pathname])
   
-  useEffect(() => {
-    if (!loading && !user && !isAuthPage) {
-      navigate({ to: '/login' })
-    }
-    if (!loading && user && isAuthPage) {
-      navigate({ to: '/' })
-    }
-  }, [user, loading, isAuthPage, navigate])
-
   if (loading) return null;
+
+  if (!user && !isAuthPage) {
+    return <Navigate to="/login" replace />
+  }
+
+  if (user && isAuthPage) {
+    return <Navigate to="/" replace />
+  }
 
   if (isAuthPage) {
     return (

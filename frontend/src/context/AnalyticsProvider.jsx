@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useRouter } from '@tanstack/react-router';
 import { API } from '../services/api';
 
 const AnalyticsContext = createContext({});
@@ -7,7 +7,8 @@ const AnalyticsContext = createContext({});
 export const useAnalytics = () => useContext(AnalyticsContext);
 
 export function AnalyticsProvider({ children }) {
-  const location = useLocation();
+  const router = useRouter();
+  const location = router.state.location;
   const [anonymousId, setAnonymousId] = useState('');
   const [sessionId, setSessionId] = useState('');
   const idleTimeoutRef = useRef(null);

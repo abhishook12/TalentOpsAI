@@ -16,7 +16,7 @@ export default function Login() {
   const navigate = useNavigate()
 
   const isEmailValid = email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
-  const isFormValid = isEmailValid && password.length >= 8
+  const isFormValid = isEmailValid && password.length >= 4
 
   const handleKeyUp = (e) => {
     setCapsLockActive(Boolean(e.getModifierState?.('CapsLock')))

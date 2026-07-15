@@ -80,8 +80,13 @@ def get_current_user_from_request(request: Request, db: Session = Depends(get_db
 
 def require_role(allowed_roles: list[str]):
     def role_checker(request: Request, db: Session = Depends(get_db)):
+        from ..config import FREE_ADMIN_MODE
+        if FREE_ADMIN_MODE and any(r.lower() in ["admin", "superadmin"] for r in allowed_roles):
+            # Bypass authentication for admin routes in FREE_ADMIN_MODE
+            return User(id=0, email="dev@system", first_name="Dev", last_name="Admin")
+            
         user = get_current_user_from_request(request, db)
-        if not user.role or user.role.name not in allowed_roles:
+        if not user.role or user.role.name.lower() not in [r.lower() for r in allowed_roles]:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
         return user
     return role_checker

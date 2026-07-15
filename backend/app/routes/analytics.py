@@ -348,6 +348,18 @@ def log_visit(payload: VisitPayload, request: Request, db: Session = Depends(get
         ip_address=ip,
     )
     db.add(visit)
+    
+    from ..utils.visitor_tracking import upsert_visitor_session
+    upsert_visitor_session(
+        db=db,
+        session_id=payload.session_id,
+        ip_address=ip,
+        user_agent_str=ua,
+        user_email=payload.user_email,
+        is_page_view=True,
+        time_on_page=payload.time_on_page
+    )
+    
     db.commit()
     analytics_cache.invalidate("visit_stats")
     return {"ok": True}

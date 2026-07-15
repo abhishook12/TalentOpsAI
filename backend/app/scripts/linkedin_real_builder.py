@@ -101,7 +101,7 @@ def run_linkedin_fix(batch_size=5000, dry_run=False):
         while True:
             # Fetch batch
             rows = conn.execute(text("""
-                SELECT recruiter_id, recruiter_name 
+                SELECT recruiter_id, recruiter_name, linkedin 
                 FROM recruiters 
                 WHERE is_active = true 
                   AND (linkedin IS NULL OR linkedin = '' OR linkedin LIKE '%%improving%%')
@@ -115,13 +115,17 @@ def run_linkedin_fix(batch_size=5000, dry_run=False):
             updates = []
             skipped = 0
             for row in rows:
-                rid, rname = row[0], row[1]
+                rid, rname, current_li = row[0], row[1], row[2]
                 slug = clean_name_to_slug(rname)
                 if slug and len(slug) >= 3:
                     url = f"https://www.linkedin.com/in/{slug}"
                     updates.append({"rid": rid, "li": url})
                 else:
-                    skipped += 1
+                    # Name is bad. If the current URL is a fake 'improving' one, NULL it.
+                    if current_li and 'improving' in current_li:
+                        updates.append({"rid": rid, "li": None})
+                    else:
+                        skipped += 1
             
             if not updates:
                 print(f"No valid slugs in this batch (skipped {skipped}). Breaking.")

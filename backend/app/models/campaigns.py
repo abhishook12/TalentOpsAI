@@ -120,9 +120,16 @@ class CampaignRecruiter(Base):
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)
 
+    # New columns for campaign engine
+    retry_count = Column(Integer, default=0, nullable=False)
+    max_retries = Column(Integer, default=3, nullable=False)
+    sent_via = Column(String(50), nullable=True)  # 'outlook_bridge' or 'smtp'
+    queue_position = Column(Integer, nullable=True, index=True)
+
     campaign = relationship("Campaign", back_populates="campaign_recruiters")
     current_step = relationship("SequenceStep", back_populates="campaign_recruiters")
     recruiter = relationship("Recruiter")
+    email_logs = relationship("EmailLog", back_populates="campaign_recruiter", cascade="all, delete-orphan")
 
     def variables_dict(self):
         if not self.variables_json:
@@ -133,6 +140,83 @@ class CampaignRecruiter(Base):
             return {}
 
 
+class EmailLogStatus(str, Enum):
+    queued = "queued"
+    sending = "sending"
+    delivered = "delivered"
+    failed = "failed"
+    retrying = "retrying"
+    rejected = "rejected"
+
+
+class EmailLog(Base):
+    """Per-email delivery log with full lifecycle tracking."""
+    __tablename__ = "email_logs"
+
+    log_id = Column(Integer, primary_key=True, index=True)
+    campaign_id = Column(Integer, ForeignKey("campaigns.campaign_id", ondelete="CASCADE"), nullable=False, index=True)
+    campaign_recruiter_id = Column(Integer, ForeignKey("campaign_recruiters.campaign_recruiter_id", ondelete="CASCADE"), nullable=True, index=True)
+    recipient_email = Column(String(255), nullable=False, index=True)
+    recipient_name = Column(String(255), nullable=True)
+
+    # Delivery lifecycle
+    status = Column(String(50), default=EmailLogStatus.queued.value, nullable=False, index=True)
+    attempt_number = Column(Integer, default=1, nullable=False)
+
+    # What was sent
+    subject = Column(String(500), nullable=True)
+    body_preview = Column(Text, nullable=True)  # First 200 chars of body for logging
+    sent_via = Column(String(50), nullable=True)  # 'outlook_bridge' or 'smtp'
+
+    # Verification
+    outlook_accepted = Column(Boolean, nullable=True)
+    sent_folder_updated = Column(Boolean, nullable=True)
+    smtp_response = Column(Text, nullable=True)
+
+    # Error tracking
+    error_message = Column(Text, nullable=True)
+    error_category = Column(String(100), nullable=True)  # 'mailbox_full', 'dns_failure', 'smtp_timeout', 'auth_error', 'network_lost'
+
+    # Timing
+    queued_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
+    sending_at = Column(TIMESTAMP, nullable=True)
+    delivered_at = Column(TIMESTAMP, nullable=True)
+    failed_at = Column(TIMESTAMP, nullable=True)
+    duration_ms = Column(Integer, nullable=True)  # How long the send took
+
+    # Relationships
+    campaign_recruiter = relationship("CampaignRecruiter", back_populates="email_logs")
+
+
+class CampaignDraft(Base):
+    """Auto-saved draft state for crash recovery."""
+    __tablename__ = "campaign_drafts"
+
+    draft_id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String(255), nullable=True, index=True)
+
+    # Campaign reference (null if not yet created as a campaign)
+    campaign_id = Column(Integer, ForeignKey("campaigns.campaign_id", ondelete="SET NULL"), nullable=True, index=True)
+
+    # Draft content
+    campaign_name = Column(String(255), nullable=True)
+    from_email = Column(String(255), nullable=True)
+    subject = Column(String(500), nullable=True)
+    body = Column(Text, nullable=True)
+    cc = Column(String(500), nullable=True)
+    bcc = Column(String(500), nullable=True)
+    recipients_json = Column(Text, nullable=True)  # JSON array of email addresses
+
+    # Queue state (for pause/resume recovery)
+    queue_position = Column(Integer, nullable=True)
+    total_recipients = Column(Integer, nullable=True)
+
+    # Metadata
+    is_active = Column(Boolean, default=True, index=True)
+    created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)
+
+
 def ensure_campaign_tables():
     Base.metadata.create_all(
         bind=engine,
@@ -141,6 +225,8 @@ def ensure_campaign_tables():
             EmailTemplate.__table__,
             SequenceStep.__table__,
             CampaignRecruiter.__table__,
+            EmailLog.__table__,
+            CampaignDraft.__table__,
         ],
     )
 

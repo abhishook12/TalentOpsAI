@@ -8,7 +8,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from .config import CORS_ORIGINS, IS_PRODUCTION, ENV as APP_ENV
-from .routes import recruiters, companies, vendors, analytics, admin, auth, actions, updates, ai, campaigns, harvester, users
+from .routes import recruiters, companies, vendors, analytics, admin, auth, actions, updates, ai, campaigns, harvester, users, visitor_analytics
 from .database import get_db, engine
 from .models import models, auth_models
 from .create_indexes import create_performance_indexes
@@ -254,6 +254,7 @@ app.include_router(companies.router, prefix="/companies", tags=["Companies"])
 app.include_router(vendors.router, prefix="/vendors", tags=["Vendors"])
 app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
+app.include_router(visitor_analytics.router, prefix="/admin/visitor-analytics", tags=["Visitor Analytics"])
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(actions.router, prefix="/actions", tags=["Actions"])
 app.include_router(updates.router)

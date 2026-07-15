@@ -183,7 +183,8 @@ def choose_best_candidate(values: list[tuple[str, str]]) -> tuple[str | None, di
 
 def normalize_current_slots(recruiter: Recruiter) -> list[dict[str, Any]]:
     changes: list[dict[str, Any]] = []
-    for field_name, current_value in slot_values(recruiter):
+    # ONLY normalize phone3 and phone4 per user request
+    for field_name, current_value in [("phone3", recruiter.phone3), ("phone4", recruiter.phone4)]:
         if not current_value:
             continue
         normalized = normalize_candidate(current_value)
@@ -233,13 +234,10 @@ def repair_recruiter(recruiter: Recruiter, matched_row: dict[str, str] | None, a
             existing_keys = [phone_compare_key(value) for value in old_slots if value]
             if best_key not in existing_keys:
                 if apply:
-                    if not old_primary:
-                        recruiter.phone = best_phone
-                    else:
-                        for field in ("phone3", "phone4", "phone2"):
-                            if not getattr(recruiter, field):
-                                setattr(recruiter, field, best_phone)
-                                break
+                    for field in ("phone3", "phone4"):
+                        if not getattr(recruiter, field):
+                            setattr(recruiter, field, best_phone)
+                            break
                 applied = True
                 primary_changed = True
                 evidence["previous_primary"] = old_primary
@@ -247,10 +245,7 @@ def repair_recruiter(recruiter: Recruiter, matched_row: dict[str, str] | None, a
                 evidence["source"] = best_meta.get("source")
                 evidence["source_value"] = best_meta.get("raw_value")
             elif best_key == current_primary_key and best_phone != current_primary:
-                old_primary = recruiter.phone
-                if apply:
-                    if not old_primary:
-                        recruiter.phone = best_phone
+                pass # do not touch primary phone as per user instruction
                 applied = True
                 primary_changed = True
                 evidence["previous_primary"] = current_primary
@@ -261,13 +256,10 @@ def repair_recruiter(recruiter: Recruiter, matched_row: dict[str, str] | None, a
         fallback_key = phone_compare_key(fallback_phone)
         if fallback_key:
             if apply:
-                if not current_primary:
-                    recruiter.phone = fallback_phone
-                else:
-                    for field in ("phone3", "phone4", "phone2"):
-                        if not getattr(recruiter, field):
-                            setattr(recruiter, field, fallback_phone)
-                            break
+                for field in ("phone3", "phone4"):
+                    if not getattr(recruiter, field):
+                        setattr(recruiter, field, fallback_phone)
+                        break
             applied = True
             primary_changed = True
             evidence["previous_primary"] = current_primary

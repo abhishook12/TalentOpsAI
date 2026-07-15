@@ -55,7 +55,7 @@ export const AuthProvider = ({ children }) => {
         });
         if (response.data.token) {
             import('../services/api').then(({ setStoredToken }) => {
-                setStoredToken('admin', response.data.token, rememberMe);
+                setStoredToken(response.data.token, rememberMe);
             });
         }
         setUser(response.data.user);

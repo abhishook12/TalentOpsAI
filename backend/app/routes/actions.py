@@ -45,6 +45,18 @@ def log_action(payload: ActionLogPayload, request: Request, db: Session = Depend
             ip_address=ip_address,
         )
     )
+    
+    from ..utils.visitor_tracking import upsert_visitor_session
+    upsert_visitor_session(
+        db=db,
+        session_id=session_id,
+        ip_address=ip_address,
+        user_agent_str=request.headers.get("user-agent", "")[:300],
+        user_email=user_email,
+        is_action=True,
+        is_error=(payload.status == "failed")
+    )
+    
     db.commit()
     return {"ok": True}
 

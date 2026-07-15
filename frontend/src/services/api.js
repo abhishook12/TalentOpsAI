@@ -23,36 +23,25 @@ const createClient = (baseURL) => {
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
-const ADMIN_TOKEN_KEY = 'admin_access_token'
-const APP_TOKEN_KEY = 'app_access_token'
+const SESSION_TOKEN_KEY = 'session_token'
 
-const getStoredToken = (scope = 'admin') => {
+const getStoredToken = () => {
   if (typeof window === 'undefined') return null
-  if (scope === 'app') {
-    return localStorage.getItem(APP_TOKEN_KEY) || sessionStorage.getItem(APP_TOKEN_KEY)
-  }
-  if (scope === 'none') return null
-  return localStorage.getItem(ADMIN_TOKEN_KEY) || sessionStorage.getItem(ADMIN_TOKEN_KEY)
+  return localStorage.getItem(SESSION_TOKEN_KEY) || sessionStorage.getItem(SESSION_TOKEN_KEY)
 }
 
-export const setStoredToken = (scope, token, remember = false) => {
+export const setStoredToken = (token, remember = false) => {
   if (typeof window === 'undefined') return
   const storage = remember ? localStorage : sessionStorage
-  const key = scope === 'app' ? APP_TOKEN_KEY : ADMIN_TOKEN_KEY
-  localStorage.removeItem(key)
-  sessionStorage.removeItem(key)
-  if (token) storage.setItem(key, token)
+  localStorage.removeItem(SESSION_TOKEN_KEY)
+  sessionStorage.removeItem(SESSION_TOKEN_KEY)
+  if (token) storage.setItem(SESSION_TOKEN_KEY, token)
 }
 
-export const clearStoredToken = (scope = 'admin') => {
+export const clearStoredToken = () => {
   if (typeof window === 'undefined') return
-  if (scope === 'app') {
-    localStorage.removeItem(APP_TOKEN_KEY)
-    sessionStorage.removeItem(APP_TOKEN_KEY)
-    return
-  }
-  localStorage.removeItem(ADMIN_TOKEN_KEY)
-  sessionStorage.removeItem(ADMIN_TOKEN_KEY)
+  localStorage.removeItem(SESSION_TOKEN_KEY)
+  sessionStorage.removeItem(SESSION_TOKEN_KEY)
 }
 
 const isRetryableError = (error) => {
@@ -68,8 +57,7 @@ async function smartRequest(method, url, data, config = {}) {
   const retryable = config.retryable ?? ['get', 'delete', 'head'].includes(method)
   const retryDelayMs = config.retryDelayMs ?? 1200
   const maxAttempts = retryable ? 2 : 1
-  const authScope = config.authScope ?? 'admin'
-  const authToken = getStoredToken(authScope)
+  const authToken = getStoredToken()
   let lastError = null
   const client = createClient(API)
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -77,12 +65,11 @@ async function smartRequest(method, url, data, config = {}) {
       const requestConfig = { ...config }
       delete requestConfig.retryable
       delete requestConfig.retryDelayMs
-      delete requestConfig.authScope
 
       requestConfig.headers = {
         ...(requestConfig.headers || {}),
       }
-      if (authToken && authScope !== 'none') {
+      if (authToken) {
         requestConfig.headers.Authorization = `Bearer ${authToken}`
       }
 
@@ -124,7 +111,7 @@ const api = {
 }
 
 export async function logout() {
-  await api.post('/auth/logout', undefined, { authScope: 'admin' })
+  await api.post('/auth/logout', undefined, {})
 }
 
 export async function logAction(actionType, details = {}, status = 'success') {

@@ -12,8 +12,8 @@ logger = logging.getLogger("talentops.lockdown")
 LOCKDOWN_FILE = os.path.join(os.path.dirname(__file__), "..", ".lockdown_state.json")
 GEMINI_TRACKER_FILE = os.path.join(os.path.dirname(__file__), "..", ".gemini_requests.json")
 
-# 70% Limit Thresholds
-MAX_DB_SIZE_MB = 350.0  # Rule 8 explicit limit
+# 70% Limit Thresholds (Override: 400MB soft limit, 450MB hard limit)
+MAX_DB_SIZE_MB = 400.0  # Rule 8 explicit limit overridden by user to 400MB
 MAX_MEMORY_MB = 250.0   # 70% of 358 MB
 MAX_GEMINI_RPM = 7      # 70% of 10 RPM
 

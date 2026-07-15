@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 from functools import wraps
 import time
-from ..routes.auth import verify_admin
+from ..services.auth_service import require_role
 from .admin_utils import get_status, start_worker, stop_worker, get_logs
 
 router = APIRouter()
@@ -123,7 +123,7 @@ def _resolve_upload_batch_recruiters(db: Session, job: UploadJob):
 # ── 1. Live database stats ────────────────────────────────────────────────────
 @router.get("/stats")
 @cached_route(ttl=60)
-def admin_stats(db: Session = Depends(get_db), _=Depends(verify_admin)):
+def admin_stats(db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     t0 = time.time()
     rows = db.execute(text("""
         SELECT
@@ -146,7 +146,7 @@ def admin_stats(db: Session = Depends(get_db), _=Depends(verify_admin)):
 
 @router.get("/ops-kpis")
 @cached_route(ttl=60)
-def admin_ops_kpis(db: Session = Depends(get_db), _=Depends(verify_admin)):
+def admin_ops_kpis(db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     """
     Operational KPIs for the command center.
     Uses real DB values; if a metric can't be computed, returns null for that field.
@@ -219,7 +219,7 @@ def admin_ops_kpis(db: Session = Depends(get_db), _=Depends(verify_admin)):
 
 @router.get("/data-operations")
 @cached_route(ttl=60)
-def admin_data_operations(db: Session = Depends(get_db), _=Depends(verify_admin)):
+def admin_data_operations(db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     """
     Data operations summary (counts) + small samples for operational workflows.
     """
@@ -297,7 +297,7 @@ def admin_data_operations(db: Session = Depends(get_db), _=Depends(verify_admin)
 
 @router.get("/upload-operations")
 @cached_route(ttl=60)
-def admin_upload_operations(limit: int = 25, db: Session = Depends(get_db), _=Depends(verify_admin)):
+def admin_upload_operations(limit: int = 25, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     """
     Recent upload jobs (ETL history) from UploadJob table.
     """
@@ -350,7 +350,7 @@ def admin_upload_operations(limit: int = 25, db: Session = Depends(get_db), _=De
 
 
 @router.get("/upload-operations/{job_id}/recruiters")
-def admin_upload_job_recruiters(job_id: str, limit: int = 500, db: Session = Depends(get_db), _=Depends(verify_admin)):
+def admin_upload_job_recruiters(job_id: str, limit: int = 500, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     job = db.query(UploadJob).filter(UploadJob.job_id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Upload job not found")
@@ -379,7 +379,7 @@ def admin_upload_job_recruiters(job_id: str, limit: int = 500, db: Session = Dep
 
 
 @router.delete("/upload-operations/{job_id}")
-def admin_delete_upload_job(job_id: str, db: Session = Depends(get_db), _=Depends(verify_admin)):
+def admin_delete_upload_job(job_id: str, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     job = db.query(UploadJob).filter(UploadJob.job_id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Upload job not found")
@@ -426,7 +426,7 @@ def admin_delete_upload_job(job_id: str, db: Session = Depends(get_db), _=Depend
 
 @router.get("/search-activity")
 @cached_route(ttl=60)
-def admin_search_activity(days: int = 1, db: Session = Depends(get_db), _=Depends(verify_admin)):
+def admin_search_activity(days: int = 1, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     """
     Aggregates recent SEARCH_* action logs. Only counts events that stored JSON details.
     """
@@ -460,7 +460,7 @@ def admin_search_activity(days: int = 1, db: Session = Depends(get_db), _=Depend
 
 @router.get("/export-analytics")
 @cached_route(ttl=60)
-def admin_export_analytics(days: int = 1, db: Session = Depends(get_db), _=Depends(verify_admin)):
+def admin_export_analytics(days: int = 1, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     since = datetime.utcnow() - timedelta(days=max(1, days))
 
     try:
@@ -501,7 +501,7 @@ def admin_export_analytics(days: int = 1, db: Session = Depends(get_db), _=Depen
 
 @router.get("/alerts")
 @cached_route(ttl=30)
-def admin_alerts(db: Session = Depends(get_db), _=Depends(verify_admin)):
+def admin_alerts(db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     """
     Actionable alerts derived from real DB state.
     """
@@ -545,7 +545,7 @@ def admin_alerts(db: Session = Depends(get_db), _=Depends(verify_admin)):
 
 @router.get("/activity-feed")
 @cached_route(ttl=60)
-def admin_activity_feed(limit: int = 50, db: Session = Depends(get_db), _=Depends(verify_admin)):
+def admin_activity_feed(limit: int = 50, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     """
     Unified activity feed powered by ActionLog + UploadJob.
     """
@@ -588,7 +588,7 @@ def admin_activity_feed(limit: int = 50, db: Session = Depends(get_db), _=Depend
 
 @router.get("/state-coverage")
 @cached_route(ttl=60)
-def admin_state_coverage(limit: int = 20, db: Session = Depends(get_db), _=Depends(verify_admin)):
+def admin_state_coverage(limit: int = 20, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     """
     Coverage centers: recruiters per state + companies per state.
     """
@@ -625,7 +625,7 @@ def admin_state_coverage(limit: int = 20, db: Session = Depends(get_db), _=Depen
 # ── 2. Top states by recruiter count ─────────────────────────────────────────
 @router.get("/top-states")
 @cached_route(ttl=60)
-def admin_top_states(limit: int = 15, db: Session = Depends(get_db), _=Depends(verify_admin)):
+def admin_top_states(limit: int = 15, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     rows = db.execute(text("""
         SELECT
             state,
@@ -642,7 +642,7 @@ def admin_top_states(limit: int = 15, db: Session = Depends(get_db), _=Depends(v
 # ── 3. Recent imports ─────────────────────────────────────────────────────────
 @router.get("/recent-imports")
 @cached_route(ttl=60)
-def admin_recent_imports(limit: int = 20, db: Session = Depends(get_db), _=Depends(verify_admin)):
+def admin_recent_imports(limit: int = 20, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     rows = db.execute(text("""
         SELECT
             DATE(created_at) AS import_date,
@@ -658,7 +658,7 @@ def admin_recent_imports(limit: int = 20, db: Session = Depends(get_db), _=Depen
 
 # ── 4. Duplicate detector (by email) ─────────────────────────────────────────
 @router.get("/duplicates")
-def admin_duplicates(limit: int = 50, db: Session = Depends(get_db), _=Depends(verify_admin)):
+def admin_duplicates(limit: int = 50, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     rows = db.execute(text("""
         SELECT
             LOWER(TRIM(email)) AS email,
@@ -686,7 +686,7 @@ def admin_duplicates(limit: int = 50, db: Session = Depends(get_db), _=Depends(v
 # ── 5. Empty-field audit ──────────────────────────────────────────────────────
 @router.get("/field-audit")
 @cached_route(ttl=60)
-def admin_field_audit(db: Session = Depends(get_db), _=Depends(verify_admin)):
+def admin_field_audit(db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     total = db.query(Recruiter).count()
     if total == 0:
         return {}
@@ -712,7 +712,7 @@ def admin_field_audit(db: Session = Depends(get_db), _=Depends(verify_admin)):
 # â”€â”€ 5b. Data quality snapshot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @router.get("/data-quality")
 @cached_route(ttl=60)
-def admin_data_quality(db: Session = Depends(get_db), _=Depends(verify_admin)):
+def admin_data_quality(db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     total_recruiters = db.query(Recruiter).count()
     total_companies = db.query(Company).count()
     known_state_count = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE state IS NOT NULL AND state != ''")).scalar() or 0
@@ -736,7 +736,7 @@ def admin_data_quality(db: Session = Depends(get_db), _=Depends(verify_admin)):
 # ── 6. Table sizes ────────────────────────────────────────────────────────────
 @router.get("/table-sizes")
 @cached_route(ttl=120)
-def admin_table_sizes(db: Session = Depends(get_db), _=Depends(verify_admin)):
+def admin_table_sizes(db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     rows = db.execute(text("""
         SELECT
             relname AS table_name,
@@ -752,7 +752,7 @@ def admin_table_sizes(db: Session = Depends(get_db), _=Depends(verify_admin)):
 # ── 7. Companies without recruiter ───────────────────────────────────────────
 @router.get("/orphan-companies")
 @cached_route(ttl=60)
-def admin_orphan_companies(limit: int = 50, db: Session = Depends(get_db), _=Depends(verify_admin)):
+def admin_orphan_companies(limit: int = 50, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     rows = db.execute(text("""
         SELECT c.company_id, c.company_name, c.location, c.website
         FROM companies c
@@ -766,7 +766,7 @@ def admin_orphan_companies(limit: int = 50, db: Session = Depends(get_db), _=Dep
 
 # ── 8. Cache clear ────────────────────────────────────────────────────────────
 @router.post("/clear-cache")
-def admin_clear_cache(_=Depends(verify_admin)):
+def admin_clear_cache(_=Depends(require_role(['admin', 'superadmin']))):
     from ..routes.analytics import analytics_cache
     analytics_cache._cache.clear()
     return {"status": "ok", "message": "Analytics cache cleared."}
@@ -781,7 +781,7 @@ class SqlQuery(BaseModel):
 BLOCKED = ["drop ", "delete ", "update ", "insert ", "alter ", "create ", "truncate ", "grant ", "revoke "]
 
 @router.post("/sql")
-def admin_sql(body: SqlQuery, db: Session = Depends(get_db), _=Depends(verify_admin)):
+def admin_sql(body: SqlQuery, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     sql_lower = body.sql.strip().lower()
     if not sql_lower.startswith("select"):
         raise HTTPException(400, "Only SELECT statements are allowed.")
@@ -809,7 +809,7 @@ def admin_sql(body: SqlQuery, db: Session = Depends(get_db), _=Depends(verify_ad
 # ── 10. System info ───────────────────────────────────────────────────────────
 @router.get("/system-info")
 @cached_route(ttl=120)
-def admin_system_info(db: Session = Depends(get_db), _=Depends(verify_admin)):
+def admin_system_info(db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     pg_ver = db.execute(text("SELECT version()")).scalar()
     db_size = db.execute(text("SELECT pg_size_pretty(pg_database_size(current_database()))")).scalar()
     uptime = db.execute(text("SELECT date_trunc('second', now() - pg_postmaster_start_time())")).scalar()
@@ -854,7 +854,7 @@ def admin_visitor_logs(
     days: int = 7,
     limit: int = 200,
     db: Session = Depends(get_db),
-    _=Depends(verify_admin)
+    _=Depends(require_role(['admin', 'superadmin']))
 ):
     """
     Returns visitor sessions grouped in Python (reliable across all visit rows).
@@ -919,7 +919,7 @@ def admin_visitor_logs(
 
 @router.get("/visitor-summary")
 @cached_route(ttl=60)
-def admin_visitor_summary(days: int = 30, db: Session = Depends(get_db), _=Depends(verify_admin)):
+def admin_visitor_summary(days: int = 30, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     """Daily unique visitors, total page views, avg session length."""
     rows = db.execute(text("""
         SELECT
@@ -982,7 +982,7 @@ def migrate_page_visits(db: Session):
 
 
 @router.post("/cleanup")
-def admin_cleanup(db: Session = Depends(get_db), _=Depends(verify_admin)):
+def admin_cleanup(db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     """
     Flags recruiters that have neither an email nor a phone for manual review (needs_review=true).
     We never delete data, we only flag it.
@@ -998,7 +998,7 @@ def admin_cleanup(db: Session = Depends(get_db), _=Depends(verify_admin)):
 
 
 @router.post("/rebuild-index")
-def admin_rebuild_index(db: Session = Depends(get_db), _=Depends(verify_admin)):
+def admin_rebuild_index(db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     """
     Rebuilds the pg_trgm indexes for fuzzy search concurrently so it doesn't block traffic.
     """
@@ -1028,7 +1028,7 @@ def admin_rebuild_index(db: Session = Depends(get_db), _=Depends(verify_admin)):
 
 
 @router.post("/sync-master")
-def admin_sync_master(db: Session = Depends(get_db), _=Depends(verify_admin)):
+def admin_sync_master(db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     """
     Triggers a master sync of the external data sources and analytics cache.
     """

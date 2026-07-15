@@ -9,10 +9,9 @@ const nav = [
   { to: '/recruiters', label: 'Recruiters', icon: Users },
   { to: '/directory', label: 'Directory', icon: Map, aliases: ['/states', '/companies'] },
   { to: '/analytics', label: 'Analytics', icon: BarChart2 },
-  { to: '/admin/health', label: 'Health Status', icon: ShieldCheck },
   { to: '/ai-search', label: 'AI Search', icon: Search },
-  { to: '/visitor-logs', label: 'Visitor Logs', icon: Eye },
-  { to: '/sessions', label: 'Sessions', icon: ShieldCheck },
+  { isGroupHeader: true, label: 'Admin' },
+  { to: '/admin/visitor-analytics', label: 'Visitor Analytics', icon: Eye },
 ]
 
 export default function Sidebar() {
@@ -21,8 +20,7 @@ export default function Sidebar() {
   const logoutSoon = () => {
     localStorage.removeItem('auth_session')
     sessionStorage.removeItem('auth_session')
-    clearStoredToken('admin')
-    clearStoredToken('app')
+    clearStoredToken()
     window.location.reload()
   }
 
@@ -65,10 +63,28 @@ export default function Sidebar() {
       </div>
 
       <nav style={{ flex: 1, minHeight: 0, padding: '14px 12px', overflowY: 'auto' }}>
-        {nav.map(({ to, label, icon: Icon, aliases = [] }) => {
+        {nav.map((item, index) => {
+          if (item.isGroupHeader) {
+            return (
+              <div key={`header-${index}`} style={{
+                color: 'rgba(255,255,255,0.4)',
+                fontSize: 11,
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                padding: '16px 14px 8px',
+                marginTop: 8
+              }}>
+                {item.label}
+              </div>
+            )
+          }
+
+          const { to, label, icon: Icon, aliases = [] } = item
           const active = to === '/'
             ? location.pathname === '/'
             : location.pathname.startsWith(to) || aliases.some((alias) => location.pathname.startsWith(alias))
+          
           return (
             <NavLink
               key={to}

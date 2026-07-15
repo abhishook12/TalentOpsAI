@@ -4,7 +4,7 @@ from sqlalchemy import or_
 from pydantic import BaseModel
 from typing import Optional, List
 from ..database import get_db
-from .auth import verify_admin
+from ..services.auth_service import require_role
 from ..models.models import Candidate
 
 router = APIRouter()
@@ -74,7 +74,7 @@ def get_candidate(candidate_id: int, db: Session = Depends(get_db)):
     return c
 
 @router.post("/", status_code=201)
-def create_candidate(data: CandidateCreate, db: Session = Depends(get_db), _=Depends(verify_admin)):
+def create_candidate(data: CandidateCreate, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     existing = db.query(Candidate).filter(Candidate.email == data.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Candidate with this email already exists")
@@ -85,7 +85,7 @@ def create_candidate(data: CandidateCreate, db: Session = Depends(get_db), _=Dep
     return candidate
 
 @router.put("/{candidate_id}")
-def update_candidate(candidate_id: int, data: CandidateUpdate, db: Session = Depends(get_db), _=Depends(verify_admin)):
+def update_candidate(candidate_id: int, data: CandidateUpdate, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     candidate = db.query(Candidate).filter(Candidate.candidate_id == candidate_id).first()
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
@@ -96,7 +96,7 @@ def update_candidate(candidate_id: int, data: CandidateUpdate, db: Session = Dep
     return candidate
 
 @router.delete("/{candidate_id}")
-def delete_candidate(candidate_id: int, db: Session = Depends(get_db), _=Depends(verify_admin)):
+def delete_candidate(candidate_id: int, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     c = db.query(Candidate).filter(Candidate.candidate_id == candidate_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Candidate not found")

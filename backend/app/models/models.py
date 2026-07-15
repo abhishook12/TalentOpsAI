@@ -3,6 +3,23 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from ..database import Base
 
+class VisitorSession(Base):
+    __tablename__ = "visitor_sessions"
+    session_id          = Column(String(64), primary_key=True, index=True)
+    user_email          = Column(String(150), nullable=True, index=True)
+    ip_address          = Column(String(60), nullable=True)
+    city                = Column(String(100), nullable=True)
+    country             = Column(String(100), nullable=True)
+    browser             = Column(String(100), nullable=True)
+    os                  = Column(String(100), nullable=True)
+    device              = Column(String(100), nullable=True)
+    started_at          = Column(TIMESTAMP, server_default=func.now(), index=True)
+    ended_at            = Column(TIMESTAMP, server_default=func.now())
+    session_score       = Column(String(50), nullable=True)
+    total_page_views    = Column(Integer, default=0)
+    total_actions       = Column(Integer, default=0)
+    total_errors        = Column(Integer, default=0)
+    idle_time_seconds   = Column(Integer, default=0)
 
 class PageVisit(Base):
     __tablename__ = "page_visits"

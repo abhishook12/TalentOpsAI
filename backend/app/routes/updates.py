@@ -5,7 +5,7 @@ from typing import List
 from datetime import datetime
 
 from ..database import get_db
-from ..routes.admin import verify_admin
+from ..services.auth_service import require_role
 
 router = APIRouter(prefix="/updates", tags=["updates"])
 
@@ -101,7 +101,7 @@ def get_changelog():
     return result
 
 @router.get("/features")
-def get_all_features(_=Depends(verify_admin)):
+def get_all_features(_=Depends(require_role(['admin', 'superadmin']))):
     """
     Gets all features for the admin verification panel (mocked to recent git changes).
     """
@@ -112,7 +112,7 @@ def get_all_features(_=Depends(verify_admin)):
     return features
 
 @router.post("/verify/{feature_id}")
-def verify_feature(feature_id: str, payload: dict, _=Depends(verify_admin)):
+def verify_feature(feature_id: str, payload: dict, _=Depends(require_role(['admin', 'superadmin']))):
     """
     Updates the status of a feature (Disabled in auto mode).
     """

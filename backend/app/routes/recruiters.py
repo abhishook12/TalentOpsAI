@@ -6,7 +6,7 @@ from sqlalchemy import text
 from pydantic import BaseModel
 from typing import List, Optional
 from ..database import get_db
-from .auth import verify_admin
+from ..services.auth_service import require_role
 from ..models.models import Recruiter, Company
 
 from ..utils.state_mapper import normalize_state, extract_state_detailed
@@ -959,7 +959,7 @@ def create_recruiter(data: RecruiterCreate, db: Session = Depends(get_db)):
     return serialize_recruiter(r)
 
 @router.put("/{recruiter_id}")
-def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Depends(get_db), _=Depends(verify_admin)):
+def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
@@ -972,7 +972,7 @@ def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Dep
     return serialize_recruiter(r)
 
 @router.delete("/{recruiter_id}")
-def delete_recruiter(recruiter_id: int, db: Session = Depends(get_db), _=Depends(verify_admin)):
+def delete_recruiter(recruiter_id: int, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
@@ -981,7 +981,7 @@ def delete_recruiter(recruiter_id: int, db: Session = Depends(get_db), _=Depends
     return {"message": "Recruiter deleted"}
 
 @router.post("/batch-delete")
-def batch_delete_recruiters(payload: dict, db: Session = Depends(get_db), _=Depends(verify_admin)):
+def batch_delete_recruiters(payload: dict, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     ids = [int(i) for i in payload.get("ids", []) if str(i).strip()]
     if not ids:
         raise HTTPException(status_code=400, detail="No recruiter ids supplied")
@@ -990,7 +990,7 @@ def batch_delete_recruiters(payload: dict, db: Session = Depends(get_db), _=Depe
     return {"message": "Recruiters deleted", "deleted_count": deleted}
 
 @router.post("/batch-update")
-def batch_update_recruiters(payload: RecruiterBatchUpdate, db: Session = Depends(get_db), _=Depends(verify_admin)):
+def batch_update_recruiters(payload: RecruiterBatchUpdate, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
     ids = [int(i) for i in payload.ids if str(i).strip()]
     if not ids:
         raise HTTPException(status_code=400, detail="No recruiter ids supplied")

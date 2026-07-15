@@ -74,40 +74,6 @@ def _hash_token(token: str) -> str:
     """SHA-256 hash a token before storing in DB."""
     return hashlib.sha256(token.encode()).hexdigest()
 
-# -------- Legacy Authentication Bridge --------
-def verify_admin(request: Request, db: Session = Depends(get_db)):
-    if FREE_ADMIN_MODE:
-        return True
-    
-    # Try new Auth Service first
-    try:
-        user = get_current_user_from_request(request, db)
-        if user.role and user.role.name in ["Admin", "Super Admin"]:
-            return True
-    except HTTPException:
-        pass
-        
-    # Fallback to old token logic
-    cookie_token = request.cookies.get("admin_session")
-    auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
-    token = cookie_token
-    if not token and auth_header and auth_header.lower().startswith("bearer "):
-        token = auth_header.split(" ", 1)[1].strip()
-        
-    if not token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated.")
-    try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM])
-        if payload.get("role") != "admin":
-            raise HTTPException(status_code=401, detail="Invalid role.")
-        return True
-    except jwt.ExpiredSignatureError:
-        _log_admin_event(db, request, "ADMIN_SESSION_EXPIRED", "failed", details="expired")
-        raise HTTPException(status_code=401, detail="Session expired. Please log in again.")
-    except jwt.InvalidTokenError:
-        _log_admin_event(db, request, "ADMIN_SESSION_INVALID", "failed", details="invalid")
-        raise HTTPException(status_code=401, detail="Invalid session.")
-
 
 # -------- New API Routes --------
 

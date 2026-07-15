@@ -673,7 +673,7 @@ export default function AdminTerminal() {
   }
 
   const doLogout = async () => {
-    clearStoredToken('admin')
+    clearStoredToken()
     try { await logout() } catch {}
     setUnlocked(true)
     setActiveTab('overview')

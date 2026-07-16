@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, ArrowLeft, Plus, Mail, ShieldAlert, FileText, BarChart3, HelpCircle } from 'lucide-react';
+import { Send, ArrowLeft, Plus, Mail, ShieldAlert, FileText, BarChart3, HelpCircle, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 

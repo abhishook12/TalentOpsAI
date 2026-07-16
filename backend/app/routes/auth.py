@@ -126,13 +126,12 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
     default_role = db.query(Role).filter(Role.name == "user").first()
     
     # Determine user status
-    initial_status = "Active" if DEV_AUTO_VERIFY else "Pending Verification"
+    initial_status = "Active"
     
     # First user ever → make superadmin
     is_first_user = db.query(User).count() == 0
     if is_first_user:
         default_role = db.query(Role).filter(Role.name == "superadmin").first() or default_role
-        initial_status = "Active"  # Always activate the first user
     
     new_user = User(
         first_name=user.first_name.strip(),
@@ -147,17 +146,6 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    
-    if initial_status == "Pending Verification":
-        token = secrets.token_hex(32)
-        verification = EmailVerificationToken(
-            user_id=new_user.id,
-            token_hash=_hash_token(token),
-            expires_at=datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=1)
-        )
-        db.add(verification)
-        db.commit()
-        send_verification_email(new_user.email, token)
     
     result = {
         "message": "User registered successfully",
@@ -192,7 +180,10 @@ def login(login_data: UserLogin, request: Request, response: Response, db: Sessi
         # Generic error — never reveal whether email or password is wrong
         raise HTTPException(status_code=401, detail="Invalid credentials")
         
-    if user.status != "Active":
+    if user.status == "Pending Verification":
+        user.status = "Active"
+        db.commit()
+    elif user.status != "Active":
         history = LoginHistory(
             user_id=user.id,
             email=login_data.email,

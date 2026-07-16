@@ -77,7 +77,7 @@ const puppeteer = require('puppeteer');
         for (const route of routesToTest) {
             console.log(`Navigating to ${route}...`);
             await page.goto(`${prodUrl}${route}`, { waitUntil: 'networkidle0' });
-            await page.waitForTimeout(2000); // give it time to load data
+            await new Promise(r => setTimeout(r, 2000)); // give it time to load data
             
             if (page.url().includes('/login')) {
                 console.log(`❌ Redirected to login from ${route}`);
@@ -95,9 +95,6 @@ const puppeteer = require('puppeteer');
         console.log("✅ Refresh successful, session persisted.");
 
         console.log("[5] Logging out...");
-        // Click the logout button. Assuming it's in the sidebar or top nav.
-        // We'll just hit the API to logout or use the UI if we know the selector.
-        // Actually, we can evaluate a logout click. The sidebar has a logout button.
         const logoutClicked = await page.evaluate(() => {
             const btns = Array.from(document.querySelectorAll('button'));
             const logoutBtn = btns.find(b => b.textContent.toLowerCase().includes('log out') || b.textContent.toLowerCase().includes('logout'));
@@ -110,7 +107,10 @@ const puppeteer = require('puppeteer');
 
         if (!logoutClicked) {
              console.log("Could not find logout button, clearing token manually.");
-             await page.evaluate(() => localStorage.removeItem('session_token'));
+             await page.evaluate(() => {
+                 localStorage.removeItem('session_token');
+                 sessionStorage.removeItem('session_token');
+             });
              await page.goto(`${prodUrl}/login`, { waitUntil: 'networkidle0' });
         } else {
              await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 15000 }).catch(e => console.log("Timeout waiting for logout navigation."));
@@ -120,6 +120,7 @@ const puppeteer = require('puppeteer');
         console.log("[6] Logging in as Admin...");
         await page.goto(`${prodUrl}/login`, { waitUntil: 'networkidle0' });
         
+        await page.waitForSelector('input[type="email"]');
         await page.type('input[type="email"]', 'admin@talentops.com');
         await page.type('input[type="password"]', 'password123');
         
@@ -135,7 +136,7 @@ const puppeteer = require('puppeteer');
         
         console.log("[7] Checking Visitor Analytics...");
         await page.goto(`${prodUrl}/admin/visitor-analytics`, { waitUntil: 'networkidle0' });
-        await page.waitForTimeout(3000);
+        await new Promise(r => setTimeout(r, 3000));
         
         const analyticsText = await page.evaluate(() => document.body.innerText);
         if (analyticsText.includes(testEmail)) {

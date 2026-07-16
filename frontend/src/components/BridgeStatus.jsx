@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Server, Activity, XCircle, CheckCircle, Loader2 } from 'lucide-react';
 
-const BRIDGE_URL = 'http://127.0.0.1:1337';
+const BRIDGE_URL = 'http://localhost:1337';
 
 export default function BridgeStatus({ onStatusChange }) {
   const [status, setStatus] = useState(null);

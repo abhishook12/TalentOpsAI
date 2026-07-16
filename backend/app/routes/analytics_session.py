@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Optional
 from user_agents import parse
 from ..database import get_db
-from ..models.models import VisitorSession
+from ..models.models import VisitorSession, PageVisit, ActionLog
 
 router = APIRouter()
 
@@ -52,11 +52,37 @@ def start_session(payload: SessionStartPayload, request: Request, db: Session = 
             status="Active"
         )
         db.add(session)
+        db.add(ActionLog(
+            session_id=payload.session_id,
+            user_email=payload.user_email,
+            action_type="session_start",
+            details="New session started",
+            ip_address=ip
+        ))
     else:
         session.status = "Active"
         session.last_activity = datetime.utcnow()
-        if payload.user_email:
+        if payload.user_email and not session.user_email:
+            db.add(ActionLog(
+                session_id=payload.session_id,
+                user_email=payload.user_email,
+                action_type="login",
+                details="User logged in during session",
+                ip_address=ip
+            ))
             session.user_email = payload.user_email
+        elif payload.user_email:
+            session.user_email = payload.user_email
+            
+    if payload.current_page:
+        db.add(PageVisit(
+            page=payload.current_page,
+            path=payload.current_page,
+            user_email=session.user_email,
+            session_id=payload.session_id,
+            user_agent=ua,
+            ip_address=ip
+        ))
             
     db.commit()
     return {"ok": True}
@@ -70,25 +96,43 @@ class SessionEventPayload(BaseModel):
     user_email: Optional[str] = None
 
 @router.post("/event")
-def log_event(payload: SessionEventPayload, db: Session = Depends(get_db)):
+def log_event(payload: SessionEventPayload, request: Request, db: Session = Depends(get_db)):
+    ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or request.client.host
     session = db.query(VisitorSession).filter(VisitorSession.session_id == payload.session_id).first()
     if not session:
         return {"ok": False, "error": "session not found"}
         
     session.last_activity = datetime.utcnow()
     
+    if payload.user_email and not session.user_email:
+        db.add(ActionLog(
+            session_id=payload.session_id,
+            user_email=payload.user_email,
+            action_type="login",
+            details="User logged in during session",
+            ip_address=ip
+        ))
+        session.user_email = payload.user_email
+    elif payload.user_email:
+        session.user_email = payload.user_email
+    
     if payload.event_type == "page_view":
         session.total_page_views = (session.total_page_views or 0) + 1
         session.current_page = payload.current_page
         session.previous_page = payload.previous_page
         session.status = "Active"
+        db.add(PageVisit(
+            page=payload.current_page or "Unknown",
+            path=payload.current_page or "/",
+            user_email=session.user_email,
+            session_id=payload.session_id,
+            user_agent=session.user_agent,
+            ip_address=ip
+        ))
     elif payload.event_type == "idle":
         session.status = "Idle"
     elif payload.event_type == "active":
         session.status = "Active"
-        
-    if payload.user_email:
-        session.user_email = payload.user_email
         
     db.commit()
     return {"ok": True}
@@ -102,25 +146,34 @@ class SessionHeartbeatPayload(BaseModel):
     user_email: Optional[str] = None
 
 @router.post("/heartbeat")
-def heartbeat(payload: SessionHeartbeatPayload, db: Session = Depends(get_db)):
+def heartbeat(payload: SessionHeartbeatPayload, request: Request, db: Session = Depends(get_db)):
+    ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or request.client.host
     session = db.query(VisitorSession).filter(VisitorSession.session_id == payload.session_id).first()
     if not session:
         return {"ok": False, "error": "session not found"}
         
     session.last_activity = datetime.utcnow()
     session.status = payload.status
+    
+    if payload.user_email and not session.user_email:
+        db.add(ActionLog(
+            session_id=payload.session_id,
+            user_email=payload.user_email,
+            action_type="login",
+            details="User logged in during session",
+            ip_address=ip
+        ))
+        session.user_email = payload.user_email
+    elif payload.user_email:
+        session.user_email = payload.user_email
+        
     if payload.clicks_since_last > 0:
         session.total_clicks = (session.total_clicks or 0) + payload.clicks_since_last
     if payload.current_page:
         session.current_page = payload.current_page
-    if payload.user_email:
-        session.user_email = payload.user_email
         
-    # Calculate idle time difference
     if payload.status == "Active":
-        # We assume heartbeat is every 30s
         duration = (datetime.utcnow() - session.started_at).total_seconds()
-        # Keep ended_at moving forward
         session.ended_at = datetime.utcnow()
         
     db.commit()
@@ -130,10 +183,18 @@ class SessionEndPayload(BaseModel):
     session_id: str
 
 @router.post("/end")
-def end_session(payload: SessionEndPayload, db: Session = Depends(get_db)):
+def end_session(payload: SessionEndPayload, request: Request, db: Session = Depends(get_db)):
+    ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or request.client.host
     session = db.query(VisitorSession).filter(VisitorSession.session_id == payload.session_id).first()
     if session:
         session.status = "Ended"
         session.ended_at = datetime.utcnow()
+        db.add(ActionLog(
+            session_id=payload.session_id,
+            user_email=session.user_email,
+            action_type="session_end",
+            details="Session ended",
+            ip_address=ip
+        ))
         db.commit()
     return {"ok": True}

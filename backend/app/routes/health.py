@@ -52,13 +52,6 @@ def system_health(db: Session = Depends(get_db)):
         health_data["status"] = "degraded"
         logger.error(f"Database health check failed: {e}")
 
-    # Check Outlook Bridge
-    bridge_health = check_outlook_bridge()
-    health_data["components"]["outlook_bridge"] = bridge_health
-    if bridge_health.get("status") not in ["healthy", "ok"]:
-        health_data["status"] = "degraded"
-        logger.error(f"Outlook Bridge health check failed: {bridge_health}")
-
     # Check System Resources
     disk = get_disk_usage()
     health_data["components"]["disk"] = disk

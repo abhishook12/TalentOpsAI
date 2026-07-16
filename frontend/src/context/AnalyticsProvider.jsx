@@ -37,11 +37,11 @@ export function AnalyticsProvider({ children }) {
     }
   }, []);
 
-  // API Call Wrapper — fully guarded, never throws
   const sendAnalytics = async (endpoint, payload) => {
     if (!anonymousId || !sessionId) return;
     try {
       const authSession = JSON.parse(localStorage.getItem('auth_session') || '{}');
+      console.log(`[ANALYTICS] Sending ${endpoint} with email: ${authSession?.email}`);
       await fetch(`${API}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -55,6 +55,7 @@ export function AnalyticsProvider({ children }) {
       });
     } catch (e) {
       // Silently fail — analytics should never break the app
+      console.warn('[ANALYTICS ERR]', e);
     }
   };
 

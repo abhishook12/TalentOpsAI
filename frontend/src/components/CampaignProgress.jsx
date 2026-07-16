@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, RefreshCw, CheckCircle, XCircle, Clock, Activity, Loader2 } from 'lucide-react';
-import api from '../services/api';
+import api, { API } from '../services/api';
 
 export default function CampaignProgress({ campaignId, onStatusChange }) {
   const [data, setData] = useState({
@@ -18,7 +19,7 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
     if (!campaignId) return;
 
     setIsConnecting(true);
-    const eventSource = new EventSource(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/campaigns/${campaignId}/progress`);
+    const eventSource = new EventSource(`${API}/campaigns/${campaignId}/progress`);
 
     eventSource.onmessage = (event) => {
       setIsConnecting(false);

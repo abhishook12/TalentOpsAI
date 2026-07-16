@@ -34,14 +34,18 @@ export const AuthProvider = ({ children }) => {
                 // If it's the legacy response or the new robust response
                 if (response.data.user) {
                     setUser(response.data.user);
+                    localStorage.setItem('auth_session', JSON.stringify({ email: response.data.user.email || null }));
                 } else if (response.data.role === 'admin') {
                     setUser({ id: 'admin', role: 'admin', first_name: 'Admin', email: 'admin@system' });
+                    localStorage.setItem('auth_session', JSON.stringify({ email: 'admin@system' }));
                 }
             } else {
                 setUser(null);
+                localStorage.removeItem('auth_session');
             }
         } catch (error) {
             setUser(null);
+            localStorage.removeItem('auth_session');
         } finally {
             setLoading(false);
         }
@@ -74,6 +78,7 @@ export const AuthProvider = ({ children }) => {
             });
         }
         setUser(response.data.user);
+        localStorage.setItem('auth_session', JSON.stringify({ email: response.data.user?.email || null }));
         return response.data;
     };
 
@@ -89,6 +94,7 @@ export const AuthProvider = ({ children }) => {
             console.error('Logout error', error);
         } finally {
             setUser(null);
+            localStorage.removeItem('auth_session');
             window.location.href = '/login';
         }
     };

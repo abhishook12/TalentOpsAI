@@ -1,15 +1,15 @@
 import React, { useEffect, useState, useRef } from "react";
-import axios from "axios";
+import api from "../services/api";
 import { motion, AnimatePresence } from "framer-motion";
 import EnrichmentLiveFeed from "./EnrichmentLiveFeed";
 
 const fetchStatus = async () => {
-  const { data } = await axios.get("http://127.0.0.1:8000/admin/workers/status", { withCredentials: true });
+  const { data } = await api.get("/admin/workers/status");
   return data;
 };
 
 const fetchLogs = async (name) => {
-  const { data } = await axios.get(`http://127.0.0.1:8000/admin/workers/logs/${name}`, { withCredentials: true });
+  const { data } = await api.get(`/admin/workers/logs/${name}`);
   return data;
 };
 
@@ -62,7 +62,7 @@ export default function WorkerDashboard() {
 
   const toggle = async (name, action) => {
     try {
-      await axios.post(`http://127.0.0.1:8000/admin/workers/${action}?name=${name}`, null, { withCredentials: true });
+      await api.post(`/admin/workers/${action}?name=${name}`, null);
       load();
     } catch (e) {
       console.error("Failed to toggle worker", e);

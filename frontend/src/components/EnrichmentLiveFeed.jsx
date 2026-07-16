@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../services/api";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function EnrichmentLiveFeed() {
@@ -8,7 +8,7 @@ export default function EnrichmentLiveFeed() {
 
   const fetchFeed = async () => {
     try {
-      const { data } = await axios.get("http://127.0.0.1:8000/analytics/enrichment-feed", { withCredentials: true });
+      const { data } = await api.get("/analytics/enrichment-feed");
       setFeed(data.feed || []);
     } catch (error) {
       console.error("Failed to fetch enrichment feed", error);

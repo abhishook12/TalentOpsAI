@@ -190,7 +190,7 @@ export default function Dashboard() {
               <i className="ti ti-sparkles" /> Open AI Search
             </PrimaryButton>
             <GhostButton
-              onClick={() => window.open('http://localhost:8000/analytics/executive-report', '_blank')}
+              onClick={() => window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/analytics/executive-report`, '_blank')}
               title="Download executive scorecard CSV report across top staffing giants"
             >
               <i className="ti ti-file-export" /> Executive Report

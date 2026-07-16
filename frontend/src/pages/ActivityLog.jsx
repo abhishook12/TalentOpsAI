@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../services/api";
 import api from "../services/api";
 import { useSessionState } from '../hooks/useSessionState';
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,7 +19,7 @@ export default function ActivityLog() {
 
   const fetchDatabaseActivity = async () => {
     try {
-      const { data } = await axios.get("http://127.0.0.1:8000/analytics/global-activity?limit=200", {
+      const { data } = await api.get("/analytics/global-activity?limit=200", {
         withCredentials: true,
       });
       setActivity(data.activity || []);
@@ -33,7 +33,7 @@ export default function ActivityLog() {
 
   const fetchVisitorLogs = async () => {
     try {
-      const { data } = await axios.get("http://127.0.0.1:8000/analytics/visitor-logs?limit=200", {
+      const { data } = await api.get("/analytics/visitor-logs?limit=200", {
         withCredentials: true,
       });
       setVisitors(data.logs || []);

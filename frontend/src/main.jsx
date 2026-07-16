@@ -26,10 +26,16 @@ axios.defaults.withCredentials = true
 import { RouterProvider } from '@tanstack/react-router'
 import { router } from './router.jsx'
 
+import { GoogleOAuthProvider } from '@react-oauth/google'
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'mock_google_client_id_for_dev'
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </GoogleOAuthProvider>
   </React.StrictMode>,
 )

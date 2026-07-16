@@ -82,6 +82,20 @@ export const AuthProvider = ({ children }) => {
         return response.data;
     };
 
+    const googleLogin = async (credential) => {
+        const response = await api.post('/auth/google', {
+            credential
+        });
+        if (response.data.token) {
+            import('../services/api').then(({ setStoredToken }) => {
+                setStoredToken(response.data.token, true); // Keep them logged in
+            });
+        }
+        setUser(response.data.user);
+        localStorage.setItem('auth_session', JSON.stringify({ email: response.data.user?.email || null }));
+        return response.data;
+    };
+
     const register = async (userData) => {
         const response = await api.post('/auth/register', userData);
         return response.data;
@@ -115,7 +129,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, logout, register, forgotPassword, resetPassword, verifyEmail, checkAuthStatus }}>
+        <AuthContext.Provider value={{ user, loading, login, googleLogin, logout, register, forgotPassword, resetPassword, verifyEmail, checkAuthStatus }}>
             {!loading && children}
         </AuthContext.Provider>
     );

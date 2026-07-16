@@ -34,6 +34,12 @@ def check_outlook_bridge():
     except Exception as e:
         return {"status": "unreachable", "error": str(e)}
 
+@router.get("/")
+@router.get("")
+def basic_health(db: Session = Depends(get_db)):
+    """Primary load balancer health check."""
+    return system_health(db)
+
 @router.get("/system")
 def system_health(db: Session = Depends(get_db)):
     """Comprehensive system health check for infrastructure monitoring."""

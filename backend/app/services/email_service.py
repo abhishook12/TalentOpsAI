@@ -42,14 +42,17 @@ def send_verification_email(email: str, token: str):
     """
     
     if _send_real_email(email, "Verify your TalentOps AI account", html_body):
-        logger.info(f"📧 REAL EMAIL → Verification sent to {email}")
+        logger.info(f"REAL EMAIL → Verification sent to {email}")
     else:
-        logger.info(f"📧 DEV EMAIL → Verification for {email}")
-        logger.info(f"📧 Click to verify: {verify_url}")
+        logger.info(f"DEV EMAIL → Verification for {email}")
+        logger.info(f"Click to verify: {verify_url}")
         print(f"\n{'='*60}")
-        print(f"  📧 VERIFICATION EMAIL (dev mode)")
-        print(f"  To: {email}")
-        print(f"  Link: {verify_url}")
+        try:
+            print(f"  [EMAIL] VERIFICATION EMAIL (dev mode)")
+            print(f"  To: {email}")
+            print(f"  Link: {verify_url}")
+        except UnicodeEncodeError:
+            pass
         print(f"{'='*60}\n")
 
 def send_password_reset_email(email: str, token: str):
@@ -67,13 +70,16 @@ def send_password_reset_email(email: str, token: str):
     """
     
     if _send_real_email(email, "Reset your TalentOps AI password", html_body):
-        logger.info(f"📧 REAL EMAIL → Password reset sent to {email}")
+        logger.info(f"REAL EMAIL → Password reset sent to {email}")
     else:
-        logger.info(f"📧 DEV EMAIL → Password reset for {email}")
-        logger.info(f"📧 Click to reset: {reset_url}")
+        logger.info(f"DEV EMAIL → Password reset for {email}")
+        logger.info(f"Click to reset: {reset_url}")
         print(f"\n{'='*60}")
-        print(f"  📧 PASSWORD RESET EMAIL (dev mode)")
-        print(f"  To: {email}")
-        print(f"  Link: {reset_url}")
+        try:
+            print(f"  [EMAIL] (dev mode)")
+            print(f"  To: {email}")
+            print(f"  Subject: Reset your TalentOps AI password")
+            print(f"  Link: {reset_url}")
+        except UnicodeEncodeError:
+            pass
         print(f"{'='*60}\n")
-

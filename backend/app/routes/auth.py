@@ -14,6 +14,7 @@ from ..services.email_service import send_verification_email, send_password_rese
 from pydantic import BaseModel, EmailStr
 from ..config import JWT_SECRET, ADMIN_PASSWORD, APP_PASSWORD, IS_PRODUCTION, DEV_AUTO_VERIFY
 from ..models.models import ActionLog
+from ..core.limiter import limiter
 
 router = APIRouter()
 ALGORITHM = "HS256"
@@ -111,7 +112,8 @@ def _validate_password(password: str):
         )
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-def register(user: UserRegister, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def register(request: Request, user: UserRegister, db: Session = Depends(get_db)):
     _validate_password(user.password)
     existing_user = db.query(User).filter(User.email == user.email.lower().strip()).first()
     if existing_user:
@@ -126,19 +128,21 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
     default_role = db.query(Role).filter(Role.name == "user").first()
     
     # Determine user status
-    initial_status = "Active"
+    initial_status = "Active" if DEV_AUTO_VERIFY else "Pending Verification"
     
-    # First user ever → make superadmin
+    # First user ever → make superadmin and active
     is_first_user = db.query(User).count() == 0
     if is_first_user:
         default_role = db.query(Role).filter(Role.name == "superadmin").first() or default_role
+        initial_status = "Active"
     
+    from ..utils.sanitize import sanitize_html
     new_user = User(
-        first_name=user.first_name.strip(),
-        last_name=user.last_name.strip(),
+        first_name=sanitize_html(user.first_name.strip()),
+        last_name=sanitize_html(user.last_name.strip()),
         email=user.email.lower().strip(),
-        company=user.company,
-        country=user.country,
+        company=sanitize_html(user.company) if user.company else None,
+        country=sanitize_html(user.country) if user.country else None,
         password_hash=hashed_password,
         status=initial_status,
         role_id=default_role.id if default_role else None
@@ -147,6 +151,17 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
     
+    if initial_status == "Pending Verification":
+        token = secrets.token_hex(32)
+        verification = EmailVerificationToken(
+            user_id=new_user.id,
+            token_hash=_hash_token(token),
+            expires_at=datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=1)
+        )
+        db.add(verification)
+        db.commit()
+        send_verification_email(new_user.email, token)
+    
     result = {
         "message": "User registered successfully",
         "user_id": new_user.id,
@@ -154,10 +169,14 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
     }
     if is_first_user:
         result["note"] = "First user created as superadmin with Active status."
+    elif initial_status == "Pending Verification":
+        result["note"] = "Please verify your email address to activate your account."
+        
     return result
 
 @router.post("/login")
-def login(login_data: UserLogin, request: Request, response: Response, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def login(request: Request, login_data: UserLogin, response: Response, db: Session = Depends(get_db)):
     ip = _client_ip(request)
     
     # Rate Limiting Check
@@ -166,7 +185,7 @@ def login(login_data: UserLogin, request: Request, response: Response, db: Sessi
     user = db.query(User).filter(User.email == login_data.email).first()
     user_agent = request.headers.get("user-agent")
     
-    if not user or not verify_password(login_data.password, user.password_hash):
+    if not user or user.auth_provider != 'local' or not user.password_hash or not verify_password(login_data.password, user.password_hash):
         history = LoginHistory(
             user_id=user.id if user else None,
             email=login_data.email,
@@ -181,8 +200,18 @@ def login(login_data: UserLogin, request: Request, response: Response, db: Sessi
         raise HTTPException(status_code=401, detail="Invalid credentials")
         
     if user.status == "Pending Verification":
-        user.status = "Active"
+        history = LoginHistory(
+            user_id=user.id,
+            email=login_data.email,
+            status="Failed",
+            reason="Pending Verification",
+            ip_address=ip,
+            browser=user_agent
+        )
+        db.add(history)
         db.commit()
+        raise HTTPException(status_code=403, detail="Please verify your email address before logging in.")
+        
     elif user.status != "Active":
         history = LoginHistory(
             user_id=user.id,
@@ -247,6 +276,124 @@ def login(login_data: UserLogin, request: Request, response: Response, db: Sessi
     
     return {
         "message": "Login successful",
+        "token": access_token,
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "role": user.role.name if user.role else "None"
+        }
+    }
+
+class GoogleAuthRequest(BaseModel):
+    credential: str
+
+@router.post("/google")
+@limiter.limit("10/minute")
+def google_auth(request: Request, data: GoogleAuthRequest, response: Response, db: Session = Depends(get_db)):
+    from google.oauth2 import id_token
+    from google.auth.transport import requests as google_requests
+    import os
+    
+    ip = _client_ip(request)
+    _check_rate_limit(db, ip)
+    
+    client_id = os.environ.get("GOOGLE_CLIENT_ID", "")
+    if not client_id:
+        # If client ID is missing, we must fail gracefully. But for local dev mock, we can accept a mock token.
+        if data.credential == "mock_google_token" and not IS_PRODUCTION:
+            idinfo = {
+                "email": "googleuser@example.com",
+                "given_name": "Google",
+                "family_name": "User",
+                "sub": "mock_google_sub_123",
+                "picture": ""
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Google Auth is not configured on this server.")
+    else:
+        try:
+            idinfo = id_token.verify_oauth2_token(data.credential, google_requests.Request(), client_id)
+        except ValueError:
+            raise HTTPException(status_code=401, detail="Invalid Google token")
+
+    email = idinfo.get("email", "").lower().strip()
+    if not email:
+        raise HTTPException(status_code=400, detail="Google token missing email")
+
+    user = db.query(User).filter(User.email == email).first()
+    user_agent = request.headers.get("user-agent")
+
+    if user:
+        if user.auth_provider != "google":
+            # Account linking protection
+            history = LoginHistory(
+                user_id=user.id, email=email, status="Failed", reason="Attempted Google login on local account",
+                ip_address=ip, browser=user_agent
+            )
+            db.add(history)
+            db.commit()
+            raise HTTPException(status_code=403, detail="An account with this email already exists. Please log in with your password.")
+            
+        if user.status != "Active":
+            raise HTTPException(status_code=403, detail=f"Account is {user.status}.")
+    else:
+        # Create new user
+        _ensure_default_roles(db)
+        default_role = db.query(Role).filter(Role.name == "user").first()
+        is_first_user = db.query(User).count() == 0
+        if is_first_user:
+            default_role = db.query(Role).filter(Role.name == "superadmin").first() or default_role
+
+        user = User(
+            first_name=idinfo.get("given_name", ""),
+            last_name=idinfo.get("family_name", ""),
+            email=email,
+            auth_provider="google",
+            provider_id=idinfo.get("sub"),
+            avatar_url=idinfo.get("picture", ""),
+            status="Active", # Google emails are already verified
+            role_id=default_role.id if default_role else None
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    # Create Session
+    session_token = secrets.token_hex(32)
+    expires_at = datetime.now(timezone.utc) + timedelta(days=30)
+    
+    db_session = DBSession(
+        user_id=user.id,
+        token_hash=_hash_token(session_token),
+        device=user_agent, browser=user_agent, ip_address=ip, expires_at=expires_at
+    )
+    db.add(db_session)
+    
+    history = LoginHistory(
+        user_id=user.id, email=email, status="Success", ip_address=ip, browser=user_agent
+    )
+    db.add(history)
+    db.commit()
+    db.refresh(db_session)
+    
+    access_token = create_access_token(
+        data={"sub": str(user.id), "session_id": db_session.id},
+        expires_delta=timedelta(days=30)
+    )
+    
+    response.set_cookie(
+        key="access_token", value=access_token, httponly=True, secure=IS_PRODUCTION, samesite="lax", max_age=30*24*60*60
+    )
+    
+    refresh_token = create_refresh_token(user.id)
+    response.set_cookie(
+        key="refresh_token", value=refresh_token, httponly=True, secure=IS_PRODUCTION, samesite="lax", max_age=30*24*60*60
+    )
+    
+    return {
+        "message": "Google Login successful",
         "token": access_token,
         "user": {
             "id": user.id,
@@ -394,7 +541,8 @@ class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 
 @router.post("/forgot-password")
-def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
+@limiter.limit("3/minute")
+def forgot_password(request: Request, req: ForgotPasswordRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == req.email.lower().strip()).first()
     if not user:
         return {"message": "If the email is registered, a password reset link has been sent."}
@@ -416,7 +564,8 @@ class ResetPasswordRequest(BaseModel):
     new_password: str
 
 @router.post("/reset-password")
-def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
+@limiter.limit("3/minute")
+def reset_password(request: Request, req: ResetPasswordRequest, db: Session = Depends(get_db)):
     _validate_password(req.new_password)
     token_record = db.query(PasswordResetToken).filter(
         PasswordResetToken.token_hash == _hash_token(req.token),

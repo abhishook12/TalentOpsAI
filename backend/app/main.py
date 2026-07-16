@@ -5,6 +5,8 @@ from fastapi import FastAPI, Depends, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from .config import CORS_ORIGINS, IS_PRODUCTION, ENV as APP_ENV
@@ -13,11 +15,8 @@ from .database import get_db, engine
 from .models import models, auth_models
 from .create_indexes import create_performance_indexes
 
-logging.basicConfig(
-    level=logging.INFO if IS_PRODUCTION else logging.DEBUG,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-)
-logger = logging.getLogger("talentops")
+from .core.logger import setup_logger
+logger = setup_logger(level=logging.INFO if IS_PRODUCTION else logging.DEBUG)
 
 RUN_STARTUP_MIGRATIONS = os.getenv("RUN_STARTUP_MIGRATIONS", "false").lower() in ("1", "true", "yes")
 
@@ -183,6 +182,21 @@ app = FastAPI(
     version="1.1.0",
 )
 
+from .core.limiter import limiter
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+import uuid
+from .core.logger import request_id_var
+
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next):
+    req_id = str(uuid.uuid4())
+    request_id_var.set(req_id)
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = req_id
+    return response
+
 from .resource_lockdown import is_locked_down, get_lockdown_reason, check_system_limits
 
 @app.middleware("http")
@@ -216,7 +230,9 @@ async def security_headers_middleware(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+    response.headers["Content-Security-Policy"] = "frame-ancestors 'none';"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
 
 app.add_middleware(

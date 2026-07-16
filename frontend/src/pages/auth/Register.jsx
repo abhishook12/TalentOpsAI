@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate, Link } from '@tanstack/react-router'
+import { GoogleLogin } from '@react-oauth/google'
 import AuthFrame from './AuthFrame'
 
 export default function Register() {
@@ -18,7 +19,7 @@ export default function Register() {
   const [showTermsModal, setShowTermsModal] = useState(false)
   const [showPrivacyModal, setShowPrivacyModal] = useState(false)
 
-  const { register } = useAuth()
+  const { register, googleLogin } = useAuth()
   const navigate = useNavigate()
 
   const getPasswordStrength = () => {
@@ -73,6 +74,24 @@ export default function Register() {
     }
   }
 
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setError('')
+    setIsSubmitting(true)
+    try {
+        await googleLogin(credentialResponse.credential)
+        navigate({ to: '/' })
+    } catch (err) {
+        let errorDetail = err?.response?.data?.detail || 'Google Login failed'
+        setError(errorDetail)
+    } finally {
+        setIsSubmitting(false)
+    }
+  }
+
+  const handleGoogleError = () => {
+    setError('Google Sign-In was unsuccessful. Try again later.')
+  }
+
   return (
     <AuthFrame
       eyebrow="Create account"
@@ -88,6 +107,22 @@ export default function Register() {
           {error}
         </div>
       ) : null}
+
+      <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'center' }}>
+          <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              useOneTap
+              theme="outline"
+              size="large"
+              shape="rectangular"
+              width="320"
+          />
+      </div>
+
+      <div className="auth-divider">
+          <span>or register with email</span>
+      </div>
 
       <form onSubmit={handleSubmit} className="auth-form">
         <div className="auth-row">

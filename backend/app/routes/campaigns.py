@@ -131,42 +131,46 @@ def enroll_emails(campaign_id: int, payload: EnrollEmailsRequest, db: Session = 
         raise HTTPException(status_code=400, detail="Campaign must have at least one sequence step")
 
     enrolled = 0
-    for email in payload.emails:
-        clean_email = email.strip().lower()
-        if not clean_email:
-            continue
+    try:
+        for email in payload.emails:
+            clean_email = email.strip().lower()
+            if not clean_email:
+                continue
+                
+            # Find or create recruiter
+            rec = db.query(Recruiter).filter(func.lower(Recruiter.email) == clean_email).first()
+            if not rec:
+                rec = Recruiter(
+                    email=clean_email,
+                    recruiter_name=clean_email.split('@')[0], # Fallback name
+                    data_source="campaign_import"
+                )
+                db.add(rec)
+                db.flush() # Flush instead of commit to get the ID within the transaction
+                
+            # Check if already enrolled
+            existing = db.query(CampaignRecruiter).filter(
+                CampaignRecruiter.campaign_id == campaign_id,
+                CampaignRecruiter.recruiter_id == rec.recruiter_id
+            ).first()
             
-        # Find or create recruiter
-        rec = db.query(Recruiter).filter(func.lower(Recruiter.email) == clean_email).first()
-        if not rec:
-            rec = Recruiter(
-                email=clean_email,
-                recruiter_name=clean_email.split('@')[0], # Fallback name
-                data_source="campaign_import"
-            )
-            db.add(rec)
-            db.commit()
-            db.refresh(rec)
-            
-        # Check if already enrolled
-        existing = db.query(CampaignRecruiter).filter(
-            CampaignRecruiter.campaign_id == campaign_id,
-            CampaignRecruiter.recruiter_id == rec.recruiter_id
-        ).first()
+            if not existing:
+                cr = CampaignRecruiter(
+                    campaign_id=campaign_id,
+                    recruiter_id=rec.recruiter_id,
+                    current_step_id=first_step.step_id,
+                    status=CampaignRecruiterStatus.pending.value,
+                    enrolled_at=utcnow(),
+                    next_send_at=campaign.start_at or utcnow()
+                )
+                db.add(cr)
+                enrolled += 1
+                
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to enroll emails: {str(e)}")
         
-        if not existing:
-            cr = CampaignRecruiter(
-                campaign_id=campaign_id,
-                recruiter_id=rec.recruiter_id,
-                current_step_id=first_step.step_id,
-                status=CampaignRecruiterStatus.pending.value,
-                enrolled_at=utcnow(),
-                next_send_at=campaign.start_at or utcnow()
-            )
-            db.add(cr)
-            enrolled += 1
-            
-    db.commit()
     return {"enrolled_count": enrolled}
 
 @router.get("/{campaign_id}/progress")

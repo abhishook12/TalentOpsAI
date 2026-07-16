@@ -16,14 +16,43 @@ REFRESH_TOKEN_EXPIRE_DAYS = 30
 
 import bcrypt
 
-def verify_password(plain_password, hashed_password):
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """
+    Verify a plaintext password against its hashed version.
+    
+    Args:
+        plain_password: The plaintext password to check.
+        hashed_password: The bcrypt hashed password string from the database.
+        
+    Returns:
+        bool: True if the password matches, False otherwise.
+    """
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
-def get_password_hash(password):
+def get_password_hash(password: str) -> str:
+    """
+    Hash a plaintext password using bcrypt.
+    
+    Args:
+        password: The plaintext password to hash.
+        
+    Returns:
+        str: The bcrypt hashed password string.
+    """
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
-def create_access_token(data: dict, expires_delta: timedelta = None):
+def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
+    """
+    Create a JWT access token for a user session.
+    
+    Args:
+        data: The payload dictionary to encode (e.g., {"sub": user_id, "session_id": session_id}).
+        expires_delta: Optional override for the token expiration time.
+        
+    Returns:
+        str: The encoded JWT token string.
+    """
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
@@ -33,12 +62,36 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-def create_refresh_token(user_id: int):
+def create_refresh_token(user_id: int) -> str:
+    """
+    Create a long-lived JWT refresh token.
+    
+    Args:
+        user_id: The ID of the user this token belongs to.
+        
+    Returns:
+        str: The encoded JWT refresh token.
+    """
     expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     payload = {"sub": str(user_id), "exp": expire, "type": "refresh"}
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 def get_current_user_from_request(request: Request, db: Session = Depends(get_db)):
+    """
+    Extracts, decodes, and validates the JWT access token from the request.
+    It checks both cookies and the Authorization header.
+    It also validates the session against the database to ensure it hasn't been revoked.
+    
+    Args:
+        request: The FastAPI Request object.
+        db: The SQLAlchemy database session.
+        
+    Returns:
+        User: The authenticated User object.
+        
+    Raises:
+        HTTPException: If the token is missing, invalid, expired, or the user/session is inactive.
+    """
     token = request.cookies.get("access_token")
     if not token:
         # Check authorization header as fallback

@@ -1,0 +1,18 @@
+{
+  "total": 10,
+  "passed": 7,
+  "bugs": [
+    {
+      "test": "Registration - Weak Password",
+      "error": "HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /auth/register (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\"))"
+    },
+    {
+      "test": "Registration - SQL Injection Email",
+      "error": "HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /auth/register (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\"))"
+    },
+    {
+      "test": "Google Sign-In - Invalid Token",
+      "error": "Unexpected status: 429"
+    }
+  ]
+}

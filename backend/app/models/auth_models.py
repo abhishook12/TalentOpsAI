@@ -55,7 +55,10 @@ class User(Base):
     __tablename__ = 'users'
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(150), unique=True, index=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
+    password_hash = Column(String(255), nullable=True) # Changed for OAuth
+    auth_provider = Column(String(50), default='local')
+    provider_id = Column(String(255), nullable=True, index=True)
+    avatar_url = Column(String(500), nullable=True)
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
     company = Column(String(255), nullable=True)

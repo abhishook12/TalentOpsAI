@@ -1,3 +1,4 @@
+import { toast } from 'react-hot-toast'
 import { useState, useEffect } from 'react';
 import api, { getErrorMessage } from '../../services/api';
 import { Save, ShieldCheck, Mail, Globe, Lock, HardDrive, RefreshCw } from 'lucide-react';
@@ -42,9 +43,9 @@ export default function AdminSettings() {
     setSaving(true);
     try {
       await api.post('/admin/settings', settings);
-      alert('Settings saved successfully!');
+      toast.success('Settings saved successfully!');
     } catch (err) {
-      alert(getErrorMessage(err, 'Failed to save settings'));
+      toast.error(getErrorMessage(err, 'Failed to save settings'));
     } finally {
       setSaving(false);
     }

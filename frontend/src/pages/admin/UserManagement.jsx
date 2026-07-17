@@ -1,3 +1,4 @@
+import { toast } from 'react-hot-toast'
 import { useState, useEffect } from 'react';
 import api, { getErrorMessage } from '../../services/api';
 
@@ -93,7 +94,7 @@ export default function UserManagement() {
       loadUsers();
       loadAnalytics();
     } catch (err) {
-      alert(getErrorMessage(err, 'Bulk action failed'));
+      toast.error(getErrorMessage(err, 'Bulk action failed'));
     }
   };
 
@@ -102,7 +103,7 @@ export default function UserManagement() {
       await api.put(`/users/${user.id}/status`, { role_name });
       loadUsers();
     } catch (err) {
-      alert(getErrorMessage(err, 'Failed to update user role'));
+      toast.error(getErrorMessage(err, 'Failed to update user role'));
     }
   };
 
@@ -113,7 +114,7 @@ export default function UserManagement() {
       loadUsers();
       loadAnalytics();
     } catch (err) {
-      alert(getErrorMessage(err, 'Failed to delete user'));
+      toast.error(getErrorMessage(err, 'Failed to delete user'));
     }
   };
 
@@ -121,10 +122,10 @@ export default function UserManagement() {
     if (!window.confirm("Force logout all active sessions for this user?")) return;
     try {
       await api.post(`/users/${id}/force-logout`);
-      alert("User has been logged out.");
+      toast.success("User has been logged out.");
       if (selectedUserDetail?.id === id) loadUserDetails(id);
     } catch (err) {
-      alert(getErrorMessage(err, 'Failed to force logout'));
+      toast.error(getErrorMessage(err, 'Failed to force logout'));
     }
   };
 
@@ -141,7 +142,7 @@ export default function UserManagement() {
       setUserSessions(sessionsRes.data);
       setUserHistory(historyRes.data);
     } catch (err) {
-      alert(getErrorMessage(err, 'Failed to load user details'));
+      toast.error(getErrorMessage(err, 'Failed to load user details'));
     } finally {
       setUserDetailLoading(false);
     }
@@ -156,7 +157,7 @@ export default function UserManagement() {
       loadUsers();
       loadAnalytics();
     } catch (err) {
-      alert(getErrorMessage(err, 'Failed to create user'));
+      toast.error(getErrorMessage(err, 'Failed to create user'));
     }
   };
 
@@ -248,7 +249,7 @@ export default function UserManagement() {
             </thead>
             <tbody>
               {loading && users.length === 0 ? (
-                <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</td></tr>
+                <tr><td colSpan={6} style={{ padding: '24px 20px' }}><SkeletonRow rows={10} gap={16} height={20} /></td></tr>
               ) : users.length === 0 ? (
                 <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>No users found.</td></tr>
               ) : (
@@ -415,3 +416,4 @@ export default function UserManagement() {
     </div>
   );
 }
+

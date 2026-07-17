@@ -71,14 +71,14 @@ router = APIRouter()
 
 
 @router.get("/data-quality")
-@cached_endpoint(ttl_seconds=60)
+@cached_endpoint(ttl_seconds=300)
 def get_data_quality():
     from ..olap_sidecar import olap_sidecar
     return olap_sidecar.get_data_quality()
 
 
 @router.get("/dashboard")
-@cached_endpoint(ttl_seconds=60)
+@cached_endpoint(ttl_seconds=300)
 def get_dashboard_kpis(db: Session = Depends(get_db)):
 
     sql = text("""
@@ -757,3 +757,4 @@ def get_data_health(db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Data health error: {e}")
         return {"total_active": 0, "overall_health_score": 0, "metrics": []}
+

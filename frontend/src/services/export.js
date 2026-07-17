@@ -1,3 +1,4 @@
+import { toast } from 'react-hot-toast'
 import * as XLSX from 'xlsx';
 
 /**
@@ -7,7 +8,7 @@ import * as XLSX from 'xlsx';
  */
 export function exportToExcel(data, filename) {
   if (!data || data.length === 0) {
-    alert("No data available to export.");
+    toast.error("No data available to export.");
     return;
   }
   

@@ -1,4 +1,5 @@
 import { useMemo, useState, useCallback, useRef } from 'react'
+import { toast } from 'react-hot-toast'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import api, { getErrorMessage } from '../services/api'
@@ -16,6 +17,8 @@ import {
 import USHeatmap from '../components/USHeatmap'
 import { CompanyLogo } from '../components/CompanyLogo'
 import EnrichmentLiveFeed from '../components/EnrichmentLiveFeed'
+import EnrichmentLiveFeed from '../components/EnrichmentLiveFeed'
+import { Skeleton, SkeletonRow } from '../components/ui/Skeleton'
 
 const REFRESH_INTERVAL = 60_000 // 60 seconds
 
@@ -218,8 +221,8 @@ export default function Dashboard() {
           <MetricCard
             key={metric.label}
             {...metric}
-            value={kpisLoading && !kpis ? 'Loading…' : metric.value}
-            sublabel={kpisLoading && !kpis ? 'Syncing…' : metric.sublabel}
+            value={kpisLoading && !kpis ? <Skeleton width="60%" height="28px" /> : metric.value}
+            sublabel={kpisLoading && !kpis ? <Skeleton width="40%" height="14px" /> : metric.sublabel}
           />
         ))}
       </div>
@@ -274,8 +277,8 @@ export default function Dashboard() {
             subtitle="Companies ranked by recruiter coverage from the live backend."
             action={<Badge tone="success">Real data</Badge>}
           />
-          {companiesLoading ? (
-            <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Loading company intelligence…</div>
+          {companiesLoading && !topCompanies ? (
+            <SkeletonRow rows={4} gap={10} height={52} />
           ) : Array.isArray(topCompanies) && topCompanies.length > 0 ? (
             <div style={{ display: 'grid', gap: 10 }}>
               {topCompanies.map((company) => (
@@ -326,7 +329,7 @@ export default function Dashboard() {
             eyebrow="Traffic"
             title="Top Pages"
             subtitle="Live page visitation distribution."
-            action={<Badge tone="neutral">{visitsLoading ? 'Syncing' : `${formatCount(totalPages)} views`}</Badge>}
+            action={<Badge tone="neutral">{visitsLoading && !visits ? <Skeleton width="50px" height="12px" /> : `${formatCount(totalPages)} views`}</Badge>}
           />
           {topPages.length ? (
             <div style={{ display: 'grid', gap: 12 }}>
@@ -395,11 +398,11 @@ export default function Dashboard() {
             <GhostButton 
               onClick={async () => {
                 try {
-                  alert('Rebuilding search indexes concurrently. This happens in the background...')
+                  toast.success('Rebuilding search indexes in background...')
                   const res = await api.post('/admin/rebuild-index')
-                  alert(res.data.message || 'Success!')
+                  toast.success(res.data.message || 'Success!')
                 } catch (e) {
-                  alert('Error: ' + getErrorMessage(e))
+                  toast.error('Error: ' + getErrorMessage(e))
                 }
               }}
               title="Optimize fuzzy search"
@@ -409,11 +412,11 @@ export default function Dashboard() {
             <GhostButton 
               onClick={async () => {
                 try {
-                  alert('Running safe data cleanup...')
+                  toast.success('Running safe data cleanup...')
                   const res = await api.post('/admin/cleanup')
-                  alert(res.data.message || 'Success!')
+                  toast.success(res.data.message || 'Success!')
                 } catch (e) {
-                  alert('Error: ' + getErrorMessage(e))
+                  toast.error('Error: ' + getErrorMessage(e))
                 }
               }}
               title="Flag bad data"
@@ -423,11 +426,11 @@ export default function Dashboard() {
             <GhostButton 
               onClick={async () => {
                 try {
-                  alert('Triggering master sync...')
+                  toast.success('Triggering master sync...')
                   const res = await api.post('/admin/sync-master')
-                  alert(res.data.message || 'Success!')
+                  toast.success(res.data.message || 'Success!')
                 } catch (e) {
-                  alert('Error: ' + getErrorMessage(e))
+                  toast.error('Error: ' + getErrorMessage(e))
                 }
               }}
               title="Sync analytics and flush caches"
@@ -445,3 +448,5 @@ export default function Dashboard() {
     </div>
   )
 }
+
+

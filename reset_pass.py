@@ -1,11 +1,21 @@
-from backend.app.database import SessionLocal
-from backend.app.models.auth_models import User
-from backend.app.services.auth_service import get_password_hash
+import sys
+sys.path.append("C:/TalentOpsAI/backend")
+
+from app.services.auth_service import get_password_hash
+from app.database import SessionLocal
+from app.models.auth_models import User
+from sqlalchemy import text
 
 db = SessionLocal()
-admin = db.query(User).filter(User.email == 'abhishekjadon824@gmail.com').first()
-if admin:
-    admin.password_hash = get_password_hash('Admin@1234')
+
+email = "abhishekjadon824@gmail.com"
+password = "StrongPassword123!"
+
+user = db.query(User).filter(User.email == email).first()
+if user:
+    user.password_hash = get_password_hash(password)
+    user.status = "Active"
     db.commit()
-    print('Password reset to Admin@1234')
-db.close()
+    print("Password updated successfully.")
+else:
+    print("User not found!")

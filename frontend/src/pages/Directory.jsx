@@ -1,3 +1,4 @@
+import { toast } from 'react-hot-toast'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import * as XLSX from 'xlsx'
@@ -71,7 +72,7 @@ function EditableEmail({ recruiter, onUpdate }) {
       onUpdate(recruiter.recruiter_id, email);
       setEditing(false);
     } catch (e) {
-      alert('Failed to update email: ' + getErrorMessage(e));
+      toast.error('Failed to update email: ' + getErrorMessage(e));
     } finally {
       setSaving(false);
     }

@@ -1,3 +1,4 @@
+import { toast } from 'react-hot-toast'
 import { useEffect, useState, useCallback } from 'react'
 import { exportToExcel } from '../services/export'
 import api from '../services/api'
@@ -293,7 +294,7 @@ export default function Recruiters() {
 
 
   const exportRecruiters = () => {
-    if (totalCount === 0) return alert('No recruiters to export');
+    if (totalCount === 0) return toast.error('No recruiters to export');
     
     const params = new URLSearchParams()
     if (debouncedSearch) params.append('search', debouncedSearch)
@@ -325,7 +326,7 @@ export default function Recruiters() {
   }
 
   const handleSave = async () => {
-    if (!form.recruiter_name || !form.email) return alert('Name and email are required.')
+    if (!form.recruiter_name || !form.email) return toast.error('Name and email are required.')
     setSaving(true)
     const payload = { ...form, company_id: form.company_id ? parseInt(form.company_id) : null }
     try {
@@ -337,7 +338,7 @@ export default function Recruiters() {
       setModal(null)
       fetchRecruiters()
     } catch (e) {
-      alert(e.response?.data?.detail || 'Error saving recruiter')
+      toast.error(e.response?.data?.detail || 'Error saving recruiter')
     }
     setSaving(false)
   }

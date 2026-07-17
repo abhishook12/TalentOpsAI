@@ -21,9 +21,13 @@ const lazyComponent = (importFn) => {
   return function Wrapper() {
     return (
       <Suspense fallback={
-        <div style={{ display: 'grid', placeItems: 'center', minHeight: '60vh', gap: 12, color: 'var(--text-muted)' }}>
-          <i className="ti ti-loader animate-spin" style={{ fontSize: 24, color: 'var(--accent)' }} />
-          <span>Loading...</span>
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ height: 28, width: 200, background: 'var(--border)', borderRadius: 4, animation: 'ccPulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite' }} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
+             <div style={{ height: 180, background: 'rgba(33, 37, 41, 0.3)', borderRadius: 12, animation: 'ccPulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite' }} />
+             <div style={{ height: 180, background: 'rgba(33, 37, 41, 0.3)', borderRadius: 12, animation: 'ccPulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite' }} />
+             <div style={{ height: 180, background: 'rgba(33, 37, 41, 0.3)', borderRadius: 12, animation: 'ccPulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite' }} />
+          </div>
         </div>
       }>
         <LazyComp />
@@ -196,4 +200,5 @@ const routeTree = rootRoute.addChildren([
 ])
 
 export const router = createRouter({ routeTree })
+
 

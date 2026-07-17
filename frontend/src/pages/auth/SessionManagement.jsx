@@ -1,3 +1,4 @@
+import { toast } from 'react-hot-toast'
 import React, { useEffect, useState } from 'react';
 import api from '../../services/api';
 const SessionManagement = () => {
@@ -27,7 +28,7 @@ const SessionManagement = () => {
       await api.delete(`/auth/sessions/${sessionId}`);
       fetchSessions();
     } catch (err) {
-      alert(err?.response?.data?.detail || 'Failed to logout session');
+      toast.error(err?.response?.data?.detail || 'Failed to logout session');
     }
   };
 

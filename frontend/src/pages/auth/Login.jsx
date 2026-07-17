@@ -80,21 +80,7 @@ export default function Login() {
         </div>
       ) : null}
 
-      <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'center' }}>
-          <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={handleGoogleError}
-              useOneTap
-              theme="outline"
-              size="large"
-              shape="rectangular"
-              width="320"
-          />
-      </div>
 
-      <div className="auth-divider">
-          <span>or continue with email</span>
-      </div>
 
       <form onSubmit={handleSubmit} className="auth-form">
         <div className="auth-field">
@@ -175,9 +161,18 @@ export default function Login() {
 
       <div className="auth-socials">
         <div className="auth-social-badge">Coming Soon</div>
-        <button type="button" className="auth-social" disabled>
-          <i className="ti ti-brand-google" /> Google
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 0, overflow: 'hidden', borderRadius: '8px' }}>
+          <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              useOneTap
+              theme={document.documentElement.getAttribute('data-theme') === 'dark' ? 'filled_black' : 'outline'}
+              size="large"
+              shape="rectangular"
+              text="signin_with"
+              width="200"
+          />
+        </div>
         <button type="button" className="auth-social" disabled>
           <i className="ti ti-brand-windows" /> Microsoft
         </button>
@@ -185,3 +180,4 @@ export default function Login() {
     </AuthFrame>
   )
 }
+

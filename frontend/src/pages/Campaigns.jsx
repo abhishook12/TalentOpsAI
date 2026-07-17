@@ -98,6 +98,7 @@ export default function Campaigns() {
         // Update or create template step
         // For simplicity we assume step 1 exists if campaign exists, or backend handles it
         // Actually we need to make sure we create a step if it doesn't exist
+        return activeCampaignId;
       } else {
         // Create new campaign shell
         const res = await api.post('/campaigns', {
@@ -107,21 +108,24 @@ export default function Campaigns() {
           signature_id: signatureId
         });
         setActiveCampaignId(res.data.campaign_id);
+        return res.data.campaign_id;
       }
     } catch (e) {
       console.error("Draft save failed", e);
+      return null;
     }
   };
 
-  const runPreflight = async () => {
-    if (!activeCampaignId) await saveDraft();
+  const runPreflight = async (currentId) => {
+    let cid = currentId || activeCampaignId;
+    if (!cid) cid = await saveDraft();
     
     setIsValidating(true);
     try {
       // First save the template so preview/preflight works
-      if (activeCampaignId) {
+      if (cid) {
         try {
-          await api.post(`/campaigns/${activeCampaignId}/steps`, {
+          await api.post(`/campaigns/${cid}/steps`, {
             step_order: 1, // backend uses step_order
             subject: subject || 'No Subject',
             body: body || 'No Body',
@@ -132,7 +136,7 @@ export default function Campaigns() {
         }
       }
 
-      const res = await api.post(`/campaigns/${activeCampaignId}/validate-before-send`);
+      const res = await api.post(`/campaigns/${cid}/validate-before-send`);
       setPreflightData(res.data);
     } catch (e) {
       console.error("Preflight failed", e);
@@ -155,13 +159,13 @@ export default function Campaigns() {
         toast.error("Subject and body are required.");
         return;
       }
-      await saveDraft();
+      const cid = await saveDraft();
       
       // Need to enroll recipients before preview so we have recruiters attached
-      if (activeCampaignId && validatedRecipients.valid_count > 0) {
+      if (cid && validatedRecipients.valid_count > 0) {
         const validEmails = validatedRecipients.recipients.filter(r => r.status === 'valid').map(r => r.email);
         try {
-          await api.post(`/campaigns/${activeCampaignId}/enroll-emails`, {
+          await api.post(`/campaigns/${cid}/enroll-emails`, {
             emails: validEmails
           });
         } catch (e) {
@@ -170,7 +174,7 @@ export default function Campaigns() {
       }
       
       setCurrentStep(STEPS.PREVIEW);
-      runPreflight();
+      runPreflight(cid);
     }
     else if (currentStep === STEPS.PREVIEW) {
       if (!preflightData?.ready) {

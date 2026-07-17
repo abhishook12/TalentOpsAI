@@ -125,11 +125,10 @@ export default function Campaigns() {
       // First save the template so preview/preflight works
       if (cid) {
         try {
-          await api.post(`/campaigns/${cid}/steps`, {
-            step_order: 1, // backend uses step_order
+          await api.post(`/campaigns/${cid}/templates`, {
+            name: subject || 'No Subject',
             subject: subject || 'No Subject',
-            body: body || 'No Body',
-            delay_days: 0
+            body: body || 'No Body'
           });
         } catch (e) {
           console.error("Error saving step", e);

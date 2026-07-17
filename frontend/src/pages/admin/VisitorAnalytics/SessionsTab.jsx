@@ -45,7 +45,7 @@ export default function SessionsTab() {
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
                 <td style={{ padding: '16px 24px' }}>
-                  <div style={{ color: 'var(--text-inverse)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ color: 'var(--text-primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
                     {s.user_email ? s.user_email : <><Fingerprint size={14} style={{ opacity: 0.5 }}/> Anonymous</>}
                   </div>
                   <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 4, fontFamily: 'monospace' }}>

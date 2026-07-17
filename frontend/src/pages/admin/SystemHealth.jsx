@@ -35,7 +35,7 @@ export default function SystemHealth() {
           <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, background: 'linear-gradient(90deg, #fff, #aaa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>System Health</h1>
           <p style={{ margin: '8px 0 0', color: 'var(--text-muted)', fontSize: 14 }}>Real-time infrastructure and database performance metrics.</p>
         </div>
-        <button onClick={fetchHealth} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 8, background: 'var(--bg-surface)', color: 'var(--text-inverse)', border: '1px solid var(--card-border)', cursor: 'pointer', transition: 'all 0.2s' }}>
+        <button onClick={fetchHealth} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 8, background: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--card-border)', cursor: 'pointer', transition: 'all 0.2s' }}>
           <RefreshCw size={16} />
           Refresh
         </button>
@@ -78,7 +78,7 @@ export default function SystemHealth() {
             <span style={{ fontWeight: 600 }}>Disk Usage</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
-            <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-inverse)' }}>
+            <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)' }}>
               {health?.components?.disk?.percent ?? 0}%
             </div>
           </div>
@@ -94,7 +94,7 @@ export default function SystemHealth() {
             <span style={{ fontWeight: 600 }}>Memory Usage</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
-            <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-inverse)' }}>
+            <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)' }}>
               {health?.components?.memory?.percent ?? 0}%
             </div>
           </div>

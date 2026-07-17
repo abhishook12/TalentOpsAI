@@ -82,7 +82,7 @@ export default function ResetPassword() {
         border: '1px solid var(--card-border)'
       }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-inverse)', margin: '0 0 8px 0' }}>New Password</h1>
+          <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', margin: '0 0 8px 0' }}>New Password</h1>
           <p style={{ color: '#a1a1aa', margin: 0, fontSize: '14px' }}>Create a new password for your account</p>
         </div>
 
@@ -140,7 +140,7 @@ export default function ResetPassword() {
                   borderRadius: '8px',
                   border: '1px solid var(--card-border)',
                   background: 'var(--bg-surface)',
-                  color: 'var(--text-inverse)',
+                  color: 'var(--text-primary)',
                   fontSize: '15px',
                   outline: 'none',
                   transition: 'border-color 0.2s'
@@ -201,7 +201,7 @@ export default function ResetPassword() {
                 borderRadius: '8px',
                 border: '1px solid var(--card-border)',
                 background: 'var(--bg-surface)',
-                color: 'var(--text-inverse)',
+                color: 'var(--text-primary)',
                 fontSize: '15px',
                 outline: 'none',
                 transition: 'border-color 0.2s'
@@ -217,7 +217,7 @@ export default function ResetPassword() {
               padding: '12px',
               borderRadius: '8px',
               background: (isSubmitting || strength < 4 || password !== confirmPassword) ? 'rgba(59, 130, 246, 0.5)' : '#3b82f6',
-              color: 'var(--text-inverse)',
+              color: 'var(--text-primary)',
               fontSize: '15px',
               fontWeight: '600',
               border: 'none',

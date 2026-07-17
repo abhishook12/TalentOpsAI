@@ -71,7 +71,7 @@ export default function WorkerDashboard() {
 
   return (
     <div style={{ padding: '24px', background: 'linear-gradient(135deg, #111827, #1f2937, #374151)', borderRadius: '8px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)', minHeight: '400px' }}>
-      <h2 style={{ fontSize: '24px', fontWeight: 500, color: 'var(--text-inverse)', marginBottom: '16px' }}>Worker Dashboard</h2>
+      <h2 style={{ fontSize: '24px', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '16px' }}>Worker Dashboard</h2>
       {loading ? (
         <div style={{ color: '#9ca3af' }}>Loading...</div>
       ) : (
@@ -103,21 +103,21 @@ export default function WorkerDashboard() {
                     {w.status === "running" ? (
                       <button
                         onClick={() => toggle(w.name, "stop")}
-                        style={{ padding: '6px 12px', background: '#dc2626', color: 'var(--text-inverse)', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px' }}
+                        style={{ padding: '6px 12px', background: '#dc2626', color: '#ffffff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px' }}
                       >
                         Stop
                       </button>
                     ) : (
                       <button
                         onClick={() => toggle(w.name, "start")}
-                        style={{ padding: '6px 12px', background: '#059669', color: 'var(--text-inverse)', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px' }}
+                        style={{ padding: '6px 12px', background: '#059669', color: '#ffffff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px' }}
                       >
                         Start
                       </button>
                     )}
                     <button
                       onClick={() => setExpandedWorker(expandedWorker === w.name ? null : w.name)}
-                      style={{ padding: '6px 12px', background: 'var(--accent-bg)', color: 'var(--text-inverse)', border: '1px solid var(--card-border)', borderRadius: '4px', cursor: 'pointer', fontSize: '14px' }}
+                      style={{ padding: '6px 12px', background: 'var(--accent-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)', borderRadius: '4px', cursor: 'pointer', fontSize: '14px' }}
                     >
                       {expandedWorker === w.name ? "Hide Logs" : "View Logs"}
                     </button>

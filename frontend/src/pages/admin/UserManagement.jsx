@@ -167,7 +167,7 @@ export default function UserManagement() {
           <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, background: 'linear-gradient(90deg, #fff, #aaa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>User Management</h1>
           <p style={{ margin: '8px 0 0', color: 'var(--text-muted)', fontSize: 14 }}>Manage roles, permissions, and platform access.</p>
         </div>
-        <button onClick={() => setShowCreateModal(true)} style={{ padding: '10px 20px', borderRadius: 8, background: '#3b82f6', color: 'var(--text-primary)', border: 'none', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}>
+        <button onClick={() => setShowCreateModal(true)} style={{ padding: '10px 20px', borderRadius: 8, background: '#3b82f6', color: '#ffffff', border: 'none', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}>
           + Add New User
         </button>
       </div>

@@ -71,7 +71,7 @@ export function OutlookComposeOverlay({ recipients, onClose, onSend }) {
               width: '100%',
               aspectRatio: '1',
               backgroundColor: '#333333',
-              color: 'var(--text-inverse)',
+              color: 'var(--text-primary)',
               border: '1px solid #555',
               borderRadius: '4px',
               display: 'flex',

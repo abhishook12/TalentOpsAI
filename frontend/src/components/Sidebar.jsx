@@ -41,7 +41,7 @@ export default function Sidebar() {
   return (
     <aside style={{
       width: 'var(--sidebar-width)',
-      minHeight: '100dvh',
+      height: '100dvh',
       background: 'linear-gradient(180deg, #191919 0%, #141414 100%)',
       borderRight: '1px solid var(--sidebar-border)',
       display: 'flex',

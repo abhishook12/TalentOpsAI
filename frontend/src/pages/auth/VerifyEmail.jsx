@@ -60,7 +60,7 @@ export default function VerifyEmail() {
             <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
               <i className="ti ti-loader animate-spin" style={{ fontSize: '48px', color: '#3b82f6' }} />
             </div>
-            <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-inverse)', margin: '0 0 8px 0' }}>Verifying Email</h1>
+            <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', margin: '0 0 8px 0' }}>Verifying Email</h1>
             <p style={{ color: '#a1a1aa', margin: 0, fontSize: '14px' }}>Please wait while we verify your email address...</p>
           </>
         )}
@@ -70,14 +70,13 @@ export default function VerifyEmail() {
             <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
               <i className="ti ti-circle-check" style={{ fontSize: '48px', color: '#22c55e' }} />
             </div>
-            <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-inverse)', margin: '0 0 8px 0' }}>Email Verified</h1>
+            <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', margin: '0 0 8px 0' }}>Email Verified</h1>
             <p style={{ color: '#a1a1aa', margin: '0 0 24px 0', fontSize: '14px' }}>{message}</p>
             <Link to="/login" style={{
               display: 'inline-block',
               padding: '12px 24px',
               borderRadius: '8px',
-              background: '#3b82f6',
-              color: 'var(--text-inverse)',
+              background: '#3b82f6', color: '#ffffff',
               textDecoration: 'none',
               fontWeight: '500',
               transition: 'background 0.2s'
@@ -92,14 +91,14 @@ export default function VerifyEmail() {
             <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
               <i className="ti ti-alert-circle" style={{ fontSize: '48px', color: '#ef4444' }} />
             </div>
-            <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-inverse)', margin: '0 0 8px 0' }}>Verification Failed</h1>
+            <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', margin: '0 0 8px 0' }}>Verification Failed</h1>
             <p style={{ color: '#a1a1aa', margin: '0 0 24px 0', fontSize: '14px' }}>{message}</p>
             <Link to="/login" style={{
               display: 'inline-block',
               padding: '12px 24px',
               borderRadius: '8px',
               background: 'var(--accent-bg)',
-              color: 'var(--text-inverse)',
+              color: 'var(--text-primary)',
               textDecoration: 'none',
               fontWeight: '500',
               transition: 'background 0.2s'

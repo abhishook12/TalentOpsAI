@@ -10,7 +10,7 @@ export default function Profile() {
   const isGoogle = user.auth_provider === 'google'
 
   return (
-    <div style={{ padding: 40, maxWidth: 900, margin: '0 auto', color: 'var(--text-inverse)' }}>
+    <div style={{ padding: 40, maxWidth: 900, margin: '0 auto', color: 'var(--text-primary)' }}>
       <h1 style={{ fontSize: 32, fontWeight: 900, marginBottom: 40, letterSpacing: '-0.02em' }}>My Profile</h1>
 
       <div style={{
@@ -119,7 +119,7 @@ export default function Profile() {
                   <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Password Authentication</div>
                   <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>You use a local password to sign in.</div>
                 </div>
-                <button style={{ padding: '8px 16px', borderRadius: 8, background: '#fff', color: '#000', fontWeight: 700, border: 'none', cursor: 'pointer', fontSize: 13 }}>
+                <button onClick={() => window.location.href = '/settings'} style={{ padding: '8px 16px', borderRadius: 8, background: '#fff', color: '#000', fontWeight: 700, border: 'none', cursor: 'pointer', fontSize: 13 }}>
                   Change Password
                 </button>
               </div>
@@ -131,3 +131,4 @@ export default function Profile() {
     </div>
   )
 }
+

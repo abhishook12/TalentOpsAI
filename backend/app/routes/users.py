@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 from ..database import get_db
 from ..models.auth_models import User, Role, Session as DBSession, LoginHistory
-from ..services.auth_service import require_role, get_password_hash, log_audit
+from ..services.auth_service import require_role, get_password_hash, log_audit, get_current_user_from_request
 
 router = APIRouter()
 
@@ -144,6 +144,50 @@ def create_user(
     log_audit(db, admin.id, f"Created user {new_user.email}", new_value=str(user_data))
     
     return {"status": "success", "user_id": new_user.id}
+
+@router.put("/profile")
+def update_profile(
+    user_data: dict = Body(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request), request: Request = None
+):
+    if "first_name" in user_data:
+        current_user.first_name = user_data["first_name"]
+    if "last_name" in user_data:
+        current_user.last_name = user_data["last_name"]
+    if "company" in user_data:
+        current_user.company = user_data["company"]
+    if "country" in user_data:
+        current_user.country = user_data["country"]
+        
+    db.commit()
+    log_audit(db, current_user.id, "Updated own profile", new_value="Updated")
+    return {"status": "success"}
+
+@router.put("/profile/password")
+def update_password(
+    password_data: dict = Body(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request), request: Request = None
+):
+    current_pass = password_data.get("current_password")
+    new_pass = password_data.get("new_password")
+    
+    if not current_pass or not new_pass:
+        raise HTTPException(status_code=400, detail="Missing passwords")
+        
+    # Verify current password
+    from ..services.auth_service import verify_password, get_password_hash
+    if not current_user.password_hash:
+        raise HTTPException(status_code=400, detail="Cannot change password for OAuth-only account")
+        
+    if not verify_password(current_pass, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Incorrect current password")
+        
+    current_user.password_hash = get_password_hash(new_pass)
+    db.commit()
+    log_audit(db, current_user.id, "Changed own password")
+    return {"status": "success"}
 
 @router.put("/{user_id}")
 def update_user(
@@ -295,3 +339,4 @@ def bulk_user_action(
     db.commit()
     log_audit(db, admin.id, f"Bulk action {action} on {len(users)} users", new_value=str(value))
     return {"status": "success", "updated": count}
+

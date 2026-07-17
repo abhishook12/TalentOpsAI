@@ -558,7 +558,7 @@ export default function Analytics() {
                   style={{
                     padding: '8px 16px', borderRadius: 8, border: 'none',
                     background: syncing ? 'var(--card-border)' : 'var(--accent)',
-                    color: 'var(--text-inverse)', fontSize: 12, fontWeight: 600,
+                    color: 'var(--text-primary)', fontSize: 12, fontWeight: 600,
                     cursor: syncing ? 'not-allowed' : 'pointer',
                     display: 'flex', alignItems: 'center', gap: 6,
                     opacity: (taxonomyData?.uncategorized === 0) ? 0.5 : 1,

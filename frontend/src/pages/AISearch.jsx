@@ -525,8 +525,7 @@ export default function AISearch() {
                 width: 34,
                 height: 34,
                 borderRadius: 12,
-                background: 'var(--accent)',
-                color: 'var(--text-inverse)',
+                background: 'var(--accent)', color: '#ffffff',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -619,8 +618,7 @@ export default function AISearch() {
                       width: 18,
                       height: 18,
                       borderRadius: 999,
-                      background: 'var(--accent)',
-                      color: 'var(--text-inverse)',
+                      background: 'var(--accent)', color: '#ffffff',
                       fontSize: 10,
                       display: 'flex',
                       alignItems: 'center',
@@ -712,8 +710,7 @@ export default function AISearch() {
                       padding: '9px 12px',
                       borderRadius: 12,
                       border: '1px solid var(--card-border)',
-                      background: 'var(--accent)',
-                      color: 'var(--text-inverse)',
+                      background: 'var(--accent)', color: '#ffffff',
                       fontSize: 12,
                       fontWeight: 700,
                       cursor: 'pointer',
@@ -1004,7 +1001,7 @@ export default function AISearch() {
               )}
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                  <div style={{ width: 52, height: 52, borderRadius: 16, background: 'var(--text-primary)', color: 'var(--text-inverse)', display: 'grid', placeItems: 'center', fontSize: 18, fontWeight: 900 }}>
+                  <div style={{ width: 52, height: 52, borderRadius: 16, background: 'var(--text-primary)', color: 'var(--main-bg)', display: 'grid', placeItems: 'center', fontSize: 18, fontWeight: 900 }}>
                     {initials(selected.recruiter_name)}
                   </div>
                   <div style={{ minWidth: 0 }}>
@@ -1023,7 +1020,7 @@ export default function AISearch() {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <button onClick={() => fireSoon('Share profile')} style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--accent)', color: 'var(--text-inverse)', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
+                <button onClick={() => fireSoon('Share profile')} style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--accent)', color: '#ffffff', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
                   <i className="ti ti-share-2" style={{ marginRight: 8 }} />
                   Share profile
                 </button>
@@ -1158,7 +1155,7 @@ export default function AISearch() {
       </div>
 
       {toast && (
-        <div style={{ position: 'fixed', right: 18, bottom: 18, background: 'var(--text-primary)', color: 'var(--text-inverse)', padding: '10px 12px', borderRadius: 12, fontSize: 12, zIndex: 1500, boxShadow: 'var(--shadow-lg)' }}>
+        <div style={{ position: 'fixed', right: 18, bottom: 18, background: 'var(--text-primary)', color: 'var(--main-bg)', padding: '10px 12px', borderRadius: 12, fontSize: 12, zIndex: 1500, boxShadow: 'var(--shadow-lg)' }}>
           {toast}
         </div>
       )}

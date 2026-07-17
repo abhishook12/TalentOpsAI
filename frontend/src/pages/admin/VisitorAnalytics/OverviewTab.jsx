@@ -60,7 +60,7 @@ export default function OverviewTab() {
               </div>
               <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 600 }}>{kpi.label}</span>
             </div>
-            <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-inverse)', letterSpacing: '-0.02em' }}>
+            <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
               {kpi.value}
             </div>
           </div>

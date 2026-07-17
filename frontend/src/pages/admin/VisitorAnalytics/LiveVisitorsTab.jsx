@@ -50,7 +50,7 @@ export default function LiveVisitorsTab() {
                   {s.user_email ? s.user_email[0].toUpperCase() : <Fingerprint size={20} />}
                 </div>
                 <div>
-                  <div style={{ color: 'var(--text-inverse)', fontWeight: 700, fontSize: 14 }}>{s.user_email || 'Anonymous Visitor'}</div>
+                  <div style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: 14 }}>{s.user_email || 'Anonymous Visitor'}</div>
                   <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{s.ip_address}</div>
                 </div>
               </div>
@@ -76,7 +76,7 @@ export default function LiveVisitorsTab() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
               {s.current_page && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-inverse)', fontWeight: 600 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-primary)', fontWeight: 600 }}>
                   <Monitor size={14} style={{ opacity: 0.5, color: '#60a5fa' }} /> {s.current_page}
                 </div>
               )}

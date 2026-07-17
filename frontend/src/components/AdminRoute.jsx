@@ -6,7 +6,7 @@ export default function AdminRoute() {
     const { user, isAdmin, loading } = useAuth();
 
     if (loading) {
-        return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#111', color: 'var(--text-inverse)' }}>Loading...</div>;
+        return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#111', color: 'var(--text-primary)' }}>Loading...</div>;
     }
 
     if (!user) {

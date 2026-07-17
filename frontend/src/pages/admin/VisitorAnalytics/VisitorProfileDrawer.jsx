@@ -32,7 +32,7 @@ export default function VisitorProfileDrawer({ sessionId, onClose }) {
         justifyContent: 'space-between',
         alignItems: 'center'
       }}>
-        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--text-inverse)' }}>Session Details</h2>
+        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--text-primary)' }}>Session Details</h2>
         <button 
           onClick={onClose}
           style={{ 
@@ -63,7 +63,7 @@ export default function VisitorProfileDrawer({ sessionId, onClose }) {
               gap: 12,
               fontSize: 13
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'var(--text-inverse)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'var(--text-primary)' }}>
                 <User size={16} style={{ color: '#a78bfa' }}/>
                 {data.profile.user_email || 'Anonymous'}
               </div>
@@ -81,7 +81,7 @@ export default function VisitorProfileDrawer({ sessionId, onClose }) {
               </div>
             </div>
 
-            <h3 style={{ fontSize: 14, color: 'var(--text-inverse)', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Timeline</h3>
+            <h3 style={{ fontSize: 14, color: 'var(--text-primary)', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Timeline</h3>
             
             <div style={{ position: 'relative', paddingLeft: 16, borderLeft: '2px solid rgba(255,255,255,0.1)', marginLeft: 8 }}>
               {data.timeline.length === 0 && <div style={{ color: 'rgba(255,255,255,0.5)' }}>No events recorded.</div>}
@@ -110,7 +110,7 @@ export default function VisitorProfileDrawer({ sessionId, onClose }) {
                     </div>
                   </div>
                   
-                  <div style={{ color: 'var(--text-inverse)', fontSize: 13, background: 'var(--bg-surface)', padding: '8px 12px', borderRadius: 8 }}>
+                  <div style={{ color: 'var(--text-primary)', fontSize: 13, background: 'var(--bg-surface)', padding: '8px 12px', borderRadius: 8 }}>
                     {event.type === 'page_view' ? (
                       <>{event.page} <span style={{ color: 'rgba(255,255,255,0.4)' }}>({event.path})</span></>
                     ) : (

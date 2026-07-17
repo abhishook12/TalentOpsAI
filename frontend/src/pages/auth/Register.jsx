@@ -237,11 +237,11 @@ export default function Register() {
       {(showTermsModal || showPrivacyModal) ? (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'grid', placeItems: 'center', zIndex: 1000, backdropFilter: 'blur(2px)', padding: 20 }}>
           <div style={{ width: 'min(420px, 100%)', background: '#18181b', padding: 24, borderRadius: 14, border: '1px solid #27272a' }}>
-            <h2 style={{ margin: '0 0 16px', fontSize: 18, color: 'var(--text-inverse)' }}>{showTermsModal ? 'Terms of Service' : 'Privacy Policy'}</h2>
+            <h2 style={{ margin: '0 0 16px', fontSize: 18, color: 'var(--text-primary)' }}>{showTermsModal ? 'Terms of Service' : 'Privacy Policy'}</h2>
             <p style={{ color: '#a1a1aa', fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
               {showTermsModal ? 'Terms of Service — Coming Soon' : 'Privacy Policy — Coming Soon'}
             </p>
-            <button onClick={() => { setShowTermsModal(false); setShowPrivacyModal(false) }} style={{ width: '100%', padding: 10, background: '#3b82f6', color: 'var(--text-inverse)', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+            <button onClick={() => { setShowTermsModal(false); setShowPrivacyModal(false) }} style={{ width: '100%', padding: 10, background: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
               Close
             </button>
           </div>

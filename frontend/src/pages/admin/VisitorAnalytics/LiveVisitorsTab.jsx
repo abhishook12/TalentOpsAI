@@ -4,6 +4,8 @@ import { Monitor, MapPin, Clock, Fingerprint } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import api from '../../../services/api'
 import VisitorProfileDrawer from './VisitorProfileDrawer'
+import { SkeletonRow } from '../../../components/ui/Skeleton'
+import { EmptyState } from '../../../components/ui/EmptyState'
 
 export default function LiveVisitorsTab() {
   const [selectedSession, setSelectedSession] = React.useState(null)
@@ -14,32 +16,30 @@ export default function LiveVisitorsTab() {
       const res = await api.get('/admin/visitor-analytics/live')
       return res.data
     },
-    refetchInterval: 10000
+    refetchInterval: 300000
   })
 
-  if (isLoading) return <div style={{ color: 'rgba(255,255,255,0.6)' }}>Loading live visitors...</div>
+  if (isLoading) return <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}><div className="glass-card" style={{ padding: 20, borderRadius: 16 }}><SkeletonRow rows={4} gap={12} height={20} /></div></div>
 
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
         {activeSessions?.length === 0 && (
-          <div style={{ color: 'rgba(255,255,255,0.5)', padding: 20 }}>No active visitors in the last 10 minutes.</div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <EmptyState icon="ti-activity" title="No active visitors" description="There are no active visitors in the last 10 minutes." />
+          </div>
         )}
         
         {activeSessions?.map(s => (
           <div 
             key={s.session_id} 
+            className="glass-card"
             onClick={() => setSelectedSession(s.session_id)}
             style={{
-              background: 'var(--bg-surface)',
-              border: '1px solid var(--card-border)',
               borderRadius: 16,
               padding: 20,
-              cursor: 'pointer',
-              transition: 'background 0.2s',
+              cursor: 'pointer'
             }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -51,7 +51,7 @@ export default function LiveVisitorsTab() {
                 </div>
                 <div>
                   <div style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: 14 }}>{s.user_email || 'Anonymous Visitor'}</div>
-                  <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{s.ip_address}</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{s.ip_address}</div>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -74,7 +74,7 @@ export default function LiveVisitorsTab() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
               {s.current_page && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-primary)', fontWeight: 600 }}>
                   <Monitor size={14} style={{ opacity: 0.5, color: '#60a5fa' }} /> {s.current_page}

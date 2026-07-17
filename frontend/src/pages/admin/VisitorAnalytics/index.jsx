@@ -1,23 +1,25 @@
 import React, { useState } from 'react'
-import { Activity, Users, Globe, LayoutDashboard, Clock } from 'lucide-react'
+import { Activity, LayoutDashboard, Globe, Monitor, Users } from 'lucide-react'
 import OverviewTab from './OverviewTab'
 import LiveVisitorsTab from './LiveVisitorsTab'
-import SessionsTab from './SessionsTab'
+import GeographyTab from './GeographyTab'
+import DevicesTab from './DevicesTab'
 
 export default function VisitorAnalytics() {
   const [activeTab, setActiveTab] = useState('overview')
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-    { id: 'live', label: 'Live Visitors', icon: Activity },
-    { id: 'sessions', label: 'Sessions', icon: Clock },
+    { id: 'live', label: 'Realtime', icon: Activity },
+    { id: 'geography', label: 'Geography', icon: Globe },
+    { id: 'devices', label: 'Browsers & Devices', icon: Monitor },
   ]
 
   return (
     <div style={{ padding: '24px', height: '100dvh', overflowY: 'auto' }}>
       <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 900, color: '#f3f3f3', margin: '0 0 8px 0', letterSpacing: '-0.02em' }}>Visitor Analytics</h1>
-        <p style={{ color: 'rgba(255,255,255,0.6)', margin: 0, fontSize: 15 }}>Monitor real-time user intelligence, engagement, and session health.</p>
+        <h1 style={{ fontSize: 28, fontWeight: 900, color: 'var(--text-primary)', margin: '0 0 8px 0', letterSpacing: '-0.02em' }}>Visitor Analytics</h1>
+        <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: 15 }}>Monitor real-time user intelligence, engagement, and session health.</p>
       </div>
 
       <div style={{ 
@@ -39,11 +41,12 @@ export default function VisitorAnalytics() {
                 alignItems: 'center',
                 gap: 8,
                 padding: '10px 16px',
-                background: isActive ? 'rgba(255,255,255,0.1)' : 'transparent',
-                color: isActive ? '#fff' : 'rgba(255,255,255,0.6)',
-                border: 'none',
+                background: isActive ? 'var(--bg-surface)' : 'transparent',
+                color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
+                border: '1px solid',
+                borderColor: isActive ? 'var(--card-border)' : 'transparent',
+                borderBottom: 'none',
                 borderRadius: '8px 8px 0 0',
-                borderBottom: isActive ? '2px solid #fff' : '2px solid transparent',
                 cursor: 'pointer',
                 fontSize: 14,
                 fontWeight: 600,
@@ -61,7 +64,8 @@ export default function VisitorAnalytics() {
       <div style={{ minHeight: 400 }}>
         {activeTab === 'overview' && <OverviewTab />}
         {activeTab === 'live' && <LiveVisitorsTab />}
-        {activeTab === 'sessions' && <SessionsTab />}
+        {activeTab === 'geography' && <GeographyTab />}
+        {activeTab === 'devices' && <DevicesTab />}
       </div>
     </div>
   )

@@ -2,6 +2,8 @@ import React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Users, Activity, Clock, MousePointerClick } from 'lucide-react'
 import api from '../../../services/api'
+import { Skeleton } from '../../../components/ui/Skeleton'
+import { EmptyState } from '../../../components/ui/EmptyState'
 
 export default function OverviewTab() {
   const { data: stats, isLoading, isError } = useQuery({
@@ -10,29 +12,27 @@ export default function OverviewTab() {
       const res = await api.get('/admin/visitor-analytics/overview')
       return res.data
     },
-    refetchInterval: 30000,
+    refetchInterval: 300000,
     retry: 2
   })
 
-  if (isLoading) return <div style={{ color: 'rgba(255,255,255,0.6)', padding: 40, textAlign: 'center' }}>Loading overview...</div>
-  if (isError) return <div style={{ color: '#f87171', padding: 40, textAlign: 'center', fontSize: 15 }}>Failed to load analytics data. The backend may still be deploying — try refreshing in a minute.</div>
-  if (!stats) return <div style={{ color: 'rgba(255,255,255,0.5)', padding: 40, textAlign: 'center', fontSize: 15 }}>No analytics data available yet. Visitor data will appear here once sessions are tracked.</div>
+  if (isError) return <EmptyState icon="ti-alert-circle" title="Failed to load analytics data" description="The backend may still be deploying. Try refreshing in a minute." />
 
   const formatSecs = (s) => {
     if (!s) return '0s'
     const m = Math.floor(s / 60)
-    return m > 0 ? `${m}m ${s % 60}s` : `${s}s`
+    return m > 0 ? ${m}m s : ${s}s
   }
 
   const kpis = [
-    { label: 'Visitors Today', value: stats.visitors_today, icon: Users, color: '#4ade80' },
-    { label: 'Active Now', value: stats.active_now, icon: Activity, color: '#60a5fa' },
-    { label: 'Unique Users', value: stats.unique_users, icon: Users, color: '#a78bfa' },
-    { label: 'Returning Users', value: stats.returning_users, icon: MousePointerClick, color: '#f472b6' },
-    { label: 'Avg Session', value: formatSecs(stats.avg_session_duration_sec), icon: Clock, color: '#fb923c' },
-    { label: 'Bounce Rate', value: `${stats.bounce_rate}%`, icon: MousePointerClick, color: '#f87171' },
-    { label: 'Avg Pages / Session', value: stats.avg_pages_per_session, icon: MousePointerClick, color: '#2dd4bf' },
-    { label: 'Total Sessions (30d)', value: stats.total_sessions, icon: Activity, color: '#94a3b8' }
+    { label: 'Visitors Today', value: stats?.visitors_today, icon: Users, color: '#4ade80' },
+    { label: 'Active Now', value: stats?.active_now, icon: Activity, color: '#60a5fa' },
+    { label: 'Unique Users', value: stats?.unique_users, icon: Users, color: '#a78bfa' },
+    { label: 'Returning Users', value: stats?.returning_users, icon: MousePointerClick, color: '#f472b6' },
+    { label: 'Avg Session', value: stats ? formatSecs(stats.avg_session_duration_sec) : null, icon: Clock, color: '#fb923c' },
+    { label: 'Bounce Rate', value: stats ? ${stats.bounce_rate}% : null, icon: MousePointerClick, color: '#f87171' },
+    { label: 'Avg Pages / Session', value: stats?.avg_pages_per_session, icon: MousePointerClick, color: '#2dd4bf' },
+    { label: 'Total Sessions (30d)', value: stats?.total_sessions, icon: Activity, color: '#94a3b8' }
   ]
 
   return (
@@ -40,28 +40,26 @@ export default function OverviewTab() {
       {kpis.map((kpi, idx) => {
         const Icon = kpi.icon
         return (
-          <div key={idx} style={{
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--card-border)',
-            borderRadius: 16,
+          <div key={idx} className="glass-card" style={{
             padding: 20,
             display: 'flex',
             flexDirection: 'column',
-            gap: 12
+            gap: 12,
+            borderRadius: 16
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ 
-                background: `color-mix(in srgb, ${kpi.color} 15%, transparent)`, 
+                background: color-mix(in srgb,  15%, transparent), 
                 color: kpi.color, 
                 padding: 8, 
                 borderRadius: 8 
               }}>
                 <Icon size={18} />
               </div>
-              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 600 }}>{kpi.label}</span>
+              <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 600 }}>{kpi.label}</span>
             </div>
             <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-              {kpi.value}
+              {isLoading || !stats ? <Skeleton width="50%" height={32} /> : kpi.value}
             </div>
           </div>
         )

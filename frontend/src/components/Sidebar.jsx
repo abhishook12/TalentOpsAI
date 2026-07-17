@@ -68,7 +68,7 @@ export default function Sidebar() {
             <ShieldCheck size={20} />
           </div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ color: '#f3f3f3', fontSize: 18, fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.05 }}>
+            <div style={{ color: 'var(--text-primary)', fontSize: 18, fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.05 }}>
               {isAdmin ? 'Admin Console' : 'TalentOps AI'}
             </div>
             <div style={{ color: 'rgba(255,255,255,0.62)', fontSize: 12, fontWeight: 700, marginTop: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
@@ -83,7 +83,7 @@ export default function Sidebar() {
           if (item.isGroupHeader) {
             return (
               <div key={`header-${index}`} style={{
-                color: 'rgba(255,255,255,0.4)',
+                color: 'var(--text-muted)',
                 fontSize: 11,
                 fontWeight: 800,
                 textTransform: 'uppercase',
@@ -163,7 +163,7 @@ export default function Sidebar() {
             borderRadius: 14,
             border: 'none',
             background: 'transparent',
-            color: 'rgba(255,255,255,0.6)',
+            color: 'var(--text-muted)',
             cursor: 'pointer',
             fontSize: 13.5,
             fontWeight: 700,

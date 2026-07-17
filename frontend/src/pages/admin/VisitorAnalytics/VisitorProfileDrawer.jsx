@@ -38,7 +38,7 @@ export default function VisitorProfileDrawer({ sessionId, onClose }) {
           style={{ 
             background: 'transparent', 
             border: 'none', 
-            color: 'rgba(255,255,255,0.5)', 
+            color: 'var(--text-secondary)', 
             cursor: 'pointer' 
           }}
         >
@@ -48,7 +48,7 @@ export default function VisitorProfileDrawer({ sessionId, onClose }) {
 
       <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
         {isLoading ? (
-          <div style={{ color: 'rgba(255,255,255,0.6)' }}>Loading timeline...</div>
+          <div style={{ color: 'var(--text-muted)' }}>Loading timeline...</div>
         ) : !data || data.error ? (
           <div style={{ color: '#ef4444' }}>{data?.error || 'Failed to load'}</div>
         ) : (
@@ -67,15 +67,15 @@ export default function VisitorProfileDrawer({ sessionId, onClose }) {
                 <User size={16} style={{ color: '#a78bfa' }}/>
                 {data.profile.user_email || 'Anonymous'}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'rgba(255,255,255,0.7)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'var(--text-secondary)' }}>
                 <MapPin size={16} style={{ color: '#60a5fa' }}/>
                 {data.profile.location} ({data.profile.ip_address})
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'rgba(255,255,255,0.7)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'var(--text-secondary)' }}>
                 <Monitor size={16} style={{ color: '#4ade80' }}/>
                 {data.profile.system}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'rgba(255,255,255,0.7)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'var(--text-secondary)' }}>
                 <Clock size={16} style={{ color: '#fb923c' }}/>
                 Started {format(new Date(data.profile.started_at), 'MMM d, h:mm:ss a')}
               </div>
@@ -84,7 +84,7 @@ export default function VisitorProfileDrawer({ sessionId, onClose }) {
             <h3 style={{ fontSize: 14, color: 'var(--text-primary)', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Timeline</h3>
             
             <div style={{ position: 'relative', paddingLeft: 16, borderLeft: '2px solid rgba(255,255,255,0.1)', marginLeft: 8 }}>
-              {data.timeline.length === 0 && <div style={{ color: 'rgba(255,255,255,0.5)' }}>No events recorded.</div>}
+              {data.timeline.length === 0 && <div style={{ color: 'var(--text-secondary)' }}>No events recorded.</div>}
               {data.timeline.map((event, idx) => (
                 <div key={idx} style={{ position: 'relative', marginBottom: 24 }}>
                   <div style={{ 
@@ -105,18 +105,18 @@ export default function VisitorProfileDrawer({ sessionId, onClose }) {
                       {event.type === 'page_view' ? <FileText size={14}/> : <Activity size={14}/>}
                       {event.type === 'page_view' ? 'Page View' : 'Action'}
                     </div>
-                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                       {format(new Date(event.timestamp), 'h:mm:ss a')}
                     </div>
                   </div>
                   
                   <div style={{ color: 'var(--text-primary)', fontSize: 13, background: 'var(--bg-surface)', padding: '8px 12px', borderRadius: 8 }}>
                     {event.type === 'page_view' ? (
-                      <>{event.page} <span style={{ color: 'rgba(255,255,255,0.4)' }}>({event.path})</span></>
+                      <>{event.page} <span style={{ color: 'var(--text-muted)' }}>({event.path})</span></>
                     ) : (
                       <>
                         <div style={{ fontWeight: 600 }}>{event.action_type}</div>
-                        {event.details && <div style={{ color: 'rgba(255,255,255,0.6)', marginTop: 4, fontFamily: 'monospace', fontSize: 11 }}>{event.details}</div>}
+                        {event.details && <div style={{ color: 'var(--text-muted)', marginTop: 4, fontFamily: 'monospace', fontSize: 11 }}>{event.details}</div>}
                       </>
                     )}
                   </div>

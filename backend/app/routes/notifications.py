@@ -4,7 +4,7 @@ from sqlalchemy import desc
 from typing import List
 from ..database import get_db
 from ..models.models import Notification
-from ..services.auth_service import get_current_user
+from ..services.auth_service import get_current_user_from_request as get_current_user
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 

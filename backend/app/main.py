@@ -10,7 +10,7 @@ from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from .config import CORS_ORIGINS, IS_PRODUCTION, ENV as APP_ENV
-from .routes import recruiters, companies, vendors, analytics, admin, auth, actions, updates, ai, campaigns, harvester, users, visitor_analytics
+from .routes import recruiters, companies, vendors, analytics, admin, auth, actions, updates, ai, campaigns, harvester, users, visitor_analytics, notifications
 from .database import get_db, engine
 from .models import models, auth_models
 from .create_indexes import create_performance_indexes

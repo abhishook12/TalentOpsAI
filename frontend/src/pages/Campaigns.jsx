@@ -452,7 +452,7 @@ export default function Campaigns() {
                     
                     <div className="mt-8 pt-4 border-t border-[var(--border)]">
                       <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-sm text-blue-400 mb-4">
-                        Estimated sending time: <strong>~{Math.ceil(validatedRecipients.valid_count / ratePerMinute)} minutes</strong>
+                        Estimated sending time: <strong>~{Math.ceil(validatedRecipients.valid_count / 4)} minutes</strong>
                       </div>
                       
                       <BridgeStatus onStatusChange={setBridgeHealthy} />

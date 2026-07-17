@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 # Known disposable email domains
 DISPOSABLE_DOMAINS = {
-    'mailinator.com', 'guerrillamail.com', 'tempmail.com', 'throwaway.email',
+    'guerrillamail.com', 'tempmail.com', 'throwaway.email',
     'yopmail.com', 'sharklasers.com', 'guerrillamailblock.com', 'grr.la',
     'guerrillamail.info', 'guerrillamail.net', 'trashmail.com', 'tempinbox.com',
     'maildrop.cc', 'dispostable.com', 'getnada.com', 'temp-mail.org',

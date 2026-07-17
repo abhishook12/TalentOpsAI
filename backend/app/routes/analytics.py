@@ -758,3 +758,47 @@ def get_data_health(db: Session = Depends(get_db)):
         logger.error(f"Data health error: {e}")
         return {"total_active": 0, "overall_health_score": 0, "metrics": []}
 
+
+@router.get("/insights")
+def get_smart_insights(db: Session = Depends(get_db)):
+    cached = analytics_cache.get("dashboard_insights")
+    if cached is not None:
+        return cached
+
+    now = datetime.utcnow()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    yesterday_start = today_start - timedelta(days=1)
+
+    # 1. Recruiter Growth
+    today_recs = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE created_at >= :s"), {"s": today_start}).scalar() or 0
+    yest_recs = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE created_at >= :s AND created_at < :e"), {"s": yesterday_start, "e": today_start}).scalar() or 0
+    
+    growth_insight = "Recruiter database is stable with normal operations."
+    if today_recs > yest_recs and yest_recs > 0:
+        pct = round(((today_recs - yest_recs) / yest_recs) * 100)
+        growth_insight = f"You imported {pct}% more recruiters today than yesterday."
+    elif today_recs > 0 and yest_recs == 0:
+        growth_insight = f"You added {today_recs} new recruiters today."
+
+    # 2. Top State Insight
+    top_state_row = db.execute(text("SELECT location, COUNT(*) as c FROM recruiters WHERE location IS NOT NULL AND location != '' GROUP BY location ORDER BY c DESC LIMIT 1")).fetchone()
+    state_insight = "Geographic distribution is balanced."
+    if top_state_row:
+        state_insight = f"{top_state_row[0]} generated the highest recruiter density."
+
+    # 3. Traffic Insight
+    searches = db.execute(text("SELECT COUNT(*) FROM action_logs WHERE created_at >= :s AND action_type = 'SEARCH_RECRUITERS'"), {"s": today_start}).scalar() or 0
+    traffic_insight = "System traffic is at baseline levels."
+    if searches > 10:
+        traffic_insight = f"High search volume detected: {searches} recruiter searches today."
+    elif searches > 0:
+        traffic_insight = f"Active sourcing ongoing: {searches} queries executed today."
+
+    insights = [
+        {"id": 1, "text": growth_insight, "type": "growth", "icon": "ti-trending-up"},
+        {"id": 2, "text": state_insight, "type": "geo", "icon": "ti-map-pin"},
+        {"id": 3, "text": traffic_insight, "type": "traffic", "icon": "ti-activity"}
+    ]
+
+    analytics_cache.set("dashboard_insights", {"insights": insights}, ttl=300)
+    return {"insights": insights}

@@ -657,6 +657,8 @@ const globalStyles = `
 
 import { AnalyticsProvider } from './context/AnalyticsProvider'
 import { Toaster } from 'react-hot-toast'
+import CommandPalette from './components/CommandPalette'
+import NotificationCenter from './components/NotificationCenter'
 
 // Global settings
 // axios credentials set in main.jsx
@@ -747,6 +749,7 @@ function AppShell() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
+      <CommandPalette />
       <Toaster position="top-right" toastOptions={{ style: { background: 'var(--main-bg)', color: 'var(--text-primary)', border: '1px solid var(--border)', fontSize: '13px', borderRadius: '8px' } }} />
       <UpdateCenter />
       <div className="cc-shell">
@@ -817,6 +820,8 @@ function AppShell() {
     </>
   )
 }
+
+
 
 
 

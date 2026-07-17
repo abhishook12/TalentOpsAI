@@ -270,6 +270,7 @@ app.include_router(companies.router, prefix="/companies", tags=["Companies"])
 app.include_router(vendors.router, prefix="/vendors", tags=["Vendors"])
 app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
+app.include_router(notifications.router)
 app.include_router(visitor_analytics.router, prefix="/admin/visitor-analytics", tags=["Visitor Analytics"])
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(actions.router, prefix="/actions", tags=["Actions"])
@@ -294,3 +295,5 @@ def ping():
 
 from .routes import health
 app.include_router(health.router, prefix="/health", tags=["System Health"])
+
+

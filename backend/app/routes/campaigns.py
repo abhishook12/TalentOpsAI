@@ -19,6 +19,7 @@ from ..models.campaigns import (
     CampaignStatus,
     EmailTemplate,
     SequenceStep,
+    EmailSignature,
     ensure_campaign_tables,
 )
 from ..models.models import Recruiter
@@ -116,6 +117,140 @@ async def api_resume_campaign(campaign_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Campaign not found")
     await resume_campaign(campaign_id)
     return {"status": "resumed", "campaign_id": campaign_id}
+
+@router.post("/{campaign_id}/cancel")
+def api_cancel_campaign(campaign_id: int, db: Session = Depends(get_db)):
+    from ..services.send_engine import cancel_campaign
+    campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    cancel_campaign(campaign_id)
+    return {"status": "cancelled", "campaign_id": campaign_id}
+
+class PreviewRequest(BaseModel):
+    recruiter_id: int
+    subject_template: str
+    body_template: str
+    signature_id: Optional[int] = None
+
+@router.post("/{campaign_id}/preview")
+def api_preview_email(campaign_id: int, request: PreviewRequest, db: Session = Depends(get_db)):
+    from ..services.personalization import preview_email
+    
+    recruiter = db.query(Recruiter).filter(Recruiter.recruiter_id == request.recruiter_id).first()
+    if not recruiter:
+        raise HTTPException(status_code=404, detail="Recruiter not found")
+        
+    company = recruiter.company if hasattr(recruiter, 'company') else None
+    
+    signature_html = None
+    if request.signature_id:
+        sig = db.query(EmailSignature).filter(EmailSignature.signature_id == request.signature_id).first()
+        if sig:
+            signature_html = sig.html_content
+            
+    preview = preview_email(request.subject_template, request.body_template, recruiter, company, signature_html)
+    return preview
+
+@router.post("/{campaign_id}/validate-before-send")
+def api_validate_before_send(campaign_id: int, db: Session = Depends(get_db)):
+    from ..services.send_engine import _check_bridge_health
+    campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+        
+    healthy, error = _check_bridge_health()
+    
+    # Check if there are active sequence steps with templates
+    has_template = False
+    for step in campaign.sequence_steps:
+        if step.is_active and step.template_id:
+            has_template = True
+            break
+            
+    # Check if there are enrolled recipients
+    has_recipients = db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id).count() > 0
+    
+    return {
+        "bridge_healthy": healthy,
+        "bridge_error": error if not healthy else None,
+        "has_template": has_template,
+        "has_recipients": has_recipients,
+        "ready": healthy and has_template and has_recipients
+    }
+
+class SignatureCreate(BaseModel):
+    name: str
+    html_content: str
+    is_default: bool = False
+    
+class SignatureUpdate(BaseModel):
+    name: Optional[str] = None
+    html_content: Optional[str] = None
+    is_default: Optional[bool] = None
+
+@router.get("/signatures/list")
+def list_signatures(db: Session = Depends(get_db)):
+    sigs = db.query(EmailSignature).order_by(EmailSignature.created_at.desc()).all()
+    return [{
+        "signature_id": s.signature_id,
+        "name": s.name,
+        "html_content": s.html_content,
+        "is_default": s.is_default,
+        "created_at": s.created_at.isoformat()
+    } for s in sigs]
+
+@router.post("/signatures/create")
+def create_signature(req: SignatureCreate, db: Session = Depends(get_db)):
+    # Simple hardcoded user for now
+    user_email = "abhishekjadon824@gmail.com"
+    
+    if req.is_default:
+        db.query(EmailSignature).filter(EmailSignature.user_email == user_email).update({"is_default": False})
+        
+    sig = EmailSignature(
+        user_email=user_email,
+        name=req.name,
+        html_content=req.html_content,
+        is_default=req.is_default
+    )
+    db.add(sig)
+    db.commit()
+    db.refresh(sig)
+    return {"status": "success", "signature_id": sig.signature_id}
+
+@router.put("/signatures/{signature_id}")
+def update_signature(signature_id: int, req: SignatureUpdate, db: Session = Depends(get_db)):
+    sig = db.query(EmailSignature).filter(EmailSignature.signature_id == signature_id).first()
+    if not sig:
+        raise HTTPException(status_code=404, detail="Signature not found")
+        
+    if req.is_default:
+        db.query(EmailSignature).filter(EmailSignature.user_email == sig.user_email).update({"is_default": False})
+        
+    if req.name is not None:
+        sig.name = req.name
+    if req.html_content is not None:
+        sig.html_content = req.html_content
+    if req.is_default is not None:
+        sig.is_default = req.is_default
+        
+    db.commit()
+    return {"status": "success"}
+
+@router.delete("/signatures/{signature_id}")
+def delete_signature(signature_id: int, db: Session = Depends(get_db)):
+    sig = db.query(EmailSignature).filter(EmailSignature.signature_id == signature_id).first()
+    if not sig:
+        raise HTTPException(status_code=404, detail="Signature not found")
+    
+    # Nullify references in campaigns
+    db.query(Campaign).filter(Campaign.signature_id == signature_id).update({"signature_id": None})
+    
+    db.delete(sig)
+    db.commit()
+    return {"status": "success"}
+
 
 class EnrollEmailsRequest(BaseModel):
     emails: list[str]

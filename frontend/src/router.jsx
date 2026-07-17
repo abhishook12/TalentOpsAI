@@ -160,6 +160,18 @@ const adminSettingsRoute = createRoute({
   component: lazyComponent(() => import('./pages/admin/AdminSettings')),
 })
 
+const auditLogsRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: '/admin/audit-logs',
+  component: lazyComponent(() => import('./pages/admin/AuditLogs')),
+})
+
+const backgroundJobsRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: '/admin/jobs',
+  component: lazyComponent(() => import('./pages/admin/BackgroundJobs')),
+})
+
 const systemHealthRoute = createRoute({
   getParentRoute: () => adminLayoutRoute,
   path: '/admin/health',
@@ -195,10 +207,14 @@ const routeTree = rootRoute.addChildren([
     visitorAnalyticsRoute,
     userManagementRoute,
     adminSettingsRoute,
-    systemHealthRoute
+    systemHealthRoute,
+    backgroundJobsRoute,
+    auditLogsRoute
   ])
 ])
 
 export const router = createRouter({ routeTree })
+
+
 
 

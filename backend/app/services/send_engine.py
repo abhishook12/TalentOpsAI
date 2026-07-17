@@ -1,165 +1,54 @@
+"""
+Production-grade campaign send engine (High-Speed Worker Pool).
+
+Processes campaign email queues with:
+- Asynchronous Worker Pool (Immediate Queuing)
+- No artificial delays (Fast execution)
+- Intelligent retry with exponential backoff
+- Per-email lifecycle tracking
+- Campaign-level fault tolerance
+- Pause/Resume/Cancel support
+"""
 import asyncio
 import logging
+import math
 import random
 import time
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 import requests
+import concurrent.futures
 
 from ..database import SessionLocal
-from ..models.campaigns import Campaign, CampaignStatus, CampaignRecruiter, CampaignRecruiterStatus, EmailLog, EmailLogStatus
+from ..models.campaigns import (
+    Campaign, CampaignStatus, CampaignRecruiter, CampaignRecruiterStatus,
+    EmailLog, EmailLogStatus, EmailSignature
+)
 from .personalization import interpolate_variables
 
 logger = logging.getLogger(__name__)
 
-# Constants
+# Bridge configuration
 BRIDGE_URL = "http://127.0.0.1:1337"
-MIN_DELAY_SECONDS = 15
-MAX_DELAY_SECONDS = 60
+WORKER_COUNT = 3  # Number of concurrent workers sending emails
+MAX_RETRIES_OVERALL = 3
 
-async def process_campaign_queue(campaign_id: int):
-    """Background task to process a campaign's email queue."""
-    logger.info(f"Starting queue processor for campaign {campaign_id}")
-    
-    # 1. Pre-flight check Outlook Bridge
+# We use a ThreadPoolExecutor for requests.post to avoid blocking the asyncio event loop
+request_executor = concurrent.futures.ThreadPoolExecutor(max_workers=WORKER_COUNT * 2)
+
+def _utcnow():
+    return datetime.now(timezone.utc)
+
+def _check_bridge_health() -> tuple[bool, str]:
+    """Check if the Outlook Bridge is healthy."""
     try:
-        health = requests.get(f"{BRIDGE_URL}/health", timeout=5).json()
-        if health.get("status") != "healthy":
-            logger.error(f"Cannot start campaign {campaign_id}: Bridge unhealthy: {health.get('error')}")
-            _set_campaign_status(campaign_id, CampaignStatus.failed.value)
-            return
+        resp = requests.get(f"{BRIDGE_URL}/health", timeout=5)
+        data = resp.json()
+        if data.get("status") == "healthy":
+            return True, "healthy"
+        return False, data.get("error", "unhealthy")
     except Exception as e:
-        logger.error(f"Cannot start campaign {campaign_id}: Bridge unreachable: {e}")
-        _set_campaign_status(campaign_id, CampaignStatus.failed.value)
-        return
-
-    while True:
-        with SessionLocal() as db:
-            campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
-            if not campaign:
-                logger.error(f"Campaign {campaign_id} not found.")
-                return
-                
-            if campaign.status != CampaignStatus.active.value:
-                logger.info(f"Campaign {campaign_id} status is {campaign.status}. Stopping processor.")
-                return
-                
-            # Get next pending or retrying recipient
-            recipient = db.query(CampaignRecruiter).filter(
-                CampaignRecruiter.campaign_id == campaign_id,
-                CampaignRecruiter.status.in_([CampaignRecruiterStatus.pending.value, CampaignRecruiterStatus.failed.value])
-            ).order_by(
-                CampaignRecruiter.queue_position.asc(), 
-                CampaignRecruiter.campaign_recruiter_id.asc()
-            ).first()
-            
-            if not recipient:
-                logger.info(f"Campaign {campaign_id} has no more pending recipients. Marking complete.")
-                campaign.status = CampaignStatus.completed.value
-                db.commit()
-                return
-                
-            # Create EmailLog entry
-            log = EmailLog(
-                campaign_id=campaign_id,
-                campaign_recruiter_id=recipient.campaign_recruiter_id,
-                recipient_email=recipient.recruiter.email if recipient.recruiter else "unknown",
-                recipient_name=recipient.recruiter.recruiter_name if recipient.recruiter else None,
-                status=EmailLogStatus.sending.value,
-                attempt_number=recipient.retry_count + 1,
-                sending_at=datetime.now(timezone.utc),
-                sent_via="outlook_bridge"
-            )
-            db.add(log)
-            
-            # Prepare email content
-            subject_template = ""
-            body_template = ""
-            if campaign.sequence_steps:
-                step = campaign.sequence_steps[0]
-                if step.template:
-                    subject_template = step.template.subject
-                    body_template = step.template.body
-            elif recipient.current_step and recipient.current_step.template:
-                subject_template = recipient.current_step.template.subject
-                body_template = recipient.current_step.template.body
-            
-            # Fallback if templates are missing but we need to send
-            if not subject_template and not body_template:
-                # Assuming draft might have set them directly on campaign?
-                subject_template = campaign.name
-            
-            subject = interpolate_variables(subject_template, recipient.recruiter, recipient.recruiter.company if recipient.recruiter else None)
-            body = interpolate_variables(body_template, recipient.recruiter, recipient.recruiter.company if recipient.recruiter else None)
-            
-            log.subject = subject
-            log.body_preview = body[:200] if body else ""
-            db.commit()
-            
-            rec_id = recipient.campaign_recruiter_id
-            rec_email = recipient.recruiter.email
-            
-        # Send via Outlook Bridge (outside DB transaction)
-        start_time = time.time()
-        payload = {
-            "to": rec_email,
-            "subject": subject,
-            "body": body,
-            "from_email": campaign.from_email
-        }
-        
-        success = False
-        error_msg = None
-        try:
-            resp = requests.post(f"{BRIDGE_URL}/send-one", json=payload, timeout=30)
-            result = resp.json()
-            if result.get("success"):
-                success = True
-            else:
-                error_msg = result.get("error")
-        except Exception as e:
-            error_msg = str(e)
-            
-        duration = int((time.time() - start_time) * 1000)
-        
-        # Update DB based on result
-        with SessionLocal() as db:
-            recipient = db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_recruiter_id == rec_id).first()
-            log = db.query(EmailLog).filter(EmailLog.log_id == log.log_id).first()
-            
-            log.duration_ms = duration
-            recipient.sent_via = "outlook_bridge"
-            
-            if success:
-                log.status = EmailLogStatus.delivered.value
-                log.delivered_at = datetime.now(timezone.utc)
-                log.outlook_accepted = True
-                
-                recipient.status = CampaignRecruiterStatus.sent.value
-                recipient.last_sent_at = datetime.now(timezone.utc)
-                recipient.sent_count += 1
-            else:
-                log.status = EmailLogStatus.failed.value
-                log.failed_at = datetime.now(timezone.utc)
-                log.error_message = error_msg
-                log.outlook_accepted = False
-                
-                recipient.retry_count += 1
-                recipient.last_error = error_msg
-                if recipient.retry_count >= recipient.max_retries:
-                    recipient.status = CampaignRecruiterStatus.failed.value
-                else:
-                    recipient.status = CampaignRecruiterStatus.pending.value # Keep pending for retry
-                    
-            db.commit()
-
-        # Random delay to mimic human (only if we have more to send and are still active)
-        with SessionLocal() as db:
-            campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
-            if campaign and campaign.status == CampaignStatus.active.value:
-                delay = random.randint(MIN_DELAY_SECONDS, MAX_DELAY_SECONDS)
-                logger.info(f"Waiting {delay} seconds before next email...")
-                await asyncio.sleep(delay)
+        return False, str(e)
 
 def _set_campaign_status(campaign_id: int, status: str):
     with SessionLocal() as db:
@@ -167,6 +56,310 @@ def _set_campaign_status(campaign_id: int, status: str):
         if campaign:
             campaign.status = status
             db.commit()
+
+def _get_campaign_eta(campaign_id: int) -> dict:
+    """Calculate ETA based on fast worker pool throughput (approx 1s per email per worker)."""
+    with SessionLocal() as db:
+        total = db.query(CampaignRecruiter).filter(
+            CampaignRecruiter.campaign_id == campaign_id
+        ).count()
+        
+        sent = db.query(CampaignRecruiter).filter(
+            CampaignRecruiter.campaign_id == campaign_id,
+            CampaignRecruiter.status.in_([
+                CampaignRecruiterStatus.sent.value,
+                CampaignRecruiterStatus.delivered.value,
+                CampaignRecruiterStatus.opened.value,
+                CampaignRecruiterStatus.replied.value,
+            ])
+        ).count()
+        
+        failed = db.query(CampaignRecruiter).filter(
+            CampaignRecruiter.campaign_id == campaign_id,
+            CampaignRecruiter.status == CampaignRecruiterStatus.failed.value
+        ).count()
+        
+        retrying = db.query(CampaignRecruiter).filter(
+            CampaignRecruiter.campaign_id == campaign_id,
+            CampaignRecruiter.status == CampaignRecruiterStatus.retrying.value
+        ).count()
+        
+        pending = db.query(CampaignRecruiter).filter(
+            CampaignRecruiter.campaign_id == campaign_id,
+            CampaignRecruiter.status.in_([
+                CampaignRecruiterStatus.pending.value,
+                CampaignRecruiterStatus.queued.value,
+            ])
+        ).count()
+        
+        remaining = pending + retrying
+        
+        # Estimate: e.g. 1 email takes 1.5s via Outlook. With 3 workers, 1 email takes 0.5s overall.
+        estimated_seconds_per_email = 0.5 
+        eta_seconds = int(remaining * estimated_seconds_per_email)
+        
+        # We assume max speed. We report "rate_per_minute" effectively as what we estimate.
+        effective_rate = int(60 / estimated_seconds_per_email) if estimated_seconds_per_email > 0 else 0
+        
+        return {
+            "total": total,
+            "sent": sent,
+            "failed": failed,
+            "retrying": retrying,
+            "pending": pending,
+            "remaining": remaining,
+            "progress_percent": round((sent / total) * 100, 1) if total > 0 else 0,
+            "eta_seconds": eta_seconds,
+            "rate_per_minute": effective_rate,
+        }
+
+async def _send_via_bridge(payload: dict) -> tuple[bool, str, str]:
+    """Execute synchronous requests.post in a thread pool."""
+    def _do_request():
+        try:
+            resp = requests.post(f"{BRIDGE_URL}/send-one", json=payload, timeout=30)
+            result = resp.json()
+            if result.get("success"):
+                return True, None, None
+            else:
+                return False, result.get("error", "Unknown error from bridge"), "bridge_rejection"
+        except requests.exceptions.Timeout:
+            return False, "Outlook Bridge request timed out (30s)", "smtp_timeout"
+        except requests.exceptions.ConnectionError:
+            return False, "Cannot connect to Outlook Bridge", "network_lost"
+        except Exception as e:
+            return False, str(e), "unknown"
+            
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(request_executor, _do_request)
+
+async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, signature_html: str, template: dict, from_email: str):
+    logger.info(f"Worker {worker_id} started for campaign {campaign_id}")
+    while True:
+        try:
+            recipient_id = await queue.get()
+        except asyncio.CancelledError:
+            break
+            
+        try:
+            # Re-verify campaign status before sending
+            with SessionLocal() as db:
+                campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+                if not campaign or campaign.status not in [CampaignStatus.active.value]:
+                    queue.task_done()
+                    continue
+
+                recipient = db.query(CampaignRecruiter).filter(
+                    CampaignRecruiter.campaign_recruiter_id == recipient_id
+                ).first()
+                
+                if not recipient or recipient.status == CampaignRecruiterStatus.cancelled.value:
+                    queue.task_done()
+                    continue
+                
+                # Mark sending
+                recipient.status = CampaignRecruiterStatus.sending.value
+                recruiter = recipient.recruiter
+                company = recruiter.company if recruiter else None
+                rec_email = recruiter.email if recruiter else "unknown"
+                rec_name = recruiter.recruiter_name if recruiter else None
+                retry_count = recipient.retry_count
+                max_retries = recipient.max_retries
+                
+                log = EmailLog(
+                    campaign_id=campaign_id,
+                    campaign_recruiter_id=recipient_id,
+                    recipient_email=rec_email,
+                    recipient_name=rec_name,
+                    status=EmailLogStatus.sending.value,
+                    attempt_number=retry_count + 1,
+                    sending_at=_utcnow(),
+                    sent_via="outlook_bridge"
+                )
+                db.add(log)
+                
+                subject_template = template.get("subject", "No Subject")
+                body_template = template.get("body", "")
+                
+                subject = interpolate_variables(subject_template, recruiter, company)
+                body = interpolate_variables(body_template, recruiter, company, signature_html=signature_html)
+                
+                log.subject = subject
+                log.body_preview = body[:500] if body else ""
+                db.commit()
+                log_id = log.log_id
+            
+            payload = {
+                "to": rec_email,
+                "subject": subject,
+                "body": body,
+            }
+            if from_email:
+                payload["from_email"] = from_email
+            
+            start_time = time.time()
+            success, error_msg, error_category = await _send_via_bridge(payload)
+            duration = int((time.time() - start_time) * 1000)
+            
+            # Update DB based on result
+            with SessionLocal() as db:
+                recipient = db.query(CampaignRecruiter).filter(
+                    CampaignRecruiter.campaign_recruiter_id == recipient_id
+                ).first()
+                log = db.query(EmailLog).filter(EmailLog.log_id == log_id).first()
+                
+                if log:
+                    log.duration_ms = duration
+                
+                if recipient:
+                    recipient.sent_via = "outlook_bridge"
+                
+                if success:
+                    if log:
+                        log.status = EmailLogStatus.delivered.value
+                        log.delivered_at = _utcnow()
+                        log.outlook_accepted = True
+                    
+                    if recipient:
+                        recipient.status = CampaignRecruiterStatus.sent.value
+                        recipient.last_sent_at = _utcnow()
+                        recipient.sent_count += 1
+                        
+                    logger.info(f"✅ Worker {worker_id}: Sent to {rec_email} ({duration}ms)")
+                else:
+                    if log:
+                        log.status = EmailLogStatus.failed.value
+                        log.failed_at = _utcnow()
+                        log.error_message = error_msg
+                        log.error_category = error_category
+                        log.outlook_accepted = False
+                    
+                    if recipient:
+                        recipient.retry_count += 1
+                        recipient.last_error = error_msg
+                        
+                        if recipient.retry_count >= max_retries:
+                            recipient.status = CampaignRecruiterStatus.failed.value
+                            logger.warning(f"❌ Worker {worker_id}: Permanently failed {rec_email}")
+                        else:
+                            recipient.status = CampaignRecruiterStatus.retrying.value
+                            logger.warning(f"⚠️ Worker {worker_id}: Will retry {rec_email}")
+                            # Schedule a retry in the background
+                            asyncio.create_task(_schedule_retry(queue, recipient_id, recipient.retry_count))
+                            
+                    # If we hit an error, add a small backoff delay before this worker picks up another
+                    await asyncio.sleep(2)
+                
+                db.commit()
+                
+        except Exception as e:
+            logger.error(f"Worker {worker_id} exception for {recipient_id}: {e}")
+        finally:
+            queue.task_done()
+
+async def _schedule_retry(queue: asyncio.Queue, recipient_id: int, retry_count: int):
+    # Exponential backoff: 30s, 60s, 120s
+    delay = 30 * (2 ** (retry_count - 1))
+    await asyncio.sleep(delay)
+    # Check if campaign is still active before putting it back
+    with SessionLocal() as db:
+        rec = db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_recruiter_id == recipient_id).first()
+        if rec and rec.status == CampaignRecruiterStatus.retrying.value:
+            rec.status = CampaignRecruiterStatus.queued.value
+            db.commit()
+            await queue.put(recipient_id)
+
+async def process_campaign_queue(campaign_id: int):
+    """Background task manager for a campaign's email queue."""
+    logger.info(f"Starting Campaign Manager for {campaign_id}")
+    
+    # 1. Pre-flight: Check Outlook Bridge
+    healthy, error = _check_bridge_health()
+    if not healthy:
+        logger.error(f"Cannot start campaign {campaign_id}: Bridge unhealthy: {error}")
+        _set_campaign_status(campaign_id, CampaignStatus.failed.value)
+        return
+    
+    # 2. Extract configuration and mark queued
+    queue = asyncio.Queue()
+    signature_html = None
+    template = {}
+    from_email = None
+    
+    with SessionLocal() as db:
+        campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+        if not campaign:
+            return
+        
+        from_email = campaign.from_email
+        
+        if campaign.signature_id:
+            sig = db.query(EmailSignature).filter(
+                EmailSignature.signature_id == campaign.signature_id
+            ).first()
+            if sig:
+                signature_html = sig.html_content
+        
+        active_steps = sorted(
+            [s for s in campaign.sequence_steps if s.is_active],
+            key=lambda s: s.step_order
+        )
+        if active_steps and active_steps[0].template:
+            template = {
+                "subject": active_steps[0].template.subject or campaign.name,
+                "body": active_steps[0].template.body or ""
+            }
+        else:
+            template = {"subject": campaign.name or "No Subject", "body": ""}
+        
+        pending_recipients = db.query(CampaignRecruiter).filter(
+            CampaignRecruiter.campaign_id == campaign_id,
+            CampaignRecruiter.status.in_([
+                CampaignRecruiterStatus.pending.value,
+                CampaignRecruiterStatus.retrying.value,
+            ])
+        ).all()
+        
+        for i, r in enumerate(pending_recipients):
+            r.status = CampaignRecruiterStatus.queued.value
+            r.queue_position = i + 1
+            queue.put_nowait(r.campaign_recruiter_id)
+        
+        db.commit()
+    
+    if queue.empty():
+        logger.info(f"Campaign {campaign_id} complete. No more recipients.")
+        _set_campaign_status(campaign_id, CampaignStatus.completed.value)
+        return
+        
+    # 3. Start Workers
+    workers = []
+    for i in range(WORKER_COUNT):
+        task = asyncio.create_task(_worker_task(i, campaign_id, queue, signature_html, template, from_email))
+        workers.append(task)
+        
+    # 4. Wait for queue to complete
+    await queue.join()
+    
+    # 5. Cleanup
+    for w in workers:
+        w.cancel()
+        
+    # Check if we should mark as completed (if not cancelled/paused)
+    with SessionLocal() as db:
+        campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+        if campaign and campaign.status == CampaignStatus.active.value:
+            # Check if any retrying items exist that haven't been queued yet
+            retrying_count = db.query(CampaignRecruiter).filter(
+                CampaignRecruiter.campaign_id == campaign_id,
+                CampaignRecruiter.status == CampaignRecruiterStatus.retrying.value
+            ).count()
+            
+            if retrying_count == 0:
+                campaign.status = CampaignStatus.completed.value
+                db.commit()
+                logger.info(f"Campaign {campaign_id} fully completed.")
+
 
 async def start_campaign(campaign_id: int):
     """Set campaign to active and start background processor."""
@@ -177,6 +370,38 @@ def pause_campaign(campaign_id: int):
     """Set campaign to paused. The processor loop will exit after current email."""
     _set_campaign_status(campaign_id, CampaignStatus.paused.value)
 
+def cancel_campaign(campaign_id: int):
+    """Set campaign to cancelled. The processor will mark remaining as cancelled."""
+    _set_campaign_status(campaign_id, CampaignStatus.cancelled.value)
+    with SessionLocal() as db:
+        db.query(CampaignRecruiter).filter(
+            CampaignRecruiter.campaign_id == campaign_id,
+            CampaignRecruiter.status.in_([
+                CampaignRecruiterStatus.queued.value,
+                CampaignRecruiterStatus.pending.value,
+            ])
+        ).update({"status": CampaignRecruiterStatus.cancelled.value}, synchronize_session=False)
+        db.commit()
+
 async def resume_campaign(campaign_id: int):
     """Resume a paused campaign."""
+    with SessionLocal() as db:
+        db.query(CampaignRecruiter).filter(
+            CampaignRecruiter.campaign_id == campaign_id,
+            CampaignRecruiter.status.in_([
+                CampaignRecruiterStatus.pending.value,
+                CampaignRecruiterStatus.retrying.value,
+            ])
+        ).update({"status": CampaignRecruiterStatus.queued.value}, synchronize_session=False)
+        db.commit()
+    
     await start_campaign(campaign_id)
+
+def get_campaign_progress(campaign_id: int) -> dict:
+    """Get real-time campaign progress with ETA."""
+    with SessionLocal() as db:
+        campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+        if not campaign:
+            return {"error": "Campaign not found"}
+        
+        return _get_campaign_eta(campaign_id)

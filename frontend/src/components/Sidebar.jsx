@@ -1,6 +1,6 @@
 import { Link as NavLink, useLocation } from '@tanstack/react-router'
 import { clearStoredToken } from '../services/api'
-import { LayoutDashboard, Activity, Users, Map, BarChart2, Search, Eye, Radar, LogOut, ShieldCheck, Settings, UserCircle, HeartPulse, UserCog } from 'lucide-react'
+import { LayoutDashboard, Activity, Users, Map, BarChart2, Search, Eye, Radar, LogOut, ShieldCheck, Settings, UserCircle, HeartPulse, UserCog, Server, Shield } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 export default function Sidebar() {
@@ -32,6 +32,8 @@ export default function Sidebar() {
     { to: '/admin/users', label: 'User Management', icon: UserCog },
     { to: '/admin/visitor-analytics', label: 'Visitor Analytics', icon: Eye },
     { to: '/activity', label: 'Activity Logs', icon: Activity },
+    { to: '/admin/jobs', label: 'Background Jobs', icon: Server },
+    { to: '/admin/audit-logs', label: 'Audit Logs', icon: Shield },
     { to: '/admin/health', label: 'System Health', icon: HeartPulse },
     { to: '/admin/settings', label: 'Admin Settings', icon: Settings },
   ]
@@ -186,3 +188,4 @@ export default function Sidebar() {
     </aside>
   )
 }
+

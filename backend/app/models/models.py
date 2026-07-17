@@ -531,3 +531,13 @@ class SmartImportRow(Base):
     validation_issues = Column(Text) # JSON list of strings
     
     job = relationship("SmartImportJob", back_populates="rows")
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    title = Column(String(255), nullable=False)
+    message = Column(Text, nullable=False)
+    type = Column(String(50), default="info") # info, success, warning, error
+    read = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)

@@ -16,7 +16,7 @@ import {
 } from '../components/CommandCenter'
 import USHeatmap from '../components/USHeatmap'
 import { CompanyLogo } from '../components/CompanyLogo'
-import EnrichmentLiveFeed from '../components/EnrichmentLiveFeed'
+import AIInsights from '../components/AIInsights'
 import EnrichmentLiveFeed from '../components/EnrichmentLiveFeed'
 import { Skeleton, SkeletonRow } from '../components/ui/Skeleton'
 
@@ -215,6 +215,8 @@ export default function Dashboard() {
           <div style={{ color: 'var(--danger)', fontSize: 13, fontWeight: 700 }}>{getErrorMessage(isError, 'Failed to load dashboard data')}</div>
         </ShellCard>
       )}
+
+      <AIInsights />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 12 }}>
         {metrics.map((metric) => (
@@ -448,5 +450,6 @@ export default function Dashboard() {
     </div>
   )
 }
+
 
 

@@ -9,7 +9,12 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
     total: 0,
     sent: 0,
     failed: 0,
+    retrying: 0,
     pending: 0,
+    remaining: 0,
+    eta_seconds: 0,
+    rate_per_minute: 0,
+    progress_percent: 0,
     new_logs: []
   });
   const [logs, setLogs] = useState([]);
@@ -34,7 +39,7 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
         onStatusChange(parsedData.status);
       }
       
-      if (parsedData.status === 'completed' || parsedData.status === 'failed') {
+      if (parsedData.status === 'completed' || parsedData.status === 'failed' || parsedData.status === 'cancelled') {
         eventSource.close();
       }
     };
@@ -50,7 +55,14 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
     };
   }, [campaignId]);
 
-  const progressPercent = data.total > 0 ? ((data.sent + data.failed) / data.total) * 100 : 0;
+  const progressPercent = data.progress_percent || 0;
+  
+  const formatETA = (seconds) => {
+    if (!seconds) return 'Calculating...';
+    if (seconds < 60) return '< 1 min';
+    const mins = Math.floor(seconds / 60);
+    return `~${mins} min${mins > 1 ? 's' : ''}`;
+  };
   
   const handleAction = async (action) => {
     try {
@@ -83,13 +95,17 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
           <div className="text-red-400 text-sm mb-1 flex items-center gap-1">
             <XCircle className="w-4 h-4" /> Failed
           </div>
-          <div className="text-2xl font-semibold text-red-400">{data.failed}</div>
+          <div className="flex items-baseline gap-2">
+            <div className="text-2xl font-semibold text-red-400">{data.failed}</div>
+            {data.retrying > 0 && <div className="text-xs text-yellow-400">({data.retrying} retrying)</div>}
+          </div>
         </div>
         <div className="bg-[var(--panel-bg)] border border-[var(--card-border)] rounded-xl p-4 flex flex-col justify-center">
-          <div className="text-[var(--text-muted)] text-sm mb-1 flex items-center gap-1">
-            <Clock className="w-4 h-4" /> Pending
+          <div className="text-[var(--text-muted)] text-sm mb-1 flex items-center gap-1 justify-between">
+            <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> ETA</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-surface)]">{data.rate_per_minute}/min</span>
           </div>
-          <div className="text-2xl font-semibold">{data.pending}</div>
+          <div className="text-2xl font-semibold">{data.status === 'active' ? formatETA(data.eta_seconds) : '-'}</div>
         </div>
       </div>
 
@@ -99,11 +115,12 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
           <div className="flex items-center gap-2">
             <span className="font-medium">Campaign Progress</span>
             {isConnecting && <Loader2 className="w-4 h-4 animate-spin text-[var(--accent)]" />}
-            <span className={`text-xs px-2 py-0.5 rounded-full ${
-              data.status === 'active' ? 'bg-green-500/20 text-green-400' :
-              data.status === 'paused' ? 'bg-yellow-500/20 text-yellow-400' :
-              data.status === 'completed' ? 'bg-blue-500/20 text-blue-400' :
-              'bg-[var(--card-border)] text-[var(--text-muted)]'
+            <span className={`text-xs px-2 py-0.5 rounded-full border ${
+              data.status === 'active' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+              data.status === 'paused' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
+              data.status === 'completed' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+              data.status === 'cancelled' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+              'bg-[var(--bg-surface)] text-[var(--text-muted)] border-[var(--border)]'
             }`}>
               {data.status.toUpperCase()}
             </span>
@@ -121,6 +138,11 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
             {data.status === 'paused' && data.sent > 0 && (
               <button onClick={() => handleAction('resume')} className="btn-secondary text-sm py-1.5 px-4 flex items-center gap-1 border-[var(--accent)]/50 text-[var(--accent)]">
                 <RefreshCw className="w-4 h-4" /> Resume
+              </button>
+            )}
+            {(data.status === 'active' || data.status === 'paused') && (
+              <button onClick={() => handleAction('cancel')} className="btn-secondary text-sm py-1.5 px-4 flex items-center gap-1 text-[var(--danger)] hover:bg-[var(--danger)]/10 border-transparent">
+                Cancel
               </button>
             )}
           </div>

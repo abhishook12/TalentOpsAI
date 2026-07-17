@@ -33,6 +33,8 @@ async def run_qa():
             '/admin',
             '/admin/visitor-analytics',
             '/admin/users',
+            '/admin/jobs',
+            '/admin/audit-logs',
             '/settings',
             '/profile'
         ]
@@ -55,4 +57,5 @@ async def run_qa():
 
 if __name__ == '__main__':
     asyncio.run(run_qa())
+
 

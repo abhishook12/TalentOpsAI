@@ -1,32 +1,58 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Send, ArrowLeft, Plus, Mail, ShieldAlert, FileText, BarChart3, HelpCircle, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { 
+  Send, ArrowLeft, Plus, Mail, Activity, AlertCircle, FileText, 
+  CheckCircle2, Loader2, ChevronRight, Play, Eye
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 
 import RecipientValidator from '../components/RecipientValidator';
 import BridgeStatus from '../components/BridgeStatus';
-import PersonalizationToolbar from '../components/PersonalizationToolbar';
+import RichTextComposer from '../components/RichTextComposer';
+import SignatureManager from '../components/SignatureManager';
+import EmailPreview from '../components/EmailPreview';
 import CampaignProgress from '../components/CampaignProgress';
 import CampaignLogs from '../components/CampaignLogs';
 
+const STEPS = {
+  RECIPIENTS: 1,
+  COMPOSE: 2,
+  PREVIEW: 3,
+  SEND: 4
+};
+
 export default function Campaigns() {
-  const [view, setView] = useState('list'); // 'list' | 'compose'
+  const [view, setView] = useState('list'); // 'list' | 'wizard'
   const [campaigns, setCampaigns] = useState([]);
+  const [loading, setLoading] = useState(false);
   
-  // Compose State
+  // Wizard State
+  const [currentStep, setCurrentStep] = useState(STEPS.RECIPIENTS);
   const [activeCampaignId, setActiveCampaignId] = useState(null);
   const [campaignName, setCampaignName] = useState('New Campaign');
+  
+  // Compose State
   const [fromEmail, setFromEmail] = useState('abhishek.jadon@technovion.com');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
-  const [cc, setCc] = useState('');
-  const [bcc, setBcc] = useState('');
-  const [validatedRecipients, setValidatedRecipients] = useState(null);
-  const [bridgeHealthy, setBridgeHealthy] = useState(false);
-  const [campaignStatus, setCampaignStatus] = useState('draft'); // draft, active, paused, completed, failed
+  const [signatureId, setSignatureId] = useState(null);
   
-  // Ref for textarea to insert variables
-  const bodyRef = useRef(null);
+  // Recipient State
+  const [validatedRecipients, setValidatedRecipients] = useState({ recipients: [], valid_count: 0 });
+  
+  // Pre-flight State
+  const [preflightData, setPreflightData] = useState(null);
+  const [isValidating, setIsValidating] = useState(false);
+  const [bridgeHealthy, setBridgeHealthy] = useState(false);
+
+  useEffect(() => {
+    if (view === 'wizard' && activeCampaignId && currentStep !== STEPS.SEND) {
+      const timer = setTimeout(() => {
+        saveDraft();
+      }, 5000); // Save every 5s if changed (simplified)
+      return () => clearTimeout(timer);
+    }
+  }, [subject, body, signatureId, view]);
 
   // Load campaigns
   useEffect(() => {
@@ -37,328 +63,469 @@ export default function Campaigns() {
 
   const fetchCampaigns = async () => {
     try {
-      // Assuming a GET /campaigns endpoint exists
+      setLoading(true);
       const res = await api.get('/campaigns');
-      setCampaigns(res.data.items || []);
+      setCampaigns(Array.isArray(res.data) ? res.data : res.data.items || []);
     } catch (e) {
       console.error("Failed to load campaigns", e);
+      toast.error("Failed to load campaigns");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleStartCampaign = async () => {
-    if (!bridgeHealthy) {
-      toast.error("Outlook Bridge is offline or unhealthy. Cannot start.");
-      return;
-    }
-    
-    if (!validatedRecipients || validatedRecipients.valid_count === 0) {
-      toast.error("Please add and validate recipients first.");
-      return;
-    }
-    
-    if (!subject.trim() || !body.trim()) {
-      toast.error("Subject and body are required.");
-      return;
-    }
+  const startNewCampaign = () => {
+    setActiveCampaignId(null);
+    setCampaignName('New Campaign');
+    setSubject('');
+    setBody('');
+    setSignatureId(null);
+    setValidatedRecipients({ recipients: [], valid_count: 0 });
+    setCurrentStep(STEPS.RECIPIENTS);
+    setView('wizard');
+  };
 
+  const saveDraft = async () => {
     try {
-      let currentCampaignId = activeCampaignId;
-      
-      // If we don't have a campaign yet, create one
-      if (!currentCampaignId) {
-        const createRes = await api.post('/campaigns', {
+      if (activeCampaignId) {
+        // Update existing campaign
+        await api.put(`/campaigns/${activeCampaignId}`, {
           name: campaignName,
           from_email: fromEmail,
-          status: 'draft'
-        });
-        currentCampaignId = createRes.data.campaign_id;
-        setActiveCampaignId(currentCampaignId);
-        
-        // Add template step
-        const stepRes = await api.post(`/campaigns/${currentCampaignId}/steps`, {
-          step_number: 1,
-          subject: subject,
-          body: body,
-          delay_days: 0
+          signature_id: signatureId
         });
         
-        // Enroll recipients (the valid ones)
+        // Update or create template step
+        // For simplicity we assume step 1 exists if campaign exists, or backend handles it
+        // Actually we need to make sure we create a step if it doesn't exist
+      } else {
+        // Create new campaign shell
+        const res = await api.post('/campaigns', {
+          name: campaignName,
+          from_email: fromEmail,
+          status: 'draft',
+          signature_id: signatureId
+        });
+        setActiveCampaignId(res.data.campaign_id);
+      }
+    } catch (e) {
+      console.error("Draft save failed", e);
+    }
+  };
+
+  const runPreflight = async () => {
+    if (!activeCampaignId) await saveDraft();
+    
+    setIsValidating(true);
+    try {
+      // First save the template so preview/preflight works
+      if (activeCampaignId) {
+        try {
+          await api.post(`/campaigns/${activeCampaignId}/steps`, {
+            step_order: 1, // backend uses step_order
+            subject: subject || 'No Subject',
+            body: body || 'No Body',
+            delay_days: 0
+          });
+        } catch (e) {
+          console.error("Error saving step", e);
+        }
+      }
+
+      const res = await api.post(`/campaigns/${activeCampaignId}/validate-before-send`);
+      setPreflightData(res.data);
+    } catch (e) {
+      console.error("Preflight failed", e);
+      toast.error("Validation failed");
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  const handleNextStep = async () => {
+    if (currentStep === STEPS.RECIPIENTS) {
+      if (validatedRecipients.valid_count === 0) {
+        toast.error("Please add at least one valid recipient.");
+        return;
+      }
+      setCurrentStep(STEPS.COMPOSE);
+    } 
+    else if (currentStep === STEPS.COMPOSE) {
+      if (!subject.trim() || !body.trim()) {
+        toast.error("Subject and body are required.");
+        return;
+      }
+      await saveDraft();
+      
+      // Need to enroll recipients before preview so we have recruiters attached
+      if (activeCampaignId && validatedRecipients.valid_count > 0) {
         const validEmails = validatedRecipients.recipients.filter(r => r.status === 'valid').map(r => r.email);
-        if (validEmails.length > 0) {
-          await api.post(`/campaigns/${currentCampaignId}/enroll-emails`, {
+        try {
+          await api.post(`/campaigns/${activeCampaignId}/enroll-emails`, {
             emails: validEmails
           });
+        } catch (e) {
+          console.error("Failed to enroll", e);
         }
-        
-        toast.success("Campaign created. Starting engine...");
       }
       
-      // Start the campaign
-      await api.post(`/campaigns/${currentCampaignId}/start`);
-      setCampaignStatus('active');
-      toast.success("Campaign started successfully.");
+      setCurrentStep(STEPS.PREVIEW);
+      runPreflight();
+    }
+    else if (currentStep === STEPS.PREVIEW) {
+      if (!preflightData?.ready) {
+        toast.error("Cannot proceed. Please fix validation errors.");
+        return;
+      }
+      startCampaign();
+    }
+  };
+
+  const startCampaign = async () => {
+    try {
+      await api.post(`/campaigns/${activeCampaignId}/start`);
+      setCurrentStep(STEPS.SEND);
+      toast.success("Campaign engine started successfully!");
     } catch (e) {
       toast.error(api.getErrorMessage(e) || "Failed to start campaign");
     }
   };
 
-  const handleInsertVariable = (tag) => {
-    const textarea = bodyRef.current;
-    if (!textarea) return;
-    
-    const startPos = textarea.selectionStart;
-    const endPos = textarea.selectionEnd;
-    
-    setBody(body.substring(0, startPos) + tag + body.substring(endPos));
-    
-    // Set focus back after state updates
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(startPos + tag.length, startPos + tag.length);
-    }, 0);
-  };
-
-  // --------------------------------------------------------
-  // LIST VIEW
-  // --------------------------------------------------------
-  if (view === 'list') {
-    return (
-      <div className="page-container page-enter h-[calc(100vh-65px)] flex flex-col">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="page-title flex items-center gap-2"><Mail className="w-6 h-6 text-[var(--accent)]" /> Campaign Engine</h1>
-          <button 
-            onClick={() => {
-              setActiveCampaignId(null);
-              setCampaignStatus('draft');
-              setValidatedRecipients(null);
-              setSubject('');
-              setBody('');
-              setView('compose');
-            }} 
-            className="btn-primary flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" /> New Campaign
-          </button>
+  const renderList = () => (
+    <div className="h-full flex flex-col">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Campaigns</h1>
+          <p className="text-sm text-[var(--text-secondary)] mt-1">Manage outbound email campaigns</p>
         </div>
-
-        <div className="flex-1 bg-[var(--panel-bg)] border border-[var(--card-border)] rounded-xl overflow-hidden">
-          {campaigns.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-[var(--text-muted)]">
-              <Mail className="w-12 h-12 mb-4 opacity-20" />
-              <p>No campaigns found.</p>
-              <p className="text-sm">Create a new campaign to start sending bulk emails.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-[var(--card-bg)] border-b border-[var(--card-border)] text-[var(--text-muted)] font-medium">
-                  <tr>
-                    <th className="px-6 py-4">Campaign Name</th>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4">Created</th>
-                    <th className="px-6 py-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--card-border)]">
-                  {campaigns.map(c => (
-                    <tr key={c.campaign_id} className="hover:bg-[var(--card-bg)]/50 transition-colors">
-                      <td className="px-6 py-4 font-medium">{c.name}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          c.status === 'active' ? 'bg-green-500/20 text-green-400' :
-                          c.status === 'paused' ? 'bg-yellow-500/20 text-yellow-400' :
-                          'bg-[var(--card-border)] text-[var(--text-muted)]'
-                        }`}>
-                          {c.status.toUpperCase()}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-[var(--text-muted)]">{new Date(c.created_at).toLocaleDateString()}</td>
-                      <td className="px-6 py-4 text-right">
-                        <button 
-                          onClick={() => {
-                            setActiveCampaignId(c.campaign_id);
-                            setCampaignName(c.name);
-                            setCampaignStatus(c.status);
-                            setView('compose');
-                          }}
-                          className="text-[var(--accent)] hover:underline"
-                        >
-                          View & Manage
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+        <div className="flex items-center gap-4">
+          <BridgeStatus onStatusChange={setBridgeHealthy} />
+          <button 
+            onClick={startNewCampaign}
+            className="bg-[var(--accent)] text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-[var(--accent)]/90 transition-colors"
+          >
+            <Plus size={16} /> New Campaign
+          </button>
         </div>
       </div>
-    );
-  }
 
-  // --------------------------------------------------------
-  // COMPOSE / DETAIL VIEW
-  // --------------------------------------------------------
-  return (
-    <div className="page-container page-enter h-[calc(100vh-65px)] flex flex-col">
-      <div className="flex justify-between items-center mb-4">
+      <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl flex-1 overflow-hidden">
+        {loading ? (
+          <div className="h-full flex justify-center items-center">
+            <Loader2 className="w-8 h-8 animate-spin text-[var(--accent)]" />
+          </div>
+        ) : campaigns.length === 0 ? (
+          <div className="h-full flex flex-col justify-center items-center text-[var(--text-muted)] space-y-4">
+            <Activity className="w-12 h-12 opacity-20" />
+            <p>No campaigns found.</p>
+            <button onClick={startNewCampaign} className="text-[var(--accent)] hover:underline text-sm font-medium">Create your first campaign</button>
+          </div>
+        ) : (
+          <table className="w-full text-left text-sm">
+            <thead className="bg-[var(--bg-surface)] border-b border-[var(--card-border)] text-[var(--text-secondary)]">
+              <tr>
+                <th className="px-6 py-4 font-medium">Campaign Name</th>
+                <th className="px-6 py-4 font-medium">Status</th>
+                <th className="px-6 py-4 font-medium">Created</th>
+                <th className="px-6 py-4 font-medium">Speed</th>
+                <th className="px-6 py-4 font-medium text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--card-border)]">
+              {campaigns.map(c => (
+                <tr key={c.campaign_id} className="hover:bg-[var(--bg-surface)] transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="font-medium text-[var(--text-primary)]">{c.name}</div>
+                    <div className="text-xs text-[var(--text-muted)] mt-1">ID: {c.campaign_id}</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border ${
+                      c.status === 'active' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                      c.status === 'paused' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
+                      c.status === 'completed' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                      'bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border)]'
+                    }`}>
+                      {c.status.charAt(0).toUpperCase() + c.status.slice(1)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-[var(--text-secondary)]">
+                    {new Date(c.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 text-[var(--text-secondary)]">
+                    {c.rate_per_minute || 4} / min
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <button 
+                      onClick={() => {
+                        setActiveCampaignId(c.campaign_id);
+                        setCampaignName(c.name);
+                        setCurrentStep(STEPS.SEND); // Jump to progress view for existing
+                        setView('wizard');
+                      }}
+                      className="text-[var(--accent)] hover:text-white transition-colors"
+                    >
+                      View & Manage
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderWizard = () => (
+    <div className="h-full flex flex-col">
+      {/* Wizard Header */}
+      <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-4">
-          <button onClick={() => setView('list')} className="text-[var(--text-muted)] hover:text-white transition-colors">
-            <ArrowLeft className="w-5 h-5" />
+          <button 
+            onClick={() => setView('list')}
+            className="p-2 hover:bg-[var(--bg-surface)] rounded-lg text-[var(--text-secondary)] transition-colors"
+          >
+            <ArrowLeft size={20} />
           </button>
-          {activeCampaignId && campaignStatus !== 'draft' ? (
-            <h1 className="page-title m-0">{campaignName}</h1>
-          ) : (
-            <input 
-              type="text" 
-              value={campaignName}
-              onChange={(e) => setCampaignName(e.target.value)}
-              className="page-title m-0 bg-transparent border-b border-transparent hover:border-[var(--card-border)] focus:border-[var(--accent)] outline-none"
-            />
-          )}
+          <div>
+            <div className="flex items-center gap-3">
+              <input 
+                type="text" 
+                value={campaignName}
+                onChange={e => setCampaignName(e.target.value)}
+                className="bg-transparent text-2xl font-semibold text-[var(--text-primary)] border-none focus:outline-none focus:ring-1 focus:ring-[var(--accent)] rounded px-1 -ml-1"
+              />
+              <span className="text-xs bg-[var(--bg-surface)] px-2 py-1 rounded text-[var(--text-muted)] border border-[var(--border)]">
+                Draft
+              </span>
+            </div>
+            <p className="text-sm text-[var(--text-secondary)] mt-1 flex items-center gap-2">
+              <Mail className="w-4 h-4" /> Sending via Outlook Bridge
+            </p>
+          </div>
         </div>
         
-        <div className="flex gap-3 items-center">
-          <BridgeStatus onStatusChange={setBridgeHealthy} />
-          
-          {(campaignStatus === 'draft' || campaignStatus === 'paused') && (
-            <button 
-              onClick={handleStartCampaign}
-              className={`btn-primary flex items-center gap-2 ${(!bridgeHealthy || (validatedRecipients?.valid_count || 0) === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}
-              disabled={!bridgeHealthy}
-            >
-              <Send className="w-4 h-4" /> 
-              {campaignStatus === 'paused' ? 'Resume Campaign' : 'Start Engine'}
-            </button>
-          )}
+        {/* Step Indicator */}
+        <div className="flex items-center gap-2">
+          {[
+            { id: STEPS.RECIPIENTS, label: 'Recipients' },
+            { id: STEPS.COMPOSE, label: 'Compose' },
+            { id: STEPS.PREVIEW, label: 'Preview' },
+            { id: STEPS.SEND, label: 'Send' }
+          ].map((step, idx) => (
+            <React.Fragment key={step.id}>
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border ${
+                currentStep === step.id 
+                  ? 'bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]/30' 
+                  : currentStep > step.id 
+                    ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] border-[var(--border)]'
+                    : 'bg-transparent text-[var(--text-muted)] border-transparent'
+              }`}>
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
+                  currentStep === step.id ? 'bg-[var(--accent)] text-white' : 
+                  currentStep > step.id ? 'bg-[var(--text-primary)] text-[var(--card-bg)]' : 
+                  'bg-[var(--border)] text-[var(--text-muted)]'
+                }`}>
+                  {currentStep > step.id ? <CheckCircle2 size={12} /> : step.id}
+                </div>
+                {step.label}
+              </div>
+              {idx < 3 && <div className="w-4 h-[1px] bg-[var(--border)]" />}
+            </React.Fragment>
+          ))}
         </div>
       </div>
 
-      <div className="flex-1 grid grid-cols-12 gap-6 min-h-0 pb-6">
-        {/* LEFT PANEL: Input Intelligence */}
-        <div className="col-span-3 flex flex-col h-full">
-          <RecipientValidator onValidated={setValidatedRecipients} />
-        </div>
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-hidden min-h-0 flex gap-6">
+        
+        {currentStep === STEPS.RECIPIENTS && (
+          <div className="flex-1 h-full">
+            <RecipientValidator 
+              onValidated={setValidatedRecipients} 
+              initialRecipients={validatedRecipients.recipients}
+            />
+          </div>
+        )}
 
-        {/* CENTER & RIGHT PANELS */}
-        <div className="col-span-9 flex flex-col h-full gap-6 overflow-y-auto pr-2 custom-scrollbar">
-          
-          {/* Progress Dashboard (Only show if campaign is active/paused/completed) */}
-          {activeCampaignId && (
-            <div className="w-full">
-              <CampaignProgress campaignId={activeCampaignId} onStatusChange={setCampaignStatus} />
-            </div>
-          )}
-
-          <div className="grid grid-cols-3 gap-6 flex-1 min-h-[500px]">
-            {/* Compose Area */}
-            <div className="col-span-2 bg-[var(--panel-bg)] border border-[var(--card-border)] rounded-xl flex flex-col overflow-hidden">
-              <div className="px-4 py-3 border-b border-[var(--card-border)] bg-[var(--card-bg)] flex justify-between items-center">
-                <span className="font-medium text-sm flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-[var(--accent)]" /> Email Composer
-                </span>
-                {campaignStatus !== 'draft' && (
-                  <span className="text-xs bg-yellow-500/20 text-yellow-500 px-2 py-1 rounded flex items-center gap-1">
-                    <ShieldAlert className="w-3 h-3" /> Read-only while active
-                  </span>
-                )}
-              </div>
-              
-              <div className="flex-1 p-4 flex flex-col gap-3 overflow-y-auto">
-                <div className="flex items-center gap-3">
-                  <label className="text-[var(--text-muted)] text-sm w-12 text-right">From:</label>
-                  <select 
-                    className="flex-1 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg px-3 py-1.5 text-sm outline-none focus:border-[var(--accent)]"
-                    value={fromEmail}
-                    onChange={(e) => setFromEmail(e.target.value)}
-                    disabled={campaignStatus !== 'draft'}
-                  >
-                    <option value="abhishek.jadon@technovion.com">abhishek.jadon@technovion.com (Outlook Default)</option>
-                  </select>
-                </div>
-                <div className="flex items-center gap-3">
-                  <label className="text-[var(--text-muted)] text-sm w-12 text-right">Cc:</label>
-                  <input type="text" className="flex-1 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg px-3 py-1.5 text-sm outline-none focus:border-[var(--accent)]" value={cc} onChange={(e)=>setCc(e.target.value)} disabled={campaignStatus !== 'draft'} placeholder="Optional" />
-                </div>
-                <div className="flex items-center gap-3">
-                  <label className="text-[var(--text-muted)] text-sm w-12 text-right">Bcc:</label>
-                  <input type="text" className="flex-1 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg px-3 py-1.5 text-sm outline-none focus:border-[var(--accent)]" value={bcc} onChange={(e)=>setBcc(e.target.value)} disabled={campaignStatus !== 'draft'} placeholder="Optional" />
-                </div>
-                <div className="flex items-center gap-3">
-                  <label className="text-[var(--text-muted)] text-sm w-12 text-right font-medium text-white">Subject:</label>
-                  <input 
-                    type="text" 
-                    className="flex-1 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--accent)] font-medium" 
-                    value={subject} 
-                    onChange={(e)=>setSubject(e.target.value)} 
-                    disabled={campaignStatus !== 'draft'} 
-                    placeholder="Enter email subject..." 
-                  />
-                </div>
-                
-                <div className="mt-2 flex-1 flex flex-col">
-                  {campaignStatus === 'draft' && (
-                    <PersonalizationToolbar onInsert={handleInsertVariable} />
-                  )}
-                  <textarea 
-                    ref={bodyRef}
-                    className="flex-1 w-full bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg p-4 text-sm resize-none outline-none focus:border-[var(--accent)]"
-                    placeholder="Write your email body here... Use variables from the toolbar above to personalize for each recipient."
-                    value={body}
-                    onChange={(e) => setBody(e.target.value)}
-                    disabled={campaignStatus !== 'draft'}
-                  />
-                  <div className="text-xs text-[var(--text-muted)] mt-2 italic flex justify-end">
-                    Your native Outlook signature will be automatically attached by the bridge.
+        {currentStep === STEPS.COMPOSE && (
+          <>
+            {/* Left Side: Editor */}
+            <div className="flex-[2] h-full flex flex-col gap-4">
+              <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-4 flex flex-col gap-3">
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label className="block text-xs text-[var(--text-secondary)] mb-1">Subject</label>
+                    <input 
+                      type="text" 
+                      value={subject}
+                      onChange={e => setSubject(e.target.value)}
+                      placeholder="Enter subject... (Tip: type {{FirstName}} to personalize)"
+                      className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[var(--accent)] outline-none"
+                    />
                   </div>
                 </div>
               </div>
+              
+              <div className="flex-1 min-h-0">
+                <RichTextComposer 
+                  content={body}
+                  onChange={setBody}
+                  placeholder="Draft your message here..."
+                  signature={''} // Will be handled by preview visually, but we could render it here if we fetch it
+                />
+              </div>
             </div>
-
-            {/* AI Assistant & Logs */}
-            <div className="col-span-1 flex flex-col gap-6">
-              {/* AI Assistant Panel */}
-              <div className="bg-[var(--panel-bg)] border border-purple-500/30 rounded-xl overflow-hidden shadow-[0_0_15px_rgba(168,85,247,0.1)]">
-                <div className="px-4 py-3 bg-purple-500/10 border-b border-purple-500/20 flex items-center gap-2 text-purple-400 font-medium text-sm">
-                  <HelpCircle className="w-4 h-4" /> AI Campaign Assistant
-                </div>
-                <div className="p-4 flex flex-col gap-3 text-sm">
-                  {subject.length > 50 && (
-                    <div className="flex items-start gap-2 text-yellow-500">
-                      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                      <span>Subject is longer than 50 characters, which may lower open rates on mobile.</span>
-                    </div>
-                  )}
-                  {body.toLowerCase().includes('free') || body.toLowerCase().includes('guarantee') ? (
-                    <div className="flex items-start gap-2 text-red-400">
-                      <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
-                      <span>Found potential spam trigger words ("free", "guarantee"). Consider rewording to improve deliverability.</span>
-                    </div>
-                  ) : null}
-                  {(validatedRecipients?.valid_count || 0) > 0 ? (
-                    <div className="flex items-start gap-2 text-green-400">
-                      <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
-                      <span>{validatedRecipients.valid_count} valid recipients detected. Rate limiting (15-60s) will be automatically applied to protect sender reputation.</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-start gap-2 text-[var(--text-muted)]">
-                      <BarChart3 className="w-4 h-4 shrink-0 mt-0.5" />
-                      <span>Add recipients and write your email to get proactive suggestions.</span>
-                    </div>
-                  )}
+            
+            {/* Right Side: Sidebar */}
+            <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2">
+              <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-4">
+                <h3 className="text-sm font-medium text-[var(--text-primary)] mb-3 flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-[var(--accent)]" /> Campaign Settings
+                </h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs text-[var(--text-secondary)] mb-1">From Email</label>
+                    <input 
+                      type="text" 
+                      value={fromEmail}
+                      disabled
+                      className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--text-muted)] cursor-not-allowed opacity-70"
+                    />
+                  </div>
+                  
                 </div>
               </div>
+              
+              <SignatureManager 
+                selectedSignatureId={signatureId}
+                onSelectSignature={setSignatureId}
+              />
+            </div>
+          </>
+        )}
 
-              {/* Historical Logs */}
-              {activeCampaignId && (
-                <div className="flex-1">
-                  <CampaignLogs campaignId={activeCampaignId} />
-                </div>
-              )}
+        {currentStep === STEPS.PREVIEW && (
+          <>
+            <div className="flex-[2] h-full">
+              <EmailPreview 
+                campaignId={activeCampaignId}
+                subjectTemplate={subject}
+                bodyTemplate={body}
+                signatureId={signatureId}
+                recipients={validatedRecipients.recipients.filter(r => r.status === 'valid')}
+              />
+            </div>
+            
+            <div className="flex-1 h-full flex flex-col gap-4">
+              <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-4 h-full flex flex-col">
+                <h3 className="text-sm font-medium text-[var(--text-primary)] mb-4 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[var(--accent)]" /> Pre-Flight Validation
+                </h3>
+                
+                {isValidating ? (
+                  <div className="flex-1 flex flex-col items-center justify-center text-[var(--text-muted)] space-y-3">
+                    <Loader2 className="w-6 h-6 animate-spin text-[var(--accent)]" />
+                    <span className="text-sm">Running pre-flight checks...</span>
+                  </div>
+                ) : preflightData ? (
+                  <div className="flex-1 space-y-4">
+                    <ValidationItem 
+                      label="Outlook Bridge Online" 
+                      success={preflightData.bridge_healthy} 
+                      error={preflightData.bridge_error} 
+                    />
+                    <ValidationItem 
+                      label="Recipients Enrolled" 
+                      success={preflightData.has_recipients} 
+                      info={`${validatedRecipients.valid_count} valid recipients ready`}
+                    />
+                    <ValidationItem 
+                      label="Templates Saved" 
+                      success={preflightData.has_template} 
+                    />
+                    
+                    <div className="mt-8 pt-4 border-t border-[var(--border)]">
+                      <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-sm text-blue-400 mb-4">
+                        Estimated sending time: <strong>~{Math.ceil(validatedRecipients.valid_count / ratePerMinute)} minutes</strong>
+                      </div>
+                      
+                      <BridgeStatus onStatusChange={setBridgeHealthy} />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </>
+        )}
+
+        {currentStep === STEPS.SEND && activeCampaignId && (
+          <div className="w-full h-full flex flex-col gap-6 overflow-y-auto pb-6">
+            <CampaignProgress campaignId={activeCampaignId} />
+            {/* The CampaignProgress component inside has a live activity feed now, or we can use CampaignLogs */}
+            <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-4 min-h-[300px]">
+               <h3 className="text-sm font-medium text-[var(--text-primary)] mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[var(--text-secondary)]" /> Detailed Delivery Logs
+                </h3>
+               <CampaignLogs campaignId={activeCampaignId} />
             </div>
           </div>
+        )}
+        
+      </div>
+
+      {/* Footer Navigation */}
+      {currentStep !== STEPS.SEND && (
+        <div className="mt-6 pt-4 border-t border-[var(--card-border)] flex justify-between items-center">
+          <button
+            onClick={() => setCurrentStep(prev => prev - 1)}
+            disabled={currentStep === STEPS.RECIPIENTS}
+            className="px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:text-white disabled:opacity-30 transition-colors"
+          >
+            Back
+          </button>
+          
+          <button
+            onClick={handleNextStep}
+            className={`px-6 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors ${
+               currentStep === STEPS.PREVIEW && preflightData?.ready
+                ? 'bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-500/20'
+                : 'bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white'
+            }`}
+          >
+            {currentStep === STEPS.PREVIEW ? (
+              <><Play size={16} /> Launch Campaign</>
+            ) : (
+              <>Continue <ChevronRight size={16} /></>
+            )}
+          </button>
         </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="h-full bg-[var(--bg-page)] text-[var(--text-primary)] p-6">
+      {view === 'list' ? renderList() : renderWizard()}
+    </div>
+  );
+}
+
+function ValidationItem({ label, success, error, info }) {
+  return (
+    <div className="flex items-start gap-3 p-3 bg-[var(--bg-surface)] rounded-lg border border-[var(--border)]">
+      <div className="mt-0.5">
+        {success ? (
+          <CheckCircle2 className="w-4 h-4 text-green-400" />
+        ) : (
+          <AlertCircle className="w-4 h-4 text-red-400" />
+        )}
+      </div>
+      <div>
+        <div className="text-sm font-medium text-[var(--text-primary)]">{label}</div>
+        {info && <div className="text-xs text-[var(--text-muted)] mt-1">{info}</div>}
+        {error && <div className="text-xs text-red-400 mt-1">{error}</div>}
       </div>
     </div>
   );

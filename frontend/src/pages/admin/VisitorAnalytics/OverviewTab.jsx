@@ -21,7 +21,7 @@ export default function OverviewTab() {
   const formatSecs = (s) => {
     if (!s) return '0s'
     const m = Math.floor(s / 60)
-    return m > 0 ? ${m}m s : ${s}s
+    return m > 0 ? `${m}m ${s % 60}s` : `${s}s`
   }
 
   const kpis = [
@@ -30,7 +30,7 @@ export default function OverviewTab() {
     { label: 'Unique Users', value: stats?.unique_users, icon: Users, color: '#a78bfa' },
     { label: 'Returning Users', value: stats?.returning_users, icon: MousePointerClick, color: '#f472b6' },
     { label: 'Avg Session', value: stats ? formatSecs(stats.avg_session_duration_sec) : null, icon: Clock, color: '#fb923c' },
-    { label: 'Bounce Rate', value: stats ? ${stats.bounce_rate}% : null, icon: MousePointerClick, color: '#f87171' },
+    { label: 'Bounce Rate', value: stats ? `${stats.bounce_rate}%` : null, icon: MousePointerClick, color: '#f87171' },
     { label: 'Avg Pages / Session', value: stats?.avg_pages_per_session, icon: MousePointerClick, color: '#2dd4bf' },
     { label: 'Total Sessions (30d)', value: stats?.total_sessions, icon: Activity, color: '#94a3b8' }
   ]
@@ -49,7 +49,7 @@ export default function OverviewTab() {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ 
-                background: color-mix(in srgb,  15%, transparent), 
+                background: `color-mix(in srgb, ${kpi.color} 15%, transparent)`, 
                 color: kpi.color, 
                 padding: 8, 
                 borderRadius: 8 

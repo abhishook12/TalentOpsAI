@@ -22,16 +22,23 @@ class CampaignStatus(str, Enum):
     active = "active"
     paused = "paused"
     completed = "completed"
+    cancelled = "cancelled"
     archived = "archived"
+    failed = "failed"
 
 
 class CampaignRecruiterStatus(str, Enum):
     pending = "Pending"
+    queued = "Queued"
+    sending = "Sending"
     sent = "Sent"
+    delivered = "Delivered"
     opened = "Opened"
     replied = "Replied"
     bounced = "Bounced"
     failed = "Failed"
+    retrying = "Retrying"
+    cancelled = "Cancelled"
 
 
 class Campaign(Base):
@@ -48,6 +55,8 @@ class Campaign(Base):
     timezone = Column(String(100), nullable=True, default="UTC")
     is_active = Column(Boolean, default=True, index=True)
     is_archived = Column(Boolean, default=False, index=True)
+    rate_per_minute = Column(Integer, default=4, nullable=False)  # Configurable send speed
+    signature_id = Column(Integer, ForeignKey("email_signatures.signature_id", ondelete="SET NULL"), nullable=True)
     metadata_json = Column(Text, nullable=True)
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)
@@ -147,6 +156,8 @@ class EmailLogStatus(str, Enum):
     failed = "failed"
     retrying = "retrying"
     rejected = "rejected"
+    cancelled = "cancelled"
+    bounced = "bounced"
 
 
 class EmailLog(Base):
@@ -217,10 +228,24 @@ class CampaignDraft(Base):
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)
 
 
+class EmailSignature(Base):
+    """User-managed email signatures."""
+    __tablename__ = "email_signatures"
+
+    signature_id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String(255), nullable=False, index=True)
+    name = Column(String(255), nullable=False)  # e.g. "Work Signature", "Formal"
+    html_content = Column(Text, nullable=False)  # Rich HTML signature content
+    is_default = Column(Boolean, default=False, index=True)
+    created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)
+
+
 def ensure_campaign_tables():
     Base.metadata.create_all(
         bind=engine,
         tables=[
+            EmailSignature.__table__,
             Campaign.__table__,
             EmailTemplate.__table__,
             SequenceStep.__table__,
@@ -229,4 +254,3 @@ def ensure_campaign_tables():
             CampaignDraft.__table__,
         ],
     )
-

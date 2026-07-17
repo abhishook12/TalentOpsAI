@@ -1077,3 +1077,46 @@ async def save_admin_settings(request: Request):
     data = await request.json()
     MOCK_SETTINGS.update(data)
     return {"status": "ok", "message": "Settings saved"}
+
+@router.get("/jobs")
+def get_background_jobs(db: Session = Depends(get_db)):
+    # Returns all import jobs
+    from ..models.models import SmartImportJob
+    jobs = db.query(SmartImportJob).order_by(SmartImportJob.created_at.desc()).limit(20).all()
+    
+    res = []
+    for j in jobs:
+        total = j.total_rows or 1
+        processed = j.processed_rows or 0
+        prog = min(100, int((processed / total) * 100))
+        
+        res.append({
+            "job_id": j.job_id,
+            "filename": j.original_filename,
+            "status": j.status,
+            "progress": prog,
+            "created_at": j.created_at.isoformat(),
+            "completed_at": j.completed_at.isoformat() if j.completed_at else None,
+            "total_rows": total,
+            "processed_rows": processed
+        })
+        
+    return res
+
+@router.get("/audit-logs")
+def get_audit_logs(db: Session = Depends(get_db)):
+    # Fetch from action_logs
+    from ..models.models import ActionLog
+    logs = db.query(ActionLog).order_by(ActionLog.created_at.desc()).limit(100).all()
+    
+    return [
+        {
+            "id": log.id,
+            "action_type": log.action_type,
+            "user_id": log.user_id,
+            "ip_address": log.ip_address,
+            "timestamp": log.created_at.isoformat(),
+            "details": log.details
+        }
+        for log in logs
+    ]

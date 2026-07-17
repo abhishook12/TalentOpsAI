@@ -138,12 +138,29 @@ const visitorAnalyticsRoute = createRoute({
   component: lazyComponent(() => import('./pages/admin/VisitorAnalytics')),
 })
 
+const userManagementRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: '/admin/users',
+  component: lazyComponent(() => import('./pages/admin/UserManagement')),
+})
+
+const adminSettingsRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: '/admin/settings',
+  component: lazyComponent(() => import('./pages/admin/AdminSettings')),
+})
+
+const systemHealthRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: '/admin/health',
+  component: lazyComponent(() => import('./pages/admin/SystemHealth')),
+})
+
 const campaignsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/campaigns',
   component: lazyComponent(() => import('./pages/Campaigns')),
 })
-
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -164,7 +181,10 @@ const routeTree = rootRoute.addChildren([
     adminRoute,
     activityRoute,
     reviewQueueRoute,
-    visitorAnalyticsRoute
+    visitorAnalyticsRoute,
+    userManagementRoute,
+    adminSettingsRoute,
+    systemHealthRoute
   ])
 ])
 

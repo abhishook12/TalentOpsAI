@@ -1,0 +1,17 @@
+from fastapi import APIRouter
+from typing import Dict, Any
+
+# Mock settings dictionary in memory
+MOCK_SETTINGS = {
+    'general_platformName': 'TalentOps AI',
+    'general_timezone': 'UTC',
+    'general_language': 'en-US',
+    'auth_googleEnabled': True,
+    'auth_microsoftEnabled': False,
+    'auth_sessionTimeout': 60,
+    'email_smtpStatus': 'connected',
+    'email_defaultSender': 'noreply@talentops.ai',
+    'sec_rateLimits': 100,
+    'sec_ipWhitelist': '',
+    'sys_dataRetentionDays': 365
+}

@@ -29,14 +29,14 @@ export default function Sidebar() {
   const adminNav = [
     { isGroupHeader: true, label: 'Command Center' },
     { to: '/admin', label: 'Admin Terminal', icon: LayoutDashboard },
+    { to: '/admin/users', label: 'User Management', icon: UserCog },
     { to: '/admin/visitor-analytics', label: 'Visitor Analytics', icon: Eye },
     { to: '/activity', label: 'Activity Logs', icon: Activity },
     { to: '/admin/health', label: 'System Health', icon: HeartPulse },
-    { to: '/admin/users', label: 'User Management', icon: UserCog },
-    { to: '/admin/settings', label: 'Settings', icon: Settings },
+    { to: '/admin/settings', label: 'Admin Settings', icon: Settings },
   ]
 
-  const nav = isAdmin ? adminNav : userNav
+  const nav = isAdmin ? [...userNav, ...adminNav] : userNav
 
   return (
     <aside style={{

@@ -70,7 +70,9 @@ def get_users(
                 "first_name": u.first_name,
                 "last_name": u.last_name,
                 "company": u.company,
+                "country": u.country,
                 "role_name": u.role.name if u.role else "user",
+                "auth_provider": getattr(u, 'auth_provider', 'local'),
                 "status": u.status,
                 "created_at": u.created_at,
             }

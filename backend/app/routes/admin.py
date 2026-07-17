@@ -1049,3 +1049,31 @@ def admin_sync_master(db: Session = Depends(get_db)):
         db.rollback()
         # Fallback if system_status doesn't exist
         return {"status": "ok", "message": "Cache flushed and master sync triggered."}
+
+# --- SETTINGS MOCK API ---
+MOCK_SETTINGS = {
+    'general_platformName': 'TalentOps AI',
+    'general_timezone': 'UTC',
+    'general_language': 'en-US',
+    'auth_googleEnabled': True,
+    'auth_microsoftEnabled': False,
+    'auth_sessionTimeout': 60,
+    'email_smtpStatus': 'connected',
+    'email_defaultSender': 'noreply@talentops.ai',
+    'sec_rateLimits': 100,
+    'sec_ipWhitelist': '',
+    'sys_dataRetentionDays': 365
+}
+
+from fastapi import Request
+
+@router.get("/settings")
+def get_admin_settings():
+    return MOCK_SETTINGS
+
+@router.post("/settings")
+async def save_admin_settings(request: Request):
+    global MOCK_SETTINGS
+    data = await request.json()
+    MOCK_SETTINGS.update(data)
+    return {"status": "ok", "message": "Settings saved"}

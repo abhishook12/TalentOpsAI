@@ -8,6 +8,13 @@ const rootRoute = createRootRoute({
   component: AppShell,
 })
 
+import AdminRoute from './components/AdminRoute'
+const adminLayoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: 'adminLayout',
+  component: AdminRoute,
+})
+
 // Lazy load pages
 const lazyComponent = (importFn) => {
   const LazyComp = lazy(importFn)
@@ -68,21 +75,27 @@ const companiesRoute = createRoute({
 })
 
 const adminRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => adminLayoutRoute,
   path: '/admin',
   component: lazyComponent(() => import('./pages/AdminTerminal')),
 })
 
 const activityRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => adminLayoutRoute,
   path: '/activity',
   component: lazyComponent(() => import('./pages/ActivityLog')),
 })
 
 const reviewQueueRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => adminLayoutRoute,
   path: '/review-queue',
   component: lazyComponent(() => import('./pages/ReviewQueue')),
+})
+
+const profileRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/profile',
+  component: lazyComponent(() => import('./pages/Profile')),
 })
 
 
@@ -120,7 +133,7 @@ const verifyEmailRoute = createRoute({
 })
 
 const visitorAnalyticsRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => adminLayoutRoute,
   path: '/admin/visitor-analytics',
   component: lazyComponent(() => import('./pages/admin/VisitorAnalytics')),
 })
@@ -145,11 +158,14 @@ const routeTree = rootRoute.addChildren([
   directoryRoute,
   statesRoute,
   companiesRoute,
-  adminRoute,
-  activityRoute,
-  reviewQueueRoute,
   campaignsRoute,
-  visitorAnalyticsRoute
+  profileRoute,
+  adminLayoutRoute.addChildren([
+    adminRoute,
+    activityRoute,
+    reviewQueueRoute,
+    visitorAnalyticsRoute
+  ])
 ])
 
 export const router = createRouter({ routeTree })

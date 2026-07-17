@@ -1,18 +1,42 @@
 {
   "total": 10,
-  "passed": 7,
+  "passed": 1,
   "bugs": [
-    {
-      "test": "Registration - Weak Password",
-      "error": "HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /auth/register (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\"))"
-    },
     {
       "test": "Registration - SQL Injection Email",
       "error": "HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /auth/register (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\"))"
     },
     {
+      "test": "Registration - XSS Name",
+      "error": "HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /auth/register (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\"))"
+    },
+    {
+      "test": "Registration - Duplicate Email",
+      "error": "HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /auth/register (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\"))"
+    },
+    {
+      "test": "Login - Wrong Password",
+      "error": "HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /auth/register (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\"))"
+    },
+    {
+      "test": "Security - Brute Force Login",
+      "error": "HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /auth/login (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\"))"
+    },
+    {
       "test": "Google Sign-In - Invalid Token",
-      "error": "Unexpected status: 429"
+      "error": "HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /auth/google (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\"))"
+    },
+    {
+      "test": "Forgot Password - Non-existing email",
+      "error": "HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /auth/forgot-password (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\"))"
+    },
+    {
+      "test": "Reset Password - Invalid Token",
+      "error": "HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /auth/reset-password (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\"))"
+    },
+    {
+      "test": "Verify Email - Invalid Token",
+      "error": "HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /auth/verify-email (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\"))"
     }
   ]
 }

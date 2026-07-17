@@ -128,8 +128,11 @@ export const AuthProvider = ({ children }) => {
         return response.data;
     };
 
+    const isAdmin = user?.email?.toLowerCase() === 'abhishekjadon824@gmail.com' || 
+                    ['admin', 'superadmin'].includes(user?.role?.toLowerCase() || '');
+
     return (
-        <AuthContext.Provider value={{ user, loading, login, googleLogin, logout, register, forgotPassword, resetPassword, verifyEmail, checkAuthStatus }}>
+        <AuthContext.Provider value={{ user, isAdmin, loading, login, googleLogin, logout, register, forgotPassword, resetPassword, verifyEmail, checkAuthStatus }}>
             {!loading && children}
         </AuthContext.Provider>
     );

@@ -1,21 +1,11 @@
 import { Link as NavLink, useLocation } from '@tanstack/react-router'
 import { clearStoredToken } from '../services/api'
-import { LayoutDashboard, Activity, Users, Map, BarChart2, Search, Eye, Radar, LogOut, ShieldCheck } from 'lucide-react'
-
-const nav = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/activity', label: 'Activity Log', icon: Activity },
-  { to: '/campaigns', label: 'Campaigns', icon: Radar },
-  { to: '/recruiters', label: 'Recruiters', icon: Users },
-  { to: '/directory', label: 'Directory', icon: Map, aliases: ['/states', '/companies'] },
-  { to: '/analytics', label: 'Analytics', icon: BarChart2 },
-  { to: '/ai-search', label: 'AI Search', icon: Search },
-  { isGroupHeader: true, label: 'Admin' },
-  { to: '/admin/visitor-analytics', label: 'Visitor Analytics', icon: Eye },
-]
+import { LayoutDashboard, Activity, Users, Map, BarChart2, Search, Eye, Radar, LogOut, ShieldCheck, Settings, UserCircle, HeartPulse, UserCog } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 
 export default function Sidebar() {
   const location = useLocation()
+  const { isAdmin } = useAuth()
 
   const logoutSoon = () => {
     localStorage.removeItem('auth_session')
@@ -23,6 +13,30 @@ export default function Sidebar() {
     clearStoredToken()
     window.location.reload()
   }
+
+  const userNav = [
+    { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/campaigns', label: 'Campaigns', icon: Radar },
+    { to: '/recruiters', label: 'Recruiters', icon: Users },
+    { to: '/directory', label: 'Directory', icon: Map, aliases: ['/states', '/companies'] },
+    { to: '/analytics', label: 'Analytics', icon: BarChart2 },
+    { to: '/ai-search', label: 'AI Search', icon: Search },
+    { isGroupHeader: true, label: 'Account' },
+    { to: '/profile', label: 'Profile', icon: UserCircle },
+    { to: '/settings', label: 'Settings', icon: Settings },
+  ]
+
+  const adminNav = [
+    { isGroupHeader: true, label: 'Command Center' },
+    { to: '/admin', label: 'Admin Terminal', icon: LayoutDashboard },
+    { to: '/admin/visitor-analytics', label: 'Visitor Analytics', icon: Eye },
+    { to: '/activity', label: 'Activity Logs', icon: Activity },
+    { to: '/admin/health', label: 'System Health', icon: HeartPulse },
+    { to: '/admin/users', label: 'User Management', icon: UserCog },
+    { to: '/admin/settings', label: 'Settings', icon: Settings },
+  ]
+
+  const nav = isAdmin ? adminNav : userNav
 
   return (
     <aside style={{
@@ -51,12 +65,14 @@ export default function Sidebar() {
             boxShadow: '0 12px 28px rgba(0,0,0,0.22)',
             flexShrink: 0,
           }}>
-            <Radar size={20} />
+            <ShieldCheck size={20} />
           </div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ color: '#f3f3f3', fontSize: 18, fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.05 }}>TalentOps AI</div>
+            <div style={{ color: '#f3f3f3', fontSize: 18, fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.05 }}>
+              {isAdmin ? 'Admin Console' : 'TalentOps AI'}
+            </div>
             <div style={{ color: 'rgba(255,255,255,0.62)', fontSize: 12, fontWeight: 700, marginTop: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-              Recruiter Intel
+              {isAdmin ? 'Operations' : 'Recruiter Intel'}
             </div>
           </div>
         </div>
@@ -66,7 +82,7 @@ export default function Sidebar() {
         {nav.map((item, index) => {
           if (item.isGroupHeader) {
             return (
-              <div key={`header-${index}`} style={{
+              <div key={header- + index} style={{
                 color: 'rgba(255,255,255,0.4)',
                 fontSize: 11,
                 fontWeight: 800,
@@ -145,60 +161,27 @@ export default function Sidebar() {
             gap: 12,
             padding: '12px 14px',
             borderRadius: 14,
-            border: '1px solid rgba(255,255,255,0.08)',
-            background: 'rgba(255,255,255,0.05)',
-            color: '#f3f3f3',
-            fontSize: 13.5,
-            fontWeight: 800,
-            textAlign: 'left',
+            border: 'none',
+            background: 'transparent',
+            color: 'rgba(255,255,255,0.6)',
             cursor: 'pointer',
-            transition: 'all 0.15s ease',
+            fontSize: 13.5,
+            fontWeight: 700,
+            transition: 'all 0.2s',
+            textAlign: 'left'
           }}
-          onMouseEnter={(event) => {
-            event.currentTarget.style.background = 'rgba(255,255,255,0.09)'
-            event.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)'
-            event.currentTarget.style.boxShadow = '0 10px 24px rgba(0,0,0,0.16)'
-            event.currentTarget.style.transform = 'translateY(-1px)'
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = '#ff6b6b'
+            e.currentTarget.style.background = 'rgba(255, 107, 107, 0.08)'
           }}
-          onMouseLeave={(event) => {
-            event.currentTarget.style.background = 'rgba(255,255,255,0.05)'
-            event.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
-            event.currentTarget.style.boxShadow = 'none'
-            event.currentTarget.style.transform = 'translateY(0)'
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = 'rgba(255,255,255,0.6)'
+            e.currentTarget.style.background = 'transparent'
           }}
         >
-          <LogOut size={18} />
-          <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.01em' }}>Sign Out</span>
+          <LogOut size={18} strokeWidth={2} />
+          <span>Sign Out</span>
         </button>
-      </div>
-
-      <div style={{ padding: '0 14px 12px', flexShrink: 0 }}>
-        <div style={{
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: 16,
-          background: 'rgba(255,255,255,0.05)',
-          padding: 14,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-        }}>
-          <div style={{
-            width: 42,
-            height: 42,
-            borderRadius: 14,
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.08))',
-            display: 'grid',
-            placeItems: 'center',
-            color: '#f2f2f2',
-            border: '1px solid rgba(255,255,255,0.12)'
-          }}>
-            <ShieldCheck size={20} />
-          </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 900, color: '#f3f3f3' }}>System Operator</div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.62)', marginTop: 2 }}>Terminal 01-A</div>
-          </div>
-        </div>
       </div>
     </aside>
   )

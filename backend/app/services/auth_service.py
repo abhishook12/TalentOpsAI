@@ -139,6 +139,19 @@ def require_role(allowed_roles: list[str]):
         return user
     return role_checker
 
+def require_admin(request: Request, db: Session = Depends(get_db)):
+    """
+    Enforces strict Admin access.
+    Checks if the user's email is the master admin OR they possess the admin role.
+    """
+    user = get_current_user_from_request(request, db)
+    if user.email.lower() == "abhishekjadon824@gmail.com":
+        return user
+        
+    if not user.role or user.role.name.lower() not in ["superadmin", "admin"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return user
+
 def require_permission(permission_name: str):
     def permission_checker(request: Request, db: Session = Depends(get_db)):
         user = get_current_user_from_request(request, db)

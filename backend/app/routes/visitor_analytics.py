@@ -6,14 +6,14 @@ from typing import List, Optional
 
 from ..database import get_db
 from ..models.models import VisitorSession, PageVisit, ActionLog
-from ..services.auth_service import require_role
+from ..services.auth_service import require_admin
 from ..routes.admin import cached_route
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_admin)])
 
 @router.get("/overview")
 @cached_route(ttl=60)
-def visitor_overview(days: int = 30, db: Session = Depends(get_db), _ = Depends(require_role(['admin', 'superadmin']))):
+def visitor_overview(days: int = 30, db: Session = Depends(get_db)):
     """KPIs for Overview Tab"""
     since = datetime.utcnow() - timedelta(days=days)
     today = datetime.utcnow().date()
@@ -75,7 +75,7 @@ def visitor_overview(days: int = 30, db: Session = Depends(get_db), _ = Depends(
     }
 
 @router.get("/live")
-def visitor_live(db: Session = Depends(get_db), _ = Depends(require_role(['admin', 'superadmin']))):
+def visitor_live(db: Session = Depends(get_db)):
     """Live Visitors Tab (Active in last 10 mins)"""
     active_cutoff = datetime.utcnow() - timedelta(minutes=10)
     live_sessions = db.query(VisitorSession).filter(
@@ -107,7 +107,7 @@ def visitor_live(db: Session = Depends(get_db), _ = Depends(require_role(['admin
     ]
 
 @router.get("/sessions")
-def visitor_sessions(limit: int = 100, offset: int = 0, db: Session = Depends(get_db), _ = Depends(require_role(['admin', 'superadmin']))):
+def visitor_sessions(limit: int = 100, offset: int = 0, db: Session = Depends(get_db)):
     """Paginated list of sessions for the Sessions Tab"""
     sessions = db.query(VisitorSession).order_by(VisitorSession.started_at.desc()).offset(offset).limit(limit).all()
     total = db.query(func.count(VisitorSession.session_id)).scalar()
@@ -136,7 +136,7 @@ def visitor_sessions(limit: int = 100, offset: int = 0, db: Session = Depends(ge
     }
 
 @router.get("/sessions/{session_id}")
-def visitor_session_detail(session_id: str, db: Session = Depends(get_db), _ = Depends(require_role(['admin', 'superadmin']))):
+def visitor_session_detail(session_id: str, db: Session = Depends(get_db)):
     """Timeline and detailed profile for a specific session"""
     session = db.query(VisitorSession).filter(VisitorSession.session_id == session_id).first()
     if not session:

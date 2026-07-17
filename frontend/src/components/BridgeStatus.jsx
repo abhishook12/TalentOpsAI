@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Server, Activity, XCircle, CheckCircle, Loader2 } from 'lucide-react';
 
-const BRIDGE_URL = 'http://localhost:1337';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export default function BridgeStatus({ onStatusChange }) {
   const [status, setStatus] = useState(null);
@@ -10,11 +10,11 @@ export default function BridgeStatus({ onStatusChange }) {
 
   const checkHealth = async () => {
     try {
-      const res = await fetch(`${BRIDGE_URL}/health`);
+      const res = await fetch(`${API_URL}/health/outlook`);
       const data = await res.json();
       setStatus(data);
       setError(null);
-      if (onStatusChange) onStatusChange(data.status === 'healthy');
+      if (onStatusChange) onStatusChange(data.status === 'ok');
     } catch (err) {
       setStatus({ status: 'unhealthy', error: 'Bridge unreachable' });
       setError('Bridge unreachable');
@@ -39,7 +39,7 @@ export default function BridgeStatus({ onStatusChange }) {
     );
   }
 
-  const isHealthy = status?.status === 'healthy';
+  const isHealthy = status?.status === 'ok';
 
   return (
     <div className={`p-3 rounded-lg border flex flex-col gap-2 ${

@@ -6,7 +6,7 @@ from typing import Any, Optional
 import os
 import smtplib
 from email.message import EmailMessage
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, Request
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -668,7 +668,7 @@ def list_templates(campaign_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{campaign_id}/templates")
-def create_template(campaign_id: int, payload: TemplateCreate, db: Session = Depends(get_db)):
+def create_template(campaign_id: int, payload: TemplateCreate, request: Request, db: Session = Depends(get_db)):
     get_campaign_or_404(db, campaign_id)
     variables = payload.variables or extract_variables(payload.subject, payload.body)
     template = EmailTemplate(
@@ -680,6 +680,23 @@ def create_template(campaign_id: int, payload: TemplateCreate, db: Session = Dep
         is_active=payload.is_active,
     )
     db.add(template)
+    db.flush()
+    
+    # Automatically create SequenceStep 1 if not exists
+    step = db.query(SequenceStep).filter(SequenceStep.campaign_id == campaign_id, SequenceStep.step_order == 1).first()
+    if not step:
+        step = SequenceStep(
+            campaign_id=campaign_id,
+            template_id=template.template_id,
+            step_order=1,
+            delay_days=0,
+            delay_hours=0,
+            is_active=True
+        )
+        db.add(step)
+    else:
+        step.template_id = template.template_id
+        
     db.commit()
     db.refresh(template)
     return serialize_template(template)

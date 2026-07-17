@@ -122,19 +122,6 @@ export default function Campaigns() {
     
     setIsValidating(true);
     try {
-      // First save the template so preview/preflight works
-      if (cid) {
-        try {
-          await api.post(`/campaigns/${cid}/templates`, {
-            name: subject || 'No Subject',
-            subject: subject || 'No Subject',
-            body: body || 'No Body'
-          });
-        } catch (e) {
-          console.error("Error saving step", e);
-        }
-      }
-
       const res = await api.post(`/campaigns/${cid}/validate-before-send`);
       setPreflightData(res.data);
     } catch (e) {
@@ -159,6 +146,19 @@ export default function Campaigns() {
         return;
       }
       const cid = await saveDraft();
+      
+      // Save the template so sequence step is created
+      if (cid) {
+        try {
+          await api.post(`/campaigns/${cid}/templates`, {
+            name: subject || 'No Subject',
+            subject: subject || 'No Subject',
+            body: body || 'No Body'
+          });
+        } catch (e) {
+          console.error("Error saving template", e);
+        }
+      }
       
       // Need to enroll recipients before preview so we have recruiters attached
       if (cid && validatedRecipients.valid_count > 0) {

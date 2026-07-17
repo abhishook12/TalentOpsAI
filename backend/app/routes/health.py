@@ -25,12 +25,26 @@ def get_memory_usage():
     except Exception as e:
         return {"error": str(e)}
 
+import time
+
 def check_outlook_bridge():
     try:
-        response = requests.get("http://localhost:1337/health", timeout=2)
-        if response.status_code == 200:
-            return response.json()
-        return {"status": "unhealthy", "error": f"HTTP {response.status_code}"}
+        import os
+        heartbeat_file = "/tmp/bridge_heartbeat.txt"
+        if os.name == 'nt':
+            heartbeat_file = "C:\\Windows\\Temp\\bridge_heartbeat.txt"
+            
+        if os.path.exists(heartbeat_file):
+            with open(heartbeat_file, "r") as f:
+                last_heartbeat = float(f.read().strip())
+            
+            # If heartbeat is within last 15 seconds, it's connected
+            if time.time() - last_heartbeat < 15:
+                return {"status": "ok", "message": "Outlook Bridge Connected (Polling Mode)"}
+            else:
+                return {"status": "unhealthy", "error": f"Last heartbeat was {int(time.time() - last_heartbeat)}s ago (expected <15s)"}
+        else:
+            return {"status": "unhealthy", "error": "No heartbeat received yet"}
     except Exception as e:
         return {"status": "unreachable", "error": str(e)}
 

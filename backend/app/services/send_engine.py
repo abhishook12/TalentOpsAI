@@ -187,70 +187,14 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                 log.subject = subject
                 log.body_preview = body[:500] if body else ""
                 db.commit()
-                log_id = log.log_id
             
-            payload = {
-                "to": rec_email,
-                "subject": subject,
-                "body": body,
-            }
-            if from_email:
-                payload["from_email"] = from_email
-            
-            start_time = time.time()
-            success, error_msg, error_category = await _send_via_bridge(payload)
-            duration = int((time.time() - start_time) * 1000)
-            
-            # Update DB based on result
-            with SessionLocal() as db:
-                recipient = db.query(CampaignRecruiter).filter(
-                    CampaignRecruiter.campaign_recruiter_id == recipient_id
-                ).first()
-                log = db.query(EmailLog).filter(EmailLog.log_id == log_id).first()
-                
-                if log:
-                    log.duration_ms = duration
-                
-                if recipient:
-                    recipient.sent_via = "outlook_bridge"
-                
-                if success:
-                    if log:
-                        log.status = EmailLogStatus.delivered.value
-                        log.delivered_at = _utcnow()
-                        log.outlook_accepted = True
-                    
-                    if recipient:
-                        recipient.status = CampaignRecruiterStatus.sent.value
-                        recipient.last_sent_at = _utcnow()
-                        recipient.sent_count += 1
-                        
-                    logger.info(f"✅ Worker {worker_id}: Sent to {rec_email} ({duration}ms)")
-                else:
-                    if log:
-                        log.status = EmailLogStatus.failed.value
-                        log.failed_at = _utcnow()
-                        log.error_message = error_msg
-                        log.error_category = error_category
-                        log.outlook_accepted = False
-                    
-                    if recipient:
-                        recipient.retry_count += 1
-                        recipient.last_error = error_msg
-                        
-                        if recipient.retry_count >= max_retries:
-                            recipient.status = CampaignRecruiterStatus.failed.value
-                            logger.warning(f"❌ Worker {worker_id}: Permanently failed {rec_email}")
-                        else:
-                            recipient.status = CampaignRecruiterStatus.retrying.value
-                            logger.warning(f"⚠️ Worker {worker_id}: Will retry {rec_email}")
-                            # Schedule a retry in the background
-                            asyncio.create_task(_schedule_retry(queue, recipient_id, recipient.retry_count))
-                            
-                    # If we hit an error, add a small backoff delay before this worker picks up another
-                    await asyncio.sleep(2)
-                
-                db.commit()
+            # In Polling Architecture, we don't call the bridge synchronously.
+            # We just leave the status as 'sending' in EmailLog, and the bridge will poll it.
+            # But wait, we need to mark CampaignRecruiter as 'sending' and let the bridge update it.
+            # We simulate a "queueing" completion here so the worker can move to the next.
+            logger.info(f"⏳ Worker {worker_id}: Queued {rec_email} for Outlook Bridge polling")
+            # We don't sleep here unless we want to artificially slow down queueing
+            await asyncio.sleep(0.1)
                 
         except Exception as e:
             logger.error(f"Worker {worker_id} exception for {recipient_id}: {e}")

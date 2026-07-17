@@ -135,51 +135,54 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
             break
             
         try:
-            # Re-verify campaign status before sending
-            with SessionLocal() as db:
-                campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
-                if not campaign or campaign.status not in [CampaignStatus.active.value]:
-                    queue.task_done()
-                    continue
+            def _process_recipient_db(recipient_id):
+                with SessionLocal() as db:
+                    campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+                    if not campaign or campaign.status not in [CampaignStatus.active.value]:
+                        return False
 
-                recipient = db.query(CampaignRecruiter).filter(
-                    CampaignRecruiter.campaign_recruiter_id == recipient_id
-                ).first()
-                
-                if not recipient or recipient.status == CampaignRecruiterStatus.cancelled.value:
-                    queue.task_done()
-                    continue
-                
-                # Mark sending
-                recipient.status = CampaignRecruiterStatus.sending.value
-                recruiter = recipient.recruiter
-                company = recruiter.company if recruiter else None
-                rec_email = recruiter.email if recruiter else "unknown"
-                rec_name = recruiter.recruiter_name if recruiter else None
-                retry_count = recipient.retry_count
-                max_retries = recipient.max_retries
-                
-                log = EmailLog(
-                    campaign_id=campaign_id,
-                    campaign_recruiter_id=recipient_id,
-                    recipient_email=rec_email,
-                    recipient_name=rec_name,
-                    status=EmailLogStatus.sending.value,
-                    attempt_number=retry_count + 1,
-                    sending_at=_utcnow(),
-                    sent_via="outlook_bridge"
-                )
-                db.add(log)
-                
-                subject_template = template.get("subject", "No Subject")
-                body_template = template.get("body", "")
-                
-                subject = interpolate_variables(subject_template, recruiter, company)
-                body = interpolate_variables(body_template, recruiter, company, signature_html=signature_html)
-                
-                log.subject = subject
-                log.body_preview = body[:500] if body else ""
-                db.commit()
+                    recipient = db.query(CampaignRecruiter).filter(
+                        CampaignRecruiter.campaign_recruiter_id == recipient_id
+                    ).first()
+                    
+                    if not recipient or recipient.status == CampaignRecruiterStatus.cancelled.value:
+                        return False
+                    
+                    # Mark sending
+                    recipient.status = CampaignRecruiterStatus.sending.value
+                    recruiter = recipient.recruiter
+                    company = recruiter.company if recruiter else None
+                    rec_email = recruiter.email if recruiter else "unknown"
+                    rec_name = recruiter.recruiter_name if recruiter else None
+                    retry_count = recipient.retry_count
+                    
+                    log = EmailLog(
+                        campaign_id=campaign_id,
+                        campaign_recruiter_id=recipient_id,
+                        recipient_email=rec_email,
+                        recipient_name=rec_name,
+                        status=EmailLogStatus.sending.value,
+                        attempt_number=retry_count + 1,
+                        sending_at=_utcnow(),
+                        sent_via="outlook_bridge"
+                    )
+                    db.add(log)
+                    
+                    subject_template = template.get("subject", "No Subject")
+                    body_template = template.get("body", "")
+                    
+                    subject = interpolate_variables(subject_template, recruiter, company)
+                    body = interpolate_variables(body_template, recruiter, company, signature_html=signature_html)
+                    
+                    log.subject = subject
+                    log.body_preview = body[:500] if body else ""
+                    db.commit()
+                    return rec_email
+
+            rec_email = await asyncio.to_thread(_process_recipient_db, recipient_id)
+            if not rec_email:
+                queue.task_done()
+                continue
             
             # In Polling Architecture, we don't call the bridge synchronously.
             # We just leave the status as 'sending' in EmailLog, and the bridge will poll it.
@@ -262,6 +265,8 @@ async def process_campaign_queue(campaign_id: int):
             r.queue_position = i + 1
             queue.put_nowait(r.campaign_recruiter_id)
         
+        # Yield before blocking on commit
+        await asyncio.sleep(0)
         db.commit()
     
     if queue.empty():

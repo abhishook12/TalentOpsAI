@@ -261,7 +261,7 @@ def enroll_emails(campaign_id: int, payload: EnrollEmailsRequest, db: Session = 
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
         
-    first_step = db.query(SequenceStep).filter(SequenceStep.campaign_id == campaign_id).order_by(SequenceStep.step_number.asc()).first()
+    first_step = db.query(SequenceStep).filter(SequenceStep.campaign_id == campaign_id).order_by(SequenceStep.step_order.asc()).first()
     if not first_step:
         raise HTTPException(status_code=400, detail="Campaign must have at least one sequence step")
 

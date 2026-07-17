@@ -185,7 +185,7 @@ def login(request: Request, login_data: UserLogin, response: Response, db: Sessi
     user = db.query(User).filter(User.email == login_data.email).first()
     user_agent = request.headers.get("user-agent")
     
-    if not user or user.auth_provider != 'local' or not user.password_hash or not verify_password(login_data.password, user.password_hash):
+    if not user or user.auth_provider not in ['local', 'both'] or not user.password_hash or not verify_password(login_data.password, user.password_hash):
         history = LoginHistory(
             user_id=user.id if user else None,
             email=login_data.email,
@@ -326,15 +326,16 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
     user_agent = request.headers.get("user-agent")
 
     if user:
-        if user.auth_provider != "google":
-            # Account linking protection
-            history = LoginHistory(
-                user_id=user.id, email=email, status="Failed", reason="Attempted Google login on local account",
-                ip_address=ip, browser=user_agent
-            )
-            db.add(history)
+        if user.auth_provider != "google" and user.auth_provider != "both":
+            # Account linking: Google guarantees the email, so we upgrade to "both" seamlessly
+            user.auth_provider = "both"
+            if not user.provider_id:
+                user.provider_id = idinfo.get("sub")
+            if not user.avatar_url:
+                user.avatar_url = idinfo.get("picture", "")
+            if user.status == "Pending Verification":
+                user.status = "Active"
             db.commit()
-            raise HTTPException(status_code=403, detail="An account with this email already exists. Please log in with your password.")
             
         if user.status != "Active":
             raise HTTPException(status_code=403, detail=f"Account is {user.status}.")

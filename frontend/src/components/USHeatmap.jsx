@@ -194,7 +194,7 @@ export default function USHeatmap() {
           style={{
             position: "absolute",
             background: "#0d1527",
-            color: "#fff",
+            color: 'var(--text-inverse)',
             padding: "8px 12px",
             borderRadius: "8px",
             fontSize: "12px",

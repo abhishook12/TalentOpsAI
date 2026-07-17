@@ -25,7 +25,7 @@ export default function EnrichmentLiveFeed() {
 
   return (
     <div style={{ padding: '24px', background: 'linear-gradient(135deg, #111827, #1f2937, #374151)', borderRadius: '8px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)', minHeight: '400px', maxHeight: '600px', display: 'flex', flexDirection: 'column' }}>
-      <h2 style={{ fontSize: '24px', fontWeight: 500, color: '#fff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <h2 style={{ fontSize: '24px', fontWeight: 500, color: 'var(--text-inverse)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
         <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10b981', boxShadow: '0 0 10px #10b981', animation: 'pulse 2s infinite' }} />
         Live Enrichment Feed
       </h2>
@@ -67,9 +67,9 @@ export default function EnrichmentLiveFeed() {
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.3 }}
                 style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
+                  background: 'var(--bg-surface)',
                   backdropFilter: 'blur(4px)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  border: '1px solid var(--card-border)',
                   borderRadius: '8px',
                   padding: '16px',
                   display: 'flex',

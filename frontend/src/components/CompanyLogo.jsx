@@ -209,7 +209,7 @@ export function CompanyLogo({ domain, name, size = 32, style = {} }) {
         height: size,
         borderRadius: 6,
         objectFit: 'contain',
-        backgroundColor: 'rgba(255,255,255,0.05)',
+        backgroundColor: 'var(--bg-surface)',
         padding: 4,
         border: '1px solid #4b5563',
         ...style

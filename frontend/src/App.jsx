@@ -103,6 +103,7 @@ const globalStyles = `
 
   *, *::before, *::after { box-sizing: border-box; }
   html, body, #root {
+    color-scheme: light;
     min-height: 100%;
     margin: 0;
     background:
@@ -116,6 +117,7 @@ const globalStyles = `
     -moz-osx-font-smoothing: grayscale;
   }
 
+  html[data-theme='dark'] { color-scheme: dark; }
   html[data-theme='dark'] body,
   html[data-theme='dark'] #root {
     background: var(--main-bg);
@@ -813,4 +815,5 @@ function AppShell() {
     </>
   )
 }
+
 

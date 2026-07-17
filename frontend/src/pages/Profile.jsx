@@ -10,7 +10,7 @@ export default function Profile() {
   const isGoogle = user.auth_provider === 'google'
 
   return (
-    <div style={{ padding: 40, maxWidth: 900, margin: '0 auto', color: '#fff' }}>
+    <div style={{ padding: 40, maxWidth: 900, margin: '0 auto', color: 'var(--text-inverse)' }}>
       <h1 style={{ fontSize: 32, fontWeight: 900, marginBottom: 40, letterSpacing: '-0.02em' }}>My Profile</h1>
 
       <div style={{
@@ -22,7 +22,7 @@ export default function Profile() {
         {/* Left Column - Card */}
         <div style={{
           background: 'rgba(25, 25, 25, 0.6)',
-          border: '1px solid rgba(255,255,255,0.06)',
+          border: '1px solid var(--card-border)',
           borderRadius: 24,
           padding: 32,
           textAlign: 'center',
@@ -55,7 +55,7 @@ export default function Profile() {
           {/* Account Details */}
           <div style={{
             background: 'rgba(25, 25, 25, 0.6)',
-            border: '1px solid rgba(255,255,255,0.06)',
+            border: '1px solid var(--card-border)',
             borderRadius: 24,
             padding: 32,
           }}>
@@ -97,7 +97,7 @@ export default function Profile() {
           {/* Security */}
           <div style={{
             background: 'rgba(25, 25, 25, 0.6)',
-            border: '1px solid rgba(255,255,255,0.06)',
+            border: '1px solid var(--card-border)',
             borderRadius: 24,
             padding: 32,
           }}>
@@ -106,7 +106,7 @@ export default function Profile() {
             </h3>
 
             {isGoogle ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 20, background: 'rgba(255,255,255,0.03)', borderRadius: 16, border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 20, background: 'var(--bg-surface)', borderRadius: 16, border: '1px solid var(--card-border)' }}>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Google Connected</div>
                   <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>You signed in using your Google account. Password resets are managed by Google.</div>
@@ -114,7 +114,7 @@ export default function Profile() {
                 <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" style={{ width: 24, height: 24 }} />
               </div>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 20, background: 'rgba(255,255,255,0.03)', borderRadius: 16, border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 20, background: 'var(--bg-surface)', borderRadius: 16, border: '1px solid var(--card-border)' }}>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Password Authentication</div>
                   <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>You use a local password to sign in.</div>

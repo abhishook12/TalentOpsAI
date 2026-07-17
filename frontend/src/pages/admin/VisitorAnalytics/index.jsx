@@ -23,7 +23,7 @@ export default function VisitorAnalytics() {
       <div style={{ 
         display: 'flex', 
         gap: 8, 
-        borderBottom: '1px solid rgba(255,255,255,0.1)', 
+        borderBottom: '1px solid var(--card-border)', 
         marginBottom: 24,
         paddingBottom: 2
       }}>

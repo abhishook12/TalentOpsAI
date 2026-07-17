@@ -41,8 +41,8 @@ export default function OverviewTab() {
         const Icon = kpi.icon
         return (
           <div key={idx} style={{
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.08)',
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--card-border)',
             borderRadius: 16,
             padding: 20,
             display: 'flex',
@@ -60,7 +60,7 @@ export default function OverviewTab() {
               </div>
               <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 600 }}>{kpi.label}</span>
             </div>
-            <div style={{ fontSize: 32, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>
+            <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-inverse)', letterSpacing: '-0.02em' }}>
               {kpi.value}
             </div>
           </div>

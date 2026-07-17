@@ -52,7 +52,7 @@ export default function Sidebar() {
       zIndex: 20,
       overflow: 'visible',
     }}>
-      <div style={{ padding: '22px 18px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ padding: '22px 18px 18px', borderBottom: '1px solid var(--card-border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{
             width: 44,
@@ -149,7 +149,7 @@ export default function Sidebar() {
 
       <div style={{
         padding: '10px 14px 12px',
-        borderTop: '1px solid rgba(255,255,255,0.06)',
+        borderTop: '1px solid var(--card-border)',
         flexShrink: 0,
       }}>
         <button

@@ -1,17 +1,25 @@
 import asyncio
 from playwright.async_api import async_playwright
 
-async def run():
+async def test_all():
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
-        page = await browser.new_page()
-        print("Opening app...")
-        await page.goto("https://talent-ops-ai.vercel.app/")
-        await page.wait_for_timeout(5000)
+        context = await browser.new_context()
+        page = await context.new_page()
+
+        page.on('response', lambda response: print(f'RESPONSE: {response.status} {response.url} {response.status_text}') if response.status >= 400 else None)
+        page.on('pageerror', lambda err: print(f'PAGE ERROR: {err.message}'))
+
+        print("Logging in...")
+        await page.goto('https://talent-ops-ai.vercel.app/login')
         
-        await page.screenshot(path="debug_login.png", full_page=True)
-        print("Screenshot saved to debug_login.png")
+        await page.fill('input[type="email"]', 'abhishekjadon824@gmail.com')
+        await page.fill('input[type="password"]', 'Admin@1234')
+        
+        await page.click('button[type="submit"]')
+        await page.wait_for_timeout(3000)
+        
+        print("Done. URL is:", page.url)
         await browser.close()
 
-if __name__ == "__main__":
-    asyncio.run(run())
+asyncio.run(test_all())

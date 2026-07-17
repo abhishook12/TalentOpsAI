@@ -42,10 +42,10 @@ export default function ForgotPassword() {
         borderRadius: '16px',
         padding: '40px',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-        border: '1px solid rgba(255,255,255,0.05)'
+        border: '1px solid var(--card-border)'
       }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#fff', margin: '0 0 8px 0' }}>Reset Password</h1>
+          <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-inverse)', margin: '0 0 8px 0' }}>Reset Password</h1>
           <p style={{ color: '#a1a1aa', margin: 0, fontSize: '14px' }}>Enter your email to receive a reset link</p>
         </div>
 
@@ -100,9 +100,9 @@ export default function ForgotPassword() {
                 width: '100%',
                 padding: '12px 16px',
                 borderRadius: '8px',
-                border: '1px solid rgba(255,255,255,0.1)',
-                background: 'rgba(255,255,255,0.03)',
-                color: '#fff',
+                border: '1px solid var(--card-border)',
+                background: 'var(--bg-surface)',
+                color: 'var(--text-inverse)',
                 fontSize: '15px',
                 outline: 'none',
                 transition: 'border-color 0.2s'
@@ -120,7 +120,7 @@ export default function ForgotPassword() {
               padding: '12px',
               borderRadius: '8px',
               background: (isSubmitting || !email) ? 'rgba(59, 130, 246, 0.5)' : '#3b82f6',
-              color: '#fff',
+              color: 'var(--text-inverse)',
               fontSize: '15px',
               fontWeight: '600',
               border: 'none',

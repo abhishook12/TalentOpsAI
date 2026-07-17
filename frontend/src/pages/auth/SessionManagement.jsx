@@ -37,7 +37,7 @@ const SessionManagement = () => {
 
   return (
     <div style={{ maxWidth: '600px', margin: '40px auto', padding: '0 20px' }}>
-      <h2 style={{ fontSize: '24px', fontWeight: '600', color: '#fff', marginBottom: '24px' }}>Active Sessions</h2>
+      <h2 style={{ fontSize: '24px', fontWeight: '600', color: 'var(--text-inverse)', marginBottom: '24px' }}>Active Sessions</h2>
       {error && <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '12px 16px', borderRadius: '8px', marginBottom: '20px', fontSize: '14px' }}>{error}</div>}
       
       <div style={{ background: '#18181b', borderRadius: '12px', border: '1px solid #27272a', overflow: 'hidden' }}>
@@ -51,7 +51,7 @@ const SessionManagement = () => {
               borderBottom: index < sessions.length - 1 ? '1px solid #27272a' : 'none' 
             }}>
               <div>
-                <p style={{ margin: '0 0 4px 0', color: '#fff', fontSize: '15px', fontWeight: '500' }}>
+                <p style={{ margin: '0 0 4px 0', color: 'var(--text-inverse)', fontSize: '15px', fontWeight: '500' }}>
                   {session.browser || 'Unknown Device'} - {session.ip_address}
                 </p>
                 <p style={{ margin: '0 0 8px 0', color: '#a1a1aa', fontSize: '13px' }}>

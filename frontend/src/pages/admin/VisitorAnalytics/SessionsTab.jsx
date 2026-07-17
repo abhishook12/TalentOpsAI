@@ -20,10 +20,10 @@ export default function SessionsTab() {
 
   return (
     <>
-      <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 16, border: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+      <div style={{ background: 'var(--bg-surface)', borderRadius: 16, border: '1px solid var(--card-border)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
           <thead>
-            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)' }}>
+            <tr style={{ borderBottom: '1px solid var(--card-border)', background: 'var(--bg-surface)' }}>
               <th style={{ padding: '16px 24px', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>User / ID</th>
               <th style={{ padding: '16px 24px', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>Location</th>
               <th style={{ padding: '16px 24px', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>Device</th>
@@ -37,7 +37,7 @@ export default function SessionsTab() {
                 key={s.session_id} 
                 onClick={() => setSelectedSession(s.session_id)}
                 style={{ 
-                  borderBottom: '1px solid rgba(255,255,255,0.05)', 
+                  borderBottom: '1px solid var(--card-border)', 
                   cursor: 'pointer',
                   transition: 'background 0.15s'
                 }}
@@ -45,7 +45,7 @@ export default function SessionsTab() {
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
                 <td style={{ padding: '16px 24px' }}>
-                  <div style={{ color: '#fff', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ color: 'var(--text-inverse)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
                     {s.user_email ? s.user_email : <><Fingerprint size={14} style={{ opacity: 0.5 }}/> Anonymous</>}
                   </div>
                   <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 4, fontFamily: 'monospace' }}>

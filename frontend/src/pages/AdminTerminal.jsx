@@ -125,7 +125,7 @@ function AdminLock({ onUnlock, errorMessage }) {
       <div style={{
         padding: 44,
         background: 'radial-gradient(1200px 800px at 30% 20%, rgba(99,102,241,0.22), transparent 55%), radial-gradient(900px 600px at 60% 70%, rgba(59,130,246,0.18), transparent 60%)',
-        borderRight: '1px solid rgba(255,255,255,0.06)',
+        borderRight: '1px solid var(--card-border)',
         display: 'flex',
         flexDirection: 'column',
         gap: 22,
@@ -141,14 +141,14 @@ function AdminLock({ onUnlock, errorMessage }) {
           Manage recruiter intelligence, company data, state directories, ETL operations, analytics, and platform administration within our unified operational command center.
         </div>
         <div style={{ marginTop: 'auto', display: 'flex', gap: 14, alignItems: 'center', opacity: 0.9 }}>
-          <div className="card" style={{ padding: 16, borderRadius: 18, width: 220, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="card" style={{ padding: 16, borderRadius: 18, width: 220, background: 'var(--bg-surface)', border: '1px solid var(--card-border)' }}>
             <div style={{ fontSize: 10, color: 'rgba(229,231,235,0.65)', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' }}>ETL Pipeline</div>
-            <div style={{ marginTop: 10, height: 6, borderRadius: 999, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+            <div style={{ marginTop: 10, height: 6, borderRadius: 999, background: 'var(--bg-surface)', overflow: 'hidden' }}>
               <div style={{ width: '62%', height: '100%', background: 'rgba(99,102,241,0.75)' }} />
             </div>
             <div style={{ marginTop: 10, fontSize: 12, color: 'rgba(229,231,235,0.75)' }}>98.2% Accuracy Rate</div>
           </div>
-          <div className="card" style={{ padding: 16, borderRadius: 18, width: 220, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="card" style={{ padding: 16, borderRadius: 18, width: 220, background: 'var(--bg-surface)', border: '1px solid var(--card-border)' }}>
             <div style={{ fontSize: 10, color: 'rgba(229,231,235,0.65)', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Active Clusters</div>
             <div style={{ marginTop: 8, fontSize: 26, fontWeight: 900 }}>1,204</div>
             <div style={{ marginTop: 2, fontSize: 12, color: '#34d399' }}>+12%</div>
@@ -178,10 +178,10 @@ function AdminLock({ onUnlock, errorMessage }) {
           {/* Icon */}
           <div style={{ position: 'relative' }}>
             <div style={{ width: 64, height: 64, borderRadius: 16, background: 'linear-gradient(135deg, #0ea5e9, #1d4ed8)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 30px rgba(14,165,233,0.4)' }}>
-              <i className="ti ti-terminal-2" style={{ color: '#fff', fontSize: 30 }} />
+              <i className="ti ti-terminal-2" style={{ color: 'var(--text-primary)', fontSize: 30 }} />
             </div>
             <div style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16, borderRadius: '50%', background: '#ef4444', border: '2px solid #0d1829', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <i className="ti ti-lock" style={{ color: '#fff', fontSize: 8 }} />
+              <i className="ti ti-lock" style={{ color: 'var(--text-primary)', fontSize: 8 }} />
             </div>
           </div>
 
@@ -452,7 +452,7 @@ function SqlConsole() {
       <div style={{ display: 'flex', gap: 10, marginTop: 10, alignItems: 'center' }}>
         <button onClick={run} disabled={loading} style={{
           background: loading ? '#1e3a5f' : 'linear-gradient(135deg, #0ea5e9, #1d4ed8)',
-          color: '#fff', padding: '9px 22px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+          color: 'var(--text-primary)', padding: '9px 22px', borderRadius: 8, fontSize: 13, fontWeight: 600,
           border: 'none', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8,
         }}>
           {loading ? <i className="ti ti-loader" style={{ animation: 'spin 0.8s linear infinite' }} /> : <i className="ti ti-player-play" />}
@@ -1108,7 +1108,7 @@ export default function AdminTerminal() {
       {/* Header */}
       <div style={{ background: 'var(--panel-bg)', borderBottom: '1px solid var(--card-border)', padding: '14px 28px', display: 'flex', alignItems: 'center', gap: 14, position: 'sticky', top: 0, zIndex: 50 }}>
         <div style={{ width: 36, height: 36, borderRadius: 8, background: 'linear-gradient(135deg, #0ea5e9, #1d4ed8)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 16px rgba(14,165,233,0.4)' }}>
-          <i className="ti ti-terminal-2" style={{ color: '#fff', fontSize: 18 }} />
+          <i className="ti ti-terminal-2" style={{ color: 'var(--text-primary)', fontSize: 18 }} />
         </div>
         <div>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Operational Command Center</div>
@@ -1119,11 +1119,11 @@ export default function AdminTerminal() {
           <button
             onClick={openReviewPanel}
             title="Open the review queue"
-            style={{ background: 'linear-gradient(135deg, #1d4ed8, #0ea5e9)', border: '1px solid #1d4ed8', color: '#fff', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+            style={{ background: 'linear-gradient(135deg, #1d4ed8, #0ea5e9)', border: '1px solid #1d4ed8', color: 'var(--text-primary)', padding: '7px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
           >
             <i className="ti ti-clipboard-check" /> Review Panel
             {dataQuality?.needs_review_count != null && (
-              <span style={{ marginLeft: 4, padding: '1px 6px', borderRadius: 999, background: 'rgba(255,255,255,0.16)', fontSize: 11 }}>
+              <span style={{ marginLeft: 4, padding: '1px 6px', borderRadius: 999, background: 'var(--accent-bg)', fontSize: 11 }}>
                 {fmt(dataQuality.needs_review_count)}
               </span>
             )}
@@ -1579,7 +1579,7 @@ export default function AdminTerminal() {
                   <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                     <button
                       onClick={openReviewPanel}
-                      style={{ background: 'linear-gradient(135deg, #2563eb, #0ea5e9)', border: '1px solid #2563eb', color: '#fff', padding: '8px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
+                      style={{ background: 'linear-gradient(135deg, #2563eb, #0ea5e9)', border: '1px solid #2563eb', color: 'var(--text-primary)', padding: '8px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
                     >
                       <i className="ti ti-clipboard-check" /> Open Review Panel
                     </button>
@@ -2020,7 +2020,7 @@ export default function AdminTerminal() {
                       <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                         <button
                           onClick={() => openReviewRecruiter(r)}
-                          style={{ background: 'linear-gradient(135deg, #2563eb, #0ea5e9)', border: '1px solid #2563eb', color: '#fff', padding: '8px 12px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
+                          style={{ background: 'linear-gradient(135deg, #2563eb, #0ea5e9)', border: '1px solid #2563eb', color: 'var(--text-primary)', padding: '8px 12px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
                         >
                           Open editor
                         </button>
@@ -2139,7 +2139,7 @@ export default function AdminTerminal() {
                   </label>
                   <div style={{ display: 'flex', gap: 10 }}>
                     <button onClick={closeRecruiterEditor} style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-secondary)', cursor: 'pointer' }}>Cancel</button>
-                    <button onClick={saveRecruiter} disabled={savingRecruiter} style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid #2563eb', background: 'linear-gradient(135deg, #2563eb, #0ea5e9)', color: '#fff', cursor: savingRecruiter ? 'not-allowed' : 'pointer', opacity: savingRecruiter ? 0.7 : 1 }}>
+                    <button onClick={saveRecruiter} disabled={savingRecruiter} style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid #2563eb', background: 'linear-gradient(135deg, #2563eb, #0ea5e9)', color: 'var(--text-primary)', cursor: savingRecruiter ? 'not-allowed' : 'pointer', opacity: savingRecruiter ? 0.7 : 1 }}>
                       {savingRecruiter ? 'Saving...' : 'Save Changes'}
                     </button>
                   </div>

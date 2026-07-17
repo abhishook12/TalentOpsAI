@@ -52,7 +52,7 @@ export default function VerifyEmail() {
         borderRadius: '16px',
         padding: '40px',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-        border: '1px solid rgba(255,255,255,0.05)',
+        border: '1px solid var(--card-border)',
         textAlign: 'center'
       }}>
         {status === 'verifying' && (
@@ -60,7 +60,7 @@ export default function VerifyEmail() {
             <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
               <i className="ti ti-loader animate-spin" style={{ fontSize: '48px', color: '#3b82f6' }} />
             </div>
-            <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#fff', margin: '0 0 8px 0' }}>Verifying Email</h1>
+            <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-inverse)', margin: '0 0 8px 0' }}>Verifying Email</h1>
             <p style={{ color: '#a1a1aa', margin: 0, fontSize: '14px' }}>Please wait while we verify your email address...</p>
           </>
         )}
@@ -70,14 +70,14 @@ export default function VerifyEmail() {
             <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
               <i className="ti ti-circle-check" style={{ fontSize: '48px', color: '#22c55e' }} />
             </div>
-            <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#fff', margin: '0 0 8px 0' }}>Email Verified</h1>
+            <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-inverse)', margin: '0 0 8px 0' }}>Email Verified</h1>
             <p style={{ color: '#a1a1aa', margin: '0 0 24px 0', fontSize: '14px' }}>{message}</p>
             <Link to="/login" style={{
               display: 'inline-block',
               padding: '12px 24px',
               borderRadius: '8px',
               background: '#3b82f6',
-              color: '#fff',
+              color: 'var(--text-inverse)',
               textDecoration: 'none',
               fontWeight: '500',
               transition: 'background 0.2s'
@@ -92,14 +92,14 @@ export default function VerifyEmail() {
             <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
               <i className="ti ti-alert-circle" style={{ fontSize: '48px', color: '#ef4444' }} />
             </div>
-            <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#fff', margin: '0 0 8px 0' }}>Verification Failed</h1>
+            <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-inverse)', margin: '0 0 8px 0' }}>Verification Failed</h1>
             <p style={{ color: '#a1a1aa', margin: '0 0 24px 0', fontSize: '14px' }}>{message}</p>
             <Link to="/login" style={{
               display: 'inline-block',
               padding: '12px 24px',
               borderRadius: '8px',
-              background: 'rgba(255,255,255,0.1)',
-              color: '#fff',
+              background: 'var(--accent-bg)',
+              color: 'var(--text-inverse)',
               textDecoration: 'none',
               fontWeight: '500',
               transition: 'background 0.2s'

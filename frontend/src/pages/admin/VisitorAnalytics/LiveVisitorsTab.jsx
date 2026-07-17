@@ -31,8 +31,8 @@ export default function LiveVisitorsTab() {
             key={s.session_id} 
             onClick={() => setSelectedSession(s.session_id)}
             style={{
-              background: 'rgba(255,255,255,0.02)',
-              border: '1px solid rgba(255,255,255,0.06)',
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--card-border)',
               borderRadius: 16,
               padding: 20,
               cursor: 'pointer',
@@ -50,7 +50,7 @@ export default function LiveVisitorsTab() {
                   {s.user_email ? s.user_email[0].toUpperCase() : <Fingerprint size={20} />}
                 </div>
                 <div>
-                  <div style={{ color: '#fff', fontWeight: 700, fontSize: 14 }}>{s.user_email || 'Anonymous Visitor'}</div>
+                  <div style={{ color: 'var(--text-inverse)', fontWeight: 700, fontSize: 14 }}>{s.user_email || 'Anonymous Visitor'}</div>
                   <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{s.ip_address}</div>
                 </div>
               </div>
@@ -76,7 +76,7 @@ export default function LiveVisitorsTab() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
               {s.current_page && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#fff', fontWeight: 600 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-inverse)', fontWeight: 600 }}>
                   <Monitor size={14} style={{ opacity: 0.5, color: '#60a5fa' }} /> {s.current_page}
                 </div>
               )}

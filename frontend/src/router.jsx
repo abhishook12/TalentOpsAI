@@ -92,6 +92,12 @@ const reviewQueueRoute = createRoute({
   component: lazyComponent(() => import('./pages/ReviewQueue')),
 })
 
+const settingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/settings',
+  component: lazyComponent(() => import('./pages/Settings')),
+})
+
 const profileRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/profile',
@@ -177,6 +183,7 @@ const routeTree = rootRoute.addChildren([
   companiesRoute,
   campaignsRoute,
   profileRoute,
+  settingsRoute,
   adminLayoutRoute.addChildren([
     adminRoute,
     activityRoute,
@@ -189,3 +196,4 @@ const routeTree = rootRoute.addChildren([
 ])
 
 export const router = createRouter({ routeTree })
+

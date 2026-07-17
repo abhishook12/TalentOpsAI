@@ -92,12 +92,12 @@ def validate_recipients_endpoint(payload: ValidateRecipientsRequest, db: Session
     return asdict(result)
 
 @router.post("/{campaign_id}/start")
-async def api_start_campaign(campaign_id: int, db: Session = Depends(get_db)):
+async def api_start_campaign(campaign_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     from ..services.send_engine import start_campaign
     campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
-    await start_campaign(campaign_id)
+    background_tasks.add_task(start_campaign, campaign_id)
     return {"status": "started", "campaign_id": campaign_id}
 
 @router.post("/{campaign_id}/pause")

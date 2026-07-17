@@ -82,7 +82,7 @@ export default function Sidebar() {
         {nav.map((item, index) => {
           if (item.isGroupHeader) {
             return (
-              <div key={header- + index} style={{
+              <div key={`header-${index}`} style={{
                 color: 'rgba(255,255,255,0.4)',
                 fontSize: 11,
                 fontWeight: 800,

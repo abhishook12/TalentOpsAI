@@ -10,7 +10,7 @@ export function Skeleton({ width, height, borderRadius, style, className = '' })
     ...style
   }
 
-  return <div className={skeleton } style={mergedStyle} />
+  return <div className={`skeleton ${className}`} style={mergedStyle} />
 }
 
 export function SkeletonRow({ rows = 3, gap = 12, height = 20 }) {

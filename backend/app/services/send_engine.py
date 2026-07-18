@@ -337,3 +337,14 @@ def get_campaign_progress(campaign_id: int) -> dict:
             return {"error": "Campaign not found"}
         
         return _get_campaign_eta(campaign_id)
+
+def restart_active_campaigns():
+    """Crash recovery: Resume any campaign that was in active state when the server crashed."""
+    try:
+        with SessionLocal() as db:
+            active_campaigns = db.query(Campaign).filter(Campaign.status == CampaignStatus.active.value).all()
+            for c in active_campaigns:
+                logger.info(f"Crash recovery: Restarting campaign {c.campaign_id}...")
+                asyncio.create_task(process_campaign_queue(c.campaign_id))
+    except Exception as e:
+        logger.error(f"Failed to run crash recovery for active campaigns: {e}")

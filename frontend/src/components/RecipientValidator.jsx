@@ -50,19 +50,30 @@ export default function RecipientValidator({ onValidated, initialRecipients = []
   };
 
   const handleValidateManual = async (textToValidate = inputText) => {
+    if (typeof textToValidate !== 'string') {
+      textToValidate = inputText;
+    }
     if (!textToValidate.trim()) return;
 
     setIsValidating(true);
     try {
       const emailList = textToValidate.split('\n').map(e => e.trim()).filter(e => e);
-      const response = await api.post('/campaigns/validate-recipients', { emails: emailList });
       
-      const newRecipients = response.data.recipients;
+      const chunkSize = 500;
+      let allNewRecipients = [];
+      
+      for (let i = 0; i < emailList.length; i += chunkSize) {
+        const chunk = emailList.slice(i, i + chunkSize);
+        const response = await api.post('/campaigns/validate-recipients', { emails: chunk });
+        if (response.data && response.data.recipients) {
+          allNewRecipients = allNewRecipients.concat(response.data.recipients);
+        }
+      }
       
       // Merge with existing avoiding duplicates
       setValidatedList(prev => {
         const existingEmails = new Set(prev.map(r => r.email.toLowerCase()));
-        const toAdd = newRecipients.filter(r => !existingEmails.has(r.email.toLowerCase()));
+        const toAdd = allNewRecipients.filter(r => !existingEmails.has(r.email.toLowerCase()));
         return [...prev, ...toAdd];
       });
       

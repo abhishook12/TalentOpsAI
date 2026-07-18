@@ -363,7 +363,9 @@ async def timeout_stuck_emails_sweep():
 
 @app.on_event("startup")
 async def startup_event():
+    from .services.send_engine import restart_active_campaigns
     asyncio.create_task(timeout_stuck_emails_sweep())
+    restart_active_campaigns()
 
 from .routes import health
 app.include_router(health.router, prefix="/health", tags=["System Health"])

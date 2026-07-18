@@ -685,6 +685,65 @@ def get_campaign(campaign_id: int, db: Session = Depends(get_db)):
     return payload
 
 
+@router.delete("/{campaign_id}")
+def delete_campaign(campaign_id: int, db: Session = Depends(get_db)):
+    campaign = get_campaign_or_404(db, campaign_id)
+    db.delete(campaign)
+    db.commit()
+    return {"status": "success", "message": "Campaign deleted"}
+
+
+@router.post("/{campaign_id}/duplicate")
+def duplicate_campaign(campaign_id: int, db: Session = Depends(get_db)):
+    original = get_campaign_or_404(db, campaign_id)
+    
+    new_campaign = Campaign(
+        name=f"{original.name} (Copy)",
+        description=original.description,
+        status=CampaignStatus.draft.value,
+        from_name=original.from_name,
+        from_email=original.from_email,
+        reply_to_email=original.reply_to_email,
+        timezone=original.timezone,
+        is_active=True,
+        metadata_json=original.metadata_json,
+    )
+    db.add(new_campaign)
+    db.commit()
+    db.refresh(new_campaign)
+    
+    # Clone templates
+    template_map = {}
+    for t in original.templates:
+        new_t = EmailTemplate(
+            campaign_id=new_campaign.campaign_id,
+            name=t.name,
+            subject=t.subject,
+            body=t.body,
+            variables_json=t.variables_json,
+            is_active=t.is_active
+        )
+        db.add(new_t)
+        db.commit()
+        db.refresh(new_t)
+        template_map[t.template_id] = new_t.template_id
+        
+    # Clone sequence steps
+    for s in original.sequence_steps:
+        new_s = SequenceStep(
+            campaign_id=new_campaign.campaign_id,
+            template_id=template_map.get(s.template_id),
+            step_order=s.step_order,
+            delay_days=s.delay_days,
+            delay_hours=s.delay_hours,
+            is_active=s.is_active
+        )
+        db.add(new_s)
+        
+    db.commit()
+    return {"status": "success", "campaign_id": new_campaign.campaign_id}
+
+
 @router.put("/{campaign_id}")
 def update_campaign(campaign_id: int, payload: CampaignUpdate, db: Session = Depends(get_db)):
     campaign = get_campaign_or_404(db, campaign_id)
@@ -720,6 +779,23 @@ def list_templates(campaign_id: int, db: Session = Depends(get_db)):
 def create_template(campaign_id: int, payload: TemplateCreate, request: Request, db: Session = Depends(get_db)):
     get_campaign_or_404(db, campaign_id)
     variables = payload.variables or extract_variables(payload.subject, payload.body)
+    
+    # Check if there is an existing step 1 template
+    step = db.query(SequenceStep).filter(SequenceStep.campaign_id == campaign_id, SequenceStep.step_order == 1).first()
+    
+    if step and step.template_id:
+        template = db.query(EmailTemplate).filter(EmailTemplate.template_id == step.template_id).first()
+        if template:
+            template.name = payload.name.strip()
+            template.subject = payload.subject
+            template.body = payload.body
+            template.variables_json = to_json_text(variables)
+            template.is_active = payload.is_active
+            db.commit()
+            db.refresh(template)
+            return serialize_template(template)
+
+    # Create new template if none exists
     template = EmailTemplate(
         campaign_id=campaign_id,
         name=payload.name.strip(),
@@ -731,8 +807,6 @@ def create_template(campaign_id: int, payload: TemplateCreate, request: Request,
     db.add(template)
     db.flush()
     
-    # Automatically create SequenceStep 1 if not exists
-    step = db.query(SequenceStep).filter(SequenceStep.campaign_id == campaign_id, SequenceStep.step_order == 1).first()
     if not step:
         step = SequenceStep(
             campaign_id=campaign_id,

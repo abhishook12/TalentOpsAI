@@ -23,35 +23,67 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
   useEffect(() => {
     if (!campaignId) return;
 
-    setIsConnecting(true);
-    const eventSource = new EventSource(`${API}/campaigns/${campaignId}/progress`);
+    let retryCount = 0;
+    let eventSource = null;
+    let reconnectTimeout = null;
+    let isActive = true;
 
-    eventSource.onmessage = (event) => {
-      setIsConnecting(false);
-      const parsedData = JSON.parse(event.data);
-      setData(parsedData);
+    const connectSSE = () => {
+      if (!isActive) return;
+      if (eventSource) eventSource.close();
       
-      if (parsedData.new_logs && parsedData.new_logs.length > 0) {
-        setLogs(prev => [...parsedData.new_logs, ...prev].slice(0, 50)); // Keep last 50 logs
-      }
-      
-      if (onStatusChange) {
-        onStatusChange(parsedData.status);
-      }
-      
-      if (parsedData.status === 'completed' || parsedData.status === 'failed' || parsedData.status === 'cancelled') {
+      setIsConnecting(true);
+      eventSource = new EventSource(`${API}/campaigns/${campaignId}/progress`);
+
+      eventSource.onopen = () => {
+        retryCount = 0; // Reset backoff on successful connection
+      };
+
+      eventSource.onmessage = (event) => {
+        setIsConnecting(false);
+        const parsedData = JSON.parse(event.data);
+        
+        // Use functional state updates to avoid stale closures
+        setData(prev => {
+          // If already in a terminal state, ignore updates (though SSE should close)
+          if (['completed', 'failed', 'cancelled'].includes(prev.status)) return prev;
+          return parsedData;
+        });
+        
+        if (parsedData.new_logs && parsedData.new_logs.length > 0) {
+          setLogs(prev => [...parsedData.new_logs, ...prev].slice(0, 50)); // Keep last 50 logs
+        }
+        
+        if (onStatusChange) {
+          onStatusChange(parsedData.status);
+        }
+        
+        if (['completed', 'failed', 'cancelled'].includes(parsedData.status)) {
+          eventSource.close();
+          isActive = false;
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error("SSE Error:", error);
         eventSource.close();
-      }
+        
+        if (isActive) {
+          setIsConnecting(true);
+          // Exponential backoff: 1s, 2s, 4s, 8s, max 10s
+          const backoff = Math.min(1000 * Math.pow(2, retryCount), 10000);
+          retryCount++;
+          reconnectTimeout = setTimeout(connectSSE, backoff);
+        }
+      };
     };
 
-    eventSource.onerror = (error) => {
-      console.error("SSE Error:", error);
-      setIsConnecting(false);
-      eventSource.close();
-    };
+    connectSSE();
 
     return () => {
-      eventSource.close();
+      isActive = false;
+      if (eventSource) eventSource.close();
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
     };
   }, [campaignId]);
 

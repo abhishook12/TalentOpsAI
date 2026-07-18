@@ -89,18 +89,14 @@ export default function Campaigns() {
 
   const saveDraft = async () => {
     try {
-      if (activeCampaignId) {
+      let cid = activeCampaignId;
+      if (cid) {
         // Update existing campaign
-        await api.put(`/campaigns/${activeCampaignId}`, {
+        await api.put(`/campaigns/${cid}`, {
           name: campaignName,
           from_email: fromEmail,
           signature_id: signatureId
         });
-        
-        // Update or create template step
-        // For simplicity we assume step 1 exists if campaign exists, or backend handles it
-        // Actually we need to make sure we create a step if it doesn't exist
-        return activeCampaignId;
       } else {
         // Create new campaign shell
         const res = await api.post('/campaigns', {
@@ -109,12 +105,95 @@ export default function Campaigns() {
           status: 'draft',
           signature_id: signatureId
         });
-        setActiveCampaignId(res.data.campaign_id);
-        return res.data.campaign_id;
+        cid = res.data.campaign_id;
+        setActiveCampaignId(cid);
       }
+      
+      // Save template (this acts as an upsert on backend)
+      if (subject || body) {
+        await api.post(`/campaigns/${cid}/templates`, {
+          name: subject || 'Draft',
+          subject: subject || '',
+          body: body || ''
+        });
+      }
+      
+      return cid;
     } catch (e) {
       console.error("Draft save failed", e);
       return null;
+    }
+  };
+
+  const deleteCampaign = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this campaign?")) return;
+    try {
+      await api.delete(`/campaigns/${id}`);
+      toast.success("Campaign deleted");
+      fetchCampaigns();
+    } catch (e) {
+      console.error("Delete failed", e);
+      toast.error("Failed to delete campaign");
+    }
+  };
+
+  const duplicateCampaign = async (id) => {
+    try {
+      await api.post(`/campaigns/${id}/duplicate`);
+      toast.success("Campaign duplicated");
+      fetchCampaigns();
+    } catch (e) {
+      console.error("Duplicate failed", e);
+      toast.error("Failed to duplicate campaign");
+    }
+  };
+
+  const loadCampaign = async (id) => {
+    try {
+      const res = await api.get(`/campaigns/${id}`);
+      const campaign = res.data;
+      
+      setActiveCampaignId(campaign.campaign_id);
+      setCampaignName(campaign.name);
+      setFromEmail(campaign.from_email || 'Outlook Default');
+      setSignatureId(campaign.signature_id);
+      
+      // Load templates
+      if (campaign.templates && campaign.templates.length > 0) {
+        const t = campaign.templates[0];
+        setSubject(t.subject || '');
+        setBody(t.body || '');
+      } else {
+        setSubject('');
+        setBody('');
+      }
+      
+      // Load recipients
+      if (campaign.campaign_recruiters) {
+        const loadedRecipients = campaign.campaign_recruiters.map(cr => ({
+          email: cr.email,
+          name: cr.recruiter_name || '',
+          recruiter_id: cr.recruiter_id,
+          status: 'valid' // assuming already saved means valid
+        }));
+        setValidatedRecipients({
+          recipients: loadedRecipients,
+          valid_count: loadedRecipients.length,
+          total: loadedRecipients.length
+        });
+      }
+      
+      // Decide which step to show
+      if (campaign.status === 'draft') {
+        setCurrentStep(STEPS.RECIPIENTS);
+      } else {
+        setCurrentStep(STEPS.SEND);
+      }
+      setView('wizard');
+      
+    } catch (e) {
+      console.error("Failed to load campaign", e);
+      toast.error("Failed to load campaign details");
     }
   };
 
@@ -148,19 +227,6 @@ export default function Campaigns() {
         return;
       }
       const cid = await saveDraft();
-      
-      // Save the template so sequence step is created
-      if (cid) {
-        try {
-          await api.post(`/campaigns/${cid}/templates`, {
-            name: subject || 'No Subject',
-            subject: subject || 'No Subject',
-            body: body || 'No Body'
-          });
-        } catch (e) {
-          console.error("Error saving template", e);
-        }
-      }
       
       // Need to enroll recipients before preview so we have recruiters attached
       if (cid && validatedRecipients.valid_count > 0) {
@@ -260,17 +326,28 @@ export default function Campaigns() {
                     {c.rate_per_minute || 4} / min
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button 
-                      onClick={() => {
-                        setActiveCampaignId(c.campaign_id);
-                        setCampaignName(c.name);
-                        setCurrentStep(STEPS.SEND); // Jump to progress view for existing
-                        setView('wizard');
-                      }}
-                      className="text-[var(--accent)] hover:text-white transition-colors"
-                    >
-                      View & Manage
-                    </button>
+                    <div className="flex items-center justify-end gap-3">
+                      <button 
+                        onClick={() => loadCampaign(c.campaign_id)}
+                        className="text-[var(--accent)] hover:text-white transition-colors text-sm font-medium"
+                      >
+                        View & Manage
+                      </button>
+                      <button 
+                        onClick={() => duplicateCampaign(c.campaign_id)}
+                        className="text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors text-sm"
+                        title="Duplicate Campaign"
+                      >
+                        Duplicate
+                      </button>
+                      <button 
+                        onClick={() => deleteCampaign(c.campaign_id)}
+                        className="text-[var(--text-secondary)] hover:text-red-400 transition-colors text-sm"
+                        title="Delete Campaign"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

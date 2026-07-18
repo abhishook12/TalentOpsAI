@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import api, { setOnUnauthorizedCallback } from '../services/api';
+import api, { setOnUnauthorizedCallback, setStoredToken, clearStoredToken } from '../services/api';
 import { useNavigate } from '@tanstack/react-router';
 
 const AuthContext = createContext();
@@ -41,10 +41,12 @@ export const AuthProvider = ({ children }) => {
                 }
             } else {
                 setUser(null);
+                clearStoredToken();
                 localStorage.removeItem('auth_session');
             }
         } catch (error) {
             setUser(null);
+            clearStoredToken();
             localStorage.removeItem('auth_session');
         } finally {
             setLoading(false);
@@ -58,6 +60,8 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         setOnUnauthorizedCallback(() => {
             setUser(null);
+            clearStoredToken();
+            localStorage.removeItem('auth_session');
             navigate({ to: '/login' });
         });
         
@@ -73,9 +77,7 @@ export const AuthProvider = ({ children }) => {
             remember_me: rememberMe
         });
         if (response.data.token) {
-            import('../services/api').then(({ setStoredToken }) => {
-                setStoredToken(response.data.token, rememberMe);
-            });
+            setStoredToken(response.data.token, rememberMe);
         }
         setUser(response.data.user);
         localStorage.setItem('auth_session', JSON.stringify({ email: response.data.user?.email || null }));
@@ -87,9 +89,7 @@ export const AuthProvider = ({ children }) => {
             credential
         });
         if (response.data.token) {
-            import('../services/api').then(({ setStoredToken }) => {
-                setStoredToken(response.data.token, true); // Keep them logged in
-            });
+            setStoredToken(response.data.token, true); // Keep them logged in
         }
         setUser(response.data.user);
         localStorage.setItem('auth_session', JSON.stringify({ email: response.data.user?.email || null }));
@@ -108,6 +108,7 @@ export const AuthProvider = ({ children }) => {
             console.error('Logout error', error);
         } finally {
             setUser(null);
+            clearStoredToken();
             localStorage.removeItem('auth_session');
             window.location.href = '/login';
         }

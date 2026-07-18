@@ -292,11 +292,14 @@ async def process_campaign_queue(campaign_id: int):
         if campaign and campaign.status == CampaignStatus.active.value:
             pass # We leave the campaign active until the Outlook Bridge reports all terminal states
 
+_background_tasks = set()
 
 async def start_campaign(campaign_id: int):
     """Set campaign to active and start background processor."""
     _set_campaign_status(campaign_id, CampaignStatus.active.value)
-    asyncio.create_task(process_campaign_queue(campaign_id))
+    task = asyncio.create_task(process_campaign_queue(campaign_id))
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
 
 def pause_campaign(campaign_id: int):
     """Set campaign to paused. The processor loop will exit after current email."""
@@ -342,9 +345,17 @@ def restart_active_campaigns():
     """Crash recovery: Resume any campaign that was in active state when the server crashed."""
     try:
         with SessionLocal() as db:
+            # Reset any queued items back to pending in case of crash
+            db.query(CampaignRecruiter).filter(
+                CampaignRecruiter.status == CampaignRecruiterStatus.queued.value
+            ).update({"status": CampaignRecruiterStatus.pending.value}, synchronize_session=False)
+            db.commit()
+            
             active_campaigns = db.query(Campaign).filter(Campaign.status == CampaignStatus.active.value).all()
             for c in active_campaigns:
                 logger.info(f"Crash recovery: Restarting campaign {c.campaign_id}...")
-                asyncio.create_task(process_campaign_queue(c.campaign_id))
+                task = asyncio.create_task(process_campaign_queue(c.campaign_id))
+                _background_tasks.add(task)
+                task.add_done_callback(_background_tasks.discard)
     except Exception as e:
         logger.error(f"Failed to run crash recovery for active campaigns: {e}")

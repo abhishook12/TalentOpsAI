@@ -176,6 +176,7 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                     
                     log.subject = subject
                     log.body_preview = body[:500] if body else ""
+                    log.body_html = body or ""  # Full body for the bridge — body_preview is truncated and must not be sent
                     db.commit()
                     return rec_email
 
@@ -188,9 +189,7 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
             # We just leave the status as 'sending' in EmailLog, and the bridge will poll it.
             # But wait, we need to mark CampaignRecruiter as 'sending' and let the bridge update it.
             # We simulate a "queueing" completion here so the worker can move to the next.
-            logger.info(f"⏳ Worker {worker_id}: Queued {rec_email} for Outlook Bridge polling")
-            # We don't sleep here unless we want to artificially slow down queueing
-            await asyncio.sleep(0.1)
+            logger.info(f"Worker {worker_id}: Queued {rec_email} for Outlook Bridge polling")
                 
         except Exception as e:
             logger.error(f"Worker {worker_id} exception for {recipient_id}: {e}")

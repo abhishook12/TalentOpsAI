@@ -32,7 +32,9 @@ export default function Campaigns() {
   const [campaignName, setCampaignName] = useState('New Campaign');
   
   // Compose State
-  const [fromEmail, setFromEmail] = useState('abhishek.jadon@technovion.com');
+  const [fromEmail, setFromEmail] = useState(() => {
+    return localStorage.getItem('talentops_from_email') || 'Outlook Default';
+  });
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [signatureId, setSignatureId] = useState(null);
@@ -390,12 +392,24 @@ export default function Campaigns() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs text-[var(--text-secondary)] mb-1">From Email</label>
-                    <input 
-                      type="text" 
+                    <select
                       value={fromEmail}
-                      disabled
-                      className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--text-muted)] cursor-not-allowed opacity-70"
-                    />
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === 'connect_new') {
+                          toast('Connecting additional accounts is coming soon!', { icon: '🚧' });
+                          // revert back to current
+                          e.target.value = fromEmail;
+                        } else {
+                          setFromEmail(val);
+                          localStorage.setItem('talentops_from_email', val);
+                        }
+                      }}
+                      className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[var(--accent)] outline-none cursor-pointer hover:border-[var(--card-border-hover)] transition-colors"
+                    >
+                      <option value="Outlook Default">Outlook Default</option>
+                      <option value="connect_new">+ Connect another Outlook account</option>
+                    </select>
                   </div>
                   
                 </div>

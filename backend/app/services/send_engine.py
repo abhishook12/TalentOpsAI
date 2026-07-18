@@ -152,7 +152,7 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                     recipient.status = CampaignRecruiterStatus.sending.value
                     recruiter = recipient.recruiter
                     company = recruiter.company if recruiter else None
-                    rec_email = recruiter.email if recruiter else "unknown"
+                    rec_email = recruiter.email if recruiter and recruiter.email else "unknown"
                     rec_name = recruiter.recruiter_name if recruiter else None
                     retry_count = recipient.retry_count
                     
@@ -291,16 +291,7 @@ async def process_campaign_queue(campaign_id: int):
     with SessionLocal() as db:
         campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
         if campaign and campaign.status == CampaignStatus.active.value:
-            # Check if any retrying items exist that haven't been queued yet
-            retrying_count = db.query(CampaignRecruiter).filter(
-                CampaignRecruiter.campaign_id == campaign_id,
-                CampaignRecruiter.status == CampaignRecruiterStatus.retrying.value
-            ).count()
-            
-            if retrying_count == 0:
-                campaign.status = CampaignStatus.completed.value
-                db.commit()
-                logger.info(f"Campaign {campaign_id} fully completed.")
+            pass # We leave the campaign active until the Outlook Bridge reports all terminal states
 
 
 async def start_campaign(campaign_id: int):

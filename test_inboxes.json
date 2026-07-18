@@ -1,0 +1,39 @@
+[
+    {
+        "address": "talentops.test.1784320384.1@mailinator.com",
+        "username": "talentops.test.1784320384.1",
+        "domain": "mailinator.com"
+    },
+    {
+        "address": "talentops.test.1784320384.2@mailinator.com",
+        "username": "talentops.test.1784320384.2",
+        "domain": "mailinator.com"
+    },
+    {
+        "address": "talentops.test.1784320384.3@mailinator.com",
+        "username": "talentops.test.1784320384.3",
+        "domain": "mailinator.com"
+    },
+    {
+        "address": "talentops.test.1784320384.4@mailinator.com",
+        "username": "talentops.test.1784320384.4",
+        "domain": "mailinator.com"
+    },
+    {
+        "address": "talentops.test.1784320384.5@mailinator.com",
+        "username": "talentops.test.1784320384.5",
+        "domain": "mailinator.com"
+    },
+    {
+        "address": "talentops.test.1784320384.1@mailinator.com",
+        "username": "talentops.test.1784320384.1",
+        "domain": "mailinator.com",
+        "note": "duplicate"
+    },
+    {
+        "address": "invalid-format-email",
+        "username": "invalid-format-email",
+        "domain": "",
+        "note": "invalid"
+    }
+]

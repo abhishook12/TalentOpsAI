@@ -112,18 +112,29 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
       {/* Progress Bar & Controls */}
       <div className="bg-[var(--panel-bg)] border border-[var(--card-border)] rounded-xl p-4">
         <div className="flex justify-between items-center mb-3">
-          <div className="flex items-center gap-2">
-            <span className="font-medium">Campaign Progress</span>
-            {isConnecting && <Loader2 className="w-4 h-4 animate-spin text-[var(--accent)]" />}
-            <span className={`text-xs px-2 py-0.5 rounded-full border ${
-              data.status === 'active' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-              data.status === 'paused' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
-              data.status === 'completed' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-              data.status === 'cancelled' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-              'bg-[var(--bg-surface)] text-[var(--text-muted)] border-[var(--border)]'
-            }`}>
-              {data.status.toUpperCase()}
-            </span>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <span className="font-medium">Campaign Progress</span>
+              {isConnecting && <Loader2 className="w-4 h-4 animate-spin text-[var(--accent)]" />}
+              <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                data.status === 'active' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                data.status === 'paused' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
+                data.status === 'completed' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                data.status === 'cancelled' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                'bg-[var(--bg-surface)] text-[var(--text-muted)] border-[var(--border)]'
+              }`}>
+                {data.status.toUpperCase()}
+              </span>
+            </div>
+            {data.status === 'active' && (
+              <span className="text-[11px] text-[var(--text-muted)] italic flex items-center gap-1.5">
+                <RefreshCw className="w-3 h-3 animate-spin text-blue-400" />
+                {data.sending > 0 ? `Waiting for Outlook to send ${data.sending} email(s)...` : 
+                 data.queued > 0 ? `Workers queuing ${data.queued} recipient(s)...` : 
+                 data.retrying > 0 ? `Retrying ${data.retrying} failed email(s)...` : 
+                 `Processing...`}
+              </span>
+            )}
           </div>
           <div className="flex gap-2">
             {data.status === 'paused' || data.status === 'draft' ? (

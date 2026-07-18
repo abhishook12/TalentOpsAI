@@ -15,6 +15,8 @@ for s in r.json():
         if latest['status'] == 'update_failed':
             print(f"--- LOGS FOR {s['service']['name']} ---")
             deploy_id = latest['id']
-            # Fetch deploy info
-            info = requests.get(f"https://api.render.com/v1/services/{srv_id}/deploys/{deploy_id}", headers={'Authorization': f'Bearer {render_key}', 'Accept': 'application/json'})
-            print(info.json())
+            # Unfortunately Render API doesn't have an endpoint for deploy logs directly without a specific log stream or external integration? Wait, no, we can usually see logs in the dashboard, but let's check the API docs. 
+            # Actually, Render doesn't expose deploy logs via API easily, only a stream. Let me just print the deploy object.
+            import pprint
+            pprint.pprint(latest)
+            print("To see exact failure reason, we might need to look at the dashboard.")

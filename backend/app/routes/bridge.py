@@ -51,7 +51,7 @@ def get_bridge_tasks(db: Session = Depends(get_db)):
             "log_id": log.log_id,
             "to_email": log.recipient_email,
             "subject": log.subject,
-            "html_body": log.html_body
+            "html_body": log.body_preview
         })
     return {"tasks": tasks}
 
@@ -64,9 +64,11 @@ def _utcnow():
 @router.post("/results")
 def post_bridge_results(payload: BridgeResultsPayload, db: Session = Depends(get_db)):
     """Receive results from the bridge."""
+    campaign_ids_to_check = set()
     for res in payload.results:
         log = db.query(EmailLog).filter(EmailLog.log_id == res.log_id).first()
         if log:
+            campaign_ids_to_check.add(log.campaign_id)
             recipient = db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_recruiter_id == log.campaign_recruiter_id).first()
             if res.success:
                 log.outlook_accepted = True
@@ -89,5 +91,26 @@ def post_bridge_results(payload: BridgeResultsPayload, db: Session = Depends(get
                     else:
                         recipient.status = CampaignRecruiterStatus.retrying.value
     db.commit()
+    
+    from ..models.campaigns import Campaign, CampaignStatus
+    for cid in campaign_ids_to_check:
+        non_terminal = db.query(CampaignRecruiter).filter(
+            CampaignRecruiter.campaign_id == cid,
+            ~CampaignRecruiter.status.in_([
+                CampaignRecruiterStatus.sent.value,
+                CampaignRecruiterStatus.failed.value,
+                CampaignRecruiterStatus.cancelled.value,
+                CampaignRecruiterStatus.delivered.value,
+                CampaignRecruiterStatus.opened.value,
+                CampaignRecruiterStatus.replied.value,
+                CampaignRecruiterStatus.bounced.value
+            ])
+        ).count()
+        if non_terminal == 0:
+            campaign = db.query(Campaign).filter(Campaign.campaign_id == cid).first()
+            if campaign and campaign.status == CampaignStatus.active.value:
+                campaign.status = CampaignStatus.completed.value
+    db.commit()
+
     return {"status": "ok"}
 

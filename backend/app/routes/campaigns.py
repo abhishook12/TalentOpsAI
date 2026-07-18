@@ -333,9 +333,24 @@ async def stream_campaign_progress(campaign_id: int, db: Session = Depends(get_d
                     
                 # Get counts
                 total = s_db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id).count()
-                sent = s_db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id, CampaignRecruiter.status == 'Sent').count()
+                
+                terminal_states = ['Sent', 'Delivered', 'Opened', 'Replied', 'Bounced', 'Cancelled']
+                sent = s_db.query(CampaignRecruiter).filter(
+                    CampaignRecruiter.campaign_id == campaign_id, 
+                    CampaignRecruiter.status.in_(terminal_states)
+                ).count()
+                
                 failed = s_db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id, CampaignRecruiter.status == 'Failed').count()
-                pending = s_db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id, CampaignRecruiter.status == 'Pending').count()
+                
+                # Granular active states
+                queued = s_db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id, CampaignRecruiter.status == 'Queued').count()
+                sending = s_db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id, CampaignRecruiter.status == 'Sending').count()
+                retrying = s_db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id, CampaignRecruiter.status == 'Retrying').count()
+                
+                pending = s_db.query(CampaignRecruiter).filter(
+                    CampaignRecruiter.campaign_id == campaign_id, 
+                    CampaignRecruiter.status.in_(['Pending', 'Queued', 'Sending', 'Retrying'])
+                ).count()
                 
                 # Get latest logs
                 from ..models.campaigns import EmailLog
@@ -358,6 +373,9 @@ async def stream_campaign_progress(campaign_id: int, db: Session = Depends(get_d
                     "sent": sent,
                     "failed": failed,
                     "pending": pending,
+                    "queued": queued,
+                    "sending": sending,
+                    "retrying": retrying,
                     "new_logs": logs_data
                 }
                 

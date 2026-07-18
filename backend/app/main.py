@@ -294,6 +294,70 @@ def ping():
     return {"status": "ok"}
 
 
+import asyncio
+from datetime import datetime, timedelta, timezone
+
+def _do_sweep():
+    try:
+        from .database import SessionLocal
+        from .models.campaigns import EmailLog, EmailLogStatus, CampaignRecruiter, CampaignRecruiterStatus, Campaign, CampaignStatus
+        
+        with SessionLocal() as db:
+            thirty_secs_ago = datetime.now(timezone.utc) - timedelta(seconds=30)
+            stuck_logs = db.query(EmailLog).filter(
+                EmailLog.status == EmailLogStatus.sending.value,
+                EmailLog.sending_at < thirty_secs_ago
+            ).all()
+            
+            campaign_ids_to_check = set()
+            for log in stuck_logs:
+                log.status = EmailLogStatus.failed.value
+                log.error_message = "Outlook Bridge timeout (>30s)"
+                log.failed_at = datetime.now(timezone.utc)
+                campaign_ids_to_check.add(log.campaign_id)
+                
+                recipient = db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_recruiter_id == log.campaign_recruiter_id).first()
+                if recipient:
+                    recipient.retry_count += 1
+                    recipient.last_error = "Outlook Bridge timeout"
+                    if recipient.retry_count >= recipient.max_retries:
+                        recipient.status = CampaignRecruiterStatus.failed.value
+                    else:
+                        recipient.status = CampaignRecruiterStatus.retrying.value
+                        
+            db.commit()
+            
+            for cid in campaign_ids_to_check:
+                non_terminal = db.query(CampaignRecruiter).filter(
+                    CampaignRecruiter.campaign_id == cid,
+                    ~CampaignRecruiter.status.in_([
+                        CampaignRecruiterStatus.sent.value,
+                        CampaignRecruiterStatus.failed.value,
+                        CampaignRecruiterStatus.cancelled.value,
+                        CampaignRecruiterStatus.delivered.value,
+                        CampaignRecruiterStatus.opened.value,
+                        CampaignRecruiterStatus.replied.value,
+                        CampaignRecruiterStatus.bounced.value
+                    ])
+                ).count()
+                if non_terminal == 0:
+                    campaign = db.query(Campaign).filter(Campaign.campaign_id == cid).first()
+                    if campaign and campaign.status == CampaignStatus.active.value:
+                        campaign.status = CampaignStatus.completed.value
+            db.commit()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Error in timeout sweep: {e}")
+
+async def timeout_stuck_emails_sweep():
+    while True:
+        await asyncio.sleep(15)
+        await asyncio.to_thread(_do_sweep)
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(timeout_stuck_emails_sweep())
+
 from .routes import health
 app.include_router(health.router, prefix="/health", tags=["System Health"])
 

@@ -89,12 +89,12 @@ const globalStyles = `
     --text-secondary: #cdcdcd;
     --text-muted: #959595;
     --text-inverse: #111111;
-    --accent: #dddddd;
-    --accent-strong: #bbbbbb;
-    --accent-bg: rgba(255, 255, 255, 0.06);
-    --success: #d7d7d7;
-    --warning: #c9c9c9;
-    --danger: #aaaaaa;
+    --accent: #0ea5e9;
+    --accent-strong: #38bdf8;
+    --accent-bg: rgba(14, 165, 233, 0.15);
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
     --muted-grid: rgba(255, 255, 255, 0.05);
     --dark-panel: #171717;
     --shadow: 0 10px 24px rgba(0, 0, 0, 0.24);

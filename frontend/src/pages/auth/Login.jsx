@@ -16,7 +16,7 @@ export default function Login() {
   const { login, googleLogin } = useAuth()
   const navigate = useNavigate()
   const search = useSearch({ from: '/login' })
-  const redirect = search.redirect || '/'
+  const redirect = decodeURIComponent(search.redirect || '/')
 
   const isEmailValid = email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
   const isFormValid = isEmailValid && password.length >= 4

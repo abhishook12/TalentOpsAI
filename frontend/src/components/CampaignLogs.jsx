@@ -1,43 +1,23 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Loader2, CheckCircle, XCircle, Search, Filter } from 'lucide-react';
 import api from '../services/api';
 
 export default function CampaignLogs({ campaignId }) {
-  const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, delivered, failed, retrying
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    if (campaignId) {
-      fetchLogs();
-    }
-  }, [campaignId]);
+  const { data: logsData, isLoading: loading } = useQuery({
+    queryKey: ['campaign-logs', campaignId],
+    queryFn: async () => {
+      const res = await api.get(`/campaigns/${campaignId}/delivery-logs`);
+      return res.data.items || [];
+    },
+    enabled: !!campaignId,
+    refetchInterval: 3000 // Poll every 3 seconds to keep logs fresh
+  });
 
-  const fetchLogs = async () => {
-    try {
-      // In a real app we'd have a specific /campaigns/{id}/logs endpoint.
-      // We don't have this in the backend yet, but we'll mock the integration
-      // or we can just fetch recruiters which have status and last_error
-      const res = await api.get(`/campaigns/${campaignId}/recruiters`);
-      
-      // Transform recruiters to logs format for display
-      const items = (Array.isArray(res.data) ? res.data : res.data.items || []).map(r => ({
-        id: r.campaign_recruiter_id,
-        email: r.recruiter?.email || 'unknown',
-        status: r.status.toLowerCase(),
-        last_sent: r.last_sent_at,
-        error: r.last_error,
-        retry_count: r.retry_count || 0
-      }));
-      
-      setLogs(items);
-    } catch (e) {
-      console.error("Failed to fetch logs", e);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const logs = logsData || [];
 
   const filteredLogs = useMemo(() => {
     return logs.filter(log => {

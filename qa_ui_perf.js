@@ -83,21 +83,19 @@ async function runTest() {
     
     // 4. Test manual entry
     console.log('Testing manual recipient addition...');
-    // The tab is a button that contains 'Manual' and has the Database/Edit icon next to it. Let's just click the button with 'Manual' text.
-    await page.evaluate(() => {
-        const buttons = Array.from(document.querySelectorAll('button'));
-        const manualBtn = buttons.find(b => b.textContent.includes('Manual'));
-        if (manualBtn) manualBtn.click();
-    });
-    // Wait, let's just use the textarea if it's there
-    const textarea = await page.$('textarea');
-    if (textarea) {
-        await textarea.fill('testqa@example.com\n');
-        await page.waitForTimeout(1000); 
-    }
+    await page.click('button:has-text("Manual")');
+    await page.waitForTimeout(500);
+    
+    await page.fill('textarea', 'testqa@example.com\n');
+    await page.waitForTimeout(500); 
+    await page.click('button:has-text("Validate & Add")');
+    
+    // Wait for the recipient to be validated and added to the list (Wait up to 15s for cold start)
+    await page.waitForSelector('text=Selected Recipients (1)', { timeout: 15000 });
+    
     await page.click('button:has-text("Continue")'); 
     
-    await page.waitForSelector('text=Compose Email', { state: 'visible' });
+    await page.waitForSelector('text=Campaign Settings', { state: 'visible' });
     console.log('[PASS] Reached Compose Step');
     
     // 5. Gather Performance Metrics via Performance API

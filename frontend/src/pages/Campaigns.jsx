@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { 
   Send, ArrowLeft, Plus, Mail, Activity, AlertCircle, FileText, 
   CheckCircle2, Loader2, ChevronRight, Play, Eye
@@ -24,7 +25,6 @@ const STEPS = {
 export default function Campaigns() {
   const [view, setView] = useState('list'); // 'list' | 'wizard'
   const [campaigns, setCampaigns] = useState([]);
-  const [loading, setLoading] = useState(false);
   
   // Wizard State
   const [currentStep, setCurrentStep] = useState(STEPS.RECIPIENTS);
@@ -56,25 +56,20 @@ export default function Campaigns() {
     }
   }, [subject, body, signatureId, view, activeCampaignId, currentStep]);
 
-  // Load campaigns
-  useEffect(() => {
-    if (view === 'list') {
-      fetchCampaigns();
-    }
-  }, [view]);
-
-  const fetchCampaigns = async () => {
-    try {
-      setLoading(true);
+  // Load campaigns with auto-refresh
+  const { data: queryCampaigns, isLoading: loading } = useQuery({
+    queryKey: ['campaigns'],
+    queryFn: async () => {
       const res = await api.get('/campaigns');
-      setCampaigns(Array.isArray(res.data) ? res.data : res.data.items || []);
-    } catch (e) {
-      console.error("Failed to load campaigns", e);
-      toast.error("Failed to load campaigns");
-    } finally {
-      setLoading(false);
-    }
-  };
+      return Array.isArray(res.data) ? res.data : res.data.items || [];
+    },
+    enabled: view === 'list',
+    refetchInterval: view === 'list' ? 5000 : false
+  });
+
+  useEffect(() => {
+    if (queryCampaigns) setCampaigns(queryCampaigns);
+  }, [queryCampaigns]);
 
   const startNewCampaign = () => {
     setActiveCampaignId(null);
@@ -298,7 +293,7 @@ export default function Campaigns() {
                 <th className="px-6 py-4 font-medium">Campaign Name</th>
                 <th className="px-6 py-4 font-medium">Status</th>
                 <th className="px-6 py-4 font-medium">Created</th>
-                <th className="px-6 py-4 font-medium">Speed</th>
+                <th className="px-6 py-4 font-medium">Progress</th>
                 <th className="px-6 py-4 font-medium text-right">Actions</th>
               </tr>
             </thead>
@@ -322,8 +317,24 @@ export default function Campaigns() {
                   <td className="px-6 py-4 text-[var(--text-secondary)]">
                     {new Date(c.created_at).toLocaleDateString()}
                   </td>
-                  <td className="px-6 py-4 text-[var(--text-secondary)]">
-                    {c.rate_per_minute || 4} / min
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col gap-1.5 w-48">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-[var(--text-secondary)]">{c.stats?.sent || 0} / {c.stats?.total || 0} Sent</span>
+                        <span className="font-medium text-[var(--accent)]">{c.stats?.progress_percent || 0}%</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-[var(--bg-surface)] rounded-full overflow-hidden border border-[var(--border)]">
+                        <div 
+                          className="h-full bg-[var(--accent)] rounded-full transition-all duration-500" 
+                          style={{ width: `${c.stats?.progress_percent || 0}%` }}
+                        ></div>
+                      </div>
+                      {c.stats?.failed > 0 && (
+                        <div className="text-[10px] text-red-400">
+                          {c.stats.failed} failed delivery attempts
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-3">

@@ -67,7 +67,8 @@ export default function EmailPreview({ campaignId, subjectTemplate, bodyTemplate
       {/* HEADER */}
       <div className="p-3 border-b border-[var(--card-border)] bg-[var(--bg-surface)] flex justify-between items-center">
         <span className="font-medium text-sm flex items-center gap-2 text-[var(--text-primary)]">
-          <Eye className="w-4 h-4 text-[var(--accent)]" /> Live Preview
+          <Eye className="w-4 h-4 text-[var(--accent)]" /> Live Preview 
+          {loading && <Loader2 className="w-3 h-3 animate-spin text-[var(--text-muted)] ml-2" />}
         </span>
         
         <div className="flex items-center gap-4">
@@ -95,11 +96,6 @@ export default function EmailPreview({ campaignId, subjectTemplate, bodyTemplate
 
       {/* PREVIEW CONTAINER */}
       <div className="flex-1 overflow-y-auto p-0 flex flex-col relative">
-        {loading && (
-          <div className="absolute inset-0 bg-[var(--card-bg)]/50 backdrop-blur-[1px] flex items-center justify-center z-10">
-            <Loader2 className="w-8 h-8 animate-spin text-[var(--accent)]" />
-          </div>
-        )}
         
         {error ? (
           <div className="p-8 text-center text-red-400 text-sm">{error}</div>

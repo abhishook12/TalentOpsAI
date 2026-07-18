@@ -336,13 +336,13 @@ async def stream_campaign_progress(campaign_id: int):
                 .all()
             )
             total = sum(counts.values())
-            terminal_states = ['Sent', 'Delivered', 'Opened', 'Replied', 'Bounced', 'Cancelled']
+            terminal_states = ['sent', 'delivered', 'opened', 'replied', 'bounced', 'cancelled']
             sent = sum(counts.get(s, 0) for s in terminal_states)
-            failed = counts.get('Failed', 0)
-            queued = counts.get('Queued', 0)
-            sending = counts.get('Sending', 0)
-            retrying = counts.get('Retrying', 0)
-            pending = counts.get('Pending', 0) + queued + sending + retrying
+            failed = counts.get('failed', 0)
+            queued = counts.get('queued', 0)
+            sending = counts.get('sending', 0)
+            retrying = counts.get('retrying', 0)
+            pending = counts.get('pending', 0) + queued + sending + retrying
 
             new_logs = (
                 s_db.query(
@@ -410,6 +410,33 @@ async def stream_campaign_progress(campaign_id: int):
             await asyncio.sleep(2)
             
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+@router.get("/{campaign_id}/delivery-logs")
+def get_campaign_delivery_logs(campaign_id: int, db: Session = Depends(get_db)):
+    """Fetch detailed delivery logs for the campaign."""
+    from ..models.campaigns import EmailLog, CampaignRecruiter
+    from sqlalchemy.orm import joinedload
+    
+    logs = (
+        db.query(EmailLog)
+        .filter(EmailLog.campaign_id == campaign_id)
+        .order_by(EmailLog.log_id.desc())
+        .options(joinedload(EmailLog.campaign_recruiter))
+        .all()
+    )
+    
+    res = []
+    for log in logs:
+        cr = log.campaign_recruiter
+        res.append({
+            "id": log.log_id,
+            "email": log.recipient_email,
+            "status": log.status,
+            "last_sent": log.sending_at.isoformat() if log.sending_at else None,
+            "error": log.error_message,
+            "retry_count": cr.retry_count if cr else 0
+        })
+    return {"items": res}
 
 VARIABLE_PATTERN = re.compile(r"{{\s*([a-zA-Z0-9_]+)\s*}}")
 
@@ -512,13 +539,15 @@ def serialize_campaign(c: Campaign):
         "recruiter_count": getattr(c, "recruiter_count", 0),
     }
 
-def serialize_campaign_list(c: Campaign):
+def serialize_campaign_list(c: Campaign, stats: dict = None):
+    stats = stats or {"total": 0, "sent": 0, "failed": 0, "progress_percent": 0}
     return {
         "campaign_id": c.campaign_id,
         "name": c.name,
         "status": c.status,
         "created_at": c.created_at.isoformat() if c.created_at else None,
         "rate_per_minute": c.rate_per_minute,
+        "stats": stats
     }
 
 
@@ -652,7 +681,34 @@ def list_campaigns(
     if not include_archived:
         query = query.filter(Campaign.is_archived.is_(False))
     campaigns = query.order_by(Campaign.created_at.desc()).all()
-    return [serialize_campaign_list(campaign) for campaign in campaigns]
+    
+    # Fetch stats for all these campaigns in one go
+    campaign_ids = [c.campaign_id for c in campaigns]
+    stats_map = {cid: {"total": 0, "sent": 0, "failed": 0, "progress_percent": 0} for cid in campaign_ids}
+    
+    if campaign_ids:
+        from sqlalchemy import func
+        counts = db.query(
+            CampaignRecruiter.campaign_id,
+            CampaignRecruiter.status,
+            func.count()
+        ).filter(CampaignRecruiter.campaign_id.in_(campaign_ids)).group_by(
+            CampaignRecruiter.campaign_id, CampaignRecruiter.status
+        ).all()
+        
+        for cid, status, count in counts:
+            stats_map[cid]["total"] += count
+            if status in ['sent', 'delivered', 'opened', 'replied', 'bounced']:
+                stats_map[cid]["sent"] += count
+            elif status == 'failed':
+                stats_map[cid]["failed"] += count
+                
+        for cid in stats_map:
+            t = stats_map[cid]["total"]
+            s = stats_map[cid]["sent"]
+            stats_map[cid]["progress_percent"] = round((s / t) * 100, 1) if t > 0 else 0
+
+    return [serialize_campaign_list(c, stats_map[c.campaign_id]) for c in campaigns]
 
 
 @router.post("/")

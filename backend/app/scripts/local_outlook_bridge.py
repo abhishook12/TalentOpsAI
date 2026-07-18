@@ -51,7 +51,7 @@ def main():
             current_time = time.time()
             if current_time - last_heartbeat >= heartbeat_interval:
                 try:
-                    res = requests.post(f"{base_url}/api/bridge/heartbeat", timeout=5)
+                    res = requests.post(f"{base_url}/api/bridge/heartbeat", timeout=15)
                     if res.status_code == 200:
                         last_heartbeat = current_time
                     else:
@@ -61,7 +61,7 @@ def main():
 
             # 2. Fetch Tasks
             try:
-                res = requests.get(f"{base_url}/api/bridge/tasks", timeout=5)
+                res = requests.get(f"{base_url}/api/bridge/tasks", timeout=15)
                 if res.status_code == 200:
                     data = res.json()
                     tasks = data.get("tasks", [])
@@ -71,21 +71,23 @@ def main():
                         for task in tasks:
                             logger.info(f"Sending to {task.get('to_email')}...")
                             success, error = send_email_via_outlook(task, outlook)
-                            results.append({
+                            res_obj = {
                                 "log_id": task["log_id"],
-                                "success": success,
-                                "error": error
-                            })
+                                "success": success
+                            }
+                            if error is not None:
+                                res_obj["error"] = error
+                            results.append(res_obj)
                             # Small delay between emails
                             time.sleep(1.5)
                         
                         # 3. Post Results
                         try:
-                            post_res = requests.post(f"{base_url}/api/bridge/results", json={"results": results}, timeout=10)
+                            post_res = requests.post(f"{base_url}/api/bridge/results", json={"results": results}, timeout=15)
                             if post_res.status_code == 200:
                                 logger.info(f"Successfully reported results for {len(tasks)} tasks.")
                             else:
-                                logger.error(f"Failed to report results: HTTP {post_res.status_code}")
+                                logger.error(f"Failed to report results: HTTP {post_res.status_code} - {post_res.text}")
                         except Exception as e:
                             logger.error(f"Network error reporting results: {e}")
                 else:

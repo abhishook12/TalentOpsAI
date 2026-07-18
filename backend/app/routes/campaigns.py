@@ -309,22 +309,18 @@ def enroll_emails(campaign_id: int, payload: EnrollEmailsRequest, db: Session = 
     return {"enrolled_count": enrolled}
 
 @router.get("/{campaign_id}/progress")
-async def stream_campaign_progress(campaign_id: int, db: Session = Depends(get_db)):
+async def stream_campaign_progress(campaign_id: int):
+    # Removed Depends(get_db) to prevent holding a DB connection for the duration of the stream
     from fastapi.responses import StreamingResponse
     import asyncio
     import json
     
-    # Check if exists
-    campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
-    if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-        
     async def event_generator():
         # Keep track of what we've already sent to avoid redundant data
         last_log_id = 0
         
         while True:
-            # Re-open session since generator runs for a long time
+            # Open and close session efficiently within the loop
             from ..database import SessionLocal
             with SessionLocal() as s_db:
                 camp = s_db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
@@ -798,122 +794,59 @@ def enroll_recruiters(campaign_id: int, payload: EnrollRecruitersRequest, db: Se
     campaign = get_campaign_or_404(db, campaign_id)
     first_step = get_first_active_step(campaign)
     if not first_step:
-        raise HTTPException(status_code=400, detail="Campaign must have at least one active sequence step before enrollment")
+        raise HTTPException(status_code=400, detail="Campaign must have at least one active sequence step to enroll recruiters")
 
-    recruiter_ids = [item.recruiter_id for item in payload.recruiters]
-    recruiters = db.query(Recruiter).filter(Recruiter.recruiter_id.in_(recruiter_ids)).all()
-    recruiter_map = {recruiter.recruiter_id: recruiter for recruiter in recruiters}
-    missing = sorted(set(recruiter_ids) - set(recruiter_map))
-    if missing:
-        raise HTTPException(status_code=404, detail=f"Recruiters not found: {missing}")
-
-    enrolled = []
-    skipped = []
+    enrolled_count = 0
     for item in payload.recruiters:
         existing = db.query(CampaignRecruiter).filter(
             CampaignRecruiter.campaign_id == campaign_id,
             CampaignRecruiter.recruiter_id == item.recruiter_id,
         ).first()
-        if existing:
-            skipped.append(item.recruiter_id)
-            continue
-
-        next_send_at = campaign.start_at or utcnow()
-        row = CampaignRecruiter(
-            campaign_id=campaign_id,
-            recruiter_id=item.recruiter_id,
-            current_step_id=first_step.step_id,
-            status=CampaignRecruiterStatus.pending.value,
-            next_send_at=next_send_at,
-            variables_json=to_json_text(item.variables or {}),
-        )
-        db.add(row)
-        enrolled.append(item.recruiter_id)
+        if not existing:
+            cr = CampaignRecruiter(
+                campaign_id=campaign_id,
+                recruiter_id=item.recruiter_id,
+                current_step_id=first_step.step_id,
+                status=CampaignRecruiterStatus.pending.value,
+                enrolled_at=utcnow(),
+                next_send_at=campaign.start_at or utcnow(),
+                variables_json=to_json_text(item.variables),
+            )
+            db.add(cr)
+            enrolled_count += 1
 
     db.commit()
-    return {"campaign_id": campaign_id, "enrolled_recruiter_ids": enrolled, "skipped_existing_recruiter_ids": skipped}
+    return {"message": f"Enrolled {enrolled_count} recruiters"}
 
 
-@router.get("/{campaign_id}/recruiters")
-def list_campaign_recruiters(
+@router.put("/{campaign_id}/recruiter/{recruiter_id}/status")
+def update_recruiter_status(
     campaign_id: int,
-    status: Optional[str] = None,
-    db: Session = Depends(get_db),
-):
-    get_campaign_or_404(db, campaign_id)
-    query = db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id)
-    if status:
-        query = query.filter(CampaignRecruiter.status == status)
-    rows = query.order_by(CampaignRecruiter.created_at.desc()).all()
-    return [serialize_campaign_recruiter(row) for row in rows]
-
-
-@router.patch("/{campaign_id}/recruiters/{campaign_recruiter_id}/status")
-def update_campaign_recruiter_status(
-    campaign_id: int,
-    campaign_recruiter_id: int,
+    recruiter_id: int,
     payload: CampaignRecruiterStatusUpdate,
     db: Session = Depends(get_db),
 ):
-    row = db.query(CampaignRecruiter).filter(
+    cr = db.query(CampaignRecruiter).filter(
         CampaignRecruiter.campaign_id == campaign_id,
-        CampaignRecruiter.campaign_recruiter_id == campaign_recruiter_id,
+        CampaignRecruiter.recruiter_id == recruiter_id,
     ).first()
-    if not row:
-        raise HTTPException(status_code=404, detail="Campaign recruiter row not found")
+    if not cr:
+        raise HTTPException(status_code=404, detail="Enrollment not found")
 
-    row.status = payload.status
-    if payload.opened_at is not None:
-        row.opened_at = payload.opened_at
-    if payload.replied_at is not None:
-        row.replied_at = payload.replied_at
-    if payload.bounced_at is not None:
-        row.bounced_at = payload.bounced_at
-    if payload.last_error is not None:
-        row.last_error = payload.last_error
-    if payload.metadata is not None:
-        row.metadata_json = to_json_text(payload.metadata)
-    if payload.status in {CampaignRecruiterStatus.replied.value, CampaignRecruiterStatus.bounced.value}:
-        row.completed_at = row.completed_at or utcnow()
+    cr.status = payload.status
+    if payload.opened_at:
+        cr.opened_at = payload.opened_at
+    if payload.replied_at:
+        cr.replied_at = payload.replied_at
+    if payload.bounced_at:
+        cr.bounced_at = payload.bounced_at
+    if payload.last_error:
+        cr.last_error = payload.last_error
+    if payload.metadata:
+        current_meta = from_json_text(cr.metadata_json, {})
+        current_meta.update(payload.metadata)
+        cr.metadata_json = to_json_text(current_meta)
+
     db.commit()
-    db.refresh(row)
-    return serialize_campaign_recruiter(row)
-
-
-@router.get("/{campaign_id}/analytics")
-def get_campaign_analytics(campaign_id: int, db: Session = Depends(get_db)):
-    get_campaign_or_404(db, campaign_id)
-    rows = db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id).all()
-
-    total = len(rows)
-    sent = sum(1 for row in rows if row.status in {
-        CampaignRecruiterStatus.sent.value,
-        CampaignRecruiterStatus.opened.value,
-        CampaignRecruiterStatus.replied.value,
-        CampaignRecruiterStatus.bounced.value,
-    })
-    opened = sum(1 for row in rows if row.status in {
-        CampaignRecruiterStatus.opened.value,
-        CampaignRecruiterStatus.replied.value,
-    })
-    replied = sum(1 for row in rows if row.status == CampaignRecruiterStatus.replied.value)
-    bounced = sum(1 for row in rows if row.status == CampaignRecruiterStatus.bounced.value)
-    pending = sum(1 for row in rows if row.status == CampaignRecruiterStatus.pending.value)
-    failed = sum(1 for row in rows if row.status == CampaignRecruiterStatus.failed.value)
-
-    return {
-        "campaign_id": campaign_id,
-        "total_enrolled": total,
-        "pending": pending,
-        "sent": sent,
-        "opened": opened,
-        "replied": replied,
-        "bounced": bounced,
-        "failed": failed,
-        "open_rate_percent": round((opened / sent) * 100, 2) if sent else 0.0,
-        "reply_rate_percent": round((replied / sent) * 100, 2) if sent else 0.0,
-        "bounce_rate_percent": round((bounced / sent) * 100, 2) if sent else 0.0,
-        "step_count": db.query(func.count(SequenceStep.step_id)).filter(SequenceStep.campaign_id == campaign_id, SequenceStep.is_active.is_(True)).scalar() or 0,
-        "template_count": db.query(func.count(EmailTemplate.template_id)).filter(EmailTemplate.campaign_id == campaign_id, EmailTemplate.is_active.is_(True)).scalar() or 0,
-    }
-
+    db.refresh(cr)
+    return {"message": "Status updated", "enrollment": serialize_campaign_recruiter(cr)}

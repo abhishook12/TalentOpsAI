@@ -38,7 +38,7 @@ def get_bridge_tasks(db: Session = Depends(get_db)):
     # We find emails that are 'sending' and assigned to 'outlook_bridge'
     # Wait, the send_engine creates EmailLog and sets status='sending' right before sending.
     logs = db.query(EmailLog).filter(
-        EmailLog.status == EmailLogStatus.sending,
+        EmailLog.status == EmailLogStatus.sending.value,
         EmailLog.sent_via == "outlook_bridge",
         EmailLog.outlook_accepted == None # Not processed yet
     ).order_by(EmailLog.log_id.asc()).limit(25).all()

@@ -154,6 +154,9 @@ if RUN_STARTUP_MIGRATIONS:
                     "detected_format": "VARCHAR(100)",
                     "format_confidence": "INTEGER DEFAULT 100",
                 })
+                _ensure_columns("email_logs", {
+                    "body_html": "TEXT",
+                })
                 _ensure_columns("smart_import_rows", {
                     "job_id": "VARCHAR(36)",
                     "original_row_index": "INTEGER",
@@ -304,16 +307,19 @@ def _do_sweep():
         from .models.campaigns import EmailLog, EmailLogStatus, CampaignRecruiter, CampaignRecruiterStatus, Campaign, CampaignStatus
         
         with SessionLocal() as db:
-            thirty_secs_ago = datetime.now(timezone.utc) - timedelta(seconds=30)
+            # 90s (not 30s): a bridge batch of 25 emails takes ~15-30s to send + report,
+            # and /bridge/tasks resets sending_at on dispatch. 30s caused false timeouts
+            # on emails that Outlook actually sent, triggering duplicate retries.
+            stuck_cutoff = datetime.now(timezone.utc) - timedelta(seconds=90)
             stuck_logs = db.query(EmailLog).filter(
                 EmailLog.status == EmailLogStatus.sending.value,
-                EmailLog.sending_at < thirty_secs_ago
+                EmailLog.sending_at < stuck_cutoff
             ).all()
             
             campaign_ids_to_check = set()
             for log in stuck_logs:
                 log.status = EmailLogStatus.failed.value
-                log.error_message = "Outlook Bridge timeout (>30s)"
+                log.error_message = "Outlook Bridge timeout (>90s)"
                 log.failed_at = datetime.now(timezone.utc)
                 campaign_ids_to_check.add(log.campaign_id)
                 

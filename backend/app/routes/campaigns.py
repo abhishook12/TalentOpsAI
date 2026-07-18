@@ -1,5 +1,6 @@
 import json
 import re
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
@@ -315,72 +316,97 @@ async def stream_campaign_progress(campaign_id: int):
     import asyncio
     import json
     
+    def _snapshot(last_log_id: int):
+        # Runs in a worker thread: blocking DB calls must never run on the event loop
+        # (they stall every other request on the single Render instance).
+        from ..database import SessionLocal
+        from ..models.campaigns import EmailLog
+        from sqlalchemy import func as sa_func
+
+        with SessionLocal() as s_db:
+            camp_status = s_db.query(Campaign.status).filter(Campaign.campaign_id == campaign_id).scalar()
+            if camp_status is None:
+                return None, last_log_id
+
+            # One GROUP BY replaces seven separate COUNT queries
+            counts = dict(
+                s_db.query(CampaignRecruiter.status, sa_func.count())
+                .filter(CampaignRecruiter.campaign_id == campaign_id)
+                .group_by(CampaignRecruiter.status)
+                .all()
+            )
+            total = sum(counts.values())
+            terminal_states = ['Sent', 'Delivered', 'Opened', 'Replied', 'Bounced', 'Cancelled']
+            sent = sum(counts.get(s, 0) for s in terminal_states)
+            failed = counts.get('Failed', 0)
+            queued = counts.get('Queued', 0)
+            sending = counts.get('Sending', 0)
+            retrying = counts.get('Retrying', 0)
+            pending = counts.get('Pending', 0) + queued + sending + retrying
+
+            new_logs = (
+                s_db.query(
+                    EmailLog.log_id, EmailLog.recipient_email, EmailLog.status,
+                    EmailLog.sending_at, EmailLog.error_message
+                )
+                .filter(EmailLog.campaign_id == campaign_id, EmailLog.log_id > last_log_id)
+                .order_by(EmailLog.log_id.asc())
+                .limit(100)
+                .all()
+            )
+
+            logs_data = []
+            for log in new_logs:
+                logs_data.append({
+                    "log_id": log.log_id,
+                    "email": log.recipient_email,
+                    "status": log.status,
+                    "time": log.sending_at.isoformat() if log.sending_at else None,
+                    "error": log.error_message
+                })
+                last_log_id = max(last_log_id, log.log_id)
+
+            data = {
+                "status": camp_status,
+                "total": total,
+                "sent": sent,
+                "failed": failed,
+                "pending": pending,
+                "queued": queued,
+                "sending": sending,
+                "retrying": retrying,
+                "progress_percent": round((sent / total) * 100, 1) if total > 0 else 0,
+                "new_logs": logs_data
+            }
+            return data, last_log_id
+
     async def event_generator():
         # Keep track of what we've already sent to avoid redundant data
         last_log_id = 0
-        
+        first_sent = None  # (monotonic_time, sent_count) baseline for observed rate
+
         while True:
-            # Open and close session efficiently within the loop
-            from ..database import SessionLocal
-            with SessionLocal() as s_db:
-                camp = s_db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
-                if not camp:
-                    break
-                    
-                # Get counts
-                total = s_db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id).count()
-                
-                terminal_states = ['Sent', 'Delivered', 'Opened', 'Replied', 'Bounced', 'Cancelled']
-                sent = s_db.query(CampaignRecruiter).filter(
-                    CampaignRecruiter.campaign_id == campaign_id, 
-                    CampaignRecruiter.status.in_(terminal_states)
-                ).count()
-                
-                failed = s_db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id, CampaignRecruiter.status == 'Failed').count()
-                
-                # Granular active states
-                queued = s_db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id, CampaignRecruiter.status == 'Queued').count()
-                sending = s_db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id, CampaignRecruiter.status == 'Sending').count()
-                retrying = s_db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id, CampaignRecruiter.status == 'Retrying').count()
-                
-                pending = s_db.query(CampaignRecruiter).filter(
-                    CampaignRecruiter.campaign_id == campaign_id, 
-                    CampaignRecruiter.status.in_(['Pending', 'Queued', 'Sending', 'Retrying'])
-                ).count()
-                
-                # Get latest logs
-                from ..models.campaigns import EmailLog
-                new_logs = s_db.query(EmailLog).filter(EmailLog.campaign_id == campaign_id, EmailLog.log_id > last_log_id).order_by(EmailLog.log_id.asc()).all()
-                
-                logs_data = []
-                for log in new_logs:
-                    logs_data.append({
-                        "log_id": log.log_id,
-                        "email": log.recipient_email,
-                        "status": log.status,
-                        "time": log.sending_at.isoformat() if log.sending_at else None,
-                        "error": log.error_message
-                    })
-                    last_log_id = max(last_log_id, log.log_id)
-                    
-                data = {
-                    "status": camp.status,
-                    "total": total,
-                    "sent": sent,
-                    "failed": failed,
-                    "pending": pending,
-                    "queued": queued,
-                    "sending": sending,
-                    "retrying": retrying,
-                    "new_logs": logs_data
-                }
-                
-                yield f"data: {json.dumps(data)}\n\n"
-                
-                if camp.status in ['completed', 'failed']:
-                    # One final status, then close
-                    break
-                    
+            data, last_log_id = await asyncio.to_thread(_snapshot, last_log_id)
+            if data is None:
+                break
+
+            # Observed throughput → ETA (replaces the hardcoded estimate the UI expects)
+            now = time.monotonic()
+            if first_sent is None or data["sent"] < first_sent[1]:
+                first_sent = (now, data["sent"])
+            elapsed = now - first_sent[0]
+            delta = data["sent"] - first_sent[1]
+            rate = (delta / elapsed) if elapsed > 2 and delta > 0 else 0
+            remaining = data["pending"]
+            data["rate_per_minute"] = int(rate * 60)
+            data["eta_seconds"] = int(remaining / rate) if rate > 0 else 0
+
+            yield f"data: {json.dumps(data)}\n\n"
+
+            if data["status"] in ['completed', 'failed', 'cancelled']:
+                # One final status, then close
+                break
+
             await asyncio.sleep(2)
             
     return StreamingResponse(event_generator(), media_type="text/event-stream")

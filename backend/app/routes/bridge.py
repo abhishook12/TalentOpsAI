@@ -41,18 +41,21 @@ def get_bridge_tasks(db: Session = Depends(get_db)):
         EmailLog.status == EmailLogStatus.sending,
         EmailLog.sent_via == "outlook_bridge",
         EmailLog.outlook_accepted == None # Not processed yet
-    ).limit(10).all()
-    
+    ).order_by(EmailLog.log_id.asc()).limit(25).all()
+
     tasks = []
     for log in logs:
         # Prevent re-fetching the same task repeatedly if bridge crashes
         # We'll rely on the bridge to update outlook_accepted
+        # Reset the timeout clock on dispatch so the sweep measures bridge time, not queue wait
+        log.sending_at = _utcnow()
         tasks.append({
             "log_id": log.log_id,
             "to_email": log.recipient_email,
             "subject": log.subject,
-            "html_body": log.body_preview
+            "html_body": log.body_html or log.body_preview
         })
+    db.commit()
     return {"tasks": tasks}
 
 from ..models.campaigns import EmailLog, EmailLogStatus, CampaignRecruiter, CampaignRecruiterStatus
@@ -69,6 +72,7 @@ def post_bridge_results(payload: BridgeResultsPayload, db: Session = Depends(get
         log = db.query(EmailLog).filter(EmailLog.log_id == res.log_id).first()
         if log:
             campaign_ids_to_check.add(log.campaign_id)
+            log.body_html = None  # Free the full-body payload once terminal (Supabase 500MB free tier)
             recipient = db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_recruiter_id == log.campaign_recruiter_id).first()
             if res.success:
                 log.outlook_accepted = True

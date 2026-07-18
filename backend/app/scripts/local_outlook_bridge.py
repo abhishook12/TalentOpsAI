@@ -23,6 +23,18 @@ def send_email_via_outlook(task, outlook):
     except Exception as e:
         return False, str(e)
 
+def post_results(base_url, results):
+    """Report a chunk of send results back to the backend."""
+    try:
+        post_res = requests.post(f"{base_url}/api/bridge/results", json={"results": results}, timeout=15)
+        if post_res.status_code == 200:
+            logger.info(f"Reported results for {len(results)} email(s).")
+        else:
+            logger.error(f"Failed to report results: HTTP {post_res.status_code} - {post_res.text}")
+    except Exception as e:
+        logger.error(f"Network error reporting results: {e}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="TalentOps AI - Local Outlook Bridge")
     parser.add_argument("--api-url", default="https://talentops-api-0qtm.onrender.com", help="The backend API URL")
@@ -60,11 +72,14 @@ def main():
                     logger.warning(f"Heartbeat network error: {e}")
 
             # 2. Fetch Tasks
+            full_batch = False
             try:
                 res = requests.get(f"{base_url}/api/bridge/tasks", timeout=15)
                 if res.status_code == 200:
                     data = res.json()
                     tasks = data.get("tasks", [])
+                    # A full batch means more work is likely queued: re-poll immediately after
+                    full_batch = len(tasks) >= 25
                     if tasks:
                         logger.info(f"Received {len(tasks)} tasks to send.")
                         results = []
@@ -78,25 +93,28 @@ def main():
                             if error is not None:
                                 res_obj["error"] = error
                             results.append(res_obj)
-                            # Small delay between emails
-                            time.sleep(1.5)
-                        
-                        # 3. Post Results
-                        try:
-                            post_res = requests.post(f"{base_url}/api/bridge/results", json={"results": results}, timeout=15)
-                            if post_res.status_code == 200:
-                                logger.info(f"Successfully reported results for {len(tasks)} tasks.")
-                            else:
-                                logger.error(f"Failed to report results: HTTP {post_res.status_code} - {post_res.text}")
-                        except Exception as e:
-                            logger.error(f"Network error reporting results: {e}")
+
+                            # Report in chunks of 5 so campaign progress updates live
+                            # instead of arriving in one burst at the end of the batch
+                            if len(results) >= 5:
+                                post_results(base_url, results)
+                                results = []
+
+                            # Brief pause between COM calls; mail.Send() only queues to
+                            # the Outbox, so this doesn't need the old 1.5s throttle
+                            time.sleep(0.25)
+
+                        # 3. Post remaining results
+                        if results:
+                            post_results(base_url, results)
                 else:
                     logger.warning(f"Failed to fetch tasks: HTTP {res.status_code}")
             except Exception as e:
                 logger.warning(f"Network error fetching tasks: {e}")
 
-            # Sleep before next poll
-            time.sleep(2)
+            # Re-poll immediately while the queue is hot; otherwise idle-poll every 2s
+            if not full_batch:
+                time.sleep(2)
         except KeyboardInterrupt:
             logger.info("Shutting down Local Outlook Bridge.")
             break

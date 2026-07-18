@@ -177,6 +177,7 @@ class EmailLog(Base):
     # What was sent
     subject = Column(String(500), nullable=True)
     body_preview = Column(Text, nullable=True)  # First 200 chars of body for logging
+    body_html = Column(Text, nullable=True)  # Full HTML handed to the bridge; cleared once send is terminal to keep DB small (Supabase free tier)
     sent_via = Column(String(50), nullable=True)  # 'outlook_bridge' or 'smtp'
 
     # Verification

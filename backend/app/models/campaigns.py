@@ -11,8 +11,8 @@ from sqlalchemy import (
     TIMESTAMP,
     UniqueConstraint,
 )
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship, column_property
+from sqlalchemy.sql import func, select
 
 from ..database import Base, engine
 
@@ -240,6 +240,29 @@ class EmailSignature(Base):
     is_default = Column(Boolean, default=False, index=True)
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)
+
+
+# N+1 Query Optimization: Compute counts dynamically in the main query rather than via relationships
+Campaign.template_count = column_property(
+    select(func.count(EmailTemplate.template_id))
+    .where(EmailTemplate.campaign_id == Campaign.campaign_id)
+    .correlate_except(EmailTemplate)
+    .scalar_subquery()
+)
+
+Campaign.sequence_step_count = column_property(
+    select(func.count(SequenceStep.step_id))
+    .where(SequenceStep.campaign_id == Campaign.campaign_id)
+    .correlate_except(SequenceStep)
+    .scalar_subquery()
+)
+
+Campaign.recruiter_count = column_property(
+    select(func.count(CampaignRecruiter.campaign_recruiter_id))
+    .where(CampaignRecruiter.campaign_id == Campaign.campaign_id)
+    .correlate_except(CampaignRecruiter)
+    .scalar_subquery()
+)
 
 
 def ensure_campaign_tables():

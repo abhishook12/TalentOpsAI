@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, CheckCircle, XCircle, Search, Filter } from 'lucide-react';
 import api from '../services/api';
 
@@ -9,13 +9,9 @@ export default function CampaignLogs({ campaignId }) {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    let interval;
     if (campaignId) {
       fetchLogs();
-      // Poll every 5s while looking at logs
-      interval = setInterval(fetchLogs, 5000);
     }
-    return () => clearInterval(interval);
   }, [campaignId]);
 
   const fetchLogs = async () => {
@@ -43,11 +39,13 @@ export default function CampaignLogs({ campaignId }) {
     }
   };
 
-  const filteredLogs = logs.filter(log => {
-    if (filter !== 'all' && log.status !== filter) return false;
-    if (search && !log.email.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+  const filteredLogs = useMemo(() => {
+    return logs.filter(log => {
+      if (filter !== 'all' && log.status !== filter) return false;
+      if (search && !log.email.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    });
+  }, [logs, filter, search]);
 
   return (
     <div className="flex flex-col h-full bg-[var(--bg-surface)] rounded-lg border border-[var(--border)] overflow-hidden">

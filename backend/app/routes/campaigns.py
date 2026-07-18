@@ -507,9 +507,9 @@ def serialize_campaign(campaign: Campaign) -> dict[str, Any]:
         "metadata": from_json_text(campaign.metadata_json, {}),
         "created_at": str(campaign.created_at) if campaign.created_at else None,
         "updated_at": str(campaign.updated_at) if campaign.updated_at else None,
-        "template_count": len(campaign.templates or []),
-        "sequence_step_count": len(campaign.sequence_steps or []),
-        "recruiter_count": len(campaign.campaign_recruiters or []),
+        "template_count": campaign.template_count,
+        "sequence_step_count": campaign.sequence_step_count,
+        "recruiter_count": campaign.recruiter_count,
     }
 
 

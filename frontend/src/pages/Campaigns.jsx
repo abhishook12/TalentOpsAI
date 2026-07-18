@@ -54,7 +54,7 @@ export default function Campaigns() {
       }, 5000); // Save every 5s if changed (simplified)
       return () => clearTimeout(timer);
     }
-  }, [subject, body, signatureId, view]);
+  }, [subject, body, signatureId, view, activeCampaignId, currentStep]);
 
   // Load campaigns
   useEffect(() => {

@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Upload, CheckCircle2, XCircle, Users, Loader2, Search, Filter, Database, FileText, Type, Trash2 } from 'lucide-react';
 import api from '../services/api';
-import * as XLSX from 'xlsx';
 
 export default function RecipientValidator({ onValidated, initialRecipients = [] }) {
   const [activeTab, setActiveTab] = useState('directory'); // directory, manual
@@ -34,7 +33,7 @@ export default function RecipientValidator({ onValidated, initialRecipients = []
         recipients: validatedList
       });
     }
-  }, [validatedList]);
+  }, [validatedList, onValidated]);
 
   const fetchRecruiters = async () => {
     try {
@@ -50,12 +49,12 @@ export default function RecipientValidator({ onValidated, initialRecipients = []
     }
   };
 
-  const handleValidateManual = async () => {
-    if (!inputText.trim()) return;
+  const handleValidateManual = async (textToValidate = inputText) => {
+    if (!textToValidate.trim()) return;
 
     setIsValidating(true);
     try {
-      const emailList = inputText.split('\n').map(e => e.trim()).filter(e => e);
+      const emailList = textToValidate.split('\n').map(e => e.trim()).filter(e => e);
       const response = await api.post('/campaigns/validate-recipients', { emails: emailList });
       
       const newRecipients = response.data.recipients;
@@ -80,8 +79,9 @@ export default function RecipientValidator({ onValidated, initialRecipients = []
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       try {
+        const XLSX = await import('xlsx');
         const bstr = evt.target.result;
         const wb = XLSX.read(bstr, { type: 'binary' });
         const wsname = wb.SheetNames[0];
@@ -110,7 +110,7 @@ export default function RecipientValidator({ onValidated, initialRecipients = []
         const text = emails.join('\n');
         setInputText(text);
         // Auto validate after file load
-        setTimeout(() => handleValidateManual(), 100);
+        setTimeout(() => handleValidateManual(text), 100);
       } catch (err) {
         console.error("Error parsing file", err);
       }
@@ -166,11 +166,11 @@ export default function RecipientValidator({ onValidated, initialRecipients = []
     }
   };
 
-  const filteredRecruiters = recruiters.filter(r => 
+  const filteredRecruiters = useMemo(() => recruiters.filter(r => 
     r.recruiter_name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
     r.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     r.company?.company_name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  ), [recruiters, searchQuery]);
 
   return (
     <div className="flex flex-col gap-4 h-full">

@@ -12,9 +12,12 @@ export default function EmailPreview({ campaignId, subjectTemplate, bodyTemplate
 
   useEffect(() => {
     if (currentRecipient && subjectTemplate && bodyTemplate && campaignId) {
-      fetchPreview();
+      const timer = setTimeout(() => {
+        fetchPreview();
+      }, 500);
+      return () => clearTimeout(timer);
     }
-  }, [currentIndex, subjectTemplate, bodyTemplate, signatureId, currentRecipient]);
+  }, [currentIndex, subjectTemplate, bodyTemplate, signatureId, currentRecipient, campaignId]);
 
   const fetchPreview = async () => {
     if (!currentRecipient?.recruiter_id) {

@@ -247,21 +247,24 @@ Campaign.template_count = column_property(
     select(func.count(EmailTemplate.template_id))
     .where(EmailTemplate.campaign_id == Campaign.campaign_id)
     .correlate_except(EmailTemplate)
-    .scalar_subquery()
+    .scalar_subquery(),
+    deferred=True
 )
 
 Campaign.sequence_step_count = column_property(
     select(func.count(SequenceStep.step_id))
     .where(SequenceStep.campaign_id == Campaign.campaign_id)
     .correlate_except(SequenceStep)
-    .scalar_subquery()
+    .scalar_subquery(),
+    deferred=True
 )
 
 Campaign.recruiter_count = column_property(
     select(func.count(CampaignRecruiter.campaign_recruiter_id))
     .where(CampaignRecruiter.campaign_id == Campaign.campaign_id)
     .correlate_except(CampaignRecruiter)
-    .scalar_subquery()
+    .scalar_subquery(),
+    deferred=True
 )
 
 

@@ -2,7 +2,7 @@ import requests
 import time
 import json
 
-BASE = "http://127.0.0.1:8000"
+BASE = "https://talentopsai-1.onrender.com"
 
 def profile_endpoint(name, url, timeout=120):
     print(f"\n--- Profiling: {name} ---")

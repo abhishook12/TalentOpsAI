@@ -490,26 +490,35 @@ def serialize_campaign_recruiter(row: CampaignRecruiter) -> dict[str, Any]:
         "metadata": from_json_text(row.metadata_json, {}),
     }
 
-
-def serialize_campaign(campaign: Campaign) -> dict[str, Any]:
+def serialize_campaign(c: Campaign):
     return {
-        "campaign_id": campaign.campaign_id,
-        "name": campaign.name,
-        "description": campaign.description,
-        "status": campaign.status,
-        "from_name": campaign.from_name,
-        "from_email": campaign.from_email,
-        "reply_to_email": campaign.reply_to_email,
-        "start_at": str(campaign.start_at) if campaign.start_at else None,
-        "timezone": campaign.timezone,
-        "is_active": campaign.is_active,
-        "is_archived": campaign.is_archived,
-        "metadata": from_json_text(campaign.metadata_json, {}),
-        "created_at": str(campaign.created_at) if campaign.created_at else None,
-        "updated_at": str(campaign.updated_at) if campaign.updated_at else None,
-        "template_count": campaign.template_count,
-        "sequence_step_count": campaign.sequence_step_count,
-        "recruiter_count": campaign.recruiter_count,
+        "campaign_id": c.campaign_id,
+        "name": c.name,
+        "description": c.description,
+        "status": c.status,
+        "from_name": c.from_name,
+        "from_email": c.from_email,
+        "reply_to_email": c.reply_to_email,
+        "start_at": c.start_at.isoformat() if c.start_at else None,
+        "timezone": c.timezone,
+        "is_active": c.is_active,
+        "is_archived": c.is_archived,
+        "rate_per_minute": c.rate_per_minute,
+        "metadata": json.loads(c.metadata_json) if c.metadata_json else {},
+        "created_at": c.created_at.isoformat() if c.created_at else None,
+        "updated_at": c.updated_at.isoformat() if c.updated_at else None,
+        "template_count": getattr(c, "template_count", 0),
+        "sequence_step_count": getattr(c, "sequence_step_count", 0),
+        "recruiter_count": getattr(c, "recruiter_count", 0),
+    }
+
+def serialize_campaign_list(c: Campaign):
+    return {
+        "campaign_id": c.campaign_id,
+        "name": c.name,
+        "status": c.status,
+        "created_at": c.created_at.isoformat() if c.created_at else None,
+        "rate_per_minute": c.rate_per_minute,
     }
 
 
@@ -643,7 +652,7 @@ def list_campaigns(
     if not include_archived:
         query = query.filter(Campaign.is_archived.is_(False))
     campaigns = query.order_by(Campaign.created_at.desc()).all()
-    return [serialize_campaign(campaign) for campaign in campaigns]
+    return [serialize_campaign_list(campaign) for campaign in campaigns]
 
 
 @router.post("/")

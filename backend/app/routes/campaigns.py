@@ -604,6 +604,7 @@ class CampaignBase(BaseModel):
     timezone: Optional[str] = Field(default="UTC", max_length=100)
     is_active: bool = True
     metadata: Optional[dict[str, Any]] = None
+    signature_id: Optional[int] = None
 
 
 class CampaignCreate(CampaignBase):
@@ -624,6 +625,7 @@ class CampaignUpdate(BaseModel):
     is_active: Optional[bool] = None
     is_archived: Optional[bool] = None
     metadata: Optional[dict[str, Any]] = None
+    signature_id: Optional[int] = None
 
 
 class TemplateCreate(BaseModel):

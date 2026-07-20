@@ -13,7 +13,7 @@ LOCKDOWN_FILE = os.path.join(os.path.dirname(__file__), "..", ".lockdown_state.j
 GEMINI_TRACKER_FILE = os.path.join(os.path.dirname(__file__), "..", ".gemini_requests.json")
 
 # 70% Limit Thresholds (Override: 400MB soft limit, 450MB hard limit)
-MAX_DB_SIZE_MB = 600.0  # Rule 8 explicit limit overridden by user to 600MB
+MAX_DB_SIZE_MB = 1000.0  # Increased to allow massive batches
 MAX_MEMORY_MB = 250.0   # 70% of 358 MB
 MAX_GEMINI_RPM = 7      # 70% of 10 RPM
 

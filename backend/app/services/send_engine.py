@@ -39,10 +39,14 @@ request_executor = concurrent.futures.ThreadPoolExecutor(max_workers=WORKER_COUN
 def _utcnow():
     return datetime.now(timezone.utc)
 
-def _check_bridge_health() -> tuple[bool, str]:
+def _check_bridge_health(user_id: int) -> tuple[bool, str]:
     """Check if the Outlook Bridge is healthy."""
     from ..routes.health import check_outlook_bridge
-    res = check_outlook_bridge()
+    from ..database import SessionLocal
+    
+    with SessionLocal() as db:
+        res = check_outlook_bridge(db, user_id)
+        
     is_healthy = res.get("status") == "ok"
     error = res.get("error") or res.get("message") if not is_healthy else "healthy"
     return is_healthy, error

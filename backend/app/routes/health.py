@@ -7,6 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..config import ENV as APP_ENV
+from ..services.auth_service import get_current_user_from_request
 
 router = APIRouter()
 logger = logging.getLogger("talentops.health")
@@ -27,30 +28,29 @@ def get_memory_usage():
 
 import time
 
-def check_outlook_bridge():
+def check_outlook_bridge(db: Session, current_user_id: int):
     try:
-        import os
-        heartbeat_file = "/tmp/bridge_heartbeat.txt"
-        if os.name == 'nt':
-            heartbeat_file = "C:\\Windows\\Temp\\bridge_heartbeat.txt"
+        from ..models.auth_models import UserBridgeStatus
+        import datetime
+        status_record = db.query(UserBridgeStatus).filter(UserBridgeStatus.user_id == current_user_id).first()
+        if not status_record:
+            return {"status": "unhealthy", "error": "No bridge status recorded."}
+        
+        if not status_record.last_heartbeat:
+            return {"status": "unhealthy", "error": "No heartbeat received yet."}
             
-        if os.path.exists(heartbeat_file):
-            with open(heartbeat_file, "r") as f:
-                last_heartbeat = float(f.read().strip())
-            
-            # If heartbeat is within last 15 seconds, it's connected
-            if time.time() - last_heartbeat < 15:
-                return {"status": "ok", "message": "Outlook Bridge Connected (Polling Mode)"}
-            else:
-                return {"status": "unhealthy", "error": f"Last heartbeat was {int(time.time() - last_heartbeat)}s ago (expected <15s)"}
+        time_diff = (datetime.datetime.utcnow() - status_record.last_heartbeat).total_seconds()
+        if time_diff < 30:
+            return {"status": "ok", "message": "Outlook Bridge Connected"}
         else:
-            return {"status": "unhealthy", "error": "No heartbeat received yet"}
+            return {"status": "unhealthy", "error": f"Last heartbeat was {int(time_diff)}s ago (expected <30s)"}
     except Exception as e:
         return {"status": "unreachable", "error": str(e)}
 
 @router.get("/outlook")
-def health_outlook():
-    return check_outlook_bridge()
+def health_outlook(db: Session = Depends(get_db), current_user = Depends(get_current_user_from_request)):
+    from ..models.auth_models import User
+    return check_outlook_bridge(db, current_user.id)
 
 @router.get("/")
 @router.get("")

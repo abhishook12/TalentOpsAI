@@ -178,7 +178,7 @@ def api_validate_before_send(campaign_id: int, db: Session = Depends(get_db), cu
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
         
-    healthy, error = _check_bridge_health()
+    healthy, error = _check_bridge_health(current_user.id)
     validation_errors = []
     
     if not healthy:

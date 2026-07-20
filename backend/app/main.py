@@ -10,7 +10,7 @@ from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from .config import CORS_ORIGINS, IS_PRODUCTION, ENV as APP_ENV
-from .routes import recruiters, companies, vendors, analytics, admin, auth, actions, updates, ai, campaigns, harvester, users, visitor_analytics, notifications
+from .routes import recruiters, companies, vendors, analytics, admin, auth, actions, updates, ai, campaigns, harvester, users, visitor_analytics, notifications, bridge
 from .database import get_db, engine
 from .models import models, auth_models
 from .create_indexes import create_performance_indexes
@@ -369,5 +369,4 @@ async def startup_event():
 
 from .routes import health
 app.include_router(health.router, prefix="/health", tags=["System Health"])
-
-
+app.include_router(bridge.router, prefix="/api/bridge", tags=["Bridge"])

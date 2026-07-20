@@ -41,6 +41,21 @@ def get_auth_token(base_url, email, password):
         logger.error(f"Authentication network error: {e}")
         return None
 
+def get_auth_token_bypass(base_url):
+    logger.info(f"Authenticating via dev bypass...")
+    try:
+        res = requests.post(f"{base_url}/api/bridge/auth-bypass", timeout=10)
+        if res.status_code == 200:
+            token = res.json().get("token")
+            logger.info("Dev authentication successful.")
+            return token
+        else:
+            logger.error(f"Dev authentication failed: HTTP {res.status_code} - {res.text}")
+            return None
+    except Exception as e:
+        logger.error(f"Authentication network error: {e}")
+        return None
+
 def send_email_via_outlook(task, outlook):
     """Sends a single email using the provided Outlook application instance."""
     try:
@@ -171,9 +186,9 @@ def run_inner_loop(base_url, token, state):
 
 def main():
     parser = argparse.ArgumentParser(description="TalentOps AI - Local Outlook Bridge")
-    parser.add_argument("--api-url", default="http://localhost:8000", help="The backend API URL")
-    parser.add_argument("--email", required=True, help="User email to authenticate")
-    parser.add_argument("--password", required=True, help="User password to authenticate")
+    parser.add_argument("--api-url", default="http://127.0.0.1:8000", help="The backend API URL")
+    parser.add_argument("--email", required=False, help="User email to authenticate")
+    parser.add_argument("--password", required=False, help="User password to authenticate")
     args = parser.parse_args()
 
     base_url = args.api_url.rstrip("/")
@@ -185,7 +200,11 @@ def main():
     while True:
         try:
             if not state.auth_token:
-                state.auth_token = get_auth_token(base_url, args.email, args.password)
+                if args.email and args.password:
+                    state.auth_token = get_auth_token(base_url, args.email, args.password)
+                else:
+                    state.auth_token = get_auth_token_bypass(base_url)
+                    
                 if not state.auth_token:
                     logger.error("Could not obtain auth token. Retrying in 10 seconds...")
                     time.sleep(10)

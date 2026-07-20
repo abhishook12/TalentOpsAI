@@ -41,7 +41,11 @@ def _utcnow():
 
 def _check_bridge_health() -> tuple[bool, str]:
     """Check if the Outlook Bridge is healthy."""
-    return True, "healthy"
+    from ..routes.health import check_outlook_bridge
+    res = check_outlook_bridge()
+    is_healthy = res.get("status") == "ok"
+    error = res.get("error") or res.get("message") if not is_healthy else "healthy"
+    return is_healthy, error
 
 def _set_campaign_status(campaign_id: int, status: str):
     with SessionLocal() as db:

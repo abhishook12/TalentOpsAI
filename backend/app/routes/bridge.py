@@ -20,14 +20,17 @@ class BridgeResult(BaseModel):
 class BridgeResultsPayload(BaseModel):
     results: List[BridgeResult]
 
+class AuthBypassPayload(BaseModel):
+    email: str
+
 @router.post("/auth-bypass")
-def bridge_auth_bypass(db: Session = Depends(get_db)):
-    """Generate a token for the first user without a password (local bridge only)."""
+def bridge_auth_bypass(payload: AuthBypassPayload, db: Session = Depends(get_db)):
+    """Generate a token for a specific user without a password (local bridge only)."""
     from ..services.auth_service import create_access_token
     from ..config import IS_PRODUCTION
-    user = db.query(User).first()
+    user = db.query(User).filter(User.email == payload.email).first()
     if not user:
-        raise HTTPException(status_code=404, detail="No users found")
+        raise HTTPException(status_code=404, detail=f"No user found with email: {payload.email}")
     
     from datetime import timedelta
     access_token_expires = timedelta(days=30)

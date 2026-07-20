@@ -391,18 +391,18 @@ export default function Campaigns() {
                         <div className="flex items-center gap-2">
                           <div className="font-medium text-[var(--text-primary)]">{c.name}</div>
                           {c.is_test && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">Test</span>
+                            <span className="text-[10px] px-1.5 py-0.5 border border-[var(--color-outline)] text-[var(--color-on-surface)] uppercase font-semibold">Test</span>
                           )}
                         </div>
                         <div className="text-xs text-[var(--text-muted)] mt-1">ID: {c.campaign_id}</div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border ${
-                          c.status === 'active' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-                          c.status === 'paused' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
-                          c.status === 'completed' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                          c.status === 'draft' ? 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' :
-                          'bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border)]'
+                        <span className={`inline-flex items-center px-2 py-1 text-xs font-bold uppercase tracking-wide border ${
+                          c.status === 'active' ? 'border-[var(--color-on-surface)] text-[var(--color-on-surface)]' :
+                          c.status === 'paused' ? 'border-[var(--color-outline)] text-[var(--color-on-surface-variant)]' :
+                          c.status === 'completed' ? 'border-transparent text-[var(--color-on-surface)] bg-[var(--color-surface-variant)]' :
+                          c.status === 'draft' ? 'border-[var(--color-outline-variant)] text-[var(--color-on-surface-variant)] border-dashed' :
+                          'border-[var(--color-outline)] text-[var(--color-on-surface-variant)]'
                         }`}>
                           {c.status.charAt(0).toUpperCase() + c.status.slice(1)}
                         </span>
@@ -419,15 +419,15 @@ export default function Campaigns() {
                               <span className="text-[var(--text-secondary)]">{c.stats?.sent || 0} / {c.stats?.total || 0} Sent</span>
                               <span className="font-medium text-[var(--accent)]">{c.stats?.progress_percent || 0}%</span>
                             </div>
-                            <div className="w-full h-1.5 bg-[var(--bg-surface)] rounded-full overflow-hidden border border-[var(--border)]">
+                            <div className="w-full h-2 bg-[var(--color-surface-variant)] border border-[var(--color-outline)]">
                               <div 
-                                className="h-full bg-[var(--accent)] rounded-full transition-all duration-500" 
+                                className="h-full bg-[var(--color-on-surface)] transition-all duration-500" 
                                 style={{ width: `${c.stats?.progress_percent || 0}%` }}
                               ></div>
                             </div>
                             {c.stats?.failed > 0 && (
-                              <div className="text-[10px] text-red-400">
-                                {c.stats.failed} failed delivery attempts
+                              <div className="text-[10px] font-bold">
+                                {c.stats.failed} FAILED
                               </div>
                             )}
                           </div>

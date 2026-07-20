@@ -117,12 +117,16 @@ def get_current_user_from_request(request: Request, db: Session = Depends(get_db
         
         if session_id:
             # Single query to check session, user, and load role
+            try:
+                session_id_int = int(session_id)
+            except (ValueError, TypeError):
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session ID")
             result = db.query(User, DBSession).join(
                 DBSession, DBSession.user_id == User.id
             ).options(
                 joinedload(User.role)
             ).filter(
-                DBSession.id == session_id,
+                DBSession.id == session_id_int,
                 DBSession.is_active == True,
                 User.id == int(user_id)
             ).first()

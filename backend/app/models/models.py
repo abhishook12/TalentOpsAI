@@ -61,6 +61,7 @@ class ActionLog(Base):
 class Company(Base):
     __tablename__ = "companies"
     company_id   = Column(Integer, primary_key=True, index=True)
+    user_id      = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=True, index=True)
     company_name = Column(String(255), nullable=False)
     normalized_company_name = Column(String(255), index=True, nullable=True)
     industry     = Column(String(100))
@@ -90,6 +91,7 @@ class Company(Base):
 class Vendor(Base):
     __tablename__ = "vendors"
     vendor_id    = Column(Integer, primary_key=True, index=True)
+    user_id      = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=True, index=True)
     vendor_name  = Column(String(255), nullable=False)
     contact_name = Column(String(150))
     phone        = Column(String(30))
@@ -102,6 +104,7 @@ class Vendor(Base):
 class Recruiter(Base):
     __tablename__ = "recruiters"
     recruiter_id     = Column(Integer, primary_key=True, index=True)
+    user_id          = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=True, index=True)
     recruiter_name   = Column(String(150), nullable=False)
     normalized_recruiter_name = Column(String(150), index=True, nullable=True)
     email            = Column(String(150), unique=True, nullable=False)
@@ -344,7 +347,8 @@ class EnrichmentProposal(Base):
 
 class Candidate(Base):
     __tablename__ = "candidates"
-    candidate_id     = Column(Integer, primary_key=True, index=True)
+    candidate_id   = Column(Integer, primary_key=True, index=True)
+    user_id        = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     candidate_name   = Column(String(150), nullable=False)
     email            = Column(String(150), unique=True, nullable=False)
     phone            = Column(String(30))
@@ -366,7 +370,8 @@ class Candidate(Base):
 
 class Submission(Base):
     __tablename__ = "submissions"
-    submission_id   = Column(Integer, primary_key=True, index=True)
+    submission_id  = Column(Integer, primary_key=True, index=True)
+    user_id        = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     candidate_id    = Column(Integer, ForeignKey("candidates.candidate_id", ondelete="CASCADE"), nullable=False)
     recruiter_id    = Column(Integer, ForeignKey("recruiters.recruiter_id", ondelete="SET NULL"), nullable=True)
     company_id      = Column(Integer, ForeignKey("companies.company_id", ondelete="SET NULL"), nullable=True)
@@ -386,6 +391,7 @@ class Submission(Base):
 class UploadJob(Base):
     __tablename__ = "upload_jobs"
     job_id          = Column(String(36), primary_key=True, index=True)
+    user_id         = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=True, index=True)
     filename        = Column(String(255), nullable=False)
     status          = Column(String(50), default="queued") # queued, processing, completed, failed
     current_step    = Column(String(100), nullable=True)
@@ -477,6 +483,7 @@ class FeatureVerification(Base):
 class SmartImportJob(Base):
     __tablename__ = "smart_import_jobs"
     job_id = Column(String(36), primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=True, index=True)
     filename = Column(String(255), nullable=False)
     status = Column(String(50), default="mapping") # mapping, validating, reviewing, importing, completed, failed
     current_step = Column(String(100), nullable=True)

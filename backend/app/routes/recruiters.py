@@ -6,6 +6,8 @@ from sqlalchemy import text
 from pydantic import BaseModel
 from typing import List, Optional
 from ..database import get_db
+from ..services.auth_service import get_current_user_from_request
+from ..models.auth_models import User
 from ..services.auth_service import require_role
 from ..models.models import Recruiter, Company
 
@@ -393,7 +395,7 @@ def _update_state_metadata(r, db: Session) -> None:
 
 def apply_recruiter_update(r, update_data: dict, db: Session):
     if "email" in update_data and update_data["email"] and update_data["email"] != r.email:
-        existing = db.query(Recruiter).filter(
+        existing = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, 
             Recruiter.email == update_data["email"],
             Recruiter.recruiter_id != r.recruiter_id
         ).first()
@@ -675,7 +677,8 @@ def get_recruiters(
     data_source: Optional[str] = None,
     sort_by: Optional[str] = "created_at",
     sort_desc: Optional[bool] = True,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request)
 ):
     print(f"GET /recruiters/ CALLED! needs_review={needs_review}", flush=True)
     is_default = page == 1 and limit in (5, 10, 20, 50, 100) and not any([search, state, state_status, city, company, company_id, title, has_phone, missing_email, is_active, min_completeness, needs_review, email_inference_status, source_job_id, data_source]) and sort_by in ("created_at", "last_scan_at")
@@ -687,6 +690,7 @@ def get_recruiters(
 
     query = db.query(Recruiter, Company)\
               .join(Company, Recruiter.company_id == Company.company_id, isouter=True)\
+              .filter(Recruiter.user_id == current_user.id)\
               .options(
                   selectinload(Recruiter.structured_emails),
                   selectinload(Recruiter.structured_phones),
@@ -887,15 +891,15 @@ def get_recruiters(
     return ret_data
 
 @router.get("/{recruiter_id}")
-def get_recruiter(recruiter_id: int, db: Session = Depends(get_db)):
-    r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
+def get_recruiter(recruiter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    r = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
     return serialize_recruiter(r)
 
 @router.post("/{recruiter_id}/email/approve")
-def approve_email(recruiter_id: int, db: Session = Depends(get_db)):
-    r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
+def approve_email(recruiter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    r = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
     
@@ -909,8 +913,8 @@ def approve_email(recruiter_id: int, db: Session = Depends(get_db)):
     return serialize_recruiter(r)
 
 @router.post("/{recruiter_id}/email/reject")
-def reject_email(recruiter_id: int, db: Session = Depends(get_db)):
-    r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
+def reject_email(recruiter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    r = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
     
@@ -929,8 +933,8 @@ def reject_email(recruiter_id: int, db: Session = Depends(get_db)):
     return serialize_recruiter(r)
 
 @router.post("/", status_code=201)
-def create_recruiter(data: RecruiterCreate, db: Session = Depends(get_db)):
-    existing = db.query(Recruiter).filter(Recruiter.email == data.email).first()
+def create_recruiter(data: RecruiterCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    existing = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.email == data.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already exists")
         
@@ -952,15 +956,15 @@ def create_recruiter(data: RecruiterCreate, db: Session = Depends(get_db)):
     if state and not state_reason and r_data.get('location'):
         _, state_reason = extract_state_detailed(r_data.get('location'))
 
-    r = Recruiter(**r_data, state=state, state_source=state_source, state_confidence=state_confidence, state_reason=state_reason)
+    r = Recruiter(user_id=current_user.id, **r_data, state=state, state_source=state_source, state_confidence=state_confidence, state_reason=state_reason)
     db.add(r)
     db.commit()
     db.refresh(r)
     return serialize_recruiter(r)
 
 @router.put("/{recruiter_id}")
-def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
-    r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
+def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request), _=Depends(require_role(['admin', 'superadmin']))):
+    r = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
         
@@ -972,8 +976,8 @@ def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Dep
     return serialize_recruiter(r)
 
 @router.delete("/{recruiter_id}")
-def delete_recruiter(recruiter_id: int, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
-    r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
+def delete_recruiter(recruiter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request), _=Depends(require_role(['admin', 'superadmin']))):
+    r = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
     db.delete(r)
@@ -981,16 +985,16 @@ def delete_recruiter(recruiter_id: int, db: Session = Depends(get_db), _=Depends
     return {"message": "Recruiter deleted"}
 
 @router.post("/batch-delete")
-def batch_delete_recruiters(payload: dict, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
+def batch_delete_recruiters(payload: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request), _=Depends(require_role(['admin', 'superadmin']))):
     ids = [int(i) for i in payload.get("ids", []) if str(i).strip()]
     if not ids:
         raise HTTPException(status_code=400, detail="No recruiter ids supplied")
-    deleted = db.query(Recruiter).filter(Recruiter.recruiter_id.in_(ids)).delete(synchronize_session=False)
+    deleted = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.recruiter_id.in_(ids)).delete(synchronize_session=False)
     db.commit()
     return {"message": "Recruiters deleted", "deleted_count": deleted}
 
 @router.post("/batch-update")
-def batch_update_recruiters(payload: RecruiterBatchUpdate, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
+def batch_update_recruiters(payload: RecruiterBatchUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request), _=Depends(require_role(['admin', 'superadmin']))):
     ids = [int(i) for i in payload.ids if str(i).strip()]
     if not ids:
         raise HTTPException(status_code=400, detail="No recruiter ids supplied")
@@ -999,7 +1003,7 @@ def batch_update_recruiters(payload: RecruiterBatchUpdate, db: Session = Depends
     if not update_data:
         raise HTTPException(status_code=400, detail="No updates supplied")
 
-    recruiters = db.query(Recruiter).filter(Recruiter.recruiter_id.in_(ids)).all()
+    recruiters = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.recruiter_id.in_(ids)).all()
     if not recruiters:
         raise HTTPException(status_code=404, detail="No recruiters found")
 
@@ -1029,9 +1033,11 @@ def export_recruiters(
     min_completeness: Optional[int] = None,
     needs_review: Optional[bool] = None,
     source_job_id: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request)
 ):
     query = db.query(Recruiter).join(Recruiter.company, isouter=True)\
+              .filter(Recruiter.user_id == current_user.id)\
               .options(
                   selectinload(Recruiter.structured_emails),
                   selectinload(Recruiter.structured_phones),
@@ -1140,7 +1146,7 @@ def export_recruiters(
 
 
 @router.post("/{recruiter_id}/report")
-def report_recruiter(recruiter_id: int, db: Session = Depends(get_db)):
+def report_recruiter(recruiter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     from sqlalchemy import text
     try:
         res = db.execute(
@@ -1164,8 +1170,8 @@ def report_recruiter(recruiter_id: int, db: Session = Depends(get_db)):
 from ..services.scraper import auto_enhance_recruiter_data
 
 @router.post("/{recruiter_id}/enhance")
-def enhance_recruiter(recruiter_id: int, db: Session = Depends(get_db)):
-    recruiter = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
+def enhance_recruiter(recruiter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    recruiter = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.recruiter_id == recruiter_id).first()
     if not recruiter:
         raise HTTPException(status_code=404, detail="Recruiter not found")
         
@@ -1202,7 +1208,7 @@ def enhance_recruiter(recruiter_id: int, db: Session = Depends(get_db)):
                 result['email'] = f"{last}@{company_domain}"
         else:
             # 2. Derive pattern from peers if not cached
-            peers = db.query(Recruiter).filter(
+            peers = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, 
                 Recruiter.company_id == recruiter.company_id,
                 Recruiter.email.notlike('%@missing.local'),
                 Recruiter.email.notlike('%@talentops.ai'),
@@ -1292,7 +1298,7 @@ from ..utils.normalizer import normalize_text
 from ..utils.location_validator import is_location_north_america
 
 @router.post("/extension", status_code=201)
-def extension_webhook(data: ChromeExtensionPayload, db: Session = Depends(get_db)):
+def extension_webhook(data: ChromeExtensionPayload, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     # Check location filter
     if data.location and not is_location_north_america(data.location):
         return {"message": "Ignored - location outside North America", "saved": False}
@@ -1331,7 +1337,7 @@ def extension_webhook(data: ChromeExtensionPayload, db: Session = Depends(get_db
     email = f"linkedin_{uuid.uuid4().hex[:8]}@missing.local"
 
     # 4. Create Recruiter
-    new_rec = Recruiter(
+    new_rec = Recruiter(user_id=current_user.id, 
         recruiter_name=data.recruiter_name[:150] if data.recruiter_name else "",
         normalized_recruiter_name=normalize_text(data.recruiter_name)[:150] if data.recruiter_name else "",
         email=email[:150] if email else "",

@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
 from ..database import get_db
+from ..services.auth_service import get_current_user_from_request
+from ..models.auth_models import User
 from ..models.models import Company
 
 router = APIRouter()
@@ -58,7 +60,7 @@ def get_companies(
             
     query = query.filter(Company.is_active == True).group_by(Company.company_id)
             
-    total_query = db.query(Company).filter(Company.is_active == True)
+    total_query = db.query(Company).filter(Company.user_id == current_user.id).filter(Company.user_id == current_user.id, Company.is_active == True)
     if state:
         abbr = normalize_state(state)
         if abbr:
@@ -82,8 +84,8 @@ def get_companies(
     ]
 
 @router.get("/{company_id}")
-def get_company(company_id: int, db: Session = Depends(get_db)):
-    c = db.query(Company).filter(Company.company_id == company_id).first()
+def get_company(company_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    c = db.query(Company).filter(Company.user_id == current_user.id, Company.company_id == company_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Company not found")
     return c
@@ -93,18 +95,18 @@ from ..utils.state_mapper import normalize_state
 from ..services.auth_service import require_role
 
 @router.post("/", status_code=201)
-def create_company(data: CompanyCreate, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
+def create_company(data: CompanyCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request), _=Depends(require_role(['admin', 'superadmin']))):
     c_data = data.dict()
     state = normalize_state(c_data.get('location'))
-    c = Company(**c_data, state=state)
+    c = Company(user_id=current_user.id, **c_data, state=state)
     db.add(c)
     db.commit()
     db.refresh(c)
     return c
 
 @router.put("/{company_id}")
-def update_company(company_id: int, data: CompanyUpdate, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
-    c = db.query(Company).filter(Company.company_id == company_id).first()
+def update_company(company_id: int, data: CompanyUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request), _=Depends(require_role(['admin', 'superadmin']))):
+    c = db.query(Company).filter(Company.user_id == current_user.id, Company.company_id == company_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Company not found")
         
@@ -120,8 +122,8 @@ def update_company(company_id: int, data: CompanyUpdate, db: Session = Depends(g
     return c
 
 @router.delete("/{company_id}")
-def delete_company(company_id: int, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
-    c = db.query(Company).filter(Company.company_id == company_id).first()
+def delete_company(company_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request), _=Depends(require_role(['admin', 'superadmin']))):
+    c = db.query(Company).filter(Company.user_id == current_user.id, Company.company_id == company_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Company not found")
     c.is_active = False
@@ -170,8 +172,8 @@ def extract_candidate_name(text: str, company_name: str) -> str:
     return None
 
 @router.post("/{company_id}/discovery")
-def run_discovery_scan(company_id: int, db: Session = Depends(get_db)):
-    company = db.query(Company).filter(Company.company_id == company_id).first()
+def run_discovery_scan(company_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    company = db.query(Company).filter(Company.user_id == current_user.id, Company.company_id == company_id).first()
     if not company:
         raise HTTPException(404, "Company not found")
         

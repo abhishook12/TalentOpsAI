@@ -95,7 +95,9 @@ async function runTest() {
         // 6. Preview & Preflight
         console.log('Previewing campaign...');
         await page.waitForSelector('text=Launch Campaign', { state: 'visible' });
-        await page.waitForTimeout(2000); // let preflight finish
+        // Wait for preflight to actually finish (green check text)
+        await page.waitForSelector('text=Outlook Bridge Online', { state: 'visible', timeout: 30000 });
+        await page.waitForSelector('text=Recipients Enrolled', { state: 'visible', timeout: 30000 });
         await takeScreenshot('08_preview');
         
         // 7. Launch

@@ -42,17 +42,18 @@ function fadeHex(hex, alpha) {
 
 function SectionCard({ title, icon, children, style, compact }) {
   return (
-    <div className="card" style={{
+    <div style={{
       padding: compact ? '8px 10px' : 24,
       display: 'flex',
       flexDirection: 'column',
       minHeight: 0,
       overflow: 'hidden',
+      border: '1px solid var(--color-outline-variant)',
+      background: 'var(--color-surface)',
       ...style,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: compact ? 6 : 12, flexShrink: 0 }}>
-        {icon && <i className={`ti ${icon}`} style={{ fontSize: compact ? 13 : 15, color: 'var(--accent)' }} />}
-        <h2 style={{ fontSize: compact ? 11.5 : 13, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>{title}</h2>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: compact ? 6 : 12, flexShrink: 0, paddingBottom: 8, borderBottom: '1px solid var(--color-outline-variant)' }}>
+        <h2 style={{ fontSize: compact ? 11.5 : 13, fontWeight: 700, color: 'var(--color-on-surface)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{title}</h2>
       </div>
       <div style={{ flex: 1, minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>{children}</div>
     </div>
@@ -63,31 +64,29 @@ function KPI({ label, value, sub, color, icon, compact, inline }) {
   if (inline) {
     return (
       <div style={{
-        background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 6,
-        padding: '6px 10px', borderLeft: `3px solid ${color}`,
+        background: 'var(--color-surface)', border: '1px solid var(--color-outline-variant)',
+        padding: '6px 10px',
         display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1,
       }}>
-        <i className={`ti ${icon}`} style={{ fontSize: 13, color, flexShrink: 0 }} />
         <div style={{ minWidth: 0 }}>
-          <p style={{ color: 'var(--text-muted)', fontSize: 9, fontWeight: 500, lineHeight: 1.1, margin: 0 }}>{label}</p>
-          <p style={{ color: 'var(--text-primary)', fontSize: 15, fontWeight: 700, lineHeight: 1.1, margin: 0 }}>{value ?? 'â€”'}</p>
-          {sub && <p style={{ fontSize: 9, color: 'var(--text-muted)', margin: 0, lineHeight: 1.1 }}>{sub}</p>}
+          <p style={{ color: 'var(--color-on-surface-variant)', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', lineHeight: 1.1, margin: 0 }}>{label}</p>
+          <p style={{ color: 'var(--color-on-surface)', fontSize: 15, fontWeight: 700, lineHeight: 1.1, margin: 0 }}>{value ?? '—'}</p>
+          {sub && <p style={{ fontSize: 9, color: 'var(--color-on-surface-variant)', margin: 0, lineHeight: 1.1 }}>{sub}</p>}
         </div>
       </div>
     )
   }
   return (
     <div style={{
-      background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 8,
-      padding: compact ? '10px 12px' : '18px 20px', borderLeft: `3px solid ${color}`,
+      background: 'var(--color-surface)', border: '1px solid var(--color-outline-variant)',
+      padding: compact ? '10px 12px' : '18px 20px',
       display: 'flex', flexDirection: 'column', gap: compact ? 2 : 6, minHeight: 0,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-        <i className={`ti ${icon}`} style={{ fontSize: compact ? 12 : 14, color }} />
-        <p style={{ color: 'var(--text-muted)', fontSize: compact ? 10 : 11, fontWeight: 500, lineHeight: 1.2 }}>{label}</p>
+        <p style={{ color: 'var(--color-on-surface-variant)', fontSize: compact ? 10 : 11, fontWeight: 700, textTransform: 'uppercase', lineHeight: 1.2 }}>{label}</p>
       </div>
-      <h3 style={{ color: 'var(--text-primary)', fontSize: compact ? 18 : 26, fontWeight: 700, lineHeight: 1 }}>{value ?? 'â€”'}</h3>
-      {sub && <p style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.2 }}>{sub}</p>}
+      <h3 style={{ color: 'var(--color-on-surface)', fontSize: compact ? 18 : 26, fontWeight: 700, lineHeight: 1 }}>{value ?? '—'}</h3>
+      {sub && <p style={{ fontSize: 10, color: 'var(--color-on-surface-variant)', lineHeight: 1.2 }}>{sub}</p>}
     </div>
   )
 }

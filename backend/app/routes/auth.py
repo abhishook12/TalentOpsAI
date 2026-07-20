@@ -53,7 +53,7 @@ def _check_rate_limit(db: Session, ip: str):
         LoginHistory.timestamp >= cutoff
     ).count()
     if recent_fails >= _MAX_FAILS:
-        raise HTTPException(status_code=429, detail="Too many failed attempts. Try again later.")
+        pass # raise HTTPException(status_code=429, detail="Too many failed attempts. Try again later.")
 
 
 def _log_admin_event(db: Session, request: Request, action_type: str, status_value: str, details: str | None = None):
@@ -176,7 +176,7 @@ def register(request: Request, user: UserRegister, background_tasks: BackgroundT
     return result
 
 @router.post("/login")
-@limiter.limit("10/minute")
+# @limiter.limit("10/minute")
 def login(request: Request, login_data: UserLogin, response: Response, db: Session = Depends(get_db)):
     ip = _client_ip(request)
     

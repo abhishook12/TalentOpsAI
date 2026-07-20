@@ -11,6 +11,8 @@ from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session
 
 from ..database import get_db
+from ..services.auth_service import get_current_user_from_request
+from ..models.auth_models import User
 from ..models.models import Company, PageVisit, Recruiter, Vendor
 from ..utils.logo_domains import select_logo_domain
 from ..utils.state_sql import EFFECTIVE_RECRUITER_STATE_SQL_R, UNKNOWN_STATE_SENTINEL
@@ -72,14 +74,14 @@ router = APIRouter()
 
 @router.get("/data-quality")
 @cached_endpoint(ttl_seconds=300)
-def get_data_quality():
+def get_data_quality(current_user: User = Depends(get_current_user_from_request)):
     from ..olap_sidecar import olap_sidecar
-    return olap_sidecar.get_data_quality()
+    return olap_sidecar.get_data_quality(user_id=current_user.id)
 
 
 @router.get("/dashboard")
 @cached_endpoint(ttl_seconds=300)
-def get_dashboard_kpis(db: Session = Depends(get_db)):
+def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
 
     sql = text("""
         SELECT 
@@ -99,9 +101,9 @@ def get_dashboard_kpis(db: Session = Depends(get_db)):
                 (phone3 IS NOT NULL AND phone3 != '') OR 
                 (phone4 IS NOT NULL AND phone4 != '')
             ) as with_phone
-        FROM recruiters
+        FROM recruiters WHERE user_id = :user_id
     """)
-    res = db.execute(sql).mappings().first()
+    res = db.execute(sql, {"user_id": current_user.id}).mappings().first()
 
     total_recruiters = res["total_recruiters"] or 0
     active_recruiters = res["active_recruiters"] or 0
@@ -110,8 +112,8 @@ def get_dashboard_kpis(db: Session = Depends(get_db)):
     with_email = res["with_email"] or 0
     with_phone = res["with_phone"] or 0
 
-    total_companies = db.query(Company).count()
-    total_vendors = db.query(Vendor).count()
+    total_companies = db.query(Company).filter(Company.user_id == current_user.id).count()
+    total_vendors = db.query(Vendor).filter(Vendor.user_id == current_user.id).count()
 
     email_rate = round((with_email / total_recruiters * 100), 1) if total_recruiters > 0 else 0
     review_rate = round((needs_review / total_recruiters * 100), 1) if total_recruiters > 0 else 0
@@ -136,26 +138,26 @@ def get_dashboard_kpis(db: Session = Depends(get_db)):
 
 @router.get("/recruiters-by-state")
 @cached_endpoint(ttl_seconds=3600)
-def recruiters_by_state(db: Session = Depends(get_db)):
+def recruiters_by_state(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     computed_state_sql = EFFECTIVE_RECRUITER_STATE_SQL_R
 
     results = db.execute(text(f"""
         SELECT
             {computed_state_sql} AS state,
             COUNT(r.recruiter_id) AS count
-        FROM recruiters r
+        FROM recruiters r 
         LEFT JOIN companies c ON c.company_id = r.company_id
-        WHERE {computed_state_sql} IS NOT NULL
+        WHERE r.user_id = :user_id AND {computed_state_sql} IS NOT NULL
         GROUP BY {computed_state_sql}
         ORDER BY count DESC, state ASC
-    """)).mappings().all()
+    """), {"user_email": current_user.email, "user_id": current_user.id}).mappings().all()
 
     res_list = [{"state": row["state"], "count": int(row["count"])} for row in results]
     return res_list
 
 
 @router.get("/companies-count-by-state")
-def companies_count_by_state(db: Session = Depends(get_db)):
+def companies_count_by_state(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     cached = analytics_cache.get("companies_count_by_state")
     if cached is not None:
         return cached
@@ -170,11 +172,12 @@ def companies_count_by_state(db: Session = Depends(get_db)):
             COUNT(DISTINCT c.company_id) AS count
         FROM companies c
         LEFT JOIN recruiters r ON r.company_id = c.company_id
+        WHERE c.user_id = :user_id
         GROUP BY 1
         ORDER BY count DESC
-    """)).mappings().all()
+    """), {"user_email": current_user.email, "user_id": current_user.id}).mappings().all()
 
-    counts = {}
+    counts = {"user_id": current_user.id}
     for row in rows:
         state = row["state"] or "Unknown"
         counts[state] = int(row["count"])
@@ -200,7 +203,7 @@ def company_states(
             COUNT(r.recruiter_id) AS count
         FROM recruiters r
         LEFT JOIN companies c ON c.company_id = r.company_id
-        WHERE r.company_id = :company_id
+        WHERE r.user_id = :user_id AND r.company_id = :company_id
           AND {computed_state_sql} IS NOT NULL
         GROUP BY {computed_state_sql}
         ORDER BY count DESC, state ASC
@@ -210,7 +213,7 @@ def company_states(
         SELECT COUNT(r.recruiter_id) AS count
         FROM recruiters r
         LEFT JOIN companies c ON c.company_id = r.company_id
-        WHERE r.company_id = :company_id
+        WHERE r.user_id = :user_id AND r.company_id = :company_id
           AND {computed_state_sql} IS NULL
     """), {"company_id": company_id}).mappings().first()
 
@@ -232,17 +235,18 @@ def companies_search(
     limit: int = Query(100, ge=1, le=500),
     skip: int = Query(0, ge=0),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
 ):
     dashboard_query = not q and (not state or state.upper() == 'ALL') and min_recruiters == 1 and limit == 6 and skip == 0
     dir_query = not q and (not state or state.upper() == 'ALL') and min_recruiters == 1 and limit == 200 and skip == 0
-    cache_key = "companies_search_dashboard" if dashboard_query else ("companies_search_dir" if dir_query else "companies_search")
+    cache_key = f"companies_search_dashboard_{current_user.id}" if dashboard_query else (f"companies_search_dir_{current_user.id}" if dir_query else f"companies_search_{current_user.id}")
     cached = analytics_cache.get(cache_key)
     if cached is not None and (dashboard_query or dir_query or (not q and not state and min_recruiters == 0 and limit == 100 and skip == 0)):
         response.headers["X-Total-Count"] = str(cached["total_count"])
         return cached["rows"]
 
-    where_clauses = ["c.is_active = true"]
-    params = {"limit": limit, "min_recruiters": min_recruiters, "skip": skip}
+    where_clauses = ["c.is_active = true", "c.user_id = :user_id"]
+    params = {"limit": limit, "min_recruiters": min_recruiters, "skip": skip, "user_id": current_user.id}
 
     if q:
         q_clean = q.strip()
@@ -266,7 +270,7 @@ def companies_search(
         WITH recruiter_counts AS (
             SELECT company_id, COUNT(recruiter_id) as rc_count
             FROM recruiters
-            WHERE company_id IS NOT NULL
+            WHERE company_id IS NOT NULL AND user_id = :user_id
             GROUP BY company_id
         ),
         comp_stats AS (
@@ -315,11 +319,11 @@ def companies_search(
         })
 
     if dashboard_query:
-        analytics_cache.set("companies_search_dashboard", {"total_count": total_count, "rows": res}, ttl=3600)
+        analytics_cache.set(f"companies_search_dashboard_{current_user.id}", {"total_count": total_count, "rows": res}, ttl=3600)
     elif dir_query:
-        analytics_cache.set("companies_search_dir", {"total_count": total_count, "rows": res}, ttl=3600)
+        analytics_cache.set(f"companies_search_dir_{current_user.id}", {"total_count": total_count, "rows": res}, ttl=3600)
     elif not q and not state and min_recruiters == 0 and limit == 100 and skip == 0:
-        analytics_cache.set("companies_search", {"total_count": total_count, "rows": res}, ttl=3600)
+        analytics_cache.set(f"companies_search_{current_user.id}", {"total_count": total_count, "rows": res}, ttl=3600)
 
     return res
 
@@ -333,7 +337,7 @@ class VisitPayload(BaseModel):
 
 
 @router.post("/log-visit")
-def log_visit(payload: VisitPayload, request: Request, db: Session = Depends(get_db)):
+def log_visit(payload: VisitPayload, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     ua = request.headers.get("user-agent", "")[:300]
     forwarded = request.headers.get("x-forwarded-for")
     ip = (forwarded.split(",")[0].strip() if forwarded else None) or str(request.client.host)
@@ -366,8 +370,8 @@ def log_visit(payload: VisitPayload, request: Request, db: Session = Depends(get
 
 
 @router.get("/visit-stats")
-def visit_stats(db: Session = Depends(get_db)):
-    cached = analytics_cache.get("visit_stats")
+def visit_stats(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    cached = analytics_cache.get(f"visit_stats_{current_user.id}")
     if cached is not None:
         return cached
 
@@ -376,9 +380,9 @@ def visit_stats(db: Session = Depends(get_db)):
     daily = db.execute(text("""
         SELECT DATE(visited_at) AS day, COUNT(*) AS visits
         FROM page_visits
-        WHERE visited_at >= :since
+        WHERE user_email = :user_email AND visited_at >= :since
         GROUP BY day ORDER BY day ASC
-    """), {"since": seven_days_ago}).mappings().all()
+    """), {"since": seven_days_ago, "user_email": current_user.email}).mappings().all()
 
     thirty_days_ago = now - timedelta(days=30)
     
@@ -397,29 +401,30 @@ def visit_stats(db: Session = Depends(get_db)):
             {week_sql},
             COUNT(*) AS visits
         FROM page_visits
-        WHERE visited_at >= :since
+        WHERE user_email = :user_email AND visited_at >= :since
         GROUP BY week_start ORDER BY week_start ASC
-    """), {"since": thirty_days_ago}).mappings().all()
+    """), {"since": thirty_days_ago, "user_email": current_user.email}).mappings().all()
 
     top_pages = db.execute(text("""
         SELECT page, COUNT(*) AS visits
         FROM page_visits
+        WHERE user_email = :user_email
         GROUP BY page ORDER BY visits DESC
         LIMIT 10
-    """)).mappings().all()
+    """), {"user_email": current_user.email}).mappings().all()
 
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     yesterday_start = today_start - timedelta(days=1)
-    today_count = db.execute(text("SELECT COUNT(*) FROM page_visits WHERE visited_at >= :s"), {"s": today_start}).scalar() or 0
+    today_count = db.execute(text("SELECT COUNT(*) FROM page_visits WHERE user_email = :user_email AND visited_at >= :s"), {"s": today_start, "user_email": current_user.email}).scalar() or 0
     yesterday_count = db.execute(
-        text("SELECT COUNT(*) FROM page_visits WHERE visited_at >= :s AND visited_at < :e"),
-        {"s": yesterday_start, "e": today_start},
+        text("SELECT COUNT(*) FROM page_visits WHERE user_email = :user_email AND visited_at >= :s AND visited_at < :e"),
+        {"s": yesterday_start, "e": today_start, "user_email": current_user.email},
     ).scalar() or 0
-    total_count = db.execute(text("SELECT COUNT(*) FROM page_visits")).scalar() or 0
+    total_count = db.execute(text("SELECT COUNT(*) FROM page_visits WHERE user_email = :user_email"), {"user_email": current_user.email}).scalar() or 0
 
     searches_today = db.execute(
-        text("SELECT COUNT(*) FROM action_logs WHERE created_at >= :s AND action_type = 'SEARCH_RECRUITERS'"),
-        {"s": today_start}
+        text("SELECT COUNT(*) FROM action_logs WHERE user_email = :user_email AND created_at >= :s AND action_type = 'SEARCH_RECRUITERS'"),
+        {"s": today_start, "user_email": current_user.email}
     ).scalar() or 0
 
     result = {
@@ -431,34 +436,35 @@ def visit_stats(db: Session = Depends(get_db)):
         "weekly": [{"week": str(r["week_start"]), "visits": r["visits"]} for r in weekly],
         "top_pages": [{"page": r["page"], "visits": r["visits"]} for r in top_pages],
     }
-    analytics_cache.set("visit_stats", result, ttl=3600)
+    analytics_cache.set(f"visit_stats_{current_user.id}", result, ttl=3600)
     return result
 
 @router.get("/enrichment-feed")
-def get_enrichment_feed(db: Session = Depends(get_db)):
+def get_enrichment_feed(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     try:
         discovered = db.execute(text("""
             SELECT r.recruiter_name, r.title, r.created_at, 'discovery' as type,
                    c.company_name, r.email, r.phone, r.location
             FROM recruiters r
             JOIN companies c ON r.company_id = c.company_id
-            WHERE r.data_source = 'discovery_worker'
+            WHERE r.user_id = :user_id AND r.data_source = 'discovery_worker'
             AND r.company_id IS NOT NULL
             ORDER BY r.created_at DESC 
             LIMIT 50
-        """)).fetchall()
+        """), {"user_id": current_user.id}).fetchall()
         
         enriched = db.execute(text("""
             SELECT r.recruiter_name, r.title, r.updated_at as created_at, 'enriched' as type,
                    c.company_name, r.email, r.phone, r.location
             FROM recruiters r
             JOIN companies c ON r.company_id = c.company_id
-            WHERE (r.phone IS NOT NULL OR r.email IS NOT NULL) 
+            WHERE r.user_id = :user_id
+            AND (r.phone IS NOT NULL OR r.email IS NOT NULL) 
             AND r.company_id IS NOT NULL
             AND r.updated_at > r.created_at
             ORDER BY r.updated_at DESC 
             LIMIT 50
-        """)).fetchall()
+        """), {"user_id": current_user.id}).fetchall()
         
         import re
         
@@ -523,9 +529,9 @@ def get_global_activity(
         records = db.execute(text("""
             SELECT r.recruiter_id, r.recruiter_name, r.title, r.location, r.phone, r.email, 
                    r.created_at, r.updated_at, r.is_active, c.company_name
-            FROM recruiters r
-            LEFT JOIN companies c ON r.company_id = c.company_id
-            WHERE r.recruiter_name IS NOT NULL AND r.recruiter_name != ''
+        FROM recruiters r
+        LEFT JOIN companies c ON r.company_id = c.company_id
+        WHERE r.user_id = :user_id AND r.recruiter_name IS NOT NULL AND r.recruiter_name != ''
               AND c.company_name IS NOT NULL AND c.company_name != ''
               AND r.email IS NOT NULL AND r.email != '' AND r.email NOT LIKE '%@missing.local' AND r.email NOT LIKE 'no-email-%' AND r.email NOT LIKE 'linkedin_%'
               AND r.location IS NOT NULL AND r.location != ''
@@ -569,12 +575,12 @@ def get_global_activity(
             
         daily_stats_row = db.execute(text("""
             SELECT 
-                COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE) as added,
+                COUNT(*) FILTER (WHERE user_id = :user_id AND created_at >= CURRENT_DATE) as added,
                 COUNT(*) FILTER (WHERE updated_at >= CURRENT_DATE AND (phone IS NOT NULL OR email IS NOT NULL) AND created_at < CURRENT_DATE AND is_active = true) as improved,
                 COUNT(*) FILTER (WHERE updated_at >= CURRENT_DATE AND is_active = false) as removed
             FROM recruiters
             WHERE updated_at >= CURRENT_DATE OR created_at >= CURRENT_DATE
-        """)).fetchone()
+        """), {"user_email": current_user.email, "user_id": current_user.id}).fetchone()
         
         daily_stats = {
             "added": daily_stats_row[0] or 0,
@@ -589,7 +595,7 @@ def get_global_activity(
 
 
 @router.get("/executive-report")
-def get_executive_report(db: Session = Depends(get_db)):
+def get_executive_report(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     """Generates an executive scorecard across top staffing giants and nationwide coverage."""
     from fastapi.responses import Response
     import csv
@@ -604,10 +610,11 @@ def get_executive_report(db: Session = Depends(get_db)):
             COUNT(*) FILTER (WHERE r.email IS NOT NULL AND r.email != '' AND r.email NOT LIKE '%missing.local%') AS with_email_count
         FROM recruiters r
         LEFT JOIN companies c ON r.company_id = c.company_id
+        WHERE r.user_id = :user_id
         GROUP BY c.company_name
         ORDER BY total_recruiters DESC
         LIMIT 60
-    """)).fetchall()
+    """), {"user_email": current_user.email, "user_id": current_user.id}).fetchall()
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -621,11 +628,11 @@ def get_executive_report(db: Session = Depends(get_db)):
 
 
 @router.get("/visitor-logs")
-def get_visitor_logs(limit: int = 100, db: Session = Depends(get_db)):
+def get_visitor_logs(limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     try:
         visits = db.execute(text("""
             SELECT id, page, path, user_email, session_id, time_on_page, user_agent, ip_address, visited_at
-            FROM page_visits
+            FROM page_visits WHERE user_email = :user_email AND
             ORDER BY visited_at DESC
             LIMIT :limit
         """), {"limit": limit}).mappings().all()
@@ -669,7 +676,7 @@ def get_visitor_logs(limit: int = 100, db: Session = Depends(get_db)):
         return {"logs": []}
 
 @router.get("/taxonomy-distribution")
-def get_taxonomy_distribution(db: Session = Depends(get_db)):
+def get_taxonomy_distribution(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     """
     Returns the distribution of recruiter taxonomy categories for a pie chart,
     plus the count of uncategorized records.
@@ -687,7 +694,7 @@ def get_taxonomy_distribution(db: Session = Depends(get_db)):
             WHERE is_active = true
             GROUP BY COALESCE(taxonomy_category, 'Uncategorized')
             ORDER BY count DESC
-        """)).fetchall()
+        """), {"user_email": current_user.email, "user_id": current_user.id}).fetchall()
 
         distribution = [{"category": r[0], "count": r[1]} for r in rows]
 
@@ -709,7 +716,7 @@ def get_taxonomy_distribution(db: Session = Depends(get_db)):
         return {"distribution": [], "total": 0, "categorized": 0, "uncategorized": 0, "coverage_pct": 0}
 
 @router.get("/data-health")
-def get_data_health(db: Session = Depends(get_db)):
+def get_data_health(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     """
     Returns data health and completeness metrics for the recruiter database.
     """
@@ -729,7 +736,7 @@ def get_data_health(db: Session = Depends(get_db)):
                 COUNT(*) FILTER (WHERE linkedin IS NULL OR linkedin = '') as missing_linkedin
             FROM recruiters
             WHERE is_active = true
-        """)).fetchone()
+        """), {"user_email": current_user.email, "user_id": current_user.id}).fetchone()
 
         if not row or row[0] == 0:
             return {"total": 0, "metrics": []}
@@ -760,7 +767,7 @@ def get_data_health(db: Session = Depends(get_db)):
 
 
 @router.get("/insights")
-def get_smart_insights(db: Session = Depends(get_db)):
+def get_smart_insights(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     cached = analytics_cache.get("dashboard_insights")
     if cached is not None:
         return cached
@@ -770,8 +777,8 @@ def get_smart_insights(db: Session = Depends(get_db)):
     yesterday_start = today_start - timedelta(days=1)
 
     # 1. Recruiter Growth
-    today_recs = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE created_at >= :s"), {"s": today_start}).scalar() or 0
-    yest_recs = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE created_at >= :s AND created_at < :e"), {"s": yesterday_start, "e": today_start}).scalar() or 0
+    today_recs = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE user_id = :user_id AND created_at >= :s"), {"s": today_start, "user_id": current_user.id, "user_email": current_user.email}).scalar() or 0
+    yest_recs = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE user_id = :user_id AND created_at >= :s AND created_at < :e"), {"s": yesterday_start, "e": today_start, "user_id": current_user.id, "user_email": current_user.email}).scalar() or 0
     
     growth_insight = "Recruiter database is stable with normal operations."
     if today_recs > yest_recs and yest_recs > 0:
@@ -781,13 +788,13 @@ def get_smart_insights(db: Session = Depends(get_db)):
         growth_insight = f"You added {today_recs} new recruiters today."
 
     # 2. Top State Insight
-    top_state_row = db.execute(text("SELECT location, COUNT(*) as c FROM recruiters WHERE location IS NOT NULL AND location != '' GROUP BY location ORDER BY c DESC LIMIT 1")).fetchone()
+    top_state_row = db.execute(text("SELECT location, COUNT(*) as c FROM recruiters WHERE user_id = :user_id AND location IS NOT NULL AND location != '' GROUP BY location ORDER BY c DESC LIMIT 1"), {"user_email": current_user.email, "user_id": current_user.id}).fetchone()
     state_insight = "Geographic distribution is balanced."
     if top_state_row:
         state_insight = f"{top_state_row[0]} generated the highest recruiter density."
 
     # 3. Traffic Insight
-    searches = db.execute(text("SELECT COUNT(*) FROM action_logs WHERE created_at >= :s AND action_type = 'SEARCH_RECRUITERS'"), {"s": today_start}).scalar() or 0
+    searches = db.execute(text("SELECT COUNT(*) FROM action_logs WHERE user_email = :user_email AND created_at >= :s AND action_type = 'SEARCH_RECRUITERS'"), {"s": today_start, "user_id": current_user.id, "user_email": current_user.email}).scalar() or 0
     traffic_insight = "System traffic is at baseline levels."
     if searches > 10:
         traffic_insight = f"High search volume detected: {searches} recruiter searches today."

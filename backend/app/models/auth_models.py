@@ -66,6 +66,25 @@ class User(Base):
     status = Column(String(50), default='Pending Verification')
     role_id = Column(Integer, ForeignKey('roles.id'), nullable=True)
     org_id = Column(Integer, ForeignKey('organizations.id'), nullable=True)
+    
+    # Expanded Profile & Identity
+    job_title = Column(String(150), nullable=True)
+    department = Column(String(150), nullable=True)
+    phone = Column(String(50), nullable=True)
+    mobile = Column(String(50), nullable=True)
+    work_email = Column(String(150), nullable=True)
+    alt_email = Column(String(150), nullable=True)
+    timezone = Column(String(100), nullable=True, default="UTC")
+    address = Column(String(255), nullable=True)
+    linkedin_url = Column(String(255), nullable=True)
+    website = Column(String(255), nullable=True)
+    resume_url = Column(String(500), nullable=True)
+    
+    # Global Preferences
+    default_sender_id = Column(Integer, nullable=True) # Will map to UserOutlookAccount
+    default_reply_to = Column(String(150), nullable=True)
+    signature_html = Column(Text, nullable=True)
+    
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     
@@ -132,3 +151,35 @@ class APIKey(Base):
     name = Column(String(100), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     is_active = Column(Boolean, default=True)
+
+class UserOutlookAccount(Base):
+    __tablename__ = 'user_outlook_accounts'
+    account_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    email_address = Column(String(255), nullable=False)
+    refresh_token = Column(Text, nullable=True)
+    access_token = Column(Text, nullable=True)
+    status = Column(String(50), default="disconnected") # connected, disconnected, expired
+    last_synced_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    
+class UserBridgeStatus(Base):
+    __tablename__ = 'user_bridge_status'
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), unique=True, nullable=False)
+    status = Column(String(50), default="offline") # online, offline, error
+    last_heartbeat = Column(DateTime, nullable=True)
+    uptime_seconds = Column(Integer, default=0)
+    last_successful_email_at = Column(DateTime, nullable=True)
+    consecutive_errors = Column(Integer, default=0)
+    version = Column(String(50), nullable=True)
+    diagnostics_json = Column(Text, nullable=True)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+class UserPreference(Base):
+    __tablename__ = 'user_preferences'
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, unique=True, index=True)
+    preferences = Column(Text, nullable=True) # JSON stored as string for cross-db compat, or JSON type
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

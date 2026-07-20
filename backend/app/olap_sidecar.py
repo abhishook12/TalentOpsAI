@@ -10,8 +10,8 @@ logger = logging.getLogger("talentops.olap")
 
 class MemoryOLAPSidecar:
     _instance = None
-    _cached_data_quality: Optional[Dict[str, Any]] = None
-    _last_sync_time: float = 0
+    _cached_data_quality: Dict[int, Dict[str, Any]] = {}
+    _last_sync_time: Dict[int, float] = {}
     _sync_ttl: float = 300  # Auto-refresh every 5 minutes
 
     @classmethod
@@ -20,13 +20,13 @@ class MemoryOLAPSidecar:
             cls._instance = MemoryOLAPSidecar()
         return cls._instance
 
-    def refresh(self, force: bool = False) -> Dict[str, Any]:
+    def refresh(self, user_id: int, force: bool = False) -> Dict[str, Any]:
         now = time.time()
-        if not force and self._cached_data_quality and (now - self._last_sync_time < self._sync_ttl):
-            return self._cached_data_quality
+        if not force and user_id in self._cached_data_quality and (now - self._last_sync_time.get(user_id, 0) < self._sync_ttl):
+            return self._cached_data_quality[user_id]
 
         t0 = time.time()
-        logger.info("[OLAP] Synchronizing high-speed OLAP aggregate sidecar from main DB...")
+        logger.info(f"[OLAP] Synchronizing high-speed OLAP aggregate sidecar for user {user_id}...")
         try:
             from .database import SessionLocal
             from sqlalchemy import text
@@ -49,7 +49,8 @@ class MemoryOLAPSidecar:
                         COUNT(*) FILTER (WHERE state_source = 'email_domain') AS domain_state_count,
                         COUNT(*) FILTER (WHERE state_source IN ('recruiter_location', 'company_location', 'notes', 'review_reason', 'metadata_json', 'raw_data')) AS text_inferred_count
                     FROM recruiters
-                """)).mappings().one()
+                    WHERE user_id = :user_id
+                """), {"user_id": user_id}).mappings().one()
 
                 total_recruiters = int(recruiter_counts["total_recruiters"] or 0)
                 real_emails = int(recruiter_counts["real_emails"] or 0)
@@ -65,7 +66,7 @@ class MemoryOLAPSidecar:
                 domain_state_count = int(recruiter_counts["domain_state_count"] or 0)
                 text_inferred_count = int(recruiter_counts["text_inferred_count"] or 0)
 
-                total_companies = db.execute(text("SELECT COUNT(*) FROM companies")).scalar() or 0
+                total_companies = db.execute(text("SELECT COUNT(*) FROM companies WHERE user_id = :user_id"), {"user_id": user_id}).scalar() or 0
 
                 try:
                     db_size = db.execute(text("SELECT pg_size_pretty(pg_database_size(current_database()))")).scalar()
@@ -73,7 +74,7 @@ class MemoryOLAPSidecar:
                     db_size = "Unknown"
 
                 duplicate_risk = db.execute(
-                    text("SELECT COUNT(*) FROM (SELECT phone FROM recruiters WHERE phone IS NOT NULL AND phone != '' GROUP BY phone HAVING COUNT(*) > 1) t")
+                    text("SELECT COUNT(*) FROM (SELECT phone FROM recruiters WHERE phone IS NOT NULL AND phone != '' AND user_id = :user_id GROUP BY phone HAVING COUNT(*) > 1) t"), {"user_id": user_id}
                 ).scalar() or 0
 
                 explicit_state_count = direct_state_count
@@ -82,7 +83,8 @@ class MemoryOLAPSidecar:
                     FROM recruiters
                     WHERE (state IS NOT NULL AND state != '')
                       AND (state_source IS NULL OR state_source = '')
-                """)).scalar() or 0
+                      AND user_id = :user_id
+                """), {"user_id": user_id}).scalar() or 0
                 explicit_state_count += pre_existing_states
                 inferred_state_count = max(with_state - explicit_state_count, 0)
 
@@ -120,9 +122,9 @@ class MemoryOLAPSidecar:
                     "text_inferred_state_count": text_inferred_count,
                 }
 
-                self._cached_data_quality = result
-                self._last_sync_time = time.time()
-                elapsed = round((self._last_sync_time - t0) * 1000, 2)
+                self._cached_data_quality[user_id] = result
+                self._last_sync_time[user_id] = time.time()
+                elapsed = round((self._last_sync_time[user_id] - t0) * 1000, 2)
                 logger.info(f"[OLAP] Sidecar sync complete in {elapsed}ms! Known State: {with_state:,}")
                 return result
 
@@ -130,15 +132,18 @@ class MemoryOLAPSidecar:
                 db.close()
         except Exception as e:
             logger.error(f"[OLAP] Error syncing sidecar: {e}")
-            if self._cached_data_quality:
-                return self._cached_data_quality
+            if user_id in self._cached_data_quality:
+                return self._cached_data_quality[user_id]
             raise
 
-    def get_data_quality(self) -> Dict[str, Any]:
-        return self.refresh(force=False)
+    def get_data_quality(self, user_id: int) -> Dict[str, Any]:
+        return self.refresh(user_id=user_id, force=False)
 
-    def invalidate(self):
+    def invalidate(self, user_id: int = None):
         logger.info("[OLAP] Cache invalidated. Next query will trigger C-speed DB sync.")
-        self._last_sync_time = 0
+        if user_id and user_id in self._last_sync_time:
+            self._last_sync_time[user_id] = 0
+        else:
+            self._last_sync_time = {}
 
 olap_sidecar = MemoryOLAPSidecar.get_instance()

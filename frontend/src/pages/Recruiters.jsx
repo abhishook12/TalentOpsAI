@@ -4,6 +4,7 @@ import { exportToExcel } from '../services/export'
 import api from '../services/api'
 import { CompanyLogo } from '../components/CompanyLogo'
 import { useSessionState } from '../hooks/useSessionState'
+import { useRecruiters, usePrefetchRecruiters } from '../hooks/queries/useRecruiters'
 
 const emptyForm = {
   recruiter_name: '', email: '', phone: '', linkedin: '',
@@ -203,13 +204,8 @@ function RecruiterTableRow({ r, toggleActive, openEdit, handleDelete }) {
 }
 
 export default function Recruiters() {
-  const [recruiters, setRecruiters] = useState([])
-  const [loading, setLoading] = useState(true)
-  
   // Pagination
   const [page, setPage] = useSessionState('recruiters_page', 1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [totalCount, setTotalCount] = useState(0)
 
   // Advanced Filters
   const [search, setSearch] = useSessionState('recruiters_search', '')
@@ -236,46 +232,19 @@ export default function Recruiters() {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
 
-  const fetchRecruiters = useCallback(() => {
-    setLoading(true)
-    const params = new URLSearchParams()
-    params.append('page', page)
-    params.append('limit', 10)
-    
-    if (debouncedSearch) params.append('search', debouncedSearch)
-    if (debouncedFilters.state) params.append('state', debouncedFilters.state)
-    if (debouncedFilters.city) params.append('city', debouncedFilters.city)
-    if (debouncedFilters.company) params.append('company', debouncedFilters.company)
-    if (debouncedFilters.title) params.append('title', debouncedFilters.title)
-    
-    if (debouncedFilters.has_phone === 'yes') params.append('has_phone', 'true')
-    if (debouncedFilters.has_phone === 'no') params.append('has_phone', 'false')
-    
-    if (debouncedFilters.missing_email === 'yes') params.append('missing_email', 'true')
-    if (debouncedFilters.missing_email === 'no') params.append('missing_email', 'false')
-    
-    if (debouncedFilters.status === 'active') params.append('is_active', 'true')
-    if (debouncedFilters.status === 'inactive') params.append('is_active', 'false')
-    
-    if (debouncedFilters.needs_review === 'yes') params.append('needs_review', 'true')
-    if (debouncedFilters.state_status) params.append('state_status', debouncedFilters.state_status)
-    if (debouncedFilters.email_inference_status) params.append('email_inference_status', debouncedFilters.email_inference_status)
-    
-    params.append('sort_by', debouncedFilters.sort_by)
-    params.append('sort_desc', debouncedFilters.sort_desc === 'true' ? 'true' : 'false')
+  // React Query Data Fetching
+  const { data, isLoading: loading, isFetching, refetch } = useRecruiters(page, debouncedSearch, debouncedFilters)
+  const recruiters = data?.results || []
+  const totalCount = data?.total_count || 0
+  const totalPages = data?.total_pages || 1
 
-    api.get(`/recruiters/?${params.toString()}`).then(r => { 
-        setRecruiters(r.data?.results || [])
-        setTotalCount(r.data?.total_count || 0)
-        setTotalPages(r.data?.total_pages || 1)
-        setLoading(false) 
-    }).catch(e => {
-        console.error(e)
-        setLoading(false)
-    })
-  }, [page, debouncedSearch, debouncedFilters])
-
-  useEffect(() => { fetchRecruiters() }, [fetchRecruiters])
+  // Prefetch next page
+  const prefetchNextPage = usePrefetchRecruiters(page, debouncedSearch, debouncedFilters)
+  useEffect(() => {
+    if (page < totalPages) {
+      prefetchNextPage()
+    }
+  }, [page, totalPages, prefetchNextPage])
 
   useEffect(() => {
     const handleApprove = (e) => {

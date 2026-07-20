@@ -1,3 +1,7 @@
+import datetime
+from sqlalchemy import Column, String, DateTime
+from app.database import Base
+
 class SystemSetting(Base):
     __tablename__ = "system_settings"
     key = Column(String(50), primary_key=True, index=True)

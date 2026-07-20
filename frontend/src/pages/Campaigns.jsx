@@ -284,7 +284,6 @@ export default function Campaigns() {
     }
     else if (currentStep === STEPS.PREVIEW) {
       if (!preflightData?.ready) {
-        toast.error("Cannot proceed. Please fix validation errors.");
         return;
       }
       startCampaign();
@@ -527,6 +526,9 @@ export default function Campaigns() {
               <span className="text-xs bg-[var(--bg-surface)] px-2 py-1 rounded text-[var(--text-muted)] border border-[var(--border)]">
                 Draft
               </span>
+              <div className="ml-4">
+                <BridgeStatus onStatusChange={setBridgeHealthy} />
+              </div>
             </div>
             <p className="text-sm text-[var(--text-secondary)] mt-1 flex items-center gap-2">
               <Mail className="w-4 h-4" /> Sending via Outlook Bridge
@@ -672,28 +674,30 @@ export default function Campaigns() {
                   </div>
                 ) : preflightData ? (
                   <div className="flex-1 space-y-4">
-                    <ValidationItem 
-                      label="Outlook Bridge Online" 
-                      success={preflightData.bridge_healthy} 
-                      error={preflightData.bridge_error} 
-                    />
-                    <ValidationItem 
-                      label="Recipients Enrolled" 
-                      success={preflightData.has_recipients} 
-                      info={`${validatedRecipients.valid_count} valid recipients ready`}
-                    />
-                    <ValidationItem 
-                      label="Templates Saved" 
-                      success={preflightData.has_template} 
-                    />
+                    {preflightData.ready ? (
+                      <>
+                        <ValidationItem 
+                          label="All Checks Passed" 
+                          success={true} 
+                          info="Campaign is ready to launch."
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-sm font-semibold text-red-400 mb-2">Please fix the following errors to proceed:</div>
+                        {preflightData.errors?.map((err, i) => (
+                           <ValidationItem key={i} label={err.code.replace(/_/g, ' ')} error={err.message} success={false} />
+                        ))}
+                      </>
+                    )}
                     
-                    <div className="mt-8 pt-4 border-t border-[var(--border)]">
-                      <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-sm text-blue-400 mb-4">
-                        Estimated sending time: <strong>~{Math.ceil(validatedRecipients.valid_count / 4)} minutes</strong>
+                    {preflightData.ready && (
+                      <div className="mt-8 pt-4 border-t border-[var(--border)]">
+                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-sm text-blue-400 mb-4">
+                          Estimated sending time: <strong>~{Math.ceil(validatedRecipients.valid_count / 4)} minutes</strong>
+                        </div>
                       </div>
-                      
-                      <BridgeStatus onStatusChange={setBridgeHealthy} />
-                    </div>
+                    )}
                   </div>
                 ) : null}
               </div>
@@ -729,9 +733,12 @@ export default function Campaigns() {
           
           <button
             onClick={handleNextStep}
+            disabled={currentStep === STEPS.PREVIEW && !preflightData?.ready}
             className={`px-6 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors ${
                currentStep === STEPS.PREVIEW && preflightData?.ready
                 ? 'bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-500/20'
+                : currentStep === STEPS.PREVIEW && !preflightData?.ready
+                ? 'bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border)] cursor-not-allowed'
                 : 'bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white'
             }`}
           >

@@ -20,23 +20,13 @@ export default function EmailPreview({ campaignId, subjectTemplate, bodyTemplate
   }, [currentIndex, subjectTemplate, bodyTemplate, signatureId, currentRecipient, campaignId]);
 
   const fetchPreview = async () => {
-    if (!currentRecipient?.recruiter_id) {
-      // If we don't have a recruiter_id (e.g. manually added), we can't fully preview server-side.
-      // We'd fallback to basic client-side replace or just show an error.
-      setPreviewData({
-        subject: subjectTemplate.replace(/\{\{([^}]+)\}\}/g, '...'),
-        body: bodyTemplate.replace(/\{\{([^}]+)\}\}/g, '...') + (signatureId ? '<br/><br/>[Signature]' : ''),
-        recipient_email: currentRecipient.email,
-        recipient_name: currentRecipient.name || 'Unknown'
-      });
-      return;
-    }
-
     try {
       setLoading(true);
       setError(null);
       const res = await api.post(`/campaigns/${campaignId}/preview`, {
         recruiter_id: currentRecipient.recruiter_id,
+        fallback_email: currentRecipient.email,
+        fallback_name: currentRecipient.name,
         subject_template: subjectTemplate,
         body_template: bodyTemplate,
         signature_id: signatureId
@@ -44,7 +34,13 @@ export default function EmailPreview({ campaignId, subjectTemplate, bodyTemplate
       setPreviewData(res.data);
     } catch (e) {
       console.error("Failed to fetch preview:", e);
-      setError("Failed to generate preview for this recipient.");
+      let errMsg = "Failed to generate preview for this recipient.";
+      if (e.response && e.response.data && e.response.data.detail) {
+          errMsg = e.response.data.detail;
+      } else if (e.message) {
+          errMsg = e.message;
+      }
+      setError(errMsg);
     } finally {
       setLoading(false);
     }

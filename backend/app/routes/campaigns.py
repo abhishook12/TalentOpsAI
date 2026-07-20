@@ -131,7 +131,9 @@ def api_cancel_campaign(campaign_id: int, db: Session = Depends(get_db), current
     return {"status": "cancelled", "campaign_id": campaign_id}
 
 class PreviewRequest(BaseModel):
-    recruiter_id: int
+    recruiter_id: Optional[int] = None
+    fallback_email: Optional[str] = None
+    fallback_name: Optional[str] = None
     subject_template: str
     body_template: str
     signature_id: Optional[int] = None
@@ -140,11 +142,22 @@ class PreviewRequest(BaseModel):
 def api_preview_email(campaign_id: int, request: PreviewRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     from ..services.personalization import preview_email
     
-    recruiter = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.recruiter_id == request.recruiter_id).first()
+    recruiter = None
+    company = None
+    
+    if request.recruiter_id:
+        recruiter = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.recruiter_id == request.recruiter_id).first()
+        if recruiter:
+            company = recruiter.company if hasattr(recruiter, 'company') else None
+
+    # If no valid recruiter in DB, create a dummy one for preview interpolation
     if not recruiter:
-        raise HTTPException(status_code=404, detail="Recruiter not found")
-        
-    company = recruiter.company if hasattr(recruiter, 'company') else None
+        if not request.fallback_email:
+            raise HTTPException(status_code=400, detail="Missing recruiter_id and fallback_email. Cannot generate preview.")
+        recruiter = Recruiter(
+            email=request.fallback_email,
+            recruiter_name=request.fallback_name or "Unknown",
+        )
     
     signature_html = None
     if request.signature_id:
@@ -152,8 +165,11 @@ def api_preview_email(campaign_id: int, request: PreviewRequest, db: Session = D
         if sig:
             signature_html = sig.html_content
             
-    preview = preview_email(request.subject_template, request.body_template, recruiter, company, signature_html)
-    return preview
+    try:
+        preview = preview_email(request.subject_template, request.body_template, recruiter, company, signature_html)
+        return preview
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Template formatting error: {str(e)}")
 
 @router.post("/{campaign_id}/validate-before-send")
 def api_validate_before_send(campaign_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
@@ -163,23 +179,50 @@ def api_validate_before_send(campaign_id: int, db: Session = Depends(get_db), cu
         raise HTTPException(status_code=404, detail="Campaign not found")
         
     healthy, error = _check_bridge_health()
+    validation_errors = []
+    
+    if not healthy:
+        validation_errors.append({"code": "BRIDGE_OFFLINE", "message": f"Outlook Bridge is offline: {error or 'unreachable'}"})
+        
+    if not campaign.from_email:
+        validation_errors.append({"code": "MISSING_SENDER", "message": "No sender email selected."})
     
     # Check if there are active sequence steps with templates
     has_template = False
-    for step in campaign.sequence_steps:
-        if step.is_active and step.template_id:
-            has_template = True
-            break
+    has_subject = False
+    has_body = False
+    
+    if campaign.templates:
+        # For MVP we just check the first template linked to the campaign
+        t = campaign.templates[0]
+        has_template = True
+        if not t.subject or not t.subject.strip():
+            validation_errors.append({"code": "MISSING_SUBJECT", "message": "Email subject cannot be empty."})
+        else:
+            has_subject = True
+            
+        if not t.body or not t.body.strip():
+            validation_errors.append({"code": "MISSING_BODY", "message": "Email body cannot be empty."})
+        else:
+            has_body = True
+    else:
+        validation_errors.append({"code": "MISSING_TEMPLATE", "message": "No template saved for this campaign."})
             
     # Check if there are enrolled recipients
-    has_recipients = db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id).count() > 0
+    recipients_count = db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id).count()
+    if recipients_count == 0:
+        validation_errors.append({"code": "MISSING_RECIPIENTS", "message": "No valid recipients enrolled in this campaign."})
+        
+    is_ready = len(validation_errors) == 0
     
     return {
         "bridge_healthy": healthy,
         "bridge_error": error if not healthy else None,
         "has_template": has_template,
-        "has_recipients": has_recipients,
-        "ready": healthy and has_template and has_recipients
+        "has_recipients": recipients_count > 0,
+        "ready": is_ready,
+        "errors": validation_errors,
+        "valid_count": recipients_count
     }
 
 class SignatureCreate(BaseModel):

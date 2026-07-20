@@ -80,6 +80,8 @@ export default function RecipientValidator({ onValidated, initialRecipients = []
       setInputText('');
     } catch (error) {
       console.error("Validation failed", error);
+      const msg = error.response?.data?.detail || error.message || "Failed to validate recipients";
+      import('react-hot-toast').then(({ toast }) => toast.error(msg));
     } finally {
       setIsValidating(false);
     }

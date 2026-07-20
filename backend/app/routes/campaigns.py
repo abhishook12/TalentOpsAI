@@ -13,6 +13,8 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..database import get_db
+from ..services.auth_service import get_current_user_from_request
+from ..models.auth_models import User
 from ..models.campaigns import (
     Campaign,
     CampaignRecruiter,
@@ -86,43 +88,43 @@ class ValidateRecipientsRequest(BaseModel):
     emails: list[str]
 
 @router.post("/validate-recipients")
-def validate_recipients_endpoint(payload: ValidateRecipientsRequest, db: Session = Depends(get_db)):
+def validate_recipients_endpoint(payload: ValidateRecipientsRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     from ..services.recipient_validator import validate_recipients
     from dataclasses import asdict
     result = validate_recipients(payload.emails, db)
     return asdict(result)
 
 @router.post("/{campaign_id}/start")
-async def api_start_campaign(campaign_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+async def api_start_campaign(campaign_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     from ..services.send_engine import start_campaign
-    campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+    campaign = db.query(Campaign).filter(Campaign.user_id == current_user.id, Campaign.campaign_id == campaign_id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
     background_tasks.add_task(start_campaign, campaign_id)
     return {"status": "started", "campaign_id": campaign_id}
 
 @router.post("/{campaign_id}/pause")
-def api_pause_campaign(campaign_id: int, db: Session = Depends(get_db)):
+def api_pause_campaign(campaign_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     from ..services.send_engine import pause_campaign
-    campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+    campaign = db.query(Campaign).filter(Campaign.user_id == current_user.id, Campaign.campaign_id == campaign_id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
     pause_campaign(campaign_id)
     return {"status": "paused", "campaign_id": campaign_id}
 
 @router.post("/{campaign_id}/resume")
-async def api_resume_campaign(campaign_id: int, db: Session = Depends(get_db)):
+async def api_resume_campaign(campaign_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     from ..services.send_engine import resume_campaign
-    campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+    campaign = db.query(Campaign).filter(Campaign.user_id == current_user.id, Campaign.campaign_id == campaign_id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
     await resume_campaign(campaign_id)
     return {"status": "resumed", "campaign_id": campaign_id}
 
 @router.post("/{campaign_id}/cancel")
-def api_cancel_campaign(campaign_id: int, db: Session = Depends(get_db)):
+def api_cancel_campaign(campaign_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     from ..services.send_engine import cancel_campaign
-    campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+    campaign = db.query(Campaign).filter(Campaign.user_id == current_user.id, Campaign.campaign_id == campaign_id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
     cancel_campaign(campaign_id)
@@ -135,10 +137,10 @@ class PreviewRequest(BaseModel):
     signature_id: Optional[int] = None
 
 @router.post("/{campaign_id}/preview")
-def api_preview_email(campaign_id: int, request: PreviewRequest, db: Session = Depends(get_db)):
+def api_preview_email(campaign_id: int, request: PreviewRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     from ..services.personalization import preview_email
     
-    recruiter = db.query(Recruiter).filter(Recruiter.recruiter_id == request.recruiter_id).first()
+    recruiter = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.recruiter_id == request.recruiter_id).first()
     if not recruiter:
         raise HTTPException(status_code=404, detail="Recruiter not found")
         
@@ -146,7 +148,7 @@ def api_preview_email(campaign_id: int, request: PreviewRequest, db: Session = D
     
     signature_html = None
     if request.signature_id:
-        sig = db.query(EmailSignature).filter(EmailSignature.signature_id == request.signature_id).first()
+        sig = db.query(EmailSignature).filter(EmailSignature.user_id == current_user.id, EmailSignature.signature_id == request.signature_id).first()
         if sig:
             signature_html = sig.html_content
             
@@ -154,9 +156,9 @@ def api_preview_email(campaign_id: int, request: PreviewRequest, db: Session = D
     return preview
 
 @router.post("/{campaign_id}/validate-before-send")
-def api_validate_before_send(campaign_id: int, db: Session = Depends(get_db)):
+def api_validate_before_send(campaign_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     from ..services.send_engine import _check_bridge_health
-    campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+    campaign = db.query(Campaign).filter(Campaign.user_id == current_user.id, Campaign.campaign_id == campaign_id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
         
@@ -191,8 +193,8 @@ class SignatureUpdate(BaseModel):
     is_default: Optional[bool] = None
 
 @router.get("/signatures/list")
-def list_signatures(db: Session = Depends(get_db)):
-    sigs = db.query(EmailSignature).order_by(EmailSignature.created_at.desc()).all()
+def list_signatures(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    sigs = db.query(EmailSignature).filter(EmailSignature.user_id == current_user.id).order_by(EmailSignature.created_at.desc()).all()
     return [{
         "signature_id": s.signature_id,
         "name": s.name,
@@ -202,12 +204,12 @@ def list_signatures(db: Session = Depends(get_db)):
     } for s in sigs]
 
 @router.post("/signatures/create")
-def create_signature(req: SignatureCreate, db: Session = Depends(get_db)):
+def create_signature(req: SignatureCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     # Simple hardcoded user for now
     user_email = "abhishekjadon824@gmail.com"
     
     if req.is_default:
-        db.query(EmailSignature).filter(EmailSignature.user_email == user_email).update({"is_default": False})
+        db.query(EmailSignature).filter(EmailSignature.user_id == current_user.id, EmailSignature.user_id == current_user.id).update({"is_default": False})
         
     sig = EmailSignature(
         user_email=user_email,
@@ -221,13 +223,13 @@ def create_signature(req: SignatureCreate, db: Session = Depends(get_db)):
     return {"status": "success", "signature_id": sig.signature_id}
 
 @router.put("/signatures/{signature_id}")
-def update_signature(signature_id: int, req: SignatureUpdate, db: Session = Depends(get_db)):
-    sig = db.query(EmailSignature).filter(EmailSignature.signature_id == signature_id).first()
+def update_signature(signature_id: int, req: SignatureUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    sig = db.query(EmailSignature).filter(EmailSignature.user_id == current_user.id, EmailSignature.signature_id == signature_id).first()
     if not sig:
         raise HTTPException(status_code=404, detail="Signature not found")
         
     if req.is_default:
-        db.query(EmailSignature).filter(EmailSignature.user_email == sig.user_email).update({"is_default": False})
+        db.query(EmailSignature).filter(EmailSignature.user_id == current_user.id, EmailSignature.user_id == current_user.id).update({"is_default": False})
         
     if req.name is not None:
         sig.name = req.name
@@ -240,13 +242,13 @@ def update_signature(signature_id: int, req: SignatureUpdate, db: Session = Depe
     return {"status": "success"}
 
 @router.delete("/signatures/{signature_id}")
-def delete_signature(signature_id: int, db: Session = Depends(get_db)):
-    sig = db.query(EmailSignature).filter(EmailSignature.signature_id == signature_id).first()
+def delete_signature(signature_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    sig = db.query(EmailSignature).filter(EmailSignature.user_id == current_user.id, EmailSignature.signature_id == signature_id).first()
     if not sig:
         raise HTTPException(status_code=404, detail="Signature not found")
     
     # Nullify references in campaigns
-    db.query(Campaign).filter(Campaign.signature_id == signature_id).update({"signature_id": None})
+    db.query(Campaign).filter(Campaign.user_id == current_user.id, Campaign.signature_id == signature_id).update({"signature_id": None})
     
     db.delete(sig)
     db.commit()
@@ -257,8 +259,8 @@ class EnrollEmailsRequest(BaseModel):
     emails: list[str]
 
 @router.post("/{campaign_id}/enroll-emails")
-def enroll_emails(campaign_id: int, payload: EnrollEmailsRequest, db: Session = Depends(get_db)):
-    campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+def enroll_emails(campaign_id: int, payload: EnrollEmailsRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    campaign = db.query(Campaign).filter(Campaign.user_id == current_user.id, Campaign.campaign_id == campaign_id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
         
@@ -274,7 +276,7 @@ def enroll_emails(campaign_id: int, payload: EnrollEmailsRequest, db: Session = 
                 continue
                 
             # Find or create recruiter
-            rec = db.query(Recruiter).filter(func.lower(Recruiter.email) == clean_email).first()
+            rec = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, func.lower(Recruiter.email) == clean_email).first()
             if not rec:
                 rec = Recruiter(
                     email=clean_email,
@@ -324,7 +326,7 @@ async def stream_campaign_progress(campaign_id: int):
         from sqlalchemy import func as sa_func
 
         with SessionLocal() as s_db:
-            camp_status = s_db.query(Campaign.status).filter(Campaign.campaign_id == campaign_id).scalar()
+            camp_status = s_db.query(Campaign.status).filter(Campaign.user_id == current_user.id, Campaign.campaign_id == campaign_id).scalar()
             if camp_status is None:
                 return None, last_log_id
 
@@ -412,7 +414,7 @@ async def stream_campaign_progress(campaign_id: int):
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @router.get("/{campaign_id}/delivery-logs")
-def get_campaign_delivery_logs(campaign_id: int, db: Session = Depends(get_db)):
+def get_campaign_delivery_logs(campaign_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     """Fetch detailed delivery logs for the campaign."""
     from ..models.campaigns import EmailLog, CampaignRecruiter
     from sqlalchemy.orm import joinedload
@@ -551,7 +553,7 @@ def serialize_campaign_list(c: Campaign, stats: dict = None):
     }
 
 
-def get_campaign_or_404(db: Session, campaign_id: int, eager: bool = False) -> Campaign:
+def get_campaign_or_404(db: Session, campaign_id: int, current_user: User, eager: bool = False) -> Campaign:
     query = db.query(Campaign)
     if eager:
         from sqlalchemy.orm import joinedload
@@ -560,14 +562,14 @@ def get_campaign_or_404(db: Session, campaign_id: int, eager: bool = False) -> C
             joinedload(Campaign.sequence_steps),
             joinedload(Campaign.campaign_recruiters)
         )
-    campaign = query.filter(Campaign.campaign_id == campaign_id).first()
+    campaign = query.filter(Campaign.campaign_id == campaign_id, Campaign.user_id == current_user.id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
     return campaign
 
 
 def get_template_or_404(db: Session, campaign_id: int, template_id: int) -> EmailTemplate:
-    template = db.query(EmailTemplate).filter(
+    template = db.query(EmailTemplate).filter(EmailTemplate.user_id == current_user.id, 
         EmailTemplate.campaign_id == campaign_id,
         EmailTemplate.template_id == template_id,
     ).first()
@@ -684,8 +686,14 @@ class CampaignRecruiterStatusUpdate(BaseModel):
 
 @router.get("/")
 def list_campaigns(
+    search: Optional[str] = Query(default=None),
+    status: Optional[str] = Query(default=None),
+    is_test: Optional[bool] = Query(default=None),
     include_archived: bool = Query(default=False),
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=50, ge=1, le=100),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
 ):
     from sqlalchemy import func, case
     
@@ -696,10 +704,24 @@ def list_campaigns(
         func.sum(case((CampaignRecruiter.status == 'Failed', 1), else_=0)).label('failed')
     ).outerjoin(CampaignRecruiter, Campaign.campaign_id == CampaignRecruiter.campaign_id)
     
+    query = query.filter(Campaign.user_id == current_user.id)
+    
     if not include_archived:
         query = query.filter(Campaign.is_archived.is_(False))
         
-    results = query.group_by(Campaign.campaign_id).order_by(Campaign.created_at.desc()).all()
+    if search:
+        query = query.filter(Campaign.name.ilike(f"%{search}%"))
+        
+    if status and status != 'all':
+        query = query.filter(Campaign.status == status)
+        
+    if is_test is not None:
+        query = query.filter(Campaign.is_test == is_test)
+        
+    # Get total count before pagination
+    total_count = query.with_entities(func.count(Campaign.campaign_id.distinct())).scalar()
+        
+    results = query.group_by(Campaign.campaign_id).order_by(Campaign.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
     
     ret = []
     for c, total, sent, failed in results:
@@ -708,15 +730,24 @@ def list_campaigns(
         f = failed or 0
         p = round((s / t) * 100, 1) if t > 0 else 0
         stats = {"total": t, "sent": s, "failed": f, "progress_percent": p}
-        ret.append(serialize_campaign_list(c, stats))
-    return ret
+        serialized = serialize_campaign_list(c, stats)
+        serialized["is_test"] = c.is_test
+        ret.append(serialized)
+        
+    return {
+        "items": ret,
+        "total": total_count,
+        "page": page,
+        "pages": (total_count + limit - 1) // limit if total_count > 0 else 1
+    }
 
 
 @router.post("/")
-def create_campaign(payload: CampaignCreate, db: Session = Depends(get_db)):
+def create_campaign(payload: CampaignCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     from datetime import datetime
     now = datetime.utcnow()
     campaign = Campaign(
+        user_id=current_user.id,
         name=payload.name.strip(),
         description=payload.description,
         status=payload.status,
@@ -736,7 +767,7 @@ def create_campaign(payload: CampaignCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/{campaign_id}")
-def get_campaign(campaign_id: int, db: Session = Depends(get_db)):
+def get_campaign(campaign_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     campaign = get_campaign_or_404(db, campaign_id, eager=True)
     payload = serialize_campaign(campaign)
     payload["templates"] = [serialize_template(item) for item in sorted(campaign.templates, key=lambda x: x.template_id)]
@@ -746,16 +777,16 @@ def get_campaign(campaign_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/{campaign_id}")
-def delete_campaign(campaign_id: int, db: Session = Depends(get_db)):
-    campaign = get_campaign_or_404(db, campaign_id)
+def delete_campaign(campaign_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    campaign = get_campaign_or_404(db, campaign_id, current_user)
     db.delete(campaign)
     db.commit()
     return {"status": "success", "message": "Campaign deleted"}
 
 
 @router.post("/{campaign_id}/duplicate")
-def duplicate_campaign(campaign_id: int, db: Session = Depends(get_db)):
-    original = get_campaign_or_404(db, campaign_id)
+def duplicate_campaign(campaign_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    original = get_campaign_or_404(db, campaign_id, current_user)
     
     new_campaign = Campaign(
         name=f"{original.name} (Copy)",
@@ -803,10 +834,24 @@ def duplicate_campaign(campaign_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"status": "success", "campaign_id": new_campaign.campaign_id}
 
+@router.put("/{campaign_id}/archive")
+def archive_campaign(campaign_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    campaign = get_campaign_or_404(db, campaign_id, current_user)
+    campaign.is_archived = True
+    db.commit()
+    return {"status": "success", "message": "Campaign archived"}
+
+
+@router.put("/{campaign_id}/test")
+def toggle_test_campaign(campaign_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    campaign = get_campaign_or_404(db, campaign_id, current_user)
+    campaign.is_test = not campaign.is_test
+    db.commit()
+    return {"status": "success", "is_test": campaign.is_test}
 
 @router.put("/{campaign_id}")
-def update_campaign(campaign_id: int, payload: CampaignUpdate, db: Session = Depends(get_db)):
-    campaign = get_campaign_or_404(db, campaign_id)
+def update_campaign(campaign_id: int, payload: CampaignUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    campaign = get_campaign_or_404(db, campaign_id, current_user)
     updates = payload.model_dump(exclude_unset=True)
     for field, value in updates.items():
         if field == "metadata":
@@ -818,8 +863,8 @@ def update_campaign(campaign_id: int, payload: CampaignUpdate, db: Session = Dep
 
 
 @router.delete("/{campaign_id}")
-def archive_campaign(campaign_id: int, db: Session = Depends(get_db)):
-    campaign = get_campaign_or_404(db, campaign_id)
+def archive_campaign(campaign_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    campaign = get_campaign_or_404(db, campaign_id, current_user)
     campaign.is_archived = True
     campaign.is_active = False
     campaign.status = CampaignStatus.archived.value
@@ -828,21 +873,21 @@ def archive_campaign(campaign_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/{campaign_id}/templates")
-def list_templates(campaign_id: int, db: Session = Depends(get_db)):
-    campaign = get_campaign_or_404(db, campaign_id)
+def list_templates(campaign_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    campaign = get_campaign_or_404(db, campaign_id, current_user)
     return [serialize_template(item) for item in sorted(campaign.templates, key=lambda x: x.template_id)]
 
 
 @router.post("/{campaign_id}/templates")
-def create_template(campaign_id: int, payload: TemplateCreate, request: Request, db: Session = Depends(get_db)):
-    get_campaign_or_404(db, campaign_id)
+def create_template(campaign_id: int, payload: TemplateCreate, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    get_campaign_or_404(db, campaign_id, current_user)
     variables = payload.variables or extract_variables(payload.subject, payload.body)
     
     # Check if there is an existing step 1 template
     step = db.query(SequenceStep).filter(SequenceStep.campaign_id == campaign_id, SequenceStep.step_order == 1).first()
     
     if step and step.template_id:
-        template = db.query(EmailTemplate).filter(EmailTemplate.template_id == step.template_id).first()
+        template = db.query(EmailTemplate).filter(EmailTemplate.user_id == current_user.id, EmailTemplate.template_id == step.template_id).first()
         if template:
             template.name = payload.name.strip()
             template.subject = payload.subject
@@ -884,7 +929,7 @@ def create_template(campaign_id: int, payload: TemplateCreate, request: Request,
 
 
 @router.put("/{campaign_id}/templates/{template_id}")
-def update_template(campaign_id: int, template_id: int, payload: TemplateUpdate, db: Session = Depends(get_db)):
+def update_template(campaign_id: int, template_id: int, payload: TemplateUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     template = get_template_or_404(db, campaign_id, template_id)
     updates = payload.model_dump(exclude_unset=True)
     for field, value in updates.items():
@@ -900,7 +945,7 @@ def update_template(campaign_id: int, template_id: int, payload: TemplateUpdate,
 
 
 @router.delete("/{campaign_id}/templates/{template_id}")
-def deactivate_template(campaign_id: int, template_id: int, db: Session = Depends(get_db)):
+def deactivate_template(campaign_id: int, template_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     template = get_template_or_404(db, campaign_id, template_id)
     template.is_active = False
     db.commit()
@@ -909,14 +954,14 @@ def deactivate_template(campaign_id: int, template_id: int, db: Session = Depend
 
 
 @router.get("/{campaign_id}/steps")
-def list_sequence_steps(campaign_id: int, db: Session = Depends(get_db)):
-    campaign = get_campaign_or_404(db, campaign_id)
+def list_sequence_steps(campaign_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    campaign = get_campaign_or_404(db, campaign_id, current_user)
     return [serialize_sequence_step(item) for item in sorted(campaign.sequence_steps, key=lambda x: x.step_order)]
 
 
 @router.post("/{campaign_id}/steps")
-def create_sequence_step(campaign_id: int, payload: SequenceStepCreate, db: Session = Depends(get_db)):
-    get_campaign_or_404(db, campaign_id)
+def create_sequence_step(campaign_id: int, payload: SequenceStepCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    get_campaign_or_404(db, campaign_id, current_user)
     template = get_template_or_404(db, campaign_id, payload.template_id)
     if not template.is_active:
         raise HTTPException(status_code=400, detail="Cannot attach an inactive template to a sequence step")
@@ -935,7 +980,7 @@ def create_sequence_step(campaign_id: int, payload: SequenceStepCreate, db: Sess
 
 
 @router.put("/{campaign_id}/steps/{step_id}")
-def update_sequence_step(campaign_id: int, step_id: int, payload: SequenceStepUpdate, db: Session = Depends(get_db)):
+def update_sequence_step(campaign_id: int, step_id: int, payload: SequenceStepUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     step = get_step_or_404(db, campaign_id, step_id)
     updates = payload.model_dump(exclude_unset=True)
     if "template_id" in updates and updates["template_id"] is not None:
@@ -948,7 +993,7 @@ def update_sequence_step(campaign_id: int, step_id: int, payload: SequenceStepUp
 
 
 @router.delete("/{campaign_id}/steps/{step_id}")
-def deactivate_sequence_step(campaign_id: int, step_id: int, db: Session = Depends(get_db)):
+def deactivate_sequence_step(campaign_id: int, step_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     step = get_step_or_404(db, campaign_id, step_id)
     step.is_active = False
     db.commit()
@@ -957,8 +1002,8 @@ def deactivate_sequence_step(campaign_id: int, step_id: int, db: Session = Depen
 
 
 @router.post("/{campaign_id}/enroll")
-def enroll_recruiters(campaign_id: int, payload: EnrollRecruitersRequest, db: Session = Depends(get_db)):
-    campaign = get_campaign_or_404(db, campaign_id)
+def enroll_recruiters(campaign_id: int, payload: EnrollRecruitersRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    campaign = get_campaign_or_404(db, campaign_id, current_user)
     first_step = get_first_active_step(campaign)
     if not first_step:
         raise HTTPException(status_code=400, detail="Campaign must have at least one active sequence step to enroll recruiters")

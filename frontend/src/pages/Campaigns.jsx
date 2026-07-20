@@ -26,6 +26,14 @@ export default function Campaigns() {
   const [view, setView] = useState('list'); // 'list' | 'wizard'
   const [campaigns, setCampaigns] = useState([]);
   
+  // List State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [showTest, setShowTest] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const limit = 20;
+  
   // Wizard State
   const [currentStep, setCurrentStep] = useState(STEPS.RECIPIENTS);
   const [activeCampaignId, setActiveCampaignId] = useState(null);
@@ -57,19 +65,30 @@ export default function Campaigns() {
   }, [subject, body, signatureId, view, activeCampaignId, currentStep]);
 
   // Load campaigns with auto-refresh
-  const { data: queryCampaigns, isLoading: loading } = useQuery({
-    queryKey: ['campaigns'],
+  const { data: queryData, isLoading: loading, refetch: refetchCampaigns } = useQuery({
+    queryKey: ['campaigns', searchQuery, statusFilter, showTest, page],
     queryFn: async () => {
-      const res = await api.get('/campaigns');
-      return Array.isArray(res.data) ? res.data : res.data.items || [];
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString()
+      });
+      if (searchQuery) params.append('search', searchQuery);
+      if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter);
+      if (!showTest) params.append('is_test', 'false'); // Only filter out test campaigns if showTest is false, if true, it shows all. Or wait, if showTest is true, should it show ONLY test, or ALL? Let's assume ALL.
+      
+      const res = await api.get(`/campaigns?${params.toString()}`);
+      return res.data;
     },
     enabled: view === 'list',
     refetchInterval: view === 'list' ? 5000 : false
   });
 
   useEffect(() => {
-    if (queryCampaigns) setCampaigns(queryCampaigns);
-  }, [queryCampaigns]);
+    if (queryData) {
+      setCampaigns(Array.isArray(queryData) ? queryData : queryData.items || []);
+      if (queryData.pages) setTotalPages(queryData.pages);
+    }
+  }, [queryData]);
 
   const startNewCampaign = () => {
     setActiveCampaignId(null);
@@ -120,15 +139,39 @@ export default function Campaigns() {
     }
   };
 
+
+
   const deleteCampaign = async (id) => {
     if (!window.confirm("Are you sure you want to delete this campaign?")) return;
     try {
       await api.delete(`/campaigns/${id}`);
       toast.success("Campaign deleted");
-      fetchCampaigns();
+      refetchCampaigns();
     } catch (e) {
       console.error("Delete failed", e);
       toast.error("Failed to delete campaign");
+    }
+  };
+
+  const archiveCampaign = async (id) => {
+    try {
+      await api.put(`/campaigns/${id}/archive`);
+      toast.success("Campaign archived");
+      refetchCampaigns();
+    } catch (e) {
+      console.error("Archive failed", e);
+      toast.error("Failed to archive campaign");
+    }
+  };
+
+  const toggleTestCampaign = async (id) => {
+    try {
+      await api.put(`/campaigns/${id}/test`);
+      toast.success("Campaign test status updated");
+      refetchCampaigns();
+    } catch (e) {
+      console.error("Test toggle failed", e);
+      toast.error("Failed to update test status");
     }
   };
 
@@ -136,7 +179,7 @@ export default function Campaigns() {
     try {
       await api.post(`/campaigns/${id}/duplicate`);
       toast.success("Campaign duplicated");
-      fetchCampaigns();
+      refetchCampaigns();
     } catch (e) {
       console.error("Duplicate failed", e);
       toast.error("Failed to duplicate campaign");
@@ -260,12 +303,12 @@ export default function Campaigns() {
 
   const renderList = () => (
     <div className="h-full flex flex-col">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <div>
           <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Campaigns</h1>
           <p className="text-sm text-[var(--text-secondary)] mt-1">Manage outbound email campaigns</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 mt-4 sm:mt-0">
           <BridgeStatus onStatusChange={setBridgeHealthy} />
           <button 
             onClick={startNewCampaign}
@@ -276,95 +319,187 @@ export default function Campaigns() {
         </div>
       </div>
 
-      <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl flex-1 overflow-hidden">
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="relative flex-1">
+          <input 
+            type="text" 
+            placeholder="Search campaigns..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-[var(--accent)]"
+          />
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          </div>
+        </div>
+        <select 
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setPage(1);
+          }}
+          className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-[var(--accent)]"
+        >
+          <option value="all">All Statuses</option>
+          <option value="active">Active</option>
+          <option value="draft">Draft</option>
+          <option value="paused">Paused</option>
+          <option value="completed">Completed</option>
+        </select>
+        <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer">
+          <input 
+            type="checkbox" 
+            checked={showTest}
+            onChange={(e) => {
+              setShowTest(e.target.checked);
+              setPage(1);
+            }}
+            className="rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)]"
+          />
+          Show Test Campaigns
+        </label>
+      </div>
+
+      <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl flex-1 flex flex-col overflow-hidden">
         {loading ? (
-          <div className="h-full flex justify-center items-center">
+          <div className="h-full flex justify-center items-center flex-1">
             <Loader2 className="w-8 h-8 animate-spin text-[var(--accent)]" />
           </div>
         ) : campaigns.length === 0 ? (
-          <div className="h-full flex flex-col justify-center items-center text-[var(--text-muted)] space-y-4">
+          <div className="h-full flex flex-col justify-center items-center text-[var(--text-muted)] space-y-4 flex-1">
             <Activity className="w-12 h-12 opacity-20" />
             <p>No campaigns found.</p>
             <button onClick={startNewCampaign} className="text-[var(--accent)] hover:underline text-sm font-medium">Create your first campaign</button>
           </div>
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead className="bg-[var(--bg-surface)] border-b border-[var(--card-border)] text-[var(--text-secondary)]">
-              <tr>
-                <th className="px-6 py-4 font-medium">Campaign Name</th>
-                <th className="px-6 py-4 font-medium">Status</th>
-                <th className="px-6 py-4 font-medium">Created</th>
-                <th className="px-6 py-4 font-medium">Progress</th>
-                <th className="px-6 py-4 font-medium text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--card-border)]">
-              {campaigns.map(c => (
-                <tr key={c.campaign_id} className="hover:bg-[var(--bg-surface)] transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="font-medium text-[var(--text-primary)]">{c.name}</div>
-                    <div className="text-xs text-[var(--text-muted)] mt-1">ID: {c.campaign_id}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border ${
-                      c.status === 'active' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-                      c.status === 'paused' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
-                      c.status === 'completed' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                      'bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border)]'
-                    }`}>
-                      {c.status.charAt(0).toUpperCase() + c.status.slice(1)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-[var(--text-secondary)]">
-                    {new Date(c.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-col gap-1.5 w-48">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-[var(--text-secondary)]">{c.stats?.sent || 0} / {c.stats?.total || 0} Sent</span>
-                        <span className="font-medium text-[var(--accent)]">{c.stats?.progress_percent || 0}%</span>
-                      </div>
-                      <div className="w-full h-1.5 bg-[var(--bg-surface)] rounded-full overflow-hidden border border-[var(--border)]">
-                        <div 
-                          className="h-full bg-[var(--accent)] rounded-full transition-all duration-500" 
-                          style={{ width: `${c.stats?.progress_percent || 0}%` }}
-                        ></div>
-                      </div>
-                      {c.stats?.failed > 0 && (
-                        <div className="text-[10px] text-red-400">
-                          {c.stats.failed} failed delivery attempts
+          <>
+            <div className="flex-1 overflow-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-[var(--bg-surface)] border-b border-[var(--card-border)] text-[var(--text-secondary)] sticky top-0 z-10">
+                  <tr>
+                    <th className="px-6 py-4 font-medium">Campaign Name</th>
+                    <th className="px-6 py-4 font-medium">Status</th>
+                    <th className="px-6 py-4 font-medium">Created</th>
+                    <th className="px-6 py-4 font-medium">Progress</th>
+                    <th className="px-6 py-4 font-medium text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--card-border)]">
+                  {campaigns.map(c => (
+                    <tr key={c.campaign_id} className="hover:bg-[var(--bg-surface)] transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className="font-medium text-[var(--text-primary)]">{c.name}</div>
+                          {c.is_test && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">Test</span>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-3">
-                      <button 
-                        onClick={() => loadCampaign(c.campaign_id)}
-                        className="text-[var(--accent)] hover:text-white transition-colors text-sm font-medium"
-                      >
-                        View & Manage
-                      </button>
-                      <button 
-                        onClick={() => duplicateCampaign(c.campaign_id)}
-                        className="text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors text-sm"
-                        title="Duplicate Campaign"
-                      >
-                        Duplicate
-                      </button>
-                      <button 
-                        onClick={() => deleteCampaign(c.campaign_id)}
-                        className="text-[var(--text-secondary)] hover:text-red-400 transition-colors text-sm"
-                        title="Delete Campaign"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                        <div className="text-xs text-[var(--text-muted)] mt-1">ID: {c.campaign_id}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border ${
+                          c.status === 'active' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                          c.status === 'paused' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
+                          c.status === 'completed' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                          c.status === 'draft' ? 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' :
+                          'bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border)]'
+                        }`}>
+                          {c.status.charAt(0).toUpperCase() + c.status.slice(1)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-[var(--text-secondary)]">
+                        {new Date(c.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4">
+                        {c.status === 'draft' ? (
+                          <span className="text-[var(--text-muted)] text-sm italic">Draft - Ready to send</span>
+                        ) : (
+                          <div className="flex flex-col gap-1.5 w-48">
+                            <div className="flex justify-between text-xs">
+                              <span className="text-[var(--text-secondary)]">{c.stats?.sent || 0} / {c.stats?.total || 0} Sent</span>
+                              <span className="font-medium text-[var(--accent)]">{c.stats?.progress_percent || 0}%</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-[var(--bg-surface)] rounded-full overflow-hidden border border-[var(--border)]">
+                              <div 
+                                className="h-full bg-[var(--accent)] rounded-full transition-all duration-500" 
+                                style={{ width: `${c.stats?.progress_percent || 0}%` }}
+                              ></div>
+                            </div>
+                            {c.stats?.failed > 0 && (
+                              <div className="text-[10px] text-red-400">
+                                {c.stats.failed} failed delivery attempts
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-3">
+                          <button 
+                            onClick={() => loadCampaign(c.campaign_id)}
+                            className="text-[var(--accent)] hover:text-white transition-colors text-sm font-medium"
+                          >
+                            View & Manage
+                          </button>
+                          <button 
+                            onClick={() => duplicateCampaign(c.campaign_id)}
+                            className="text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors text-sm"
+                            title="Duplicate Campaign"
+                          >
+                            Duplicate
+                          </button>
+                          <button 
+                            onClick={() => toggleTestCampaign(c.campaign_id)}
+                            className="text-[var(--text-secondary)] hover:text-purple-400 transition-colors text-sm"
+                            title={c.is_test ? "Unmark as Test" : "Mark as Test"}
+                          >
+                            {c.is_test ? "Unmark Test" : "Mark Test"}
+                          </button>
+                          <button 
+                            onClick={() => archiveCampaign(c.campaign_id)}
+                            className="text-[var(--text-secondary)] hover:text-yellow-400 transition-colors text-sm"
+                            title="Archive Campaign"
+                          >
+                            Archive
+                          </button>
+                          <button 
+                            onClick={() => deleteCampaign(c.campaign_id)}
+                            className="text-[var(--text-secondary)] hover:text-red-400 transition-colors text-sm"
+                            title="Delete Campaign"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            
+            {/* Pagination Controls */}
+            <div className="border-t border-[var(--card-border)] p-4 flex items-center justify-between bg-[var(--bg-surface)] mt-auto">
+              <div className="text-sm text-[var(--text-muted)]">
+                Page {page} of {totalPages}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={page === 1}
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  className="px-3 py-1.5 rounded-lg border border-[var(--border)] text-sm disabled:opacity-50 hover:bg-[var(--panel-bg)] transition-colors"
+                >
+                  Previous
+                </button>
+                <button
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  className="px-3 py-1.5 rounded-lg border border-[var(--border)] text-sm disabled:opacity-50 hover:bg-[var(--panel-bg)] transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>

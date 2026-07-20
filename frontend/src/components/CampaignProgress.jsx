@@ -107,47 +107,55 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Metrics Row */}
-      <div className="grid grid-cols-4 gap-4">
-        <div className="bg-[var(--panel-bg)] border border-[var(--card-border)] rounded-xl p-4 flex flex-col justify-center">
-          <div className="text-[var(--text-muted)] text-sm mb-1 flex items-center gap-1">
-            <Activity className="w-4 h-4" /> Total
-          </div>
-          <div className="text-2xl font-semibold">{data.total}</div>
+      {data.status === 'draft' ? (
+        <div className="bg-[var(--panel-bg)] border border-[var(--card-border)] rounded-xl p-8 flex flex-col items-center justify-center text-[var(--text-muted)]">
+          <Activity className="w-8 h-8 mb-2 opacity-50" />
+          <p>Campaign is currently a draft.</p>
+          <p className="text-sm mt-1">Start the campaign to track sending progress.</p>
         </div>
-        <div className="bg-[var(--panel-bg)] border border-[var(--card-border)] rounded-xl p-4 flex flex-col justify-center relative overflow-hidden">
-          <div className="absolute inset-0 bg-green-500/5 pointer-events-none"></div>
-          <div className="text-green-400 text-sm mb-1 flex items-center gap-1">
-            <CheckCircle className="w-4 h-4" /> Sent
+      ) : (
+        <>
+          {/* Metrics Row */}
+          <div className="grid grid-cols-4 gap-4">
+            <div className="bg-[var(--panel-bg)] border border-[var(--card-border)] rounded-xl p-4 flex flex-col justify-center">
+              <div className="text-[var(--text-muted)] text-sm mb-1 flex items-center gap-1">
+                <Activity className="w-4 h-4" /> Total
+              </div>
+              <div className="text-2xl font-semibold">{data.total}</div>
+            </div>
+            <div className="bg-[var(--panel-bg)] border border-[var(--card-border)] rounded-xl p-4 flex flex-col justify-center relative overflow-hidden">
+              <div className="absolute inset-0 bg-green-500/5 pointer-events-none"></div>
+              <div className="text-green-400 text-sm mb-1 flex items-center gap-1">
+                <CheckCircle className="w-4 h-4" /> Sent
+              </div>
+              <div className="text-2xl font-semibold text-green-400">{data.sent}</div>
+            </div>
+            <div className="bg-[var(--panel-bg)] border border-[var(--card-border)] rounded-xl p-4 flex flex-col justify-center relative overflow-hidden">
+              <div className="absolute inset-0 bg-red-500/5 pointer-events-none"></div>
+              <div className="text-red-400 text-sm mb-1 flex items-center gap-1">
+                <XCircle className="w-4 h-4" /> Failed
+              </div>
+              <div className="flex items-baseline gap-2">
+                <div className="text-2xl font-semibold text-red-400">{data.failed}</div>
+                {data.retrying > 0 && <div className="text-xs text-yellow-400">({data.retrying} retrying)</div>}
+              </div>
+            </div>
+            <div className="bg-[var(--panel-bg)] border border-[var(--card-border)] rounded-xl p-4 flex flex-col justify-center">
+              <div className="text-[var(--text-muted)] text-sm mb-1 flex items-center gap-1 justify-between">
+                <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> ETA</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-surface)]">{data.rate_per_minute}/min</span>
+              </div>
+              <div className="text-2xl font-semibold">{data.status === 'active' ? formatETA(data.eta_seconds) : '-'}</div>
+            </div>
           </div>
-          <div className="text-2xl font-semibold text-green-400">{data.sent}</div>
-        </div>
-        <div className="bg-[var(--panel-bg)] border border-[var(--card-border)] rounded-xl p-4 flex flex-col justify-center relative overflow-hidden">
-          <div className="absolute inset-0 bg-red-500/5 pointer-events-none"></div>
-          <div className="text-red-400 text-sm mb-1 flex items-center gap-1">
-            <XCircle className="w-4 h-4" /> Failed
-          </div>
-          <div className="flex items-baseline gap-2">
-            <div className="text-2xl font-semibold text-red-400">{data.failed}</div>
-            {data.retrying > 0 && <div className="text-xs text-yellow-400">({data.retrying} retrying)</div>}
-          </div>
-        </div>
-        <div className="bg-[var(--panel-bg)] border border-[var(--card-border)] rounded-xl p-4 flex flex-col justify-center">
-          <div className="text-[var(--text-muted)] text-sm mb-1 flex items-center gap-1 justify-between">
-            <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> ETA</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-surface)]">{data.rate_per_minute}/min</span>
-          </div>
-          <div className="text-2xl font-semibold">{data.status === 'active' ? formatETA(data.eta_seconds) : '-'}</div>
-        </div>
-      </div>
 
-      {/* Progress Bar & Controls */}
-      <div className="bg-[var(--panel-bg)] border border-[var(--card-border)] rounded-xl p-4">
-        <div className="flex justify-between items-center mb-3">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <span className="font-medium">Campaign Progress</span>
-              {isConnecting && <Loader2 className="w-4 h-4 animate-spin text-[var(--accent)]" />}
+          {/* Progress Bar & Controls */}
+          <div className="bg-[var(--panel-bg)] border border-[var(--card-border)] rounded-xl p-4">
+            <div className="flex justify-between items-center mb-3">
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Campaign Progress</span>
+                  {isConnecting && <Loader2 className="w-4 h-4 animate-spin text-[var(--accent)]" />}
               <span className={`text-xs px-2 py-0.5 rounded-full border ${
                 data.status === 'active' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
                 data.status === 'paused' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
@@ -244,7 +252,9 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
             ))
           )}
         </div>
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

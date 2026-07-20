@@ -45,6 +45,7 @@ class Campaign(Base):
     __tablename__ = "campaigns"
 
     campaign_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=True, index=True)
     name = Column(String(255), nullable=False, index=True)
     description = Column(Text, nullable=True)
     status = Column(String(50), default=CampaignStatus.draft.value, index=True)
@@ -55,6 +56,7 @@ class Campaign(Base):
     timezone = Column(String(100), nullable=True, default="UTC")
     is_active = Column(Boolean, default=True, index=True)
     is_archived = Column(Boolean, default=False, index=True)
+    is_test = Column(Boolean, default=False, index=True)
     rate_per_minute = Column(Integer, default=4, nullable=False)  # Configurable send speed
     signature_id = Column(Integer, ForeignKey("email_signatures.signature_id", ondelete="SET NULL"), nullable=True)
     metadata_json = Column(Text, nullable=True)
@@ -70,6 +72,7 @@ class EmailTemplate(Base):
     __tablename__ = "email_templates"
 
     template_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=True, index=True)
     campaign_id = Column(Integer, ForeignKey("campaigns.campaign_id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(255), nullable=False)
     subject = Column(String(255), nullable=False)
@@ -205,7 +208,7 @@ class CampaignDraft(Base):
     __tablename__ = "campaign_drafts"
 
     draft_id = Column(Integer, primary_key=True, index=True)
-    user_email = Column(String(255), nullable=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=True, index=True)
 
     # Campaign reference (null if not yet created as a campaign)
     campaign_id = Column(Integer, ForeignKey("campaigns.campaign_id", ondelete="SET NULL"), nullable=True, index=True)
@@ -234,7 +237,7 @@ class EmailSignature(Base):
     __tablename__ = "email_signatures"
 
     signature_id = Column(Integer, primary_key=True, index=True)
-    user_email = Column(String(255), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
     name = Column(String(255), nullable=False)  # e.g. "Work Signature", "Formal"
     html_content = Column(Text, nullable=False)  # Rich HTML signature content
     is_default = Column(Boolean, default=False, index=True)

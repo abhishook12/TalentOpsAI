@@ -111,9 +111,10 @@ def _validate_password(password: str):
             detail=f"Password too weak. Missing: {'; '.join(issues)}"
         )
 
+from fastapi import BackgroundTasks
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/minute")
-def register(request: Request, user: UserRegister, db: Session = Depends(get_db)):
+def register(request: Request, user: UserRegister, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     _validate_password(user.password)
     existing_user = db.query(User).filter(User.email == user.email.lower().strip()).first()
     if existing_user:
@@ -160,7 +161,7 @@ def register(request: Request, user: UserRegister, db: Session = Depends(get_db)
         )
         db.add(verification)
         db.commit()
-        send_verification_email(new_user.email, token)
+        background_tasks.add_task(send_verification_email, new_user.email, token)
     
     result = {
         "message": "User registered successfully",

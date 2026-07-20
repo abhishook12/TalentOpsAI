@@ -112,14 +112,29 @@ def get_current_user_from_request(request: Request, db: Session = Depends(get_db
         if user_id is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
         
-        # Verify Session validity in DB if necessary
+        from sqlalchemy.orm import joinedload
         session_id = payload.get("session_id")
+        
         if session_id:
-            db_session = db.query(DBSession).filter(DBSession.id == session_id, DBSession.is_active == True).first()
-            if not db_session:
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired or revoked")
+            # Single query to check session, user, and load role
+            result = db.query(User, DBSession).join(
+                DBSession, DBSession.user_id == User.id
+            ).options(
+                joinedload(User.role)
+            ).filter(
+                DBSession.id == session_id,
+                DBSession.is_active == True,
+                User.id == int(user_id)
+            ).first()
             
-        user = db.query(User).filter(User.id == int(user_id)).first()
+            if not result:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired or user not found")
+            
+            user, db_session = result
+        else:
+            # Fallback if no session_id in payload (e.g. legacy token)
+            user = db.query(User).options(joinedload(User.role)).filter(User.id == int(user_id)).first()
+
         if user is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
         if user.status != "Active":

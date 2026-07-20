@@ -551,8 +551,16 @@ def serialize_campaign_list(c: Campaign, stats: dict = None):
     }
 
 
-def get_campaign_or_404(db: Session, campaign_id: int) -> Campaign:
-    campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+def get_campaign_or_404(db: Session, campaign_id: int, eager: bool = False) -> Campaign:
+    query = db.query(Campaign)
+    if eager:
+        from sqlalchemy.orm import joinedload
+        query = query.options(
+            joinedload(Campaign.templates),
+            joinedload(Campaign.sequence_steps),
+            joinedload(Campaign.campaign_recruiters)
+        )
+    campaign = query.filter(Campaign.campaign_id == campaign_id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
     return campaign
@@ -677,42 +685,35 @@ def list_campaigns(
     include_archived: bool = Query(default=False),
     db: Session = Depends(get_db),
 ):
-    query = db.query(Campaign)
+    from sqlalchemy import func, case
+    
+    query = db.query(
+        Campaign,
+        func.count(CampaignRecruiter.campaign_recruiter_id).label('total'),
+        func.sum(case((CampaignRecruiter.status.in_(['Sent', 'Delivered', 'Opened', 'Replied', 'Bounced']), 1), else_=0)).label('sent'),
+        func.sum(case((CampaignRecruiter.status == 'Failed', 1), else_=0)).label('failed')
+    ).outerjoin(CampaignRecruiter, Campaign.campaign_id == CampaignRecruiter.campaign_id)
+    
     if not include_archived:
         query = query.filter(Campaign.is_archived.is_(False))
-    campaigns = query.order_by(Campaign.created_at.desc()).all()
-    
-    # Fetch stats for all these campaigns in one go
-    campaign_ids = [c.campaign_id for c in campaigns]
-    stats_map = {cid: {"total": 0, "sent": 0, "failed": 0, "progress_percent": 0} for cid in campaign_ids}
-    
-    if campaign_ids:
-        from sqlalchemy import func
-        counts = db.query(
-            CampaignRecruiter.campaign_id,
-            CampaignRecruiter.status,
-            func.count()
-        ).filter(CampaignRecruiter.campaign_id.in_(campaign_ids)).group_by(
-            CampaignRecruiter.campaign_id, CampaignRecruiter.status
-        ).all()
         
-        for cid, status, count in counts:
-            stats_map[cid]["total"] += count
-            if status in ['Sent', 'Delivered', 'Opened', 'Replied', 'Bounced']:
-                stats_map[cid]["sent"] += count
-            elif status == 'Failed':
-                stats_map[cid]["failed"] += count
-                
-        for cid in stats_map:
-            t = stats_map[cid]["total"]
-            s = stats_map[cid]["sent"]
-            stats_map[cid]["progress_percent"] = round((s / t) * 100, 1) if t > 0 else 0
-
-    return [serialize_campaign_list(c, stats_map[c.campaign_id]) for c in campaigns]
+    results = query.group_by(Campaign.campaign_id).order_by(Campaign.created_at.desc()).all()
+    
+    ret = []
+    for c, total, sent, failed in results:
+        t = total or 0
+        s = sent or 0
+        f = failed or 0
+        p = round((s / t) * 100, 1) if t > 0 else 0
+        stats = {"total": t, "sent": s, "failed": f, "progress_percent": p}
+        ret.append(serialize_campaign_list(c, stats))
+    return ret
 
 
 @router.post("/")
 def create_campaign(payload: CampaignCreate, db: Session = Depends(get_db)):
+    from datetime import datetime
+    now = datetime.utcnow()
     campaign = Campaign(
         name=payload.name.strip(),
         description=payload.description,
@@ -724,16 +725,17 @@ def create_campaign(payload: CampaignCreate, db: Session = Depends(get_db)):
         timezone=payload.timezone or "UTC",
         is_active=payload.is_active,
         metadata_json=to_json_text(payload.metadata),
+        created_at=now,
+        updated_at=now
     )
     db.add(campaign)
     db.commit()
-    db.refresh(campaign)
     return serialize_campaign(campaign)
 
 
 @router.get("/{campaign_id}")
 def get_campaign(campaign_id: int, db: Session = Depends(get_db)):
-    campaign = get_campaign_or_404(db, campaign_id)
+    campaign = get_campaign_or_404(db, campaign_id, eager=True)
     payload = serialize_campaign(campaign)
     payload["templates"] = [serialize_template(item) for item in sorted(campaign.templates, key=lambda x: x.template_id)]
     payload["sequence_steps"] = [serialize_sequence_step(item) for item in sorted(campaign.sequence_steps, key=lambda x: x.step_order)]
@@ -810,7 +812,6 @@ def update_campaign(campaign_id: int, payload: CampaignUpdate, db: Session = Dep
         else:
             setattr(campaign, field, value)
     db.commit()
-    db.refresh(campaign)
     return serialize_campaign(campaign)
 
 
@@ -821,7 +822,6 @@ def archive_campaign(campaign_id: int, db: Session = Depends(get_db)):
     campaign.is_active = False
     campaign.status = CampaignStatus.archived.value
     db.commit()
-    db.refresh(campaign)
     return {"message": "Campaign archived", "campaign": serialize_campaign(campaign)}
 
 

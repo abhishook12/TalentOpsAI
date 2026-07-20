@@ -268,11 +268,7 @@ async def process_campaign_queue(campaign_id: int):
         await asyncio.sleep(0)
         db.commit()
     
-    if queue.empty():
-        logger.info(f"Campaign {campaign_id} complete. No more recipients.")
-        _set_campaign_status(campaign_id, CampaignStatus.completed.value)
-        return
-        
+    # Queue empty check removed to keep stream open for bridge
     # 3. Start Workers
     workers = []
     for i in range(WORKER_COUNT):

@@ -221,22 +221,23 @@ export default function Campaigns() {
         toast.error("Subject and body are required.");
         return;
       }
-      const cid = await saveDraft();
-      
-      // Need to enroll recipients before preview so we have recruiters attached
-      if (cid && validatedRecipients.valid_count > 0) {
-        const validEmails = validatedRecipients.recipients.filter(r => r.status === 'valid').map(r => r.email);
-        try {
-          await api.post(`/campaigns/${cid}/enroll-emails`, {
-            emails: validEmails
-          });
-        } catch (e) {
-          console.error("Failed to enroll", e);
-        }
-      }
-      
+      // Instant UI transition
       setCurrentStep(STEPS.PREVIEW);
-      runPreflight(cid);
+      setPreflightData(null);
+      
+      // Async processing background loop
+      (async () => {
+        const cid = await saveDraft();
+        if (cid && validatedRecipients.valid_count > 0) {
+          const validEmails = validatedRecipients.recipients.filter(r => r.status === 'valid').map(r => r.email);
+          try {
+            await api.post(`/campaigns/${cid}/enroll-emails`, { emails: validEmails });
+          } catch (e) {
+            console.error("Failed to enroll", e);
+          }
+        }
+        runPreflight(cid);
+      })();
     }
     else if (currentStep === STEPS.PREVIEW) {
       if (!preflightData?.ready) {

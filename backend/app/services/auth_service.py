@@ -39,7 +39,7 @@ def get_password_hash(password: str) -> str:
     Returns:
         str: The bcrypt hashed password string.
     """
-    salt = bcrypt.gensalt()
+    salt = bcrypt.gensalt(10)
     return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
 def create_access_token(data: dict, expires_delta: timedelta = None) -> str:

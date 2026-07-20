@@ -336,13 +336,13 @@ async def stream_campaign_progress(campaign_id: int):
                 .all()
             )
             total = sum(counts.values())
-            terminal_states = ['sent', 'delivered', 'opened', 'replied', 'bounced', 'cancelled']
+            terminal_states = ['Sent', 'Delivered', 'Opened', 'Replied', 'Bounced', 'Cancelled']
             sent = sum(counts.get(s, 0) for s in terminal_states)
-            failed = counts.get('failed', 0)
-            queued = counts.get('queued', 0)
-            sending = counts.get('sending', 0)
-            retrying = counts.get('retrying', 0)
-            pending = counts.get('pending', 0) + queued + sending + retrying
+            failed = counts.get('Failed', 0)
+            queued = counts.get('Queued', 0)
+            sending = counts.get('Sending', 0)
+            retrying = counts.get('Retrying', 0)
+            pending = counts.get('Pending', 0) + queued + sending + retrying
 
             new_logs = (
                 s_db.query(
@@ -698,9 +698,9 @@ def list_campaigns(
         
         for cid, status, count in counts:
             stats_map[cid]["total"] += count
-            if status in ['sent', 'delivered', 'opened', 'replied', 'bounced']:
+            if status in ['Sent', 'Delivered', 'Opened', 'Replied', 'Bounced']:
                 stats_map[cid]["sent"] += count
-            elif status == 'failed':
+            elif status == 'Failed':
                 stats_map[cid]["failed"] += count
                 
         for cid in stats_map:

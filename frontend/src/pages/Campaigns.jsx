@@ -7,13 +7,15 @@ import {
 import toast from 'react-hot-toast';
 import api from '../services/api';
 
-import RecipientValidator from '../components/RecipientValidator';
 import BridgeStatus from '../components/BridgeStatus';
 import RichTextComposer from '../components/RichTextComposer';
 import SignatureManager from '../components/SignatureManager';
 import EmailPreview from '../components/EmailPreview';
+import DragDropRecipientBuilder from '../components/campaigns/DragDropRecipientBuilder';
 import CampaignProgress from '../components/CampaignProgress';
 import CampaignLogs from '../components/CampaignLogs';
+import PastCampaignsModal from '../components/campaigns/PastCampaignsModal';
+import CampaignReuseWorkflow from '../components/campaigns/CampaignReuseWorkflow';
 
 const STEPS = {
   RECIPIENTS: 1,
@@ -28,11 +30,17 @@ export default function Campaigns() {
   
   // List State
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showTest, setShowTest] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const limit = 20;
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearchQuery(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
   
   // Wizard State
   const [currentStep, setCurrentStep] = useState(STEPS.RECIPIENTS);
@@ -54,25 +62,34 @@ export default function Campaigns() {
   const [preflightData, setPreflightData] = useState(null);
   const [isValidating, setIsValidating] = useState(false);
   const [bridgeHealthy, setBridgeHealthy] = useState(false);
+  
+  // Outlook Import State
+  const [showOutlookLibrary, setShowOutlookLibrary] = useState(false);
+  const [showOutlookImport, setShowOutlookImport] = useState(false);
+  const [pendingImportEmail, setPendingImportEmail] = useState(null);
+
+  // Auto-save logic
+  const [lastSaved, setLastSaved] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (view === 'wizard' && activeCampaignId && currentStep !== STEPS.SEND) {
+    if (view === 'wizard' && activeCampaignId) {
       const timer = setTimeout(() => {
         saveDraft();
-      }, 5000); // Save every 5s if changed (simplified)
+      }, 1000);
       return () => clearTimeout(timer);
     }
   }, [subject, body, signatureId, view, activeCampaignId, currentStep]);
 
   // Load campaigns with auto-refresh
   const { data: queryData, isLoading: loading, refetch: refetchCampaigns } = useQuery({
-    queryKey: ['campaigns', searchQuery, statusFilter, showTest, page],
+    queryKey: ['campaigns', debouncedSearchQuery, statusFilter, showTest, page],
     queryFn: async () => {
       const params = new URLSearchParams({
         page: page.toString(),
         limit: limit.toString()
       });
-      if (searchQuery) params.append('search', searchQuery);
+      if (debouncedSearchQuery) params.append('search', debouncedSearchQuery);
       if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter);
       if (!showTest) params.append('is_test', 'false'); // Only filter out test campaigns if showTest is false, if true, it shows all. Or wait, if showTest is true, should it show ONLY test, or ALL? Let's assume ALL.
       
@@ -99,6 +116,29 @@ export default function Campaigns() {
     setValidatedRecipients({ recipients: [], valid_count: 0 });
     setCurrentStep(STEPS.RECIPIENTS);
     setView('wizard');
+  };
+
+  const startOutlookImport = () => {
+    setShowOutlookLibrary(true);
+  };
+
+  const handleOutlookEmailSelected = (email) => {
+    setPendingImportEmail(email);
+    setShowOutlookImport(true);
+  };
+
+  const handleOutlookImportComplete = (finalizedEmail) => {
+    setActiveCampaignId(null);
+    setCampaignName('Imported from Outlook');
+    setSubject(finalizedEmail.subject);
+    setBody(finalizedEmail.body);
+    setSignatureId(null);
+    setValidatedRecipients({ recipients: [], valid_count: 0 });
+    
+    // Auto-advance to recipients drag & drop
+    setCurrentStep(STEPS.RECIPIENTS);
+    setView('wizard');
+    setShowOutlookImport(false);
   };
 
   const saveDraft = async () => {
@@ -188,7 +228,7 @@ export default function Campaigns() {
 
   const loadCampaign = async (id) => {
     try {
-      const res = await api.get(`/campaigns/${id}`);
+      const res = await api.get(`/campaigns/${id}?include_recruiters=true`);
       const campaign = res.data;
       
       setActiveCampaignId(campaign.campaign_id);
@@ -209,7 +249,7 @@ export default function Campaigns() {
       // Load recipients
       if (campaign.campaign_recruiters) {
         const loadedRecipients = campaign.campaign_recruiters.map(cr => ({
-          email: cr.email,
+          email: cr.recruiter_email,
           name: cr.recruiter_name || '',
           recruiter_id: cr.recruiter_id,
           status: 'valid' // assuming already saved means valid
@@ -272,9 +312,9 @@ export default function Campaigns() {
       (async () => {
         const cid = await saveDraft();
         if (cid && validatedRecipients.valid_count > 0) {
-          const validEmails = validatedRecipients.recipients.filter(r => r.status === 'valid').map(r => r.email);
+          const validRecipients = validatedRecipients.recipients.filter(r => r.status === 'valid');
           try {
-            await api.post(`/campaigns/${cid}/enroll-emails`, { emails: validEmails });
+            await api.post(`/campaigns/${cid}/enroll-emails`, { recipients: validRecipients });
           } catch (e) {
             console.error("Failed to enroll", e);
           }
@@ -309,6 +349,12 @@ export default function Campaigns() {
         </div>
         <div className="flex items-center gap-4 mt-4 sm:mt-0">
           <BridgeStatus onStatusChange={setBridgeHealthy} />
+          <button 
+            onClick={startOutlookImport}
+            className="px-4 py-2 bg-purple-600/20 text-purple-400 border border-purple-500/30 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-purple-600/30 transition-colors"
+          >
+            <Mail size={16} /> Reuse Past Campaign
+          </button>
           <button 
             onClick={startNewCampaign}
             className="bg-[var(--accent)] text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-[var(--accent)]/90 transition-colors"
@@ -515,6 +561,20 @@ export default function Campaigns() {
           >
             <ArrowLeft size={20} />
           </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={startOutlookImport}
+              className="px-4 py-2 bg-purple-600/20 text-purple-400 border border-purple-500/30 rounded-lg font-medium hover:bg-purple-600/30 transition-colors flex items-center gap-2 shadow-sm"
+            >
+              <Mail size={16} /> Reuse Past Campaign
+            </button>
+            <button 
+              onClick={startNewCampaign}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm"
+            >
+              <Plus size={16} /> New Campaign
+            </button>
+          </div>
           <div>
             <div className="flex items-center gap-3">
               <input 
@@ -572,9 +632,41 @@ export default function Campaigns() {
         
         {currentStep === STEPS.RECIPIENTS && (
           <div className="flex-1 h-full">
-            <RecipientValidator 
-              onValidated={setValidatedRecipients} 
-              initialRecipients={validatedRecipients.recipients}
+            <DragDropRecipientBuilder 
+              recipients={validatedRecipients.recipients}
+              onChange={(newRecipients) => {
+                setValidatedRecipients({
+                  recipients: newRecipients,
+                  valid_count: newRecipients.filter(r => r.status === 'valid').length
+                });
+              }}
+              onValidate={async (emailsStr) => {
+                const emailsList = emailsStr.split(',').map(e => e.trim()).filter(Boolean);
+                if (emailsList.length === 0) return;
+                
+                try {
+                  const res = await api.post('/campaigns/validate-recipients', { emails: emailsList });
+                  const data = res.data;
+                  const statusMap = new Map();
+                  if (data.recipients) {
+                    data.recipients.forEach(r => statusMap.set(r.email, r.status));
+                  }
+                  
+                  const updated = validatedRecipients.recipients.map(r => {
+                    if (statusMap.has(r.email)) return { ...r, status: statusMap.get(r.email) };
+                    return r; // keep existing status if not returned
+                  });
+                  
+                  setValidatedRecipients({
+                    recipients: updated,
+                    valid_count: updated.filter(r => r.status === 'valid').length
+                  });
+                  toast.success(`Validated ${emailsList.length} recipients. ${data.valid_count || 0} valid.`);
+                } catch (e) {
+                  console.error("Validation error", e);
+                  toast.error("Failed to validate recipients");
+                }
+              }}
             />
           </div>
         )}
@@ -750,12 +842,29 @@ export default function Campaigns() {
           </button>
         </div>
       )}
+      
     </div>
   );
 
   return (
     <div className="h-full bg-[var(--bg-page)] text-[var(--text-primary)] p-6">
       {view === 'list' ? renderList() : renderWizard()}
+      
+      {showOutlookLibrary && (
+        <PastCampaignsModal 
+          isOpen={showOutlookLibrary} 
+          onClose={() => setShowOutlookLibrary(false)} 
+          onImport={handleOutlookEmailSelected} 
+        />
+      )}
+
+      {showOutlookImport && pendingImportEmail && (
+        <CampaignReuseWorkflow 
+          importedEmail={pendingImportEmail} 
+          onClose={() => setShowOutlookImport(false)} 
+          onComplete={handleOutlookImportComplete} 
+        />
+      )}
     </div>
   );
 }

@@ -298,8 +298,16 @@ def delete_signature(signature_id: int, db: Session = Depends(get_db), current_u
     return {"status": "success"}
 
 
+from typing import Optional
+
+class RecipientData(BaseModel):
+    email: str
+    name: Optional[str] = None
+    company: Optional[str] = None
+    role: Optional[str] = None
+
 class EnrollEmailsRequest(BaseModel):
-    emails: list[str]
+    recipients: list[RecipientData]
 
 @router.post("/{campaign_id}/enroll-emails")
 def enroll_emails(campaign_id: int, payload: EnrollEmailsRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
@@ -313,8 +321,8 @@ def enroll_emails(campaign_id: int, payload: EnrollEmailsRequest, db: Session = 
 
     enrolled = 0
     try:
-        for email in payload.emails:
-            clean_email = email.strip().lower()
+        for rec_data in payload.recipients:
+            clean_email = rec_data.email.strip().lower()
             if not clean_email:
                 continue
                 
@@ -323,7 +331,8 @@ def enroll_emails(campaign_id: int, payload: EnrollEmailsRequest, db: Session = 
             if not rec:
                 rec = Recruiter(
                     email=clean_email,
-                    recruiter_name=clean_email.split('@')[0], # Fallback name
+                    recruiter_name=rec_data.name or clean_email.split('@')[0],
+                    title=rec_data.role,
                     data_source="campaign_import"
                 )
                 db.add(rec)
@@ -596,15 +605,17 @@ def serialize_campaign_list(c: Campaign, stats: dict = None):
     }
 
 
-def get_campaign_or_404(db: Session, campaign_id: int, current_user: User, eager: bool = False) -> Campaign:
+def get_campaign_or_404(db: Session, campaign_id: int, current_user: User, eager: bool = False, eager_recruiters: bool = False) -> Campaign:
     query = db.query(Campaign)
     if eager:
         from sqlalchemy.orm import joinedload
-        query = query.options(
+        opts = [
             joinedload(Campaign.templates),
-            joinedload(Campaign.sequence_steps),
-            joinedload(Campaign.campaign_recruiters)
-        )
+            joinedload(Campaign.sequence_steps)
+        ]
+        if eager_recruiters:
+            opts.append(joinedload(Campaign.campaign_recruiters).joinedload(CampaignRecruiter.recruiter))
+        query = query.options(*opts)
     campaign = query.filter(Campaign.campaign_id == campaign_id, Campaign.user_id == current_user.id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
@@ -740,40 +751,58 @@ def list_campaigns(
 ):
     from sqlalchemy import func, case
     
-    query = db.query(
-        Campaign,
-        func.count(CampaignRecruiter.campaign_recruiter_id).label('total'),
-        func.sum(case((CampaignRecruiter.status.in_(['Sent', 'Delivered', 'Opened', 'Replied', 'Bounced']), 1), else_=0)).label('sent'),
-        func.sum(case((CampaignRecruiter.status == 'Failed', 1), else_=0)).label('failed')
-    ).outerjoin(CampaignRecruiter, Campaign.campaign_id == CampaignRecruiter.campaign_id)
-    
-    query = query.filter(Campaign.user_id == current_user.id)
-    
+    base_query = db.query(Campaign).filter(Campaign.user_id == current_user.id)
     if not include_archived:
-        query = query.filter(Campaign.is_archived.is_(False))
-        
+        base_query = base_query.filter(Campaign.is_archived.is_(False))
     if search:
-        query = query.filter(Campaign.name.ilike(f"%{search}%"))
-        
+        base_query = base_query.filter(Campaign.name.ilike(f"%{search}%"))
     if status and status != 'all':
-        query = query.filter(Campaign.status == status)
-        
+        base_query = base_query.filter(Campaign.status == status)
     if is_test is not None:
-        query = query.filter(Campaign.is_test == is_test)
+        base_query = base_query.filter(Campaign.is_test == is_test)
         
-    # Get total count before pagination
-    total_count = query.with_entities(func.count(Campaign.campaign_id.distinct())).scalar()
+    # Get total count before pagination, without the massive outerjoin
+    total_count = base_query.with_entities(func.count(Campaign.campaign_id)).scalar()
         
-    results = query.group_by(Campaign.campaign_id).order_by(Campaign.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
+    # 1. Get the actual campaigns for this page (LIMIT 50)
+    campaigns = base_query.order_by(Campaign.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
     
+    # 2. Extract their IDs
+    campaign_ids = [c.campaign_id for c in campaigns]
+    
+    # 3. Fetch stats ONLY for those specific campaigns
+    stats_dict = {}
+    if campaign_ids:
+        stats_query = db.query(
+            CampaignRecruiter.campaign_id,
+            CampaignRecruiter.status,
+            func.count(CampaignRecruiter.campaign_recruiter_id).label('count')
+        ).filter(CampaignRecruiter.campaign_id.in_(campaign_ids)).group_by(
+            CampaignRecruiter.campaign_id, CampaignRecruiter.status
+        ).all()
+        
+        for cid, status_val, count in stats_query:
+            if cid not in stats_dict:
+                stats_dict[cid] = {"total": 0, "sent": 0, "failed": 0}
+            
+            stats_dict[cid]["total"] += count
+            
+            if status_val in ['Sent', 'Delivered', 'Opened', 'Replied', 'Bounced']:
+                stats_dict[cid]["sent"] += count
+            elif status_val == 'Failed':
+                stats_dict[cid]["failed"] += count
+            
+    # 4. Serialize
     ret = []
-    for c, total, sent, failed in results:
-        t = total or 0
-        s = sent or 0
-        f = failed or 0
+    for c in campaigns:
+        st = stats_dict.get(c.campaign_id, {"total": 0, "sent": 0, "failed": 0})
+        t = st["total"]
+        s = st["sent"]
+        f = st["failed"]
         p = round((s / t) * 100, 1) if t > 0 else 0
-        stats = {"total": t, "sent": s, "failed": f, "progress_percent": p}
-        serialized = serialize_campaign_list(c, stats)
+        st["progress_percent"] = p
+        
+        serialized = serialize_campaign_list(c, st)
         serialized["is_test"] = c.is_test
         ret.append(serialized)
         
@@ -810,12 +839,15 @@ def create_campaign(payload: CampaignCreate, db: Session = Depends(get_db), curr
 
 
 @router.get("/{campaign_id}")
-def get_campaign(campaign_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    campaign = get_campaign_or_404(db, campaign_id, eager=True)
+def get_campaign(campaign_id: int, include_recruiters: bool = Query(default=False), db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    campaign = get_campaign_or_404(db, campaign_id, current_user, eager=True, eager_recruiters=include_recruiters)
     payload = serialize_campaign(campaign)
     payload["templates"] = [serialize_template(item) for item in sorted(campaign.templates, key=lambda x: x.template_id)]
     payload["sequence_steps"] = [serialize_sequence_step(item) for item in sorted(campaign.sequence_steps, key=lambda x: x.step_order)]
-    payload["campaign_recruiters"] = [serialize_campaign_recruiter(item) for item in campaign.campaign_recruiters]
+    if include_recruiters:
+        payload["campaign_recruiters"] = [serialize_campaign_recruiter(item) for item in campaign.campaign_recruiters]
+    else:
+        payload["campaign_recruiters"] = []
     return payload
 
 

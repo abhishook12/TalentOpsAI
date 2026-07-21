@@ -19,6 +19,7 @@ import { CompanyLogo } from '../components/CompanyLogo'
 import AIInsights from '../components/AIInsights'
 import EnrichmentLiveFeed from '../components/EnrichmentLiveFeed'
 import { Skeleton, SkeletonRow } from '../components/ui/Skeleton'
+import AnimatedNumber from '../components/ui/AnimatedNumber'
 
 const REFRESH_INTERVAL = 60_000 // 60 seconds
 
@@ -33,6 +34,24 @@ function percentText(value) {
 function formatTime(date) {
   if (!date) return '—'
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
+
+function useCachedQuery(key, fetcher, options) {
+  return useQuery({
+    queryKey: [key],
+    queryFn: async () => {
+      const data = await fetcher()
+      try { localStorage.setItem(`dashboard_${key}`, JSON.stringify(data)) } catch { /* ignore */ }
+      return data
+    },
+    initialData: () => {
+      try { 
+        const cached = localStorage.getItem(`dashboard_${key}`)
+        return cached ? JSON.parse(cached) : undefined 
+      } catch { return undefined }
+    },
+    ...options
+  })
 }
 
 export default function Dashboard() {
@@ -51,35 +70,34 @@ export default function Dashboard() {
     retry: 1,
   }
 
-  const { data: kpis, isLoading: kpisLoading, error: kpisError, isFetching: kpisFetching } = useQuery({
-    queryKey: ['dashboard-kpis'],
-    queryFn: async () => {
+  const { error: kpisError, isFetching: kpisFetching } = useCachedQuery(
+    'dashboard-kpis',
+    async () => {
       const res = (await api.get('/analytics/dashboard')).data
       setLastUpdated(new Date())
       setRefreshError(null)
       return res
     },
-    ...sharedQueryOpts,
-  })
+    sharedQueryOpts
+  )
 
-  const { data: dataQuality, isLoading: dqLoading, error: dqError, isFetching: dqFetching } = useQuery({
-    queryKey: ['dashboard-data-quality'],
-    queryFn: async () => (await api.get('/analytics/data-quality')).data,
-    ...sharedQueryOpts,
-  })
+  const { data: dataQuality, isLoading: dqLoading, error: dqError, isFetching: dqFetching } = useCachedQuery(
+    'dashboard-data-quality',
+    async () => (await api.get('/analytics/data-quality')).data,
+    sharedQueryOpts
+  )
 
-  const { data: visits, isLoading: visitsLoading, error: visitsError, isFetching: visitsFetching } = useQuery({
-    queryKey: ['dashboard-visits'],
-    queryFn: async () => (await api.get('/analytics/visit-stats')).data,
-    ...sharedQueryOpts,
-  })
+  const { data: visits, isLoading: visitsLoading, error: visitsError, isFetching: visitsFetching } = useCachedQuery(
+    'dashboard-visits',
+    async () => (await api.get('/analytics/visit-stats')).data,
+    sharedQueryOpts
+  )
 
-  const { data: topCompanies, isLoading: companiesLoading, error: companiesError, isFetching: companiesFetching } = useQuery({
-    queryKey: ['dashboard-top-companies'],
-    queryFn: async () => (await api.get('/analytics/companies-search', { params: { state: 'ALL', limit: 6, skip: 0, min_recruiters: 1 } })).data,
-    ...sharedQueryOpts,
-  })
-
+  const { data: topCompanies, isLoading: companiesLoading, error: companiesError, isFetching: companiesFetching } = useCachedQuery(
+    'dashboard-top-companies',
+    async () => (await api.get('/analytics/companies-search', { params: { state: 'ALL', limit: 6, skip: 0, min_recruiters: 1 } })).data,
+    sharedQueryOpts
+  )
 
   const isFetchingAny = kpisFetching || dqFetching || visitsFetching || companiesFetching
 
@@ -107,45 +125,43 @@ export default function Dashboard() {
   const totalPages = Number(visits?.total_visits || 0)
   const today = Number(visits?.today || 0)
   const yesterday = Number(visits?.yesterday || 0)
-  const todayChange = yesterday > 0 ? Math.round(((today - yesterday) / yesterday) * 100) : null
-
   const metrics = useMemo(() => ([
     {
       label: 'Total Recruiters',
-      value: formatCount(dataQuality?.total_recruiters),
+      value: typeof dataQuality?.total_recruiters === 'number' ? <AnimatedNumber value={dataQuality.total_recruiters} /> : '—',
       sublabel: dataQuality?.total_recruiters ? 'Real database count' : '—',
       icon: 'ti-users',
       tone: 'neutral',
     },
     {
       label: 'States Covered',
-      value: typeof dataQuality?.states_covered === 'number' ? formatCount(dataQuality?.states_covered) : (dataQuality?.states_covered || '—'),
-      sublabel: typeof dataQuality?.state_coverage === 'number' ? `${dataQuality.state_coverage}% mapped coverage` : 'Needs state inference',
+      value: typeof dataQuality?.states_covered === 'number' ? <AnimatedNumber value={dataQuality.states_covered} /> : '—',
+      sublabel: typeof dataQuality?.state_coverage === 'number' ? <><AnimatedNumber value={dataQuality.state_coverage} />% mapped coverage</> : 'Needs state inference',
       icon: 'ti-map-2',
       tone: 'neutral',
     },
     {
       label: 'Known State Recruiters',
-      value: typeof dataQuality?.known_state_count === 'number' ? formatCount(dataQuality?.known_state_count) : '—',
+      value: typeof dataQuality?.known_state_count === 'number' ? <AnimatedNumber value={dataQuality.known_state_count} /> : '—',
       sublabel: 'Mapped via explicit or inferred logic',
       icon: 'ti-map-pin-filled',
       tone: 'success',
     },
     {
       label: 'Unknown State Recruiters',
-      value: typeof dataQuality?.unknown_state_count === 'number' ? formatCount(dataQuality?.unknown_state_count) : '—',
+      value: typeof dataQuality?.unknown_state_count === 'number' ? <AnimatedNumber value={dataQuality.unknown_state_count} /> : '—',
       sublabel: 'Missing location/company metadata entirely',
       icon: 'ti-alert-triangle',
       tone: dataQuality?.unknown_state_count > 0 ? 'warning' : 'neutral',
     },
     {
       label: 'Searches Today',
-      value: formatCount(visits?.searches_today),
+      value: typeof visits?.searches_today === 'number' ? <AnimatedNumber value={visits.searches_today} /> : '—',
       sublabel: 'Total AI search queries',
       icon: 'ti-search',
       tone: 'neutral',
     },
-  ]), [dataQuality, todayChange, visits?.searches_today])
+  ]), [dataQuality, visits])
 
   const dataHealth = [
     { label: 'Overall Quality Score', value: dataQuality?.quality_score, tone: dataQuality?.quality_score > 70 ? 'success' : (dataQuality?.quality_score > 40 ? 'warning' : 'danger') },
@@ -161,7 +177,7 @@ export default function Dashboard() {
       : { title: 'No recruiter review queue available', meta: 'Data quality', description: 'The backend did not report a review queue count.', tone: 'success', icon: 'ti-circle-check' },
   ]
 
-  const isError = dqError || visitsError || companiesError
+  const isError = dqError || visitsError || companiesError || kpisError
 
   return (
     <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
@@ -223,8 +239,8 @@ export default function Dashboard() {
           <MetricCard
             key={metric.label}
             {...metric}
-            value={kpisLoading && !kpis ? <Skeleton width="60%" height="28px" /> : metric.value}
-            sublabel={kpisLoading && !kpis ? <Skeleton width="40%" height="14px" /> : metric.sublabel}
+            value={dqLoading && !dataQuality ? <Skeleton width="60%" height="28px" /> : metric.value}
+            sublabel={dqLoading && !dataQuality ? <Skeleton width="40%" height="14px" /> : metric.sublabel}
           />
         ))}
       </div>
@@ -333,7 +349,9 @@ export default function Dashboard() {
             subtitle="Live page visitation distribution."
             action={<Badge tone="neutral">{visitsLoading && !visits ? <Skeleton width="50px" height="12px" /> : `${formatCount(totalPages)} views`}</Badge>}
           />
-          {topPages.length ? (
+          {visitsLoading && !visits ? (
+             <SkeletonRow rows={4} gap={10} height={40} />
+          ) : topPages.length ? (
             <div style={{ display: 'grid', gap: 12 }}>
               {topPages.map((page, index) => {
                 const highest = topPages[0]?.visits || 1
@@ -450,6 +468,3 @@ export default function Dashboard() {
     </div>
   )
 }
-
-
-

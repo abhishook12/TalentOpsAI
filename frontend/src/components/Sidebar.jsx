@@ -1,11 +1,17 @@
+import React, { useState, useEffect } from 'react'
 import { Link as NavLink, useLocation } from '@tanstack/react-router'
-import { clearStoredToken } from '../services/api'
+import api, { clearStoredToken } from '../services/api'
 import { LayoutDashboard, Activity, Users, Map, BarChart2, Search, Eye, Radar, LogOut, ShieldCheck, Settings, UserCircle, HeartPulse, UserCog, Server, Shield } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 export default function Sidebar() {
   const location = useLocation()
   const { isAdmin } = useAuth()
+  const [backendVersion, setBackendVersion] = useState('loading...')
+
+  useEffect(() => {
+    api.get('/version').then(res => setBackendVersion(res.data.version)).catch(() => setBackendVersion('unknown'))
+  }, [])
 
   const logoutSoon = () => {
     localStorage.removeItem('auth_session')
@@ -184,8 +190,24 @@ export default function Sidebar() {
           <LogOut size={18} strokeWidth={2} />
           <span>Sign Out</span>
         </button>
+        
+        <div style={{
+          marginTop: 12,
+          paddingTop: 12,
+          borderTop: '1px solid var(--card-border)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 4,
+          color: 'var(--text-muted)',
+          fontSize: 10,
+          fontFamily: 'monospace',
+          opacity: 0.6
+        }}>
+          <div>UI: {import.meta.env.VITE_APP_VERSION || 'local'}</div>
+          <div>API: {backendVersion}</div>
+        </div>
       </div>
     </aside>
   )
 }
-

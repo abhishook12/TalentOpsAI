@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import { ShellCard, SectionHeader, Badge } from './CommandCenter';
@@ -9,7 +9,17 @@ import { motion } from 'framer-motion';
 export default function AIInsights() {
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard-insights'],
-    queryFn: async () => (await api.get('/analytics/insights')).data,
+    queryFn: async () => {
+      const res = (await api.get('/analytics/insights')).data;
+      try { localStorage.setItem('dashboard-insights', JSON.stringify(res)) } catch { /* ignore */ }
+      return res;
+    },
+    initialData: () => {
+      try {
+        const cached = localStorage.getItem('dashboard-insights');
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
+    },
     staleTime: 60000,
   });
 
@@ -26,7 +36,7 @@ export default function AIInsights() {
         }
       />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginTop: 16 }}>
-        {isLoading ? (
+        {isLoading && !data ? (
           <>
             <SkeletonRow height={80} />
             <SkeletonRow height={80} />
@@ -46,8 +56,13 @@ export default function AIInsights() {
                 border: '1px solid rgba(14, 165, 233, 0.1)',
               }}
             >
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--bg-surface)', display: 'grid', placeItems: 'center', color: 'var(--accent)', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-                <i className={insight.icon} style={{ fontSize: 18 }} />
+              <div style={{ 
+                width: 48, height: 48, flexShrink: 0, borderRadius: 12, 
+                background: 'linear-gradient(135deg, var(--accent), #38bdf8)', 
+                display: 'grid', placeItems: 'center', color: '#ffffff', 
+                boxShadow: '0 4px 12px rgba(14, 165, 233, 0.25)' 
+              }}>
+                <i className={insight.icon} style={{ fontSize: 24 }} />
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.4 }}>

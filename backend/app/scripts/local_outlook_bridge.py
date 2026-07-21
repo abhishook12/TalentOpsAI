@@ -1,3 +1,4 @@
+import os
 import time
 import requests
 import win32com.client
@@ -6,6 +7,9 @@ import logging
 import argparse
 import sys
 import json
+import threading
+import uvicorn
+from outlook_local_server import app as local_api_app
 
 logging.basicConfig(
     level=logging.INFO,
@@ -184,6 +188,10 @@ def run_inner_loop(base_url, token, state):
         if not full_batch:
             time.sleep(2)
 
+def start_local_api():
+    logger.info("Starting local outlook API server on port 8080...")
+    uvicorn.run(local_api_app, host="127.0.0.1", port=8080, log_level="warning")
+
 def main():
     parser = argparse.ArgumentParser(description="TalentOps AI - Local Outlook Bridge")
     parser.add_argument("--api-url", default="https://talentopsai-1.onrender.com", help="The backend API URL")
@@ -193,7 +201,11 @@ def main():
 
     base_url = args.api_url.rstrip("/")
     logger.info(f"Starting Local Outlook Bridge v{BRIDGE_VERSION} against {base_url}")
-
+    
+    # Start the local API server in a daemon thread
+    api_thread = threading.Thread(target=start_local_api, daemon=True)
+    api_thread.start()
+    
     state = BridgeState()
 
     # Supervisor Loop
@@ -201,7 +213,26 @@ def main():
         try:
             if not state.auth_token:
                 if not args.email:
-                    args.email = input("Please enter your TalentOps AI login email: ").strip()
+                    config_file = os.path.join(os.path.dirname(__file__), ".bridge_config.json")
+                    if os.path.exists(config_file):
+                        try:
+                            with open(config_file, "r") as f:
+                                import json
+                                config = json.load(f)
+                                args.email = config.get("email")
+                        except Exception:
+                            pass
+                    
+                    if not args.email:
+                        args.email = "abhishekjadon824@gmail.com"
+                        try:
+                            import json
+                            with open(config_file, "w") as f:
+                                json.dump({"email": args.email}, f)
+                        except Exception:
+                            pass
+                    
+                    logger.info(f"Auto-authenticating with email: {args.email}")
                     
                 if args.password:
                     state.auth_token = get_auth_token(base_url, args.email, args.password)

@@ -4,6 +4,7 @@ All endpoints require a valid admin session (HttpOnly cookie set by /auth/login)
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 from sqlalchemy import text, func
 from sqlalchemy.exc import ProgrammingError
 from typing import Optional
@@ -119,6 +120,24 @@ def _resolve_upload_batch_recruiters(db: Session, job: UploadJob):
 
     return fallback
 
+
+from ..resource_lockdown import request_unlock, is_locked_down, get_lockdown_reason
+
+class UnlockRequest(BaseModel):
+    code: str
+
+@router.post("/unlock")
+def admin_unlock(body: UnlockRequest):
+    if request_unlock(body.code):
+        return {"status": "ok", "message": "System unlocked for 15 minutes."}
+    raise HTTPException(status_code=403, detail="Invalid unlock code.")
+
+@router.get("/lockdown-status")
+def admin_lockdown_status():
+    return {
+        "is_locked": is_locked_down(),
+        "reason": get_lockdown_reason()
+    }
 
 # ── 1. Live database stats ────────────────────────────────────────────────────
 @router.get("/stats")

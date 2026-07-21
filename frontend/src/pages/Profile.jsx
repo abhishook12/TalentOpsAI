@@ -1,16 +1,70 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { User, Shield, Key, Mail, Calendar, MapPin, Building, Smartphone, LogOut } from 'lucide-react'
+import { User, Shield, Key, Mail, Calendar, MapPin, Building, Smartphone, LogOut, Link, Activity, Clock } from 'lucide-react'
+import { API as API_BASE_URL } from '../services/api'
+import ConnectOutlookModal from '../components/ConnectOutlookModal'
 
 export default function Profile() {
   const { user, logout } = useAuth()
+  const [bridgeStatus, setBridgeStatus] = useState(null)
+  const [loadingBridge, setLoadingBridge] = useState(true)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const fetchBridgeStatus = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/bridge/status`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setBridgeStatus(data)
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoadingBridge(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchBridgeStatus()
+  }, [])
 
   if (!user) return null
 
   const isGoogle = user.auth_provider === 'google'
 
+  const handleConnectOutlook = () => {
+    setIsModalOpen(true)
+  }
+
+  const handleDisconnectOutlook = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/bridge/disconnect`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+      if (res.ok) {
+        fetchBridgeStatus()
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
   return (
-    <div style={{ padding: 40, maxWidth: 900, margin: '0 auto', color: 'var(--text-primary)' }}>
+    <div className="max-w-6xl mx-auto p-4 lg:p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      
+      <ConnectOutlookModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={fetchBridgeStatus} 
+      />
+
       <h1 style={{ fontSize: 32, fontWeight: 900, marginBottom: 40, letterSpacing: '-0.02em' }}>My Profile</h1>
 
       <div style={{
@@ -91,6 +145,75 @@ export default function Profile() {
                   <MapPin size={16} color="var(--text-muted)" /> {user.country || 'Not Specified'}
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Email Bridge / Outlook Connection */}
+          <div style={{
+            background: 'rgba(25, 25, 25, 0.6)',
+            border: '1px solid var(--card-border)',
+            borderRadius: 24,
+            padding: 32,
+          }}>
+            <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Link size={20} color="var(--accent)" /> Email Bridge & Outlook Connection
+            </h3>
+            
+            <div style={{ background: 'var(--bg-surface)', padding: 24, borderRadius: 16, border: '1px solid var(--card-border)' }}>
+              {!loadingBridge && bridgeStatus && bridgeStatus.status === 'online' ? (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                    <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(74, 222, 128, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Activity size={24} color="#4ade80" />
+                    </div>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#4ade80' }}>Connected to Outlook</h4>
+                      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>Your Outlook account is securely linked and actively syncing.</p>
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 8 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Connected Email</div>
+                      <div style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Mail size={14} color="var(--text-secondary)" /> {user.email}
+                      </div>
+                    </div>
+                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 8 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Last Heartbeat</div>
+                      <div style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Clock size={14} color="var(--text-secondary)" /> {bridgeStatus.last_heartbeat ? new Date(bridgeStatus.last_heartbeat).toLocaleString() : 'Just now'}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <button onClick={handleDisconnectOutlook} style={{ flex: 1, padding: '10px', borderRadius: 8, border: '1px solid rgba(255,107,107,0.3)', background: 'transparent', color: '#ff6b6b', fontWeight: 600, cursor: 'pointer' }}>
+                      Disconnect Outlook
+                    </button>
+                    <button onClick={handleConnectOutlook} style={{ flex: 1, padding: '10px', borderRadius: 8, border: '1px solid var(--card-border)', background: 'var(--text-primary)', color: 'var(--main-bg)', fontWeight: 600, cursor: 'pointer' }}>
+                      Reconnect Account
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '16px 0' }}>
+                  <div style={{ width: 64, height: 64, borderRadius: 32, background: 'rgba(255, 255, 255, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                    <Link size={32} color="var(--text-muted)" />
+                  </div>
+                  <h4 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 700 }}>Outlook Not Connected</h4>
+                  <p style={{ margin: '0 auto 24px', fontSize: 14, color: 'var(--text-secondary)', maxWidth: 400, lineHeight: 1.5 }}>
+                    Connect your Microsoft Outlook account to enable the TalentOps AI Email Bridge. 
+                    Authentication will open in a secure window.
+                  </p>
+                  <button 
+                    onClick={handleConnectOutlook}
+                    className="px-6 py-2 bg-[#00A4EF] hover:bg-[#008AC9] text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    Connect Outlook Account
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

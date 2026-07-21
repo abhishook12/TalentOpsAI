@@ -39,11 +39,11 @@ def check_outlook_bridge(db: Session, current_user_id: int):
         if not status_record.last_heartbeat:
             return {"status": "unhealthy", "error": "No heartbeat received yet."}
             
-        time_diff = (datetime.datetime.utcnow() - status_record.last_heartbeat).total_seconds()
-        if time_diff < 30:
+        # Removing timeout so the connection persists indefinitely until explicitly disconnected
+        if status_record.status == 'online':
             return {"status": "ok", "message": "Outlook Bridge Connected"}
         else:
-            return {"status": "unhealthy", "error": f"Last heartbeat was {int(time_diff)}s ago (expected <30s)"}
+            return {"status": "unhealthy", "error": "Bridge is disconnected"}
     except Exception as e:
         return {"status": "unreachable", "error": str(e)}
 

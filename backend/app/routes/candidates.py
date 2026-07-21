@@ -4,7 +4,8 @@ from sqlalchemy import or_
 from pydantic import BaseModel
 from typing import Optional, List
 from ..database import get_db
-from ..services.auth_service import require_role
+from ..services.auth_service import get_current_user_from_request
+from ..models.auth_models import User
 from ..models.models import Candidate
 
 router = APIRouter()
@@ -47,9 +48,10 @@ def get_candidates(
     is_duplicate: Optional[bool] = None,
     min_experience: Optional[float] = None,
     max_rate: Optional[float] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request)
 ):
-    query = db.query(Candidate)
+    query = db.query(Candidate).filter(Candidate.user_id == current_user.id)
     if visa_status:
         query = query.filter(Candidate.visa_status == visa_status)
     if location:
@@ -67,26 +69,26 @@ def get_candidates(
     return query.offset(skip).limit(limit).all()
 
 @router.get("/{candidate_id}")
-def get_candidate(candidate_id: int, db: Session = Depends(get_db)):
-    c = db.query(Candidate).filter(Candidate.candidate_id == candidate_id).first()
+def get_candidate(candidate_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    c = db.query(Candidate).filter(Candidate.user_id == current_user.id, Candidate.candidate_id == candidate_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Candidate not found")
     return c
 
 @router.post("/", status_code=201)
-def create_candidate(data: CandidateCreate, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
-    existing = db.query(Candidate).filter(Candidate.email == data.email).first()
+def create_candidate(data: CandidateCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    existing = db.query(Candidate).filter(Candidate.user_id == current_user.id, Candidate.email == data.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Candidate with this email already exists")
-    candidate = Candidate(**data.dict())
+    candidate = Candidate(user_id=current_user.id, **data.dict())
     db.add(candidate)
     db.commit()
     db.refresh(candidate)
     return candidate
 
 @router.put("/{candidate_id}")
-def update_candidate(candidate_id: int, data: CandidateUpdate, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
-    candidate = db.query(Candidate).filter(Candidate.candidate_id == candidate_id).first()
+def update_candidate(candidate_id: int, data: CandidateUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id, Candidate.candidate_id == candidate_id).first()
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
     for key, value in data.dict(exclude_unset=True).items():
@@ -96,8 +98,8 @@ def update_candidate(candidate_id: int, data: CandidateUpdate, db: Session = Dep
     return candidate
 
 @router.delete("/{candidate_id}")
-def delete_candidate(candidate_id: int, db: Session = Depends(get_db), _=Depends(require_role(['admin', 'superadmin']))):
-    c = db.query(Candidate).filter(Candidate.candidate_id == candidate_id).first()
+def delete_candidate(candidate_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    c = db.query(Candidate).filter(Candidate.user_id == current_user.id, Candidate.candidate_id == candidate_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Candidate not found")
     db.delete(c)
@@ -105,11 +107,12 @@ def delete_candidate(candidate_id: int, db: Session = Depends(get_db), _=Depends
     return {"message": "Candidate deleted"}
 
 @router.get("/{candidate_id}/duplicates")
-def find_duplicates(candidate_id: int, db: Session = Depends(get_db)):
-    c = db.query(Candidate).filter(Candidate.candidate_id == candidate_id).first()
+def find_duplicates(candidate_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    c = db.query(Candidate).filter(Candidate.user_id == current_user.id, Candidate.candidate_id == candidate_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Candidate not found")
     dupes = db.query(Candidate).filter(
+        Candidate.user_id == current_user.id,
         Candidate.candidate_id != candidate_id,
         or_(
             Candidate.email == c.email,

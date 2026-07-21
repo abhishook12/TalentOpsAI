@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Server, CheckCircle, Loader2 } from 'lucide-react';
 import api from '../services/api';
+import { Link } from '@tanstack/react-router';
+import ConnectOutlookModal from './ConnectOutlookModal';
 
 export default function BridgeStatus({ onStatusChange }) {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const checkHealth = async () => {
     try {
@@ -51,9 +54,24 @@ export default function BridgeStatus({ onStatusChange }) {
         </div>
       </div>
       
+      <ConnectOutlookModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={checkHealth} 
+      />
+
       {!isHealthy && (
-        <div className="text-xs opacity-80 mt-1 pl-7">
-          Error: {status?.error || status?.message || error || "Bridge unreachable"}
+        <div className="flex flex-col gap-2 mt-1 pl-7">
+          <div className="text-xs opacity-80">
+            Error: {status?.error || status?.message || error || "Bridge unreachable"}
+          </div>
+          <button 
+            id="connect-outlook-btn"
+            onClick={() => setIsModalOpen(true)}
+            className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-500 rounded text-sm font-medium transition-colors self-start"
+          >
+            Connect your Outlook
+          </button>
         </div>
       )}
       

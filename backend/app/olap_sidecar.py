@@ -33,7 +33,14 @@ class MemoryOLAPSidecar:
             db = SessionLocal()
             try:
                 db.execute(text("SET statement_timeout = '60s'"))
-                recruiter_counts = db.execute(text("""
+                
+                # Check if user is an admin
+                user_role_name = db.execute(text("SELECT r.name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = :user_id"), {"user_id": user_id}).scalar()
+                is_admin = user_role_name and user_role_name.lower() == 'admin'
+                
+                where_clause = "WHERE 1=1" if is_admin else "WHERE user_id = :user_id"
+                
+                recruiter_counts = db.execute(text(f"""
                     SELECT
                         COUNT(*) AS total_recruiters,
                         COUNT(*) FILTER (WHERE email IS NOT NULL AND email != '') AS real_emails,
@@ -49,7 +56,7 @@ class MemoryOLAPSidecar:
                         COUNT(*) FILTER (WHERE state_source = 'email_domain') AS domain_state_count,
                         COUNT(*) FILTER (WHERE state_source IN ('recruiter_location', 'company_location', 'notes', 'review_reason', 'metadata_json', 'raw_data')) AS text_inferred_count
                     FROM recruiters
-                    WHERE user_id = :user_id
+                    {where_clause}
                 """), {"user_id": user_id}).mappings().one()
 
                 total_recruiters = int(recruiter_counts["total_recruiters"] or 0)
@@ -66,24 +73,34 @@ class MemoryOLAPSidecar:
                 domain_state_count = int(recruiter_counts["domain_state_count"] or 0)
                 text_inferred_count = int(recruiter_counts["text_inferred_count"] or 0)
 
-                total_companies = db.execute(text("SELECT COUNT(*) FROM companies WHERE user_id = :user_id"), {"user_id": user_id}).scalar() or 0
+                total_companies = db.execute(text(f"SELECT COUNT(*) FROM companies {where_clause}"), {"user_id": user_id}).scalar() or 0
 
                 try:
                     db_size = db.execute(text("SELECT pg_size_pretty(pg_database_size(current_database()))")).scalar()
                 except Exception:
                     db_size = "Unknown"
+                    
+                try:
+                    storage_res = db.execute(text("SELECT sum((metadata->>'size')::bigint) FROM storage.objects")).fetchone()
+                    storage_bytes = int(storage_res[0]) if storage_res and storage_res[0] else 0
+                    storage_size = f"{storage_bytes / 1048576.0:.2f} MB"
+                except Exception:
+                    storage_size = "0.00 MB"
+                    
+                from .resource_lockdown import _get_lockdown_state
+                lockdown_state = _get_lockdown_state()
 
                 duplicate_risk = db.execute(
-                    text("SELECT COUNT(*) FROM (SELECT phone FROM recruiters WHERE phone IS NOT NULL AND phone != '' AND user_id = :user_id GROUP BY phone HAVING COUNT(*) > 1) t"), {"user_id": user_id}
+                    text(f"SELECT COUNT(*) FROM (SELECT phone FROM recruiters {where_clause} AND phone IS NOT NULL AND phone != '' GROUP BY phone HAVING COUNT(*) > 1) t"), {"user_id": user_id}
                 ).scalar() or 0
 
                 explicit_state_count = direct_state_count
-                pre_existing_states = db.execute(text("""
+                pre_existing_states = db.execute(text(f"""
                     SELECT COUNT(*)
                     FROM recruiters
                     WHERE (state IS NOT NULL AND state != '')
                       AND (state_source IS NULL OR state_source = '')
-                      AND user_id = :user_id
+                      AND ({'1=1' if is_admin else 'user_id = :user_id'})
                 """), {"user_id": user_id}).scalar() or 0
                 explicit_state_count += pre_existing_states
                 inferred_state_count = max(with_state - explicit_state_count, 0)
@@ -100,6 +117,9 @@ class MemoryOLAPSidecar:
                     "total_companies": total_companies,
                     "states_covered": states_covered,
                     "database_size": db_size,
+                    "storage_size": storage_size,
+                    "is_locked_down": lockdown_state.get("is_locked", False),
+                    "lockdown_reason": lockdown_state.get("reason", None),
                     "email_coverage": email_cov,
                     "phone_coverage": phone_cov,
                     "company_coverage": comp_cov,

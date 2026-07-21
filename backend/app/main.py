@@ -204,7 +204,11 @@ from .resource_lockdown import is_locked_down, get_lockdown_reason, check_system
 
 @app.middleware("http")
 async def lockdown_middleware(request: Request, call_next):
-    if request.method != "GET" or request.url.path.startswith("/ai"):
+    path = request.url.path
+    is_modifying_request = request.method != "GET" or path.startswith("/ai")
+    is_whitelisted = path in ["/admin/unlock", "/admin/cleanup", "/auth/login"]
+    
+    if is_modifying_request and not is_whitelisted:
         if is_locked_down():
             return JSONResponse(
                 status_code=503,
@@ -212,7 +216,7 @@ async def lockdown_middleware(request: Request, call_next):
             )
     
     # Check limits on every POST/AI request
-    if request.method != "GET" or request.url.path.startswith("/ai"):
+    if is_modifying_request and not is_whitelisted:
         check_system_limits()
         
     start_time = time.time()
@@ -291,6 +295,21 @@ app.include_router(bridge.router, prefix="/api/bridge", tags=["Outlook Bridge"])
 @app.get("/")
 def root():
     return {"message": "TalentOps AI is running", "docs": "/docs"}
+
+import subprocess
+
+@app.get("/api/v1/version")
+def get_version():
+    try:
+        # Try to get commit hash locally
+        commit_hash = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
+        return {"version": commit_hash}
+    except Exception:
+        # Fallback to Render environment variable or unknown
+        commit = os.environ.get("RENDER_GIT_COMMIT", "unknown")
+        if commit != "unknown":
+            commit = commit[:7]
+        return {"version": commit}
 
 
 @app.get("/ping")

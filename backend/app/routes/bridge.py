@@ -76,16 +76,7 @@ def get_bridge_status(db: Session = Depends(get_db), current_user: User = Depend
     if not status_record:
         return {"status": "offline", "message": "Bridge not configured"}
     
-    # Check if offline based on heartbeat
-    is_offline = False
-    if status_record.last_heartbeat:
-        time_diff = (_utcnow() - status_record.last_heartbeat).total_seconds()
-        if time_diff > 30:
-            is_offline = True
-            
-    if is_offline and status_record.status == "online":
-        status_record.status = "offline"
-        db.commit()
+    # Removed auto-offline timeout logic to maintain persistent connection
         
     return {
         "status": status_record.status,
@@ -193,3 +184,37 @@ def post_bridge_results(payload: BridgeResultsPayload, db: Session = Depends(get
 
     return {"status": "ok"}
 
+
+from fastapi.responses import RedirectResponse, HTMLResponse
+import urllib.parse
+
+@router.get('/oauth/login')
+def bridge_oauth_login(redirect_uri: str = '/profile?bridge=connected', popup: str = 'false', current_user: User = Depends(get_current_user_from_request)):
+    # Placeholder OAuth redirect to Microsoft login
+    # In a real app, this would redirect to https://login.microsoftonline.com/... 
+    return RedirectResponse(url=f'/api/bridge/oauth/callback?user_id={current_user.id}&redirect_uri={urllib.parse.quote(redirect_uri)}&popup={popup}')
+
+@router.get('/oauth/callback')
+def bridge_oauth_callback(user_id: int, redirect_uri: str = '/profile?bridge=connected', popup: str = 'false', db: Session = Depends(get_db)):
+    status_record = db.query(UserBridgeStatus).filter(UserBridgeStatus.user_id == user_id).first()
+    if not status_record:
+        status_record = UserBridgeStatus(user_id=user_id)
+        db.add(status_record)
+    
+    status_record.status = 'online'
+    status_record.last_heartbeat = _utcnow()
+    db.commit()
+    
+    if popup == 'true':
+        return HTMLResponse(content="<html><script>window.close();</script><body style='font-family:sans-serif;text-align:center;padding:50px;'><h2>Connection Successful!</h2><p>This window will close automatically.</p></body></html>")
+        
+    # Redirect back to frontend profile
+    return RedirectResponse(url=redirect_uri)
+
+@router.post('/disconnect')
+def bridge_disconnect(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    status_record = db.query(UserBridgeStatus).filter(UserBridgeStatus.user_id == current_user.id).first()
+    if status_record:
+        status_record.status = 'offline'
+        db.commit()
+    return {'status': 'ok'}

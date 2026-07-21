@@ -63,23 +63,26 @@ def validate_recipients(raw_emails: List[str], db: Session) -> ValidationResult:
             
     result.total = len(cleaned_emails)
     
-    # Fetch existing recruiters in one batch for performance
+    # Fetch existing recruiters in one batch for performance (chunked for SQLite limits)
     existing_recruiters = {}
     if cleaned_emails:
-        db_recruiters = db.query(Recruiter).filter(Recruiter.email.in_(cleaned_emails)).all()
-        for r in db_recruiters:
-            company_name = None
-            if r.company:
-                company_name = r.company.company_name
-            existing_recruiters[r.email.lower()] = {
-                'recruiter_id': r.recruiter_id,
-                'recruiter_name': r.recruiter_name,
-                'company_name': company_name,
-                'company_id': r.company_id,
-                'title': r.title,
-                'location': r.location,
-                'linkedin': r.linkedin
-            }
+        chunk_size = 900
+        for i in range(0, len(cleaned_emails), chunk_size):
+            chunk = cleaned_emails[i:i + chunk_size]
+            db_recruiters = db.query(Recruiter).filter(Recruiter.email.in_(chunk)).all()
+            for r in db_recruiters:
+                company_name = None
+                if r.company:
+                    company_name = r.company.company_name
+                existing_recruiters[r.email.lower()] = {
+                    'recruiter_id': r.recruiter_id,
+                    'recruiter_name': r.recruiter_name,
+                    'company_name': company_name,
+                    'company_id': r.company_id,
+                    'title': r.title,
+                    'location': r.location,
+                    'linkedin': r.linkedin
+                }
 
     for email in cleaned_emails:
         recipient = ValidatedRecipient(email=email, status='valid')

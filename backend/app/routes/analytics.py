@@ -83,7 +83,10 @@ def get_data_quality(current_user: User = Depends(get_current_user_from_request)
 @cached_endpoint(ttl_seconds=300)
 def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
 
-    sql = text("""
+    is_admin = current_user.role and current_user.role.name.lower() == 'admin'
+    where_clause = "WHERE 1=1" if is_admin else "WHERE user_id = :user_id"
+    
+    sql = text(f"""
         SELECT 
             COUNT(*) as total_recruiters,
             COUNT(*) FILTER (WHERE is_active = true) as active_recruiters,
@@ -101,7 +104,7 @@ def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depen
                 (phone3 IS NOT NULL AND phone3 != '') OR 
                 (phone4 IS NOT NULL AND phone4 != '')
             ) as with_phone
-        FROM recruiters WHERE user_id = :user_id
+        FROM recruiters {where_clause}
     """)
     res = db.execute(sql, {"user_id": current_user.id}).mappings().first()
 
@@ -140,6 +143,8 @@ def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depen
 @cached_endpoint(ttl_seconds=3600)
 def recruiters_by_state(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     computed_state_sql = EFFECTIVE_RECRUITER_STATE_SQL_R
+    is_admin = current_user.role and current_user.role.name.lower() == 'admin'
+    where_clause = "1=1" if is_admin else "r.user_id = :user_id"
 
     results = db.execute(text(f"""
         SELECT
@@ -147,7 +152,7 @@ def recruiters_by_state(db: Session = Depends(get_db), current_user: User = Depe
             COUNT(r.recruiter_id) AS count
         FROM recruiters r 
         LEFT JOIN companies c ON c.company_id = r.company_id
-        WHERE r.user_id = :user_id AND {computed_state_sql} IS NOT NULL
+        WHERE {where_clause} AND {computed_state_sql} IS NOT NULL
         GROUP BY {computed_state_sql}
         ORDER BY count DESC, state ASC
     """), {"user_email": current_user.email, "user_id": current_user.id}).mappings().all()

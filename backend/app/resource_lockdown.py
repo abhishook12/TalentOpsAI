@@ -12,8 +12,9 @@ logger = logging.getLogger("talentops.lockdown")
 LOCKDOWN_FILE = os.path.join(os.path.dirname(__file__), "..", ".lockdown_state.json")
 GEMINI_TRACKER_FILE = os.path.join(os.path.dirname(__file__), "..", ".gemini_requests.json")
 
-# 70% Limit Thresholds (Override: 400MB soft limit, 450MB hard limit)
-MAX_DB_SIZE_MB = 1000.0  # Increased to allow massive batches
+# 90% Limit Thresholds (Override: 450MB DB, 900MB Storage)
+MAX_DB_SIZE_MB = 450.0  # 90% of 500MB limit
+MAX_STORAGE_SIZE_MB = 900.0 # 90% of 1000MB limit
 MAX_MEMORY_MB = 250.0   # 70% of 358 MB
 MAX_GEMINI_RPM = 7      # 70% of 10 RPM
 
@@ -22,18 +23,19 @@ class ResourceLockdownException(Exception):
 
 def _get_lockdown_state() -> dict:
     if not os.path.exists(LOCKDOWN_FILE):
-        return {"is_locked": False, "reason": None, "timestamp": None}
+        return {"is_locked": False, "reason": None, "timestamp": None, "unlock_until": None}
     try:
         with open(LOCKDOWN_FILE, "r") as f:
             return json.load(f)
     except Exception:
-        return {"is_locked": False, "reason": None, "timestamp": None}
+        return {"is_locked": False, "reason": None, "timestamp": None, "unlock_until": None}
 
-def _set_lockdown_state(is_locked: bool, reason: Optional[str] = None):
+def _set_lockdown_state(is_locked: bool, reason: Optional[str] = None, unlock_until: Optional[float] = None):
     state = {
         "is_locked": is_locked,
         "reason": reason,
-        "timestamp": time.time() if is_locked else None
+        "timestamp": time.time() if is_locked else None,
+        "unlock_until": unlock_until
     }
     with open(LOCKDOWN_FILE, "w") as f:
         json.dump(state, f)
@@ -43,7 +45,11 @@ def _set_lockdown_state(is_locked: bool, reason: Optional[str] = None):
         logger.info("System unlocked successfully.")
 
 def is_locked_down() -> bool:
-    return _get_lockdown_state().get("is_locked", False)
+    state = _get_lockdown_state()
+    unlock_until = state.get("unlock_until")
+    if unlock_until and time.time() < unlock_until:
+        return False
+    return state.get("is_locked", False)
 
 def get_lockdown_reason() -> Optional[str]:
     return _get_lockdown_state().get("reason")
@@ -77,18 +83,32 @@ def check_system_limits():
         _set_lockdown_state(True, f"Memory exceeded 70% threshold ({mem_mb:.2f} MB / {MAX_MEMORY_MB} MB limit)")
         return
 
-    # Check DB Size
+    # Check DB Size & Storage Size
     try:
         from sqlalchemy.orm import Session
         with Session(engine) as db:
+            # 1. Check Database Size
             res = db.execute(text("SELECT pg_database_size(current_database()) / 1048576.0")).fetchone()
             db_size_mb = float(res[0]) if res and res[0] else 0.0
             logger.debug(f"[Shield] DB size: {db_size_mb:.1f} MB / {MAX_DB_SIZE_MB} MB limit")
             if db_size_mb >= MAX_DB_SIZE_MB:
-                _set_lockdown_state(True, f"Database Size exceeded 70% threshold ({db_size_mb:.2f} MB / {MAX_DB_SIZE_MB} MB limit)")
+                _set_lockdown_state(True, f"Database Size exceeded 90% threshold ({db_size_mb:.2f} MB / {MAX_DB_SIZE_MB} MB limit)")
                 return
+            
+            # 2. Check Storage Size
+            try:
+                storage_res = db.execute(text("SELECT sum((metadata->>'size')::bigint) FROM storage.objects")).fetchone()
+                storage_size_bytes = float(storage_res[0]) if storage_res and storage_res[0] else 0.0
+                storage_size_mb = storage_size_bytes / 1048576.0
+                logger.debug(f"[Shield] Storage size: {storage_size_mb:.1f} MB / {MAX_STORAGE_SIZE_MB} MB limit")
+                if storage_size_mb >= MAX_STORAGE_SIZE_MB:
+                    _set_lockdown_state(True, f"Storage Size exceeded 90% threshold ({storage_size_mb:.2f} MB / {MAX_STORAGE_SIZE_MB} MB limit)")
+                    return
+            except Exception as se:
+                logger.debug(f"[Shield] Could not check storage size (likely local SQLite or no storage configured): {se}")
+                
     except Exception as e:
-        logger.error(f"Failed to check DB size: {e}")
+        logger.error(f"Failed to check DB limits: {e}")
 
 def track_gemini_call():
     """Tracks Gemini API usage. If > 7 RPM, triggers lockdown."""
@@ -116,6 +136,11 @@ def track_gemini_call():
         json.dump(requests, f)
 
 def request_unlock(verification_code: str):
-    """Requires 'START' or 'UNBLOCK' exactly 3 times from the unlock script."""
-    # This is normally handled by the script that calls this.
-    pass
+    """Requires the correct birthday/secret code to unlock for 15 minutes."""
+    secret = os.getenv("UNLOCK_CODE", "0101")
+    if verification_code == secret:
+        # Unlock for 15 minutes (900 seconds)
+        _set_lockdown_state(False, None, unlock_until=time.time() + 900)
+        logger.warning(f"Emergency override activated. System unlocked for 15 minutes.")
+        return True
+    return False

@@ -963,7 +963,7 @@ def create_recruiter(data: RecruiterCreate, db: Session = Depends(get_db), curre
     return serialize_recruiter(r)
 
 @router.put("/{recruiter_id}")
-def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request), _=Depends(require_role(['admin', 'superadmin']))):
+def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     r = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
@@ -976,7 +976,7 @@ def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Dep
     return serialize_recruiter(r)
 
 @router.delete("/{recruiter_id}")
-def delete_recruiter(recruiter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request), _=Depends(require_role(['admin', 'superadmin']))):
+def delete_recruiter(recruiter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     r = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
@@ -985,7 +985,7 @@ def delete_recruiter(recruiter_id: int, db: Session = Depends(get_db), current_u
     return {"message": "Recruiter deleted"}
 
 @router.post("/batch-delete")
-def batch_delete_recruiters(payload: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request), _=Depends(require_role(['admin', 'superadmin']))):
+def batch_delete_recruiters(payload: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     ids = [int(i) for i in payload.get("ids", []) if str(i).strip()]
     if not ids:
         raise HTTPException(status_code=400, detail="No recruiter ids supplied")
@@ -994,7 +994,7 @@ def batch_delete_recruiters(payload: dict, db: Session = Depends(get_db), curren
     return {"message": "Recruiters deleted", "deleted_count": deleted}
 
 @router.post("/batch-update")
-def batch_update_recruiters(payload: RecruiterBatchUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request), _=Depends(require_role(['admin', 'superadmin']))):
+def batch_update_recruiters(payload: RecruiterBatchUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     ids = [int(i) for i in payload.ids if str(i).strip()]
     if not ids:
         raise HTTPException(status_code=400, detail="No recruiter ids supplied")

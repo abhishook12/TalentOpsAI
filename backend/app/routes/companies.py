@@ -95,7 +95,7 @@ from ..utils.state_mapper import normalize_state
 from ..services.auth_service import require_role
 
 @router.post("/", status_code=201)
-def create_company(data: CompanyCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request), _=Depends(require_role(['admin', 'superadmin']))):
+def create_company(data: CompanyCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     c_data = data.dict()
     state = normalize_state(c_data.get('location'))
     c = Company(user_id=current_user.id, **c_data, state=state)
@@ -105,7 +105,7 @@ def create_company(data: CompanyCreate, db: Session = Depends(get_db), current_u
     return c
 
 @router.put("/{company_id}")
-def update_company(company_id: int, data: CompanyUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request), _=Depends(require_role(['admin', 'superadmin']))):
+def update_company(company_id: int, data: CompanyUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     c = db.query(Company).filter(Company.user_id == current_user.id, Company.company_id == company_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Company not found")
@@ -122,7 +122,7 @@ def update_company(company_id: int, data: CompanyUpdate, db: Session = Depends(g
     return c
 
 @router.delete("/{company_id}")
-def delete_company(company_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request), _=Depends(require_role(['admin', 'superadmin']))):
+def delete_company(company_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     c = db.query(Company).filter(Company.user_id == current_user.id, Company.company_id == company_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Company not found")

@@ -79,18 +79,7 @@ def create_refresh_token(user_id: int) -> str:
 def get_current_user_from_request(request: Request, db: Session = Depends(get_db)):
     """
     Extracts, decodes, and validates the JWT access token from the request.
-    It checks both cookies and the Authorization header.
-    It also validates the session against the database to ensure it hasn't been revoked.
-    
-    Args:
-        request: The FastAPI Request object.
-        db: The SQLAlchemy database session.
-        
-    Returns:
-        User: The authenticated User object.
-        
-    Raises:
-        HTTPException: If the token is missing, invalid, expired, or the user/session is inactive.
+    It checks cookies, the Authorization header, and query parameters.
     """
     token = request.cookies.get("access_token")
     if not token:
@@ -98,13 +87,15 @@ def get_current_user_from_request(request: Request, db: Session = Depends(get_db
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header.split(" ")[1]
-            
-    if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        else:
+            # Fallback to query parameter for OAuth redirects
+            token = request.query_params.get("token")
+            if not token:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Not authenticated",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
     
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -145,9 +136,17 @@ def get_current_user_from_request(request: Request, db: Session = Depends(get_db
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is not active")
         
         return user
-    except jwt.ExpiredSignatureError:
+    except jwt.ExpiredSignatureError as e:
+        import logging; logging.warning(f"JWT Expired: {e}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired")
-    except jwt.PyJWTError:
+    except jwt.PyJWTError as e:
+        import logging; logging.warning(f"JWT Error: {e}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    except HTTPException as e:
+        import logging; logging.warning(f"HTTP Exception in auth: {e.detail}")
+        raise e
+    except Exception as e:
+        import logging; logging.warning(f"Unknown auth error: {e}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
 
 def require_role(allowed_roles: list[str]):

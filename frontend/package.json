@@ -36,6 +36,7 @@
     "date-fns": "^4.2.1",
     "framer-motion": "^12.42.2",
     "lucide-react": "^1.16.0",
+    "papaparse": "^5.5.4",
     "prop-types": "^15.8.1",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",

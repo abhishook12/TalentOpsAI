@@ -178,6 +178,12 @@ const systemHealthRoute = createRoute({
   component: lazyComponent(() => import('./pages/admin/SystemHealth')),
 })
 
+const trustedDevicesRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: '/admin/devices',
+  component: lazyComponent(() => import('./pages/admin/TrustedDevices')),
+})
+
 const campaignsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/campaigns',
@@ -209,7 +215,8 @@ const routeTree = rootRoute.addChildren([
     adminSettingsRoute,
     systemHealthRoute,
     backgroundJobsRoute,
-    auditLogsRoute
+    auditLogsRoute,
+    trustedDevicesRoute
   ])
 ])
 

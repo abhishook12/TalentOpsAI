@@ -234,16 +234,38 @@ export default function Dashboard() {
 
       <AIInsights />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 12 }}>
-        {metrics.map((metric) => (
-          <MetricCard
-            key={metric.label}
-            {...metric}
-            value={dqLoading && !dataQuality ? <Skeleton width="60%" height="28px" /> : metric.value}
-            sublabel={dqLoading && !dataQuality ? <Skeleton width="40%" height="14px" /> : metric.sublabel}
-          />
-        ))}
-      </div>
+      {dataQuality?.total_recruiters === 0 ? (
+        <div style={{
+          padding: 60,
+          background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.05), rgba(14, 165, 233, 0.02))',
+          borderRadius: 24,
+          border: '1px dashed var(--accent)',
+          textAlign: 'center',
+          marginTop: 20
+        }}>
+          <div style={{ width: 64, height: 64, borderRadius: 32, background: 'var(--accent)', display: 'inline-grid', placeItems: 'center', color: '#fff', marginBottom: 20, boxShadow: '0 8px 24px rgba(14, 165, 233, 0.3)' }}>
+            <i className="ti ti-database-import" style={{ fontSize: 32 }} />
+          </div>
+          <h2 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 12 }}>Welcome to TalentOps AI</h2>
+          <p style={{ fontSize: 16, color: 'var(--text-secondary)', maxWidth: 500, margin: '0 auto 32px' }}>
+            Your operational dashboard is completely isolated. To see insights, activity, and analytics, you need to import your first dataset of recruiters or companies.
+          </p>
+          <PrimaryButton onClick={() => navigate({ to: '/admin' })} style={{ padding: '14px 28px', fontSize: 16 }}>
+            <i className="ti ti-upload" /> Import Data
+          </PrimaryButton>
+        </div>
+      ) : (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 12 }}>
+            {metrics.map((metric) => (
+              <MetricCard
+                key={metric.label}
+                {...metric}
+                value={dqLoading && !dataQuality ? <Skeleton width="60%" height="28px" /> : metric.value}
+                sublabel={dqLoading && !dataQuality ? <Skeleton width="40%" height="14px" /> : metric.sublabel}
+              />
+            ))}
+          </div>
 
       <div style={{ marginTop: '4px', marginBottom: '4px' }}>
         <USHeatmap />
@@ -457,13 +479,30 @@ export default function Dashboard() {
             >
               <i className="ti ti-database" /> Sync Master Database
             </GhostButton>
+            <GhostButton 
+              onClick={async () => {
+                if (!window.confirm('WARNING: This will delete ALL recruiters from the database. This action cannot be undone. Type OK to confirm.')) return
+                try {
+                  toast.success('Purging database...')
+                  const res = await api.post('/admin/purge')
+                  toast.success(res.data.message || 'Database purged successfully')
+                } catch (e) {
+                  toast.error('Error: ' + getErrorMessage(e))
+                }
+              }}
+              title="Delete ALL database records (Admins only)"
+              style={{ color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
+            >
+              <i className="ti ti-trash" /> Purge Database
+            </GhostButton>
           </div>
         </ShellCard>
       </div>
-
       <div style={{ marginTop: 12 }}>
         <EnrichmentLiveFeed />
       </div>
+      </>
+      )}
 
     </div>
   )

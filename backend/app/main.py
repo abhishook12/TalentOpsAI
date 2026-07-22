@@ -267,16 +267,20 @@ async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Unhandled exception on {request.url.path}: {exc}")
+    import traceback
+    err = traceback.format_exc()
+    logger.error(f"Unhandled exception on {request.url.path}: {err}")
     return JSONResponse(
         status_code=500,
-        content={"detail": "An unexpected error occurred.", "type": "internal_error"}
+        content={"detail": f"An unexpected error occurred: {str(exc)}", "type": "internal_error", "trace": err}
     )
 
 app.include_router(recruiters.router, prefix="/recruiters", tags=["Recruiters"])
 app.include_router(companies.router, prefix="/companies", tags=["Companies"])
 app.include_router(vendors.router, prefix="/vendors", tags=["Vendors"])
 app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
+from .routes import admin_devices
+app.include_router(admin_devices.router, prefix="/admin/devices", tags=["Admin Devices"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
 app.include_router(notifications.router)
 app.include_router(visitor_analytics.router, prefix="/admin/visitor-analytics", tags=["Visitor Analytics"])

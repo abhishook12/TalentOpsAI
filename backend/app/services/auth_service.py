@@ -112,8 +112,12 @@ def get_current_user_from_request(request: Request, db: Session = Depends(get_db
                 session_id_int = int(session_id)
             except (ValueError, TypeError):
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session ID")
-            result = db.query(User, DBSession).join(
+            
+            from ..models.auth_models import TrustedDevice
+            result = db.query(User, DBSession, TrustedDevice).join(
                 DBSession, DBSession.user_id == User.id
+            ).outerjoin(
+                TrustedDevice, DBSession.trusted_device_id == TrustedDevice.id
             ).options(
                 joinedload(User.role)
             ).filter(
@@ -125,7 +129,15 @@ def get_current_user_from_request(request: Request, db: Session = Depends(get_db
             if not result:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired or user not found")
             
-            user, db_session = result
+            user, db_session, trusted_device = result
+            
+            # Enforce Trusted Device
+            if not trusted_device:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access Restricted: This device has not yet been approved for access.")
+            if trusted_device.status == 'Blocked':
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access Restricted: This device has been permanently blocked by an administrator.")
+            if trusted_device.status != 'Trusted':
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access Restricted: This device has not yet been approved for access.")
         else:
             # Fallback if no session_id in payload (e.g. legacy token)
             user = db.query(User).options(joinedload(User.role)).filter(User.id == int(user_id)).first()
@@ -134,6 +146,11 @@ def get_current_user_from_request(request: Request, db: Session = Depends(get_db
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
         if user.status != "Active":
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is not active")
+            
+        from ..config import DEVELOPMENT_LOCKDOWN
+        if DEVELOPMENT_LOCKDOWN:
+            if not user.role or user.role.name.lower() not in ['admin', 'superadmin']:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="maintenance_lockdown")
         
         return user
     except jwt.ExpiredSignatureError as e:

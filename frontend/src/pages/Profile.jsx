@@ -160,15 +160,19 @@ export default function Profile() {
             </h3>
             
             <div style={{ background: 'var(--bg-surface)', padding: 24, borderRadius: 16, border: '1px solid var(--card-border)' }}>
-              {!loadingBridge && bridgeStatus && bridgeStatus.status === 'online' ? (
+              {!loadingBridge && bridgeStatus && bridgeStatus.connected_email ? (
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                    <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(74, 222, 128, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Activity size={24} color="#4ade80" />
+                    <div style={{ width: 48, height: 48, borderRadius: 12, background: bridgeStatus.status === 'online' ? 'rgba(74, 222, 128, 0.1)' : 'rgba(255, 170, 0, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Activity size={24} color={bridgeStatus.status === 'online' ? "#4ade80" : "#ffaa00"} />
                     </div>
                     <div>
-                      <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#4ade80' }}>Connected to Outlook</h4>
-                      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>Your Outlook account is securely linked and actively syncing.</p>
+                      <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: bridgeStatus.status === 'online' ? '#4ade80' : '#ffaa00' }}>
+                        {bridgeStatus.status === 'online' ? 'Bridge Online' : 'Bridge Offline (Account Linked)'}
+                      </h4>
+                      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>
+                        {bridgeStatus.status === 'online' ? 'Your Outlook account is securely linked and actively syncing.' : 'Your Outlook account is linked, but the local bridge app is currently offline.'}
+                      </p>
                     </div>
                   </div>
                   
@@ -176,13 +180,13 @@ export default function Profile() {
                     <div style={{ background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 8 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Connected Email</div>
                       <div style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Mail size={14} color="var(--text-secondary)" /> {user.email}
+                        <Mail size={14} color="var(--text-secondary)" /> {bridgeStatus.connected_email}
                       </div>
                     </div>
                     <div style={{ background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 8 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Last Heartbeat</div>
                       <div style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Clock size={14} color="var(--text-secondary)" /> {bridgeStatus.last_heartbeat ? new Date(bridgeStatus.last_heartbeat).toLocaleString() : 'Just now'}
+                        <Clock size={14} color="var(--text-secondary)" /> {bridgeStatus.last_heartbeat ? new Date(bridgeStatus.last_heartbeat).toLocaleString() : 'Never'}
                       </div>
                     </div>
                   </div>
@@ -208,7 +212,7 @@ export default function Profile() {
                   </p>
                   <button 
                     onClick={handleConnectOutlook}
-                    className="px-6 py-2 bg-[#00A4EF] hover:bg-[#008AC9] text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+                    style={{ padding: '10px 20px', borderRadius: 8, background: '#00A4EF', color: '#fff', fontWeight: 600, border: 'none', cursor: 'pointer' }}
                   >
                     Connect Outlook Account
                   </button>

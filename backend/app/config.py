@@ -22,6 +22,12 @@ TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY")
 TAVILY_API_KEYS = [k.strip() for k in os.environ.get("TAVILY_API_KEYS", "").split(",") if k.strip()]
 HUNTER_API_KEY = os.environ.get("HUNTER_API_KEY")
 
+DEVELOPMENT_LOCKDOWN = os.getenv("DEVELOPMENT_LOCKDOWN", "false").lower() in ("1", "true", "yes", "on")
+FEATURE_PASTE_IMPORT = os.getenv("FEATURE_PASTE_IMPORT", "false").lower() in ("1", "true", "yes", "on")
+FEATURE_CSV_IMPORT = os.getenv("FEATURE_CSV_IMPORT", "false").lower() in ("1", "true", "yes", "on")
+FEATURE_EXCEL_IMPORT = os.getenv("FEATURE_EXCEL_IMPORT", "false").lower() in ("1", "true", "yes", "on")
+FEATURE_OUTLOOK_LIBRARY = os.getenv("FEATURE_OUTLOOK_LIBRARY", "false").lower() in ("1", "true", "yes", "on")
+
 SMTP_HOST = os.getenv("SMTP_HOST", "")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")

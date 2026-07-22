@@ -326,10 +326,11 @@ def enroll_emails(campaign_id: int, payload: EnrollEmailsRequest, db: Session = 
             if not clean_email:
                 continue
                 
-            # Find or create recruiter
-            rec = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, func.lower(Recruiter.email) == clean_email).first()
+            # Find or create recruiter (email is globally unique)
+            rec = db.query(Recruiter).filter(func.lower(Recruiter.email) == clean_email).first()
             if not rec:
                 rec = Recruiter(
+                    user_id=current_user.id,
                     email=clean_email,
                     recruiter_name=rec_data.name or clean_email.split('@')[0],
                     title=rec_data.role,
@@ -337,6 +338,9 @@ def enroll_emails(campaign_id: int, payload: EnrollEmailsRequest, db: Session = 
                 )
                 db.add(rec)
                 db.flush() # Flush instead of commit to get the ID within the transaction
+            elif rec.user_id is None:
+                rec.user_id = current_user.id
+                db.flush()
                 
             # Check if already enrolled
             existing = db.query(CampaignRecruiter).filter(

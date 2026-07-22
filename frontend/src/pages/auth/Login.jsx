@@ -3,7 +3,8 @@ import { useAuth } from '../../context/AuthContext'
 import { useNavigate, Link, useSearch } from '@tanstack/react-router'
 import { GoogleLogin } from '@react-oauth/google'
 import AuthFrame from './AuthFrame'
-
+import FullScreenLoader from '../../components/FullScreenLoader'
+import api from '../../services/api'
 export default function Login() {
   const [capsLockActive, setCapsLockActive] = useState(false)
   const [email, setEmail] = useState('')
@@ -12,6 +13,9 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isDeviceBlocked, setIsDeviceBlocked] = useState(false)
+  const [deviceStatus, setDeviceStatus] = useState('Pending Approval')
+  const [refreshingStatus, setRefreshingStatus] = useState(false)
 
   const { login, googleLogin } = useAuth()
   const navigate = useNavigate()
@@ -34,34 +38,157 @@ export default function Login() {
       await login(email, password, rememberMe)
       navigate({ to: redirect })
     } catch (err) {
-      let errorDetail = err?.response?.data?.detail || 'Invalid email or password'
-      if (Array.isArray(errorDetail)) {
-          errorDetail = errorDetail.map(e => e.msg).join(', ')
-      } else if (typeof errorDetail === 'object') {
-          errorDetail = JSON.stringify(errorDetail)
+      if (!err.response) {
+        setError('Cannot connect to the server. Is the backend running?')
+      } else {
+        let errorDetail = err?.response?.data?.detail || 'Invalid email or password'
+        if (Array.isArray(errorDetail)) {
+            errorDetail = errorDetail.map(e => e.msg).join(', ')
+        } else if (typeof errorDetail === 'object') {
+            errorDetail = JSON.stringify(errorDetail)
+        }
+        if (errorDetail.includes('Access Restricted')) {
+          setIsDeviceBlocked(true)
+        } else {
+          setError(errorDetail)
+        }
       }
-      setError(errorDetail)
     } finally {
       setIsSubmitting(false)
     }
   }
 
+  const [googleAuthLoading, setGoogleAuthLoading] = useState(false)
+  const [googleAuthError, setGoogleAuthError] = useState('')
+  const [isSlowNetwork, setIsSlowNetwork] = useState(false)
+
   const handleGoogleSuccess = async (credentialResponse) => {
     setError('')
-    setIsSubmitting(true)
+    setGoogleAuthError('')
+    setGoogleAuthLoading(true)
+    setIsSlowNetwork(false)
+    
+    // Slow network timer (3.5s)
+    const slowNetworkTimer = setTimeout(() => {
+      setIsSlowNetwork(true)
+    }, 3500)
+
     try {
         await googleLogin(credentialResponse.credential)
+        
+        // Perform initialization background tasks
+        await Promise.all([
+          api.get('/auth/me'),
+          api.get('/bridge/status'),
+          api.get('/admin/dashboard/metrics').catch(() => null),
+          new Promise(res => setTimeout(res, 1500)) // smooth UX minimum time
+        ])
+
+        clearTimeout(slowNetworkTimer)
         navigate({ to: redirect })
     } catch (err) {
-        let errorDetail = err?.response?.data?.detail || 'Google Login failed'
-        setError(errorDetail)
-    } finally {
-        setIsSubmitting(false)
+        clearTimeout(slowNetworkTimer)
+        let errorDetail = err?.response?.data?.detail || 'Network connection lost or Google Sign-In failed.'
+        if (typeof errorDetail === 'string' && errorDetail.includes('Access Restricted')) {
+          setIsDeviceBlocked(true)
+          setGoogleAuthLoading(false)
+        } else {
+          setGoogleAuthError(errorDetail)
+        }
     }
+    // We don't setGoogleAuthLoading(false) on success because navigation will unmount us.
+    // We only clear it if there's an error so they can see the error state in the loader.
+  }
+
+  const handleGoogleRetry = () => {
+    setGoogleAuthError('')
+    setGoogleAuthLoading(false)
   }
 
   const handleGoogleError = () => {
     setError('Google Sign-In was unsuccessful. Try again later.')
+  }
+
+  if (googleAuthLoading) {
+    return (
+      <FullScreenLoader 
+        error={googleAuthError} 
+        onRetry={handleGoogleRetry} 
+        isSlowNetwork={isSlowNetwork} 
+      />
+    )
+  }
+
+  const handleRefreshStatus = async () => {
+    setRefreshingStatus(true)
+    try {
+      const res = await api.get('/auth/device-status')
+      if (res.data.status === 'Trusted') {
+        // If it's now trusted, they can try logging in again
+        setIsDeviceBlocked(false)
+        if (email && password) {
+          handleSubmit({ preventDefault: () => {} })
+        }
+      } else if (res.data.status === 'Blocked') {
+        setDeviceStatus('Permanently Blocked')
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setRefreshingStatus(false)
+    }
+  }
+
+  const handleSignOut = () => {
+    setIsDeviceBlocked(false)
+    setEmail('')
+    setPassword('')
+  }
+
+  if (isDeviceBlocked) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--bg-secondary)', padding: '20px' }}>
+        <div style={{ background: 'var(--bg-primary)', padding: '40px', borderRadius: '12px', boxShadow: 'var(--shadow-lg)', maxWidth: '480px', width: '100%', textAlign: 'center', border: '1px solid var(--border)' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--warning-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+            <i className="ti ti-shield-lock" style={{ fontSize: '32px', color: 'var(--warning)' }}></i>
+          </div>
+          <h1 style={{ fontSize: '24px', fontWeight: '600', color: 'var(--text-primary)', margin: '0 0 16px' }}>Device Approval Required</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '15px', lineHeight: '1.6', margin: '0 0 16px' }}>
+            Your account was successfully authenticated.
+          </p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '15px', lineHeight: '1.6', margin: '0 0 16px' }}>
+            However, this device has not yet been approved by your organization's administrator.
+          </p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '15px', lineHeight: '1.6', margin: '0 0 24px' }}>
+            Your access request has been submitted. Please wait until your device is approved.
+          </p>
+          
+          <div style={{ background: 'var(--bg-secondary)', padding: '16px', borderRadius: '8px', marginBottom: '32px', border: '1px solid var(--border)' }}>
+            <span style={{ fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-tertiary)', display: 'block', marginBottom: '4px' }}>Status</span>
+            <span style={{ fontSize: '16px', fontWeight: '600', color: deviceStatus === 'Permanently Blocked' ? 'var(--danger)' : 'var(--warning)' }}>
+              {deviceStatus}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', gap: '16px', flexDirection: 'column' }}>
+            <button 
+              onClick={handleRefreshStatus} 
+              disabled={refreshingStatus}
+              className="auth-button"
+              style={{ width: '100%' }}
+            >
+              {refreshingStatus ? <><i className="ti ti-loader animate-spin" /> Checking...</> : 'Refresh Status'}
+            </button>
+            <button 
+              onClick={handleSignOut}
+              style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-secondary)', padding: '12px', borderRadius: '8px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.2s' }}
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

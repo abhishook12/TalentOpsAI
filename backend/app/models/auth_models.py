@@ -90,11 +90,37 @@ class User(Base):
     
     role = relationship("Role")
 
+class TrustedDevice(Base):
+    __tablename__ = 'trusted_devices'
+    id = Column(Integer, primary_key=True, index=True)
+    device_id_hash = Column(String(255), unique=True, index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    browser = Column(String(255), nullable=True)
+    os = Column(String(255), nullable=True)
+    device_name = Column(String(255), nullable=True)
+    device_type = Column(String(100), nullable=True)
+    browser_version = Column(String(100), nullable=True)
+    timezone = Column(String(100), nullable=True)
+    language = Column(String(50), nullable=True)
+    location = Column(String(255), nullable=True)
+    ip_address = Column(String(60), nullable=True)
+    login_attempts = Column(Integer, default=1)
+    risk_level = Column(String(50), default='low') # low, medium, high
+    first_seen = Column(DateTime, server_default=func.now())
+    last_login = Column(DateTime, nullable=True)
+    status = Column(String(50), default='Pending') # Pending, Trusted, Revoked, Disabled, Blocked
+    approved_by = Column(Integer, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    
+    user = relationship("User", foreign_keys=[user_id])
+
 class Session(Base):
     __tablename__ = 'sessions'
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     token_hash = Column(String(255), unique=True, index=True, nullable=False)
+    trusted_device_id = Column(Integer, ForeignKey('trusted_devices.id', ondelete='CASCADE'), nullable=True)
     device = Column(String(255), nullable=True)
     browser = Column(String(255), nullable=True)
     ip_address = Column(String(60), nullable=True)
@@ -121,6 +147,10 @@ class AuditLog(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     action = Column(String(255), nullable=False)
+    target_user_id = Column(Integer, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    target_device_id = Column(Integer, ForeignKey('trusted_devices.id', ondelete='SET NULL'), nullable=True)
+    reason = Column(String(255), nullable=True)
+    status = Column(String(50), nullable=True)
     previous_value = Column(Text, nullable=True)
     new_value = Column(Text, nullable=True)
     ip_address = Column(String(60), nullable=True)

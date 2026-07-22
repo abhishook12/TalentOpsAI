@@ -108,6 +108,24 @@ CREATE TABLE users (
 );
 
 -- ============================================================
+-- TRUSTED DEVICES
+-- ============================================================
+CREATE TABLE trusted_devices (
+    id              SERIAL PRIMARY KEY,
+    device_id_hash  VARCHAR(255) UNIQUE NOT NULL,
+    user_id         INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    browser         VARCHAR(255),
+    os              VARCHAR(255),
+    device_name     VARCHAR(255),
+    last_login      TIMESTAMP,
+    status          VARCHAR(50) DEFAULT 'Pending',
+    approved_by     INT REFERENCES users(user_id) ON DELETE SET NULL,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- ============================================================
 -- INDEXES for fast querying
 -- ============================================================
 CREATE INDEX idx_candidates_email       ON candidates(email);

@@ -350,10 +350,13 @@ export default function Campaigns() {
         <div className="flex items-center gap-4 mt-4 sm:mt-0">
           <BridgeStatus onStatusChange={setBridgeHealthy} />
           <button 
-            onClick={startOutlookImport}
-            className="px-4 py-2 bg-purple-600/20 text-purple-400 border border-purple-500/30 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-purple-600/30 transition-colors"
+            onClick={() => import.meta.env.VITE_FEATURE_OUTLOOK_LIBRARY === 'true' && startOutlookImport()}
+            disabled={import.meta.env.VITE_FEATURE_OUTLOOK_LIBRARY !== 'true'}
+            title={import.meta.env.VITE_FEATURE_OUTLOOK_LIBRARY !== 'true' ? 'Coming Soon' : ''}
+            className={`px-4 py-2 border rounded-lg text-sm font-medium flex items-center gap-2 transition-colors ${import.meta.env.VITE_FEATURE_OUTLOOK_LIBRARY === 'true' ? 'bg-purple-600/20 text-purple-400 border-purple-500/30 hover:bg-purple-600/30' : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border-[var(--border)] opacity-70 cursor-not-allowed'}`}
           >
-            <Mail size={16} /> Reuse Past Campaign
+            <Mail size={16} /> 
+            {import.meta.env.VITE_FEATURE_OUTLOOK_LIBRARY !== 'true' ? 'Reuse Campaign (Soon)' : 'Reuse Past Campaign'}
           </button>
           <button 
             onClick={startNewCampaign}
@@ -563,10 +566,13 @@ export default function Campaigns() {
           </button>
           <div className="flex items-center gap-3">
             <button 
-              onClick={startOutlookImport}
-              className="px-4 py-2 bg-purple-600/20 text-purple-400 border border-purple-500/30 rounded-lg font-medium hover:bg-purple-600/30 transition-colors flex items-center gap-2 shadow-sm"
+              onClick={() => import.meta.env.VITE_FEATURE_OUTLOOK_LIBRARY === 'true' && startOutlookImport()}
+              disabled={import.meta.env.VITE_FEATURE_OUTLOOK_LIBRARY !== 'true'}
+              title={import.meta.env.VITE_FEATURE_OUTLOOK_LIBRARY !== 'true' ? 'Coming Soon' : ''}
+              className={`px-4 py-2 border rounded-lg font-medium transition-colors flex items-center gap-2 shadow-sm ${import.meta.env.VITE_FEATURE_OUTLOOK_LIBRARY === 'true' ? 'bg-purple-600/20 text-purple-400 border-purple-500/30 hover:bg-purple-600/30' : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border-[var(--border)] opacity-70 cursor-not-allowed'}`}
             >
-              <Mail size={16} /> Reuse Past Campaign
+              <Mail size={16} /> 
+              {import.meta.env.VITE_FEATURE_OUTLOOK_LIBRARY !== 'true' ? 'Reuse Campaign (Soon)' : 'Reuse Past Campaign'}
             </button>
             <button 
               onClick={startNewCampaign}

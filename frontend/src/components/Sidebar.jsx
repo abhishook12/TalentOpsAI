@@ -6,12 +6,29 @@ import { useAuth } from '../context/AuthContext'
 
 export default function Sidebar() {
   const location = useLocation()
-  const { isAdmin } = useAuth()
+  const { isAdmin, user } = useAuth()
   const [backendVersion, setBackendVersion] = useState('loading...')
+  const [pendingDevicesCount, setPendingDevicesCount] = useState(0)
 
   useEffect(() => {
     api.get('/version').then(res => setBackendVersion(res.data.version)).catch(() => setBackendVersion('unknown'))
   }, [])
+
+  useEffect(() => {
+    if (isAdmin) {
+      const fetchPending = async () => {
+        try {
+          const res = await api.get('/admin/devices/pending/count')
+          setPendingDevicesCount(res.data.count)
+        } catch (e) {
+          console.error('Failed to fetch pending devices', e)
+        }
+      }
+      fetchPending()
+      const interval = setInterval(fetchPending, 30000)
+      return () => clearInterval(interval)
+    }
+  }, [isAdmin])
 
   const logoutSoon = () => {
     localStorage.removeItem('auth_session')
@@ -37,6 +54,12 @@ export default function Sidebar() {
     { to: '/admin', label: 'Admin Terminal', icon: LayoutDashboard },
     { to: '/admin/users', label: 'User Management', icon: UserCog },
     { to: '/admin/visitor-analytics', label: 'Visitor Analytics', icon: Eye },
+    { 
+      to: '/admin/devices', 
+      label: 'Trusted Devices', 
+      icon: ShieldCheck,
+      badge: pendingDevicesCount > 0 ? pendingDevicesCount : null
+    },
     { to: '/activity', label: 'Activity Logs', icon: Activity },
     { to: '/admin/jobs', label: 'Background Jobs', icon: Server },
     { to: '/admin/audit-logs', label: 'Audit Logs', icon: Shield },
@@ -149,7 +172,22 @@ export default function Sidebar() {
               }}
             >
               <Icon size={18} strokeWidth={active ? 2.5 : 2} opacity={active ? 1 : 0.88} fill={active ? 'currentColor' : 'none'} />
-              <span>{label}</span>
+              <span style={{ flex: 1 }}>{label}</span>
+              {item.badge && (
+                <div style={{
+                  background: 'var(--danger)',
+                  color: 'white',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  padding: '2px 6px',
+                  borderRadius: '12px',
+                  minWidth: '20px',
+                  textAlign: 'center',
+                  animation: 'pulse-badge 2s infinite'
+                }}>
+                  {item.badge}
+                </div>
+              )}
             </NavLink>
           )
         })}
@@ -160,6 +198,26 @@ export default function Sidebar() {
         borderTop: '1px solid var(--card-border)',
         flexShrink: 0,
       }}>
+        {user && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px 16px', marginBottom: 8, borderBottom: '1px solid var(--card-border)' }}>
+            {user.avatar_url ? (
+              <img src={user.avatar_url} alt="User Avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+            ) : (
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #d8d8d8, #8c8c8c)', display: 'grid', placeItems: 'center', color: '#111', fontWeight: 800 }}>
+                {user.first_name?.[0]}
+              </div>
+            )}
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {user.first_name} {user.last_name}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {user.email}
+              </div>
+            </div>
+          </div>
+        )}
+
         <button
           onClick={logoutSoon}
           style={{

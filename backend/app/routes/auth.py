@@ -175,6 +175,168 @@ def register(request: Request, user: UserRegister, background_tasks: BackgroundT
         
     return result
 
+def _handle_trusted_device(request: Request, response: Response, db: Session, user: User, user_agent: str, ip: str):
+    from ..models.auth_models import TrustedDevice, AuditLog
+    device_id = request.cookies.get("device_id")
+    
+    if not device_id:
+        device_id = secrets.token_hex(32)
+        
+    device_hash = _hash_token(device_id)
+    trusted_device = db.query(TrustedDevice).filter(TrustedDevice.device_id_hash == device_hash).first()
+    
+    device_name = "Unknown Device"
+    device_type = "Desktop"
+    browser_version = "Unknown"
+    
+    if user_agent:
+        browser = "Unknown Browser"
+        if "Chrome/" in user_agent: 
+            browser = "Chrome"
+            browser_version = user_agent.split("Chrome/")[1].split(" ")[0]
+        elif "Firefox/" in user_agent: 
+            browser = "Firefox"
+            browser_version = user_agent.split("Firefox/")[1].split(" ")[0]
+        elif "Safari/" in user_agent and "Chrome" not in user_agent: 
+            browser = "Safari"
+            browser_version = user_agent.split("Version/")[1].split(" ")[0] if "Version/" in user_agent else "Unknown"
+        elif "Edge/" in user_agent: 
+            browser = "Edge"
+            browser_version = user_agent.split("Edge/")[1].split(" ")[0]
+        elif "Edg/" in user_agent:
+            browser = "Edge"
+            browser_version = user_agent.split("Edg/")[1].split(" ")[0]
+            
+        os_name = "Unknown OS"
+        if "Windows" in user_agent: os_name = "Windows"
+        elif "Mac" in user_agent: os_name = "macOS"
+        elif "Linux" in user_agent: os_name = "Linux"
+        elif "Android" in user_agent: 
+            os_name = "Android"
+            device_type = "Mobile"
+        elif "iOS" in user_agent or "iPhone" in user_agent: 
+            os_name = "iOS"
+            device_type = "Mobile"
+        elif "iPad" in user_agent:
+            os_name = "iOS"
+            device_type = "Tablet"
+            
+        device_name = f"{browser} on {os_name}"
+        
+    language = request.headers.get("accept-language", "").split(",")[0] if request.headers.get("accept-language") else "Unknown"
+    req_timezone = request.headers.get("x-timezone", "UTC")
+    location = "Unknown Location" # Could be enhanced with GeoIP later
+    
+    if not trusted_device:
+        trusted_device = TrustedDevice(
+            device_id_hash=device_hash,
+            user_id=user.id,
+            device_name=device_name,
+            device_type=device_type,
+            browser_version=browser_version,
+            timezone=req_timezone,
+            language=language,
+            location=location,
+            ip_address=ip,
+            browser=user_agent,
+            os=user_agent,
+            status='Pending'
+        )
+        db.add(trusted_device)
+        db.commit()
+        db.refresh(trusted_device)
+        
+        # Log device request
+        audit = AuditLog(
+            action="device_request",
+            target_user_id=user.id,
+            target_device_id=trusted_device.id,
+            ip_address=ip,
+            device=device_name,
+            reason="New device detected",
+            status="success"
+        )
+        db.add(audit)
+        db.commit()
+    else:
+        # Update volatile fields
+        trusted_device.ip_address = ip
+        trusted_device.login_attempts += 1
+        db.commit()
+        
+    # Auto-approve devices for superadmin to prevent lockout
+    if trusted_device.status == 'Pending' and user.role and user.role.name in ['superadmin', 'admin']:
+        trusted_device.status = 'Trusted'
+        trusted_device.approved_by = user.id
+        db.commit()
+            
+    # Always ensure the cookie is set, especially if we just generated it
+    response.set_cookie(
+        key="device_id",
+        value=device_id,
+        httponly=True,
+        secure=IS_PRODUCTION,
+        samesite="lax",
+        max_age=365*24*60*60 # 1 year
+    )
+    
+    if trusted_device.status == 'Blocked':
+        audit = AuditLog(action="login_blocked", target_user_id=user.id, target_device_id=trusted_device.id, ip_address=ip, device=device_name, reason="Device is permanently blocked", status="failed")
+        db.add(audit)
+        db.commit()
+        raise HTTPException(status_code=403, detail="Access Restricted: This device has been permanently blocked by an administrator.")
+        
+    if trusted_device.status != 'Trusted':
+        # Log failure
+        history = LoginHistory(
+            user_id=user.id,
+            email=user.email,
+            status="Failed",
+            reason="Device not trusted",
+            ip_address=ip,
+            browser=user_agent
+        )
+        db.add(history)
+        
+        audit = AuditLog(action="login_denied", target_user_id=user.id, target_device_id=trusted_device.id, ip_address=ip, device=device_name, reason="Device pending approval", status="failed")
+        db.add(audit)
+        db.commit()
+        
+        cookie_val = f"device_id={device_id}; HttpOnly; SameSite=Lax; Max-Age=31536000; Path=/"
+        if IS_PRODUCTION:
+            cookie_val += "; Secure"
+            
+        raise HTTPException(
+            status_code=403, 
+            detail="Access Restricted: This device has not yet been approved for access.",
+            headers={"Set-Cookie": cookie_val}
+        )
+        
+    trusted_device.last_login = datetime.now(timezone.utc).replace(tzinfo=None)
+    trusted_device.login_attempts = 0 # reset on successful login
+    db.commit()
+    
+    audit = AuditLog(action="login_success", target_user_id=user.id, target_device_id=trusted_device.id, ip_address=ip, device=device_name, reason="Successful login from trusted device", status="success")
+    db.add(audit)
+    db.commit()
+    
+    return trusted_device
+
+@router.get("/device-status")
+def get_device_status(request: Request, db: Session = Depends(get_db)):
+    from ..models.auth_models import TrustedDevice
+    device_id = request.cookies.get("device_id")
+    if not device_id:
+        return {"status": "Unknown"}
+        
+    device_hash = _hash_token(device_id)
+    trusted_device = db.query(TrustedDevice).filter(TrustedDevice.device_id_hash == device_hash).first()
+    
+    if not trusted_device:
+        return {"status": "Unknown"}
+        
+    return {"status": trusted_device.status}
+
 @router.post("/login")
 # @limiter.limit("10/minute")
 def login(request: Request, login_data: UserLogin, response: Response, db: Session = Depends(get_db)):
@@ -226,6 +388,9 @@ def login(request: Request, login_data: UserLogin, response: Response, db: Sessi
         db.commit()
         raise HTTPException(status_code=403, detail=f"Account is {user.status}. Please contact support.")
 
+    # Trusted Device Check
+    trusted_device = _handle_trusted_device(request, response, db, user, user_agent, ip)
+
     # Create Session
     session_token = secrets.token_hex(32)
     expires_at = datetime.now(timezone.utc) + timedelta(days=30 if login_data.remember_me else 1)
@@ -233,6 +398,7 @@ def login(request: Request, login_data: UserLogin, response: Response, db: Sessi
     db_session = DBSession(
         user_id=user.id,
         token_hash=_hash_token(session_token),
+        trusted_device_id=trusted_device.id,
         device=user_agent,
         browser=user_agent,
         ip_address=ip,
@@ -283,7 +449,9 @@ def login(request: Request, login_data: UserLogin, response: Response, db: Sessi
             "email": user.email,
             "first_name": user.first_name,
             "last_name": user.last_name,
-            "role": user.role.name if user.role else "None"
+            "role": user.role.name if user.role else "None",
+            "avatar_url": user.avatar_url,
+            "company": user.company
         }
     }
 
@@ -362,6 +530,9 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
         db.commit()
         db.refresh(user)
 
+    # Trusted Device Check
+    trusted_device = _handle_trusted_device(request, response, db, user, user_agent, ip)
+
     # Create Session
     session_token = secrets.token_hex(32)
     expires_at = datetime.now(timezone.utc) + timedelta(days=30)
@@ -369,6 +540,7 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
     db_session = DBSession(
         user_id=user.id,
         token_hash=_hash_token(session_token),
+        trusted_device_id=trusted_device.id,
         device=user_agent, browser=user_agent, ip_address=ip, expires_at=expires_at
     )
     db.add(db_session)
@@ -402,7 +574,9 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
             "email": user.email,
             "first_name": user.first_name,
             "last_name": user.last_name,
-            "role": user.role.name if user.role else "None"
+            "role": user.role.name if user.role else "None",
+            "avatar_url": user.avatar_url,
+            "company": user.company
         }
     }
 
@@ -440,7 +614,9 @@ def get_me(request: Request, db: Session = Depends(get_db)):
                 "email": user.email,
                 "first_name": user.first_name,
                 "last_name": user.last_name,
-                "role": user.role.name if user.role else "None"
+                "role": user.role.name if user.role else "None",
+                "avatar_url": user.avatar_url,
+                "company": user.company
             }
         }
     except HTTPException:

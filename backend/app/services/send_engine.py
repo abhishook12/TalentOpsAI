@@ -220,26 +220,30 @@ async def process_campaign_queue(campaign_id: int):
     """Background task manager for a campaign's email queue."""
     logger.info(f"Starting Campaign Manager for {campaign_id}")
     
-    # 1. Pre-flight: Check Outlook Bridge
-    healthy, error = _check_bridge_health()
-    if not healthy:
-        logger.error(f"Cannot start campaign {campaign_id}: Bridge unhealthy: {error}")
-        _set_campaign_status(campaign_id, CampaignStatus.failed.value)
-        return
-    
-    # 2. Extract configuration and mark queued
+    # 1. Extract configuration
     queue = asyncio.Queue()
     signature_html = None
     template = {}
     from_email = None
+    user_id = None
     
     with SessionLocal() as db:
         campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
         if not campaign:
             return
         
+        user_id = campaign.user_id
         from_email = campaign.from_email
         
+    # 2. Pre-flight: Check Outlook Bridge using the campaign's user_id
+    healthy, error = _check_bridge_health(user_id)
+    if not healthy:
+        logger.error(f"Cannot start campaign {campaign_id}: Bridge unhealthy: {error}")
+        _set_campaign_status(campaign_id, CampaignStatus.failed.value)
+        return
+        
+    with SessionLocal() as db:
+        campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
         if campaign.signature_id:
             sig = db.query(EmailSignature).filter(
                 EmailSignature.signature_id == campaign.signature_id

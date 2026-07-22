@@ -9,7 +9,11 @@ import UploadRecipientsView from './UploadRecipientsView';
 import DatabaseRecipientsView from './DatabaseRecipientsView';
 
 export default function DragDropRecipientBuilder({ recipients, onChange, onValidate }) {
-  const [activeTab, setActiveTab] = useState('paste');
+  const [activeTab, setActiveTab] = useState(() => {
+    if (import.meta.env.VITE_FEATURE_PASTE_IMPORT === 'true') return 'paste';
+    if (import.meta.env.VITE_FEATURE_CSV_IMPORT === 'true' || import.meta.env.VITE_FEATURE_EXCEL_IMPORT === 'true') return 'upload';
+    return 'db';
+  });
   const parentRef = useRef(null);
   
   const handleAddRecipients = (newRecipients) => {
@@ -47,22 +51,31 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
       <div className="w-[45%] flex flex-col border-r border-[var(--border)] bg-[var(--bg-surface)]">
         
         {/* Tabs */}
-        <div className="flex border-b border-[var(--border)] bg-[var(--bg-page)]">
+        <div className="flex border-b border-[var(--border)] bg-[var(--bg-page)] h-14">
           {[
-            { id: 'paste', icon: ClipboardPaste, label: 'Paste Directly' },
-            { id: 'upload', icon: FileSpreadsheet, label: 'CSV / Excel' },
-            { id: 'db', icon: Database, label: 'Database' }
+            { id: 'paste', icon: ClipboardPaste, label: 'Paste Directly', enabled: import.meta.env.VITE_FEATURE_PASTE_IMPORT === 'true' },
+            { id: 'upload', icon: FileSpreadsheet, label: 'CSV / Excel', enabled: import.meta.env.VITE_FEATURE_CSV_IMPORT === 'true' || import.meta.env.VITE_FEATURE_EXCEL_IMPORT === 'true' },
+            { id: 'db', icon: Database, label: 'Database', enabled: true }
           ].map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium transition-colors border-b-2 ${
+              disabled={!tab.enabled}
+              title={!tab.enabled ? 'Coming soon' : ''}
+              onClick={() => tab.enabled && setActiveTab(tab.id)}
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 px-2 py-1 text-sm font-medium transition-colors border-b-2 relative ${
                 activeTab === tab.id 
                   ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--bg-surface)]' 
-                  : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)]'
+                  : !tab.enabled
+                    ? 'border-transparent text-[var(--text-muted)] opacity-50 cursor-not-allowed'
+                    : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)]'
               }`}
             >
-              <tab.icon size={16} /> <span className="hidden sm:inline">{tab.label}</span>
+              <div className="flex items-center gap-1.5">
+                <tab.icon size={15} /> <span className="hidden sm:inline">{tab.label}</span>
+              </div>
+              {!tab.enabled && (
+                <span style={{ fontSize: '9px', lineHeight: 1 }} className="uppercase tracking-wider font-bold bg-[var(--bg-page)] border border-[var(--border)] px-1 py-[2px] rounded text-[var(--text-muted)] mt-0.5">Coming Soon</span>
+              )}
             </button>
           ))}
         </div>

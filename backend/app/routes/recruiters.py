@@ -659,7 +659,7 @@ from sqlalchemy.orm import load_only
 def get_recruiters(
     response: Response,
     page: int = 1,
-    limit: int = 50,
+    limit: int = Query(default=50, ge=1, le=100),
     search: Optional[str] = None,
     state: Optional[str] = None,
     state_status: Optional[str] = None,

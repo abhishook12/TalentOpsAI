@@ -3,8 +3,14 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import { ShellCard, SectionHeader, Badge } from './CommandCenter';
 import { SkeletonRow } from './ui/Skeleton';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, TrendingUp, MapPin, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
+
+const ICON_MAP = {
+  'growth': TrendingUp,
+  'geo': MapPin,
+  'traffic': Activity,
+};
 
 export default function AIInsights() {
   const { data, isLoading } = useQuery({
@@ -43,34 +49,37 @@ export default function AIInsights() {
             <SkeletonRow height={80} />
           </>
         ) : (
-          data?.insights?.map((insight, idx) => (
-            <motion.div 
-              key={insight.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.1 }}
-              style={{
-                display: 'flex', alignItems: 'flex-start', gap: 14,
-                padding: 16, borderRadius: 12,
-                background: 'rgba(14, 165, 233, 0.03)',
-                border: '1px solid rgba(14, 165, 233, 0.1)',
-              }}
-            >
-              <div style={{ 
-                width: 48, height: 48, flexShrink: 0, borderRadius: 12, 
-                background: 'linear-gradient(135deg, var(--accent), #38bdf8)', 
-                display: 'grid', placeItems: 'center', color: '#ffffff', 
-                boxShadow: '0 4px 12px rgba(14, 165, 233, 0.25)' 
-              }}>
-                <i className={insight.icon} style={{ fontSize: 24 }} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.4 }}>
-                  {insight.text}
+          data?.insights?.map((insight, idx) => {
+            const Icon = ICON_MAP[insight.type] || Sparkles;
+            return (
+              <motion.div 
+                key={insight.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.1 }}
+                style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 14,
+                  padding: 16, borderRadius: 12,
+                  background: 'rgba(14, 165, 233, 0.03)',
+                  border: '1px solid rgba(14, 165, 233, 0.1)',
+                }}
+              >
+                <div style={{ 
+                  width: 56, height: 56, flexShrink: 0, borderRadius: 14, 
+                  background: 'linear-gradient(135deg, var(--accent), #38bdf8)', 
+                  display: 'grid', placeItems: 'center', color: '#ffffff', 
+                  boxShadow: '0 4px 12px rgba(14, 165, 233, 0.25)' 
+                }}>
+                  <Icon size={28} strokeWidth={2.5} />
                 </div>
-              </div>
-            </motion.div>
-          ))
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', minHeight: 56 }}>
+                  <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.4 }}>
+                    {insight.text}
+                  </div>
+                </div>
+              </motion.div>
+            )
+          })
         )}
       </div>
     </ShellCard>

@@ -249,7 +249,7 @@ export default function UserManagement() {
             </thead>
             <tbody>
               {loading && users.length === 0 ? (
-                <tr><td colSpan={6} style={{ padding: '24px 20px' }}><SkeletonRow rows={10} gap={16} height={20} /></td></tr>
+                <tr><td colSpan={6} style={{ padding: '24px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading users...</td></tr>
               ) : users.length === 0 ? (
                 <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>No users found.</td></tr>
               ) : (

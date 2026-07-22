@@ -94,10 +94,14 @@ async function smartRequest(method, url, data, config = {}) {
         continue
       }
       
-      if (error.response && error.response.status === 401) {
-        // Do not trigger unauthorized redirect if the failure is on the login endpoint itself
-        if (onUnauthorizedCallback && !url.includes('/auth/login')) {
-          onUnauthorizedCallback();
+      if (error.response) {
+        const isUnauthorized = error.response.status === 401;
+        const isDeviceRevoked = error.response.status === 403 && error.response.data?.detail?.includes('Access Restricted');
+        
+        if (isUnauthorized || isDeviceRevoked) {
+          if (onUnauthorizedCallback && !url.includes('/auth/login')) {
+            onUnauthorizedCallback();
+          }
         }
       }
       

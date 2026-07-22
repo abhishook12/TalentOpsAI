@@ -6,7 +6,7 @@ import time
 import os
 import json
 from ..database import get_db
-from ..models.auth_models import User, UserBridgeStatus
+from ..models.auth_models import User, UserBridgeStatus, UserOutlookAccount
 from ..services.auth_service import get_current_user_from_request
 from ..models.campaigns import EmailLog, EmailLogStatus
 
@@ -73,11 +73,14 @@ def bridge_heartbeat(payload: HeartbeatPayload = None, db: Session = Depends(get
 @router.get("/status")
 def get_bridge_status(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     status_record = db.query(UserBridgeStatus).filter(UserBridgeStatus.user_id == current_user.id).first()
+    outlook_account = db.query(UserOutlookAccount).filter(UserOutlookAccount.user_id == current_user.id).first()
+    connected_email = outlook_account.email_address if outlook_account else None
+
     if not status_record:
-        return {"status": "offline", "message": "Bridge not configured"}
+        return {"status": "offline", "message": "Bridge not configured", "connected_email": connected_email}
     
     # Removed auto-offline timeout logic to maintain persistent connection
-        
+    
     return {
         "status": status_record.status,
         "last_heartbeat": status_record.last_heartbeat.isoformat() if status_record.last_heartbeat else None,
@@ -85,7 +88,8 @@ def get_bridge_status(db: Session = Depends(get_db), current_user: User = Depend
         "last_successful_email_at": status_record.last_successful_email_at.isoformat() if status_record.last_successful_email_at else None,
         "consecutive_errors": status_record.consecutive_errors,
         "version": status_record.version,
-        "diagnostics_json": status_record.diagnostics_json
+        "diagnostics_json": status_record.diagnostics_json,
+        "connected_email": outlook_account.email_address if outlook_account else None
     }
 
 

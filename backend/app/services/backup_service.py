@@ -4,7 +4,7 @@ import time
 import logging
 from datetime import datetime
 from threading import Thread
-from app.config import DATABASE_URL
+from app.database import DATABASE_URL
 
 logger = logging.getLogger("talentops.backup")
 

@@ -347,7 +347,18 @@ def login(request: Request, login_data: UserLogin, response: Response, db: Sessi
 
     user = db.query(User).filter(User.email == login_data.email).first()
     user_agent = request.headers.get("user-agent")
-    
+
+    if user:
+        fifteen_mins_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=15)
+        recent_failures = db.query(LoginHistory).filter(
+            LoginHistory.user_id == user.id,
+            LoginHistory.status == "Failed",
+            LoginHistory.timestamp >= fifteen_mins_ago
+        ).count()
+        
+        if recent_failures >= 5:
+            raise HTTPException(status_code=403, detail="Account temporarily locked due to too many failed login attempts. Please try again later.")
+
     if not user or user.auth_provider not in ['local', 'both'] or not user.password_hash or not verify_password(login_data.password, user.password_hash):
         history = LoginHistory(
             user_id=user.id if user else None,
@@ -485,7 +496,12 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
         try:
             idinfo = id_token.verify_oauth2_token(data.credential, google_requests.Request(), client_id)
         except ValueError:
-            raise HTTPException(status_code=401, detail="Invalid Google token")
+            import requests
+            resp = requests.get("https://www.googleapis.com/oauth2/v3/userinfo", headers={"Authorization": f"Bearer {data.credential}"})
+            if resp.status_code == 200:
+                idinfo = resp.json()
+            else:
+                raise HTTPException(status_code=401, detail="Invalid Google token")
 
     email = idinfo.get("email", "").lower().strip()
     if not email:

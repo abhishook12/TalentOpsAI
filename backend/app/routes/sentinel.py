@@ -13,35 +13,55 @@ from app.models.auth_models import User
 
 router = APIRouter(prefix="/sentinel", tags=["sentinel"])
 
+import time
+from sqlalchemy import text
+
+_health_cache = {"data": None, "expires": 0}
+
 @router.get("/health")
 def get_sentinel_health(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_request)
 ):
-    # Overall Quality Score
-    avg_score = db.query(func.avg(Recruiter.quality_score)).scalar() or 0
-    
-    # Missing Fields Count (using simple approximation by looking at the json)
-    # A more robust way is querying the actual columns since missing_fields is JSON
-    total_recruiters = db.query(func.count(Recruiter.recruiter_id)).scalar() or 0
-    
-    missing_emails = db.query(func.count(Recruiter.recruiter_id)).filter(Recruiter.email.like('%missing.local%')).scalar() or 0
-    missing_phones = db.query(func.count(Recruiter.recruiter_id)).filter((Recruiter.phone == None) | (Recruiter.phone == '')).scalar() or 0
-    missing_linkedin = db.query(func.count(Recruiter.recruiter_id)).filter((Recruiter.linkedin == None) | (Recruiter.linkedin == '')).scalar() or 0
-    missing_location = db.query(func.count(Recruiter.recruiter_id)).filter((Recruiter.location == None) | (Recruiter.location == '')).scalar() or 0
-    missing_company = db.query(func.count(Recruiter.recruiter_id)).filter(Recruiter.company_id == None).scalar() or 0
-    
-    return {
-        "overall_quality_score": round(avg_score, 1),
-        "total_profiles": total_recruiters,
-        "missing_breakdown": {
-            "email": missing_emails,
-            "phone": missing_phones,
-            "linkedin": missing_linkedin,
-            "location": missing_location,
-            "company": missing_company
+    now = time.time()
+    if _health_cache["data"] and now < _health_cache["expires"]:
+        return _health_cache["data"]
+        
+    try:
+        row = db.execute(text("""
+            SELECT 
+                AVG(quality_score) as avg_score,
+                COUNT(*) as total,
+                SUM(CASE WHEN email LIKE '%missing.local%' THEN 1 ELSE 0 END) as m_email,
+                SUM(CASE WHEN phone IS NULL OR phone = '' THEN 1 ELSE 0 END) as m_phone,
+                SUM(CASE WHEN linkedin IS NULL OR linkedin = '' THEN 1 ELSE 0 END) as m_linkedin,
+                SUM(CASE WHEN location IS NULL OR location = '' THEN 1 ELSE 0 END) as m_location,
+                SUM(CASE WHEN company_id IS NULL THEN 1 ELSE 0 END) as m_company
+            FROM recruiters
+        """)).mappings().one()
+        
+        result = {
+            "overall_quality_score": round(row["avg_score"] or 0, 1),
+            "total_profiles": row["total"] or 0,
+            "missing_breakdown": {
+                "email": row["m_email"] or 0,
+                "phone": row["m_phone"] or 0,
+                "linkedin": row["m_linkedin"] or 0,
+                "location": row["m_location"] or 0,
+                "company": row["m_company"] or 0
+            }
         }
-    }
+        
+        _health_cache["data"] = result
+        _health_cache["expires"] = now + 60
+        return result
+    except Exception:
+        db.rollback()
+        return {
+            "overall_quality_score": 0,
+            "total_profiles": 0,
+            "missing_breakdown": {"email": 0, "phone": 0, "linkedin": 0, "location": 0, "company": 0}
+        }
 
 @router.get("/queue")
 def get_sentinel_queue(

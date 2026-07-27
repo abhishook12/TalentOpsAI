@@ -144,23 +144,32 @@ def admin_lockdown_status():
 @cached_route(ttl=60)
 def admin_stats(db: Session = Depends(get_db)):
     t0 = time.time()
-    rows = db.execute(text("""
-        SELECT
-            (SELECT COUNT(*) FROM recruiters)  AS total_recruiters,
-            (SELECT COUNT(*) FROM recruiters WHERE is_active = true) AS active_recruiters,
-            (SELECT COUNT(*) FROM recruiters WHERE email IS NOT NULL AND email <> '' AND email NOT LIKE '%@missing.local%') AS with_email,
-            (SELECT COUNT(*) FROM recruiters WHERE phone IS NOT NULL AND phone <> '') AS with_phone,
-            (SELECT COUNT(*) FROM companies)   AS total_companies,
-            (SELECT COUNT(*) FROM candidates)  AS total_candidates,
-            (SELECT COUNT(*) FROM submissions) AS total_submissions,
-            (SELECT COUNT(*) FROM vendors)     AS total_vendors,
-            (SELECT COUNT(*) FROM recruiters WHERE created_at >= NOW() - INTERVAL '24 hours') AS added_today,
-            (SELECT COUNT(*) FROM recruiters WHERE created_at >= NOW() - INTERVAL '7 days')  AS added_week,
-            (SELECT COUNT(DISTINCT location) FROM recruiters WHERE location IS NOT NULL AND location <> '') AS unique_locations,
-            (SELECT COUNT(DISTINCT company_id) FROM recruiters WHERE company_id IS NOT NULL) AS recruiters_linked_to_company
-    """)).mappings().one()
+    
+    def safe_count(query):
+        try:
+            return db.execute(text(query)).scalar() or 0
+        except Exception:
+            db.rollback()
+            return 0
+    
+    result = {
+        "total_recruiters": safe_count("SELECT COUNT(*) FROM recruiters"),
+        "active_recruiters": safe_count("SELECT COUNT(*) FROM recruiters WHERE is_active = 1"),
+        "with_email": safe_count("SELECT COUNT(*) FROM recruiters WHERE email IS NOT NULL AND email <> '' AND email NOT LIKE '%@missing.local%'"),
+        "with_phone": safe_count("SELECT COUNT(*) FROM recruiters WHERE phone IS NOT NULL AND phone <> ''"),
+        "total_companies": safe_count("SELECT COUNT(*) FROM companies"),
+        "total_candidates": safe_count("SELECT COUNT(*) FROM candidates"),
+        "total_submissions": safe_count("SELECT COUNT(*) FROM submissions"),
+        "total_vendors": safe_count("SELECT COUNT(*) FROM vendors"),
+        "added_today": safe_count("SELECT COUNT(*) FROM recruiters WHERE created_at >= datetime('now', '-1 day')"),
+        "added_week": safe_count("SELECT COUNT(*) FROM recruiters WHERE created_at >= datetime('now', '-7 days')"),
+        "unique_locations": safe_count("SELECT COUNT(DISTINCT location) FROM recruiters WHERE location IS NOT NULL AND location <> ''"),
+        "recruiters_linked_to_company": safe_count("SELECT COUNT(DISTINCT company_id) FROM recruiters WHERE company_id IS NOT NULL"),
+    }
+    
     elapsed = round((time.time() - t0) * 1000, 1)
-    return {**dict(rows), "query_ms": elapsed}
+    result["query_ms"] = elapsed
+    return result
 
 
 @router.get("/ops-kpis")
@@ -172,58 +181,44 @@ def admin_ops_kpis(db: Session = Depends(get_db)):
     """
     stats = admin_stats(db)
 
-    try:
-        total_states = db.execute(text("""
-            SELECT COUNT(DISTINCT state)
-            FROM recruiters
-            WHERE state IS NOT NULL AND state != ''
-        """)).scalar()
-    except Exception:
-        total_states = None
-
-    try:
-        db_size = db.execute(text("SELECT pg_size_pretty(pg_database_size(current_database()))")).scalar()
-    except Exception:
-        db_size = None
-
-    try:
-        searches_today = db.execute(text("""
-            SELECT COUNT(*)
-            FROM action_logs
-            WHERE created_at >= date_trunc('day', now())
-              AND action_type LIKE 'SEARCH_%'
-        """)).scalar()
-    except Exception:
-        searches_today = None
-
-    try:
-        exports_today = db.execute(text("""
-            SELECT COUNT(*)
-            FROM action_logs
-            WHERE created_at >= date_trunc('day', now())
-              AND action_type LIKE 'EXPORT_%'
-        """)).scalar()
-    except Exception:
-        exports_today = None
-
-    new_uploads = None
-    try:
-        new_uploads = db.execute(text("""
-            SELECT COUNT(*)
-            FROM upload_jobs
-            WHERE started_at >= date_trunc('day', now())
-        """)).scalar()
-    except ProgrammingError:
-        db.rollback()
+    def safe_scalar(pg_query, sqlite_query=None):
         try:
-            new_uploads = db.execute(text("""
-                SELECT COUNT(*)
-                FROM action_logs
-                WHERE created_at >= date_trunc('day', now())
-                  AND action_type = 'UPLOAD_ETL'
-            """)).scalar()
+            return db.execute(text(pg_query)).scalar()
         except Exception:
-            new_uploads = None
+            db.rollback()
+            if sqlite_query:
+                try:
+                    return db.execute(text(sqlite_query)).scalar()
+                except Exception:
+                    db.rollback()
+            return None
+
+    total_states = safe_scalar(
+        "SELECT COUNT(DISTINCT state) FROM recruiters WHERE state IS NOT NULL AND state != ''"
+    )
+    
+    db_size = safe_scalar("SELECT pg_size_pretty(pg_database_size(current_database()))")
+    
+    searches_today = safe_scalar(
+        "SELECT COUNT(*) FROM action_logs WHERE created_at >= date_trunc('day', now()) AND action_type LIKE 'SEARCH_%'",
+        "SELECT COUNT(*) FROM action_logs WHERE created_at >= datetime('now', 'start of day') AND action_type LIKE 'SEARCH_%'"
+    )
+    
+    exports_today = safe_scalar(
+        "SELECT COUNT(*) FROM action_logs WHERE created_at >= date_trunc('day', now()) AND action_type LIKE 'EXPORT_%'",
+        "SELECT COUNT(*) FROM action_logs WHERE created_at >= datetime('now', 'start of day') AND action_type LIKE 'EXPORT_%'"
+    )
+
+    new_uploads = safe_scalar(
+        "SELECT COUNT(*) FROM upload_jobs WHERE started_at >= date_trunc('day', now())",
+        "SELECT COUNT(*) FROM upload_jobs WHERE started_at >= datetime('now', 'start of day')"
+    )
+    
+    if new_uploads is None:
+        new_uploads = safe_scalar(
+            "SELECT COUNT(*) FROM action_logs WHERE created_at >= date_trunc('day', now()) AND action_type = 'UPLOAD_ETL'",
+            "SELECT COUNT(*) FROM action_logs WHERE created_at >= datetime('now', 'start of day') AND action_type = 'UPLOAD_ETL'"
+        )
 
     return {
         "total_recruiters": stats.get("total_recruiters"),
@@ -234,7 +229,6 @@ def admin_ops_kpis(db: Session = Depends(get_db)):
         "new_uploads": new_uploads,
         "database_size": db_size,
     }
-
 
 @router.get("/data-operations")
 @cached_route(ttl=60)
@@ -1101,7 +1095,7 @@ async def save_admin_settings(request: Request):
 def get_background_jobs(db: Session = Depends(get_db)):
     # Returns all import jobs
     from ..models.models import SmartImportJob
-    jobs = db.query(SmartImportJob).order_by(SmartImportJob.created_at.desc()).limit(20).all()
+    jobs = db.query(SmartImportJob).order_by(SmartImportJob.started_at.desc()).limit(20).all()
     
     res = []
     for j in jobs:
@@ -1111,10 +1105,10 @@ def get_background_jobs(db: Session = Depends(get_db)):
         
         res.append({
             "job_id": j.job_id,
-            "filename": j.original_filename,
+            "filename": j.filename,
             "status": j.status,
             "progress": prog,
-            "created_at": j.created_at.isoformat(),
+            "created_at": j.started_at.isoformat() if j.started_at else None,
             "completed_at": j.completed_at.isoformat() if j.completed_at else None,
             "total_rows": total,
             "processed_rows": processed

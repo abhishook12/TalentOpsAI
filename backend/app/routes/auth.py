@@ -532,6 +532,10 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
         if is_first_user:
             default_role = db.query(Role).filter(Role.name == "superadmin").first() or default_role
 
+        initial_status = "Active" if DEV_AUTO_VERIFY else "Pending Verification"
+        if is_first_user:
+            initial_status = "Active"
+
         user = User(
             first_name=idinfo.get("given_name", ""),
             last_name=idinfo.get("family_name", ""),
@@ -539,7 +543,7 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
             auth_provider="google",
             provider_id=idinfo.get("sub"),
             avatar_url=idinfo.get("picture", ""),
-            status="Active", # Google emails are already verified
+            status=initial_status,
             role_id=default_role.id if default_role else None
         )
         db.add(user)

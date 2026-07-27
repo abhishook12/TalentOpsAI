@@ -1132,7 +1132,7 @@ def get_audit_logs(db: Session = Depends(get_db)):
         {
             "id": log.id,
             "action_type": log.action_type,
-            "user_id": log.user_id,
+            "user_email": log.user_email,
             "ip_address": log.ip_address,
             "timestamp": log.created_at.isoformat(),
             "details": log.details

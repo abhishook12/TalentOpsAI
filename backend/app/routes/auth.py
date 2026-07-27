@@ -550,6 +550,9 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
         db.commit()
         db.refresh(user)
 
+    if user.status != "Active":
+        raise HTTPException(status_code=403, detail=f"Account is {user.status}. Please contact an administrator for approval.")
+
     # Trusted Device Check
     trusted_device = _handle_trusted_device(request, response, db, user, user_agent, ip)
 

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request, BackgroundTasks
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone, timedelta
 import secrets
@@ -803,7 +803,7 @@ class ResendVerificationRequest(BaseModel):
     email: EmailStr
 
 @router.post("/resend-verification")
-def resend_verification(req: ResendVerificationRequest, db: Session = Depends(get_db)):
+def resend_verification(req: ResendVerificationRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == req.email.lower().strip()).first()
     if not user or user.status == "Active":
         return {"message": "If the email is registered and unverified, a new link has been sent."}
@@ -817,7 +817,7 @@ def resend_verification(req: ResendVerificationRequest, db: Session = Depends(ge
     db.add(verification)
     db.commit()
     
-    send_verification_email(user.email, token)
+    background_tasks.add_task(send_verification_email, user.email, token)
     return {"message": "If the email is registered and unverified, a new link has been sent."}
 
 class ForgotPasswordRequest(BaseModel):
@@ -825,7 +825,7 @@ class ForgotPasswordRequest(BaseModel):
 
 @router.post("/forgot-password")
 @limiter.limit("3/minute")
-def forgot_password(request: Request, req: ForgotPasswordRequest, db: Session = Depends(get_db)):
+def forgot_password(request: Request, req: ForgotPasswordRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == req.email.lower().strip()).first()
     if not user:
         return {"message": "If the email is registered, a password reset link has been sent."}
@@ -839,7 +839,7 @@ def forgot_password(request: Request, req: ForgotPasswordRequest, db: Session = 
     db.add(reset_record)
     db.commit()
     
-    send_password_reset_email(user.email, token)
+    background_tasks.add_task(send_password_reset_email, user.email, token)
     return {"message": "If the email is registered, a password reset link has been sent."}
 
 class ResetPasswordRequest(BaseModel):
@@ -1011,6 +1011,6 @@ async def get_device_status_stream(device_id: int, request: Request):
                 
             yield f"data: {{\"status\": \"pending\"}}\n\n"
                 
-            await asyncio.sleep(1)
+            await asyncio.sleep(3)
             
     return StreamingResponse(event_generator(), media_type="text/event-stream")

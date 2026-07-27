@@ -23,16 +23,19 @@ export default defineConfig({
     allowedHosts: true
   },
   build: {
+    target: 'es2022',
+    cssCodeSplit: true,
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            // Group react and react-dom into a single chunk
-            if (id.includes('react/') || id.includes('react-dom/')) {
-              return 'react-vendor';
-            }
-            // Put other dependencies in their own chunks or a common vendor chunk
-            return 'vendor';
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router') || id.includes('@tanstack/react-router')) return 'react-vendor'
+            if (id.includes('recharts') || id.includes('d3-')) return 'charts-vendor'
+            if (id.includes('@tiptap') || id.includes('prosemirror') || id.includes('tiptap')) return 'editor-vendor'
+            if (id.includes('framer-motion')) return 'animation-vendor'
+            if (id.includes('xlsx')) return 'xlsx-vendor'
+            if (id.includes('axios') || id.includes('@tanstack/react-query')) return 'data-vendor'
+            return 'vendor'
           }
         }
       }

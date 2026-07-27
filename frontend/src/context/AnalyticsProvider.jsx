@@ -101,8 +101,8 @@ export function AnalyticsProvider({ children }) {
     // Listen for browser navigation
     window.addEventListener('popstate', checkPathChange);
     
-    // Poll for SPA navigation changes every 2 seconds
-    const pathPoll = setInterval(checkPathChange, 2000);
+    // Poll for SPA navigation changes every 10 seconds
+    const pathPoll = setInterval(checkPathChange, 10000);
 
     return () => {
       window.removeEventListener('popstate', checkPathChange);

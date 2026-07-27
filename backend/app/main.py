@@ -303,19 +303,18 @@ def root():
 
 import subprocess
 
+try:
+    _GIT_HASH = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
+except Exception:
+    commit = os.environ.get("RENDER_GIT_COMMIT", "unknown")
+    if commit != "unknown":
+        commit = commit[:7]
+    _GIT_HASH = commit
+
 @app.get("/api/v1/version")
 @app.get("/version")
 def get_version():
-    try:
-        # Try to get commit hash locally
-        commit_hash = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
-        return {"version": commit_hash}
-    except Exception:
-        # Fallback to Render environment variable or unknown
-        commit = os.environ.get("RENDER_GIT_COMMIT", "unknown")
-        if commit != "unknown":
-            commit = commit[:7]
-        return {"version": commit}
+    return {"version": _GIT_HASH}
 
 
 @app.get("/ping")

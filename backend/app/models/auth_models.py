@@ -131,11 +131,11 @@ class Session(Base):
 class LoginHistory(Base):
     __tablename__ = 'login_history'
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=True, index=True)
     email = Column(String(150), nullable=True)
     status = Column(String(50), nullable=False) # success, failed
     reason = Column(String(255), nullable=True)
-    ip_address = Column(String(60), nullable=True)
+    ip_address = Column(String(60), nullable=True, index=True)
     browser = Column(String(255), nullable=True)
     os = Column(String(255), nullable=True)
     country = Column(String(100), nullable=True)

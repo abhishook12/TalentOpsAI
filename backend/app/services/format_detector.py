@@ -1,7 +1,8 @@
-import pandas as pd
+
 import json
 
-def detect_format(df: pd.DataFrame) -> dict:
+def detect_format(df) -> dict:
+    import pandas as pd
     headers = [str(h).lower().strip() for h in df.columns]
     
     # 1. Wide Multi-Column

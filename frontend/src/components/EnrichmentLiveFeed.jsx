@@ -19,7 +19,7 @@ export default function EnrichmentLiveFeed() {
 
   useEffect(() => {
     fetchFeed();
-    const interval = setInterval(fetchFeed, 3000); // Poll every 3 seconds
+    const interval = setInterval(fetchFeed, 30000); // Poll every 30 seconds
     return () => clearInterval(interval);
   }, []);
 

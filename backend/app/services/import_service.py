@@ -1,6 +1,6 @@
 import json
 import re
-import pandas as pd
+
 from sqlalchemy.orm import Session
 from sqlalchemy import update
 from datetime import datetime
@@ -568,6 +568,7 @@ def process_commit(job_id: str):
 
 
 def generate_excel_from_rows(rows):
+    import pandas as pd
     data = []
     for r in rows:
         data.append({

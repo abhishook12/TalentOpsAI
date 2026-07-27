@@ -39,8 +39,8 @@ class PageVisit(Base):
     id            = Column(Integer, primary_key=True, index=True)
     page          = Column(String(100), nullable=False)    # e.g. "Dashboard"
     path          = Column(String(100), nullable=False)    # e.g. "/"
-    user_email    = Column(String(150), nullable=True)     # logged-in user email
-    session_id    = Column(String(64),  nullable=True)     # browser session UUID
+    user_email    = Column(String(150), nullable=True, index=True)     # logged-in user email
+    session_id    = Column(String(64),  nullable=True, index=True)     # browser session UUID
     time_on_page  = Column(Integer,     nullable=True)     # seconds spent on previous page
     user_agent    = Column(String(300), nullable=True)     # browser UA string
     ip_address    = Column(String(60),  nullable=True)     # client IP from request

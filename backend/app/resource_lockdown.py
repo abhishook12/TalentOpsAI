@@ -21,16 +21,30 @@ MAX_GEMINI_RPM = 7      # 70% of 10 RPM
 class ResourceLockdownException(Exception):
     pass
 
+_lockdown_cache = None
+_lockdown_cache_time = 0.0
+
 def _get_lockdown_state() -> dict:
+    global _lockdown_cache, _lockdown_cache_time
+    now = time.time()
+    if _lockdown_cache and (now - _lockdown_cache_time < 10.0):
+        return _lockdown_cache
+
     if not os.path.exists(LOCKDOWN_FILE):
-        return {"is_locked": False, "reason": None, "timestamp": None, "unlock_until": None}
-    try:
-        with open(LOCKDOWN_FILE, "r") as f:
-            return json.load(f)
-    except Exception:
-        return {"is_locked": False, "reason": None, "timestamp": None, "unlock_until": None}
+        state = {"is_locked": False, "reason": None, "timestamp": None, "unlock_until": None}
+    else:
+        try:
+            with open(LOCKDOWN_FILE, "r") as f:
+                state = json.load(f)
+        except Exception:
+            state = {"is_locked": False, "reason": None, "timestamp": None, "unlock_until": None}
+            
+    _lockdown_cache = state
+    _lockdown_cache_time = now
+    return state
 
 def _set_lockdown_state(is_locked: bool, reason: Optional[str] = None, unlock_until: Optional[float] = None):
+    global _lockdown_cache, _lockdown_cache_time
     state = {
         "is_locked": is_locked,
         "reason": reason,
@@ -39,6 +53,10 @@ def _set_lockdown_state(is_locked: bool, reason: Optional[str] = None, unlock_un
     }
     with open(LOCKDOWN_FILE, "w") as f:
         json.dump(state, f)
+        
+    _lockdown_cache = state
+    _lockdown_cache_time = time.time()
+    
     if is_locked:
         logger.error(f"!!! EMERGENCY RESOURCE LOCKDOWN INITIATED: {reason} !!!")
     else:

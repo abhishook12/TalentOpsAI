@@ -76,8 +76,11 @@ def list_devices(request: Request, db: Session = Depends(get_db)):
     for d in devices:
         result.append({
             "id": d.id,
+            "user_id": d.user.id if d.user else None,
             "user_email": d.user.email if d.user else "Unknown",
             "user_name": f"{d.user.first_name} {d.user.last_name}" if d.user else "Unknown",
+            "avatar_url": d.user.avatar_url if d.user else None,
+            "auth_provider": d.user.auth_provider if d.user else None,
             "browser": d.browser,
             "os": d.os,
             "device_name": d.device_name,
@@ -142,6 +145,11 @@ def update_device_status(device_id: int, payload: StatusUpdate, request: Request
     device.status = new_status
     if new_status == 'Trusted':
         device.approved_by = admin_user.id
+        
+        # Identity-First: If the user is Pending Verification, approving their device also approves their account
+        if device.user and device.user.status == 'Pending Verification':
+            device.user.status = 'Active'
+            db.add(device.user)
         
         # Check MAX_DEVICES_PER_USER
         max_devices = int(os.getenv("MAX_DEVICES_PER_USER", "0"))

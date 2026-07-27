@@ -306,11 +306,14 @@ def _handle_trusted_device(request: Request, response: Response, db: Session, us
         if IS_PRODUCTION:
             cookie_val += "; Secure"
             
-        raise HTTPException(
-            status_code=403, 
-            detail="Access Restricted: This device has not yet been approved for access.",
-            headers={"Set-Cookie": cookie_val}
-        )
+        # Instead of returning 403, we return a dictionary indicating pending status
+        # The calling route will intercept this and return a 202 Accepted
+        return {
+            "status": "pending_approval",
+            "device_id": trusted_device.id,
+            "user_id": user.id,
+            "cookie": cookie_val
+        }
         
     trusted_device.last_login = datetime.now(timezone.utc).replace(tzinfo=None)
     trusted_device.login_attempts = 0 # reset on successful login
@@ -523,7 +526,7 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
             db.commit()
             
         if user.status != "Active":
-            raise HTTPException(status_code=403, detail=f"Account is {user.status}.")
+            pass # Handled below
     else:
         # Create new user
         _ensure_default_roles(db)
@@ -550,11 +553,23 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
         db.commit()
         db.refresh(user)
 
-    if user.status != "Active":
-        raise HTTPException(status_code=403, detail=f"Account is {user.status}. Please contact an administrator for approval.")
-
     # Trusted Device Check
-    trusted_device = _handle_trusted_device(request, response, db, user, user_agent, ip)
+    trusted_device_or_pending = _handle_trusted_device(request, response, db, user, user_agent, ip)
+    
+    from fastapi.responses import JSONResponse
+    if isinstance(trusted_device_or_pending, dict) and trusted_device_or_pending.get("status") == "pending_approval":
+        return JSONResponse(status_code=202, content=trusted_device_or_pending)
+        
+    trusted_device = trusted_device_or_pending
+
+    if user.status != "Active":
+        # Even if device is trusted, if user is pending, return pending_approval
+        return JSONResponse(status_code=202, content={
+            "status": "pending_approval",
+            "device_id": trusted_device.id,
+            "user_id": user.id,
+            "reason": "user_pending"
+        })
 
     # Create Session
     session_token = secrets.token_hex(32)
@@ -883,4 +898,31 @@ def logout_session(session_id: int, request: Request, db: Session = Depends(get_
     db_session.is_active = False
     db.commit()
     return {"message": "Session logged out"}
+
+
+from fastapi.responses import StreamingResponse
+import asyncio
+
+@router.get('/status-stream/{device_id}')
+async def get_device_status_stream(device_id: int, request: Request, db: Session = Depends(get_db)):
+    async def event_generator():
+        while True:
+            if await request.is_disconnected():
+                break
+            db.expire_all()
+            from ..models.auth_models import TrustedDevice
+            device = db.query(TrustedDevice).filter(TrustedDevice.id == device_id).first()
+            if not device:
+                yield f"data: {{\"status\": \"error\", \"message\": \"Device not found\"}}\n\n"
+                break
+            user = db.query(User).filter(User.id == device.user_id).first()
+            if device.status == 'Trusted' and user and user.status == 'Active':
+                yield f"data: {{\"status\": \"approved\"}}\n\n"
+                break
+            elif device.status == 'Blocked' or (user and user.status not in ['Active', 'Pending Verification']):
+                yield f"data: {{\"status\": \"rejected\"}}\n\n"
+                break
+            yield f"data: {{\"status\": \"pending\"}}\n\n"
+            await asyncio.sleep(1.5)
+    return StreamingResponse(event_generator(), media_type='text/event-stream')
 

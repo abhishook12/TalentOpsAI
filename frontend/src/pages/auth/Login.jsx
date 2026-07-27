@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
-import { useNavigate, Link, useSearch } from '@tanstack/react-router'
+import { Link, useNavigate, useSearch } from '@tanstack/react-router'
+import ApprovalProgress from '../../components/auth/ApprovalProgress'
 import { useGoogleLogin } from '@react-oauth/google'
 import AuthFrame from './AuthFrame'
 import AppLoadingOverlay from '../../components/AppLoadingOverlay'
@@ -243,6 +244,7 @@ export default function Login() {
   // Splash Screen State
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [authProgress, setAuthProgress] = useState(null)
+  const [pendingDeviceId, setPendingDeviceId] = useState(null)
   
   const { login, googleLogin } = useAuth()
   const navigate = useNavigate()
@@ -257,7 +259,13 @@ export default function Login() {
     setAuthProgress(null) // Indeterminate start
     
     try {
-      await authFunction()
+      const data = await authFunction()
+      
+      if (data && data.status === 'pending_approval') {
+        setIsAuthenticating(false)
+        setPendingDeviceId(data.device_id)
+        return
+      }
       
       setAuthProgress(30)
       
@@ -308,7 +316,14 @@ export default function Login() {
       
       <AppLoadingOverlay isVisible={isAuthenticating} progress={authProgress} />
       
-      {/* AuthFrame takes isAuthenticating to fade out the form children */}
+      {pendingDeviceId ? (
+        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '100%', zIndex: 10 }}>
+          <ApprovalProgress 
+            deviceId={pendingDeviceId} 
+            onApproved={() => performBackgroundInitialization(() => Promise.resolve({}))}
+          />
+        </div>
+      ) : (
       <AuthFrame isAuthenticating={isAuthenticating}>
         
         {error && (
@@ -392,6 +407,7 @@ export default function Login() {
           </Link>
         </div>
       </AuthFrame>
+      )}
     </>
   )
 }

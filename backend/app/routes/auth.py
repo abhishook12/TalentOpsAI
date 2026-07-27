@@ -969,28 +969,33 @@ def logout_session(session_id: int, request: Request, db: Session = Depends(get_
 
 from fastapi.responses import StreamingResponse
 import asyncio
+from ..database import SessionLocal
 
 @router.get('/status-stream/{device_id}')
-async def get_device_status_stream(device_id: int, request: Request, db: Session = Depends(get_db)):
+async def get_device_status_stream(device_id: int, request: Request):
     async def event_generator():
         while True:
             if await request.is_disconnected():
                 break
-            db.commit()  # End the previous transaction to ensure a fresh read
-            db.expire_all()
-            from ..models.auth_models import TrustedDevice
-            device = db.query(TrustedDevice).filter(TrustedDevice.id == device_id).first()
-            if not device:
-                yield f"data: {{\"status\": \"error\", \"message\": \"Device not found\"}}\n\n"
-                break
-            user = db.query(User).filter(User.id == device.user_id).first()
-            if device.status == 'Trusted' and user and user.status == 'Active':
-                yield f"data: {{\"status\": \"approved\"}}\n\n"
-                break
-            elif device.status == 'Blocked' or (user and user.status not in ['Active', 'Pending Verification']):
-                yield f"data: {{\"status\": \"rejected\"}}\n\n"
-                break
-            yield f"data: {{\"status\": \"pending\"}}\n\n"
-            await asyncio.sleep(1.5)
-    return StreamingResponse(event_generator(), media_type='text/event-stream')
-
+            
+            db = SessionLocal()
+            try:
+                from ..models.auth_models import TrustedDevice
+                device = db.query(TrustedDevice).filter(TrustedDevice.id == device_id).first()
+                if not device:
+                    yield f"data: {{\"status\": \"error\", \"message\": \"Device not found\"}}\n\n"
+                    break
+                user = db.query(User).filter(User.id == device.user_id).first()
+                if device.status == 'Trusted' and user and user.status == 'Active':
+                    yield f"data: {{\"status\": \"approved\"}}\n\n"
+                    break
+                elif device.status == 'Blocked' or (user and user.status not in ['Active', 'Pending Verification']):
+                    yield f"data: {{\"status\": \"rejected\"}}\n\n"
+                    break
+                yield f"data: {{\"status\": \"pending\"}}\n\n"
+            finally:
+                db.close()
+                
+            await asyncio.sleep(1)
+            
+    return StreamingResponse(event_generator(), media_type="text/event-stream")

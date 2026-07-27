@@ -4,7 +4,7 @@
     "builder": "RAILPACK"
   },
   "deploy": {
-    "startCommand": "uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 4 --limit-concurrency 100 --timeout-keep-alive 30",
+    "startCommand": "uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 2 --limit-concurrency 100 --timeout-keep-alive 30",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }

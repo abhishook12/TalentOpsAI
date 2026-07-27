@@ -111,7 +111,15 @@ function AppShell() {
   const { user, isAdmin, loading } = useAuth()
   const pageName = useMemo(() => PAGE_NAMES[location.pathname] || 'Dashboard', [location.pathname])
   
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--main-bg)', color: 'var(--text-secondary)' }}>
+        <i className="ti ti-loader-2" style={{ fontSize: '2rem', animation: 'spin 1s linear infinite', marginBottom: '1rem' }} />
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.875rem' }}>Waking up the server...</p>
+        <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
 
   if (!user && !isAuthPage) {
     const redirectUrl = window.location.pathname + window.location.search;

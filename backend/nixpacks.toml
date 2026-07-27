@@ -2,4 +2,4 @@
 cmds = ["pip install -r requirements.txt"]
 
 [start]
-cmd = "uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 4 --limit-concurrency 100 --timeout-keep-alive 30"
+cmd = "uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 2 --limit-concurrency 100 --timeout-keep-alive 30"

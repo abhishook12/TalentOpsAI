@@ -979,22 +979,32 @@ async def get_device_status_stream(device_id: int, request: Request):
                 break
             
             db = SessionLocal()
+            status = "pending"
             try:
                 from ..models.auth_models import TrustedDevice
                 device = db.query(TrustedDevice).filter(TrustedDevice.id == device_id).first()
                 if not device:
-                    yield f"data: {{\"status\": \"error\", \"message\": \"Device not found\"}}\n\n"
-                    break
-                user = db.query(User).filter(User.id == device.user_id).first()
-                if device.status == 'Trusted' and user and user.status == 'Active':
-                    yield f"data: {{\"status\": \"approved\"}}\n\n"
-                    break
-                elif device.status == 'Blocked' or (user and user.status not in ['Active', 'Pending Verification']):
-                    yield f"data: {{\"status\": \"rejected\"}}\n\n"
-                    break
-                yield f"data: {{\"status\": \"pending\"}}\n\n"
+                    status = "error"
+                else:
+                    user = db.query(User).filter(User.id == device.user_id).first()
+                    if device.status == 'Trusted' and user and user.status == 'Active':
+                        status = "approved"
+                    elif device.status == 'Blocked' or (user and user.status not in ['Active', 'Pending Verification']):
+                        status = "rejected"
             finally:
                 db.close()
+                
+            if status == "error":
+                yield f"data: {{\"status\": \"error\", \"message\": \"Device not found\"}}\n\n"
+                break
+            elif status == "approved":
+                yield f"data: {{\"status\": \"approved\"}}\n\n"
+                break
+            elif status == "rejected":
+                yield f"data: {{\"status\": \"rejected\"}}\n\n"
+                break
+                
+            yield f"data: {{\"status\": \"pending\"}}\n\n"
                 
             await asyncio.sleep(1)
             

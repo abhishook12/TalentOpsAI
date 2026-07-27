@@ -42,7 +42,7 @@ def get_pending_count(request: Request, db: Session = Depends(get_db)):
 @router.get("/sessions/active")
 def get_active_sessions(request: Request, db: Session = Depends(get_db)):
     admin_user = require_admin(request, db)
-    sessions = db.query(DBSession).options(joinedload(DBSession.user)).filter(DBSession.is_active == True).all()
+    sessions = db.query(DBSession).options(joinedload(DBSession.user)).filter(DBSession.is_active == True).order_by(DBSession.created_at.desc()).limit(1000).all()
     result = []
     for s in sessions:
         result.append({
@@ -66,11 +66,15 @@ def list_devices(request: Request, db: Session = Depends(get_db)):
         joinedload(TrustedDevice.user)
     ).all()
     
-    active_sessions = db.query(DBSession).filter(DBSession.is_active == True).all()
-    session_counts = {}
-    for s in active_sessions:
-        if s.trusted_device_id:
-            session_counts[s.trusted_device_id] = session_counts.get(s.trusted_device_id, 0) + 1
+    session_counts_raw = db.query(
+        DBSession.trusted_device_id,
+        func.count(DBSession.id)
+    ).filter(
+        DBSession.is_active == True,
+        DBSession.trusted_device_id != None
+    ).group_by(DBSession.trusted_device_id).all()
+    
+    session_counts = {device_id: count for device_id, count in session_counts_raw}
     
     result = []
     for d in devices:

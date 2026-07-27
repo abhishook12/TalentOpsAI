@@ -87,7 +87,7 @@ def get_data_quality(current_user: User = Depends(get_current_user_from_request)
 def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
 
     is_admin = current_user.role and current_user.role.name.lower() in ('admin', 'superadmin')
-    where_clause = "WHERE 1=1" if is_admin else "WHERE user_id = :user_id"
+    where_clause = "WHERE 1=1"
     
     sql = text(f"""
         SELECT 
@@ -109,7 +109,7 @@ def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depen
             ) as with_phone
         FROM recruiters {where_clause}
     """)
-    res = db.execute(sql, {"user_id": current_user.id}).mappings().first()
+    res = db.execute(sql).mappings().first()
 
     total_recruiters = res["total_recruiters"] or 0
     active_recruiters = res["active_recruiters"] or 0
@@ -118,8 +118,8 @@ def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depen
     with_email = res["with_email"] or 0
     with_phone = res["with_phone"] or 0
 
-    total_companies = db.query(Company).filter(Company.user_id == current_user.id).count()
-    total_vendors = db.query(Vendor).filter(Vendor.user_id == current_user.id).count()
+    total_companies = db.query(Company).count()
+    total_vendors = db.query(Vendor).count()
 
     email_rate = round((with_email / total_recruiters * 100), 1) if total_recruiters > 0 else 0
     review_rate = round((needs_review / total_recruiters * 100), 1) if total_recruiters > 0 else 0
@@ -147,7 +147,7 @@ def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depen
 def recruiters_by_state(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     computed_state_sql = EFFECTIVE_RECRUITER_STATE_SQL_R
     is_admin = current_user.role and current_user.role.name.lower() == 'admin'
-    where_clause = "1=1" if is_admin else "r.user_id = :user_id"
+    where_clause = "1=1"
 
     results = db.execute(text(f"""
         SELECT
@@ -158,7 +158,7 @@ def recruiters_by_state(db: Session = Depends(get_db), current_user: User = Depe
         WHERE {where_clause} AND {computed_state_sql} IS NOT NULL
         GROUP BY {computed_state_sql}
         ORDER BY count DESC, state ASC
-    """), {"user_email": current_user.email, "user_id": current_user.id}).mappings().all()
+    """)).mappings().all()
 
     res_list = [{"state": row["state"], "count": int(row["count"])} for row in results]
     return res_list

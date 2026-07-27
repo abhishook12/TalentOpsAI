@@ -127,6 +127,9 @@ def get_current_user_from_request(request: Request, db: Session = Depends(get_db
             ).first()
             
             if not result:
+                inactive_session = db.query(DBSession).filter(DBSession.id == session_id_int, DBSession.is_active == False).first()
+                if inactive_session and inactive_session.device == "Terminated by admin":
+                    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session terminated by administrator")
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired or user not found")
             
             user, db_session, trusted_device = result

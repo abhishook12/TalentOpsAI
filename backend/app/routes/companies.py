@@ -85,7 +85,7 @@ def get_companies(
 
 @router.get("/{company_id}")
 def get_company(company_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    c = db.query(Company).filter(Company.user_id == current_user.id, Company.company_id == company_id).first()
+    c = db.query(Company).filter(Company.company_id == company_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Company not found")
     return c
@@ -106,7 +106,11 @@ def create_company(data: CompanyCreate, db: Session = Depends(get_db), current_u
 
 @router.put("/{company_id}")
 def update_company(company_id: int, data: CompanyUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    c = db.query(Company).filter(Company.user_id == current_user.id, Company.company_id == company_id).first()
+
+    is_admin = current_user.role and current_user.role.name.lower() in ('admin', 'superadmin')
+    if not is_admin:
+        raise HTTPException(status_code=403, detail="Read-only access: Cannot modify global company database")
+    c = db.query(Company).filter(Company.company_id == company_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Company not found")
         
@@ -123,7 +127,11 @@ def update_company(company_id: int, data: CompanyUpdate, db: Session = Depends(g
 
 @router.delete("/{company_id}")
 def delete_company(company_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    c = db.query(Company).filter(Company.user_id == current_user.id, Company.company_id == company_id).first()
+
+    is_admin = current_user.role and current_user.role.name.lower() in ('admin', 'superadmin')
+    if not is_admin:
+        raise HTTPException(status_code=403, detail="Read-only access: Cannot modify global company database")
+    c = db.query(Company).filter(Company.company_id == company_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Company not found")
     c.is_active = False
@@ -173,7 +181,7 @@ def extract_candidate_name(text: str, company_name: str) -> str:
 
 @router.post("/{company_id}/discovery")
 def run_discovery_scan(company_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    company = db.query(Company).filter(Company.user_id == current_user.id, Company.company_id == company_id).first()
+    company = db.query(Company).filter(Company.company_id == company_id).first()
     if not company:
         raise HTTPException(404, "Company not found")
         

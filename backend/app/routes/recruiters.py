@@ -395,8 +395,7 @@ def _update_state_metadata(r, db: Session) -> None:
 
 def apply_recruiter_update(r, update_data: dict, db: Session):
     if "email" in update_data and update_data["email"] and update_data["email"] != r.email:
-        existing = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, 
-            Recruiter.email == update_data["email"],
+        existing = db.query(Recruiter).filter(Recruiter.email == update_data["email"],
             Recruiter.recruiter_id != r.recruiter_id
         ).first()
         if existing:
@@ -887,7 +886,7 @@ def get_recruiters(
 
 @router.get("/{recruiter_id}")
 def get_recruiter(recruiter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    r = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.recruiter_id == recruiter_id).first()
+    r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
         
@@ -904,7 +903,7 @@ def get_recruiter(recruiter_id: int, db: Session = Depends(get_db), current_user
 
 @router.post("/{recruiter_id}/email/approve")
 def approve_email(recruiter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    r = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.recruiter_id == recruiter_id).first()
+    r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
     
@@ -919,7 +918,7 @@ def approve_email(recruiter_id: int, db: Session = Depends(get_db), current_user
 
 @router.post("/{recruiter_id}/email/reject")
 def reject_email(recruiter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    r = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.recruiter_id == recruiter_id).first()
+    r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
     
@@ -940,7 +939,7 @@ def reject_email(recruiter_id: int, db: Session = Depends(get_db), current_user:
 @router.post("/", status_code=201)
 def create_recruiter(data: RecruiterCreate, db: Session = Depends(get_db), admin: User = Depends(require_role(["superadmin", "admin"]))):
     current_user = admin
-    existing = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.email == data.email).first()
+    existing = db.query(Recruiter).filter(Recruiter.email == data.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already exists")
         
@@ -970,6 +969,10 @@ def create_recruiter(data: RecruiterCreate, db: Session = Depends(get_db), admin
 
 @router.put("/{recruiter_id}")
 def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Depends(get_db), admin: User = Depends(require_role(["superadmin", "admin"]))):
+
+    is_admin = current_user.role and current_user.role.name.lower() in ('admin', 'superadmin')
+    if not is_admin:
+        raise HTTPException(status_code=403, detail="Read-only access: Cannot modify global recruiter database")
     r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
@@ -983,6 +986,10 @@ def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Dep
 
 @router.delete("/{recruiter_id}")
 def delete_recruiter(recruiter_id: int, db: Session = Depends(get_db), admin: User = Depends(require_role(["superadmin", "admin"]))):
+
+    is_admin = current_user.role and current_user.role.name.lower() in ('admin', 'superadmin')
+    if not is_admin:
+        raise HTTPException(status_code=403, detail="Read-only access: Cannot modify global recruiter database")
     r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
@@ -1009,7 +1016,7 @@ def batch_update_recruiters(payload: RecruiterBatchUpdate, db: Session = Depends
     if not update_data:
         raise HTTPException(status_code=400, detail="No updates supplied")
 
-    recruiters = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.recruiter_id.in_(ids)).all()
+    recruiters = db.query(Recruiter).filter(Recruiter.recruiter_id.in_(ids)).all()
     if not recruiters:
         raise HTTPException(status_code=404, detail="No recruiters found")
 
@@ -1043,7 +1050,7 @@ def export_recruiters(
     current_user: User = Depends(get_current_user_from_request)
 ):
     query = db.query(Recruiter).join(Recruiter.company, isouter=True)\
-              .filter(Recruiter.user_id == current_user.id)\
+              .filter()\
               .options(
                   selectinload(Recruiter.structured_emails),
                   selectinload(Recruiter.structured_phones),
@@ -1177,7 +1184,7 @@ from ..services.scraper import auto_enhance_recruiter_data
 
 @router.post("/{recruiter_id}/enhance")
 def enhance_recruiter(recruiter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    recruiter = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.recruiter_id == recruiter_id).first()
+    recruiter = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
     if not recruiter:
         raise HTTPException(status_code=404, detail="Recruiter not found")
         
@@ -1214,8 +1221,7 @@ def enhance_recruiter(recruiter_id: int, db: Session = Depends(get_db), current_
                 result['email'] = f"{last}@{company_domain}"
         else:
             # 2. Derive pattern from peers if not cached
-            peers = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, 
-                Recruiter.company_id == recruiter.company_id,
+            peers = db.query(Recruiter).filter(Recruiter.company_id == recruiter.company_id,
                 Recruiter.email.notlike('%@missing.local'),
                 Recruiter.email.notlike('%@talentops.ai'),
                 Recruiter.email != None,

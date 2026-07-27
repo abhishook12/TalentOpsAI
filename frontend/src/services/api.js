@@ -101,7 +101,7 @@ async function smartRequest(method, url, data, config = {}) {
         
         if (isUnauthorized || isDeviceRevoked) {
           if (onUnauthorizedCallback && !url.includes('/auth/login')) {
-            onUnauthorizedCallback();
+            onUnauthorizedCallback(error.response.data?.detail);
           }
         }
       }

@@ -60,7 +60,10 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     useEffect(() => {
-        setOnUnauthorizedCallback(() => {
+        setOnUnauthorizedCallback((detail) => {
+            if (detail === 'Session terminated by administrator') {
+                alert('Your session was terminated by an administrator.');
+            }
             setUser(null);
             clearStoredToken();
             localStorage.removeItem('auth_session');

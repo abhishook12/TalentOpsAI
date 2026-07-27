@@ -196,7 +196,7 @@ def companies_count_by_state(db: Session = Depends(get_db), current_user: User =
 
 @router.get("/company-states")
 def company_states(
-    company_id: int = Query(..., ge=1),
+    company_id: Optional[int] = Query(None, ge=1),
     db: Session = Depends(get_db),
 ):
     cached = analytics_cache.get(f"company_states_{company_id}")
@@ -205,13 +205,15 @@ def company_states(
 
     computed_state_sql = EFFECTIVE_RECRUITER_STATE_SQL_R
 
+    where_clause = "r.company_id = :company_id" if company_id else "1=1"
+
     rows = db.execute(text(f"""
         SELECT
             {computed_state_sql} AS state,
             COUNT(r.recruiter_id) AS count
         FROM recruiters r
         LEFT JOIN companies c ON c.company_id = r.company_id
-        WHERE r.company_id = :company_id
+        WHERE {where_clause}
           AND {computed_state_sql} IS NOT NULL
         GROUP BY {computed_state_sql}
         ORDER BY count DESC, state ASC
@@ -221,7 +223,7 @@ def company_states(
         SELECT COUNT(r.recruiter_id) AS count
         FROM recruiters r
         LEFT JOIN companies c ON c.company_id = r.company_id
-        WHERE r.company_id = :company_id
+        WHERE {where_clause}
           AND {computed_state_sql} IS NULL
     """), {"company_id": company_id}).mappings().first()
 

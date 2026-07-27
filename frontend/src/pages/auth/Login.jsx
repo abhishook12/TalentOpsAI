@@ -246,7 +246,7 @@ export default function Login() {
   const [authProgress, setAuthProgress] = useState(null)
   const [pendingDeviceId, setPendingDeviceId] = useState(null)
   
-  const { login, googleLogin } = useAuth()
+  const { login, googleLogin, checkAuthStatus } = useAuth()
   const navigate = useNavigate()
   const search = useSearch({ from: '/login' })
   const redirect = decodeURIComponent(search.redirect || '/')
@@ -270,8 +270,8 @@ export default function Login() {
       setAuthProgress(30)
       
       await Promise.all([
-        api.get('/auth/me'),
-        api.get('/bridge/status'),
+        api.get('/auth/me').catch(() => null),
+        api.get('/bridge/status').catch(() => null),
         api.get('/admin/dashboard/metrics').catch(() => null),
         new Promise(res => setTimeout(res, 2000)) // smooth UX animation
       ])
@@ -320,7 +320,12 @@ export default function Login() {
         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '100%', zIndex: 10 }}>
           <ApprovalProgress 
             deviceId={pendingDeviceId} 
-            onApproved={() => performBackgroundInitialization(() => Promise.resolve({}))}
+            onApproved={() => performBackgroundInitialization(async () => {
+              const res = await api.post('/auth/complete-device-approval', null)
+              // Populate the auth context before navigating to the dashboard
+              const isValid = await checkAuthStatus(true)
+              return res
+            })}
           />
         </div>
       ) : (
@@ -385,10 +390,20 @@ export default function Login() {
             </Link>
           </div>
 
-          <button type="submit" disabled={isAuthenticating || !isFormValid} className="login-button-primary">
-            Continue
+          <button type="submit" className="login-button-primary">
+            <span style={{ position: 'relative', zIndex: 1 }}>Login to TalentOps</span>
           </button>
           
+          {import.meta.env.DEV && (
+          <button type="button" id="atlas-simulate-google" style={{ display: 'none' }} onClick={() => performBackgroundInitialization(() => googleLogin('mock_google_token_atlas_user_' + Date.now()))}>
+            ATLAS Mock Google
+          </button>
+          )}
+
+          <div className="login-divider">
+            <span>Or continue with</span>
+          </div>
+
           <button type="button" onClick={() => customGoogleLogin()} disabled={isAuthenticating} className="login-button-google">
             <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>

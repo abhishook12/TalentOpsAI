@@ -42,7 +42,7 @@ export default function ApprovalProgress({ deviceId, onApproved }) {
     return () => {
       eventSource.close();
     };
-  }, [deviceId, onApproved]);
+  }, [deviceId]);
 
   return (
     <div style={{

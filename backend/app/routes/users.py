@@ -109,7 +109,7 @@ def get_user(
 def create_user(
     user_data: dict = Body(...),
     db: Session = Depends(get_db),
-    admin: User = Depends(require_role(["superadmin"]))
+    admin: User = Depends(require_role(["superadmin", "admin"]))
 ):
     email = user_data.get("email")
     if not email:
@@ -149,7 +149,7 @@ def create_user(
 def update_profile(
     user_data: dict = Body(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_request), request: Request = None
+    current_user: User = Depends(get_current_user_from_request)
 ):
     if "first_name" in user_data:
         current_user.first_name = user_data["first_name"]
@@ -168,7 +168,7 @@ def update_profile(
 def update_password(
     password_data: dict = Body(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_request), request: Request = None
+    current_user: User = Depends(get_current_user_from_request)
 ):
     current_pass = password_data.get("current_password")
     new_pass = password_data.get("new_password")
@@ -218,7 +218,7 @@ def update_user_status(
     user_id: int,
     status_data: dict = Body(...),
     db: Session = Depends(get_db),
-    admin: User = Depends(require_role(["superadmin"]))
+    admin: User = Depends(require_role(["superadmin", "admin"]))
 ):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -241,7 +241,7 @@ def update_user_status(
 def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
-    admin: User = Depends(require_role(["superadmin"]))
+    admin: User = Depends(require_role(["superadmin", "admin"]))
 ):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:

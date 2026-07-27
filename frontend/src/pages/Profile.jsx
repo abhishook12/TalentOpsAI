@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { User, Shield, Key, Mail, Calendar, MapPin, Building, Smartphone, LogOut, Link, Activity, Clock } from 'lucide-react'
-import { API as API_BASE_URL } from '../services/api'
+import api, { API as API_BASE_URL } from '../services/api'
 import ConnectOutlookModal from '../components/ConnectOutlookModal'
 
 export default function Profile() {
@@ -12,15 +12,8 @@ export default function Profile() {
 
   const fetchBridgeStatus = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/bridge/status`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setBridgeStatus(data)
-      }
+      const res = await api.get('/api/bridge/status')
+      setBridgeStatus(res.data)
     } catch (e) {
       console.error(e)
     } finally {
@@ -42,15 +35,8 @@ export default function Profile() {
 
   const handleDisconnectOutlook = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/bridge/disconnect`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
-      if (res.ok) {
-        fetchBridgeStatus()
-      }
+      await api.post('/api/bridge/disconnect')
+      fetchBridgeStatus()
     } catch (e) {
       console.error(e)
     }

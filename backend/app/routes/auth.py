@@ -403,7 +403,15 @@ def login(request: Request, login_data: UserLogin, response: Response, db: Sessi
         raise HTTPException(status_code=403, detail=f"Account is {user.status}. Please contact support.")
 
     # Trusted Device Check
-    trusted_device = _handle_trusted_device(request, response, db, user, user_agent, ip)
+    trusted_device_or_pending = _handle_trusted_device(request, response, db, user, user_agent, ip)
+    
+    if isinstance(trusted_device_or_pending, dict) and trusted_device_or_pending.get("status") == "pending_approval":
+        from fastapi.responses import JSONResponse
+        json_resp = JSONResponse(status_code=202, content=trusted_device_or_pending)
+        json_resp.raw_headers.extend([h for h in response.raw_headers if h[0].lower() == b"set-cookie"])
+        return json_resp
+        
+    trusted_device = trusted_device_or_pending
 
     # Create Session
     session_token = secrets.token_hex(32)
@@ -483,18 +491,18 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
     _check_rate_limit(db, ip)
     
     client_id = os.environ.get("GOOGLE_CLIENT_ID", "")
-    if not client_id:
-        # If client ID is missing, we must fail gracefully. But for local dev mock, we can accept a mock token.
-        if data.credential == "mock_google_token" and not IS_PRODUCTION:
-            idinfo = {
-                "email": "googleuser@example.com",
-                "given_name": "Google",
-                "family_name": "User",
-                "sub": "mock_google_sub_123",
-                "picture": ""
-            }
-        else:
-            raise HTTPException(status_code=500, detail="Google Auth is not configured on this server.")
+    if data.credential.startswith("mock_google_token") and not IS_PRODUCTION:
+        mock_id = data.credential.split("_")[-1] if "_" in data.credential else "123"
+        idinfo = {
+            "email": f"googleuser_{mock_id}@example.com",
+            "given_name": "Atlas",
+            "family_name": f"Tester {mock_id}",
+            "sub": f"mock_google_sub_{mock_id}",
+            "picture": "https://i.pravatar.cc/150?u=atlas",
+            "company": "Atlas Corp"
+        }
+    elif not client_id:
+        raise HTTPException(status_code=500, detail="Google Auth is not configured on this server.")
     else:
         try:
             idinfo = id_token.verify_oauth2_token(data.credential, google_requests.Request(), client_id)
@@ -543,6 +551,7 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
             first_name=idinfo.get("given_name", ""),
             last_name=idinfo.get("family_name", ""),
             email=email,
+            company=idinfo.get("company"),
             auth_provider="google",
             provider_id=idinfo.get("sub"),
             avatar_url=idinfo.get("picture", ""),
@@ -556,9 +565,11 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
     # Trusted Device Check
     trusted_device_or_pending = _handle_trusted_device(request, response, db, user, user_agent, ip)
     
-    from fastapi.responses import JSONResponse
     if isinstance(trusted_device_or_pending, dict) and trusted_device_or_pending.get("status") == "pending_approval":
-        return JSONResponse(status_code=202, content=trusted_device_or_pending)
+        from fastapi.responses import JSONResponse
+        json_resp = JSONResponse(status_code=202, content=trusted_device_or_pending)
+        json_resp.raw_headers.extend([h for h in response.raw_headers if h[0].lower() == b"set-cookie"])
+        return json_resp
         
     trusted_device = trusted_device_or_pending
 
@@ -640,6 +651,62 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     response.delete_cookie("admin_session")
     response.delete_cookie("app_session")
     return {"message": "Logged out successfully"}
+
+@router.post("/complete-device-approval")
+def complete_device_approval(request: Request, response: Response, db: Session = Depends(get_db)):
+    """
+    Called by the frontend immediately after the SSE stream receives 'approved'.
+    Uses the HttpOnly device_id cookie to establish a full user session.
+    """
+    device_token = request.cookies.get("device_id")
+    if not device_token:
+        raise HTTPException(status_code=401, detail="No device token found")
+        
+    from ..models.auth_models import TrustedDevice
+    device_hash = _hash_token(device_token)
+    device = db.query(TrustedDevice).filter(TrustedDevice.device_id_hash == device_hash).first()
+    
+    if not device or device.status != "Trusted":
+        raise HTTPException(status_code=403, detail="Device is not trusted")
+        
+    user = db.query(User).filter(User.id == device.user_id).first()
+    if not user or user.status != "Active":
+        raise HTTPException(status_code=403, detail="User account is not active")
+        
+    # Create Session
+    session_token = secrets.token_hex(32)
+    expires_at = datetime.now(timezone.utc) + timedelta(days=30)
+    
+    user_agent = request.headers.get("user-agent", "Unknown")
+    ip = _client_ip(request)
+    
+    db_session = DBSession(
+        user_id=user.id,
+        token_hash=_hash_token(session_token),
+        trusted_device_id=device.id,
+        device=user_agent, browser=user_agent, ip_address=ip, expires_at=expires_at
+    )
+    db.add(db_session)
+    
+    history = LoginHistory(
+        user_id=user.id, email=user.email, status="Success", reason="Device Approved via SSE",
+        ip_address=ip, browser=user_agent
+    )
+    db.add(history)
+    db.commit()
+    db.refresh(db_session)
+    
+    access_token = create_access_token(
+        data={"sub": str(user.id), "session_id": db_session.id},
+        expires_delta=timedelta(days=30)
+    )
+    
+    response.set_cookie(
+        key="access_token", value=access_token, httponly=True, secure=IS_PRODUCTION, samesite="lax", max_age=30*24*60*60
+    )
+    
+    return {"message": "Login complete", "user_id": user.id}
+
 
 @router.get("/me")
 def get_me(request: Request, db: Session = Depends(get_db)):
@@ -909,6 +976,7 @@ async def get_device_status_stream(device_id: int, request: Request, db: Session
         while True:
             if await request.is_disconnected():
                 break
+            db.commit()  # End the previous transaction to ensure a fresh read
             db.expire_all()
             from ..models.auth_models import TrustedDevice
             device = db.query(TrustedDevice).filter(TrustedDevice.id == device_id).first()

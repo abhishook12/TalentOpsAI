@@ -12,10 +12,12 @@ export const AuthProvider = ({ children }) => {
 
     const navigate = useNavigate();
 
-    const checkAuthStatus = async () => {
+    const checkAuthStatus = async (force = false) => {
         try {
             const token = localStorage.getItem('session_token') || sessionStorage.getItem('session_token');
-            if (!token) {
+            const hasAuthSession = localStorage.getItem('auth_session');
+            
+            if (!token && !hasAuthSession && !force) {
                 setUser(null);
                 setLoading(false);
                 return;

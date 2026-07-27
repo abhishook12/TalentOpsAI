@@ -697,9 +697,6 @@ def get_recruiters(
               )
               
     is_admin = current_user.role and current_user.role.name.lower() in ('admin', 'superadmin')
-    if not is_admin:
-        query = query.filter(Recruiter.user_id == current_user.id)
-    
     from ..utils.normalizer import normalize_text
     
     if search:
@@ -941,7 +938,8 @@ def reject_email(recruiter_id: int, db: Session = Depends(get_db), current_user:
     return serialize_recruiter(r)
 
 @router.post("/", status_code=201)
-def create_recruiter(data: RecruiterCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+def create_recruiter(data: RecruiterCreate, db: Session = Depends(get_db), admin: User = Depends(require_role(["superadmin", "admin"]))):
+    current_user = admin
     existing = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.email == data.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already exists")
@@ -971,8 +969,8 @@ def create_recruiter(data: RecruiterCreate, db: Session = Depends(get_db), curre
     return serialize_recruiter(r)
 
 @router.put("/{recruiter_id}")
-def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    r = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.recruiter_id == recruiter_id).first()
+def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Depends(get_db), admin: User = Depends(require_role(["superadmin", "admin"]))):
+    r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
         
@@ -984,8 +982,8 @@ def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Dep
     return serialize_recruiter(r)
 
 @router.delete("/{recruiter_id}")
-def delete_recruiter(recruiter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    r = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.recruiter_id == recruiter_id).first()
+def delete_recruiter(recruiter_id: int, db: Session = Depends(get_db), admin: User = Depends(require_role(["superadmin", "admin"]))):
+    r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
     db.delete(r)
@@ -993,11 +991,11 @@ def delete_recruiter(recruiter_id: int, db: Session = Depends(get_db), current_u
     return {"message": "Recruiter deleted"}
 
 @router.post("/batch-delete")
-def batch_delete_recruiters(payload: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+def batch_delete_recruiters(payload: dict, db: Session = Depends(get_db), admin: User = Depends(require_role(["superadmin", "admin"]))):
     ids = [int(i) for i in payload.get("ids", []) if str(i).strip()]
     if not ids:
         raise HTTPException(status_code=400, detail="No recruiter ids supplied")
-    deleted = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.recruiter_id.in_(ids)).delete(synchronize_session=False)
+    deleted = db.query(Recruiter).filter(Recruiter.recruiter_id.in_(ids)).delete(synchronize_session=False)
     db.commit()
     return {"message": "Recruiters deleted", "deleted_count": deleted}
 

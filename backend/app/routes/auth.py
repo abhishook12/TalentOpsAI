@@ -978,21 +978,26 @@ async def get_device_status_stream(device_id: int, request: Request):
             if await request.is_disconnected():
                 break
             
-            db = SessionLocal()
-            status = "pending"
-            try:
-                from ..models.auth_models import TrustedDevice
-                device = db.query(TrustedDevice).filter(TrustedDevice.id == device_id).first()
-                if not device:
-                    status = "error"
-                else:
-                    user = db.query(User).filter(User.id == device.user_id).first()
-                    if device.status == 'Trusted' and user and user.status == 'Active':
-                        status = "approved"
-                    elif device.status == 'Blocked' or (user and user.status not in ['Active', 'Pending Verification']):
-                        status = "rejected"
-            finally:
-                db.close()
+            def _check_db():
+                db = SessionLocal()
+                status = "pending"
+                try:
+                    from ..models.auth_models import TrustedDevice
+                    device = db.query(TrustedDevice).filter(TrustedDevice.id == device_id).first()
+                    if not device:
+                        status = "error"
+                    else:
+                        user = db.query(User).filter(User.id == device.user_id).first()
+                        if device.status == 'Trusted' and user and user.status == 'Active':
+                            status = "approved"
+                        elif device.status == 'Blocked' or (user and user.status not in ['Active', 'Pending Verification']):
+                            status = "rejected"
+                finally:
+                    db.close()
+                return status
+
+            from fastapi.concurrency import run_in_threadpool
+            status = await run_in_threadpool(_check_db)
                 
             if status == "error":
                 yield f"data: {{\"status\": \"error\", \"message\": \"Device not found\"}}\n\n"

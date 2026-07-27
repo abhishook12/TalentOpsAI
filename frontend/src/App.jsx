@@ -82,6 +82,7 @@ const PAGE_NAMES = {
   '/companies': 'Directory > Companies',
   '/admin': 'Admin Terminal',
   '/activity': 'Activity Feed',
+  '/sentinel': 'Data Quality Center (SENTINEL)',
 }
 
 function getSessionId() {

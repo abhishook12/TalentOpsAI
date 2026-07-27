@@ -84,15 +84,14 @@ const ConnectOutlookModal = ({ isOpen, onClose, onSuccess }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* Backdrop */}
+    <div className="modal-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0"
         onClick={status !== 'verifying' ? onClose : undefined}
       />
       
       {/* Modal Box */}
-      <div className="relative bg-[var(--surface-container)] border border-[var(--outline)] rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col">
+      <div className="relative glass-panel modal-enter w-full max-w-md overflow-hidden flex flex-col">
         {/* Header */}
         <div className="px-6 py-5 border-b border-[var(--outline)] flex items-center justify-between">
           <h2 className="text-xl font-semibold text-[var(--text-primary)]">Connect Outlook</h2>

@@ -425,7 +425,7 @@ def search_recruiters(
     db: Session = Depends(get_db)
 ):
     """
-    Smart weighted search using pg_trgm similarity + ILIKE scoring.
+    Smart weighted search using pg_trgm similarity + LIKE scoring.
     Results are ranked by relevance_score descending.
     """
     normalized_query = normalize_text(q)
@@ -530,37 +530,37 @@ def search_recruiters(
                         THEN 40
                     ELSE 0
                 END
-                + ROUND(similarity(r.recruiter_name, :q) * 30)::int
-                + ROUND(similarity(r.email, :q) * 15)::int
+                + CAST(ROUND(similarity(r.recruiter_name, :q) * 30) AS INT)
+                + CAST(ROUND(similarity(r.email, :q) * 15) AS INT)
             ) AS relevance_score
         FROM recruiters r
         LEFT JOIN companies c ON r.company_id = c.company_id
         WHERE
             r.is_active = true
             AND (
-                r.recruiter_name ILIKE '%' || :q || '%'
-                OR r.email ILIKE '%' || :q || '%'
-                OR r.email2 ILIKE '%' || :q || '%'
-                OR r.email3 ILIKE '%' || :q || '%'
-                OR r.email4 ILIKE '%' || :q || '%'
-                OR r.phone ILIKE '%' || :q || '%'
-                OR r.phone2 ILIKE '%' || :q || '%'
-                OR r.phone3 ILIKE '%' || :q || '%'
-                OR r.phone4 ILIKE '%' || :q || '%'
-                OR COALESCE(r.alternate_emails, '') ILIKE '%' || :q || '%'
-                OR COALESCE(r.alternate_phones, '') ILIKE '%' || :q || '%'
+                r.recruiter_name LIKE '%' || :q || '%'
+                OR r.email LIKE '%' || :q || '%'
+                OR r.email2 LIKE '%' || :q || '%'
+                OR r.email3 LIKE '%' || :q || '%'
+                OR r.email4 LIKE '%' || :q || '%'
+                OR r.phone LIKE '%' || :q || '%'
+                OR r.phone2 LIKE '%' || :q || '%'
+                OR r.phone3 LIKE '%' || :q || '%'
+                OR r.phone4 LIKE '%' || :q || '%'
+                OR COALESCE(r.alternate_emails, '') LIKE '%' || :q || '%'
+                OR COALESCE(r.alternate_phones, '') LIKE '%' || :q || '%'
                 OR (
                     :q_digits != ''
                     AND (
-                        r.phone ILIKE '%' || :q_digits || '%'
-                        OR r.phone2 ILIKE '%' || :q_digits || '%'
-                        OR r.phone3 ILIKE '%' || :q_digits || '%'
-                        OR r.phone4 ILIKE '%' || :q_digits || '%'
-                        OR COALESCE(r.alternate_phones, '') ILIKE '%' || :q_digits || '%'
+                        r.phone LIKE '%' || :q_digits || '%'
+                        OR r.phone2 LIKE '%' || :q_digits || '%'
+                        OR r.phone3 LIKE '%' || :q_digits || '%'
+                        OR r.phone4 LIKE '%' || :q_digits || '%'
+                        OR COALESCE(r.alternate_phones, '') LIKE '%' || :q_digits || '%'
                     )
                 )
-                OR COALESCE(c.company_name, '') ILIKE '%' || :q || '%'
-                OR COALESCE(r.specialization, '') ILIKE '%' || :q || '%'
+                OR COALESCE(c.company_name, '') LIKE '%' || :q || '%'
+                OR COALESCE(r.specialization, '') LIKE '%' || :q || '%'
                 OR r.normalized_recruiter_name LIKE '%' || :normalized_query || '%'
                 OR c.normalized_company_name LIKE '%' || :normalized_query || '%'
                 OR similarity(r.recruiter_name, :q) > 0.3
@@ -579,11 +579,11 @@ def search_recruiters(
     if company:
         clean_company = normalize_text(company)
         base_sql += """ AND (
-            c.normalized_company_name ILIKE '%' || :company || '%'
-            OR LOWER(c.company_name) ILIKE '%' || LOWER(:raw_company) || '%'
+            c.normalized_company_name LIKE '%' || :company || '%'
+            OR LOWER(c.company_name) LIKE '%' || LOWER(:raw_company) || '%'
             OR similarity(c.company_name, :raw_company) > 0.15
-            OR c.website ILIKE '%' || LOWER(:raw_company) || '%'
-            OR c.email_pattern ILIKE '%' || LOWER(:raw_company) || '%'
+            OR c.website LIKE '%' || LOWER(:raw_company) || '%'
+            OR c.email_pattern LIKE '%' || LOWER(:raw_company) || '%'
         )"""
         params["company"] = clean_company
         params["raw_company"] = company
@@ -593,7 +593,7 @@ def search_recruiters(
             base_sql += " AND COALESCE(r.state, c.state) = :location"
             params["location"] = abbr
     if specialization:
-        base_sql += " AND r.specialization ILIKE '%' || :specialization || '%'"
+        base_sql += " AND r.specialization LIKE '%' || :specialization || '%'"
         params["specialization"] = specialization
 
     base_sql += " ORDER BY relevance_score DESC, r.completeness_score DESC NULLS LAST LIMIT :candidate_limit"
@@ -690,12 +690,15 @@ def get_recruiters(
 
     query = db.query(Recruiter, Company)\
               .join(Company, Recruiter.company_id == Company.company_id, isouter=True)\
-              .filter(Recruiter.user_id == current_user.id)\
               .options(
                   selectinload(Recruiter.structured_emails),
                   selectinload(Recruiter.structured_phones),
                   selectinload(Recruiter.structured_locations)
               )
+              
+    is_admin = current_user.role and current_user.role.name.lower() in ('admin', 'superadmin')
+    if not is_admin:
+        query = query.filter(Recruiter.user_id == current_user.id)
     
     from ..utils.normalizer import normalize_text
     
@@ -770,19 +773,14 @@ def get_recruiters(
     is_unfiltered = not any([search, state, state_status, city, company, company_id, title, has_phone, missing_email, is_active is not None, min_completeness, needs_review is not None, email_inference_status, source_job_id, data_source])
     
     if is_unfiltered:
-        total_count = analytics_cache.get("total_recruiters_count_base")
+        base_cache_key = f"total_recruiters_count_base_{current_user.id}"
+        total_count = analytics_cache.get(base_cache_key)
         if total_count is None:
-            # Fallback to fast postgres stats for base count to avoid 2s delay
-            try:
-                from sqlalchemy import text
-                total_count = db.execute(text("SELECT reltuples::bigint FROM pg_class WHERE relname = 'recruiters'")).scalar()
-                analytics_cache.set("total_recruiters_count_base", total_count, ttl=300)
-            except:
-                total_count = query.count()
-                analytics_cache.set("total_recruiters_count_base", total_count, ttl=300)
+            total_count = query.count()
+            analytics_cache.set(base_cache_key, total_count, ttl=300)
     else:
         # Cache filtered counts too based on URL params to speed up paginating filtered results
-        filter_cache_key = f"rec_count_{search}_{state}_{company_id}_{is_active}_{needs_review}_{has_phone}_{missing_email}"
+        filter_cache_key = f"rec_count_{current_user.id}_{search}_{state}_{company_id}_{is_active}_{needs_review}_{has_phone}_{missing_email}"
         total_count = analytics_cache.get(filter_cache_key)
         if total_count is None:
             total_count = query.count()
@@ -895,6 +893,16 @@ def get_recruiter(recruiter_id: int, db: Session = Depends(get_db), current_user
     r = db.query(Recruiter).filter(Recruiter.user_id == current_user.id, Recruiter.recruiter_id == recruiter_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
+        
+    try:
+        from app.services.enrichment_service import jit_enrichment_service
+        enriched = jit_enrichment_service.enrich_recruiter_sync(db, r)
+        if enriched:
+            db.refresh(r)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"JIT Enrichment failed: {e}")
+        
     return serialize_recruiter(r)
 
 @router.post("/{recruiter_id}/email/approve")

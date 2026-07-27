@@ -52,6 +52,7 @@ export default function Sidebar() {
   const adminNav = [
     { isGroupHeader: true, label: 'Command Center' },
     { to: '/admin', label: 'Admin Terminal', icon: LayoutDashboard },
+    { to: '/sentinel', label: 'Data Quality (SENTINEL)', icon: HeartPulse },
     { to: '/admin/users', label: 'User Management', icon: UserCog },
     { to: '/admin/visitor-analytics', label: 'Visitor Analytics', icon: Eye },
     { 
@@ -73,7 +74,7 @@ export default function Sidebar() {
     <aside style={{
       width: 'var(--sidebar-width)',
       height: '100dvh',
-      background: 'linear-gradient(180deg, #191919 0%, #141414 100%)',
+      background: 'var(--sidebar-bg)',
       borderRight: '1px solid var(--sidebar-border)',
       display: 'flex',
       flexDirection: 'column',
@@ -83,28 +84,38 @@ export default function Sidebar() {
       zIndex: 20,
       overflow: 'visible',
     }}>
-      <div style={{ padding: '22px 18px 18px', borderBottom: '1px solid var(--card-border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ padding: '24px 20px', borderBottom: '1px solid var(--card-border)' }}>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 24 }}>
           <div style={{
-            width: 44,
-            height: 44,
-            borderRadius: 14,
-            background: 'linear-gradient(135deg, #d8d8d8, #8c8c8c)',
-            display: 'grid',
-            placeItems: 'center',
-            color: '#111',
-            boxShadow: '0 12px 28px rgba(0,0,0,0.22)',
-            flexShrink: 0,
+            fontFamily: '"Playfair Display", serif',
+            fontSize: 28,
+            fontWeight: 700,
+            lineHeight: 1,
+            letterSpacing: '-0.02em',
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2
           }}>
-            <ShieldCheck size={20} />
+            <span>T</span><span style={{ fontWeight: 400 }}>O</span>
           </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ color: 'var(--text-primary)', fontSize: 18, fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.05 }}>
-              {isAdmin ? 'Admin Console' : 'TalentOps AI'}
-            </div>
-            <div style={{ color: 'rgba(255,255,255,0.62)', fontSize: 12, fontWeight: 700, marginTop: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-              {isAdmin ? 'Operations' : 'Recruiter Intel'}
-            </div>
+          <div style={{ 
+            fontSize: 11, 
+            fontWeight: 600, 
+            letterSpacing: '0.25em', 
+            color: '#fff' 
+          }}>
+            TALENT OPS
+          </div>
+        </div>
+
+        <div style={{ minWidth: 0 }}>
+          <div style={{ color: 'var(--text-primary)', fontSize: 14, fontWeight: 700 }}>
+            {isAdmin ? 'Admin Console' : 'TalentOps AI'}
+          </div>
+          <div style={{ color: 'var(--text-muted)', fontSize: 10, fontWeight: 600, marginTop: 4, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            {isAdmin ? 'OPERATIONS' : 'RECRUITER INTEL'}
           </div>
         </div>
       </div>
@@ -115,8 +126,8 @@ export default function Sidebar() {
             return (
               <div key={`header-${index}`} style={{
                 color: 'var(--text-muted)',
-                fontSize: 11,
-                fontWeight: 800,
+                fontSize: 10,
+                fontWeight: 700,
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
                 padding: '16px 14px 8px',
@@ -140,14 +151,14 @@ export default function Sidebar() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 12,
-                padding: '12px 14px',
-                marginBottom: 6,
-                borderRadius: 14,
+                padding: '10px 14px',
+                marginBottom: 4,
+                borderRadius: 8,
                 textDecoration: 'none',
-                color: active ? '#ffffff' : 'rgba(255,255,255,0.72)',
-                background: active ? 'rgba(255,255,255,0.05)' : 'transparent',
-                border: active ? '1px solid rgba(255,255,255,0.08)' : '1px solid transparent',
-                borderLeft: active ? '4px solid #d5d5d5' : '4px solid transparent',
+                color: active ? '#ffffff' : 'var(--text-secondary)',
+                background: active ? 'var(--accent-bg)' : 'transparent',
+                border: '1px solid transparent',
+                borderLeft: active ? '4px solid var(--accent)' : '4px solid transparent',
                 boxShadow: active ? 'inset 0 1px 0 rgba(255,255,255,0.05)' : 'none',
                 transition: 'all 0.15s ease',
                 fontSize: 13.5,

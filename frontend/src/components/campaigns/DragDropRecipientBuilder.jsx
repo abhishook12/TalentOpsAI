@@ -45,13 +45,13 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
   });
 
   return (
-    <div className="flex h-[600px] border border-[var(--border)] rounded-xl overflow-hidden bg-[var(--bg-page)] shadow-sm">
+    <div className="flex h-[600px] border border-[var(--card-border)] rounded-xl overflow-hidden bg-[var(--main-bg)] shadow-sm">
       
       {/* Left Pane: Sources */}
-      <div className="w-[45%] flex flex-col border-r border-[var(--border)] bg-[var(--bg-surface)]">
+      <div className="w-[45%] flex flex-col border-r border-[var(--card-border)] bg-[var(--card-bg)]">
         
         {/* Tabs */}
-        <div className="flex border-b border-[var(--border)] bg-[var(--bg-page)] h-14">
+        <div className="flex border-b border-[var(--card-border)] bg-[var(--card-bg)] h-14">
           {[
             { id: 'paste', icon: ClipboardPaste, label: 'Paste Directly', enabled: import.meta.env.VITE_FEATURE_PASTE_IMPORT === 'true' },
             { id: 'upload', icon: FileSpreadsheet, label: 'CSV / Excel', enabled: import.meta.env.VITE_FEATURE_CSV_IMPORT === 'true' || import.meta.env.VITE_FEATURE_EXCEL_IMPORT === 'true' },
@@ -62,19 +62,19 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
               disabled={!tab.enabled}
               title={!tab.enabled ? 'Coming soon' : ''}
               onClick={() => tab.enabled && setActiveTab(tab.id)}
-              className={`flex-1 flex flex-col items-center justify-center gap-0.5 px-2 py-1 text-sm font-medium transition-colors border-b-2 relative ${
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 px-2 py-1 text-[13.5px] font-medium transition-colors border-b-[3px] relative ${
                 activeTab === tab.id 
-                  ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--bg-surface)]' 
+                  ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--card-bg)]' 
                   : !tab.enabled
                     ? 'border-transparent text-[var(--text-muted)] opacity-50 cursor-not-allowed'
-                    : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)]'
+                    : 'border-transparent text-[var(--text-muted)] hover:text-[#fff] hover:bg-white/5'
               }`}
             >
               <div className="flex items-center gap-1.5">
-                <tab.icon size={15} /> <span className="hidden sm:inline">{tab.label}</span>
+                <tab.icon size={16} /> <span className="hidden sm:inline">{tab.label}</span>
               </div>
               {!tab.enabled && (
-                <span style={{ fontSize: '9px', lineHeight: 1 }} className="uppercase tracking-wider font-bold bg-[var(--bg-page)] border border-[var(--border)] px-1 py-[2px] rounded text-[var(--text-muted)] mt-0.5">Coming Soon</span>
+                <span style={{ fontSize: '9px', lineHeight: 1 }} className="uppercase tracking-wider font-bold bg-[var(--main-bg)] border border-[var(--card-border)] px-1 py-[2px] rounded text-[var(--text-muted)] mt-0.5">Coming Soon</span>
               )}
             </button>
           ))}
@@ -89,10 +89,10 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
       </div>
 
       {/* Right Pane: Selected Recipients */}
-      <div className="w-[55%] flex flex-col bg-[var(--bg-surface)]">
+      <div className="w-[55%] flex flex-col bg-[var(--card-bg)]">
         
         {/* Header & Stats */}
-        <div className="p-4 border-b border-[var(--border)] bg-[var(--bg-page)]">
+        <div className="p-4 border-b border-[var(--card-border)] bg-[var(--card-bg)]">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Mail className="text-[var(--accent)]" size={20} />

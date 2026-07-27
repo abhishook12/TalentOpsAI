@@ -11,7 +11,7 @@ from ..config import JWT_SECRET
 # Configuration — unified: uses JWT_SECRET from config.py
 SECRET_KEY = JWT_SECRET
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 43200  # 30 days
 REFRESH_TOKEN_EXPIRE_DAYS = 30
 
 import bcrypt

@@ -58,7 +58,7 @@ export default function USHeatmap() {
 
   const colorScale = scaleLinear()
     .domain([0, maxCount || 1])
-    .range(["#1e3a5f", "#f59e0b"]);
+    .range(["#2e1b4d", "#a855f7"]);
 
   const handleMouseMove = (e) => {
     // Keep tooltip relative to the map container by using nativeEvent offset
@@ -94,8 +94,8 @@ export default function USHeatmap() {
         position: "relative", 
         width: "100%", 
         minHeight: "450px", 
-        background: "#0b1221", 
-        borderRadius: "14px", 
+        background: "var(--card-bg)", 
+        borderRadius: "12px", 
         border: "1px solid var(--card-border)", 
         display: "flex",
         flexDirection: "column"
@@ -106,7 +106,7 @@ export default function USHeatmap() {
         <h2 style={{ margin: "2px 0 0", fontSize: "18px", fontWeight: 700, color: "var(--text-primary)" }}>Recruiter Coverage by State</h2>
         <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>Choropleth of live recruiter density across the United States.</p>
         <div style={{ position: "absolute", top: 20, right: 20 }}>
-          <span style={{ fontSize: "10px", fontWeight: "bold", border: "1px solid var(--card-border)", padding: "4px 8px", borderRadius: "100px", color: "var(--warning)" }}>LIVE</span>
+          <span style={{ fontSize: "10px", fontWeight: "bold", border: "1px solid rgba(139, 92, 246, 0.3)", background: "rgba(139, 92, 246, 0.1)", padding: "4px 10px", borderRadius: "100px", color: "var(--accent)" }}>LIVE</span>
         </div>
       </div>
 
@@ -120,14 +120,14 @@ export default function USHeatmap() {
                 {geographies.map((geo) => {
                   const stateAbbr = fipsToState[geo.id];
                   const count = dataMap[stateAbbr] || 0;
-                  const fill = count > 0 ? colorScale(count) : "#141a25";
+                  const fill = count > 0 ? colorScale(count) : "var(--panel-bg)";
 
                   return (
                     <Geography
                       key={geo.rsmKey}
                       geography={geo}
                       fill={fill}
-                      stroke="#0b1221"
+                      stroke="var(--card-bg)"
                       strokeWidth={1.5}
                       onMouseEnter={() => {
                         if (tooltipRef.current && tooltipTitleRef.current && tooltipValueRef.current) {
@@ -143,7 +143,7 @@ export default function USHeatmap() {
                       }}
                       style={{
                         default: { outline: "none", transition: "fill 250ms" },
-                        hover: { fill: "#fcd34d", outline: "none", cursor: "pointer", transition: "fill 150ms" },
+                        hover: { fill: "#c4b5fd", outline: "none", cursor: "pointer", transition: "fill 150ms" },
                         pressed: { outline: "none" },
                       }}
                     />

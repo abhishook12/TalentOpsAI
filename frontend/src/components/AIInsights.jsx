@@ -30,13 +30,13 @@ export default function AIInsights() {
   });
 
   return (
-    <ShellCard style={{ padding: 18, marginBottom: 16, background: 'linear-gradient(135deg, var(--bg-surface), var(--card-bg))', border: '1px solid var(--card-border)', boxShadow: '0 8px 32px rgba(14, 165, 233, 0.05)' }}>
+    <ShellCard style={{ padding: 18, marginBottom: 16, background: 'var(--panel-bg)', border: '1px solid var(--card-border)' }}>
       <SectionHeader
         eyebrow="Intelligence"
         title="Smart Insights"
         subtitle="AI-driven analysis of your operational data."
         action={
-          <Badge tone="success" style={{ background: 'rgba(14, 165, 233, 0.1)', color: 'var(--accent)', borderColor: 'rgba(14, 165, 233, 0.2)' }}>
+          <Badge tone="success" style={{ background: 'rgba(139, 92, 246, 0.1)', color: 'var(--accent)', borderColor: 'rgba(139, 92, 246, 0.2)' }}>
             <Sparkles size={12} style={{ marginRight: 4 }} /> AI Active
           </Badge>
         }
@@ -58,22 +58,21 @@ export default function AIInsights() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.1 }}
                 style={{
-                  display: 'flex', alignItems: 'flex-start', gap: 14,
-                  padding: 16, borderRadius: 12,
-                  background: 'rgba(14, 165, 233, 0.03)',
-                  border: '1px solid rgba(14, 165, 233, 0.1)',
+                  display: 'flex', alignItems: 'center', gap: 16,
+                  padding: '16px 20px', borderRadius: 12,
+                  background: 'var(--card-bg)',
+                  border: '1px solid var(--card-border)',
                 }}
               >
                 <div style={{ 
-                  width: 56, height: 56, flexShrink: 0, borderRadius: 14, 
-                  background: 'linear-gradient(135deg, var(--accent), #38bdf8)', 
-                  display: 'grid', placeItems: 'center', color: '#ffffff', 
-                  boxShadow: '0 4px 12px rgba(14, 165, 233, 0.25)' 
+                  width: 44, height: 44, flexShrink: 0, borderRadius: 10, 
+                  background: 'var(--accent-bg)', 
+                  display: 'grid', placeItems: 'center', color: 'var(--accent)', 
                 }}>
-                  <Icon size={28} strokeWidth={2.5} />
+                  <Icon size={22} strokeWidth={2.5} />
                 </div>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', minHeight: 56 }}>
-                  <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.4 }}>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: '#ffffff', lineHeight: 1.4 }}>
                     {insight.text}
                   </div>
                 </div>

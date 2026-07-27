@@ -6,6 +6,9 @@ export function useSessionState(key, initialValue) {
     if (saved !== null) {
       try {
         const parsed = JSON.parse(saved);
+        if (typeof initialValue === 'string' && typeof parsed !== 'string') {
+          return saved;
+        }
         if (initialValue instanceof Map && Array.isArray(parsed)) {
           return new Map(parsed);
         }

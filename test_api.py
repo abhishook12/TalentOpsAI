@@ -1,22 +1,18 @@
-import urllib.request
+import requests
+import json
 
-try:
-    with urllib.request.urlopen("http://127.0.0.1:8000/analytics/dashboard-kpis") as response:
-        html = response.read()
-        print("KPIs:", html[:200])
-except Exception as e:
-    print("Error KPIs:", e)
+r = requests.post('http://127.0.0.1:8000/auth/login', json={'email': 'admin@talentops.com', 'password': '1012'})
+token = r.json().get('token')
+headers = {'Authorization': f'Bearer {token}'}
 
-try:
-    with urllib.request.urlopen("http://127.0.0.1:8000/analytics/companies-search?state=ALL&limit=6&skip=0&min_recruiters=1") as response:
-        html = response.read()
-        print("Search:", html[:200])
-except Exception as e:
-    print("Error Search:", e)
-
-try:
-    with urllib.request.urlopen("http://127.0.0.1:8000/analytics/visit-stats") as response:
-        html = response.read()
-        print("Visits:", html[:200])
-except Exception as e:
-    print("Error Visits:", e)
+print("Testing /analytics/companies-search...")
+res = requests.get('http://127.0.0.1:8000/analytics/companies-search?limit=10', headers=headers)
+print("Status Code:", res.status_code)
+if res.status_code == 200:
+    data = res.json()
+    print("SUCCESS! The database error is gone.")
+    print("Number of companies returned:", len(data))
+    if len(data) > 0:
+        print("First company:", data[0]['company_name'])
+else:
+    print("Error:", res.text)

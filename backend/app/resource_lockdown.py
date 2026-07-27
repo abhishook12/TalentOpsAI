@@ -88,8 +88,17 @@ def check_system_limits():
         from sqlalchemy.orm import Session
         with Session(engine) as db:
             # 1. Check Database Size
-            res = db.execute(text("SELECT pg_database_size(current_database()) / 1048576.0")).fetchone()
-            db_size_mb = float(res[0]) if res and res[0] else 0.0
+            if 'sqlite' in str(db.bind.url):
+                # SQLite fallback
+                db_path = str(db.bind.url).replace('sqlite:///', '')
+                try:
+                    db_size_mb = os.path.getsize(db_path) / 1048576.0
+                except FileNotFoundError:
+                    db_size_mb = 0.0
+            else:
+                res = db.execute(text("SELECT pg_database_size(current_database()) / 1048576.0")).fetchone()
+                db_size_mb = float(res[0]) if res and res[0] else 0.0
+                
             logger.debug(f"[Shield] DB size: {db_size_mb:.1f} MB / {MAX_DB_SIZE_MB} MB limit")
             if db_size_mb >= MAX_DB_SIZE_MB:
                 _set_lockdown_state(True, f"Database Size exceeded 90% threshold ({db_size_mb:.2f} MB / {MAX_DB_SIZE_MB} MB limit)")
@@ -97,9 +106,12 @@ def check_system_limits():
             
             # 2. Check Storage Size
             try:
-                storage_res = db.execute(text("SELECT sum((metadata->>'size')::bigint) FROM storage.objects")).fetchone()
-                storage_size_bytes = float(storage_res[0]) if storage_res and storage_res[0] else 0.0
-                storage_size_mb = storage_size_bytes / 1048576.0
+                if 'sqlite' in str(db.bind.url):
+                    storage_res = db.execute(text("SELECT sum(json_extract(metadata, '$.size')) FROM 'storage.objects'")).fetchone()
+                else:
+                    storage_res = db.execute(text("SELECT sum((metadata->>'size')::bigint) FROM storage.objects")).fetchone()
+                storage_bytes = float(storage_res[0]) if storage_res and storage_res[0] else 0.0
+                storage_size_mb = storage_bytes / 1048576.0
                 logger.debug(f"[Shield] Storage size: {storage_size_mb:.1f} MB / {MAX_STORAGE_SIZE_MB} MB limit")
                 if storage_size_mb >= MAX_STORAGE_SIZE_MB:
                     _set_lockdown_state(True, f"Storage Size exceeded 90% threshold ({storage_size_mb:.2f} MB / {MAX_STORAGE_SIZE_MB} MB limit)")

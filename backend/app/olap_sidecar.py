@@ -32,11 +32,13 @@ class MemoryOLAPSidecar:
             from sqlalchemy import text
             db = SessionLocal()
             try:
-                db.execute(text("SET statement_timeout = '60s'"))
-                
+                try:
+                    db.execute(text("SET statement_timeout = '60s'"))
+                except Exception:
+                    pass
                 # Check if user is an admin
                 user_role_name = db.execute(text("SELECT r.name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = :user_id"), {"user_id": user_id}).scalar()
-                is_admin = user_role_name and user_role_name.lower() == 'admin'
+                is_admin = user_role_name and user_role_name.lower() in ('admin', 'superadmin')
                 
                 where_clause = "WHERE 1=1" if is_admin else "WHERE user_id = :user_id"
                 

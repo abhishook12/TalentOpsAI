@@ -96,6 +96,12 @@ const reviewQueueRoute = createRoute({
   component: lazyComponent(() => import('./pages/ReviewQueue')),
 })
 
+const sentinelRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: '/sentinel',
+  component: lazyComponent(() => import('./pages/admin/SentinelDashboard')),
+})
+
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/settings',
@@ -210,6 +216,7 @@ const routeTree = rootRoute.addChildren([
     adminRoute,
     activityRoute,
     reviewQueueRoute,
+    sentinelRoute,
     visitorAnalyticsRoute,
     userManagementRoute,
     adminSettingsRoute,

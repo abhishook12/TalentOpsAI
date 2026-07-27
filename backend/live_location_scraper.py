@@ -66,7 +66,7 @@ def run_live_scraper():
             chunk = db.execute(text("""
                 SELECT recruiter_id, email
                 FROM recruiters
-                WHERE recruiter_id > :lid AND (location IS NULL OR TRIM(location) = '' OR LOWER(location) = 'nan') AND is_active = true
+                WHERE recruiter_id > :lid AND (state IS NULL OR TRIM(state) = '' OR LOWER(state) = 'nan') AND is_active = true
                 ORDER BY recruiter_id LIMIT 10000
             """), {"lid": last_rid}).mappings().all()
             if not chunk: break
@@ -115,7 +115,7 @@ def run_live_scraper():
                 b_chunk = up_batch[i:i+500]
                 db.execute(text("""
                     UPDATE recruiters
-                    SET location = :loc,
+                    SET state = :loc,
                         notes = COALESCE(notes, '') || '; ' || :nts
                     WHERE recruiter_id = :rid
                 """), b_chunk)

@@ -15,7 +15,7 @@ import {
   TimelineItem,
 } from '../components/CommandCenter'
 import USHeatmap from '../components/USHeatmap'
-import { CompanyLogo } from '../components/CompanyLogo'
+import { CompanyIdentity } from '../components/CompanyIdentity'
 import AIInsights from '../components/AIInsights'
 import EnrichmentLiveFeed from '../components/EnrichmentLiveFeed'
 import { Skeleton, SkeletonRow } from '../components/ui/Skeleton'
@@ -339,16 +339,14 @@ export default function Dashboard() {
                     textAlign: 'left',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                    <CompanyLogo domain={company.logo_domain || company.website || company.email_pattern} name={company.company_name} size={36} />
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {company.company_name || 'Unnamed company'}
-                      </div>
-                      <div style={{ marginTop: 3, fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {[company.location, company.state_abbr].filter(Boolean).join(' • ') || 'Location unlisted'}
-                      </div>
-                    </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <CompanyIdentity 
+                      domain={company.logo_domain || company.website || company.email_pattern} 
+                      name={company.company_name} 
+                      subtitle={[company.location, company.state_abbr].filter(Boolean).join(' • ') || 'Location unlisted'}
+                      interactive={false}
+                      style={{ padding: 0 }}
+                    />
                   </div>
                   <Badge tone="neutral">{formatCount(company.recruiter_count)} recruiters</Badge>
                 </button>

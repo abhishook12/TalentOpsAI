@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { exportToExcel } from '../services/export'
 import api, { API, getErrorMessage, logAction } from '../services/api'
-import { CompanyLogo } from '../components/CompanyLogo'
+import { CompanyIdentity } from '../components/CompanyIdentity'
 import { useSessionState } from '../hooks/useSessionState'
 
 function initials(name) {
@@ -881,9 +881,15 @@ export default function AISearch() {
                               </div>
                               <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.email)}</div>
                               <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.phone)}</div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
-                                {r.company_name ? <CompanyLogo domain={r.website || r.email_pattern} name={r.company_name} size={24} style={{ flexShrink: 0, borderRadius: 4 }} /> : null}
-                                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.company_name)}</span>
+                              <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                                <CompanyIdentity 
+                                  domain={r.website || r.email_pattern} 
+                                  name={r.company_name} 
+                                  interactive={false}
+                                  size={36}
+                                  logoSize={24}
+                                  style={{ padding: 0 }}
+                                />
                               </div>
                               <div>
                                 <span
@@ -1092,9 +1098,13 @@ export default function AISearch() {
                 <div style={{ display: 'grid', gap: 10 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Company</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-                      {selected.company_name ? <CompanyLogo domain={selected.website || selected.email_pattern} name={selected.company_name} size={32} style={{ flexShrink: 0, borderRadius: 4 }} /> : null}
-                      <span style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(selected.company_name)}</span>
+                    <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                      <CompanyIdentity 
+                        domain={selected.website || selected.email_pattern} 
+                        name={selected.company_name} 
+                        interactive={false}
+                        style={{ padding: 0 }}
+                      />
                     </div>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>

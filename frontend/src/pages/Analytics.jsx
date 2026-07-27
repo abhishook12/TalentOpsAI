@@ -230,7 +230,10 @@ export default function Analytics() {
     stateData.length === 0 &&
     dailyData.length === 0 &&
     weeklyData.length === 0 &&
-    topPages.length === 0
+    topPages.length === 0 &&
+    (dq?.known_state_count || 0) === 0 &&
+    (dq?.explicit_state_count || 0) === 0 &&
+    (dq?.inferred_state_count || 0) === 0
 
   const hasStateData = stateData.length > 0
   const hasStateSelection = selectedStates.length > 0

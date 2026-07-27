@@ -55,7 +55,10 @@ def cached_endpoint(ttl_seconds=30):
             # Add kwargs stringified (excluding Db sessions which are unhashable)
             for k, v in sorted(kwargs.items()):
                 if k != 'db':
-                    key_parts.append(f"{k}={v}")
+                    if hasattr(v, 'id') and k == 'current_user':
+                        key_parts.append(f"{k}={v.id}")
+                    else:
+                        key_parts.append(f"{k}={v}")
             cache_key = ":".join(key_parts)
             
             cached = analytics_cache.get(cache_key)
@@ -83,7 +86,7 @@ def get_data_quality(current_user: User = Depends(get_current_user_from_request)
 @cached_endpoint(ttl_seconds=300)
 def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
 
-    is_admin = current_user.role and current_user.role.name.lower() == 'admin'
+    is_admin = current_user.role and current_user.role.name.lower() in ('admin', 'superadmin')
     where_clause = "WHERE 1=1" if is_admin else "WHERE user_id = :user_id"
     
     sql = text(f"""
@@ -208,7 +211,7 @@ def company_states(
             COUNT(r.recruiter_id) AS count
         FROM recruiters r
         LEFT JOIN companies c ON c.company_id = r.company_id
-        WHERE r.user_id = :user_id AND r.company_id = :company_id
+        WHERE r.company_id = :company_id
           AND {computed_state_sql} IS NOT NULL
         GROUP BY {computed_state_sql}
         ORDER BY count DESC, state ASC
@@ -218,7 +221,7 @@ def company_states(
         SELECT COUNT(r.recruiter_id) AS count
         FROM recruiters r
         LEFT JOIN companies c ON c.company_id = r.company_id
-        WHERE r.user_id = :user_id AND r.company_id = :company_id
+        WHERE r.company_id = :company_id
           AND {computed_state_sql} IS NULL
     """), {"company_id": company_id}).mappings().first()
 
@@ -250,18 +253,22 @@ def companies_search(
         response.headers["X-Total-Count"] = str(cached["total_count"])
         return cached["rows"]
 
-    where_clauses = ["c.is_active = true", "c.user_id = :user_id"]
+    is_superadmin = current_user.role and current_user.role.name.lower() in ('admin', 'superadmin')
+    if is_superadmin:
+        where_clauses = ["c.is_active = true", "1 = 1"]
+    else:
+        where_clauses = ["c.is_active = true", "c.user_id = :user_id"]
     params = {"limit": limit, "min_recruiters": min_recruiters, "skip": skip, "user_id": current_user.id}
 
     if q:
         q_clean = q.strip()
         import re
         q_ilike = re.sub(r'\s+', '%', q_clean)
-        # Use pg_trgm similarity (fuzzy matching) and ILIKE fallback for robustness
-        where_clauses.append("(c.company_name % :q OR ca.alias_name % :q OR c.company_name ILIKE '%' || :q_ilike || '%' OR ca.alias_name ILIKE '%' || :q_ilike || '%')")
+        # Use LIKE for SQLite compatibility (pg_trgm % and similarity() are Postgres-only)
+        where_clauses.append("(c.company_name LIKE '%' || :q_ilike || '%')")
         params["q"] = q_clean
         params["q_ilike"] = q_ilike
-        sim_col = "GREATEST(similarity(c.company_name, :q), COALESCE(similarity(ca.alias_name, :q), 0))"
+        sim_col = "0"
     else:
         sim_col = "0"
 
@@ -275,7 +282,7 @@ def companies_search(
         WITH recruiter_counts AS (
             SELECT company_id, COUNT(recruiter_id) as rc_count
             FROM recruiters
-            WHERE company_id IS NOT NULL AND user_id = :user_id
+            WHERE company_id IS NOT NULL AND ({'1=1' if is_superadmin else 'user_id = :user_id'})
             GROUP BY company_id
         ),
         comp_stats AS (
@@ -291,7 +298,6 @@ def companies_search(
                 MAX({{sim_col}}) AS sim_score
             FROM companies c
             LEFT JOIN recruiter_counts rc ON c.company_id = rc.company_id
-            LEFT JOIN company_aliases ca ON c.company_id = ca.canonical_company_id
             WHERE {{where_sql}}
             GROUP BY c.company_id, rc.rc_count
         )

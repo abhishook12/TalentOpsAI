@@ -13,6 +13,7 @@ import SignatureManager from '../components/SignatureManager';
 import EmailPreview from '../components/EmailPreview';
 import DragDropRecipientBuilder from '../components/campaigns/DragDropRecipientBuilder';
 import CampaignProgress from '../components/CampaignProgress';
+import CustomSelect from '../components/ui/CustomSelect';
 import CampaignLogs from '../components/CampaignLogs';
 import PastCampaignsModal from '../components/campaigns/PastCampaignsModal';
 import CampaignReuseWorkflow from '../components/campaigns/CampaignReuseWorkflow';
@@ -374,26 +375,28 @@ export default function Campaigns() {
             placeholder="Search campaigns..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-[var(--accent)]"
+            className="w-full bg-[var(--main-bg)] border border-[var(--card-border)] rounded-lg pl-10 pr-4 py-2 text-[13.5px] text-[#fff] focus:outline-none h-11"
           />
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           </div>
         </div>
-        <select 
-          value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value);
-            setPage(1);
-          }}
-          className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-[var(--accent)]"
-        >
-          <option value="all">All Statuses</option>
-          <option value="active">Active</option>
-          <option value="draft">Draft</option>
-          <option value="paused">Paused</option>
-          <option value="completed">Completed</option>
-        </select>
+        <div className="w-40 flex items-center bg-[var(--main-bg)] border border-[var(--card-border)] rounded-lg h-11">
+          <CustomSelect 
+            value={statusFilter}
+            onChange={(val) => {
+              setStatusFilter(val);
+              setPage(1);
+            }}
+            options={[
+              { value: 'all', label: 'All Statuses' },
+              { value: 'active', label: 'Active' },
+              { value: 'draft', label: 'Draft' },
+              { value: 'paused', label: 'Paused' },
+              { value: 'completed', label: 'Completed' }
+            ]}
+          />
+        </div>
         <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer">
           <input 
             type="checkbox" 
@@ -445,13 +448,22 @@ export default function Campaigns() {
                         <div className="text-xs text-[var(--text-muted)] mt-1">ID: {c.campaign_id}</div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2 py-1 text-xs font-bold uppercase tracking-wide border ${
-                          c.status === 'active' ? 'border-[var(--color-on-surface)] text-[var(--color-on-surface)]' :
-                          c.status === 'paused' ? 'border-[var(--color-outline)] text-[var(--color-on-surface-variant)]' :
-                          c.status === 'completed' ? 'border-transparent text-[var(--color-on-surface)] bg-[var(--color-surface-variant)]' :
-                          c.status === 'draft' ? 'border-[var(--color-outline-variant)] text-[var(--color-on-surface-variant)] border-dashed' :
-                          'border-[var(--color-outline)] text-[var(--color-on-surface-variant)]'
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest rounded-full ${
+                          c.status === 'active' ? 'bg-purple-500/10 text-purple-400' :
+                          c.status === 'paused' ? 'bg-yellow-500/10 text-yellow-500' :
+                          c.status === 'completed' ? 'bg-green-500/10 text-green-500' :
+                          c.status === 'draft' ? 'bg-white/5 text-[var(--text-secondary)]' :
+                          c.status === 'failed' ? 'bg-red-500/10 text-red-500' :
+                          'bg-white/5 text-[var(--text-secondary)]'
                         }`}>
+                          <div className={`w-1.5 h-1.5 rounded-full ${
+                            c.status === 'active' ? 'bg-purple-400' :
+                            c.status === 'paused' ? 'bg-yellow-500' :
+                            c.status === 'completed' ? 'bg-green-500' :
+                            c.status === 'draft' ? 'bg-[var(--text-secondary)]' :
+                            c.status === 'failed' ? 'bg-red-500' :
+                            'bg-[var(--text-secondary)]'
+                          }`}></div>
                           {c.status.charAt(0).toUpperCase() + c.status.slice(1)}
                         </span>
                       </td>
@@ -467,9 +479,9 @@ export default function Campaigns() {
                               <span className="text-[var(--text-secondary)]">{c.stats?.sent || 0} / {c.stats?.total || 0} Sent</span>
                               <span className="font-medium text-[var(--accent)]">{c.stats?.progress_percent || 0}%</span>
                             </div>
-                            <div className="w-full h-2 bg-[var(--color-surface-variant)] border border-[var(--color-outline)]">
+                            <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
                               <div 
-                                className="h-full bg-[var(--color-on-surface)] transition-all duration-500" 
+                                className="h-full bg-[var(--accent)] transition-all duration-500" 
                                 style={{ width: `${c.stats?.progress_percent || 0}%` }}
                               ></div>
                             </div>
@@ -716,24 +728,23 @@ export default function Campaigns() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs text-[var(--text-secondary)] mb-1">From Email</label>
-                    <select
-                      value={fromEmail}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val === 'connect_new') {
-                          toast('Connecting additional accounts is coming soon!', { icon: '🚧' });
-                          // revert back to current
-                          e.target.value = fromEmail;
-                        } else {
-                          setFromEmail(val);
-                          localStorage.setItem('talentops_from_email', val);
-                        }
-                      }}
-                      className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[var(--accent)] outline-none cursor-pointer hover:border-[var(--card-border-hover)] transition-colors"
-                    >
-                      <option value="Outlook Default">Outlook Default</option>
-                      <option value="connect_new">+ Connect another Outlook account</option>
-                    </select>
+                    <div className="bg-[var(--main-bg)] border border-[var(--card-border)] rounded-lg h-10 flex items-center">
+                      <CustomSelect
+                        value={fromEmail}
+                        onChange={(val) => {
+                          if (val === 'connect_new') {
+                            toast('Connecting additional accounts is coming soon!', { icon: '🚧' });
+                          } else {
+                            setFromEmail(val);
+                            localStorage.setItem('talentops_from_email', val);
+                          }
+                        }}
+                        options={[
+                          { value: 'Outlook Default', label: 'Outlook Default' },
+                          { value: 'connect_new', label: '+ Connect another Outlook account' }
+                        ]}
+                      />
+                    </div>
                   </div>
                   
                 </div>

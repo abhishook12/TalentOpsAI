@@ -24,7 +24,7 @@ def fix_unknowns():
             SET phone = location,
                 location = NULL
             WHERE (phone IS NULL OR phone = '')
-              AND (location ~ '^\(?[0-9]{3}\)?[-. ]?[0-9]{3}[-. ]?[0-9]{4}$');
+              AND (location LIKE '(%) %' OR location LIKE '%-%-%' OR location LIKE '% % %');
         """))
         print(f"   -> Salvaged {res_ph.rowcount} trapped phone numbers.")
         
@@ -33,8 +33,7 @@ def fix_unknowns():
         res_null = db.execute(text("""
             UPDATE recruiters
             SET location = NULL
-            WHERE location IN ('-', '--', '---', '0', 'NIL', 'nil', '#ERROR!', '', 'N/A')
-               OR location ~ '^[0-9]+$';
+            WHERE location IN ('-', '--', '---', '0', 'NIL', 'nil', '#ERROR!', '', 'N/A');
         """))
         print(f"   -> Cleaned {res_null.rowcount} corrupted location fields.")
         
@@ -73,13 +72,13 @@ def fix_unknowns():
         
         total_hq_fixed = 0
         for st_code, patterns in state_map.items():
-            conds = " OR ".join([f"c.location ILIKE '{p}'" for p in patterns])
+            conds = " OR ".join([f"c.location LIKE '{p}'" for p in patterns])
             res_hq = db.execute(text(f"""
-                UPDATE recruiters r
+                UPDATE recruiters
                 SET state = '{st_code}'
                 FROM companies c
-                WHERE r.company_id = c.company_id
-                  AND (r.state IS NULL OR r.state = '')
+                WHERE recruiters.company_id = c.company_id
+                  AND (recruiters.state IS NULL OR recruiters.state = '')
                   AND ({conds});
             """))
             total_hq_fixed += res_hq.rowcount

@@ -60,13 +60,13 @@ export default function CompanyModal({ company, onClose, onSave }) {
   };
 
   return (
-    <div style={{
+    <div className="modal-backdrop" style={{
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      background: 'rgba(0,0,0,0.5)', zIndex: 100000,
+      zIndex: 100000,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: 20
     }}>
-      <div className="card" style={{ width: '100%', maxWidth: 500, padding: '24px 32px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div className="glass-panel modal-enter" style={{ width: '100%', maxWidth: 500, padding: '24px 32px', display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 36, height: 36, borderRadius: 8, background: '#185FA518', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

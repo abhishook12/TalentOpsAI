@@ -39,27 +39,30 @@ def run_fix():
         res = db.execute(text("""
             UPDATE companies 
             SET location = NULL 
-            WHERE location ~ '[0-9]{3}-[0-9]{3}' OR location ~ 'ext\\.' OR location = '' OR location IS NULL;
+            WHERE location LIKE '%-%-%' OR location LIKE '%ext.%' OR location = '' OR location IS NULL;
         """))
         print(f"Scrubbed {res.rowcount} junk locations.")
 
         # 3. Infer headquarters from the majority of recruiters
         print("Inferring Headquarters location from recruiter density...")
-        hq_res = db.execute(text("""
-            UPDATE companies c
-            SET location = sub.top_loc
-            FROM (
-                SELECT 
-                    company_id, 
-                    MODE() WITHIN GROUP (ORDER BY normalized_city || ', ' || state) as top_loc
-                FROM recruiters
-                WHERE normalized_city IS NOT NULL AND normalized_city != '' AND state IS NOT NULL AND state != ''
-                GROUP BY company_id
-            ) sub
-            WHERE c.company_id = sub.company_id
-              AND c.location IS NULL;
-        """))
-        print(f"Inferred {hq_res.rowcount} Headquarters locations!")
+        hq_res_data = db.execute(text("""
+            SELECT company_id, normalized_city || ', ' || state as loc
+            FROM recruiters
+            WHERE normalized_city IS NOT NULL AND normalized_city != '' AND state IS NOT NULL AND state != ''
+        """)).mappings().all()
+
+        from collections import defaultdict
+        comp_locs = defaultdict(list)
+        for row in hq_res_data:
+            comp_locs[row['company_id']].append(row['loc'])
+
+        updates = 0
+        for cid, locs in comp_locs.items():
+            top_loc = max(set(locs), key=locs.count)
+            db.execute(text("UPDATE companies SET location = :loc WHERE company_id = :cid AND location IS NULL"), {"loc": top_loc, "cid": cid})
+            updates += 1
+
+        print(f"Inferred {updates} Headquarters locations!")
 
         db.commit()
         print("All company fixes applied successfully.")

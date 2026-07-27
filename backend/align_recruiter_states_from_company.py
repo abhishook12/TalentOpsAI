@@ -11,12 +11,12 @@ def align_states():
     db = SessionLocal()
     try:
         res = db.execute(text("""
-            UPDATE recruiters r
+            UPDATE recruiters
             SET state = c.state,
                 state_source = 'derived_from_company_hq'
             FROM companies c
-            WHERE r.company_id = c.company_id
-              AND (r.state IS NULL OR r.state = '' OR r.state = 'Unknown' OR r.state = 'US')
+            WHERE recruiters.company_id = c.company_id
+              AND (recruiters.state IS NULL OR recruiters.state = '' OR recruiters.state = 'Unknown' OR recruiters.state = 'US')
               AND c.state IS NOT NULL 
               AND c.state != '' 
               AND c.state != 'US'

@@ -370,8 +370,8 @@ export default function UserManagement() {
 
       {/* Create Modal Overlay */}
       {showCreateModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ background: 'var(--panel-bg)', padding: 32, borderRadius: 16, width: 400, boxShadow: '0 20px 40px rgba(0,0,0,0.4)', border: '1px solid var(--card-border)' }}>
+        <div className="modal-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+          <div className="glass-panel modal-enter" style={{ padding: 32, width: 400 }}>
             <h2 style={{ margin: '0 0 24px', fontSize: 22 }}>Create New User</h2>
             <form onSubmit={handleCreateUser}>
               <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>

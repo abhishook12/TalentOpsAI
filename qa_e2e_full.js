@@ -2,9 +2,9 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
 
-const BASE_URL = 'https://talent-ops-ai.vercel.app';
+const BASE_URL = process.env.BASE_URL || 'http://localhost:5173';
 const TEST_EMAIL = 'admin@talentops.com';
-const TEST_PASS = 'password123';
+const TEST_PASS = '1012';
 const RECIPIENT_EMAIL = 'admin@talentops.com';
 const ARTIFACTS_DIR = path.join(process.env.USERPROFILE || 'C:\\Users\\User', '.gemini', 'antigravity', 'brain', 'af41bbca-eae6-4fe8-82b8-160609b01afb');
 
@@ -53,19 +53,21 @@ async function runTest() {
         // 3. Create New Campaign
         console.log('Starting Campaign Wizard...');
         await page.click('text=New Campaign');
-        await page.waitForSelector('text=Manual', { state: 'visible' });
+        await page.waitForSelector('text=Paste Directly', { state: 'visible' });
         await takeScreenshot('04_wizard_start');
         
         // 4. Add Recipient
         console.log('Adding recipient...');
-        await page.click('button:has-text("Manual")');
+        await page.click('button:has-text("Paste Directly")');
         await page.waitForTimeout(500);
         await page.fill('textarea', RECIPIENT_EMAIL);
         await page.waitForTimeout(500);
-        await page.click('button:has-text("Validate & Add")');
+        await page.click('button:has-text("Add 1 Recipients")');
         
         // Wait for validation to complete
-        await page.waitForSelector('text=Selected Recipients (1)', { timeout: 15000 });
+        await page.waitForSelector('text=admin@talentops.com', { timeout: 15000 });
+        await page.click('button:has-text("Validate All")');
+        await page.waitForTimeout(500);
         await takeScreenshot('05_recipient_validated');
         
         await page.click('button:has-text("Continue")');
@@ -96,8 +98,8 @@ async function runTest() {
         console.log('Previewing campaign...');
         await page.waitForSelector('text=Launch Campaign', { state: 'visible' });
         // Wait for preflight to actually finish (green check text)
-        await page.waitForSelector('text=Outlook Bridge Online', { state: 'visible', timeout: 30000 });
-        await page.waitForSelector('text=Recipients Enrolled', { state: 'visible', timeout: 30000 });
+        await page.waitForSelector('text=Outlook Bridge: Online & Healthy', { state: 'visible', timeout: 30000 });
+        await page.waitForSelector('text=All Checks Passed', { state: 'visible', timeout: 30000 });
         await takeScreenshot('08_preview');
         
         // 7. Launch

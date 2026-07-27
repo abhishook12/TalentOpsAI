@@ -291,9 +291,10 @@ app.include_router(ai.router, prefix="/ai", tags=["AI"])
 app.include_router(campaigns.router, prefix="/campaigns", tags=["Campaigns"])
 app.include_router(harvester.router, prefix="/api", tags=["Autonomous Spider"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
-from .routes import analytics_session, bridge
+from .routes import analytics_session, bridge, sentinel
 app.include_router(analytics_session.router, prefix="/analytics/session", tags=["Analytics Session"])
 app.include_router(bridge.router, prefix="/api/bridge", tags=["Outlook Bridge"])
+app.include_router(sentinel.router)
 
 
 @app.get("/")
@@ -303,6 +304,7 @@ def root():
 import subprocess
 
 @app.get("/api/v1/version")
+@app.get("/version")
 def get_version():
     try:
         # Try to get commit hash locally
@@ -387,8 +389,10 @@ async def timeout_stuck_emails_sweep():
 @app.on_event("startup")
 async def startup_event():
     from .services.send_engine import restart_active_campaigns
+    from .services.sentinel_engine import sentinel_engine
     asyncio.create_task(timeout_stuck_emails_sweep())
     restart_active_campaigns()
+    sentinel_engine.start()
 
 from .routes import health
 app.include_router(health.router, prefix="/health", tags=["System Health"])

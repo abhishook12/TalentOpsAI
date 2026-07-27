@@ -70,34 +70,34 @@ export default function PastCampaignsModal({ isOpen, onClose, onImport }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-[var(--bg-page)] border border-[var(--border)] rounded-xl shadow-2xl w-[95vw] h-[95vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[100] bg-[#000000bb] flex items-center justify-center p-4 backdrop-blur-sm transition-opacity duration-300">
+      <div className="bg-[var(--main-bg)] border border-[var(--card-border)] rounded-xl shadow-2xl w-[95vw] h-[95vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-500 ease-out">
         
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] bg-[var(--bg-surface)]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--card-border)] bg-[var(--card-bg)]">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-[var(--accent)]/20 text-[var(--accent)] rounded-lg">
               <Mail size={24} />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-[var(--text-primary)]">Past Campaigns Library</h2>
+              <h2 className="text-xl font-bold text-[#fff]">Past Campaigns Library</h2>
               <p className="text-sm text-[var(--text-muted)]">Browse and reuse your previously sent campaigns lightning fast.</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-page)] rounded-lg transition-colors">
+          <button onClick={onClose} className="p-2 text-[var(--text-muted)] hover:text-[#fff] hover:bg-white/5 rounded-lg transition-colors">
             <X size={24} />
           </button>
         </div>
 
         <div className="flex flex-1 overflow-hidden">
           
-          <div className="w-[30%] border-r border-[var(--border)] flex flex-col bg-[var(--bg-surface)]/50">
-            <div className="p-4 border-b border-[var(--border)]">
+          <div className="w-[30%] border-r border-[var(--card-border)] flex flex-col bg-[var(--card-bg)]">
+            <div className="p-4 border-b border-[var(--card-border)]">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={18} />
                 <input 
                   type="text"
                   placeholder="Search past campaigns..."
-                  className="w-full bg-[var(--bg-page)] border border-[var(--border)] rounded-lg pl-10 pr-4 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+                  className="w-full bg-[var(--main-bg)] border border-[var(--card-border)] rounded-lg pl-10 pr-4 py-2 text-sm text-[#fff] focus:outline-none focus:border-[var(--accent)] transition-colors h-11"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />

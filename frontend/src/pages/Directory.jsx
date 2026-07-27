@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import * as XLSX from 'xlsx'
 import api, { getErrorMessage } from '../services/api'
-import { CompanyLogo } from '../components/CompanyLogo'
+import { CompanyIdentity } from '../components/CompanyIdentity'
 import { OutlookComposeOverlay } from '../components/OutlookComposeOverlay'
 import { useSessionState } from '../hooks/useSessionState'
 
@@ -351,6 +351,56 @@ export default function Directory() {
     XLSX.writeFile(exportWorkbook(rows), `${(selectedCompanyName || 'company').replace(/[^a-z0-9]+/gi, '_')}_selected.xlsx`)
   }
 
+  const exportEntireCompany = async () => {
+    if (!selectedCompany?.company_id) return showToast('No company selected', 'error')
+    
+    showToast('Exporting entire company...', 'info')
+    try {
+      let allRecruiters = []
+      let currentPage = 1
+      let hasMore = true
+
+      while (hasMore) {
+        const { data } = await api.get('/recruiters', {
+          params: {
+            company_id: selectedCompany.company_id,
+            limit: 100,
+            page: currentPage
+          }
+        })
+        
+        if (data && data.results && data.results.length > 0) {
+          allRecruiters = allRecruiters.concat(data.results)
+          if (data.results.length < 100) {
+            hasMore = false
+          } else {
+            currentPage++
+          }
+        } else {
+          hasMore = false
+        }
+      }
+      
+      if (!allRecruiters.length) {
+        return showToast('No recruiters found for this company', 'error')
+      }
+
+      const rows = allRecruiters.map((recruiter) => ({
+        Name: recruiter.recruiter_name || '',
+        Email: recruiter.email || '',
+        Phone: recruiter.phone || '',
+        Company: recruiter.company_name || selectedCompanyName || '',
+        Location: recruiter.location || '',
+        State: recruiter.state || '',
+      }))
+
+      XLSX.writeFile(exportWorkbook(rows), `${(selectedCompanyName || 'company').replace(/[^a-z0-9]+/gi, '_')}_all.xlsx`)
+      showToast(`Exported ${allRecruiters.length} recruiters`, 'success')
+    } catch (err) {
+      showToast('Failed to export: ' + getErrorMessage(err), 'error')
+    }
+  }
+
   const clearSelectedRecruiters = () => setSelectedRecruiters(new Map())
 
   const toggleSelectAllOnPage = (checked) => {
@@ -378,7 +428,8 @@ export default function Directory() {
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn-secondary" onClick={clearSelectedRecruiters} disabled={!selectedCount}>Clear Selected</button>
           <button className="btn-secondary" onClick={exportSelected} disabled={!selectedCount}>Export Selected</button>
-          <button className="btn-primary" onClick={exportCurrentPage} disabled={!recruiters.length}>Export Page</button>
+          <button className="btn-secondary" onClick={exportCurrentPage} disabled={!recruiters.length}>Export Page</button>
+          <button className="btn-primary" onClick={exportEntireCompany} disabled={!selectedCompany?.company_id}>Export Entire Company</button>
         </div>
       </div>
 
@@ -415,12 +466,14 @@ export default function Directory() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                      <CompanyLogo domain={company.logo_domain || company.website || company.email_pattern} name={company.company_name} size={32} />
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{company.company_name}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{company.location || 'Location not listed'}</div>
-                      </div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <CompanyIdentity 
+                        domain={company.logo_domain || company.website || company.email_pattern} 
+                        name={company.company_name} 
+                        metadata={company.location || 'Location not listed'}
+                        interactive={false}
+                        style={{ padding: 0 }}
+                      />
                     </div>
                     <div style={{ fontFamily: 'var(--mono)', fontWeight: 900 }}>{company.recruiter_count || 0}</div>
                   </div>

@@ -144,6 +144,13 @@ class Recruiter(Base):
     tags             = Column(Text, nullable=True)     # Comma-separated tags or JSON list
     created_at       = Column(TIMESTAMP, server_default=func.now())
     updated_at       = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+
+    # --- SENTINEL TRACKING COLUMNS ---
+    quality_score    = Column(Integer, default=0, index=True)
+    missing_fields   = Column(Text, default="{}") # JSON representation
+    sentinel_status  = Column(String(50), default="Pending", index=True) # Pending, Analyzing, Repairing, Verifying, Completed
+    last_verified_at = Column(TIMESTAMP, nullable=True)
+
     email_status     = Column(String(50), default="unknown")
     email_confidence = Column(Integer, default=0)
     email_source     = Column(String(100), nullable=True)

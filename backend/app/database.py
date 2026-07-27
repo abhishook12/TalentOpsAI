@@ -24,6 +24,29 @@ if DATABASE_URL.startswith("postgresql"):
 else:
     connect_args = {"check_same_thread": False}
 
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+import re
+
+@event.listens_for(Engine, "connect")
+def set_sqlite_functions(dbapi_connection, connection_record):
+    if DATABASE_URL.startswith("sqlite"):
+        def regexp_replace(text, pattern, repl, flags=''):
+            if text is None: return None
+            try:
+                return re.sub(pattern, repl, text)
+            except:
+                return text
+        def similarity(a, b):
+            if not a or not b: return 0.0
+            return 1.0 if a.lower() == b.lower() else 0.0
+        
+        try:
+            dbapi_connection.create_function("regexp_replace", 4, regexp_replace)
+            dbapi_connection.create_function("similarity", 2, similarity)
+        except AttributeError:
+            pass
+
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,

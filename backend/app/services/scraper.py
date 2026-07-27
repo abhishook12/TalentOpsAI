@@ -22,7 +22,7 @@ def verify_email_smtp(email: str) -> bool:
         mx_record = str(records[0].exchange)
         
         # 2. Connect to SMTP port 25
-        server = smtplib.SMTP(timeout=5)
+        server = smtplib.SMTP(timeout=3)
         server.connect(mx_record)
         server.helo(server.local_hostname)
         server.mail('hello@talentopsai.com') # dummy sender

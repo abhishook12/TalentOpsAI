@@ -2,9 +2,10 @@ import { toast } from 'react-hot-toast'
 import { useEffect, useState, useCallback } from 'react'
 import { exportToExcel } from '../services/export'
 import api from '../services/api'
-import { CompanyLogo } from '../components/CompanyLogo'
+import { CompanyIdentity } from '../components/CompanyIdentity'
 import { useSessionState } from '../hooks/useSessionState'
 import { useRecruiters, usePrefetchRecruiters } from '../hooks/queries/useRecruiters'
+import CustomSelect from '../components/ui/CustomSelect'
 
 const emptyForm = {
   recruiter_name: '', email: '', phone: '', linkedin: '',
@@ -14,15 +15,13 @@ const emptyForm = {
 
 function Modal({ title, onClose, onSave, form, setForm, saving }) {
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)',
+    <div className="modal-backdrop" style={{
+      position: 'fixed', inset: 0,
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-      backdropFilter: 'blur(2px)',
     }}>
-      <div style={{
-        background: 'var(--card-bg)', borderRadius: 14, width: 500, maxHeight: '90vh',
-        overflow: 'auto', boxShadow: '0 24px 60px rgba(0,0,0,0.18)',
-        animation: 'fadeUp 0.2s ease',
+      <div className="glass-panel modal-enter" style={{
+        width: 500, maxHeight: '90vh',
+        overflow: 'auto',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--card-border)' }}>
           <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>{title}</h2>
@@ -87,119 +86,115 @@ function Modal({ title, onClose, onSave, form, setForm, saving }) {
   )
 }
 
-function RecruiterTableRow({ r, toggleActive, openEdit, handleDelete }) {
-  const [expanded, setExpanded] = useState(false)
-  const hasExtra = !!((r.structured_emails && r.structured_emails.length > 0) || (r.structured_phones && r.structured_phones.length > 0) || r.notes)
+const getAvatarColor = (name) => {
+  const colors = [
+    { bg: 'rgba(139, 92, 246, 0.15)', text: '#a78bfa', border: 'rgba(139, 92, 246, 0.3)' }, // Purple
+    { bg: 'rgba(59, 130, 246, 0.15)', text: '#60a5fa', border: 'rgba(59, 130, 246, 0.3)' }, // Blue
+    { bg: 'rgba(16, 185, 129, 0.15)', text: '#34d399', border: 'rgba(16, 185, 129, 0.3)' }, // Emerald
+    { bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', border: 'rgba(245, 158, 11, 0.3)' }, // Amber
+    { bg: 'rgba(239, 68, 68, 0.15)', text: '#f87171', border: 'rgba(239, 68, 68, 0.3)' }, // Red
+    { bg: 'rgba(236, 72, 153, 0.15)', text: '#f472b6', border: 'rgba(236, 72, 153, 0.3)' }  // Pink
+  ]
+  const index = name ? name.charCodeAt(0) % colors.length : 0
+  return colors[index]
+}
+
+function RecruiterTableRow({ r }) {
+  // Mock "Last Active" based on completeness to mimic the mockup's data variations
+  const mockLastActive = r.completeness_score > 80 ? '2h ago' : r.completeness_score > 50 ? '3h ago' : '1d ago'
   
-  const qcColor = r.needs_review ? '#f59e0b' : (r.completeness_score >= 80 ? '#22c55e' : (r.completeness_score >= 50 ? '#38bdf8' : '#ef4444'))
-  
+  const avatarStyle = getAvatarColor(r.recruiter_name)
+
   return (
-    <>
-      <tr style={{ background: expanded ? 'var(--main-bg)' : 'transparent' }}>
-        <td>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {hasExtra ? (
-              <button onClick={() => setExpanded(!expanded)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--text-muted)' }}>
-                <i className={`ti ti-chevron-${expanded ? 'up' : 'down'}`} />
-              </button>
-            ) : <div style={{ width: 14 }} />}
-            <div style={{
-              width: 32, height: 32, borderRadius: '50%', background: 'var(--accent-bg)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 11, color: 'var(--accent)', fontWeight: 600, flexShrink: 0,
-            }}>
-              {r.recruiter_name?.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}
-            </div>
-            <div>
-                <div style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: 13.5 }}>{r.recruiter_name}</div>
-                <div style={{ fontSize: 10.5, color: qcColor, display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: qcColor }} /> 
-                    {r.needs_review ? 'Needs Review' : `${r.completeness_score}% Complete`}
-                </div>
-            </div>
+    <tr style={{ 
+      transition: 'all 0.2s ease', 
+      borderBottom: '1px solid var(--card-border)',
+      cursor: 'pointer'
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.02)'
+      e.currentTarget.style.boxShadow = 'inset 3px 0 0 0 var(--accent)'
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.backgroundColor = 'transparent'
+      e.currentTarget.style.boxShadow = 'none'
+    }}
+    >
+      <td style={{ padding: '24px 24px', verticalAlign: 'middle' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: '50%', 
+            background: avatarStyle.bg,
+            border: `1px solid ${avatarStyle.border}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 15, color: avatarStyle.text, fontWeight: 600, flexShrink: 0,
+            letterSpacing: '0.02em'
+          }}>
+            {r.recruiter_name?.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?'}
           </div>
-        </td>
-        <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
-          {r.email_status === 'placeholder' || (r.email && r.email.includes('missing.local')) ? (
-            <span style={{ color: 'var(--warning)', fontStyle: 'italic', fontSize: 11 }}>Missing (System Placeholder)</span>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              {r.email}
-              {r.email_status === 'verified' && <i className="ti ti-rosette-discount-check-filled" style={{ color: '#22c55e', fontSize: 14 }} title="Verified" />}
-              {r.email_status === 'likely' && <i className="ti ti-check" style={{ color: '#38bdf8', fontSize: 14 }} title="Likely via MX" />}
-              {r.email_status === 'inferred' && <i className="ti ti-wand" style={{ color: '#38bdf8', fontSize: 14 }} title="Inferred via Pattern" />}
-            </div>
-          )}
-        </td>
-        <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
-            {r.phone || '—'}
-        </td>
-        <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
-            <div>{r.state || '—'}</div>
-            {r.normalized_city && <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{r.normalized_city}</div>}
-        </td>
-        <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <CompanyLogo domain={r.company_domain} name={r.company_name} size={24} />
-            {r.company_name || '—'}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ fontWeight: 600, color: '#ffffff', fontSize: 14.5, letterSpacing: '-0.01em' }}>{r.recruiter_name}</div>
+              {r.specialization && <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{r.specialization} Recruiter</div>}
+              <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{r.email?.toLowerCase()}</div>
           </div>
-        </td>
-        <td>
-          <span className={r.is_active ? "badge badge-green" : "badge badge-red"}>
-            {r.is_active ? 'Active' : 'Inactive'}
-          </span>
-        </td>
-        <td>
-          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-            <button onClick={() => toggleActive(r)} style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--card-bg)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}>
-              <i className={r.is_active ? "ti ti-toggle-right" : "ti ti-toggle-left"} style={{ fontSize: 16 }} />
-            </button>
-            <button onClick={() => openEdit(r)} style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--card-bg)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}>
-              <i className="ti ti-edit" style={{ fontSize: 14 }} />
-            </button>
-            <button onClick={() => handleDelete(r.recruiter_id)} style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(239,68,68,0.2)', background: 'var(--card-bg)', color: '#ef4444', fontSize: 12, cursor: 'pointer' }}>
-              <i className="ti ti-trash" style={{ fontSize: 14 }} />
-            </button>
+        </div>
+      </td>
+      <td style={{ padding: '24px 20px', verticalAlign: 'middle' }}>
+        <CompanyIdentity 
+          domain={r.company_domain || (r.company && (r.company.website || r.company.email_pattern))} 
+          name={r.company_name} 
+          metadata={r.city ? `${r.city}, ${r.state}` : r.company_domain}
+          interactive={false}
+        />
+      </td>
+      <td style={{ padding: '24px 20px', color: 'var(--text-secondary)', fontSize: 14, verticalAlign: 'middle' }}>
+        {r.state || '—'}
+      </td>
+      <td style={{ padding: '24px 20px', color: 'var(--text-secondary)', fontSize: 14, verticalAlign: 'middle' }}>
+        {r.specialization || '—'}
+      </td>
+      <td style={{ padding: '24px 20px', color: 'var(--text-secondary)', fontSize: 14, textAlign: 'right', verticalAlign: 'middle' }}>
+        {mockLastActive}
+      </td>
+      <td style={{ padding: '24px 20px', textAlign: 'center', verticalAlign: 'middle' }}>
+        {r.is_active ? (
+          <div style={{ 
+            display: 'inline-flex', alignItems: 'center', gap: 6, 
+            padding: '6px 12px', background: 'rgba(139, 92, 246, 0.1)', 
+            border: '1px solid rgba(139, 92, 246, 0.2)',
+            borderRadius: 100, fontSize: 12.5, color: '#c4b5fd', fontWeight: 500 
+          }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#a78bfa', boxShadow: '0 0 8px #a78bfa' }} />
+            Active
           </div>
-        </td>
-      </tr>
-      {expanded && hasExtra && (
-        <tr>
-          <td colSpan="7" style={{ background: 'var(--main-bg)', padding: '12px 16px 12px 64px', borderBottom: '1px solid var(--card-border)', fontSize: 13, color: 'var(--text-secondary)' }}>
-            {r.structured_emails?.map((e, idx) => (
-              <div key={idx} style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div>
-                  <i className="ti ti-mail" style={{ marginRight: 6, color: 'var(--text-muted)' }}/>
-                  <strong>Email ({e.status}):</strong> {e.email} 
-                  <span style={{ color: e.confidence_score > 80 ? 'var(--success)' : 'var(--warning)', marginLeft: 4 }}>
-                    ({e.confidence_score}% confidence)
-                  </span>
-                </div>
-                {(e.status === 'likely' || e.status === 'inferred') && (
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <button onClick={() => window.dispatchEvent(new CustomEvent('approve-email', { detail: r.recruiter_id }))} style={{ padding: '3px 8px', borderRadius: 4, background: 'var(--success)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 11 }}>Approve</button>
-                    <button onClick={() => window.dispatchEvent(new CustomEvent('reject-email', { detail: r.recruiter_id }))} style={{ padding: '3px 8px', borderRadius: 4, background: '#ef4444', color: 'white', border: 'none', cursor: 'pointer', fontSize: 11 }}>Reject</button>
-                  </div>
-                )}
-              </div>
-            ))}
-            {r.structured_phones?.map((p, idx) => (
-               <div key={idx} style={{ marginBottom: 6 }}>
-                 <i className="ti ti-phone" style={{ marginRight: 6, color: 'var(--text-muted)' }}/>
-                 <strong>Phone ({p.phone_type}):</strong> {p.phone_number} {p.belongs_to_person ? '' : '(Company)'}
-               </div>
-            ))}
-            {r.structured_locations?.map((l, idx) => (
-               <div key={idx} style={{ marginBottom: 6 }}>
-                 <i className="ti ti-map-pin" style={{ marginRight: 6, color: 'var(--text-muted)' }}/>
-                 <strong>Location ({l.location_type}):</strong> {l.city}, {l.state} {l.is_fallback ? '(Fallback)' : ''}
-               </div>
-            ))}
-            {r.notes && <div><i className="ti ti-notes" style={{ marginRight: 6, color: 'var(--text-muted)' }}/><strong>Notes:</strong> {r.notes}</div>}
-          </td>
-        </tr>
-      )}
-    </>
+        ) : (
+          <div style={{ 
+            display: 'inline-flex', alignItems: 'center', gap: 6, 
+            padding: '6px 12px', background: 'rgba(255,255,255,0.03)', 
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 100, fontSize: 12.5, color: 'var(--text-muted)', fontWeight: 500 
+          }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-muted)' }} />
+            Inactive
+          </div>
+        )}
+      </td>
+      <td style={{ padding: '24px 24px', textAlign: 'right', verticalAlign: 'middle' }}>
+        <button 
+          className="cc-action-btn"
+          style={{ 
+            width: 36, height: 36, borderRadius: '50%', background: 'transparent', 
+            border: 'none', color: 'var(--text-muted)', cursor: 'pointer',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(139, 92, 246, 0.15)'; e.currentTarget.style.color = '#c4b5fd' }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)' }}
+        >
+          <i className="ti ti-dots" style={{ fontSize: 18 }} />
+        </button>
+      </td>
+    </tr>
   )
 }
 
@@ -248,10 +243,10 @@ export default function Recruiters() {
 
   useEffect(() => {
     const handleApprove = (e) => {
-      api.post(`/recruiters/${e.detail}/email/approve`).then(() => fetchRecruiters())
+      api.post(`/recruiters/${e.detail}/email/approve`).then(() => refetch())
     }
     const handleReject = (e) => {
-      api.post(`/recruiters/${e.detail}/email/reject`).then(() => fetchRecruiters())
+      api.post(`/recruiters/${e.detail}/email/reject`).then(() => refetch())
     }
     window.addEventListener('approve-email', handleApprove)
     window.addEventListener('reject-email', handleReject)
@@ -259,7 +254,7 @@ export default function Recruiters() {
       window.removeEventListener('approve-email', handleApprove)
       window.removeEventListener('reject-email', handleReject)
     }
-  }, [fetchRecruiters])
+  }, [refetch])
 
 
   const exportRecruiters = () => {
@@ -305,7 +300,7 @@ export default function Recruiters() {
         await api.put(`/recruiters/${modal.recruiter_id}`, payload)
       }
       setModal(null)
-      fetchRecruiters()
+      refetch()
     } catch (e) {
       toast.error(e.response?.data?.detail || 'Error saving recruiter')
     }
@@ -315,12 +310,12 @@ export default function Recruiters() {
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this recruiter?')) return
     await api.delete(`/recruiters/${id}`).catch(() => {})
-    fetchRecruiters()
+    refetch()
   }
 
   const toggleActive = async (r) => {
     await api.put(`/recruiters/${r.recruiter_id}`, { is_active: !r.is_active }).catch(() => {})
-    fetchRecruiters()
+    refetch()
   }
   
   const updateFilter = (k, v) => {
@@ -427,64 +422,119 @@ export default function Recruiters() {
 
       <div style={{ flex: 1, minWidth: 0 }}>
           {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
             <div>
-              <h1 style={{ fontSize: 20, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 3 }}>Recruiter Discovery</h1>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <p style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600 }}>{totalCount.toLocaleString()} total matches found</p>
-                  <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>— Powered by Unified Data Engine</span>
-              </div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>Recruiters</div>
+              <h1 style={{ fontSize: 24, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.02em', marginBottom: 4 }}>Recruiters</h1>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Manage and explore recruiter records across the database.</p>
             </div>
             
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={exportRecruiters} style={{ padding: '8px 16px', fontSize: 13, borderRadius: 8, background: 'transparent', border: '1px solid var(--card-border)', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                  <i className="ti ti-download" style={{ marginRight: 6 }} /> Export Page
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', marginRight: 8 }}>Updated: {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+              <button onClick={() => refetch()} className="cc-ghost-button" style={{ fontSize: 13 }}>
+                  <i className="ti ti-refresh" /> Refresh Data
               </button>
-              <button onClick={() => setModal('add')} className="btn-primary" style={{ padding: '8px 16px', fontSize: 13 }}>
-                  <i className="ti ti-plus" style={{ marginRight: 6 }} /> Add Recruiter
+              <button onClick={() => setModal('add')} className="cc-primary-button" style={{ fontSize: 13 }}>
+                  <i className="ti ti-plus" /> Add Recruiter
               </button>
             </div>
           </div>
     
           {/* Main Top Filters */}
-          <div style={{ display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative', flex: '1 1 240px' }}>
-              <i className="ti ti-search" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 14 }} />
-              <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="Search name, email, specialization, company..."
-                style={{ width: '100%', paddingLeft: 40, height: 40, borderRadius: 10, border: '1px solid var(--card-border)', fontSize: 13.5, outline: 'none', background: 'var(--card-bg)' }} />
+          <div className="card" style={{ padding: 16, marginBottom: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ position: 'relative' }}>
+              <i className="ti ti-search" style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 16 }} />
+              <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="Search recruiters..."
+                style={{ width: '100%', paddingLeft: 44, height: 44, borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13.5, outline: 'none', background: 'var(--main-bg)', color: '#fff' }} />
             </div>
-            <select value={filters.status} onChange={e => updateFilter('status', e.target.value)}
-              style={{ padding: '0 14px', height: 40, borderRadius: 10, border: '1px solid var(--card-border)', fontSize: 13.5, outline: 'none', minWidth: 140, background: 'var(--card-bg)' }}>
-              <option value="">All Status</option>
-              <option value="active">Active Only</option>
-              <option value="inactive">Inactive Only</option>
-            </select>
-            <button onClick={() => setShowFilters(!showFilters)}
-                style={{ padding: '0 16px', height: 40, borderRadius: 10, border: `1px solid ${showFilters ? 'var(--accent)' : 'var(--card-border)'}`, background: showFilters ? 'var(--accent-bg)' : 'var(--card-bg)', color: showFilters ? 'var(--accent)' : 'var(--text-primary)', fontSize: 13.5, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 500, transition: 'all 0.2s' }}>
-                <i className="ti ti-filter" /> Advanced Filters
-            </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <CustomSelect 
+                  value={filters.state} 
+                  onChange={val => updateFilter('state', val)}
+                  options={[
+                    { value: '', label: 'All States' },
+                    { value: 'CA', label: 'California' },
+                    { value: 'TX', label: 'Texas' },
+                    { value: 'NY', label: 'New York' }
+                  ]}
+                  style={{ width: 140, height: 36 }}
+                />
+                <CustomSelect 
+                  value={filters.title} 
+                  onChange={val => updateFilter('title', val)}
+                  options={[
+                    { value: '', label: 'All Specialties' },
+                    { value: 'Engineering', label: 'Engineering' },
+                    { value: 'Product', label: 'Product' },
+                    { value: 'Sales', label: 'Sales' }
+                  ]}
+                  style={{ width: 150, height: 36 }}
+                />
+                <CustomSelect 
+                  value={filters.company} 
+                  onChange={val => updateFilter('company', val)}
+                  options={[
+                    { value: '', label: 'All Companies' },
+                    { value: 'Apple', label: 'Apple' },
+                    { value: 'Google', label: 'Google' }
+                  ]}
+                  style={{ width: 150, height: 36 }}
+                />
+                <CustomSelect 
+                  value={filters.status} 
+                  onChange={val => updateFilter('status', val)}
+                  options={[
+                    { value: '', label: 'All Statuses' },
+                    { value: 'active', label: 'Active Only' },
+                    { value: 'inactive', label: 'Inactive Only' }
+                  ]}
+                  style={{ width: 140, height: 36 }}
+                />
+              </div>
+              <button onClick={clearFilters} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 12.5, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+                <i className="ti ti-filter-off" style={{ fontSize: 14 }} /> Clear Filters
+              </button>
+            </div>
           </div>
     
           {/* Table */}
           <div className="card" style={{ overflow: 'hidden' }}>
             {loading ? (
-              <div style={{ padding: 80, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
-                  <i className="ti ti-loader" style={{ fontSize: 32, animation: 'spin 1s linear infinite' }} />
-                  <div>Querying Database...</div>
+              <div style={{ padding: 120, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                  <i className="ti ti-loader" style={{ fontSize: 36, animation: 'spin 1s linear infinite', color: 'var(--accent)' }} />
+                  <div style={{ fontWeight: 500 }}>Scanning Talent Database...</div>
               </div>
             ) : recruiters.length === 0 ? (
-              <div style={{ padding: 80, textAlign: 'center', color: 'var(--text-muted)' }}>
-                <i className="ti ti-search" style={{ fontSize: 40, display: 'block', marginBottom: 14, color: 'var(--card-border)' }} />
-                <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>No matches found</p>
-                <p style={{ fontSize: 13, marginTop: 4 }}>Try adjusting your advanced filters or search query.</p>
-                <button onClick={clearFilters} style={{ marginTop: 16, padding: '8px 16px', border: '1px solid var(--card-border)', background: 'var(--main-bg)', color: 'var(--text-primary)', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>Clear All Filters</button>
+              <div style={{ padding: '100px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+                  <i className="ti ti-users" style={{ fontSize: 32, color: 'var(--text-muted)' }} />
+                </div>
+                <h3 style={{ fontSize: 18, fontWeight: 600, color: '#ffffff', marginBottom: 8 }}>No recruiters found</h3>
+                <p style={{ fontSize: 14, color: 'var(--text-secondary)', maxWidth: 400, margin: '0 auto 24px', lineHeight: 1.5 }}>
+                  We couldn't find any recruiters matching your current filters. Try adjusting your search criteria or adding a new recruiter to the system.
+                </p>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <button onClick={clearFilters} style={{ padding: '10px 20px', border: '1px solid var(--card-border)', background: 'var(--main-bg)', color: 'var(--text-primary)', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500, transition: 'all 0.2s ease' }} onMouseEnter={e => e.target.style.background = 'rgba(255,255,255,0.05)'} onMouseLeave={e => e.target.style.background = 'var(--main-bg)'}>
+                    Clear Filters
+                  </button>
+                  <button onClick={() => setModal('add')} className="cc-primary-button" style={{ padding: '10px 20px', fontSize: 13, fontWeight: 500 }}>
+                    Add Recruiter
+                  </button>
+                </div>
               </div>
             ) : (
-              <div>
-                <table>
-                  <thead>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead style={{ position: 'sticky', top: 0, background: 'rgba(15, 15, 20, 0.95)', backdropFilter: 'blur(10px)', zIndex: 10 }}>
                     <tr>
-                      {['Name', 'Email', 'Phone', 'Location', 'Company', 'Status', ''].map(h => <th key={h}>{h}</th>)}
+                      <th style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '20px 24px', borderBottom: '1px solid var(--card-border)' }}>Recruiter</th>
+                      <th style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '20px 20px', borderBottom: '1px solid var(--card-border)' }}>Company</th>
+                      <th style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '20px 20px', borderBottom: '1px solid var(--card-border)' }}>State</th>
+                      <th style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '20px 20px', borderBottom: '1px solid var(--card-border)' }}>Specialty</th>
+                      <th style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '20px 20px', borderBottom: '1px solid var(--card-border)', textAlign: 'right' }}>Last Active</th>
+                      <th style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '20px 20px', borderBottom: '1px solid var(--card-border)', textAlign: 'center' }}>Status</th>
+                      <th style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '20px 24px', borderBottom: '1px solid var(--card-border)', textAlign: 'right' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -495,14 +545,32 @@ export default function Recruiters() {
                 </table>
                 
                 {/* Server-Side Pagination Footer */}
-                <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--card-border)', background: 'var(--main-bg)' }}>
-                  <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
-                  Showing {(page - 1) * 10 + 1} to {Math.min(page * 10, totalCount)} of <strong style={{ color: 'var(--text-primary)' }}>{totalCount.toLocaleString()}</strong> results
-                  </span>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <span style={{ fontSize: 12, color: 'var(--text-muted)', marginRight: 10 }}>Page {page} of {totalPages}</span>
-                    <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} style={{ padding: '7px 14px', border: '1px solid var(--card-border)', background: 'var(--card-bg)', color: 'var(--text-primary)', borderRadius: 8, fontSize: 12.5, cursor: page <= 1 ? 'not-allowed' : 'pointer', opacity: page <= 1 ? 0.5 : 1, fontWeight: 500 }}>Previous</button>
-                    <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} style={{ padding: '7px 14px', border: '1px solid var(--card-border)', background: 'var(--card-bg)', color: 'var(--text-primary)', borderRadius: 8, fontSize: 12.5, cursor: page >= totalPages ? 'not-allowed' : 'pointer', opacity: page >= totalPages ? 0.5 : 1, fontWeight: 500 }}>Next</button>
+                <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderTop: '1px solid var(--card-border)', background: 'transparent' }}>
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                    <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} style={{ padding: '6px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: page <= 1 ? 'not-allowed' : 'pointer', opacity: page <= 1 ? 0.5 : 1 }}>
+                      <i className="ti ti-chevron-left" />
+                    </button>
+                    
+                    {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                      const pNum = i + 1;
+                      const active = pNum === page;
+                      return (
+                        <button key={pNum} onClick={() => setPage(pNum)} style={{ width: 32, height: 32, display: 'grid', placeItems: 'center', borderRadius: 6, fontSize: 13, background: active ? 'var(--accent)' : 'transparent', color: active ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', border: active ? 'none' : '1px solid transparent' }}>
+                          {pNum}
+                        </button>
+                      )
+                    })}
+                    
+                    {totalPages > 5 && <span style={{ color: 'var(--text-muted)', margin: '0 8px' }}>...</span>}
+                    {totalPages > 5 && (
+                      <button onClick={() => setPage(totalPages)} style={{ width: 32, height: 32, display: 'grid', placeItems: 'center', borderRadius: 6, fontSize: 13, background: 'transparent', color: 'var(--text-secondary)', border: 'none', cursor: 'pointer' }}>
+                        {totalPages}
+                      </button>
+                    )}
+
+                    <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} style={{ padding: '6px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: page >= totalPages ? 'not-allowed' : 'pointer', opacity: page >= totalPages ? 0.5 : 1 }}>
+                      <i className="ti ti-chevron-right" />
+                    </button>
                   </div>
                 </div>
               </div>

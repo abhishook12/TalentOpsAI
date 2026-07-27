@@ -58,6 +58,12 @@ def basic_health(db: Session = Depends(get_db)):
     """Primary load balancer health check."""
     return system_health(db)
 
+@router.get("/storage")
+def storage_health(db: Session = Depends(get_db)):
+    from ..services.storage_limit_service import get_storage_health
+    return get_storage_health(db)
+
+
 @router.get("/system")
 def system_health(db: Session = Depends(get_db)):
     """Comprehensive system health check for infrastructure monitoring."""

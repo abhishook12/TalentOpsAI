@@ -1,6 +1,7 @@
 import axios from 'axios'
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://talentopsai-1.onrender.com'
+const RAW_API_URL = import.meta.env.VITE_API_URL || 'https://talentopsai-1.onrender.com'
+const API_URL = String(RAW_API_URL).includes('127.0.0.1') ? 'http://127.0.0.1:8000' : RAW_API_URL
 export const API = String(API_URL).replace(/\/$/, '')
 
 const clientCache = new Map()

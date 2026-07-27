@@ -276,7 +276,7 @@ def _handle_trusted_device(request: Request, response: Response, db: Session, us
         value=device_id,
         httponly=True,
         secure=IS_PRODUCTION,
-        samesite="lax",
+        samesite="none" if IS_PRODUCTION else "lax",
         max_age=365*24*60*60 # 1 year
     )
     
@@ -302,7 +302,7 @@ def _handle_trusted_device(request: Request, response: Response, db: Session, us
         db.add(audit)
         db.commit()
         
-        cookie_val = f"device_id={device_id}; HttpOnly; SameSite=Lax; Max-Age=31536000; Path=/"
+        cookie_val = f"device_id={device_id}; HttpOnly; SameSite=None; Max-Age=31536000; Path=/"
         if IS_PRODUCTION:
             cookie_val += "; Secure"
             
@@ -449,7 +449,7 @@ def login(request: Request, login_data: UserLogin, response: Response, db: Sessi
         value=access_token,
         httponly=True,
         secure=IS_PRODUCTION,
-        samesite="lax",
+        samesite="none" if IS_PRODUCTION else "lax",
         max_age=30*24*60*60 if login_data.remember_me else None
     )
     
@@ -459,7 +459,7 @@ def login(request: Request, login_data: UserLogin, response: Response, db: Sessi
         value=refresh_token,
         httponly=True,
         secure=IS_PRODUCTION,
-        samesite="lax",
+        samesite="none" if IS_PRODUCTION else "lax",
         max_age=30*24*60*60
     )
     
@@ -607,12 +607,12 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
     )
     
     response.set_cookie(
-        key="access_token", value=access_token, httponly=True, secure=IS_PRODUCTION, samesite="lax", max_age=30*24*60*60
+        key="access_token", value=access_token, httponly=True, secure=IS_PRODUCTION, samesite="none" if IS_PRODUCTION else "lax", max_age=30*24*60*60
     )
     
     refresh_token = create_refresh_token(user.id)
     response.set_cookie(
-        key="refresh_token", value=refresh_token, httponly=True, secure=IS_PRODUCTION, samesite="lax", max_age=30*24*60*60
+        key="refresh_token", value=refresh_token, httponly=True, secure=IS_PRODUCTION, samesite="none" if IS_PRODUCTION else "lax", max_age=30*24*60*60
     )
     
     return {
@@ -702,7 +702,7 @@ def complete_device_approval(request: Request, response: Response, db: Session =
     )
     
     response.set_cookie(
-        key="access_token", value=access_token, httponly=True, secure=IS_PRODUCTION, samesite="lax", max_age=30*24*60*60
+        key="access_token", value=access_token, httponly=True, secure=IS_PRODUCTION, samesite="none" if IS_PRODUCTION else "lax", max_age=30*24*60*60
     )
     
     return {"message": "Login complete", "user_id": user.id}
@@ -769,7 +769,7 @@ def admin_login(req: LegacyLoginRequest, request: Request, response: Response, d
         value=token,
         httponly=True,
         secure=IS_PRODUCTION,
-        samesite="lax",
+        samesite="none" if IS_PRODUCTION else "lax",
         max_age=expires_seconds
     )
     return {"message": "Admin login successful", "token": token}
@@ -914,7 +914,7 @@ def refresh_token(request: Request, response: Response, db: Session = Depends(ge
             value=access_token,
             httponly=True,
             secure=IS_PRODUCTION,
-            samesite="lax",
+            samesite="none" if IS_PRODUCTION else "lax",
             max_age=12*60*60
         )
         

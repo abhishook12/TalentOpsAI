@@ -267,16 +267,9 @@ export default function Login() {
         return
       }
       
-      setAuthProgress(30)
-      
-      await Promise.all([
-        api.get('/auth/me').catch(() => null),
-        api.get('/bridge/status').catch(() => null),
-        api.get('/admin/dashboard/metrics').catch(() => null),
-        new Promise(res => setTimeout(res, 2000)) // smooth UX animation
-      ])
-      
       setAuthProgress(100)
+      
+      // Brief animation for premium UX before instant navigation
       await new Promise(res => setTimeout(res, 300))
       
       navigate({ to: redirect })
@@ -323,7 +316,7 @@ export default function Login() {
             onApproved={() => performBackgroundInitialization(async () => {
               const res = await api.post('/auth/complete-device-approval', null)
               // Populate the auth context before navigating to the dashboard
-              const isValid = await checkAuthStatus(true)
+              await checkAuthStatus(true)
               return res
             })}
           />

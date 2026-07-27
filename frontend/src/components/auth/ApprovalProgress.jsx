@@ -18,8 +18,8 @@ export default function ApprovalProgress({ deviceId, onApproved }) {
         if (data.status === 'approved') {
           setStatus('approved');
           eventSource.close();
-          // Trigger the onApproved callback after a short delay for UX
-          setTimeout(() => onApproved(), 800);
+          // Trigger the onApproved callback instantly for immediate navigation
+          onApproved();
         } else if (data.status === 'rejected') {
           setStatus('rejected');
           eventSource.close();
@@ -105,7 +105,7 @@ export default function ApprovalProgress({ deviceId, onApproved }) {
             <div style={{ width: '2px', height: '16px', background: 'var(--card-border)', marginLeft: '9px', marginTop: '-8px', marginBottom: '-8px' }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <Loader2 size={20} color="var(--success, #10b981)" className="animate-spin" />
-              <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)' }}>Redirecting to dashboard...</span>
+              <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)' }}>Loading your workspace...</span>
             </div>
           </>
         )}

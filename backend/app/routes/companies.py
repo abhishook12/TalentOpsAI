@@ -60,7 +60,7 @@ def get_companies(
             
     query = query.filter(Company.is_active == True).group_by(Company.company_id)
             
-    total_query = db.query(Company).filter(Company.user_id == current_user.id).filter(Company.user_id == current_user.id, Company.is_active == True)
+    total_query = db.query(Company).filter(Company.is_active == True)
     if state:
         abbr = normalize_state(state)
         if abbr:

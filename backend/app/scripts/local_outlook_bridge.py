@@ -60,10 +60,12 @@ def get_auth_token_bypass(base_url, email):
         logger.error(f"Authentication network error: {e}")
         return None
 
-def send_email_via_outlook(task, outlook):
+def send_email_via_outlook(task, outlook, target_account=None):
     """Sends a single email using the provided Outlook application instance."""
     try:
         mail = outlook.CreateItem(0) # 0 = olMailItem
+        if target_account:
+            mail.SendUsingAccount = target_account
         mail.To = task.get("to_email", "")
         mail.Subject = task.get("subject", "")
         mail.HTMLBody = task.get("html_body", "")
@@ -98,6 +100,7 @@ def run_inner_loop(base_url, token, state):
 
     try:
         outlook = win32com.client.Dispatch("Outlook.Application")
+        namespace = outlook.GetNamespace("MAPI")
         logger.info("Successfully connected to local Outlook application.")
     except Exception as e:
         logger.error(f"Failed to connect to Outlook: {e}")
@@ -107,6 +110,33 @@ def run_inner_loop(base_url, token, state):
 
     heartbeat_interval = 5
     headers = {"Authorization": f"Bearer {token}"}
+    
+    # 0. Verify Isolation - Check if local Outlook matches backend OAuth connected email
+    target_email = None
+    target_account = None
+    try:
+        status_res = requests.get(f"{base_url}/api/bridge/status", headers=headers, timeout=10)
+        if status_res.status_code == 200:
+            target_email = status_res.json().get("connected_email")
+    except Exception as e:
+        logger.warning(f"Could not fetch connected email from backend: {e}")
+        
+    if target_email:
+        logger.info(f"Backend expects emails to be sent from: {target_email}")
+        found = False
+        try:
+            for account in namespace.Accounts:
+                if account.SmtpAddress.lower() == target_email.lower():
+                    target_account = account
+                    found = True
+                    logger.info(f"Verified local Outlook account matches: {target_email}")
+                    break
+            if not found:
+                logger.error(f"CRITICAL: Local Outlook does not have an account matching '{target_email}'.")
+                logger.error("To prevent sending from the wrong account (Isolation Failure), the bridge will refuse to send.")
+                return False
+        except Exception as e:
+            logger.warning(f"Could not iterate Outlook accounts for verification: {e}")
 
     while True:
         # 1. Heartbeat
@@ -149,7 +179,7 @@ def run_inner_loop(base_url, token, state):
                     results = []
                     for task in tasks:
                         logger.info(f"Sending to {task.get('to_email')}...")
-                        success, error = send_email_via_outlook(task, outlook)
+                        success, error = send_email_via_outlook(task, outlook, target_account)
                         
                         if not success:
                             state.consecutive_errors += 1

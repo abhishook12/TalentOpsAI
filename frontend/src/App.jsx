@@ -141,10 +141,7 @@ function AppShell() {
     );
   }
 
-  // Redirect users with incomplete profiles (e.g. no company) to the Profile completion page
-  if (user && !isAdmin && !isAuthPage && !user.company && location.pathname !== '/profile') {
-    return <Navigate to="/profile" replace />
-  }
+  // Removed forced redirection so users can use the app even without a company
 
   if (isAuthPage) {
     return (
@@ -177,7 +174,7 @@ function AppShell() {
                 <i className="ti ti-bell" style={{ fontSize: '20px' }} />
                 <span style={{ position: 'absolute', top: 7, right: 9, width: 8, height: 8, borderRadius: 999, background: 'var(--danger)' }} />
               </button>
-              <button className="cc-icon-button" title="Account" aria-label="Account" onClick={() => navigate({ to: '/admin' })} style={{ padding: '4px' }}>
+              <button className="cc-icon-button" title="Account" aria-label="Account" onClick={() => navigate({ to: isAdmin ? '/admin' : '/profile' })} style={{ padding: '4px' }}>
                 {user?.avatar_url ? (
                   <img src={user.avatar_url} alt="Profile" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
                 ) : (

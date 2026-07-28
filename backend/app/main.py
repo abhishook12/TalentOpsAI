@@ -392,7 +392,10 @@ async def startup_event():
     from sqlalchemy import text
     
     conn = engine.connect()
-    lock_acquired = conn.execute(text("SELECT pg_try_advisory_lock(83726491)")).scalar()
+    try:
+        lock_acquired = conn.execute(text("SELECT pg_try_advisory_lock(83726491)")).scalar()
+    except Exception:
+        lock_acquired = True
     if lock_acquired:
         app.state.bg_task_conn = conn  # Keep connection open to hold the lock
         asyncio.create_task(timeout_stuck_emails_sweep())

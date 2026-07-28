@@ -8,7 +8,7 @@ import json
 from ..database import get_db
 from ..models.auth_models import User, UserBridgeStatus, UserOutlookAccount
 from ..services.auth_service import get_current_user_from_request
-from ..models.campaigns import EmailLog, EmailLogStatus
+from ..models.campaigns import EmailLog, EmailLogStatus, Campaign, CampaignRecruiter
 
 router = APIRouter()
 
@@ -75,9 +75,39 @@ def get_bridge_status(db: Session = Depends(get_db), current_user: User = Depend
     status_record = db.query(UserBridgeStatus).filter(UserBridgeStatus.user_id == current_user.id).first()
     outlook_account = db.query(UserOutlookAccount).filter(UserOutlookAccount.user_id == current_user.id).first()
     connected_email = outlook_account.email_address if outlook_account else None
+    
+    # Calculate queue statistics
+    from ..models.campaigns import Campaign, EmailLog, EmailLogStatus
+    
+    # Pending: sending via outlook_bridge and not yet accepted
+    pending = db.query(EmailLog).join(Campaign, EmailLog.campaign_id == Campaign.campaign_id).filter(
+        Campaign.user_id == current_user.id, 
+        EmailLog.sent_via == "outlook_bridge",
+        EmailLog.outlook_accepted == None
+    ).count()
+    
+    # Sent: delivered via outlook_bridge
+    sent = db.query(EmailLog).join(Campaign, EmailLog.campaign_id == Campaign.campaign_id).filter(
+        Campaign.user_id == current_user.id, 
+        EmailLog.sent_via == "outlook_bridge",
+        EmailLog.status == EmailLogStatus.delivered.value
+    ).count()
+    
+    # Failed: failed via outlook_bridge
+    failed = db.query(EmailLog).join(Campaign, EmailLog.campaign_id == Campaign.campaign_id).filter(
+        Campaign.user_id == current_user.id, 
+        EmailLog.sent_via == "outlook_bridge",
+        EmailLog.status == EmailLogStatus.failed.value
+    ).count()
+
+    stats = {
+        "pending": pending,
+        "sent": sent,
+        "failed": failed
+    }
 
     if not status_record:
-        return {"status": "offline", "message": "Bridge not configured", "connected_email": connected_email}
+        return {"status": "offline", "message": "Bridge not configured", "connected_email": connected_email, "stats": stats}
     
     # Removed auto-offline timeout logic to maintain persistent connection
     
@@ -89,13 +119,18 @@ def get_bridge_status(db: Session = Depends(get_db), current_user: User = Depend
         "consecutive_errors": status_record.consecutive_errors,
         "version": status_record.version,
         "diagnostics_json": status_record.diagnostics_json,
-        "connected_email": outlook_account.email_address if outlook_account else None
+        "connected_email": outlook_account.email_address if outlook_account else None,
+        "stats": stats
     }
 
 
 @router.get("/tasks")
 def get_bridge_tasks(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     """Fetch pending emails for the bridge."""
+    outlook_account = db.query(UserOutlookAccount).filter(UserOutlookAccount.user_id == current_user.id).first()
+    if not outlook_account or outlook_account.status != "connected":
+        raise HTTPException(status_code=403, detail="Outlook account not connected via OAuth. Please connect from Profile page.")
+        
     # We find emails that are 'sending' and assigned to 'outlook_bridge'
     # Wait, the send_engine creates EmailLog and sets status='sending' right before sending.
     from ..models.campaigns import Campaign
@@ -122,7 +157,7 @@ def get_bridge_tasks(db: Session = Depends(get_db), current_user: User = Depends
 
 from ..models.auth_models import User, UserBridgeStatus
 from ..services.auth_service import get_current_user_from_request
-from ..models.campaigns import EmailLog, EmailLogStatus, CampaignRecruiter, CampaignRecruiterStatus
+from ..models.campaigns import EmailLog, EmailLogStatus, CampaignRecruiter, CampaignRecruiterStatus, Campaign, CampaignStatus
 from datetime import datetime
 
 def _utcnow():
@@ -133,11 +168,11 @@ def post_bridge_results(payload: BridgeResultsPayload, db: Session = Depends(get
     """Receive results from the bridge."""
     campaign_ids_to_check = set()
     for res in payload.results:
-        log = db.query(EmailLog).filter(EmailLog.user_id == current_user.id, EmailLog.log_id == res.log_id).first()
+        log = db.query(EmailLog).join(Campaign).filter(Campaign.user_id == current_user.id, EmailLog.log_id == res.log_id).first()
         if log:
             campaign_ids_to_check.add(log.campaign_id)
             log.body_html = None  # Free the full-body payload once terminal (Supabase 500MB free tier)
-            recipient = db.query(CampaignRecruiter).filter(CampaignRecruiter.user_id == current_user.id, CampaignRecruiter.campaign_recruiter_id == log.campaign_recruiter_id).first()
+            recipient = db.query(CampaignRecruiter).join(Campaign).filter(Campaign.user_id == current_user.id, CampaignRecruiter.campaign_recruiter_id == log.campaign_recruiter_id).first()
             if res.success:
                 log.outlook_accepted = True
                 log.status = EmailLogStatus.delivered.value
@@ -166,7 +201,7 @@ def post_bridge_results(payload: BridgeResultsPayload, db: Session = Depends(get
                         recipient.status = CampaignRecruiterStatus.retrying.value
     db.commit()
     
-    from ..models.campaigns import Campaign, CampaignStatus
+    # (Import moved to module level)
     for cid in campaign_ids_to_check:
         non_terminal = db.query(CampaignRecruiter).filter(
             CampaignRecruiter.campaign_id == cid,
@@ -191,34 +226,94 @@ def post_bridge_results(payload: BridgeResultsPayload, db: Session = Depends(get
 
 from fastapi.responses import RedirectResponse, HTMLResponse
 import urllib.parse
+from jose import jwt
+from datetime import datetime, timedelta
+from ..services.auth_service import SECRET_KEY, ALGORITHM
+
+MOCK_OAUTH = True  # Set to True for testing until Azure AD credentials are provided
 
 @router.get('/oauth/login')
 def bridge_oauth_login(redirect_uri: str = '/profile?bridge=connected', popup: str = 'false', current_user: User = Depends(get_current_user_from_request)):
-    # Placeholder OAuth redirect to Microsoft login
-    # In a real app, this would redirect to https://login.microsoftonline.com/... 
-    return RedirectResponse(url=f'/api/bridge/oauth/callback?user_id={current_user.id}&redirect_uri={urllib.parse.quote(redirect_uri)}&popup={popup}')
+    # Generate secure state token
+    state_payload = {
+        "user_id": current_user.id,
+        "redirect_uri": redirect_uri,
+        "popup": popup,
+        "exp": datetime.utcnow() + timedelta(minutes=15)
+    }
+    state = jwt.encode(state_payload, SECRET_KEY, algorithm=ALGORITHM)
+    
+    if MOCK_OAUTH:
+        # Mock redirect directly to callback with a fake auth code
+        return RedirectResponse(url=f'/api/bridge/oauth/callback?code=mock_auth_code_123&state={state}')
+        
+    # Real MSAL Redirect would go here
+    msal_url = f"https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=REPLACE_ME&response_type=code&redirect_uri=REPLACE_ME&scope=Mail.Send offline_access User.Read&state={state}"
+    return RedirectResponse(url=msal_url)
 
 @router.get('/oauth/callback')
-def bridge_oauth_callback(user_id: int, redirect_uri: str = '/profile?bridge=connected', popup: str = 'false', db: Session = Depends(get_db)):
+def bridge_oauth_callback(code: str = None, state: str = None, error: str = None, db: Session = Depends(get_db)):
+    if error:
+        return HTMLResponse(content=f"<html><body><h2>OAuth Error</h2><p>{error}</p></body></html>", status_code=400)
+    if not code or not state:
+        return HTMLResponse(content="<html><body><h2>Missing OAuth Parameters</h2></body></html>", status_code=400)
+        
+    try:
+        payload = jwt.decode(state, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("user_id")
+        redirect_uri = payload.get("redirect_uri", "/profile?bridge=connected")
+        popup = payload.get("popup", "false")
+    except Exception as e:
+        return HTMLResponse(content="<html><body><h2>Invalid State Token</h2></body></html>", status_code=400)
+
+    # 1. Exchange code for tokens (Mock)
+    access_token = "mock_access_token_abc123"
+    refresh_token = "mock_refresh_token_xyz890"
+    
+    # 2. Fetch User Profile from Graph API (Mock)
+    # Using the user ID to generate a consistent mock email if needed, or just a dummy
+    # In tests, we might want this to match the bridge config
+    user = db.query(User).filter(User.id == user_id).first()
+    connected_email = user.email if user else f"user_{user_id}@outlook.com"
+
+    # 3. Upsert UserOutlookAccount
+    outlook_account = db.query(UserOutlookAccount).filter(UserOutlookAccount.user_id == user_id).first()
+    if not outlook_account:
+        outlook_account = UserOutlookAccount(user_id=user_id)
+        db.add(outlook_account)
+    
+    outlook_account.email_address = connected_email
+    outlook_account.access_token = access_token
+    outlook_account.refresh_token = refresh_token
+    outlook_account.status = "connected"
+    outlook_account.last_synced_at = _utcnow()
+    
+    # 4. Upsert UserBridgeStatus (mark offline initially, bridge script must connect to mark online)
     status_record = db.query(UserBridgeStatus).filter(UserBridgeStatus.user_id == user_id).first()
     if not status_record:
         status_record = UserBridgeStatus(user_id=user_id)
         db.add(status_record)
     
-    status_record.status = 'online'
-    status_record.last_heartbeat = _utcnow()
+    status_record.status = 'offline' # Requires bridge script to come online
     db.commit()
     
     if popup == 'true':
-        return HTMLResponse(content="<html><script>window.close();</script><body style='font-family:sans-serif;text-align:center;padding:50px;'><h2>Connection Successful!</h2><p>This window will close automatically.</p></body></html>")
+        return HTMLResponse(content="<html><script>window.opener.postMessage('oauth_success', '*'); window.close();</script><body style='font-family:sans-serif;text-align:center;padding:50px;'><h2>Connection Successful!</h2><p>This window will close automatically.</p></body></html>")
         
     # Redirect back to frontend profile
     return RedirectResponse(url=redirect_uri)
 
 @router.post('/disconnect')
 def bridge_disconnect(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    outlook_account = db.query(UserOutlookAccount).filter(UserOutlookAccount.user_id == current_user.id).first()
+    if outlook_account:
+        outlook_account.status = "disconnected"
+        outlook_account.access_token = None
+        outlook_account.refresh_token = None
+        
     status_record = db.query(UserBridgeStatus).filter(UserBridgeStatus.user_id == current_user.id).first()
     if status_record:
         status_record.status = 'offline'
-        db.commit()
+        
+    db.commit()
     return {'status': 'ok'}

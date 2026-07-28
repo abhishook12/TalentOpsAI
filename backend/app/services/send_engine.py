@@ -236,11 +236,12 @@ async def process_campaign_queue(campaign_id: int):
         from_email = campaign.from_email
         
     # 2. Pre-flight: Check Outlook Bridge using the campaign's user_id
+    # Feature: Offline Queueing - We no longer fail if the bridge is offline.
+    # We simply let the engine queue the emails into the database, and the bridge will process them upon reconnect.
     healthy, error = _check_bridge_health(user_id)
     if not healthy:
-        logger.error(f"Cannot start campaign {campaign_id}: Bridge unhealthy: {error}")
-        _set_campaign_status(campaign_id, CampaignStatus.failed.value)
-        return
+        logger.warning(f"Bridge is currently offline ({error}). Campaign {campaign_id} will be queued up for when it reconnects.")
+        # We do NOT fail the campaign anymore.
         
     with SessionLocal() as db:
         campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()

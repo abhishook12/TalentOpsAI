@@ -162,7 +162,7 @@ export default function Profile() {
                     </div>
                   </div>
                   
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                     <div style={{ background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 8 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Connected Email</div>
                       <div style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -176,6 +176,28 @@ export default function Profile() {
                       </div>
                     </div>
                   </div>
+                  
+                  {bridgeStatus.stats && (
+                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--card-border)', padding: 16, borderRadius: 12, marginBottom: 24 }}>
+                      <h5 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Current Queue Statistics</h5>
+                      <div style={{ display: 'flex', gap: 24 }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>{bridgeStatus.stats.pending || 0}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Pending</div>
+                        </div>
+                        <div style={{ width: 1, background: 'var(--card-border)' }}></div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 24, fontWeight: 800, color: '#4ade80' }}>{bridgeStatus.stats.sent || 0}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Messages Sent</div>
+                        </div>
+                        <div style={{ width: 1, background: 'var(--card-border)' }}></div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 24, fontWeight: 800, color: '#ff6b6b' }}>{bridgeStatus.stats.failed || 0}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Failed</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   
                   <div style={{ display: 'flex', gap: 12 }}>
                     <button onClick={handleDisconnectOutlook} style={{ flex: 1, padding: '10px', borderRadius: 8, border: '1px solid rgba(255,107,107,0.3)', background: 'transparent', color: '#ff6b6b', fontWeight: 600, cursor: 'pointer' }}>

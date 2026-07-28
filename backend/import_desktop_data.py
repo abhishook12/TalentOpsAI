@@ -43,6 +43,8 @@ def process_recruiter_files(db: Session):
     print("Pre-fetching recruiters...", flush=True)
     recruiters_by_email = {r.email: r for r in db.query(Recruiter).filter(Recruiter.email.isnot(None)).all()}
 
+    global_recruiter_idx = 0
+
     for file in files:
         print(f"Processing {file}...", flush=True)
         try:
@@ -93,9 +95,10 @@ def process_recruiter_files(db: Session):
                     if updated:
                         total_recruiters_merged += 1
                 else:
+                    global_recruiter_idx += 1
                     recruiter = Recruiter(
                         recruiter_name=r_name or (r_email.split("@")[0].replace(".", " ").title() if r_email else "Unknown"),
-                        email=r_email,
+                        email=r_email or (f"unknown_{r_name.replace(' ', '_')}_{global_recruiter_idx}@example.com" if r_name else f"unknown_{global_recruiter_idx}@example.com"),
                         phone=r_phone,
                         company_id=company.company_id if company else None,
                         data_source="desktop_injection",

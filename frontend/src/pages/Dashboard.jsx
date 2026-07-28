@@ -2,6 +2,7 @@ import { useMemo, useState, useCallback, useRef } from 'react'
 import { toast } from 'react-hot-toast'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
+import { useAuth } from '../context/AuthContext'
 import api, { getErrorMessage } from '../services/api'
 import {
   Badge,
@@ -56,6 +57,7 @@ function useCachedQuery(key, fetcher, options) {
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const { isAdmin } = useAuth()
   const queryClient = useQueryClient()
   const [lastUpdated, setLastUpdated] = useState(() => new Date())
   const [refreshError, setRefreshError] = useState(null)
@@ -248,11 +250,15 @@ export default function Dashboard() {
           </div>
           <h2 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 12 }}>Welcome to TalentOps AI</h2>
           <p style={{ fontSize: 16, color: 'var(--text-secondary)', maxWidth: 500, margin: '0 auto 32px' }}>
-            Your operational dashboard is completely isolated. To see insights, activity, and analytics, you need to import your first dataset of recruiters or companies.
+            {isAdmin 
+              ? 'Your operational dashboard is completely isolated. To see insights, activity, and analytics, you need to import your first dataset of recruiters or companies.'
+              : 'Your operational dashboard is completely isolated. Awaiting an administrator to import the initial dataset before analytics and insights become available.'}
           </p>
-          <PrimaryButton onClick={() => navigate({ to: '/admin' })} style={{ padding: '14px 28px', fontSize: 16 }}>
-            <i className="ti ti-upload" /> Import Data
-          </PrimaryButton>
+          {isAdmin && (
+            <PrimaryButton onClick={() => navigate({ to: '/admin' })} style={{ padding: '14px 28px', fontSize: 16 }}>
+              <i className="ti ti-upload" /> Import Data
+            </PrimaryButton>
+          )}
         </div>
       ) : (
         <>

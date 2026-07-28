@@ -264,8 +264,9 @@ def _handle_trusted_device(request: Request, response: Response, db: Session, us
         trusted_device.login_attempts += 1
         db.commit()
         
+    from ..config import DEVELOPMENT_LOCKDOWN
     # Auto-approve devices for superadmin to prevent lockout
-    if trusted_device.status == 'Pending' and user.role and user.role.name in ['superadmin', 'admin']:
+    if trusted_device.status == 'Pending' and (not DEVELOPMENT_LOCKDOWN or (user.role and user.role.name in ['superadmin', 'admin'])):
         trusted_device.status = 'Trusted'
         trusted_device.approved_by = user.id
         db.commit()

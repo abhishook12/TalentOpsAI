@@ -47,18 +47,42 @@ export default function USHeatmap() {
 
   const { dataMap, maxCount } = useMemo(() => {
     if (!stateData || !Array.isArray(stateData)) return { dataMap: {}, maxCount: 0 };
+    
+    // Map from full state name to abbreviation since the backend returns full state names
+    const stateNameToAbbr = {
+      "Alabama": "AL", "Alaska": "AK", "Arizona": "AZ", "Arkansas": "AR", "California": "CA",
+      "Colorado": "CO", "Connecticut": "CT", "Delaware": "DE", "Florida": "FL", "Georgia": "GA",
+      "Hawaii": "HI", "Idaho": "ID", "Illinois": "IL", "Indiana": "IN", "Iowa": "IA",
+      "Kansas": "KS", "Kentucky": "KY", "Louisiana": "LA", "Maine": "ME", "Maryland": "MD",
+      "Massachusetts": "MA", "Michigan": "MI", "Minnesota": "MN", "Mississippi": "MS", "Missouri": "MO",
+      "Montana": "MT", "Nebraska": "NE", "Nevada": "NV", "New Hampshire": "NH", "New Jersey": "NJ",
+      "New Mexico": "NM", "New York": "NY", "North Carolina": "NC", "North Dakota": "ND", "Ohio": "OH",
+      "Oklahoma": "OK", "Oregon": "OR", "Pennsylvania": "PA", "Rhode Island": "RI", "South Carolina": "SC",
+      "South Dakota": "SD", "Tennessee": "TN", "Texas": "TX", "Utah": "UT", "Vermont": "VT",
+      "Virginia": "VA", "Washington": "WA", "West Virginia": "WV", "Wisconsin": "WI", "Wyoming": "WY",
+      "District of Columbia": "DC"
+    };
+
     const map = {};
     let max = 0;
+    
     stateData.forEach((item) => {
-      map[item.state] = item.count;
+      // If the state is already an abbreviation, use it. Otherwise, map it.
+      let abbr = item.state;
+      if (item.state && item.state.length > 2) {
+         abbr = stateNameToAbbr[item.state] || item.state;
+      }
+      
+      map[abbr] = item.count;
       if (item.count > max) max = item.count;
     });
     return { dataMap: map, maxCount: max };
   }, [stateData]);
 
+  // Logarithmic color scale helps show data even when heavily skewed
   const colorScale = scaleLinear()
-    .domain([0, maxCount || 1])
-    .range(["#2e1b4d", "#a855f7"]);
+    .domain([0, maxCount > 0 ? maxCount * 0.1 : 1, maxCount || 1])
+    .range(["#2e1b4d", "#7c3aed", "#d8b4fe"]);
 
   const handleMouseMove = (e) => {
     // Keep tooltip relative to the map container by using nativeEvent offset

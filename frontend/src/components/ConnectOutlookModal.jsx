@@ -21,7 +21,8 @@ const ConnectOutlookModal = ({ isOpen, onClose, onSuccess }) => {
       intervalId = setInterval(async () => {
         try {
           const res = await api.get('/api/bridge/status');
-          if (res.data.status === 'online') {
+          // In Bridge v2, OAuth connection sets connected_email, but status remains 'offline' until the desktop agent starts.
+          if (res.data.connected_email) {
             setStatus('success');
             clearInterval(intervalId);
             setTimeout(() => {

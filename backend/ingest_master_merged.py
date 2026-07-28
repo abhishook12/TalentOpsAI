@@ -174,7 +174,7 @@ def run_ingestion():
             for chunk in [new_recs[i:i+500] for i in range(0, len(new_recs), 500)]:
                 db.execute(text("""
                     INSERT INTO recruiters (recruiter_name, email, phone, location, company_id, email2, is_active, completeness_score, notes, created_at)
-                    VALUES (:name, :email, :phone, :loc, :cid, :email2, true, 80, :notes, NOW())
+                    VALUES (:name, :email, :phone, :loc, :cid, :email2, true, 80, :notes, CURRENT_TIMESTAMP)
                     ON CONFLICT (email) DO NOTHING
                 """), chunk)
             db.commit()

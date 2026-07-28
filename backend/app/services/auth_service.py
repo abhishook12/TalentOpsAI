@@ -107,7 +107,7 @@ def get_current_user_from_request(request: Request, db: Session = Depends(get_db
                 
     cached_user = _AUTH_CACHE.get(token)
     if cached_user and time.time() - cached_user[1] < _AUTH_CACHE_TTL:
-        return cached_user[0]
+        return db.merge(cached_user[0]) if db else cached_user[0]
     
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])

@@ -29,6 +29,36 @@ const shellStyles = `
     }
   }
 
+  /* MOBILE BRANDING (Visible only < 900px) */
+  .auth-mobile-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 32px;
+  }
+  
+  .auth-mobile-brand .auth-monogram {
+    font-size: 48px;
+    margin-bottom: 16px;
+  }
+  
+  .auth-mobile-brand .auth-logo-divider {
+    height: 48px;
+    margin: 0 12px;
+  }
+  
+  .auth-mobile-brand .auth-wordmark {
+    font-size: 16px;
+    letter-spacing: 0.35em;
+    margin-bottom: 0;
+  }
+  
+  @media (min-width: 900px) {
+    .auth-mobile-brand {
+      display: none;
+    }
+  }
+
   /* Ambient purple glow behind logo */
   .auth-ambient-glow {
     position: absolute;
@@ -116,7 +146,18 @@ const shellStyles = `
   .auth-form-container {
     width: 100%;
     max-width: 400px;
+    padding: 40px;
+    border-radius: 24px;
+    border: 1px solid var(--card-border, #333);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+    background: #1a1a1a;
     transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @media (max-width: 480px) {
+    .auth-form-container {
+      padding: 24px;
+    }
   }
 
   .auth-form-container.is-authenticating {
@@ -151,7 +192,16 @@ export default function AuthFrame({ children, isAuthenticating }) {
 
         {/* Right Form Panel */}
         <div className="auth-form-panel">
-          <div className={`auth-form-container glass-panel modal-enter ${isAuthenticating ? 'is-authenticating' : ''}`} style={{ padding: 40, borderRadius: 24, border: '1px solid var(--card-border)', boxShadow: '0 24px 60px rgba(0,0,0,0.4)' }}>
+          
+          {/* Mobile Branding */}
+          <div className="auth-mobile-brand">
+            <div className="auth-monogram">
+              <span>T</span><div className="auth-logo-divider"></div><span>O</span>
+            </div>
+            <div className="auth-wordmark">TALENT OPS</div>
+          </div>
+
+          <div className={`auth-form-container glass-panel modal-enter ${isAuthenticating ? 'is-authenticating' : ''}`}>
             {children}
           </div>
         </div>

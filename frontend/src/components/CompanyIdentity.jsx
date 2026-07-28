@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { normalizeLogoDomain } from '../utils/domain'
 
+const failedDomains = new Set()
+
 export function CompanyIdentity({ 
   domain, 
   name, 
@@ -51,16 +53,8 @@ export function CompanyIdentity({
 
   // Determine Logo URL based on 4-tier cascade
   let logoUrl = null
-  if (cleanDomain && errorLevel < 4) {
-    if (errorLevel === 0) {
-      logoUrl = `https://logo.clearbit.com/${cleanDomain}?size=${logoSize * 4}`
-    } else if (errorLevel === 1) {
-      logoUrl = `https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${cleanDomain}&size=${logoSize * 4}`
-    } else if (errorLevel === 2) {
-      logoUrl = `https://icons.duckduckgo.com/ip3/${cleanDomain}.ico`
-    } else if (errorLevel === 3) {
-      logoUrl = `https://favicon.im/${cleanDomain}?larger=true`
-    }
+  if (cleanDomain && !failedDomains.has(cleanDomain) && errorLevel === 0) {
+    logoUrl = `https://logo.clearbit.com/${cleanDomain}?size=${logoSize * 4}`
   }
 
   const containerStyle = {
@@ -105,6 +99,7 @@ export function CompanyIdentity({
         <img 
           src={logoUrl} 
           alt={`${displayName} logo`}
+          loading="lazy"
           style={{ 
             width: size, 
             height: size, 
@@ -115,7 +110,10 @@ export function CompanyIdentity({
             border: '1px solid var(--card-border)',
             flexShrink: 0
           }}
-          onError={() => setErrorLevel(prev => prev + 1)}
+          onError={() => {
+            if (cleanDomain) failedDomains.add(cleanDomain)
+            setErrorLevel(prev => prev + 1)
+          }}
         />
       ) : (
         <div style={monogramContainerStyle}>

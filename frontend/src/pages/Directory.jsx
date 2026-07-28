@@ -1,5 +1,5 @@
 import { toast } from 'react-hot-toast'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState, memo } from 'react'
 import { createPortal } from 'react-dom'
 import * as XLSX from 'xlsx'
 import api, { getErrorMessage } from '../services/api'
@@ -56,7 +56,7 @@ function stateLabel(abbr) {
   return name === abbr ? abbr : `${abbr} - ${name}`
 }
 
-function EditableEmail({ recruiter, onUpdate }) {
+const EditableEmail = memo(function EditableEmail({ recruiter, onUpdate }) {
   const [editing, setEditing] = useState(false);
   const [email, setEmail] = useState(recruiter.email || '');
   const [saving, setSaving] = useState(false);
@@ -106,7 +106,7 @@ function EditableEmail({ recruiter, onUpdate }) {
       <i className="ti ti-pencil" style={{ opacity: 0.3, fontSize: 13 }} />
     </div>
   );
-}
+})
 
 export default function Directory() {
   const [companyQuery, setCompanyQuery] = useSessionState('dir_companyQuery', '')

@@ -76,6 +76,14 @@ def create_refresh_token(user_id: int) -> str:
     payload = {"sub": str(user_id), "exp": expire, "type": "refresh"}
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
+import time
+_AUTH_CACHE = {}
+_AUTH_CACHE_TTL = 60
+
+def invalidate_auth_cache(token: str):
+    if token in _AUTH_CACHE:
+        del _AUTH_CACHE[token]
+
 def get_current_user_from_request(request: Request, db: Session = Depends(get_db)):
     """
     Extracts, decodes, and validates the JWT access token from the request.
@@ -96,6 +104,10 @@ def get_current_user_from_request(request: Request, db: Session = Depends(get_db
                     detail="Not authenticated",
                     headers={"WWW-Authenticate": "Bearer"},
                 )
+                
+    cached_user = _AUTH_CACHE.get(token)
+    if cached_user and time.time() - cached_user[1] < _AUTH_CACHE_TTL:
+        return cached_user[0]
     
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -155,6 +167,7 @@ def get_current_user_from_request(request: Request, db: Session = Depends(get_db
             if not user.role or user.role.name.lower() not in ['admin', 'superadmin']:
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="maintenance_lockdown")
         
+        _AUTH_CACHE[token] = (user, time.time())
         return user
     except jwt.ExpiredSignatureError as e:
         import logging; logging.warning(f"JWT Expired: {e}")

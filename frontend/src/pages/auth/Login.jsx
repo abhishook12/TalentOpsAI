@@ -22,21 +22,28 @@ const formStyles = `
   
   .login-title {
     font-size: 24px;
-    font-weight: 600;
+    font-weight: 700;
     color: #ffffff;
-    margin-bottom: 8px;
+    margin: 0 0 8px 0;
     letter-spacing: -0.01em;
   }
 
   .login-subtitle {
     font-size: 14px;
-    color: #888888;
+    color: #a0a0a0;
+    margin: 0;
+    line-height: 1.5;
   }
 
   .login-field {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
+  }
+
+  .login-label {
+    font-size: 13px;
+    color: #a0a0a0;
   }
 
   .login-input-wrap {
@@ -74,9 +81,22 @@ const formStyles = `
     border-color: #8b5cf6;
     box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
   }
+  
+  .login-input[aria-invalid="true"] {
+    border-color: #ef4444;
+  }
+  .login-input[aria-invalid="true"]:focus {
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+  }
 
   .login-input-wrap:focus-within .login-icon-left {
     color: #8b5cf6;
+  }
+  
+  .login-validation-msg {
+    font-size: 12px;
+    color: #ef4444;
+    margin-top: 4px;
   }
 
   .login-eye-button {
@@ -102,7 +122,7 @@ const formStyles = `
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin: 8px 0;
+    margin: 4px 0 16px 0;
   }
 
   .login-remember {
@@ -110,26 +130,53 @@ const formStyles = `
     align-items: center;
     gap: 8px;
     font-size: 13px;
-    color: #888;
+    color: #a0a0a0;
+    cursor: pointer;
   }
 
   .login-checkbox {
-    accent-color: #8b5cf6;
+    appearance: none;
     width: 16px;
     height: 16px;
     cursor: pointer;
     background: #111;
-    border: 1px solid #333;
+    border: 1px solid #444;
+    border-radius: 4px;
+    position: relative;
+    transition: all 0.2s;
+  }
+  
+  .login-checkbox:checked {
+    background: #8b5cf6;
+    border-color: #8b5cf6;
+  }
+  
+  .login-checkbox:checked::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 2px;
+    width: 4px;
+    height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  
+  .login-checkbox:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.3);
   }
 
   .login-forgot {
     font-size: 13px;
-    color: #8b5cf6;
+    color: #a0a0a0;
     text-decoration: none;
+    transition: color 0.2s;
   }
   
   .login-forgot:hover {
-    text-decoration: underline;
+    color: #fff;
   }
 
   .login-button-primary {
@@ -156,6 +203,25 @@ const formStyles = `
     cursor: not-allowed;
     opacity: 0.5;
   }
+
+  .login-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: #666;
+    font-size: 13px;
+    margin: 16px 0;
+  }
+  
+  .login-divider::before,
+  .login-divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #333;
+  }
+  
+  .login-divider span {
+    padding: 0 16px;
   }
 
   .login-button-google {
@@ -210,10 +276,18 @@ const formStyles = `
 
   .login-link:hover {
     color: var(--text-primary, #111);
+    text-decoration: underline;
   }
 
   [data-theme="dark"] .login-link:hover {
     color: #ffffff;
+  }
+  
+  .login-create-account {
+    color: #8b5cf6 !important;
+  }
+  .login-create-account:hover {
+    color: #a855f7 !important;
   }
 
   .login-error-banner {
@@ -240,6 +314,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [emailTouched, setEmailTouched] = useState(false)
   
   // Splash Screen State
   const [isAuthenticating, setIsAuthenticating] = useState(false)
@@ -251,7 +326,8 @@ export default function Login() {
   const search = useSearch({ from: '/login' })
   const redirect = decodeURIComponent(search.redirect || '/')
 
-  const isFormValid = email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/) && password.length >= 4
+  const isEmailValid = email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
+  const isFormValid = isEmailValid && password.length >= 4
 
   const performBackgroundInitialization = async (authFunction) => {
     setError('')
@@ -325,42 +401,54 @@ export default function Login() {
       <AuthFrame isAuthenticating={isAuthenticating}>
         
         {error && (
-          <div className="login-error-banner">
+          <div className="login-error-banner" role="alert">
             <i className="ti ti-alert-circle" style={{ marginTop: '2px' }} />
             <span>{error}</span>
           </div>
         )}
 
         <div className="login-title-wrapper">
-          <div className="login-title">Welcome Back</div>
-          <div className="login-subtitle">Login to access your TalentOps account</div>
+          <h1 className="login-title">Welcome Back</h1>
+          <p className="login-subtitle">Login to access your TalentOps account</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">
           <div className="login-field">
+            <label className="login-label" htmlFor="email-input">Email address</label>
             <div className="login-input-wrap">
               <i className="ti ti-mail login-icon-left" />
               <input
+                id="email-input"
                 className="login-input"
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email address"
+                onBlur={() => setEmailTouched(true)}
+                placeholder="you@company.com"
+                aria-invalid={emailTouched && !isEmailValid ? "true" : "false"}
+                aria-describedby={emailTouched && !isEmailValid ? "email-error" : undefined}
               />
             </div>
+            {emailTouched && !isEmailValid && (
+              <div id="email-error" className="login-validation-msg">Enter a valid email address</div>
+            )}
           </div>
 
           <div className="login-field">
+            <label className="login-label" htmlFor="password-input">Password</label>
             <div className="login-input-wrap">
               <i className="ti ti-lock login-icon-left" />
               <input
+                id="password-input"
                 className="login-input"
                 type={showPassword ? 'text' : 'password'}
                 required
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
+                placeholder="Enter your password"
               />
               <button 
                 type="button" 
@@ -379,12 +467,19 @@ export default function Login() {
               Remember me
             </label>
             <Link to="/forgot-password" className="login-forgot">
-              Forgot Password?
+              Forgot password?
             </Link>
           </div>
 
-          <button type="submit" className="login-button-primary">
-            <span style={{ position: 'relative', zIndex: 1 }}>Login to TalentOps</span>
+          <button type="submit" className="login-button-primary" disabled={!isFormValid || isAuthenticating}>
+            {isAuthenticating ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <i className="ti ti-loader animate-spin" />
+                <span>Signing in...</span>
+              </div>
+            ) : (
+              <span>Login to TalentOps</span>
+            )}
           </button>
           
           {import.meta.env.DEV && (
@@ -410,7 +505,7 @@ export default function Login() {
 
         <div className="login-footer-links" style={{ display: 'flex', gap: 6, justifyContent: 'center', marginTop: 24, fontSize: 13 }}>
           <span style={{ color: '#888' }}>Don't have an account?</span>
-          <Link to="/register" className="login-forgot">
+          <Link to="/register" className="login-link login-create-account">
             Create an account
           </Link>
         </div>

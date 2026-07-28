@@ -1,4 +1,10 @@
-import psycopg
-conn=psycopg.connect('postgresql://postgres.qpetzpxmuofuepvrqedk:h2ejQHVen5i5lQkDSR9RaCoz@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres')
-res = conn.execute("SELECT column_name, character_maximum_length FROM information_schema.columns WHERE table_name = 'recruiters' AND character_maximum_length IS NOT NULL").fetchall()
-print(res)
+import pandas as pd
+arjun_file = r'C:\Users\User\Downloads\arjun 2nd sheet .xlsx'
+print("Reading file...")
+df = pd.read_excel(arjun_file, engine='openpyxl')
+print("Total rows:", len(df))
+if 'EMAIL' in df.columns:
+    unique_emails = df['EMAIL'].dropna().astype(str).str.strip().str.lower().nunique()
+    print("Unique valid emails:", unique_emails)
+else:
+    print("No EMAIL column.")

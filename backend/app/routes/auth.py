@@ -645,6 +645,10 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
         except Exception:
             pass
             
+    from ..services.auth_service import invalidate_auth_cache
+    if token:
+        invalidate_auth_cache(token)
+            
     response.delete_cookie("access_token")
     response.delete_cookie("refresh_token")
     # Also delete legacy cookies

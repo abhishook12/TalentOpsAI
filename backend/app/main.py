@@ -43,7 +43,6 @@ if RUN_STARTUP_MIGRATIONS:
                 _db.rollback()
 
             # Ensure any missing tables (like smart_import_jobs) are created
-            models.Base.metadata.create_all(bind=engine)
             
             try:
                 from .seed_roles import seed_roles_and_permissions
@@ -389,9 +388,20 @@ async def timeout_stuck_emails_sweep():
 async def startup_event():
     from .services.send_engine import restart_active_campaigns
     from .services.sentinel_engine import sentinel_engine
-    asyncio.create_task(timeout_stuck_emails_sweep())
-    restart_active_campaigns()
-    sentinel_engine.start()
+    from .database import engine
+    from sqlalchemy import text
+    
+    conn = engine.connect()
+    lock_acquired = conn.execute(text("SELECT pg_try_advisory_lock(83726491)")).scalar()
+    if lock_acquired:
+        app.state.bg_task_conn = conn  # Keep connection open to hold the lock
+        asyncio.create_task(timeout_stuck_emails_sweep())
+        restart_active_campaigns()
+        sentinel_engine.start()
+        logger.info("Acquired leader lock; started background tasks.")
+    else:
+        conn.close()
+        logger.info("Another worker is leader; skipping background tasks.")
 
 from .routes import health
 app.include_router(health.router, prefix="/health", tags=["System Health"])

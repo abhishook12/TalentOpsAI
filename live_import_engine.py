@@ -6,10 +6,10 @@ import gc
 from datetime import datetime
 import sys
 
-# Connection string to LIVE SUPABASE DB
-DATABASE_URL = "postgresql+psycopg://postgres.qpetzpxmuofuepvrqedk:h2ejQHVen5i5lQkDSR9RaCoz@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres"
+# Connection string to CORRECT LIVE SUPABASE DB
+DATABASE_URL = "postgresql+psycopg://postgres.dcqvsvgrdsrgnbwwssup:sPMFmD3XYX6RW2PD@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres"
 
-print("Starting production data import engine...")
+print("Starting production data import engine for CORRECT database...")
 
 # 1. Connect to Live DB
 engine = sqlalchemy.create_engine(DATABASE_URL)
@@ -47,7 +47,6 @@ if len(df_new) == 0:
 
 # 6. Map to the Recruiter model columns
 print("Mapping columns for bulk insertion...")
-# We know the columns: 'Company name', 'PV Name', 'EMAIL', 'location'
 df_insert = pd.DataFrame()
 df_insert['recruiter_name'] = df_new.get('PV Name', df_new.get('pv name', 'Unknown'))
 df_insert['recruiter_name'] = df_insert['recruiter_name'].fillna('Unknown')
@@ -60,7 +59,6 @@ df_insert['is_active'] = True
 df_insert['trust_score'] = 100
 df_insert['needs_review'] = False
 
-# We'll put Company Name in notes or raw_data for now to avoid complex relational inserts for 200k rows
 def row_to_json(row):
     return json.dumps({'original_company': str(row.get('Company name', '')), 'import_source': 'arjun'})
 

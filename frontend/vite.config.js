@@ -15,6 +15,9 @@ try {
 
 export default defineConfig({
   plugins: [react()],
+  esbuild: {
+    drop: ['console', 'debugger'],
+  },
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(commitHash)
   },
@@ -40,6 +43,6 @@ export default defineConfig({
         }
       }
     },
-    chunkSizeWarningLimit: 1000
+    chunkSizeWarningLimit: 500
   }
 })

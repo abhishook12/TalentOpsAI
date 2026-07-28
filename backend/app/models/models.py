@@ -62,7 +62,7 @@ class Company(Base):
     __tablename__ = "companies"
     company_id   = Column(Integer, primary_key=True, index=True)
     user_id      = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=True, index=True)
-    company_name = Column(String(255), nullable=False)
+    company_name = Column(String(255), nullable=False, index=True)
     normalized_company_name = Column(String(255), index=True, nullable=True)
     industry     = Column(String(100))
     location     = Column(String(150))
@@ -79,8 +79,8 @@ class Company(Base):
     raw_data     = Column(Text, nullable=True)     # Original uploaded row (JSON string)
     metadata_json= Column(Text, nullable=True)     # Extra dynamic attributes (JSON string)
     tags         = Column(Text, nullable=True)     # Comma-separated tags or JSON list
-    created_at   = Column(TIMESTAMP, server_default=func.now())
-    updated_at   = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+    created_at   = Column(TIMESTAMP, server_default=func.now(), index=True)
+    updated_at   = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), index=True)
     recruiters   = relationship("Recruiter", foreign_keys="[Recruiter.company_id]", back_populates="company")
     submissions  = relationship("Submission", back_populates="company")
     email_patterns = relationship("CompanyEmailPattern", backref="company", cascade="all, delete-orphan")
@@ -130,7 +130,7 @@ class Recruiter(Base):
     state_source     = Column(String(150), nullable=True)
     state_confidence = Column(String(50), nullable=True)
     state_reason     = Column(Text, nullable=True)
-    last_scan_at     = Column(TIMESTAMP, nullable=True)
+    last_scan_at     = Column(TIMESTAMP, nullable=True, index=True)
     completeness_score = Column(Integer, default=0, index=True)
     needs_review     = Column(Boolean, default=False, index=True)
     is_active        = Column(Boolean, default=True, index=True)
@@ -142,8 +142,8 @@ class Recruiter(Base):
     raw_data         = Column(Text, nullable=True)     # Original uploaded row (JSON string)
     metadata_json    = Column(Text, nullable=True)     # Extra dynamic attributes (JSON string)
     tags             = Column(Text, nullable=True)     # Comma-separated tags or JSON list
-    created_at       = Column(TIMESTAMP, server_default=func.now())
-    updated_at       = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+    created_at       = Column(TIMESTAMP, server_default=func.now(), index=True)
+    updated_at       = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), index=True)
 
     # --- SENTINEL TRACKING COLUMNS ---
     quality_score    = Column(Integer, default=0, index=True)

@@ -890,15 +890,6 @@ def get_recruiter(recruiter_id: int, db: Session = Depends(get_db), current_user
     if not r:
         raise HTTPException(status_code=404, detail="Recruiter not found")
         
-    try:
-        from app.services.enrichment_service import jit_enrichment_service
-        enriched = jit_enrichment_service.enrich_recruiter_sync(db, r)
-        if enriched:
-            db.refresh(r)
-    except Exception as e:
-        import logging
-        logging.getLogger(__name__).error(f"JIT Enrichment failed: {e}")
-        
     return serialize_recruiter(r)
 
 @router.post("/{recruiter_id}/email/approve")
@@ -1049,9 +1040,11 @@ def export_recruiters(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_request)
 ):
+    from sqlalchemy.orm import contains_eager
     query = db.query(Recruiter).join(Recruiter.company, isouter=True)\
               .filter()\
               .options(
+                  contains_eager(Recruiter.company),
                   selectinload(Recruiter.structured_emails),
                   selectinload(Recruiter.structured_phones),
                   selectinload(Recruiter.structured_locations)

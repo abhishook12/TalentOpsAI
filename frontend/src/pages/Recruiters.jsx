@@ -1,5 +1,5 @@
 import { toast } from 'react-hot-toast'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, memo } from 'react'
 import { exportToExcel } from '../services/export'
 import api from '../services/api'
 import { CompanyIdentity } from '../components/CompanyIdentity'
@@ -99,7 +99,7 @@ const getAvatarColor = (name) => {
   return colors[index]
 }
 
-function RecruiterTableRow({ r }) {
+const RecruiterTableRow = memo(function RecruiterTableRow({ r }) {
   // Mock "Last Active" based on completeness to mimic the mockup's data variations
   const mockLastActive = r.completeness_score > 80 ? '2h ago' : r.completeness_score > 50 ? '3h ago' : '1d ago'
   
@@ -196,7 +196,7 @@ function RecruiterTableRow({ r }) {
       </td>
     </tr>
   )
-}
+})
 
 export default function Recruiters() {
   // Pagination
@@ -526,7 +526,7 @@ export default function Recruiters() {
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                  <thead style={{ position: 'sticky', top: 0, background: 'rgba(15, 15, 20, 0.95)', backdropFilter: 'blur(10px)', zIndex: 10 }}>
+                  <thead style={{ position: 'sticky', top: 0, background: 'rgba(15, 15, 35, 0.95)', zIndex: 10 }}>
                     <tr>
                       <th style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '20px 24px', borderBottom: '1px solid var(--card-border)' }}>Recruiter</th>
                       <th style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '20px 20px', borderBottom: '1px solid var(--card-border)' }}>Company</th>

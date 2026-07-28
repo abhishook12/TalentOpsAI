@@ -8,7 +8,7 @@ import json
 from ..database import get_db
 from ..models.auth_models import User, UserBridgeStatus, UserOutlookAccount
 from ..services.auth_service import get_current_user_from_request
-from ..models.campaigns import EmailLog, EmailLogStatus, Campaign, CampaignRecruiter
+from ..models.campaigns import EmailLog, EmailLogStatus, Campaign, CampaignRecruiter, CampaignStatus
 
 router = APIRouter()
 
@@ -226,7 +226,7 @@ def post_bridge_results(payload: BridgeResultsPayload, db: Session = Depends(get
 
 from fastapi.responses import RedirectResponse, HTMLResponse
 import urllib.parse
-from jose import jwt
+import jwt
 from datetime import datetime, timedelta
 from ..services.auth_service import SECRET_KEY, ALGORITHM
 

@@ -351,7 +351,7 @@ export default function Login() {
       navigate({ to: redirect })
       
     } catch (err) {
-      let errorDetail = err?.response?.data?.detail || 'Authentication failed. Please check your credentials.'
+      let errorDetail = err?.response?.data?.detail || err?.message || 'Authentication failed. Please check your credentials.'
       if (Array.isArray(errorDetail)) {
           errorDetail = errorDetail.map(e => e.msg).join(', ')
       } else if (typeof errorDetail === 'object') {

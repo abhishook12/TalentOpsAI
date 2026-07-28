@@ -249,9 +249,10 @@ def companies_search(
 ):
     dashboard_query = not q and (not state or state.upper() == 'ALL') and min_recruiters == 1 and limit == 6 and skip == 0
     dir_query = not q and (not state or state.upper() == 'ALL') and min_recruiters == 1 and limit == 200 and skip == 0
-    cache_key = f"companies_search_dashboard_{current_user.id}" if dashboard_query else (f"companies_search_dir_{current_user.id}" if dir_query else f"companies_search_{current_user.id}")
+    # Cache ALL company search queries aggressively
+    cache_key = f"companies_search_{current_user.id}_{q or ''}_{state or ''}_{min_recruiters}_{limit}_{skip}"
     cached = analytics_cache.get(cache_key)
-    if cached is not None and (dashboard_query or dir_query or (not q and not state and min_recruiters == 0 and limit == 100 and skip == 0)):
+    if cached is not None:
         response.headers["X-Total-Count"] = str(cached["total_count"])
         return cached["rows"]
 
@@ -331,12 +332,8 @@ def companies_search(
             "needs_review_count": int(row["needs_review_count"]),
         })
 
-    if dashboard_query:
-        analytics_cache.set(f"companies_search_dashboard_{current_user.id}", {"total_count": total_count, "rows": res}, ttl=3600)
-    elif dir_query:
-        analytics_cache.set(f"companies_search_dir_{current_user.id}", {"total_count": total_count, "rows": res}, ttl=3600)
-    elif not q and not state and min_recruiters == 0 and limit == 100 and skip == 0:
-        analytics_cache.set(f"companies_search_{current_user.id}", {"total_count": total_count, "rows": res}, ttl=3600)
+    # Cache all query results
+    analytics_cache.set(cache_key, {"total_count": total_count, "rows": res}, ttl=300)
 
     return res
 

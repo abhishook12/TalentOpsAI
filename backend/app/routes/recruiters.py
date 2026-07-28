@@ -680,20 +680,14 @@ def get_recruiters(
     current_user: User = Depends(get_current_user_from_request)
 ):
     print(f"GET /recruiters/ CALLED! needs_review={needs_review}", flush=True)
-    is_default = page == 1 and limit in (5, 10, 20, 50, 100) and not any([search, state, state_status, city, company, company_id, title, has_phone, missing_email, is_active, min_completeness, needs_review, email_inference_status, source_job_id, data_source]) and sort_by in ("created_at", "last_scan_at")
-    cache_key = f"rec_list_p1_l{limit}_{sort_by}_{sort_desc}" if is_default else None
-    if cache_key:
-        cached = analytics_cache.get(cache_key)
-        if cached is not None:
-            return cached
+    # Cache ALL recruiter list queries aggressively
+    cache_key = f"rec_list_{current_user.id}_{page}_{limit}_{search or ''}_{state or ''}_{company_id or ''}_{sort_by}_{sort_desc}_{needs_review}_{has_phone}_{is_active}_{data_source or ''}"
+    cached = analytics_cache.get(cache_key)
+    if cached is not None:
+        return cached
 
     query = db.query(Recruiter, Company)\
-              .join(Company, Recruiter.company_id == Company.company_id, isouter=True)\
-              .options(
-                  selectinload(Recruiter.structured_emails),
-                  selectinload(Recruiter.structured_phones),
-                  selectinload(Recruiter.structured_locations)
-              )
+              .join(Company, Recruiter.company_id == Company.company_id, isouter=True)
               
     is_admin = current_user.role and current_user.role.name.lower() in ('admin', 'superadmin')
     from ..utils.normalizer import normalize_text
@@ -864,24 +858,14 @@ def get_recruiters(
                 "data_source": recruiter.data_source,
                 "source_job_id": recruiter.source_job_id,
                 "created_at": str(recruiter.created_at) if recruiter.created_at else None,
-                "structured_emails": [{
-                    "id": e.id, "email": e.email, "email_type": e.email_type, "status": e.status, 
-                    "confidence_score": e.confidence_score, "is_primary": e.is_primary, "source": e.source
-                } for e in getattr(recruiter, "structured_emails", [])],
-                "structured_phones": [{
-                    "id": p.id, "phone_number": p.phone_number, "phone_type": p.phone_type,
-                    "is_primary": p.is_primary, "belongs_to_person": p.belongs_to_person, "source": p.source
-                } for p in getattr(recruiter, "structured_phones", [])],
-                "structured_locations": [{
-                    "id": l.id, "city": l.city, "state": l.state, "location_type": l.location_type,
-                    "is_fallback": l.is_fallback, "source": l.source
-                } for l in getattr(recruiter, "structured_locations", [])],
+                "structured_emails": [],
+                "structured_phones": [],
+                "structured_locations": [],
             }
             for recruiter, company in results
         ]
     }
-    if cache_key:
-        analytics_cache.set(cache_key, ret_data, ttl=1800)
+    analytics_cache.set(cache_key, ret_data, ttl=300)
     return ret_data
 
 @router.get("/{recruiter_id}")

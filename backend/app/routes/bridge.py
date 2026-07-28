@@ -8,7 +8,7 @@ import json
 from ..database import get_db
 from ..models.auth_models import User, UserBridgeStatus, UserOutlookAccount
 from ..services.auth_service import get_current_user_from_request
-from ..models.campaigns import EmailLog, EmailLogStatus, Campaign, CampaignRecruiter, CampaignStatus
+from ..models.campaigns import EmailLog, EmailLogStatus, Campaign, CampaignRecruiter, CampaignStatus, CampaignRecruiterStatus
 
 router = APIRouter()
 

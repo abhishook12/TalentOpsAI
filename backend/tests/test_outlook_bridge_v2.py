@@ -70,7 +70,7 @@ def test_oauth_login_redirect(auth_headers):
 
 def test_oauth_callback(auth_headers, test_user, db_session):
     # Setup state
-    from jose import jwt
+    import jwt
     from app.services.auth_service import SECRET_KEY, ALGORITHM
     import datetime
     state = jwt.encode({"user_id": test_user.id, "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=15)}, SECRET_KEY, algorithm=ALGORITHM)

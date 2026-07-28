@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from pydantic import BaseModel
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import os
 
 from ..database import get_db
-from ..models.auth_models import TrustedDevice, User, Session as DBSession, LoginHistory, AuditLog
+from ..models.auth_models import TrustedDevice, User, Session as DBSession, LoginHistory, AuditLog, DevicePolicy
 from ..services.auth_service import require_admin, require_role, get_current_user_from_request
 
 router = APIRouter()
@@ -64,7 +64,7 @@ def list_devices(request: Request, db: Session = Depends(get_db)):
     
     devices = db.query(TrustedDevice).options(
         joinedload(TrustedDevice.user)
-    ).all()
+    ).order_by(TrustedDevice.created_at.desc()).limit(1000).all()
     
     session_counts_raw = db.query(
         DBSession.trusted_device_id,
@@ -96,7 +96,10 @@ def list_devices(request: Request, db: Session = Depends(get_db)):
             "last_login": d.last_login,
             "status": d.status,
             "created_at": d.created_at,
-            "active_sessions": session_counts.get(d.id, 0)
+            "active_sessions": session_counts.get(d.id, 0),
+            "expires_at": getattr(d, 'expires_at', None),
+            "requires_reverification": getattr(d, 'requires_reverification', False),
+            "risk_score": getattr(d, 'risk_score', None),
         })
     return result
 
@@ -347,6 +350,82 @@ def terminate_all_sessions(request: Request, db: Session = Depends(get_db)):
     db.commit()
     return {"message": f"Terminated {updated} sessions"}
 
+
+class BulkTerminate(BaseModel):
+    session_ids: list[int]
+
+@router.delete("/all")
+def clear_all_devices(request: Request, db: Session = Depends(get_db)):
+    admin_user = require_admin(request, db)
+    # Don't delete the device associated with the current session
+    current_device_id = request.cookies.get("device_id")
+    
+    if current_device_id:
+        from ..routes.auth import _hash_token
+        current_hash = _hash_token(current_device_id)
+        db.query(TrustedDevice).filter(TrustedDevice.device_id_hash != current_hash).delete(synchronize_session=False)
+    else:
+        db.query(TrustedDevice).delete(synchronize_session=False)
+    db.commit()
+    return {"message": "All other trusted devices cleared"}
+
+@router.delete("/pending")
+def clear_pending_devices(request: Request, db: Session = Depends(get_db)):
+    admin_user = require_admin(request, db)
+    db.query(TrustedDevice).filter(TrustedDevice.status == 'Pending').delete(synchronize_session=False)
+    db.commit()
+    return {"message": "All pending devices cleared"}
+
+@router.post("/sessions/bulk-terminate")
+def bulk_terminate_sessions(payload: BulkTerminate, request: Request, db: Session = Depends(get_db)):
+    admin_user = require_admin(request, db)
+    
+    current_session_token = request.cookies.get("session")
+    if current_session_token:
+        from ..routes.auth import _hash_token
+        current_session_hash = _hash_token(current_session_token)
+        current_session = db.query(DBSession).filter(DBSession.token_hash == current_session_hash).first()
+        if current_session and current_session.id in payload.session_ids:
+            raise HTTPException(status_code=400, detail="Cannot bulk-terminate your own active session. Use the logout button.")
+
+    updated = db.query(DBSession).filter(DBSession.id.in_(payload.session_ids)).update({"is_active": False, "device": "Terminated by admin"}, synchronize_session=False)
+    
+    for sid in payload.session_ids:
+        audit = AuditLog(
+            user_id=admin_user.id,
+            action="force_logout_session",
+            previous_value="active",
+            new_value="inactive",
+            reason="Admin bulk termination",
+            status="success"
+        )
+        db.add(audit)
+    db.commit()
+    
+    return {"message": f"Terminated {updated} sessions"}
+
+@router.delete("/sessions/all")
+def terminate_all_sessions(request: Request, db: Session = Depends(get_db)):
+    admin_user = require_admin(request, db)
+    
+    current_session_token = request.cookies.get("session")
+    if current_session_token:
+        from ..routes.auth import _hash_token
+        current_session_hash = _hash_token(current_session_token)
+        updated = db.query(DBSession).filter(DBSession.token_hash != current_session_hash, DBSession.is_active == True).update({"is_active": False, "device": "Terminated by admin"}, synchronize_session=False)
+    else:
+        updated = db.query(DBSession).filter(DBSession.is_active == True).update({"is_active": False, "device": "Terminated by admin"}, synchronize_session=False)
+        
+    audit = AuditLog(
+        user_id=admin_user.id,
+        action="force_logout_all",
+        reason="Admin terminated all sessions",
+        status="success"
+    )
+    db.add(audit)
+    db.commit()
+    return {"message": f"Terminated {updated} sessions"}
+
 @router.delete("/sessions/expired")
 def clear_expired_sessions(request: Request, db: Session = Depends(get_db)):
     admin_user = require_admin(request, db)
@@ -354,3 +433,135 @@ def clear_expired_sessions(request: Request, db: Session = Depends(get_db)):
     deleted = db.query(DBSession).filter((DBSession.expires_at < now) | (DBSession.is_active == False)).delete(synchronize_session=False)
     db.commit()
     return {"message": f"Cleared {deleted} expired/inactive sessions"}
+
+class DevicePatchUpdate(BaseModel):
+    device_name: str = None
+    status: str = None
+    trust_duration_days: int = None
+    reason: str = None
+
+@router.patch("/{device_id}")
+def patch_device(device_id: int, payload: DevicePatchUpdate, request: Request, db: Session = Depends(get_db)):
+    admin_user = require_admin(request, db)
+    device = db.query(TrustedDevice).filter(TrustedDevice.id == device_id).first()
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+    
+    old_status = device.status
+    old_name = device.device_name
+    
+    if payload.device_name is not None:
+        device.device_name = payload.device_name
+        
+    if payload.status is not None:
+        if payload.status not in ['Trusted', 'Revoked', 'Disabled', 'Pending', 'Blocked']:
+            raise HTTPException(status_code=400, detail="Invalid status")
+        device.status = payload.status
+        
+        if payload.status == 'Trusted':
+            device.approved_by = admin_user.id
+            if device.user and device.user.status == 'Pending Verification':
+                device.user.status = 'Active'
+                db.add(device.user)
+            
+            if payload.trust_duration_days:
+                device.expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=payload.trust_duration_days)
+            else:
+                device.expires_at = None
+                
+        elif payload.status in ['Revoked', 'Disabled', 'Blocked']:
+            db.query(DBSession).filter(DBSession.trusted_device_id == device.id).update({"is_active": False})
+            
+    audit = AuditLog(
+        user_id=admin_user.id,
+        target_user_id=device.user_id,
+        target_device_id=device.id,
+        action="patch_device",
+        previous_value=f"Status: {old_status}, Name: {old_name}",
+        new_value=f"Status: {device.status}, Name: {device.device_name}",
+        device=str(device_id),
+        reason=payload.reason or f"Manually updated by admin",
+        status="success"
+    )
+    db.add(audit)
+    db.commit()
+    return {"message": "Device updated successfully"}
+
+@router.post("/{device_id}/re-verify")
+def reverify_device(device_id: int, request: Request, db: Session = Depends(get_db)):
+    admin_user = require_admin(request, db)
+    device = db.query(TrustedDevice).filter(TrustedDevice.id == device_id).first()
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+        
+    device.requires_reverification = True
+    
+    audit = AuditLog(
+        user_id=admin_user.id,
+        target_user_id=device.user_id,
+        target_device_id=device.id,
+        action="require_reverification",
+        reason="Admin forced MFA re-verify",
+        status="success"
+    )
+    db.add(audit)
+    db.commit()
+    return {"message": "Device flagged for re-verification"}
+
+class DevicePolicyUpdate(BaseModel):
+    auto_approve_cidrs: str = None
+    always_require_admin_approval: bool = False
+    allowed_countries: str = None
+    block_outside_geos: bool = False
+    max_devices_per_user: int = 0
+    default_trust_duration_days: int = 90
+    idle_revoke_days: int = 60
+    notify_admins_pending: bool = False
+
+@router.get("/policy/config")
+def get_device_policy(request: Request, db: Session = Depends(get_db)):
+    admin_user = require_admin(request, db)
+    policy = db.query(DevicePolicy).first()
+    if not policy:
+        policy = DevicePolicy()
+        db.add(policy)
+        db.commit()
+        db.refresh(policy)
+        
+    return {
+        "auto_approve_cidrs": policy.auto_approve_cidrs,
+        "always_require_admin_approval": policy.always_require_admin_approval,
+        "allowed_countries": policy.allowed_countries,
+        "block_outside_geos": policy.block_outside_geos,
+        "max_devices_per_user": policy.max_devices_per_user,
+        "default_trust_duration_days": policy.default_trust_duration_days,
+        "idle_revoke_days": policy.idle_revoke_days,
+        "notify_admins_pending": policy.notify_admins_pending
+    }
+
+@router.put("/policy/config")
+def update_device_policy(payload: DevicePolicyUpdate, request: Request, db: Session = Depends(get_db)):
+    admin_user = require_admin(request, db)
+    policy = db.query(DevicePolicy).first()
+    if not policy:
+        policy = DevicePolicy()
+        db.add(policy)
+        
+    policy.auto_approve_cidrs = payload.auto_approve_cidrs
+    policy.always_require_admin_approval = payload.always_require_admin_approval
+    policy.allowed_countries = payload.allowed_countries
+    policy.block_outside_geos = payload.block_outside_geos
+    policy.max_devices_per_user = payload.max_devices_per_user
+    policy.default_trust_duration_days = payload.default_trust_duration_days
+    policy.idle_revoke_days = payload.idle_revoke_days
+    policy.notify_admins_pending = payload.notify_admins_pending
+    
+    audit = AuditLog(
+        user_id=admin_user.id,
+        action="update_device_policy",
+        reason="Admin updated device global policy",
+        status="success"
+    )
+    db.add(audit)
+    db.commit()
+    return {"message": "Device policy updated successfully"}

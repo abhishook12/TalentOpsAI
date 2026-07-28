@@ -113,7 +113,27 @@ class TrustedDevice(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     
+    # New fields for advanced device controls
+    expires_at = Column(DateTime, nullable=True)
+    requires_reverification = Column(Boolean, default=False)
+    risk_score = Column(Integer, nullable=True)
+    
     user = relationship("User", foreign_keys=[user_id])
+
+class DevicePolicy(Base):
+    __tablename__ = 'device_policies'
+    id = Column(Integer, primary_key=True, index=True)
+    auto_approve_cidrs = Column(Text, nullable=True) # Comma separated list
+    always_require_admin_approval = Column(Boolean, default=False)
+    allowed_countries = Column(Text, nullable=True) # Comma separated list
+    block_outside_geos = Column(Boolean, default=False)
+    max_devices_per_user = Column(Integer, default=0) # 0 = unlimited
+    default_trust_duration_days = Column(Integer, default=90)
+    idle_revoke_days = Column(Integer, default=60)
+    notify_admins_pending = Column(Boolean, default=False)
+    
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
 
 class Session(Base):
     __tablename__ = 'sessions'

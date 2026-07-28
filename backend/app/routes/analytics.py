@@ -285,7 +285,7 @@ def companies_search(
         WITH recruiter_counts AS (
             SELECT company_id, COUNT(recruiter_id) as rc_count
             FROM recruiters
-            WHERE company_id IS NOT NULL AND ({'1=1' if is_superadmin else 'user_id = :user_id'})
+            WHERE company_id IS NOT NULL AND 1=1
             GROUP BY company_id
         ),
         comp_stats AS (

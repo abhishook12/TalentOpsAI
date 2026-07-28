@@ -361,8 +361,8 @@ export default function TrustedDevices() {
                     </>
                   )
                 ) : (
-
-                    filteredDevices.map(d => (
+                  <>
+                    {filteredDevices.map(d => (
                       <tr key={d.id}>
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -483,6 +483,8 @@ export default function TrustedDevices() {
                         </td>
                       </tr>
                     )}
+                  </>
+                )}
                   </tbody>
                 </table>
               </div>

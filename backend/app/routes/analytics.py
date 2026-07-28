@@ -260,7 +260,7 @@ def companies_search(
     if is_superadmin:
         where_clauses = ["c.is_active = true", "1 = 1"]
     else:
-        where_clauses = ["c.is_active = true", "c.user_id = :user_id"]
+        where_clauses = ["c.is_active = true", "(c.user_id IS NULL OR c.user_id = :user_id)"]
     params = {"limit": limit, "min_recruiters": min_recruiters, "skip": skip, "user_id": current_user.id}
 
     if q:

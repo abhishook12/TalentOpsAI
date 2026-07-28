@@ -1,0 +1,51 @@
+{
+  "columns": [
+    "state",
+    "cnt"
+  ],
+  "rows": [
+    [
+      "TX",
+      21895
+    ],
+    [
+      "CA",
+      21405
+    ],
+    [
+      "NY",
+      17900
+    ],
+    [
+      "MA",
+      12573
+    ],
+    [
+      "IL",
+      11888
+    ],
+    [
+      "FL",
+      11742
+    ],
+    [
+      "MD",
+      11197
+    ],
+    [
+      "VA",
+      10353
+    ],
+    [
+      "GA",
+      10271
+    ],
+    [
+      "NJ",
+      9580
+    ]
+  ],
+  "count": 10,
+  "sql": "SELECT state, count(*) as cnt FROM recruiters WHERE state IS NOT NULL AND state != '' GROUP BY state ORDER BY cnt DESC LIMIT 10",
+  "timestamp": "2026-07-27 19:50:36.987170"
+}

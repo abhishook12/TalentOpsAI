@@ -1,0 +1,5 @@
+--- EVIDENCE: DASHBOARD - recruiter_distribution ---
+TIMESTAMP: 2026-07-27T19:06:08.355005
+
+Status: 404
+Body: {"detail":"Not Found"}

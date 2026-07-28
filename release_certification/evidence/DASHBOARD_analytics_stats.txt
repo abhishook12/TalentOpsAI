@@ -1,0 +1,5 @@
+--- EVIDENCE: DASHBOARD - analytics_stats ---
+TIMESTAMP: 2026-07-27T19:06:08.340994
+
+Status: 404
+Body: {"detail":"Not Found"}

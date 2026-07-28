@@ -1,0 +1,5 @@
+--- EVIDENCE: RECRUITERS - search_john ---
+TIMESTAMP: 2026-07-27T19:06:08.372855
+
+Status: 401
+Body: {"detail":"Not authenticated"}

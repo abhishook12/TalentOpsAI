@@ -1,0 +1,4 @@
+--- EVIDENCE: DATABASE - counts ---
+TIMESTAMP: 2026-07-27T19:06:09.621528
+
+no such column: first_name

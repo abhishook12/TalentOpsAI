@@ -1,0 +1,5 @@
+--- EVIDENCE: RECRUITERS - state_ca ---
+TIMESTAMP: 2026-07-27T19:06:08.396538
+
+Status: 401
+Body: {"detail":"Not authenticated"}

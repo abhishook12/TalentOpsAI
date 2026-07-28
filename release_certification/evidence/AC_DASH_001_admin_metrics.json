@@ -1,0 +1,7 @@
+{
+  "status": 404,
+  "body": "{\"detail\":\"Not Found\"}",
+  "url": "http://127.0.0.1:8000/analytics/stats",
+  "method": "GET",
+  "timestamp": "2026-07-27 19:50:21.963235"
+}

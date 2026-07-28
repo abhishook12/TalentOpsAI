@@ -1,0 +1,38 @@
+{
+  "users": [
+    {
+      "id": 7,
+      "email": "googleuser_1785171434169@example.com",
+      "name": "Atlas Tester 1785171434169",
+      "status": "Active"
+    }
+  ],
+  "devices": [
+    {
+      "id": 124,
+      "device": "Chrome on Windows",
+      "user_id": 1,
+      "status": "Trusted"
+    },
+    {
+      "id": 123,
+      "device": "Chrome on Windows",
+      "user_id": 7,
+      "status": "Trusted"
+    },
+    {
+      "id": 122,
+      "device": "Chrome on Windows",
+      "user_id": 1,
+      "status": "Trusted"
+    }
+  ],
+  "sessions": [
+    {
+      "id": 86,
+      "user_id": 7,
+      "ip": "127.0.0.1",
+      "active": true
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "status": 200,
+  "elapsed_ms": 45.73,
+  "body": "{\"recruiters\":{\"total\":1,\"active\":1,\"inactive\":0,\"needs_review\":0,\"low_quality\":1,\"with_email\":1,\"with_phone\":0,\"email_coverage_percent\":100.0,\"needs_review_percent\":0.0},\"companies\":{\"total\":0},\"vendors\":{\"total\":0}}",
+  "raw_body": "{\"recruiters\":{\"total\":1,\"active\":1,\"inactive\":0,\"needs_review\":0,\"low_quality\":1,\"with_email\":1,\"with_phone\":0,\"email_coverage_percent\":100.0,\"needs_review_percent\":0.0},\"companies\":{\"total\":0},\"vendors\":{\"total\":0}}",
+  "url": "http://127.0.0.1:8000/analytics/dashboard",
+  "method": "GET",
+  "timestamp": "2026-07-27 19:53:52.691136"
+}

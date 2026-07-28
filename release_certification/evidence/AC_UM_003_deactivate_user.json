@@ -1,0 +1,9 @@
+{
+  "status": 200,
+  "elapsed_ms": 47.69,
+  "body": "{\"status\":\"success\",\"user_id\":5}",
+  "raw_body": "{\"status\":\"success\",\"user_id\":5}",
+  "url": "http://127.0.0.1:8000/users/5/status",
+  "method": "PUT",
+  "timestamp": "2026-07-27 19:53:51.988280"
+}

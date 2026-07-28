@@ -1,0 +1,5 @@
+--- EVIDENCE: AI_SEARCH - results ---
+TIMESTAMP: 2026-07-27T19:06:09.457031
+
+Status: 405
+Body: {"detail":"Method Not Allowed"}

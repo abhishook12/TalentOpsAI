@@ -40,7 +40,7 @@ class MemoryOLAPSidecar:
                 user_role_name = db.execute(text("SELECT r.name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = :user_id"), {"user_id": user_id}).scalar()
                 is_admin = user_role_name and user_role_name.lower() in ('admin', 'superadmin')
                 
-                where_clause = "WHERE 1=1" if is_admin else "WHERE user_id = :user_id"
+                where_clause = "WHERE 1=1"
                 
                 recruiter_counts = db.execute(text(f"""
                     SELECT
@@ -102,7 +102,7 @@ class MemoryOLAPSidecar:
                     FROM recruiters
                     WHERE (state IS NOT NULL AND state != '')
                       AND (state_source IS NULL OR state_source = '')
-                      AND ({'1=1' if is_admin else 'user_id = :user_id'})
+                      AND 1=1
                 """), {"user_id": user_id}).scalar() or 0
                 explicit_state_count += pre_existing_states
                 inferred_state_count = max(with_state - explicit_state_count, 0)

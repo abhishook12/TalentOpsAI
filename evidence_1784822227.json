@@ -1,0 +1,11 @@
+{
+  "timestamp": 1784822227.5057755,
+  "log_tail": [
+    "Log file not found or not provided."
+  ],
+  "db_stats": {
+    "total_recruiters": 3925,
+    "states_covered": 0
+  },
+  "db_state": {}
+}

@@ -1,0 +1,5 @@
+--- EVIDENCE: LOGIN - failure ---
+TIMESTAMP: 2026-07-27T19:06:08.330036
+
+Status: 422
+Body: {"detail":[{"type":"model_attributes_type","loc":["body"],"msg":"Input should be a valid dictionary or object to extract fields from","input":"username=admin%40talentops.com&password=wrongpassword"}]}

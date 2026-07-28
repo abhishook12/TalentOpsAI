@@ -1,0 +1,5 @@
+--- EVIDENCE: CAMPAIGNS - list ---
+TIMESTAMP: 2026-07-27T19:06:08.923369
+
+Status: 401
+Body: {"detail":"Not authenticated"}

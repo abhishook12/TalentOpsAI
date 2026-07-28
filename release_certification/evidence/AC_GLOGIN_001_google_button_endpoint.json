@@ -1,0 +1,7 @@
+{
+  "status": 405,
+  "body": "{\"detail\":\"Method Not Allowed\"}",
+  "url": "http://127.0.0.1:8000/auth/google",
+  "method": "GET",
+  "timestamp": "2026-07-27 19:50:21.954313"
+}

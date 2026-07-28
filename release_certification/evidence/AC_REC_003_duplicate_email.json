@@ -1,0 +1,7 @@
+{
+  "status": 400,
+  "body": "{\"detail\":\"Email already exists\"}",
+  "url": "http://127.0.0.1:8000/recruiters/",
+  "method": "POST",
+  "timestamp": "2026-07-27 19:50:36.814846"
+}

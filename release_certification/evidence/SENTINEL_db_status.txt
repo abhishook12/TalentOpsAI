@@ -1,0 +1,13 @@
+--- EVIDENCE: SENTINEL - db_status ---
+TIMESTAMP: 2026-07-27T19:06:09.595029
+
+[
+  [
+    "Completed",
+    364250
+  ],
+  [
+    "Pending",
+    3253
+  ]
+]

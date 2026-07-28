@@ -1,0 +1,9 @@
+{
+  "status": 403,
+  "elapsed_ms": 138.81,
+  "body": "{\"detail\":\"Account is Inactive. Please contact support.\"}",
+  "raw_body": "{\"detail\":\"Account is Inactive. Please contact support.\"}",
+  "url": "http://127.0.0.1:8000/auth/login",
+  "method": "POST",
+  "timestamp": "2026-07-27 19:53:52.128755"
+}

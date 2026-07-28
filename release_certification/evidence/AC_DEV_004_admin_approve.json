@@ -1,0 +1,9 @@
+{
+  "status": 200,
+  "elapsed_ms": 32.04,
+  "body": "{\"message\":\"Device status updated to Trusted\"}",
+  "raw_body": "{\"message\":\"Device status updated to Trusted\"}",
+  "url": "http://127.0.0.1:8000/admin/devices/38/status",
+  "method": "PUT",
+  "timestamp": "2026-07-27 19:40:20.603945"
+}

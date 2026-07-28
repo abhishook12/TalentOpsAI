@@ -1,0 +1,9 @@
+{
+  "status": 200,
+  "elapsed_ms": 497.46,
+  "body": "{\"message\":\"Login successful\",\"token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwic2Vzc2lvbl9pZCI6NDYsImV4cCI6MTc4NTIwNTQzMn0.JU_asAcTUAFbo-geHqyl1sA0GprJRyu2xt2AhhMGSlE\",\"user\":{\"id\":2,\"email\":\"user@talentops.com\",\"first_name\":\"Test\",\"last_name\":\"User\",\"role\":\"user\",\"avatar_url\":null,\"company\":null}}",
+  "raw_body": "{\"message\":\"Login successful\",\"token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwic2Vzc2lvbl9pZCI6NDYsImV4cCI6MTc4NTIwNTQzMn0.JU_asAcTUAFbo-geHqyl1sA0GprJRyu2xt2AhhMGSlE\",\"user\":{\"id\":2,\"email\":\"user@talentops.com\",\"first_name\":\"Test\",\"last_name\":\"User\",\"role\":\"user\",\"avatar_url\":null,\"company\":null}}",
+  "url": "http://127.0.0.1:8000/auth/login",
+  "method": "POST",
+  "timestamp": "2026-07-27 19:53:52.627325"
+}

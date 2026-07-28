@@ -1,0 +1,7 @@
+{
+  "status": 200,
+  "body": "{\"message\":\"Logged out successfully\"}",
+  "url": "http://127.0.0.1:8000/auth/logout",
+  "method": "POST",
+  "timestamp": "2026-07-27 19:50:21.945818"
+}

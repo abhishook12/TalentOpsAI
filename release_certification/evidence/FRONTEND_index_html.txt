@@ -1,0 +1,4 @@
+--- EVIDENCE: FRONTEND - index_html ---
+TIMESTAMP: 2026-07-27T19:06:09.606076
+
+index.html exists

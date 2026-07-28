@@ -1,0 +1,9 @@
+{
+  "status": 404,
+  "elapsed_ms": 10.74,
+  "body": "{\"detail\":\"Not Found\"}",
+  "raw_body": "{\"detail\":\"Not Found\"}",
+  "url": "http://127.0.0.1:8000/admin/dashboard/metrics",
+  "method": "GET",
+  "timestamp": "2026-07-27 19:48:34.000568"
+}

@@ -1,0 +1,9 @@
+{
+  "status": 403,
+  "elapsed_ms": 15.76,
+  "body": "{\"detail\":\"Insufficient permissions\"}",
+  "raw_body": "{\"detail\":\"Insufficient permissions\"}",
+  "url": "http://127.0.0.1:8000/recruiters/",
+  "method": "POST",
+  "timestamp": "2026-07-27 19:53:52.644288"
+}

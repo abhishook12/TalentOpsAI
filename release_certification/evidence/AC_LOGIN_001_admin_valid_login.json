@@ -1,0 +1,7 @@
+{
+  "status": 200,
+  "body": "{\"message\":\"Login successful\",\"token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwic2Vzc2lvbl9pZCI6NDIsImV4cCI6MTc4NTIwNTIyMX0.rVXabd8uwdEcH_KqKZMfYkRBHgxXpxA3q3gITn_rFo8\",\"user\":{\"id\":1,\"email\":\"admin@talentops.com\",\"first_name\":\"Bob\",\"last_name\":\"User\",\"role\":\"admin\",\"avatar_url\":null,\"company\":null}}",
+  "url": "http://127.0.0.1:8000/auth/login",
+  "method": "POST",
+  "timestamp": "2026-07-27 19:50:21.439523"
+}

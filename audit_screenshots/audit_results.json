@@ -1,0 +1,994 @@
+{
+  "results": [
+    {
+      "route": "/",
+      "name": "Dashboard",
+      "status": "WARN_NETWORK",
+      "load_time_ms": 5160,
+      "console_errors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+        }
+      ],
+      "network_failures": [
+        {
+          "url": "http://127.0.0.1:8000/analytics/session/end",
+          "method": "POST",
+          "failure": "net::ERR_ABORTED"
+        },
+        {
+          "url": "https://logo.clearbit.com/roberthalf.com?size=128",
+          "method": "GET",
+          "failure": "net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "url": "https://logo.clearbit.com/unknown.com?size=128",
+          "method": "GET",
+          "failure": "net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "url": "https://logo.clearbit.com/insightglobal.com?size=128",
+          "method": "GET",
+          "failure": "net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "url": "https://logo.clearbit.com/teksystems.com?size=128",
+          "method": "GET",
+          "failure": "net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "url": "https://logo.clearbit.com/vaco.com?size=128",
+          "method": "GET",
+          "failure": "net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "url": "https://logo.clearbit.com/manpowergroup.com?size=128",
+          "method": "GET",
+          "failure": "net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "url": "https://logo.clearbit.com/roberthalf.com?size=128",
+          "method": "GET",
+          "failure": "net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "url": "https://logo.clearbit.com/manpowergroup.com?size=128",
+          "method": "GET",
+          "failure": "net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "url": "https://logo.clearbit.com/unknown.com?size=128",
+          "method": "GET",
+          "failure": "net::ERR_NAME_NOT_RESOLVED"
+        }
+      ],
+      "has_content": true,
+      "is_blank": false,
+      "content_length": 2905,
+      "final_url": "http://127.0.0.1:5173/"
+    },
+    {
+      "route": "/recruiters",
+      "name": "Recruiters",
+      "status": "WARN_NETWORK",
+      "load_time_ms": 5151,
+      "console_errors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+        }
+      ],
+      "network_failures": [
+        {
+          "url": "http://127.0.0.1:8000/analytics/session/end",
+          "method": "POST",
+          "failure": "net::ERR_ABORTED"
+        },
+        {
+          "url": "https://logo.clearbit.com/cloudingenuity.com?size=128",
+          "method": "GET",
+          "failure": "net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "url": "https://logo.clearbit.com/css-tec.com?size=128",
+          "method": "GET",
+          "failure": "net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "url": "https://logo.clearbit.com/d1systems.com?size=128",
+          "method": "GET",
+          "failure": "net::ERR_NAME_NOT_RESOLVED"
+        }
+      ],
+      "has_content": true,
+      "is_blank": false,
+      "content_length": 4950,
+      "final_url": "http://127.0.0.1:5173/recruiters"
+    },
+    {
+      "route": "/analytics",
+      "name": "Analytics",
+      "status": "WARN_NETWORK",
+      "load_time_ms": 5166,
+      "console_errors": [],
+      "network_failures": [
+        {
+          "url": "http://127.0.0.1:8000/analytics/session/end",
+          "method": "POST",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
+      "has_content": true,
+      "is_blank": false,
+      "content_length": 1953,
+      "final_url": "http://127.0.0.1:5173/analytics"
+    },
+    {
+      "route": "/ai-search",
+      "name": "AI Search",
+      "status": "WARN_NETWORK",
+      "load_time_ms": 5157,
+      "console_errors": [],
+      "network_failures": [
+        {
+          "url": "http://127.0.0.1:8000/analytics/session/end",
+          "method": "POST",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
+      "has_content": true,
+      "is_blank": false,
+      "content_length": 797,
+      "final_url": "http://127.0.0.1:5173/ai-search"
+    },
+    {
+      "route": "/directory",
+      "name": "Directory",
+      "status": "WARN_NETWORK",
+      "load_time_ms": 5148,
+      "console_errors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+        }
+      ],
+      "network_failures": [
+        {
+          "url": "http://127.0.0.1:8000/analytics/session/end",
+          "method": "POST",
+          "failure": "net::ERR_ABORTED"
+        },
+        {
+          "url": "https://logo.clearbit.com/insightglobal.com?size=128",
+          "method": "GET",
+          "failure": "net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "url": "https://logo.clearbit.com/unknown.com?size=128",
+          "method": "GET",
+          "failure": "net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "url": "https://logo.clearbit.com/roberthalf.com?size=128",
+          "method": "GET",
+          "failure": "net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "url": "https://logo.clearbit.com/manpowergroup.com?size=128",
+          "method": "GET",
+          "failure": "net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "url": "https://logo.clearbit.com/teksystems.com?size=128",
+          "method": "GET",
+          "failure": "net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "url": "https://logo.clearbit.com/vaco.com?size=128",
+          "method": "GET",
+          "failure": "net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "url": "https://logo.clearbit.com/beaconhillstaffing.com?size=128",
+          "method": "GET",
+          "failure": "net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "url": "https://logo.clearbit.com/kforce.com?size=128",
+          "method": "GET",
+          "failure": "net::ERR_NAME_NOT_RESOLVED"
+        },
+        {
+          "url": "https://logo.clearbit.com/experis.com?size=128",
+          "method": "GET",
+          "failure": "net::ERR_NAME_NOT_RESOLVED"
+        }
+      ],
+      "has_content": true,
+      "is_blank": false,
+      "content_length": 6773,
+      "final_url": "http://127.0.0.1:5173/directory"
+    },
+    {
+      "route": "/campaigns",
+      "name": "Campaigns",
+      "status": "WARN_NETWORK",
+      "load_time_ms": 5145,
+      "console_errors": [],
+      "network_failures": [
+        {
+          "url": "http://127.0.0.1:8000/analytics/session/end",
+          "method": "POST",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
+      "has_content": true,
+      "is_blank": false,
+      "content_length": 1436,
+      "final_url": "http://127.0.0.1:5173/campaigns"
+    },
+    {
+      "route": "/profile",
+      "name": "Profile",
+      "status": "WARN_NETWORK",
+      "load_time_ms": 5142,
+      "console_errors": [],
+      "network_failures": [
+        {
+          "url": "http://127.0.0.1:8000/analytics/session/end",
+          "method": "POST",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
+      "has_content": true,
+      "is_blank": false,
+      "content_length": 964,
+      "final_url": "http://127.0.0.1:5173/profile"
+    },
+    {
+      "route": "/settings",
+      "name": "Settings",
+      "status": "WARN_NETWORK",
+      "load_time_ms": 5161,
+      "console_errors": [],
+      "network_failures": [
+        {
+          "url": "http://127.0.0.1:8000/analytics/session/end",
+          "method": "POST",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
+      "has_content": true,
+      "is_blank": false,
+      "content_length": 796,
+      "final_url": "http://127.0.0.1:5173/settings"
+    },
+    {
+      "route": "/admin",
+      "name": "Admin Terminal",
+      "status": "FAIL_SERVER_ERROR",
+      "load_time_ms": 5185,
+      "console_errors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+        }
+      ],
+      "network_failures": [
+        {
+          "url": "http://127.0.0.1:8000/analytics/session/end",
+          "method": "POST",
+          "failure": "net::ERR_ABORTED"
+        },
+        {
+          "url": "http://127.0.0.1:8000/admin/stats",
+          "status": 500,
+          "method": "GET"
+        },
+        {
+          "url": "http://127.0.0.1:8000/admin/ops-kpis",
+          "status": 500,
+          "method": "GET"
+        },
+        {
+          "url": "http://127.0.0.1:8000/admin/system-info",
+          "status": 500,
+          "method": "GET"
+        },
+        {
+          "url": "http://127.0.0.1:8000/admin/table-sizes",
+          "status": 500,
+          "method": "GET"
+        },
+        {
+          "url": "http://127.0.0.1:8000/admin/system-info",
+          "status": 500,
+          "method": "GET"
+        },
+        {
+          "url": "http://127.0.0.1:8000/admin/ops-kpis",
+          "status": 500,
+          "method": "GET"
+        },
+        {
+          "url": "http://127.0.0.1:8000/admin/table-sizes",
+          "status": 500,
+          "method": "GET"
+        },
+        {
+          "url": "http://127.0.0.1:8000/admin/stats",
+          "status": 500,
+          "method": "GET"
+        }
+      ],
+      "has_content": true,
+      "is_blank": false,
+      "content_length": 1128,
+      "final_url": "http://127.0.0.1:5173/admin"
+    },
+    {
+      "route": "/admin/devices",
+      "name": "Trusted Devices",
+      "status": "WARN_NETWORK",
+      "load_time_ms": 5167,
+      "console_errors": [],
+      "network_failures": [
+        {
+          "url": "http://127.0.0.1:8000/admin/data-operations",
+          "method": "GET",
+          "failure": "net::ERR_ABORTED"
+        },
+        {
+          "url": "http://127.0.0.1:8000/admin/alerts",
+          "method": "GET",
+          "failure": "net::ERR_ABORTED"
+        },
+        {
+          "url": "http://127.0.0.1:8000/admin/data-operations",
+          "method": "GET",
+          "failure": "net::ERR_ABORTED"
+        },
+        {
+          "url": "http://127.0.0.1:8000/analytics/session/end",
+          "method": "POST",
+          "failure": "net::ERR_ABORTED"
+        },
+        {
+          "url": "http://127.0.0.1:8000/admin/alerts",
+          "method": "GET",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
+      "has_content": true,
+      "is_blank": false,
+      "content_length": 1151,
+      "final_url": "http://127.0.0.1:5173/admin/devices"
+    },
+    {
+      "route": "/admin/users",
+      "name": "User Management",
+      "status": "WARN_NETWORK",
+      "load_time_ms": 5146,
+      "console_errors": [],
+      "network_failures": [
+        {
+          "url": "http://127.0.0.1:8000/analytics/session/end",
+          "method": "POST",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
+      "has_content": true,
+      "is_blank": false,
+      "content_length": 1519,
+      "final_url": "http://127.0.0.1:5173/admin/users"
+    },
+    {
+      "route": "/admin/visitor-analytics",
+      "name": "Visitor Analytics",
+      "status": "WARN_NETWORK",
+      "load_time_ms": 5153,
+      "console_errors": [],
+      "network_failures": [
+        {
+          "url": "http://127.0.0.1:8000/analytics/session/end",
+          "method": "POST",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
+      "has_content": true,
+      "is_blank": false,
+      "content_length": 793,
+      "final_url": "http://127.0.0.1:5173/admin/visitor-analytics"
+    },
+    {
+      "route": "/sentinel",
+      "name": "Sentinel Dashboard",
+      "status": "WARN_NETWORK",
+      "load_time_ms": 5149,
+      "console_errors": [],
+      "network_failures": [
+        {
+          "url": "http://127.0.0.1:8000/analytics/session/end",
+          "method": "POST",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
+      "has_content": true,
+      "is_blank": false,
+      "content_length": 6366,
+      "final_url": "http://127.0.0.1:5173/sentinel"
+    },
+    {
+      "route": "/activity",
+      "name": "Activity Log",
+      "status": "WARN_NETWORK",
+      "load_time_ms": 5143,
+      "console_errors": [],
+      "network_failures": [
+        {
+          "url": "http://127.0.0.1:8000/sentinel/health",
+          "method": "GET",
+          "failure": "net::ERR_ABORTED"
+        },
+        {
+          "url": "http://127.0.0.1:8000/analytics/session/end",
+          "method": "POST",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
+      "has_content": true,
+      "is_blank": false,
+      "content_length": 881,
+      "final_url": "http://127.0.0.1:5173/activity"
+    },
+    {
+      "route": "/admin/settings",
+      "name": "Admin Settings",
+      "status": "WARN_NETWORK",
+      "load_time_ms": 5148,
+      "console_errors": [],
+      "network_failures": [
+        {
+          "url": "http://127.0.0.1:8000/analytics/session/end",
+          "method": "POST",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
+      "has_content": true,
+      "is_blank": false,
+      "content_length": 802,
+      "final_url": "http://127.0.0.1:5173/admin/settings"
+    },
+    {
+      "route": "/admin/health",
+      "name": "System Health",
+      "status": "WARN_NETWORK",
+      "load_time_ms": 5144,
+      "console_errors": [],
+      "network_failures": [
+        {
+          "url": "http://127.0.0.1:8000/analytics/session/end",
+          "method": "POST",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
+      "has_content": true,
+      "is_blank": false,
+      "content_length": 711,
+      "final_url": "http://127.0.0.1:5173/admin/health"
+    },
+    {
+      "route": "/admin/jobs",
+      "name": "Background Jobs",
+      "status": "WARN_NETWORK",
+      "load_time_ms": 5136,
+      "console_errors": [
+        {
+          "type": "error",
+          "text": "Access to XMLHttpRequest at 'http://127.0.0.1:8000/admin/jobs' from origin 'http://127.0.0.1:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: net::ERR_FAILED"
+        },
+        {
+          "type": "error",
+          "text": "Access to XMLHttpRequest at 'http://127.0.0.1:8000/admin/jobs' from origin 'http://127.0.0.1:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: net::ERR_FAILED"
+        },
+        {
+          "type": "error",
+          "text": "Access to XMLHttpRequest at 'http://127.0.0.1:8000/admin/jobs' from origin 'http://127.0.0.1:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+        }
+      ],
+      "network_failures": [
+        {
+          "url": "http://127.0.0.1:8000/analytics/session/end",
+          "method": "POST",
+          "failure": "net::ERR_ABORTED"
+        },
+        {
+          "url": "http://127.0.0.1:8000/admin/jobs",
+          "method": "GET",
+          "failure": "net::ERR_FAILED"
+        },
+        {
+          "url": "http://127.0.0.1:8000/admin/jobs",
+          "method": "GET",
+          "failure": "net::ERR_FAILED"
+        },
+        {
+          "url": "http://127.0.0.1:8000/admin/jobs",
+          "method": "GET",
+          "failure": "net::ERR_FAILED"
+        },
+        {
+          "url": "http://127.0.0.1:8000/admin/jobs",
+          "method": "GET",
+          "failure": "net::ERR_FAILED"
+        }
+      ],
+      "has_content": true,
+      "is_blank": false,
+      "content_length": 609,
+      "final_url": "http://127.0.0.1:5173/admin/jobs"
+    },
+    {
+      "route": "/admin/audit-logs",
+      "name": "Audit Logs",
+      "status": "WARN_NETWORK",
+      "load_time_ms": 5160,
+      "console_errors": [],
+      "network_failures": [
+        {
+          "url": "http://127.0.0.1:8000/analytics/session/end",
+          "method": "POST",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
+      "has_content": true,
+      "is_blank": false,
+      "content_length": 6737,
+      "final_url": "http://127.0.0.1:5173/admin/audit-logs"
+    }
+  ],
+  "console_errors": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 ()"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+    }
+  ],
+  "network_failures": [
+    {
+      "url": "http://127.0.0.1:8000/analytics/session/end",
+      "method": "POST",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://logo.clearbit.com/roberthalf.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/unknown.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/insightglobal.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/teksystems.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/vaco.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/manpowergroup.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/roberthalf.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/manpowergroup.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/unknown.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/vaco.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/teksystems.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/insightglobal.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "http://127.0.0.1:8000/analytics/session/end",
+      "method": "POST",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://logo.clearbit.com/cloudingenuity.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/css-tec.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/d1systems.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "http://127.0.0.1:8000/analytics/session/end",
+      "method": "POST",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8000/analytics/session/end",
+      "method": "POST",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:8000/analytics/session/end",
+      "method": "POST",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://logo.clearbit.com/insightglobal.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/unknown.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/roberthalf.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/manpowergroup.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/teksystems.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/vaco.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/beaconhillstaffing.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/kforce.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/experis.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/independent.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/randstadusa.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/brooksource.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/actalenttalent.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/aerotek.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/judge.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/kornferry.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/bhsg.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/randstaddigital.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/oxfordcorp.com.?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/cdw.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/medixteam.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/apexsystemsinc.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/lhh.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/apexsystems.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/prolinkstaff.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/akkodis.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/yoh.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/bgsf.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/pinnacle1.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    },
+    {
+      "url": "https://logo.clearbit.com/addisongroup.com?size=128",
+      "method": "GET",
+      "failure": "net::ERR_NAME_NOT_RESOLVED"
+    }
+  ],
+  "summary": {
+    "pass": 0,
+    "warn": 17,
+    "fail": 1
+  }
+}

@@ -180,7 +180,7 @@ def companies_count_by_state(db: Session = Depends(get_db), current_user: User =
             COUNT(DISTINCT c.company_id) AS count
         FROM companies c
         LEFT JOIN recruiters r ON r.company_id = c.company_id
-        WHERE c.user_id = :user_id
+        WHERE 1=1
         GROUP BY 1
         ORDER BY count DESC
     """), {"user_email": current_user.email, "user_id": current_user.id}).mappings().all()
@@ -260,7 +260,7 @@ def companies_search(
     if is_superadmin:
         where_clauses = ["c.is_active = true", "1 = 1"]
     else:
-        where_clauses = ["c.is_active = true", "(c.user_id IS NULL OR c.user_id = :user_id)"]
+        where_clauses = ["c.is_active = true", "1 = 1"]
     params = {"limit": limit, "min_recruiters": min_recruiters, "skip": skip, "user_id": current_user.id}
 
     if q:

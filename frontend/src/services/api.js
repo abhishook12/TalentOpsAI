@@ -1,8 +1,8 @@
 import axios from 'axios'
 
 const RAW_API_URL = import.meta.env.VITE_API_URL || 'https://talentopsai-1.onrender.com'
-const API_URL = String(RAW_API_URL).includes('127.0.0.1') ? 'http://127.0.0.1:8000' : RAW_API_URL
-export const API = String(API_URL).replace(/\/$/, '')
+const API_URL = import.meta.env.DEV ? 'http://127.0.0.1:8000' : '/api'
+export const API = API_URL
 
 const clientCache = new Map()
 let onUnauthorizedCallback = null;

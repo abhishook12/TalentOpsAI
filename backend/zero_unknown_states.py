@@ -18,6 +18,8 @@ def zero_out_unknowns():
     
     try:
         recruiters = db.query(Recruiter).filter((Recruiter.state == None) | (Recruiter.state == '')).all()
+        companies = db.query(Company).all()
+        company_map = {c.company_id: c for c in companies}
         
         state_regex = re.compile(r'\b([A-Z]{2})\b')
         salvaged_loc = 0
@@ -55,7 +57,7 @@ def zero_out_unknowns():
             found_state = extract_state(r.location)
             
             if not found_state and r.company_id:
-                comp = db.query(Company).filter(Company.company_id == r.company_id).first()
+                comp = company_map.get(r.company_id)
                 if comp:
                     found_state = extract_state(comp.state) or extract_state(comp.location)
 

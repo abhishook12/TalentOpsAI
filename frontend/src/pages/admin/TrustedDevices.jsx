@@ -4,7 +4,7 @@ import { toast } from 'react-hot-toast'
 import { 
   ShieldCheck, ShieldAlert, MonitorSmartphone, Smartphone, Monitor, Activity, 
   History, X, Search, Settings, Download, CheckCircle, RefreshCw,
-  AlertCircle, Edit2, Copy, FileText, Zap, ShieldX
+  AlertCircle, Edit2, Copy, FileText, Zap, ShieldX, MapPin
 } from 'lucide-react'
 import { formatRelativeTime, formatExactDate, exportToCSV, copyForensics, getSLA, computeRisk } from './deviceLogic'
 import DeviceActionModal from './DeviceActionModal'

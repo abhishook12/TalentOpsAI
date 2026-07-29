@@ -416,7 +416,7 @@ def login(request: Request, login_data: UserLogin, response: Response, db: Sessi
 
     # Create Session
     session_token = secrets.token_hex(32)
-    expires_at = datetime.now(timezone.utc) + timedelta(days=30 if login_data.remember_me else 1)
+    expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=30 if login_data.remember_me else 1)
     
     db_session = DBSession(
         user_id=user.id,
@@ -585,7 +585,7 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
 
     # Create Session
     session_token = secrets.token_hex(32)
-    expires_at = datetime.now(timezone.utc) + timedelta(days=30)
+    expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=30)
     
     db_session = DBSession(
         user_id=user.id,
@@ -680,7 +680,7 @@ def complete_device_approval(request: Request, response: Response, db: Session =
         
     # Create Session
     session_token = secrets.token_hex(32)
-    expires_at = datetime.now(timezone.utc) + timedelta(days=30)
+    expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=30)
     
     user_agent = request.headers.get("user-agent", "Unknown")
     ip = _client_ip(request)

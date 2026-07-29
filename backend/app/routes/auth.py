@@ -238,8 +238,8 @@ def _handle_trusted_device(request: Request, response: Response, db: Session, us
             language=language,
             location=location,
             ip_address=ip,
-            browser=user_agent,
-            os=user_agent,
+            browser=browser,
+            os=os_name,
             status='Pending'
         )
         db.add(trusted_device)
@@ -259,6 +259,23 @@ def _handle_trusted_device(request: Request, response: Response, db: Session, us
         db.add(audit)
         db.commit()
     else:
+        fingerprint_changed = False
+        if trusted_device.device_type != device_type or trusted_device.os != os_name:
+            fingerprint_changed = True
+            
+        if fingerprint_changed and trusted_device.status == 'Trusted':
+            trusted_device.status = 'Pending'
+            audit = AuditLog(
+                action="device_spoofing_detected",
+                target_user_id=user.id,
+                target_device_id=trusted_device.id,
+                ip_address=ip,
+                device=device_name,
+                reason=f"Fingerprint mismatch. Expected {trusted_device.os} {trusted_device.device_type}, got {os_name} {device_type}",
+                status="warning"
+            )
+            db.add(audit)
+            
         # Update volatile fields
         trusted_device.ip_address = ip
         trusted_device.login_attempts += 1

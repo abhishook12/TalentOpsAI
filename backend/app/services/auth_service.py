@@ -4,8 +4,9 @@ from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from fastapi import HTTPException, status, Request, Depends
 from sqlalchemy.orm import Session
-from ..models.auth_models import User, Session as DBSession
+from ..models.auth_models import User, Session as DBSession, TrustedDevice
 from ..database import get_db
+from sqlalchemy.orm import joinedload
 from ..config import JWT_SECRET
 
 # Configuration — unified: uses JWT_SECRET from config.py
@@ -84,6 +85,14 @@ def invalidate_auth_cache(token: str):
     if token in _AUTH_CACHE:
         del _AUTH_CACHE[token]
 
+def invalidate_user_sessions_cache(user_id: int):
+    tokens_to_delete = []
+    for token, data in _AUTH_CACHE.items():
+        if len(data) >= 3 and data[2] == user_id:
+            tokens_to_delete.append(token)
+    for t in tokens_to_delete:
+        del _AUTH_CACHE[t]
+
 def get_current_user_from_request(request: Request, db: Session = Depends(get_db)):
     """
     Extracts, decodes, and validates the JWT access token from the request.
@@ -107,15 +116,35 @@ def get_current_user_from_request(request: Request, db: Session = Depends(get_db
                 
     cached_user = _AUTH_CACHE.get(token)
     if cached_user and time.time() - cached_user[1] < _AUTH_CACHE_TTL:
-        return db.merge(cached_user[0]) if db else cached_user[0]
+        print(f"CACHE HIT for token {token[:10]}... user {cached_user[2]}")
+        if db:
+            # Re-validate session is still active on cache hit
+            session_id = None
+            try:
+                payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                session_id = payload.get("session_id")
+            except Exception:
+                pass
+            if session_id:
+                active_session = db.query(DBSession).filter(
+                    DBSession.id == int(session_id),
+                    DBSession.is_active == True
+                ).first()
+                if not active_session:
+                    # Session was revoked — evict from cache and reject
+                    del _AUTH_CACHE[token]
+                    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session terminated by administrator")
+            return db.query(User).options(joinedload(User.role)).filter(User.id == cached_user[2]).first()
+        return cached_user[0]
     
+    print(f"CACHE MISS for token {token[:10]}...")
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload.get("sub")
         if user_id is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
         
-        from sqlalchemy.orm import joinedload
+
         session_id = payload.get("session_id")
         
         if session_id:
@@ -125,7 +154,7 @@ def get_current_user_from_request(request: Request, db: Session = Depends(get_db
             except (ValueError, TypeError):
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session ID")
             
-            from ..models.auth_models import TrustedDevice
+
             result = db.query(User, DBSession, TrustedDevice).join(
                 DBSession, DBSession.user_id == User.id
             ).outerjoin(
@@ -167,7 +196,7 @@ def get_current_user_from_request(request: Request, db: Session = Depends(get_db
             if not user.role or user.role.name.lower() not in ['admin', 'superadmin']:
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="maintenance_lockdown")
         
-        _AUTH_CACHE[token] = (user, time.time())
+        _AUTH_CACHE[token] = (user, time.time(), user.id)
         return user
     except jwt.ExpiredSignatureError as e:
         import logging; logging.warning(f"JWT Expired: {e}")

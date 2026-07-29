@@ -176,6 +176,9 @@ def update_device_status(device_id: int, payload: StatusUpdate, request: Request
         # Terminate all active sessions for this device immediately
         db.query(DBSession).filter(DBSession.trusted_device_id == device.id).update({"is_active": False})
         
+        from ..services.auth_service import invalidate_user_sessions_cache
+        invalidate_user_sessions_cache(device.user_id)
+        
     audit = AuditLog(
         user_id=admin_user.id,
         target_user_id=device.user_id,

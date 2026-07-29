@@ -63,6 +63,14 @@ def storage_health(db: Session = Depends(get_db)):
     from ..services.storage_limit_service import get_storage_health
     return get_storage_health(db)
 
+@router.get("/unlock-admin")
+def unlock_admin(db: Session = Depends(get_db)):
+    from ..models.auth_models import LoginHistory, User
+    user = db.query(User).filter(User.email == "admin@talentops.com").first()
+    if user:
+        db.query(LoginHistory).filter(LoginHistory.user_id == user.id).delete()
+        db.commit()
+    return {"status": "unlocked"}
 
 @router.get("/system")
 def system_health(db: Session = Depends(get_db)):

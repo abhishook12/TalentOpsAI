@@ -123,7 +123,7 @@ export function computeRisk(device) {
   }
   
   // Fake impossible travel for demo (just randomizer based on ID to remain stable)
-  const hash = (device.id || '').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+  const hash = String(device.id || '').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
   if (hash % 7 === 0) {
     score += 40
     signals.push({ weight: 40, reason: 'Impossible travel detected' })

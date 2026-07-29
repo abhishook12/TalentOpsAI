@@ -54,7 +54,7 @@ export function CompanyIdentity({
   // Determine Logo URL based on 4-tier cascade
   let logoUrl = null
   if (cleanDomain && !failedDomains.has(cleanDomain) && errorLevel === 0) {
-    logoUrl = `https://logo.clearbit.com/${cleanDomain}?size=${logoSize * 4}`
+    logoUrl = `https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${cleanDomain}&size=${logoSize * 4}`
   }
 
   const containerStyle = {

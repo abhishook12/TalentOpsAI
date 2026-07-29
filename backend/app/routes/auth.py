@@ -575,6 +575,7 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
     trusted_device = trusted_device_or_pending
 
     if user.status != "Active":
+        from fastapi.responses import JSONResponse
         # Even if device is trusted, if user is pending, return pending_approval
         return JSONResponse(status_code=202, content={
             "status": "pending_approval",

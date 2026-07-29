@@ -360,6 +360,7 @@ export default function Login() {
       
       setError(errorDetail)
       setIsAuthenticating(false)
+      setPendingDeviceId(null)
     }
   }
 

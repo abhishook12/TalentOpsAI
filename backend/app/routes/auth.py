@@ -577,12 +577,14 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
     if user.status != "Active":
         from fastapi.responses import JSONResponse
         # Even if device is trusted, if user is pending, return pending_approval
-        return JSONResponse(status_code=202, content={
+        json_resp = JSONResponse(status_code=202, content={
             "status": "pending_approval",
             "device_id": trusted_device.id,
             "user_id": user.id,
             "reason": "user_pending"
         })
+        json_resp.raw_headers.extend([h for h in response.raw_headers if h[0].lower() == b"set-cookie"])
+        return json_resp
 
     # Create Session
     session_token = secrets.token_hex(32)

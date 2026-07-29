@@ -140,12 +140,21 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r }) {
         </div>
       </td>
       <td style={{ padding: '24px 20px', verticalAlign: 'middle' }}>
-        <CompanyIdentity 
-          domain={r.company_domain || (r.company && (r.company.website || r.company.email_pattern)) || (r.email ? r.email.split('@')[1] : null)} 
-          name={r.company_name || (r.email ? r.email.split('@')[1].split('.')[0] : null)} 
-          metadata={r.city ? `${r.city}, ${r.state}` : (r.company_domain || (r.email ? r.email.split('@')[1] : null))}
-          interactive={false}
-        />
+        {(() => {
+          const emailDomain = r.email ? r.email.split('@')[1].toLowerCase() : null;
+          const isFreemail = emailDomain && ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com'].includes(emailDomain);
+          const fallbackDomain = r.company_domain || (r.company && (r.company.website || r.company.email_pattern)) || (!isFreemail ? emailDomain : null);
+          const fallbackName = r.company_name || (!isFreemail && emailDomain ? emailDomain.split('.')[0] : null);
+          
+          return (
+            <CompanyIdentity 
+              domain={fallbackDomain} 
+              name={fallbackName} 
+              metadata={r.city ? `${r.city}, ${r.state}` : fallbackDomain}
+              interactive={false}
+            />
+          );
+        })()}
       </td>
       <td style={{ padding: '24px 20px', color: 'var(--text-secondary)', fontSize: 14, verticalAlign: 'middle' }}>
         {r.state || '—'}

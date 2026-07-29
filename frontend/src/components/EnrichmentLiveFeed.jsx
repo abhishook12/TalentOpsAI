@@ -53,9 +53,9 @@ export default function EnrichmentLiveFeed() {
       `}</style>
 
       {loading && feed.length === 0 ? (
-        <div style={{ color: '#9ca3af' }}>Connecting to data streams...</div>
+        <div style={{ color: 'var(--text-muted)' }}>Connecting to data streams...</div>
       ) : feed.length === 0 ? (
-        <div style={{ color: '#9ca3af' }}>No recent activity. Workers might be idle.</div>
+        <div style={{ color: 'var(--text-muted)' }}>No recent activity. Workers might be idle.</div>
       ) : (
         <div className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto', paddingRight: '8px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <AnimatePresence>
@@ -94,9 +94,9 @@ export default function EnrichmentLiveFeed() {
                 </div>
                 
                 <div style={{ flex: 1 }}>
-                  <div style={{ color: '#f3f4f6', fontWeight: 500, fontSize: '15px' }}>{item.message}</div>
-                  <div style={{ color: '#9ca3af', fontSize: '13px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <div style={{ color: '#e5e7eb' }}><strong>Company:</strong> {item.company}</div>
+                  <div style={{ color: 'var(--text-primary)', fontWeight: 500, fontSize: '15px' }}>{item.message}</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <div style={{ color: 'var(--text-secondary)' }}><strong>Company:</strong> {item.company}</div>
                     <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                       {item.title && <span>💼 {item.title}</span>}
                       {item.location && <span>📍 {item.location}</span>}

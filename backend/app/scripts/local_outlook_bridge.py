@@ -132,8 +132,8 @@ def run_inner_loop(base_url, token, state):
                     logger.info(f"Verified local Outlook account matches: {target_email}")
                     break
             if not found:
-                logger.error(f"CRITICAL: Local Outlook does not have an account matching '{target_email}'.")
-                logger.error("To prevent sending from the wrong account (Isolation Failure), the bridge will refuse to send.")
+                logger.error(f"CRITICAL: Local Outlook does not have an exact matching account for '{target_email}'.")
+                logger.error("To prevent sending from the wrong account (Isolation Guard), the bridge will strictly refuse to send.")
                 return False
         except Exception as e:
             logger.warning(f"Could not iterate Outlook accounts for verification: {e}")

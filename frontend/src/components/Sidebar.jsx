@@ -93,7 +93,7 @@ export default function Sidebar() {
             fontWeight: 700,
             lineHeight: 1,
             letterSpacing: '-0.02em',
-            color: '#fff',
+            color: 'var(--text-primary)',
             display: 'flex',
             alignItems: 'center',
             gap: 2
@@ -104,7 +104,7 @@ export default function Sidebar() {
             fontSize: 11, 
             fontWeight: 600, 
             letterSpacing: '0.25em', 
-            color: '#fff' 
+            color: 'var(--text-primary)' 
           }}>
             TALENT OPS
           </div>
@@ -155,11 +155,11 @@ export default function Sidebar() {
                 marginBottom: 4,
                 borderRadius: 8,
                 textDecoration: 'none',
-                color: active ? '#ffffff' : 'var(--text-secondary)',
+                color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
                 background: active ? 'var(--accent-bg)' : 'transparent',
                 border: '1px solid transparent',
                 borderLeft: active ? '4px solid var(--accent)' : '4px solid transparent',
-                boxShadow: active ? 'inset 0 1px 0 rgba(255,255,255,0.05)' : 'none',
+                boxShadow: active ? 'var(--shadow)' : 'none',
                 transition: 'all 0.15s ease',
                 fontSize: 13.5,
                 fontWeight: active ? 900 : 700,
@@ -167,11 +167,11 @@ export default function Sidebar() {
               }}
               onMouseEnter={(event) => {
                 if (active) return
-                event.currentTarget.style.background = 'rgba(255,255,255,0.08)'
-                event.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'
-                event.currentTarget.style.boxShadow = '0 10px 24px rgba(0,0,0,0.16)'
+                event.currentTarget.style.background = 'var(--accent-bg)'
+                event.currentTarget.style.borderColor = 'transparent'
+                event.currentTarget.style.boxShadow = 'var(--shadow)'
                 event.currentTarget.style.transform = 'translateY(-1px)'
-                event.currentTarget.style.color = '#ffffff'
+                event.currentTarget.style.color = 'var(--text-primary)'
               }}
               onMouseLeave={(event) => {
                 if (active) return
@@ -179,7 +179,7 @@ export default function Sidebar() {
                 event.currentTarget.style.borderColor = 'transparent'
                 event.currentTarget.style.boxShadow = 'none'
                 event.currentTarget.style.transform = 'translateY(0)'
-                event.currentTarget.style.color = 'rgba(255,255,255,0.72)'
+                event.currentTarget.style.color = 'var(--text-secondary)'
               }}
             >
               <Icon size={18} strokeWidth={active ? 2.5 : 2} opacity={active ? 1 : 0.88} fill={active ? 'currentColor' : 'none'} />
@@ -248,11 +248,11 @@ export default function Sidebar() {
             textAlign: 'left'
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.color = '#ff6b6b'
-            e.currentTarget.style.background = 'rgba(255, 107, 107, 0.08)'
+            e.currentTarget.style.color = 'var(--danger)'
+            e.currentTarget.style.background = 'color-mix(in srgb, var(--danger) 10%, transparent)'
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.color = 'rgba(255,255,255,0.6)'
+            e.currentTarget.style.color = 'var(--text-muted)'
             e.currentTarget.style.background = 'transparent'
           }}
         >

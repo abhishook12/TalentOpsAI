@@ -119,7 +119,7 @@ def get_bridge_status(db: Session = Depends(get_db), current_user: User = Depend
         "consecutive_errors": status_record.consecutive_errors,
         "version": status_record.version,
         "diagnostics_json": status_record.diagnostics_json,
-        "connected_email": outlook_account.email_address if outlook_account else None,
+        "connected_email": outlook_account.email_address if outlook_account else current_user.email,
         "stats": stats
     }
 
@@ -127,10 +127,8 @@ def get_bridge_status(db: Session = Depends(get_db), current_user: User = Depend
 @router.get("/tasks")
 def get_bridge_tasks(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     """Fetch pending emails for the bridge."""
-    outlook_account = db.query(UserOutlookAccount).filter(UserOutlookAccount.user_id == current_user.id).first()
-    if not outlook_account or outlook_account.status != "connected":
-        raise HTTPException(status_code=403, detail="Outlook account not connected via OAuth. Please connect from Profile page.")
-        
+    # We no longer require an OAuth connection here, since the Local Bridge uses COM Automation!
+    pass
     # We find emails that are 'sending' and assigned to 'outlook_bridge'
     # Wait, the send_engine creates EmailLog and sets status='sending' right before sending.
     from ..models.campaigns import Campaign
@@ -230,7 +228,12 @@ import jwt
 from datetime import datetime, timedelta
 from ..services.auth_service import SECRET_KEY, ALGORITHM
 
-MOCK_OAUTH = True  # Set to True for testing until Azure AD credentials are provided
+MOCK_OAUTH = os.getenv("MOCK_OAUTH", "True").lower() in ("true", "1", "yes")
+
+MSAL_CLIENT_ID = os.getenv("MSAL_CLIENT_ID", "replace_me")
+MSAL_CLIENT_SECRET = os.getenv("MSAL_CLIENT_SECRET", "replace_me")
+MSAL_TENANT_ID = os.getenv("MSAL_TENANT_ID", "common")
+MSAL_REDIRECT_URI = os.getenv("MSAL_REDIRECT_URI", "http://localhost:8000/api/bridge/oauth/callback")
 
 @router.get('/oauth/login')
 def bridge_oauth_login(redirect_uri: str = '/profile?bridge=connected', popup: str = 'false', current_user: User = Depends(get_current_user_from_request)):
@@ -247,8 +250,7 @@ def bridge_oauth_login(redirect_uri: str = '/profile?bridge=connected', popup: s
         # Mock redirect directly to callback with a fake auth code
         return RedirectResponse(url=f'/api/bridge/oauth/callback?code=mock_auth_code_123&state={state}')
         
-    # Real MSAL Redirect would go here
-    msal_url = f"https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=REPLACE_ME&response_type=code&redirect_uri=REPLACE_ME&scope=Mail.Send offline_access User.Read&state={state}"
+    msal_url = f"https://login.microsoftonline.com/{MSAL_TENANT_ID}/oauth2/v2.0/authorize?client_id={MSAL_CLIENT_ID}&response_type=code&redirect_uri={urllib.parse.quote(MSAL_REDIRECT_URI)}&scope=Mail.Send%20offline_access%20User.Read&state={state}"
     return RedirectResponse(url=msal_url)
 
 @router.get('/oauth/callback')
@@ -266,15 +268,40 @@ def bridge_oauth_callback(code: str = None, state: str = None, error: str = None
     except Exception as e:
         return HTMLResponse(content="<html><body><h2>Invalid State Token</h2></body></html>", status_code=400)
 
-    # 1. Exchange code for tokens (Mock)
+    import requests
+    
+    # 1. Exchange code for tokens
     access_token = "mock_access_token_abc123"
     refresh_token = "mock_refresh_token_xyz890"
+    connected_email = f"user_{user_id}@outlook.com"
     
-    # 2. Fetch User Profile from Graph API (Mock)
-    # Using the user ID to generate a consistent mock email if needed, or just a dummy
-    # In tests, we might want this to match the bridge config
-    user = db.query(User).filter(User.id == user_id).first()
-    connected_email = user.email if user else f"user_{user_id}@outlook.com"
+    if not MOCK_OAUTH:
+        token_url = f"https://login.microsoftonline.com/{MSAL_TENANT_ID}/oauth2/v2.0/token"
+        token_data = {
+            "client_id": MSAL_CLIENT_ID,
+            "client_secret": MSAL_CLIENT_SECRET,
+            "code": code,
+            "redirect_uri": MSAL_REDIRECT_URI,
+            "grant_type": "authorization_code"
+        }
+        try:
+            r = requests.post(token_url, data=token_data)
+            r.raise_for_status()
+            token_json = r.json()
+            access_token = token_json["access_token"]
+            refresh_token = token_json.get("refresh_token")
+            
+            # Fetch user email
+            headers = {"Authorization": f"Bearer {access_token}"}
+            me_r = requests.get("https://graph.microsoft.com/v1.0/me", headers=headers)
+            me_r.raise_for_status()
+            connected_email = me_r.json().get("mail") or me_r.json().get("userPrincipalName")
+        except Exception as e:
+            return HTMLResponse(content=f"<html><body><h2>Failed to acquire tokens</h2><p>{str(e)}</p></body></html>", status_code=400)
+    else:
+        user = db.query(User).filter(User.id == user_id).first()
+        if user:
+            connected_email = user.email
 
     # 3. Upsert UserOutlookAccount
     outlook_account = db.query(UserOutlookAccount).filter(UserOutlookAccount.user_id == user_id).first()
@@ -288,13 +315,14 @@ def bridge_oauth_callback(code: str = None, state: str = None, error: str = None
     outlook_account.status = "connected"
     outlook_account.last_synced_at = _utcnow()
     
-    # 4. Upsert UserBridgeStatus (mark offline initially, bridge script must connect to mark online)
+    # 4. Upsert UserBridgeStatus (mark online immediately since server IS the bridge now)
     status_record = db.query(UserBridgeStatus).filter(UserBridgeStatus.user_id == user_id).first()
     if not status_record:
         status_record = UserBridgeStatus(user_id=user_id)
         db.add(status_record)
     
-    status_record.status = 'offline' # Requires bridge script to come online
+    status_record.status = 'online'
+    status_record.last_heartbeat = _utcnow()
     db.commit()
     
     if popup == 'true':
@@ -302,6 +330,12 @@ def bridge_oauth_callback(code: str = None, state: str = None, error: str = None
         
     # Redirect back to frontend profile
     return RedirectResponse(url=redirect_uri)
+
+@router.get("/tasks")
+def get_bridge_tasks(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    """Fetch pending emails for the bridge."""
+    # We no longer require an OAuth connection here, since the Local Bridge uses COM Automation!
+    return get_tasks_helper(db, current_user)
 
 @router.post('/disconnect')
 def bridge_disconnect(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):

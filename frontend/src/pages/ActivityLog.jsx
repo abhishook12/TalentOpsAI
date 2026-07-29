@@ -105,13 +105,13 @@ export default function ActivityLog() {
         <div className="flex gap-2 bg-surface-container-low p-1 rounded-full border border-outline-variant">
           <button 
             onClick={() => setActiveTab('database')}
-            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${activeTab === 'database' ? 'bg-primary text-on-primary shadow' : 'text-on-surface-variant hover:text-on-surface'}`}
+            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${activeTab === 'database' ? 'bg-inverse-surface text-inverse-on-surface shadow' : 'text-on-surface-variant hover:text-on-surface'}`}
           >
             Database Activity
           </button>
           <button 
             onClick={() => setActiveTab('visitors')}
-            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${activeTab === 'visitors' ? 'bg-primary text-on-primary shadow' : 'text-on-surface-variant hover:text-on-surface'}`}
+            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${activeTab === 'visitors' ? 'bg-inverse-surface text-inverse-on-surface shadow' : 'text-on-surface-variant hover:text-on-surface'}`}
           >
             Visitor Traffic
           </button>
@@ -136,7 +136,7 @@ export default function ActivityLog() {
               </button>
               <div className="flex items-center gap-1.5 rounded-full border border-outline-variant bg-surface-container-low px-2 py-1">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-[#00eefc]"></span>
-                <span className="text-[10px] font-mono tracking-widest text-[#00eefc]">LIVE FEED</span>
+                <span className="text-[10px] font-mono tracking-widest text-on-surface-variant">LIVE FEED</span>
               </div>
             </div>
           </div>
@@ -193,7 +193,7 @@ export default function ActivityLog() {
                     onClick={() => setDbFilter(cat.key)}
                     className={`whitespace-nowrap rounded-full px-4 py-1.5 font-mono text-xs transition-colors ${
                       isActive
-                        ? "bg-primary font-bold text-on-primary"
+                        ? "bg-inverse-surface font-bold text-inverse-on-surface"
                         : "border border-outline-variant bg-surface-container text-on-surface hover:bg-surface-container-highest"
                     }`}
                   >

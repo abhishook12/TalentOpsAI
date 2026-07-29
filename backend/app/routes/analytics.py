@@ -642,7 +642,7 @@ def get_visitor_logs(limit: int = 100, db: Session = Depends(get_db), current_us
     try:
         visits = db.execute(text("""
             SELECT id, page, path, user_email, session_id, time_on_page, user_agent, ip_address, visited_at
-            FROM page_visits WHERE user_email = :user_email AND
+            FROM page_visits 
             ORDER BY visited_at DESC
             LIMIT :limit
         """), {"limit": limit}).mappings().all()

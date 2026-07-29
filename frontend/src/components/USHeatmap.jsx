@@ -48,33 +48,35 @@ export default function USHeatmap() {
   const { dataMap, maxCount } = useMemo(() => {
     if (!stateData || !Array.isArray(stateData)) return { dataMap: {}, maxCount: 0 };
     
-    // Map from full state name to abbreviation since the backend returns full state names
     const stateNameToAbbr = {
-      "Alabama": "AL", "Alaska": "AK", "Arizona": "AZ", "Arkansas": "AR", "California": "CA",
-      "Colorado": "CO", "Connecticut": "CT", "Delaware": "DE", "Florida": "FL", "Georgia": "GA",
-      "Hawaii": "HI", "Idaho": "ID", "Illinois": "IL", "Indiana": "IN", "Iowa": "IA",
-      "Kansas": "KS", "Kentucky": "KY", "Louisiana": "LA", "Maine": "ME", "Maryland": "MD",
-      "Massachusetts": "MA", "Michigan": "MI", "Minnesota": "MN", "Mississippi": "MS", "Missouri": "MO",
-      "Montana": "MT", "Nebraska": "NE", "Nevada": "NV", "New Hampshire": "NH", "New Jersey": "NJ",
-      "New Mexico": "NM", "New York": "NY", "North Carolina": "NC", "North Dakota": "ND", "Ohio": "OH",
-      "Oklahoma": "OK", "Oregon": "OR", "Pennsylvania": "PA", "Rhode Island": "RI", "South Carolina": "SC",
-      "South Dakota": "SD", "Tennessee": "TN", "Texas": "TX", "Utah": "UT", "Vermont": "VT",
-      "Virginia": "VA", "Washington": "WA", "West Virginia": "WV", "Wisconsin": "WI", "Wyoming": "WY",
-      "District of Columbia": "DC"
+      "ALABAMA": "AL", "ALASKA": "AK", "ARIZONA": "AZ", "ARKANSAS": "AR", "CALIFORNIA": "CA",
+      "COLORADO": "CO", "CONNECTICUT": "CT", "DELAWARE": "DE", "FLORIDA": "FL", "GEORGIA": "GA",
+      "HAWAII": "HI", "IDAHO": "ID", "ILLINOIS": "IL", "INDIANA": "IN", "IOWA": "IA",
+      "KANSAS": "KS", "KENTUCKY": "KY", "LOUISIANA": "LA", "MAINE": "ME", "MARYLAND": "MD",
+      "MASSACHUSETTS": "MA", "MICHIGAN": "MI", "MINNESOTA": "MN", "MISSISSIPPI": "MS", "MISSOURI": "MO",
+      "MONTANA": "MT", "NEBRASKA": "NE", "NEVADA": "NV", "NEW HAMPSHIRE": "NH", "NEW JERSEY": "NJ",
+      "NEW MEXICO": "NM", "NEW YORK": "NY", "NORTH CAROLINA": "NC", "NORTH DAKOTA": "ND", "OHIO": "OH",
+      "OKLAHOMA": "OK", "OREGON": "OR", "PENNSYLVANIA": "PA", "RHODE ISLAND": "RI", "SOUTH CAROLINA": "SC",
+      "SOUTH DAKOTA": "SD", "TENNESSEE": "TN", "TEXAS": "TX", "UTAH": "UT", "VERMONT": "VT",
+      "VIRGINIA": "VA", "WASHINGTON": "WA", "WEST VIRGINIA": "WV", "WISCONSIN": "WI", "WYOMING": "WY",
+      "DISTRICT OF COLUMBIA": "DC"
     };
 
     const map = {};
     let max = 0;
     
     stateData.forEach((item) => {
-      // If the state is already an abbreviation, use it. Otherwise, map it.
-      let abbr = item.state;
-      if (item.state && item.state.length > 2) {
-         abbr = stateNameToAbbr[item.state] || item.state;
+      let stateStr = (item.state || "").trim().toUpperCase();
+      let abbr = stateStr;
+      
+      if (stateStr.length > 2) {
+         abbr = stateNameToAbbr[stateStr] || stateStr;
       }
       
-      map[abbr] = item.count;
-      if (item.count > max) max = item.count;
+      if (abbr) {
+        map[abbr] = (map[abbr] || 0) + item.count;
+        if (map[abbr] > max) max = map[abbr];
+      }
     });
     return { dataMap: map, maxCount: max };
   }, [stateData]);
@@ -144,14 +146,14 @@ export default function USHeatmap() {
                 {geographies.map((geo) => {
                   const stateAbbr = fipsToState[geo.id];
                   const count = dataMap[stateAbbr] || 0;
-                  const fill = count > 0 ? colorScale(count) : "var(--panel-bg)";
+                  const fill = count > 0 ? colorScale(count) : "transparent";
 
                   return (
                     <Geography
                       key={geo.rsmKey}
                       geography={geo}
                       fill={fill}
-                      stroke="var(--card-bg)"
+                      stroke="var(--card-border-strong)"
                       strokeWidth={1.5}
                       onMouseEnter={() => {
                         if (tooltipRef.current && tooltipTitleRef.current && tooltipValueRef.current) {
@@ -193,13 +195,13 @@ export default function USHeatmap() {
                             strokeLinecap: "round"
                           }}
                         >
-                          <text x={4} fontSize={8.5} fontWeight={700} alignmentBaseline="middle" fill="rgba(255,255,255,0.7)">
+                          <text x={4} fontSize={8.5} fontWeight={700} alignmentBaseline="middle" fill="var(--text-secondary)">
                             {stateAbbr}
                           </text>
                         </Annotation>
                       ) : (
                         <Marker coordinates={centroid}>
-                          <text y="2" fontSize={10} fontWeight={800} textAnchor="middle" fill="rgba(255,255,255,0.7)">
+                          <text y="2" fontSize={10} fontWeight={800} textAnchor="middle" fill="var(--text-secondary)">
                             {stateAbbr}
                           </text>
                         </Marker>
@@ -217,14 +219,14 @@ export default function USHeatmap() {
           ref={tooltipRef}
           style={{
             position: "absolute",
-            background: "#0d1527",
+            background: "var(--card-bg)",
             color: 'var(--text-primary)',
             padding: "8px 12px",
             borderRadius: "8px",
             fontSize: "12px",
             pointerEvents: "none",
             fontWeight: "600",
-            border: "1px solid #1c2741",
+            border: "1px solid var(--card-border-strong)",
             boxShadow: "0 8px 16px rgba(0,0,0,0.5)",
             whiteSpace: "pre-line",
             textAlign: "center",
@@ -233,8 +235,8 @@ export default function USHeatmap() {
             transition: "opacity 150ms ease-in-out"
           }}
         >
-          <span ref={tooltipTitleRef} style={{ color: "#94a3b8", fontSize: "10px", display: "block", marginBottom: "2px", textTransform: "uppercase" }}></span>
-          <span ref={tooltipValueRef} style={{ color: "#f59e0b", fontSize: "13px" }}></span>
+          <span ref={tooltipTitleRef} style={{ color: "var(--text-muted)", fontSize: "10px", display: "block", marginBottom: "2px", textTransform: "uppercase" }}></span>
+          <span ref={tooltipValueRef} style={{ color: "var(--warning)", fontSize: "13px" }}></span>
         </div>
       </div>
 

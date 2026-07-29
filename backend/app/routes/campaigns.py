@@ -248,14 +248,11 @@ def list_signatures(db: Session = Depends(get_db), current_user: User = Depends(
 
 @router.post("/signatures/create")
 def create_signature(req: SignatureCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    # Simple hardcoded user for now
-    user_email = "abhishekjadon824@gmail.com"
-    
     if req.is_default:
-        db.query(EmailSignature).filter(EmailSignature.user_id == current_user.id, EmailSignature.user_id == current_user.id).update({"is_default": False})
+        db.query(EmailSignature).filter(EmailSignature.user_id == current_user.id).update({"is_default": False})
         
     sig = EmailSignature(
-        user_email=user_email,
+        user_id=current_user.id,
         name=req.name,
         html_content=req.html_content,
         is_default=req.is_default
@@ -369,20 +366,19 @@ def enroll_emails(campaign_id: int, payload: EnrollEmailsRequest, db: Session = 
 
 @router.get("/{campaign_id}/progress")
 async def stream_campaign_progress(campaign_id: int):
-    # Removed Depends(get_db) to prevent holding a DB connection for the duration of the stream
+    # No Depends(get_db) — SSE streams must not hold a connection. No auth — EventSource can't send headers.
     from fastapi.responses import StreamingResponse
     import asyncio
     import json
     
     def _snapshot(last_log_id: int):
         # Runs in a worker thread: blocking DB calls must never run on the event loop
-        # (they stall every other request on the single Render instance).
         from ..database import SessionLocal
         from ..models.campaigns import EmailLog
         from sqlalchemy import func as sa_func
 
         with SessionLocal() as s_db:
-            camp_status = s_db.query(Campaign.status).filter(Campaign.user_id == current_user.id, Campaign.campaign_id == campaign_id).scalar()
+            camp_status = s_db.query(Campaign.status).filter(Campaign.campaign_id == campaign_id).scalar()
             if camp_status is None:
                 return None, last_log_id
 
@@ -468,6 +464,24 @@ async def stream_campaign_progress(campaign_id: int):
             await asyncio.sleep(2)
             
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+@router.get("/{campaign_id}/status")
+def api_get_campaign_status(
+    campaign_id: int, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user_from_request)
+):
+    campaign = db.query(Campaign).filter(Campaign.user_id == current_user.id, Campaign.campaign_id == campaign_id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+        
+    from ..services.send_engine import _get_campaign_eta
+    eta_data = _get_campaign_eta(campaign_id)
+    
+    return {
+        "status": campaign.status,
+        **eta_data
+    }
 
 @router.get("/{campaign_id}/delivery-logs")
 def get_campaign_delivery_logs(campaign_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
@@ -626,11 +640,14 @@ def get_campaign_or_404(db: Session, campaign_id: int, current_user: User, eager
     return campaign
 
 
-def get_template_or_404(db: Session, campaign_id: int, template_id: int) -> EmailTemplate:
-    template = db.query(EmailTemplate).filter(EmailTemplate.user_id == current_user.id, 
+def get_template_or_404(db: Session, campaign_id: int, template_id: int, current_user: User = None) -> EmailTemplate:
+    q = db.query(EmailTemplate).filter(
         EmailTemplate.campaign_id == campaign_id,
         EmailTemplate.template_id == template_id,
-    ).first()
+    )
+    if current_user:
+        q = q.filter(EmailTemplate.user_id == current_user.id)
+    template = q.first()
     if not template:
         raise HTTPException(status_code=404, detail="Email template not found")
     return template
@@ -941,14 +958,7 @@ def update_campaign(campaign_id: int, payload: CampaignUpdate, db: Session = Dep
     return serialize_campaign(campaign)
 
 
-@router.delete("/{campaign_id}")
-def archive_campaign(campaign_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    campaign = get_campaign_or_404(db, campaign_id, current_user)
-    campaign.is_archived = True
-    campaign.is_active = False
-    campaign.status = CampaignStatus.archived.value
-    db.commit()
-    return {"message": "Campaign archived", "campaign": serialize_campaign(campaign)}
+# Duplicate DELETE route removed — archive is handled by PUT /{campaign_id}/archive (line 916)
 
 
 @router.get("/{campaign_id}/templates")
@@ -1009,7 +1019,7 @@ def create_template(campaign_id: int, payload: TemplateCreate, request: Request,
 
 @router.put("/{campaign_id}/templates/{template_id}")
 def update_template(campaign_id: int, template_id: int, payload: TemplateUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    template = get_template_or_404(db, campaign_id, template_id)
+    template = get_template_or_404(db, campaign_id, template_id, current_user)
     updates = payload.model_dump(exclude_unset=True)
     for field, value in updates.items():
         if field == "variables":
@@ -1025,7 +1035,7 @@ def update_template(campaign_id: int, template_id: int, payload: TemplateUpdate,
 
 @router.delete("/{campaign_id}/templates/{template_id}")
 def deactivate_template(campaign_id: int, template_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    template = get_template_or_404(db, campaign_id, template_id)
+    template = get_template_or_404(db, campaign_id, template_id, current_user)
     template.is_active = False
     db.commit()
     db.refresh(template)
@@ -1041,7 +1051,7 @@ def list_sequence_steps(campaign_id: int, db: Session = Depends(get_db), current
 @router.post("/{campaign_id}/steps")
 def create_sequence_step(campaign_id: int, payload: SequenceStepCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     get_campaign_or_404(db, campaign_id, current_user)
-    template = get_template_or_404(db, campaign_id, payload.template_id)
+    template = get_template_or_404(db, campaign_id, payload.template_id, current_user)
     if not template.is_active:
         raise HTTPException(status_code=400, detail="Cannot attach an inactive template to a sequence step")
     step = SequenceStep(
@@ -1063,7 +1073,7 @@ def update_sequence_step(campaign_id: int, step_id: int, payload: SequenceStepUp
     step = get_step_or_404(db, campaign_id, step_id)
     updates = payload.model_dump(exclude_unset=True)
     if "template_id" in updates and updates["template_id"] is not None:
-        get_template_or_404(db, campaign_id, updates["template_id"])
+        get_template_or_404(db, campaign_id, updates["template_id"], current_user)
     for field, value in updates.items():
         setattr(step, field, value)
     db.commit()
@@ -1116,6 +1126,7 @@ def update_recruiter_status(
     recruiter_id: int,
     payload: CampaignRecruiterStatusUpdate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
 ):
     cr = db.query(CampaignRecruiter).filter(
         CampaignRecruiter.campaign_id == campaign_id,

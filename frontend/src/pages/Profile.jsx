@@ -80,11 +80,19 @@ export default function Profile() {
           <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>{user.first_name} {user.last_name}</h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>{user.role || 'Member'}</p>
 
-          <button onClick={logout} style={{
-            width: '100%', padding: '12px', borderRadius: 12, border: '1px solid rgba(255,107,107,0.2)',
-            background: 'rgba(255,107,107,0.05)', color: '#ff6b6b', fontWeight: 700, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
-          }}>
+          <button 
+            onClick={logout} 
+            style={{
+              width: '100%', padding: '12px', borderRadius: 12, 
+              border: '1px solid color-mix(in srgb, var(--danger) 30%, transparent)',
+              background: 'color-mix(in srgb, var(--danger) 8%, transparent)', 
+              color: 'var(--danger)', fontWeight: 700, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'color-mix(in srgb, var(--danger) 16%, transparent)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'color-mix(in srgb, var(--danger) 8%, transparent)'}
+          >
             <LogOut size={16} /> Sign Out
           </button>
         </div>
@@ -113,8 +121,14 @@ export default function Profile() {
               
               <div>
                 <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', marginBottom: 6 }}>Account Status</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15 }}>
-                  <Shield size={16} color="#4ade80" /> Active
+                <div style={{ 
+                  display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700,
+                  background: 'color-mix(in srgb, var(--success) 10%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--success) 40%, transparent)',
+                  color: 'var(--success)',
+                  padding: '4px 12px', borderRadius: 20
+                }}>
+                  <Shield size={14} color="var(--success)" /> Active
                 </div>
               </div>
 

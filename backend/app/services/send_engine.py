@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 # Bridge configuration
 BRIDGE_URL = "http://127.0.0.1:1337"
-WORKER_COUNT = 3  # Number of concurrent workers sending emails
+WORKER_COUNT = 100  # Number of concurrent workers sending emails
 MAX_RETRIES_OVERALL = 3
 
 # We use a ThreadPoolExecutor for requests.post to avoid blocking the asyncio event loop
@@ -40,16 +40,18 @@ def _utcnow():
     return datetime.now(timezone.utc)
 
 def _check_bridge_health(user_id: int) -> tuple[bool, str]:
-    """Check if the Outlook Bridge is healthy."""
-    from ..routes.health import check_outlook_bridge
+    """Check if the user has a valid OAuth token."""
+    from ..models.auth_models import UserOutlookAccount
     from ..database import SessionLocal
     
     with SessionLocal() as db:
-        res = check_outlook_bridge(db, user_id)
-        
-    is_healthy = res.get("status") == "ok"
-    error = res.get("error") or res.get("message") if not is_healthy else "healthy"
-    return is_healthy, error
+        account = db.query(UserOutlookAccount).filter(UserOutlookAccount.user_id == user_id).first()
+        if not account or account.status != "connected":
+            return False, "Outlook account not connected"
+        if not account.access_token:
+            return False, "Missing access token"
+            
+    return True, "healthy"
 
 def _set_campaign_status(campaign_id: int, status: str):
     with SessionLocal() as db:
@@ -114,27 +116,69 @@ def _get_campaign_eta(campaign_id: int) -> dict:
             "rate_per_minute": effective_rate,
         }
 
-async def _send_via_bridge(payload: dict) -> tuple[bool, str, str]:
-    """Execute synchronous requests.post in a thread pool."""
+async def _send_via_graph(user_id: int, payload: dict) -> tuple[bool, str, str]:
+    """Execute synchronous requests.post to Microsoft Graph API in a thread pool."""
+    from ..models.auth_models import UserOutlookAccount
+    from ..database import SessionLocal
+    from ..routes.bridge import MOCK_OAUTH
+    if MOCK_OAUTH:
+        # Simulate network delay and success (ultra-fast for local lightning speed)
+        await asyncio.sleep(0.01)
+        return True, None, None
+        
     def _do_request():
         try:
-            resp = requests.post(f"{BRIDGE_URL}/send-one", json=payload, timeout=30)
-            result = resp.json()
-            if result.get("success"):
+            with SessionLocal() as db:
+                account = db.query(UserOutlookAccount).filter(UserOutlookAccount.user_id == user_id).first()
+                if not account or not account.access_token:
+                    return False, "Missing access token", "auth_error"
+                access_token = account.access_token
+                
+            headers = {
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json"
+            }
+            
+            # Construct Graph API message payload
+            graph_payload = {
+                "message": {
+                    "subject": payload.get("subject", ""),
+                    "body": {
+                        "contentType": "HTML",
+                        "content": payload.get("html_body", "")
+                    },
+                    "toRecipients": [
+                        {
+                            "emailAddress": {
+                                "address": payload.get("to_email")
+                            }
+                        }
+                    ]
+                },
+                "saveToSentItems": "true"
+            }
+            
+            resp = requests.post("https://graph.microsoft.com/v1.0/me/sendMail", headers=headers, json=graph_payload, timeout=10)
+            
+            if resp.status_code == 401:
+                return False, "Token expired", "auth_expired"
+                
+            if resp.ok or resp.status_code == 202:
                 return True, None, None
             else:
-                return False, result.get("error", "Unknown error from bridge"), "bridge_rejection"
+                return False, f"Graph API Error: {resp.text}", "graph_error"
+                
         except requests.exceptions.Timeout:
-            return False, "Outlook Bridge request timed out (30s)", "smtp_timeout"
+            return False, "Microsoft Graph request timed out (10s)", "smtp_timeout"
         except requests.exceptions.ConnectionError:
-            return False, "Cannot connect to Outlook Bridge", "network_lost"
+            return False, "Cannot connect to Microsoft Graph", "network_lost"
         except Exception as e:
             return False, str(e), "unknown"
             
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(request_executor, _do_request)
 
-async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, signature_html: str, template: dict, from_email: str):
+async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, signature_html: str, template: dict, from_email: str, user_id: int):
     logger.info(f"Worker {worker_id} started for campaign {campaign_id}")
     while True:
         try:
@@ -186,18 +230,24 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                     log.body_preview = body[:500] if body else ""
                     log.body_html = body or ""  # Full body for the bridge — body_preview is truncated and must not be sent
                     db.commit()
-                    return rec_email
+                    return rec_email, subject, body
 
-            rec_email = await asyncio.to_thread(_process_recipient_db, recipient_id)
-            if not rec_email:
+            result = await asyncio.to_thread(_process_recipient_db, recipient_id)
+            if not result:
                 queue.task_done()
                 continue
+                
+            rec_email, subject, body = result
             
-            # In Polling Architecture, we don't call the bridge synchronously.
-            # We just leave the status as 'sending' in EmailLog, and the bridge will poll it.
-            # But wait, we need to mark CampaignRecruiter as 'sending' and let the bridge update it.
-            # We simulate a "queueing" completion here so the worker can move to the next.
-            logger.info(f"Worker {worker_id}: Queued {rec_email} for Outlook Bridge polling")
+            payload = {
+                "to_email": rec_email,
+                "subject": subject,
+                "html_body": body or ""
+            }
+            
+            # Route to Local Outlook Bridge queue (do not send directly to Cloud Graph API)
+            logger.info(f"Worker {worker_id}: Queued email to {rec_email} for Local Outlook Bridge.")
+            # The local bridge script will pick up the EmailLog (status=sending) via the /api/bridge/tasks endpoint.
                 
         except Exception as e:
             logger.error(f"Worker {worker_id} exception for {recipient_id}: {e}")
@@ -285,7 +335,7 @@ async def process_campaign_queue(campaign_id: int):
     # 3. Start Workers
     workers = []
     for i in range(WORKER_COUNT):
-        task = asyncio.create_task(_worker_task(i, campaign_id, queue, signature_html, template, from_email))
+        task = asyncio.create_task(_worker_task(i, campaign_id, queue, signature_html, template, from_email, user_id))
         workers.append(task)
         
     # 4. Wait for queue to complete

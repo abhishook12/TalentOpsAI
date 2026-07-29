@@ -337,7 +337,7 @@ export default function Campaigns() {
       setCurrentStep(STEPS.SEND);
       toast.success("Campaign engine started successfully!");
     } catch (e) {
-      toast.error(api.getErrorMessage(e) || "Failed to start campaign");
+      toast.error(api.getErrorMessage?.(e) || "Failed to start campaign");
     }
   };
 

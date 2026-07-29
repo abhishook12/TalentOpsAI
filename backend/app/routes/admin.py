@@ -934,28 +934,29 @@ def admin_visitor_logs(
 @cached_route(ttl=60)
 def admin_visitor_summary(days: int = 30, db: Session = Depends(get_db)):
     """Daily unique visitors, total page views, avg session length."""
+    since = datetime.utcnow() - timedelta(days=days)
     rows = db.execute(text("""
         SELECT
-            DATE(visited_at) AS day,
+            date(visited_at) AS day,
             COUNT(DISTINCT session_id) AS unique_sessions,
-            COUNT(DISTINCT user_email) FILTER (WHERE user_email IS NOT NULL) AS unique_users,
+            COUNT(DISTINCT user_email) AS unique_users,
             COUNT(*) AS page_views,
-            ROUND(AVG(time_on_page) FILTER (WHERE time_on_page IS NOT NULL AND time_on_page > 0)) AS avg_page_seconds
+            ROUND(AVG(CASE WHEN time_on_page > 0 THEN time_on_page END)) AS avg_page_seconds
         FROM page_visits
-        WHERE visited_at >= NOW() - INTERVAL '1 day' * :days
-        GROUP BY DATE(visited_at)
+        WHERE visited_at >= :since
+        GROUP BY date(visited_at)
         ORDER BY day DESC
         LIMIT :days
-    """), {"days": days}).mappings().all()
+    """), {"days": days, "since": since}).mappings().all()
 
     top_pages = db.execute(text("""
         SELECT page, COUNT(*) AS views
         FROM page_visits
-        WHERE visited_at >= NOW() - INTERVAL '1 day' * :days
+        WHERE visited_at >= :since
         GROUP BY page
         ORDER BY views DESC
         LIMIT 10
-    """), {"days": days}).mappings().all()
+    """), {"days": days, "since": since}).mappings().all()
 
     top_users = db.execute(text("""
         SELECT
@@ -964,11 +965,11 @@ def admin_visitor_summary(days: int = 30, db: Session = Depends(get_db)):
             COUNT(DISTINCT session_id) AS sessions,
             MAX(visited_at) AS last_seen
         FROM page_visits
-        WHERE user_email IS NOT NULL AND visited_at >= NOW() - INTERVAL '1 day' * :days
+        WHERE user_email IS NOT NULL AND visited_at >= :since
         GROUP BY user_email
         ORDER BY page_views DESC
         LIMIT 10
-    """), {"days": days}).mappings().all()
+    """), {"days": days, "since": since}).mappings().all()
 
     return {
         "daily": [dict(r) for r in rows],

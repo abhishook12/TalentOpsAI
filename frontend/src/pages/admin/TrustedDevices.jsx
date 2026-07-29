@@ -170,29 +170,18 @@ export default function TrustedDevices() {
     setMutatingIds(newMutating)
 
     try {
-      // Mocking the API call for each device
       await Promise.all(actionTargets.map(async id => {
-        await new Promise(r => setTimeout(r, 800)) // network delay
-        // Locally update state instead of actually hitting the missing endpoint
-        setDevices(prev => prev.map(d => {
-          if (d.id === id) {
-            let changes = { ...d }
-            if (actionType !== 'Terminate' && actionType !== 'ReVerify') {
-              changes.status = actionType
-            }
-            if (payload.terminateSessions) {
-              changes.active_sessions = 0
-            }
-            if (payload.duration) {
-              const date = new Date()
-              date.setDate(date.getDate() + payload.duration)
-              changes.trust_expires_at = date.toISOString()
-            }
-            return changes
-          }
-          return d
-        }))
+        if (actionType === 'Terminate') {
+          await api.delete(`/admin/devices/${id}/sessions`);
+        } else if (actionType === 'ReVerify') {
+          await api.put(`/admin/devices/${id}/status`, { status: 'Pending' });
+        } else {
+          await api.put(`/admin/devices/${id}/status`, { status: actionType });
+        }
       }))
+      
+      // Reload devices from backend to reflect exact state
+      await loadDevices();
       
       toast.success(`Successfully updated ${actionTargets.length} device${actionTargets.length > 1 ? 's' : ''}`)
       setSelectedIds(new Set())

@@ -141,9 +141,9 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r }) {
       </td>
       <td style={{ padding: '24px 20px', verticalAlign: 'middle' }}>
         <CompanyIdentity 
-          domain={r.company_domain || (r.company && (r.company.website || r.company.email_pattern))} 
-          name={r.company_name} 
-          metadata={r.city ? `${r.city}, ${r.state}` : r.company_domain}
+          domain={r.company_domain || (r.company && (r.company.website || r.company.email_pattern)) || (r.email ? r.email.split('@')[1] : null)} 
+          name={r.company_name || (r.email ? r.email.split('@')[1].split('.')[0] : null)} 
+          metadata={r.city ? `${r.city}, ${r.state}` : (r.company_domain || (r.email ? r.email.split('@')[1] : null))}
           interactive={false}
         />
       </td>

@@ -761,7 +761,8 @@ export default function Campaigns() {
                         value={fromEmail}
                         onChange={(val) => {
                           if (val === 'connect_new') {
-                            const w = window.open(`${API}/bridge/oauth/login?popup=true`, 'Connect Microsoft Outlook', 'width=500,height=600');
+                            const token = localStorage.getItem('session_token') || sessionStorage.getItem('session_token');
+                            const w = window.open(`${API}/bridge/oauth/login?popup=true&token=${token}`, 'Connect Microsoft Outlook', 'width=500,height=600');
                             const messageListener = async (event) => {
                               if (event.data === 'oauth_success') {
                                 window.removeEventListener('message', messageListener);

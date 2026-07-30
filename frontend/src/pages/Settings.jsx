@@ -40,7 +40,8 @@ export default function Settings() {
 
   const handleConnectOutlook = () => {
     // Open the real OAuth popup targeting the backend
-    const w = window.open(`${API}/bridge/oauth/login?popup=true`, 'Connect Microsoft Outlook', 'width=500,height=600');
+    const token = localStorage.getItem('session_token') || sessionStorage.getItem('session_token');
+    const w = window.open(`${API}/bridge/oauth/login?popup=true&token=${token}`, 'Connect Microsoft Outlook', 'width=500,height=600');
     
     // Listen for the success message from the popup
     const messageListener = async (event) => {

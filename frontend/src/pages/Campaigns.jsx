@@ -6,7 +6,7 @@ import {
   CheckCircle2, Loader2, ChevronRight, Play, Eye
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import api from '../services/api';
+import api, { API } from '../services/api';
 
 import BridgeStatus from '../components/BridgeStatus';
 import RichTextComposer from '../components/RichTextComposer';
@@ -761,7 +761,7 @@ export default function Campaigns() {
                         value={fromEmail}
                         onChange={(val) => {
                           if (val === 'connect_new') {
-                            const w = window.open('http://localhost:8000/api/bridge/oauth/login?popup=true', 'Connect Microsoft Outlook', 'width=500,height=600');
+                            const w = window.open(`${API}/bridge/oauth/login?popup=true`, 'Connect Microsoft Outlook', 'width=500,height=600');
                             const messageListener = async (event) => {
                               if (event.data === 'oauth_success') {
                                 window.removeEventListener('message', messageListener);

@@ -4,6 +4,8 @@ import api from '../services/api';
 import { User, Bell, Lock, Key, Globe, Shield, Smartphone, ArrowRight, Laptop, LogOut, Mail } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+import { API } from '../services/api';
+
 export default function Settings() {
   const { user, checkAuth } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
@@ -38,7 +40,7 @@ export default function Settings() {
 
   const handleConnectOutlook = () => {
     // Open the real OAuth popup targeting the backend
-    const w = window.open('http://localhost:8000/api/bridge/oauth/login?popup=true', 'Connect Microsoft Outlook', 'width=500,height=600');
+    const w = window.open(`${API}/bridge/oauth/login?popup=true`, 'Connect Microsoft Outlook', 'width=500,height=600');
     
     // Listen for the success message from the popup
     const messageListener = async (event) => {

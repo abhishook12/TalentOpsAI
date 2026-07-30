@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { User, Bell, Lock, Key, Globe, Shield, Smartphone, ArrowRight, Laptop, LogOut } from 'lucide-react';
+import { User, Bell, Lock, Key, Globe, Shield, Smartphone, ArrowRight, Laptop, LogOut, Mail } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function Settings() {
   const { user, checkAuth } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
+  const [outlookConnected, setOutlookConnected] = useState(false);
+  const [outlookEmail, setOutlookEmail] = useState('');
   
   const [formData, setFormData] = useState({
     firstName: user?.first_name || '',
@@ -22,6 +24,53 @@ export default function Settings() {
 
   const [isSaving, setIsSaving] = useState(false);
 
+  useEffect(() => {
+    // Check if outlook is already connected
+    api.get('/auth/outlook/status')
+      .then(res => {
+        if (res.data.connected) {
+          setOutlookConnected(true);
+          setOutlookEmail(res.data.email);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleConnectOutlook = () => {
+    // Open the real OAuth popup targeting the backend
+    const w = window.open('http://localhost:8000/api/bridge/oauth/login?popup=true', 'Connect Microsoft Outlook', 'width=500,height=600');
+    
+    // Listen for the success message from the popup
+    const messageListener = async (event) => {
+      if (event.data === 'oauth_success') {
+        window.removeEventListener('message', messageListener);
+        try {
+          // Re-fetch status to get the connected email
+          const res = await api.get('/auth/outlook/status');
+          if (res.data.connected) {
+            setOutlookConnected(true);
+            setOutlookEmail(res.data.email);
+            toast.success('Successfully connected Outlook account!');
+          }
+        } catch (err) {
+          toast.error('Failed to verify Outlook connection');
+        }
+      }
+    };
+    window.addEventListener('message', messageListener);
+  };
+
+  const handleDisconnectOutlook = async () => {
+    if (!window.confirm('Are you sure you want to disconnect your Outlook account?')) return;
+    try {
+      await api.delete('/auth/outlook/disconnect');
+      setOutlookConnected(false);
+      setOutlookEmail('');
+      toast.success('Outlook account disconnected');
+    } catch (err) {
+      toast.error('Failed to disconnect');
+    }
+  };
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setIsSaving(true);
@@ -273,10 +322,18 @@ export default function Settings() {
                     </div>
                     <div>
                       <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Microsoft Outlook</div>
-                      <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Office 365 Integration</div>
+                      <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                        {outlookConnected ? (
+                          <span style={{ color: '#10b981' }}>Connected as {outlookEmail}</span>
+                        ) : 'Office 365 Integration'}
+                      </div>
                     </div>
                   </div>
-                  <button disabled style={{ padding: '6px 12px', background: 'transparent', border: '1px solid var(--card-border)', color: 'var(--text-primary)', borderRadius: 6, fontWeight: 500, cursor: 'not-allowed', opacity: 0.5 }}>Connect (Coming Soon)</button>
+                  {outlookConnected ? (
+                    <button onClick={handleDisconnectOutlook} style={{ padding: '6px 12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', borderRadius: 6, fontWeight: 500, cursor: 'pointer' }}>Disconnect</button>
+                  ) : (
+                    <button onClick={handleConnectOutlook} className="btn-primary" style={{ padding: '6px 12px', borderRadius: 6, fontWeight: 500, cursor: 'pointer', fontSize: 13 }}>Connect Account</button>
+                  )}
                 </div>
               </div>
             </div>

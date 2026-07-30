@@ -19,6 +19,7 @@ import USHeatmap from '../components/USHeatmap'
 import { CompanyIdentity } from '../components/CompanyIdentity'
 import AIInsights from '../components/AIInsights'
 import EnrichmentLiveFeed from '../components/EnrichmentLiveFeed'
+import EnricherControlPanel from '../components/EnricherControlPanel'
 import { Skeleton, SkeletonRow } from '../components/ui/Skeleton'
 import AnimatedNumber from '../components/ui/AnimatedNumber'
 
@@ -503,6 +504,9 @@ export default function Dashboard() {
         </ShellCard>
       </div>
       <div style={{ marginTop: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12, marginBottom: 12 }}>
+          <EnricherControlPanel />
+        </div>
         <EnrichmentLiveFeed />
       </div>
       </>

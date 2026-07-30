@@ -228,7 +228,7 @@ import jwt
 from datetime import datetime, timedelta
 from ..services.auth_service import SECRET_KEY, ALGORITHM
 
-MOCK_OAUTH = os.getenv("MOCK_OAUTH", "True").lower() in ("true", "1", "yes")
+MOCK_OAUTH = os.getenv("MOCK_OAUTH", "False").lower() in ("true", "1", "yes")
 
 MSAL_CLIENT_ID = os.getenv("MSAL_CLIENT_ID", "replace_me")
 MSAL_CLIENT_SECRET = os.getenv("MSAL_CLIENT_SECRET", "replace_me")

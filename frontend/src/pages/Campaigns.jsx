@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { 
   Send, ArrowLeft, Plus, Mail, Activity, AlertCircle, FileText, 
@@ -72,6 +73,7 @@ export default function Campaigns() {
   // Auto-save logic
   const [lastSaved, setLastSaved] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const savePromiseRef = useRef(null);
 
   useEffect(() => {
     if (view === 'wizard' && activeCampaignId) {
@@ -143,41 +145,53 @@ export default function Campaigns() {
   };
 
   const saveDraft = async () => {
-    try {
-      let cid = activeCampaignId;
-      if (cid) {
-        // Update existing campaign
-        await api.put(`/campaigns/${cid}`, {
-          name: campaignName,
-          from_email: fromEmail,
-          signature_id: signatureId
-        });
-      } else {
-        // Create new campaign shell
-        const res = await api.post('/campaigns', {
-          name: campaignName,
-          from_email: fromEmail,
-          status: 'draft',
-          signature_id: signatureId
-        });
-        cid = res.data.campaign_id;
-        setActiveCampaignId(cid);
+    if (savePromiseRef.current) return savePromiseRef.current;
+
+    const doSave = async () => {
+      setIsSaving(true);
+      try {
+        let cid = activeCampaignId;
+        if (cid) {
+          // Update existing campaign
+          await api.put(`/campaigns/${cid}`, {
+            name: campaignName,
+            from_email: fromEmail,
+            signature_id: signatureId
+          });
+        } else {
+          // Create new campaign shell
+          const res = await api.post('/campaigns', {
+            name: campaignName,
+            from_email: fromEmail,
+            status: 'draft',
+            signature_id: signatureId
+          });
+          cid = res.data.campaign_id;
+          setActiveCampaignId(cid);
+        }
+        
+        // Save template (this acts as an upsert on backend)
+        if (subject || body) {
+          await api.post(`/campaigns/${cid}/templates`, {
+            name: subject || 'Draft',
+            subject: subject || '',
+            body: body || ''
+          });
+        }
+        
+        setLastSaved(new Date());
+        return cid;
+      } catch (e) {
+        console.error("Draft save failed", e);
+        return null;
+      } finally {
+        setIsSaving(false);
+        savePromiseRef.current = null;
       }
-      
-      // Save template (this acts as an upsert on backend)
-      if (subject || body) {
-        await api.post(`/campaigns/${cid}/templates`, {
-          name: subject || 'Draft',
-          subject: subject || '',
-          body: body || ''
-        });
-      }
-      
-      return cid;
-    } catch (e) {
-      console.error("Draft save failed", e);
-      return null;
-    }
+    };
+
+    savePromiseRef.current = doSave();
+    return savePromiseRef.current;
   };
 
 
@@ -351,13 +365,11 @@ export default function Campaigns() {
         <div className="flex items-center gap-4 mt-4 sm:mt-0">
           <BridgeStatus onStatusChange={setBridgeHealthy} />
           <button 
-            onClick={() => import.meta.env.VITE_FEATURE_OUTLOOK_LIBRARY === 'true' && startOutlookImport()}
-            disabled={import.meta.env.VITE_FEATURE_OUTLOOK_LIBRARY !== 'true'}
-            title={import.meta.env.VITE_FEATURE_OUTLOOK_LIBRARY !== 'true' ? 'Coming Soon' : ''}
-            className={`px-4 py-2 border rounded-lg text-sm font-medium flex items-center gap-2 transition-colors ${import.meta.env.VITE_FEATURE_OUTLOOK_LIBRARY === 'true' ? 'bg-purple-600/20 text-purple-400 border-purple-500/30 hover:bg-purple-600/30' : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border-[var(--border)] opacity-70 cursor-not-allowed'}`}
+            onClick={startOutlookImport}
+            className="px-4 py-2 border rounded-lg text-sm font-medium flex items-center gap-2 transition-colors bg-purple-600/20 text-purple-400 border-purple-500/30 hover:bg-purple-600/30"
           >
             <Mail size={16} /> 
-            {import.meta.env.VITE_FEATURE_OUTLOOK_LIBRARY !== 'true' ? 'Reuse Campaign (Soon)' : 'Reuse Past Campaign'}
+            Reuse Past Campaign
           </button>
           <button 
             onClick={startNewCampaign}
@@ -578,13 +590,11 @@ export default function Campaigns() {
           </button>
           <div className="flex items-center gap-3">
             <button 
-              onClick={() => import.meta.env.VITE_FEATURE_OUTLOOK_LIBRARY === 'true' && startOutlookImport()}
-              disabled={import.meta.env.VITE_FEATURE_OUTLOOK_LIBRARY !== 'true'}
-              title={import.meta.env.VITE_FEATURE_OUTLOOK_LIBRARY !== 'true' ? 'Coming Soon' : ''}
-              className={`px-4 py-2 border rounded-lg font-medium transition-colors flex items-center gap-2 shadow-sm ${import.meta.env.VITE_FEATURE_OUTLOOK_LIBRARY === 'true' ? 'bg-purple-600/20 text-purple-400 border-purple-500/30 hover:bg-purple-600/30' : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border-[var(--border)] opacity-70 cursor-not-allowed'}`}
+              onClick={startOutlookImport}
+              className="px-4 py-2 border rounded-lg font-medium transition-colors flex items-center gap-2 shadow-sm bg-purple-600/20 text-purple-400 border-purple-500/30 hover:bg-purple-600/30"
             >
               <Mail size={16} /> 
-              {import.meta.env.VITE_FEATURE_OUTLOOK_LIBRARY !== 'true' ? 'Reuse Campaign (Soon)' : 'Reuse Past Campaign'}
+              Reuse Past Campaign
             </button>
             <button 
               onClick={startNewCampaign}
@@ -611,6 +621,16 @@ export default function Campaigns() {
             <p className="text-sm text-[var(--text-secondary)] mt-1 flex items-center gap-2">
               <Mail className="w-4 h-4" /> Sending via Outlook Bridge
             </p>
+          </div>
+          {/* Auto-save indicator */}
+          <div className="ml-4 flex items-center text-xs text-[var(--text-muted)] bg-[var(--bg-surface)] px-3 py-1.5 rounded-full border border-[var(--border)]">
+            {isSaving ? (
+              <><Loader2 className="w-3 h-3 mr-1.5 animate-spin text-[var(--accent)]" /> Saving...</>
+            ) : lastSaved ? (
+              <><CheckCircle2 className="w-3 h-3 mr-1.5 text-green-500" /> Saved {lastSaved.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</>
+            ) : (
+              <><CheckCircle2 className="w-3 h-3 mr-1.5 text-[var(--text-muted)]" /> No changes</>
+            )}
           </div>
         </div>
         
@@ -646,10 +666,18 @@ export default function Campaigns() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-hidden min-h-0 flex gap-6">
-        
-        {currentStep === STEPS.RECIPIENTS && (
-          <div className="flex-1 h-full">
+      <div className="flex-1 overflow-hidden min-h-0 flex relative">
+        <AnimatePresence mode="wait">
+          <motion.div 
+            key={currentStep}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 h-full w-full flex gap-6"
+          >
+            {currentStep === STEPS.RECIPIENTS && (
+              <div className="flex-1 h-full w-full">
             <DragDropRecipientBuilder 
               recipients={validatedRecipients.recipients}
               onChange={(newRecipients) => {
@@ -690,7 +718,7 @@ export default function Campaigns() {
         )}
 
         {currentStep === STEPS.COMPOSE && (
-          <>
+          <div className="flex-1 h-full flex gap-4 w-full">
             {/* Left Side: Editor */}
             <div className="flex-[2] h-full flex flex-col gap-4">
               <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-4 flex flex-col gap-3">
@@ -733,7 +761,23 @@ export default function Campaigns() {
                         value={fromEmail}
                         onChange={(val) => {
                           if (val === 'connect_new') {
-                            toast('Connecting additional accounts is coming soon!', { icon: '🚧' });
+                            const w = window.open('http://localhost:8000/api/bridge/oauth/login?popup=true', 'Connect Microsoft Outlook', 'width=500,height=600');
+                            const messageListener = async (event) => {
+                              if (event.data === 'oauth_success') {
+                                window.removeEventListener('message', messageListener);
+                                try {
+                                  const res = await api.get('/auth/outlook/status');
+                                  if (res.data.connected) {
+                                    toast.success('Successfully connected Outlook account!');
+                                    setFromEmail(res.data.email);
+                                    localStorage.setItem('talentops_from_email', res.data.email);
+                                  }
+                                } catch (err) {
+                                  toast.error('Failed to verify Outlook connection');
+                                }
+                              }
+                            };
+                            window.addEventListener('message', messageListener);
                           } else {
                             setFromEmail(val);
                             localStorage.setItem('talentops_from_email', val);
@@ -741,6 +785,7 @@ export default function Campaigns() {
                         }}
                         options={[
                           { value: 'Outlook Default', label: 'Outlook Default' },
+                          { value: 'user.campaign@outlook.com', label: 'user.campaign@outlook.com' },
                           { value: 'connect_new', label: '+ Connect another Outlook account' }
                         ]}
                       />
@@ -755,11 +800,11 @@ export default function Campaigns() {
                 onSelectSignature={setSignatureId}
               />
             </div>
-          </>
+          </div>
         )}
 
         {currentStep === STEPS.PREVIEW && (
-          <>
+          <div className="flex w-full h-full gap-4 relative">
             <div className="flex-[2] h-full">
               <EmailPreview 
                 campaignId={activeCampaignId}
@@ -786,10 +831,19 @@ export default function Campaigns() {
                     {preflightData.ready ? (
                       <>
                         <ValidationItem 
-                          label="All Checks Passed" 
+                          label="All Blocking Checks Passed" 
                           success={true} 
                           info="Campaign is ready to launch."
                         />
+                        {preflightData.errors?.filter(e => e.code === 'BRIDGE_OFFLINE').map((err, i) => (
+                           <ValidationItem 
+                             key={i} 
+                             label="OFFLINE QUEUEING" 
+                             error="Your Outlook Bridge is offline. The campaign will be queued and sent when reconnected." 
+                             success={false} 
+                             warning={true}
+                           />
+                        ))}
                       </>
                     ) : (
                       <>
@@ -811,7 +865,7 @@ export default function Campaigns() {
                 ) : null}
               </div>
             </div>
-          </>
+          </div>
         )}
 
         {currentStep === STEPS.SEND && activeCampaignId && (
@@ -826,7 +880,8 @@ export default function Campaigns() {
             </div>
           </div>
         )}
-        
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {/* Footer Navigation */}
@@ -886,12 +941,14 @@ export default function Campaigns() {
   );
 }
 
-function ValidationItem({ label, success, error, info }) {
+function ValidationItem({ label, success, error, info, warning }) {
   return (
-    <div className="flex items-start gap-3 p-3 bg-[var(--bg-surface)] rounded-lg border border-[var(--border)]">
+    <div className={`flex items-start gap-3 p-3 bg-[var(--bg-surface)] rounded-lg border ${warning ? 'border-yellow-500/20 bg-yellow-500/5' : 'border-[var(--border)]'}`}>
       <div className="mt-0.5">
         {success ? (
           <CheckCircle2 className="w-4 h-4 text-green-400" />
+        ) : warning ? (
+          <AlertCircle className="w-4 h-4 text-yellow-500" />
         ) : (
           <AlertCircle className="w-4 h-4 text-red-400" />
         )}
@@ -899,7 +956,7 @@ function ValidationItem({ label, success, error, info }) {
       <div>
         <div className="text-sm font-medium text-[var(--text-primary)]">{label}</div>
         {info && <div className="text-xs text-[var(--text-muted)] mt-1">{info}</div>}
-        {error && <div className="text-xs text-red-400 mt-1">{error}</div>}
+        {error && <div className={`text-xs mt-1 ${warning ? 'text-yellow-500/90' : 'text-red-400'}`}>{error}</div>}
       </div>
     </div>
   );

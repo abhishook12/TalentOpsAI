@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { 
   ClipboardPaste, FileSpreadsheet, Database, 
-  Mail, CheckCircle2, AlertCircle, Trash2, X
+  Mail, CheckCircle2, AlertCircle, Trash2, X, Search, Filter
 } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import PasteRecipientsView from './PasteRecipientsView';
@@ -9,11 +9,12 @@ import UploadRecipientsView from './UploadRecipientsView';
 import DatabaseRecipientsView from './DatabaseRecipientsView';
 
 export default function DragDropRecipientBuilder({ recipients, onChange, onValidate }) {
-  const [activeTab, setActiveTab] = useState(() => {
-    if (import.meta.env.VITE_FEATURE_PASTE_IMPORT === 'true') return 'paste';
-    if (import.meta.env.VITE_FEATURE_CSV_IMPORT === 'true' || import.meta.env.VITE_FEATURE_EXCEL_IMPORT === 'true') return 'upload';
-    return 'db';
-  });
+  const [activeTab, setActiveTab] = useState('paste');
+  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all'); // all, valid, invalid
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  
   const parentRef = useRef(null);
   
   const handleAddRecipients = (newRecipients) => {
@@ -32,13 +33,25 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
 
   const clearAll = () => {
     onChange([]);
+    setShowClearConfirm(false);
   };
+
+  const filteredRecipients = useMemo(() => {
+    return recipients.filter(r => {
+      const matchesSearch = r.email.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                            (r.name && r.name.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesFilter = filterStatus === 'all' || 
+                            (filterStatus === 'valid' && r.status === 'valid') ||
+                            (filterStatus === 'invalid' && r.status !== 'valid');
+      return matchesSearch && matchesFilter;
+    });
+  }, [recipients, searchQuery, filterStatus]);
 
   const validCount = recipients.filter(r => r.status === 'valid').length;
   const invalidCount = recipients.filter(r => r.status !== 'valid').length;
 
   const rowVirtualizer = useVirtualizer({
-    count: recipients.length,
+    count: filteredRecipients.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 64, // approximate height of each item
     overscan: 5
@@ -53,8 +66,8 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
         {/* Tabs */}
         <div className="flex border-b border-[var(--card-border)] bg-[var(--card-bg)] h-14">
           {[
-            { id: 'paste', icon: ClipboardPaste, label: 'Paste Directly', enabled: import.meta.env.VITE_FEATURE_PASTE_IMPORT === 'true' },
-            { id: 'upload', icon: FileSpreadsheet, label: 'CSV / Excel', enabled: import.meta.env.VITE_FEATURE_CSV_IMPORT === 'true' || import.meta.env.VITE_FEATURE_EXCEL_IMPORT === 'true' },
+            { id: 'paste', icon: ClipboardPaste, label: 'Paste Directly', enabled: true },
+            { id: 'upload', icon: FileSpreadsheet, label: 'CSV / Excel', enabled: true },
             { id: 'db', icon: Database, label: 'Database', enabled: true }
           ].map(tab => (
             <button
@@ -101,12 +114,20 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
             
             <div className="flex items-center gap-3">
               {recipients.length > 0 && (
-                <button 
-                  onClick={clearAll}
-                  className="text-xs text-[var(--text-muted)] hover:text-red-500 transition-colors"
-                >
-                  Clear All
-                </button>
+                showClearConfirm ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-red-500 font-medium">Are you sure?</span>
+                    <button onClick={clearAll} className="text-xs text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded transition-colors">Yes</button>
+                    <button onClick={() => setShowClearConfirm(false)} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] px-2 py-1 transition-colors">No</button>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={() => setShowClearConfirm(true)}
+                    className="text-xs text-[var(--text-muted)] hover:text-red-500 transition-colors"
+                  >
+                    Clear All
+                  </button>
+                )
               )}
               <button 
                 onClick={() => onValidate(recipients.map(r => r.email).join(','))}
@@ -119,7 +140,7 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
           </div>
           
           {/* Live Summary */}
-          <div className="flex gap-4 text-xs">
+          <div className="flex gap-4 text-xs mb-3">
             <div className="flex flex-col">
               <span className="text-[var(--text-muted)]">Total</span>
               <span className="font-semibold text-[var(--text-primary)]">{recipients.length}</span>
@@ -133,6 +154,34 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
               <span className="font-semibold text-red-500">{invalidCount}</span>
             </div>
           </div>
+
+          {/* Search and Filter */}
+          {recipients.length > 0 && (
+            <div className="flex items-center gap-2 mt-2">
+              <div className="relative flex-1">
+                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+                <input 
+                  type="text"
+                  placeholder="Search recipients..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-[var(--bg-page)] border border-[var(--border)] rounded-md py-1.5 pl-8 pr-3 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                />
+              </div>
+              <div className="relative">
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="bg-[var(--bg-page)] border border-[var(--border)] rounded-md py-1.5 pl-2 pr-6 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] appearance-none cursor-pointer"
+                >
+                  <option value="all">All</option>
+                  <option value="valid">Valid</option>
+                  <option value="invalid">Invalid</option>
+                </select>
+                <Filter size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Recipient List */}
@@ -156,7 +205,7 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
               }}
             >
               {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                const recipient = recipients[virtualRow.index];
+                const recipient = filteredRecipients[virtualRow.index];
                 return (
                   <div 
                     key={virtualRow.key} 

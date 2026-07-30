@@ -292,7 +292,7 @@ app.include_router(harvester.router, prefix="/api", tags=["Autonomous Spider"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
 from .routes import analytics_session, bridge, sentinel
 app.include_router(analytics_session.router, prefix="/analytics/session", tags=["Analytics Session"])
-app.include_router(bridge.router, prefix="/api/bridge", tags=["Outlook Bridge"])
+app.include_router(bridge.router, prefix="/bridge", tags=["Outlook Bridge"])
 app.include_router(sentinel.router)
 
 
@@ -408,4 +408,4 @@ async def startup_event():
 
 from .routes import health
 app.include_router(health.router, prefix="/health", tags=["System Health"])
-app.include_router(bridge.router, prefix="/api/bridge", tags=["Bridge"])
+app.include_router(bridge.router, prefix="/bridge", tags=["Bridge"])

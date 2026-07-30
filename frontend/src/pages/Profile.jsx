@@ -12,7 +12,7 @@ export default function Profile() {
 
   const fetchBridgeStatus = async () => {
     try {
-      const res = await api.get('/api/bridge/status')
+      const res = await api.get('/bridge/status')
       setBridgeStatus(res.data)
     } catch (e) {
       console.error(e)
@@ -35,7 +35,7 @@ export default function Profile() {
 
   const handleDisconnectOutlook = async () => {
     try {
-      await api.post('/api/bridge/disconnect')
+      await api.post('/bridge/disconnect')
       fetchBridgeStatus()
     } catch (e) {
       console.error(e)

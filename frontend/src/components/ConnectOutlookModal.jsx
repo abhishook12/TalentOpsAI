@@ -20,7 +20,7 @@ const ConnectOutlookModal = ({ isOpen, onClose, onSuccess }) => {
     if (status === 'verifying') {
       intervalId = setInterval(async () => {
         try {
-          const res = await api.get('/api/bridge/status');
+          const res = await api.get('/bridge/status');
           // In Bridge v2, OAuth connection sets connected_email, but status remains 'offline' until the desktop agent starts.
           if (res.data.connected_email) {
             setStatus('success');
@@ -49,7 +49,7 @@ const ConnectOutlookModal = ({ isOpen, onClose, onSuccess }) => {
     const currentOrigin = window.location.origin;
     
     // Open a popup for OAuth flow
-    const authUrl = `${API_BASE_URL}/api/bridge/oauth/login?token=${token}&redirect_uri=${encodeURIComponent(currentOrigin + '/profile?bridge=connected')}&popup=true`;
+    const authUrl = `${API_BASE_URL}/bridge/oauth/login?token=${token}&redirect_uri=${encodeURIComponent(currentOrigin + '/profile?bridge=connected')}&popup=true`;
     
     const popupWidth = 600;
     const popupHeight = 700;

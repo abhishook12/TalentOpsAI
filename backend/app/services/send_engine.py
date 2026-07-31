@@ -155,7 +155,7 @@ async def _send_via_graph(user_id: int, payload: dict) -> tuple[bool, str, str]:
                         }
                     ]
                 },
-                "saveToSentItems": "true"
+                "saveToSentItems": True
             }
             
             resp = requests.post("https://graph.microsoft.com/v1.0/me/sendMail", headers=headers, json=graph_payload, timeout=10)

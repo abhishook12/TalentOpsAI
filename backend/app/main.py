@@ -291,7 +291,7 @@ app.include_router(campaigns.router, prefix="/campaigns", tags=["Campaigns"])
 app.include_router(harvester.router, prefix="/api", tags=["Autonomous Spider"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
 from .routes import system
-app.include_router(system.router, prefix="/api/system", tags=["System Controls"])
+app.include_router(system.router, prefix="/system", tags=["System Controls"])
 from .routes import analytics_session, bridge, sentinel
 app.include_router(analytics_session.router, prefix="/analytics/session", tags=["Analytics Session"])
 app.include_router(bridge.router, prefix="/bridge", tags=["Outlook Bridge"])

@@ -49,6 +49,7 @@ from app.utils.enricher_state import get_enricher_state, set_enricher_state
 def run_enricher_loop():
     print("Starting massive scale background enrichment daemon...")
     set_enricher_state({"status": "running"})
+    attempted_ids = set()
     while True:
         # Check State
         state = get_enricher_state()
@@ -65,10 +66,15 @@ def run_enricher_loop():
             print("Fetching next batch of recruiters missing data...")
             # Fetch recruiters missing phone or location
             # Prioritize those with a company_id
-            recruiters = session.query(Recruiter.recruiter_id).filter(
+            query = session.query(Recruiter.recruiter_id).filter(
                 Recruiter.company_id.isnot(None),
                 (Recruiter.phone.is_(None)) | (Recruiter.location.is_(None))
-            ).limit(200).all()
+            )
+            if attempted_ids:
+                # Chunk the NOT IN filter to prevent massive queries if the set gets huge
+                query = query.filter(Recruiter.recruiter_id.notin_(list(attempted_ids)[:50000]))
+                
+            recruiters = query.limit(200).all()
             
             if not recruiters:
                 print("No more recruiters to enrich. Sleeping for 1 hour...")
@@ -76,23 +82,25 @@ def run_enricher_loop():
                 continue
                 
             rec_ids = [r[0] for r in recruiters]
+            attempted_ids.update(rec_ids)
             print(f"Found {len(rec_ids)} records. Submitting to thread pool...")
             
             success_count = 0
             with ThreadPoolExecutor(max_workers=5) as executor:
                 futures = {executor.submit(process_recruiter, r_id): r_id for r_id in rec_ids}
                 for future in as_completed(futures):
-                    if future.result():
+                    is_success = future.result()
+                    if is_success:
                         success_count += 1
-                        
+                    
+                    # Update state in real-time so UI ticks up instantly
+                    state = get_enricher_state()
+                    set_enricher_state({
+                        "records_processed": state.get("records_processed", 0) + 1,
+                        "success_count": state.get("success_count", 0) + (1 if is_success else 0)
+                    })
+                    
             print(f"Batch complete. Successfully enriched {success_count} out of {len(rec_ids)}.")
-            
-            # Update state with metrics
-            state = get_enricher_state()
-            set_enricher_state({
-                "records_processed": state.get("records_processed", 0) + len(rec_ids),
-                "success_count": state.get("success_count", 0) + success_count
-            })
             
         except Exception as e:
             print(f"Daemon Error: {e}")

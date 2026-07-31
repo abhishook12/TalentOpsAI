@@ -13,7 +13,7 @@ export default function PasteRecipientsView({ onAddRecipients }) {
     const parsedRecipients = [];
     const seenEmails = new Set();
 
-    const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/i;
+    const emailRegex = /([a-zA-Z0-9._+-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/i;
 
     lines.forEach(line => {
       const match = line.match(emailRegex);

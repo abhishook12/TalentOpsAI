@@ -106,7 +106,7 @@ class Recruiter(Base):
     recruiter_id     = Column(Integer, primary_key=True, index=True)
     user_id          = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=True, index=True)
     recruiter_name   = Column(String(150), nullable=False)
-    normalized_recruiter_name = Column(String(150), index=True, nullable=True)
+    normalized_recruiter_name = Column(String(150), nullable=True)
     email            = Column(String(150), unique=True, nullable=False)
     phone            = Column(String(30))
     email2           = Column(String(150))          # secondary / personal email
@@ -125,30 +125,30 @@ class Recruiter(Base):
     company_id       = Column(Integer, ForeignKey("companies.company_id", ondelete="SET NULL"), nullable=True, index=True)
     location         = Column(String(255))
     state            = Column(String(2), index=True) # Normalized state
-    normalized_city  = Column(String(150), index=True)
+    normalized_city  = Column(String(150))
     location_confidence = Column(String(20), default="high") # high, low, manual_review
     state_source     = Column(String(150), nullable=True)
     state_confidence = Column(String(50), nullable=True)
     state_reason     = Column(Text, nullable=True)
-    last_scan_at     = Column(TIMESTAMP, nullable=True, index=True)
-    completeness_score = Column(Integer, default=0, index=True)
-    needs_review     = Column(Boolean, default=False, index=True)
-    is_active        = Column(Boolean, default=True, index=True)
-    taxonomy_category = Column(String(100), index=True, nullable=True)
+    last_scan_at     = Column(TIMESTAMP, nullable=True)
+    completeness_score = Column(Integer, default=0)
+    needs_review     = Column(Boolean, default=False)
+    is_active        = Column(Boolean, default=True)
+    taxonomy_category = Column(String(100), nullable=True)
     report_count     = Column(Integer, default=0)
     data_source      = Column(String(100), default="manual")
     trust_score      = Column(Integer, default=100)
-    source_job_id    = Column(String(36), index=True, nullable=True)
+    source_job_id    = Column(String(36), nullable=True)
     raw_data         = Column(Text, nullable=True)     # Original uploaded row (JSON string)
     metadata_json    = Column(Text, nullable=True)     # Extra dynamic attributes (JSON string)
     tags             = Column(Text, nullable=True)     # Comma-separated tags or JSON list
     created_at       = Column(TIMESTAMP, server_default=func.now(), index=True)
-    updated_at       = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), index=True)
+    updated_at       = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
 
     # --- SENTINEL TRACKING COLUMNS ---
-    quality_score    = Column(Integer, default=0, index=True)
+    quality_score    = Column(Integer, default=0)
     missing_fields   = Column(Text, default="{}") # JSON representation
-    sentinel_status  = Column(String(50), default="Pending", index=True) # Pending, Analyzing, Repairing, Verifying, Completed
+    sentinel_status  = Column(String(50), default="Pending") # Pending, Analyzing, Repairing, Verifying, Completed
     last_verified_at = Column(TIMESTAMP, nullable=True)
 
     email_status     = Column(String(50), default="unknown")

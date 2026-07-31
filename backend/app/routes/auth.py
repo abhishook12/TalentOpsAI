@@ -1039,3 +1039,38 @@ async def get_device_status_stream(device_id: int, request: Request):
             await asyncio.sleep(3)
             
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+# -------- Outlook Integration Routes --------
+class OutlookConnectPayload(BaseModel):
+    email: str
+    token: str
+
+@router.get("/outlook/status")
+def outlook_status(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    from ..models.auth_models import UserOutlookAccount
+    account = db.query(UserOutlookAccount).filter(UserOutlookAccount.user_id == current_user.id).first()
+    if account:
+        return {"connected": True, "email": account.email_address}
+    return {"connected": False}
+
+@router.post("/outlook/connect")
+def outlook_connect(payload: OutlookConnectPayload, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    from ..models.auth_models import UserOutlookAccount
+    account = db.query(UserOutlookAccount).filter(UserOutlookAccount.user_id == current_user.id).first()
+    if not account:
+        account = UserOutlookAccount(user_id=current_user.id)
+        db.add(account)
+    
+    account.email_address = payload.email
+    account.access_token = payload.token
+    account.refresh_token = "mock_refresh_token"
+    account.token_expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=90)
+    db.commit()
+    return {"status": "success", "message": "Outlook account connected"}
+
+@router.delete("/outlook/disconnect")
+def outlook_disconnect(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    from ..models.auth_models import UserOutlookAccount
+    db.query(UserOutlookAccount).filter(UserOutlookAccount.user_id == current_user.id).delete()
+    db.commit()
+    return {"status": "success"}

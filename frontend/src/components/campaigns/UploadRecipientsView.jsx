@@ -7,14 +7,38 @@ export default function UploadRecipientsView({ onAddRecipients }) {
   const [data, setData] = useState([]);
   const [headers, setHeaders] = useState([]);
   const [mapping, setMapping] = useState({ email: '', name: '', company: '', title: '' });
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      parseFile(selectedFile);
+    if (selectedFile) processFile(selectedFile);
+  };
+
+  const processFile = (selectedFile) => {
+    if (selectedFile.type !== 'text/csv' && !selectedFile.name.endsWith('.csv')) {
+      alert("Please upload a CSV file.");
+      return;
     }
+    setFile(selectedFile);
+    parseFile(selectedFile);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const droppedFile = e.dataTransfer.files[0];
+    if (droppedFile) processFile(droppedFile);
   };
 
   const parseFile = (file) => {
@@ -156,14 +180,25 @@ export default function UploadRecipientsView({ onAddRecipients }) {
       
       <div 
         onClick={() => fileInputRef.current?.click()}
-        className="w-full h-48 border-2 border-dashed border-[var(--border)] rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 transition-colors group"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`w-full h-48 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-colors group ${
+          isDragging 
+            ? 'border-[var(--accent)] bg-[var(--accent)]/10 scale-[1.02]' 
+            : 'border-[var(--border)] hover:border-[var(--accent)] hover:bg-[var(--accent)]/5'
+        }`}
       >
-        <div className="w-12 h-12 rounded-full bg-[var(--bg-page)] border border-[var(--border)] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-          <FileSpreadsheet size={24} className="text-[var(--text-muted)] group-hover:text-[var(--accent)]" />
+        <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 transition-transform ${isDragging ? 'bg-[var(--accent)]/20 scale-110' : 'bg-[var(--bg-page)] border border-[var(--border)] group-hover:scale-110'}`}>
+          <FileSpreadsheet size={24} className={isDragging ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] group-hover:text-[var(--accent)]'} />
         </div>
-        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">Upload CSV</h3>
+        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">
+          {isDragging ? 'Drop file here' : 'Upload CSV'}
+        </h3>
         <p className="text-xs text-[var(--text-muted)] max-w-[200px] text-center">
-          Click to browse or drag & drop your spreadsheet here. We'll help you map the columns.
+          {isDragging 
+            ? 'Release to upload' 
+            : 'Click to browse or drag & drop your spreadsheet here. We\'ll help you map the columns.'}
         </p>
       </div>
     </div>

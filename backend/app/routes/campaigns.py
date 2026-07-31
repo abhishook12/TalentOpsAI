@@ -213,7 +213,9 @@ def api_validate_before_send(campaign_id: int, db: Session = Depends(get_db), cu
     if recipients_count == 0:
         validation_errors.append({"code": "MISSING_RECIPIENTS", "message": "No valid recipients enrolled in this campaign."})
         
-    is_ready = len(validation_errors) == 0
+    # Exclude BRIDGE_OFFLINE from blocking readiness, as the send engine supports offline queueing
+    blocking_errors = [e for e in validation_errors if e["code"] != "BRIDGE_OFFLINE"]
+    is_ready = len(blocking_errors) == 0
     
     return {
         "bridge_healthy": healthy,
@@ -317,11 +319,13 @@ def enroll_emails(campaign_id: int, payload: EnrollEmailsRequest, db: Session = 
         raise HTTPException(status_code=400, detail="Campaign must have at least one sequence step")
 
     enrolled = 0
+    processed_emails = set()
     try:
         for rec_data in payload.recipients:
             clean_email = rec_data.email.strip().lower()
-            if not clean_email:
+            if not clean_email or clean_email in processed_emails:
                 continue
+            processed_emails.add(clean_email)
                 
             # Find or create recruiter (email is globally unique)
             rec = db.query(Recruiter).filter(func.lower(Recruiter.email) == clean_email).first()

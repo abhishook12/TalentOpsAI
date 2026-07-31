@@ -390,6 +390,7 @@ async def timeout_stuck_emails_sweep():
 async def startup_event():
     from .services.send_engine import restart_active_campaigns
     from .services.sentinel_engine import sentinel_engine
+    from .services.sync_engine import sync_engine_loop
     from .database import engine
     from sqlalchemy import text
     
@@ -401,6 +402,7 @@ async def startup_event():
     if lock_acquired:
         app.state.bg_task_conn = conn  # Keep connection open to hold the lock
         asyncio.create_task(timeout_stuck_emails_sweep())
+        asyncio.create_task(sync_engine_loop())
         restart_active_campaigns()
         sentinel_engine.start()
         logger.info("Acquired leader lock; started background tasks.")

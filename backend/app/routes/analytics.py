@@ -74,6 +74,10 @@ def cached_endpoint(ttl_seconds=30):
 logger = logging.getLogger("talentops.analytics")
 router = APIRouter()
 
+@router.get("")
+@router.get("/")
+def get_analytics_root():
+    return {"status": "Analytics engine active"}
 
 @router.get("/data-quality")
 @cached_endpoint(ttl_seconds=300)

@@ -116,6 +116,38 @@ def _get_campaign_eta(campaign_id: int) -> dict:
             "rate_per_minute": effective_rate,
         }
 
+import os
+MSAL_CLIENT_ID = os.getenv("MSAL_CLIENT_ID", "replace_me")
+MSAL_CLIENT_SECRET = os.getenv("MSAL_CLIENT_SECRET", "replace_me")
+MSAL_TENANT_ID = os.getenv("MSAL_TENANT_ID", "common")
+
+def _refresh_msal_token(user_id: int) -> str:
+    from ..models.auth_models import UserOutlookAccount
+    from ..database import SessionLocal
+    with SessionLocal() as db:
+        account = db.query(UserOutlookAccount).filter(UserOutlookAccount.user_id == user_id).first()
+        if not account or not account.refresh_token:
+            return None
+        token_url = f"https://login.microsoftonline.com/{MSAL_TENANT_ID}/oauth2/v2.0/token"
+        data = {
+            "client_id": MSAL_CLIENT_ID,
+            "client_secret": MSAL_CLIENT_SECRET,
+            "refresh_token": account.refresh_token,
+            "grant_type": "refresh_token"
+        }
+        try:
+            r = requests.post(token_url, data=data, timeout=10)
+            if r.ok:
+                token_json = r.json()
+                account.access_token = token_json["access_token"]
+                if "refresh_token" in token_json:
+                    account.refresh_token = token_json["refresh_token"]
+                db.commit()
+                return account.access_token
+        except Exception:
+            pass
+    return None
+
 async def _send_via_graph(user_id: int, payload: dict) -> tuple[bool, str, str]:
     """Execute synchronous requests.post to Microsoft Graph API in a thread pool."""
     from ..models.auth_models import UserOutlookAccount
@@ -126,7 +158,7 @@ async def _send_via_graph(user_id: int, payload: dict) -> tuple[bool, str, str]:
         await asyncio.sleep(0.01)
         return True, None, None
         
-    def _do_request():
+    def _do_request(retry_auth=True):
         try:
             with SessionLocal() as db:
                 account = db.query(UserOutlookAccount).filter(UserOutlookAccount.user_id == user_id).first()
@@ -138,11 +170,23 @@ async def _send_via_graph(user_id: int, payload: dict) -> tuple[bool, str, str]:
                 "Authorization": f"Bearer {access_token}",
                 "Content-Type": "application/json"
             }
+            # Determine sender email and name
+            sender_email = account.email_address or account.user.email if hasattr(account, 'user') else None
+            sender_name = sender_email.split('@')[0].replace('.', ' ').title() if sender_email else ""
+            
+            # Use provided from_email if exists, otherwise fallback to connected account email
+            final_sender_email = payload.get("from_email") or sender_email
             
             # Construct Graph API message payload
             graph_payload = {
                 "message": {
                     "subject": payload.get("subject", ""),
+                    "from": {
+                        "emailAddress": {
+                            "address": final_sender_email,
+                            "name": sender_name
+                        }
+                    },
                     "body": {
                         "contentType": "HTML",
                         "content": payload.get("html_body", "")
@@ -160,7 +204,10 @@ async def _send_via_graph(user_id: int, payload: dict) -> tuple[bool, str, str]:
             
             resp = requests.post("https://graph.microsoft.com/v1.0/me/sendMail", headers=headers, json=graph_payload, timeout=10)
             
-            if resp.status_code == 401:
+            if resp.status_code == 401 and retry_auth:
+                new_token = _refresh_msal_token(user_id)
+                if new_token:
+                    return _do_request(retry_auth=False)
                 return False, "Token expired", "auth_expired"
                 
             if resp.ok or resp.status_code == 202:

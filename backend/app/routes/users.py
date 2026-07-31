@@ -30,6 +30,7 @@ def get_user_analytics(
         "new_last_7_days": new_users
     }
 
+@router.get("")
 @router.get("/")
 def get_users(
     skip: int = Query(0, ge=0),

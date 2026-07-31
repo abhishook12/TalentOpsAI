@@ -654,6 +654,7 @@ def search_recruiters(
 
 from sqlalchemy.orm import load_only
 
+@router.get("")
 @router.get("/")
 def get_recruiters(
     response: Response,

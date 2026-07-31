@@ -34,6 +34,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import func, case
 from ..models.models import Recruiter
 
+@router.get("")
 @router.get("/")
 def get_companies(
     response: Response,

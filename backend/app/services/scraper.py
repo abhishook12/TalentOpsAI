@@ -58,7 +58,7 @@ def tavily_deep_search(name: str, company: str, domain: str = ""):
                 response = client.search(query=query, search_depth="advanced")
                 break # Success!
             except Exception as e:
-                if "exceeds your plan" in str(e).lower() or "limit" in str(e).lower():
+                if "exceeds your plan" in str(e).lower() or "limit" in str(e).lower() or "unauthorized" in str(e).lower() or "invalid" in str(e).lower():
                     continue # Try next key
                 else:
                     logger.error(f"Tavily Search Error for {name} at {company}: {e}")

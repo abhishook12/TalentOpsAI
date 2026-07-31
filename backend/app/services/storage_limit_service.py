@@ -5,12 +5,12 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Hard limits (75% of Supabase Free Tier)
-# DB Free Tier = 500 MB -> 75% = 375 MB
-DB_SIZE_LIMIT_BYTES = 375 * 1024 * 1024
+# Hard limits (70% of Supabase Free Tier — strict Rule #8: no entity above 70%)
+# DB Free Tier = 500 MB -> 70% = 350 MB
+DB_SIZE_LIMIT_BYTES = 350 * 1024 * 1024
 
-# File Storage Free Tier = 1 GB -> 75% = 750 MB
-FILE_SIZE_LIMIT_BYTES = 750 * 1024 * 1024
+# File Storage Free Tier = 1 GB -> 70% = 716.8 MB
+FILE_SIZE_LIMIT_BYTES = int(716.8 * 1024 * 1024)
 
 def get_database_size(session: Session) -> int:
     """Returns database size in bytes"""
@@ -41,21 +41,21 @@ def get_file_storage_size(db: Session) -> int:
         return 0
 
 def check_database_storage_limit(db: Session):
-    """Raises a 403 HTTPException if the database is over the 75% limit."""
+    """Raises a 403 HTTPException if the database is over the 70% limit."""
     db_size = get_database_size(db)
     if db_size >= DB_SIZE_LIMIT_BYTES:
         raise HTTPException(
             status_code=403,
-            detail=f"Storage Kill-Switch Activated: Database capacity is over the 75% safety limit ({db_size / 1024 / 1024:.2f} MB / 375.0 MB). Please clear space."
+            detail=f"Storage Kill-Switch Activated: Database capacity is over the 70% safety limit ({db_size / 1024 / 1024:.2f} MB / 350.0 MB). Please clear space."
         )
 
 def check_file_storage_limit(db: Session):
-    """Raises a 403 HTTPException if the file storage is over the 75% limit."""
+    """Raises a 403 HTTPException if the file storage is over the 70% limit."""
     file_size = get_file_storage_size(db)
     if file_size >= FILE_SIZE_LIMIT_BYTES:
         raise HTTPException(
             status_code=403,
-            detail=f"Storage Kill-Switch Activated: File Storage is over the 75% safety limit ({file_size / 1024 / 1024:.2f} MB / 750.0 MB). Please delete old files."
+            detail=f"Storage Kill-Switch Activated: File Storage is over the 70% safety limit ({file_size / 1024 / 1024:.2f} MB / 716.8 MB). Please delete old files."
         )
 
 def get_storage_health(db: Session) -> dict:

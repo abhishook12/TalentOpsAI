@@ -763,6 +763,7 @@ class CampaignRecruiterStatusUpdate(BaseModel):
     metadata: Optional[dict[str, Any]] = None
 
 
+@router.get("")
 @router.get("/")
 def list_campaigns(
     search: Optional[str] = Query(default=None),

@@ -174,12 +174,15 @@ def auto_enhance_recruiter_data(recruiter_name: str, company_name: str, company_
         first = recruiter_name.split(' ')[0].lower()
         last = recruiter_name.split(' ')[-1].lower()
         
+        clean_domain = company_domain.replace('https://', '').replace('http://', '').replace('www.', '')
+        clean_domain = clean_domain.split('/')[0]
+        
         # Common permutations
         permutations = [
-            f"{first}.{last}@{company_domain}",
-            f"{first[0]}{last}@{company_domain}",
-            f"{first}@{company_domain}",
-            f"{last}@{company_domain}"
+            f"{first}.{last}@{clean_domain}",
+            f"{first[0]}{last}@{clean_domain}",
+            f"{first}@{clean_domain}",
+            f"{last}@{clean_domain}"
         ]
         
         for email in permutations:

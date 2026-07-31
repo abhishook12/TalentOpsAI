@@ -230,14 +230,14 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                     log.body_preview = body[:500] if body else ""
                     log.body_html = body or ""  # Full body for the bridge — body_preview is truncated and must not be sent
                     db.commit()
-                    return rec_email, subject, body
+                    return rec_email, subject, body, log.log_id
 
             result = await asyncio.to_thread(_process_recipient_db, recipient_id)
             if not result:
                 queue.task_done()
                 continue
                 
-            rec_email, subject, body = result
+            rec_email, subject, body, log_id = result
             
             payload = {
                 "to_email": rec_email,
@@ -245,9 +245,49 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                 "html_body": body or ""
             }
             
-            # Route to Local Outlook Bridge queue (do not send directly to Cloud Graph API)
-            logger.info(f"Worker {worker_id}: Queued email to {rec_email} for Local Outlook Bridge.")
-            # The local bridge script will pick up the EmailLog (status=sending) via the /api/bridge/tasks endpoint.
+            logger.info(f"Worker {worker_id}: Sending email to {rec_email} via Microsoft Graph API...")
+            success, error_msg, error_type = await _send_via_graph(user_id, payload)
+            
+            def _update_result_db(success, error_msg):
+                with SessionLocal() as db:
+                    from ..models.campaigns import EmailLog, CampaignRecruiter, EmailLogStatus, CampaignRecruiterStatus
+                    log = db.query(EmailLog).filter(EmailLog.log_id == log_id).first()
+                    recipient = db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_recruiter_id == recipient_id).first()
+                    
+                    if log:
+                        log.body_html = None
+                        if success:
+                            log.status = EmailLogStatus.delivered.value
+                            log.delivered_at = _utcnow()
+                            log.outlook_accepted = True
+                        else:
+                            log.status = EmailLogStatus.failed.value
+                            log.error_message = error_msg
+                            log.failed_at = _utcnow()
+                            log.outlook_accepted = False
+                            
+                    retry_count = 0
+                    if recipient:
+                        if success:
+                            recipient.status = CampaignRecruiterStatus.sent.value
+                            recipient.last_sent_at = _utcnow()
+                            recipient.sent_count += 1
+                        else:
+                            recipient.retry_count += 1
+                            retry_count = recipient.retry_count
+                            recipient.last_error = error_msg
+                            if recipient.retry_count >= recipient.max_retries:
+                                recipient.status = CampaignRecruiterStatus.failed.value
+                            else:
+                                recipient.status = CampaignRecruiterStatus.retrying.value
+                    
+                    db.commit()
+                    return retry_count
+                    
+            retry_count = await asyncio.to_thread(_update_result_db, success, error_msg)
+            
+            if not success and error_msg != "Token expired" and retry_count > 0:
+                asyncio.create_task(_schedule_retry(queue, recipient_id, retry_count))
                 
         except Exception as e:
             logger.error(f"Worker {worker_id} exception for {recipient_id}: {e}")
@@ -352,11 +392,24 @@ async def process_campaign_queue(campaign_id: int):
             pass # We leave the campaign active until the Outlook Bridge reports all terminal states
 
 _background_tasks = set()
+_active_campaign_managers = set()
 
 async def start_campaign(campaign_id: int):
     """Set campaign to active and start background processor."""
+    if campaign_id in _active_campaign_managers:
+        logger.warning(f"Campaign {campaign_id} manager already running, skipping double-start.")
+        return
+        
     _set_campaign_status(campaign_id, CampaignStatus.active.value)
-    task = asyncio.create_task(process_campaign_queue(campaign_id))
+    
+    async def managed_task():
+        _active_campaign_managers.add(campaign_id)
+        try:
+            await process_campaign_queue(campaign_id)
+        finally:
+            _active_campaign_managers.discard(campaign_id)
+            
+    task = asyncio.create_task(managed_task())
     _background_tasks.add(task)
     task.add_done_callback(_background_tasks.discard)
 

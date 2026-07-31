@@ -250,7 +250,7 @@ def bridge_oauth_login(redirect_uri: str = '/profile?bridge=connected', popup: s
         # Mock redirect directly to callback with a fake auth code
         return RedirectResponse(url=f'/bridge/oauth/callback?code=mock_auth_code_123&state={state}')
         
-    msal_url = f"https://login.microsoftonline.com/{MSAL_TENANT_ID}/oauth2/v2.0/authorize?client_id={MSAL_CLIENT_ID}&response_type=code&redirect_uri={urllib.parse.quote(MSAL_REDIRECT_URI)}&scope=Mail.Send%20Mail.ReadWrite%20offline_access%20User.Read&state={state}"
+    msal_url = f"https://login.microsoftonline.com/{MSAL_TENANT_ID}/oauth2/v2.0/authorize?client_id={MSAL_CLIENT_ID}&response_type=code&redirect_uri={urllib.parse.quote(MSAL_REDIRECT_URI)}&scope=Mail.Send%20Mail.ReadWrite%20offline_access%20User.Read&prompt=consent&state={state}"
     return RedirectResponse(url=msal_url)
 
 @router.get('/oauth/callback')

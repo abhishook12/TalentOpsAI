@@ -413,7 +413,7 @@ export default function Login() {
           <p className="login-subtitle">Login to access your TalentOps account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="login-form">
+        <div className="login-form" onKeyDown={(e) => { if (e.key === 'Enter' && isFormValid && !isAuthenticating) handleSubmit(e) }}>
           <div className="login-field">
             <label className="login-label" htmlFor="email-input">Email address</label>
             <div className="login-input-wrap">
@@ -472,7 +472,7 @@ export default function Login() {
             </Link>
           </div>
 
-          <button type="submit" className="login-button-primary" disabled={!isFormValid || isAuthenticating}>
+          <button type="button" onClick={handleSubmit} className="login-button-primary" disabled={!isFormValid || isAuthenticating}>
             {isAuthenticating ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <i className="ti ti-loader animate-spin" />
@@ -502,7 +502,7 @@ export default function Login() {
             </svg>
             Continue with Google
           </button>
-        </form>
+        </div>
 
         <div className="login-footer-links" style={{ display: 'flex', gap: 6, justifyContent: 'center', marginTop: 24, fontSize: 13 }}>
           <span style={{ color: '#888' }}>Don't have an account?</span>

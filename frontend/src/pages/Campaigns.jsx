@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { 
   Send, ArrowLeft, Plus, Mail, Activity, AlertCircle, FileText, 
   CheckCircle2, Loader2, ChevronRight, Play, Eye, Download, Search,
-  Pause, MoreHorizontal, Copy, Trash2, Archive, Save, Clock
+  Pause, MoreHorizontal, Copy, Trash2, Archive, Save, Clock, RefreshCw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api, { API } from '../services/api';

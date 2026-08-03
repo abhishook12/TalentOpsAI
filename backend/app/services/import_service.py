@@ -2,7 +2,7 @@ import json
 import re
 
 from sqlalchemy.orm import Session
-from sqlalchemy import update
+from sqlalchemy import update, text
 from datetime import datetime
 import io
 
@@ -353,186 +353,38 @@ def process_commit(job_id: str):
     rows = db.query(SmartImportRow).filter(SmartImportRow.job_id == job_id).all()
     column_mapping = json.loads(job.column_mapping) if job.column_mapping else {}
     
-    # We want the values (mapped column names from the file)
-    mapped_keys = [k for k in column_mapping.values() if k and isinstance(k, str)]
+    # ---------------------------------------------------------
+    # NEW ARCHITECTURE: ROUTE TO BUCKET ONLY, BYPASS POSTGRES
+    # ---------------------------------------------------------
+    import uuid
+    import gzip
+    import os
     
-    from ..utils.normalizer import normalize_text
-    
-    # Cache companies to avoid n+1 selects
-    all_companies = db.query(Company).all()
-    company_cache = {normalize_text(c.company_name): c for c in all_companies if c.company_name}
-    company_by_id = {c.company_id: c for c in all_companies}
-    company_domain_index = build_company_domain_state_index(all_companies)
-    
-    inserted = 0
-    skipped = 0
+    bucket_data = []
     processed = 0
     
     for i, r in enumerate(rows):
         processed += 1
         if r.status in ["Ready", "Warning", "Possible Duplicate", "Enrich"]:
-            # Process Company
-            company_id = None
-            if r.company_name:
-                norm_comp = normalize_text(r.company_name)
-                if norm_comp in company_cache:
-                    company_id = company_cache[norm_comp].company_id
-                else:
-                    new_comp = Company(
-                        company_name=r.company_name,
-                        normalized_company_name=norm_comp,
-                        location=r.location,
-                        state=r.state,
-                        is_active=True,
-                        data_source="smart_import",
-                        source_job_id=job_id
-                    )
-                    db.add(new_comp)
-                    db.commit()
-                    db.refresh(new_comp)
-                    company_cache[norm_comp] = new_comp
-                    company_by_id[new_comp.company_id] = new_comp
-                    company_id = new_comp.company_id
-
-            # Preserve metadata (unknown columns)
             raw_dict = json.loads(r.raw_json)
-            metadata = {k: v for k, v in raw_dict.items() if k not in mapped_keys and not k.startswith("__") and v is not None and str(v).strip() != ""}
-            if "__unmapped_fields" in raw_dict:
-                metadata.update(raw_dict["__unmapped_fields"])
+            # Compile the raw payload for the bucket archive
+            bucket_row = {
+                "recruiter_name": r.recruiter_name,
+                "email": r.email,
+                "phone": r.phone,
+                "company": r.company_name,
+                "location": r.location,
+                "state": r.state,
+                "linkedin": r.linkedin,
+                "title": r.title,
+                "import_status": r.status,
+                "validation_issues": json.loads(r.validation_issues) if r.validation_issues else [],
+                "raw_metadata": raw_dict
+            }
+            bucket_data.append(bucket_row)
             
-            # Extract alternative emails/phones from metadata
-            email2 = raw_dict.get("__email2")
-            phone2 = raw_dict.get("__phone2")
-            for k, v in metadata.items():
-                key_lower = k.lower()
-                if "email" in key_lower and not email2 and str(v).strip().lower() != (r.email or "").lower():
-                    email2 = str(v).strip()
-                elif ("phone" in key_lower or "mobile" in key_lower or "cell" in key_lower) and not phone2:
-                    cp = clean_phone(str(v))
-                    if cp and cp != r.phone:
-                        phone2 = cp
-                        
-            state_source = None
-            state_confidence = None
-            state_reason = None
-            state_value = None
-            state_result = infer_state_from_sources(
-                [
-                    ("state_column", r.state),
-                    ("location_column", r.location),
-                    ("company_state", company_by_id.get(company_id).state if company_id and company_by_id.get(company_id) else None),
-                    ("email_domain", r.email),
-                ],
-                domain_index=company_domain_index,
-            )
-            if state_result:
-                state_value = state_result["state"]
-                state_source = state_result["state_source"]
-                state_confidence = state_result["state_confidence"]
-                state_reason = state_result["state_reason"]
-                if state_result.get("evidence"):
-                    metadata = metadata or {}
-                    metadata["state_recovery"] = {
-                        "source": state_source,
-                        "confidence": state_confidence,
-                        "reason": state_reason,
-                        "evidence": state_result.get("evidence"),
-                    }
-            elif r.state:
-                state_value = r.state
-                state_source = "state_column"
-                state_confidence = "high"
-            elif r.location:
-                inferred_state, inferred_reason = extract_state_detailed(r.location)
-                if inferred_state:
-                    state_value = inferred_state
-                    state_source = "location_column"
-                    state_confidence = "high"
-                    state_reason = inferred_reason
-            metadata_json = json.dumps(metadata, default=str) if metadata else None
-            
-            if r.status == "Enrich":
-                # Find existing recruiter and merge data
-                existing = None
-                if r.email:
-                    existing = db.query(Recruiter).filter(Recruiter.email == r.email).first()
-                if not existing and r.phone:
-                    existing = db.query(Recruiter).filter(Recruiter.phone == r.phone).first()
-                
-                if existing:
-                    # Enrich missing core fields
-                    if not existing.phone and r.phone: existing.phone = r.phone
-                    if not existing.title and r.title:
-                        existing.title = r.title
-                        existing.specialization = r.title
-                    if not existing.location and r.location: existing.location = r.location
-                    if not existing.state and r.state: existing.state = r.state
-                    if not existing.linkedin and r.linkedin: existing.linkedin = r.linkedin
-                    if not existing.company_id and company_id: existing.company_id = company_id
-                    if not existing.state and state_value:
-                        existing.state = state_value
-                        existing.state_source = state_source
-                        existing.state_confidence = state_confidence
-                        existing.state_reason = state_reason
-                    
-                    if email2 and not existing.email2: existing.email2 = email2
-                    if phone2 and not existing.phone2: existing.phone2 = phone2
-                    
-                    # Merge metadata
-                    if metadata:
-                        existing_meta = json.loads(existing.metadata_json) if existing.metadata_json else {}
-                        existing_meta.update(metadata)
-                        existing.metadata_json = json.dumps(existing_meta)
-                        
-                    # Add tag for merged records
-                    existing_tags = existing.tags if getattr(existing, 'tags', None) else ""
-                    tag_list = [t.strip() for t in existing_tags.split(",") if t.strip()]
-                    if "new feature" not in tag_list:
-                        tag_list.append("new feature")
-                    existing.tags = ", ".join(tag_list)
-                        
-                    inserted += 1 # Count as successful import/update
-            else:
-                # Insert new recruiter (Ready, Warning, Possible Duplicate)
-                needs_review = (r.status == "Possible Duplicate")
-                review_reason = "Uploaded with matching details to an existing profile (Phone or Name+Company)." if needs_review else None
-                
-                rec = Recruiter(
-                    recruiter_name=r.recruiter_name,
-                    normalized_recruiter_name=normalize_text(r.recruiter_name) if r.recruiter_name else None,
-                    email=r.email,
-                    phone=r.phone,
-                    email2=email2,
-                    phone2=phone2,
-                    linkedin=r.linkedin,
-                    specialization=r.title,
-                    title=r.title,
-                    company_id=company_id,
-                    location=r.location,
-                    state=state_value,
-                    state_source=state_source,
-                    state_confidence=state_confidence,
-                    state_reason=state_reason,
-                    is_active=True,
-                    data_source="smart_import",
-                    source_job_id=job_id,
-                    raw_data=r.raw_json[:500] if r.raw_json else None,
-                    metadata_json=metadata_json,
-                    needs_review=needs_review,
-                    review_reason=review_reason,
-                    tags="newly added"
-                )
-                db.add(rec)
-                inserted += 1
-                
-            # Chunked commits
-            if inserted % 500 == 0:
-                db.commit()
-        else:
-            skipped += 1
-
         if processed % 200 == 0:
-            step_text = f"Importing rows {processed}/{len(rows)}"
+            step_text = f"Packaging rows for bucket ({processed}/{len(rows)})"
             prog_val = 80 if not len(rows) else min(98, 80 + int((processed / max(len(rows), 1)) * 18))
             db.execute(
                 update(SmartImportJob).where(SmartImportJob.job_id == job_id).values(
@@ -540,27 +392,53 @@ def process_commit(job_id: str):
                     current_step=step_text,
                     progress_percent=prog_val,
                     processed_rows=processed,
-                    inserted_rows=inserted,
-                    skipped_rows=skipped,
                     last_heartbeat_at=datetime.utcnow(),
                     updated_at=datetime.utcnow()
                 )
             )
             db.commit()
-            
-    db.commit()
+
+    # Create the Archive File
+    archive_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "archives")
+    os.makedirs(archive_dir, exist_ok=True)
+    file_id = uuid.uuid4().hex[:8]
+    archive_path = os.path.join(archive_dir, f"import_{job_id}_{file_id}.json.gz")
     
-    job.inserted_rows = inserted
-    job.skipped_rows = skipped
+    with gzip.open(archive_path, 'wt', encoding='utf-8') as f:
+        json.dump(bucket_data, f)
+        
+    file_size_bytes = os.path.getsize(archive_path)
+    
+    # Register in Supabase Storage Bucket
+    path_name = f"archives/import_{job_id}_{file_id}.json.gz"
+    metadata = json.dumps({
+        "size": file_size_bytes,
+        "mimetype": "application/gzip",
+        "job_id": job_id,
+        "total_rows": len(bucket_data)
+    })
+    
+    db.execute(text("""
+        INSERT INTO storage.objects (id, bucket_id, name, owner, created_at, updated_at, last_accessed_at, metadata, version)
+        VALUES (:id, 'recruiter-data', :name, NULL, NOW(), NOW(), NOW(), :metadata, :version)
+    """), {
+        "id": str(uuid.uuid4()),
+        "name": path_name,
+        "metadata": metadata,
+        "version": str(uuid.uuid4())
+    })
+    
+    job.inserted_rows = len(bucket_data) # We count bucket saves as "inserted" to clear the UI
+    job.skipped_rows = len(rows) - len(bucket_data)
     job.processed_rows = processed
     mark_progress(
         job,
         status="completed",
-        current_step="Import completed",
+        current_step="Routed directly to Bucket Storage",
         progress_percent=100,
         processed_rows=processed,
-        inserted_rows=inserted,
-        skipped_rows=skipped,
+        inserted_rows=len(bucket_data),
+        skipped_rows=job.skipped_rows,
     )
     job.completed_at = utc_now()
     db.commit()

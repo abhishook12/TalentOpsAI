@@ -711,8 +711,8 @@ class CampaignUpdate(BaseModel):
 
 class TemplateCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
-    subject: str = Field(min_length=1, max_length=255)
-    body: str = Field(min_length=1)
+    subject: str = Field(default="", max_length=255)
+    body: str = Field(default="")
     variables: Optional[list[str]] = None
     is_active: bool = True
 
@@ -721,8 +721,8 @@ class TemplateUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: Optional[str] = Field(default=None, min_length=1, max_length=255)
-    subject: Optional[str] = Field(default=None, min_length=1, max_length=255)
-    body: Optional[str] = Field(default=None, min_length=1)
+    subject: Optional[str] = Field(default=None, max_length=255)
+    body: Optional[str] = Field(default=None)
     variables: Optional[list[str]] = None
     is_active: Optional[bool] = None
 
@@ -840,7 +840,7 @@ def list_campaigns(
     }
 
 
-@router.post("/")
+@router.post("")
 def create_campaign(payload: CampaignCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     from datetime import datetime
     now = datetime.utcnow()

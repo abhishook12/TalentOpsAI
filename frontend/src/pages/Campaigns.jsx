@@ -1035,7 +1035,12 @@ export default function Campaigns() {
                           </div>
                         )}
                       </div>
-                    ) : null}
+                    ) : (
+                      <div className="flex-1 flex flex-col items-center justify-center text-[var(--text-muted)] space-y-3">
+                        <Loader2 className="w-6 h-6 animate-spin opacity-30" />
+                        <span className="text-sm">Waiting for validation results...</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

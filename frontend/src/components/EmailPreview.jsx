@@ -11,11 +11,17 @@ export default function EmailPreview({ campaignId, subjectTemplate, bodyTemplate
   const currentRecipient = recipients[currentIndex];
 
   useEffect(() => {
-    if (currentRecipient && subjectTemplate && bodyTemplate && campaignId) {
-      const timer = setTimeout(() => {
-        fetchPreview();
-      }, 500);
-      return () => clearTimeout(timer);
+    if (currentRecipient && campaignId) {
+      if (subjectTemplate && bodyTemplate) {
+        const timer = setTimeout(() => {
+          fetchPreview();
+        }, 500);
+        return () => clearTimeout(timer);
+      } else {
+        // Clear any stale preview when templates are empty
+        setPreviewData(null);
+        setLoading(false);
+      }
     }
   }, [currentIndex, subjectTemplate, bodyTemplate, signatureId, currentRecipient, campaignId]);
 
@@ -93,8 +99,13 @@ export default function EmailPreview({ campaignId, subjectTemplate, bodyTemplate
       {/* PREVIEW CONTAINER */}
       <div className="flex-1 overflow-y-auto p-0 flex flex-col relative">
         
-        {error ? (
-          <div className="p-8 text-center text-red-400 text-sm">{error}</div>
+        {(!subjectTemplate || !bodyTemplate) ? (
+          <div className="p-8 text-center text-[var(--text-muted)] text-sm flex flex-col items-center gap-2 mt-10">
+            <Mail className="w-8 h-8 opacity-30" />
+            <span>Go back to <strong>Compose</strong> and add a subject and body to preview your email.</span>
+          </div>
+        ) : error ? (
+          <div className="p-8 text-center text-red-400 text-sm mt-10">{error}</div>
         ) : previewData ? (
           <div className="flex flex-col h-full">
             {/* Email Header */}
@@ -132,7 +143,19 @@ export default function EmailPreview({ campaignId, subjectTemplate, bodyTemplate
             </div>
           </div>
         ) : (
-           <div className="p-8 text-center text-[var(--text-muted)] text-sm">Generating preview...</div>
+           <div className="p-8 text-center text-[var(--text-muted)] text-sm flex flex-col items-center gap-2 mt-10">
+             {loading ? (
+               <>
+                 <Loader2 className="w-8 h-8 animate-spin opacity-30" />
+                 <span>Generating preview...</span>
+               </>
+             ) : (
+               <>
+                 <Mail className="w-8 h-8 opacity-30" />
+                 <span>No preview available. Go to <strong>Compose</strong> to write your email.</span>
+               </>
+             )}
+           </div>
         )}
       </div>
     </div>

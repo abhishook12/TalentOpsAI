@@ -78,8 +78,8 @@ const formStyles = `
   }
 
   .login-input:focus {
-    border-color: #8b5cf6;
-    box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-bg);
   }
   
   .login-input[aria-invalid="true"] {
@@ -90,7 +90,7 @@ const formStyles = `
   }
 
   .login-input-wrap:focus-within .login-icon-left {
-    color: #8b5cf6;
+    color: var(--accent);
   }
   
   .login-validation-msg {
@@ -147,8 +147,8 @@ const formStyles = `
   }
   
   .login-checkbox:checked {
-    background: #8b5cf6;
-    border-color: #8b5cf6;
+    background: var(--accent);
+    border-color: var(--accent);
   }
   
   .login-checkbox:checked::after {
@@ -165,7 +165,7 @@ const formStyles = `
   
   .login-checkbox:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.3);
+    box-shadow: 0 0 0 3px var(--accent-bg);
   }
 
   .login-forgot {
@@ -184,7 +184,7 @@ const formStyles = `
     height: 44px;
     border: none;
     border-radius: 8px;
-    background: #8b5cf6;
+    background: var(--accent);
     color: #fff;
     font-size: 14px;
     font-weight: 500;
@@ -196,7 +196,7 @@ const formStyles = `
   }
 
   .login-button-primary:hover:not(:disabled) {
-    background: #a855f7;
+    background: var(--accent-strong);
   }
 
   .login-button-primary:disabled {
@@ -284,10 +284,10 @@ const formStyles = `
   }
   
   .login-create-account {
-    color: #8b5cf6 !important;
+    color: var(--accent) !important;
   }
   .login-create-account:hover {
-    color: #a855f7 !important;
+    color: var(--accent-strong) !important;
   }
 
   .login-error-banner {

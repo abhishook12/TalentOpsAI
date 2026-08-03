@@ -194,7 +194,7 @@ class RecruiterEmail(Base):
     recruiter_id = Column(Integer, ForeignKey("recruiters.recruiter_id", ondelete="CASCADE"), nullable=False, index=True)
     email = Column(String(150), nullable=False, unique=True)
     email_type = Column(String(50), default="personal") # personal, work
-    status = Column(String(50), default="unknown")      # verified, likely, inferred, placeholder, invalid, unknown
+    status = Column(String(50), default="unknown")      # verified, likely_valid, needs_monitoring, suspicious, invalid, unknown
     confidence_score = Column(Integer, default=0)
     source = Column(String(150))
     company_domain_id = Column(Integer, nullable=True)
@@ -203,6 +203,46 @@ class RecruiterEmail(Base):
     is_primary = Column(Boolean, default=False)
     verified_at = Column(TIMESTAMP, nullable=True)
     last_checked_at = Column(TIMESTAMP, nullable=True)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+    
+    mailintel = relationship("MailIntelTracking", back_populates="email", uselist=False, cascade="all, delete-orphan")
+
+class MailIntelTracking(Base):
+    __tablename__ = "mailintel_tracking"
+    email_id = Column(Integer, ForeignKey("recruiter_emails.id", ondelete="CASCADE"), primary_key=True)
+    last_campaign_id = Column(Integer, nullable=True)
+    last_delivery_at = Column(TIMESTAMP, nullable=True)
+    last_reply_at = Column(TIMESTAMP, nullable=True)
+    last_bounce_at = Column(TIMESTAMP, nullable=True)
+    hard_bounce_count = Column(Integer, default=0)
+    soft_bounce_count = Column(Integer, default=0)
+    flag_reason = Column(Text, nullable=True)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+
+    email = relationship("RecruiterEmail", back_populates="mailintel")
+
+class MailIntelEvidence(Base):
+    __tablename__ = "mailintel_evidence"
+    id = Column(Integer, primary_key=True, index=True)
+    email_id = Column(Integer, nullable=False, index=True)
+    timestamp = Column(TIMESTAMP, server_default=func.now())
+    method = Column(String(100), nullable=False)
+    evidence_json = Column(JSON, nullable=True)
+    confidence_delta = Column(Integer, default=0)
+    final_confidence = Column(Integer, default=0)
+    duration_ms = Column(Integer, default=0)
+    verification_version = Column(Integer, default=1)
+
+class DomainReputation(Base):
+    __tablename__ = "domain_reputation"
+    domain = Column(String(255), primary_key=True, index=True)
+    total_sent = Column(Integer, default=0)
+    total_delivered = Column(Integer, default=0)
+    total_bounced = Column(Integer, default=0)
+    total_replied = Column(Integer, default=0)
+    reputation_score = Column(Numeric(5, 2), default=0)
     created_at = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
 

@@ -180,9 +180,9 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     --text-secondary: #cbd5e1;
     --text-muted: #64748b;
     --text-inverse: #ffffff;
-    --accent: #8b5cf6;
-    --accent-strong: #a855f7;
-    --accent-bg: rgba(139, 92, 246, 0.15);
+    --accent: #c9a84c;
+    --accent-strong: #f0d78c;
+    --accent-bg: rgba(201, 168, 76, 0.15);
     --success: #10b981;
     --warning: #f59e0b;
     --danger: #ef4444;
@@ -210,9 +210,9 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     --text-secondary: #cbd5e1;
     --text-muted: #64748b;
     --text-inverse: #ffffff;
-    --accent: #8b5cf6;
-    --accent-strong: #a855f7;
-    --accent-bg: rgba(139, 92, 246, 0.15);
+    --accent: #c9a84c;
+    --accent-strong: #f0d78c;
+    --accent-bg: rgba(201, 168, 76, 0.15);
     --success: #10b981;
     --warning: #f59e0b;
     --danger: #ef4444;
@@ -237,9 +237,9 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     --text-secondary: #4b5361;
     --text-muted: #6b7484;
     --text-inverse: #ffffff;
-    --accent: #7c3aed;
-    --accent-strong: #6d28d9;
-    --accent-bg: rgba(124, 58, 237, 0.15);
+    --accent: #96731f;
+    --accent-strong: #7a5c15;
+    --accent-bg: rgba(150, 115, 31, 0.15);
     --success: #047857;
     --warning: #b45309;
     --danger: #dc2626;

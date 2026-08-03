@@ -676,26 +676,30 @@ export default function Campaigns() {
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-2">
                             <div className="font-bold text-white text-[15px]">{c.name}</div>
-                            {c.is_test && <span className="text-[10px] px-1.5 py-0.5 border border-purple-500/30 text-purple-400 bg-purple-500/10 uppercase font-bold rounded">Test</span>}
+                            {c.is_test && <span className="text-[10px] px-1.5 py-0.5 border uppercase font-bold rounded" style={{ color: 'var(--accent)', backgroundColor: 'var(--accent-bg)', borderColor: 'var(--accent-bg)' }}>Test</span>}
                             {isFailed && <span className="text-[10px] px-1.5 py-0.5 bg-red-500 text-white font-bold rounded-full">{c.stats.failed} failed</span>}
                           </div>
                           <div className="text-xs text-[#777] mt-1.5 font-medium">{String(c.campaign_id).slice(0,8)}</div>
                         </td>
                         <td className="px-6 py-5">
                           <span className={`inline-flex items-center gap-2 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest rounded-full ${
-                            c.status === 'active' ? 'bg-[#3b1c5a] text-[#d6b4fc]' :
+                            c.status === 'active' ? '' :
                             c.status === 'paused' ? 'bg-[#3b2a0c] text-[#fcd34d]' :
                             c.status === 'completed' ? 'bg-[#0f3d24] text-[#86efac]' :
                             c.status === 'draft' ? 'bg-transparent text-white' :
                             'bg-red-500/20 text-red-400 border border-red-500/30'
-                          }`}>
-                            <div className={`w-2 h-2 rounded-full ${
-                              c.status === 'active' ? 'bg-[#a855f7]' :
+                          }`}
+                            style={c.status === 'active' ? { backgroundColor: 'var(--accent-bg)', color: 'var(--accent)' } : {}}
+                          >
+                            <div className={`w-1.5 h-1.5 rounded-full ${
+                              c.status === 'active' ? '' :
                               c.status === 'paused' ? 'bg-[#f59e0b]' :
                               c.status === 'completed' ? 'bg-[#22c55e]' :
                               c.status === 'draft' ? 'bg-gray-400' :
                               'bg-red-500'
-                            }`}></div>
+                            }`}
+                            style={c.status === 'active' ? { backgroundColor: 'var(--accent-strong)' } : {}}
+                            ></div>
                             {c.status}
                           </span>
                         </td>

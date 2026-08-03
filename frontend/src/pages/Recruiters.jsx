@@ -88,12 +88,11 @@ function Modal({ title, onClose, onSave, form, setForm, saving }) {
 
 const getAvatarColor = (name) => {
   const colors = [
-    { bg: 'rgba(139, 92, 246, 0.15)', text: '#a78bfa', border: 'rgba(139, 92, 246, 0.3)' }, // Purple
-    { bg: 'rgba(59, 130, 246, 0.15)', text: '#60a5fa', border: 'rgba(59, 130, 246, 0.3)' }, // Blue
-    { bg: 'rgba(16, 185, 129, 0.15)', text: '#34d399', border: 'rgba(16, 185, 129, 0.3)' }, // Emerald
+    { bg: 'var(--accent-bg)', text: 'var(--accent-strong)', border: 'var(--accent-bg)' }, // Gold
     { bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', border: 'rgba(245, 158, 11, 0.3)' }, // Amber
-    { bg: 'rgba(239, 68, 68, 0.15)', text: '#f87171', border: 'rgba(239, 68, 68, 0.3)' }, // Red
-    { bg: 'rgba(236, 72, 153, 0.15)', text: '#f472b6', border: 'rgba(236, 72, 153, 0.3)' }  // Pink
+    { bg: 'rgba(100, 116, 139, 0.15)', text: '#94a3b8', border: 'rgba(100, 116, 139, 0.3)' }, // Slate
+    { bg: 'rgba(20, 184, 166, 0.15)', text: '#2dd4bf', border: 'rgba(20, 184, 166, 0.3)' }, // Teal
+    { bg: 'rgba(168, 115, 68, 0.15)', text: '#d99c64', border: 'rgba(168, 115, 68, 0.3)' } // Warm Brown
   ]
   const index = name ? name.charCodeAt(0) % colors.length : 0
   return colors[index]
@@ -169,11 +168,11 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r }) {
         {r.is_active ? (
           <div style={{ 
             display: 'inline-flex', alignItems: 'center', gap: 6, 
-            padding: '6px 12px', background: 'rgba(139, 92, 246, 0.1)', 
-            border: '1px solid rgba(139, 92, 246, 0.2)',
-            borderRadius: 100, fontSize: 12.5, color: '#c4b5fd', fontWeight: 500 
+            padding: '6px 12px', background: 'var(--accent-bg)', 
+            border: '1px solid var(--accent-bg)',
+            borderRadius: 100, fontSize: 12.5, color: 'var(--accent)', fontWeight: 500 
           }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#a78bfa', boxShadow: '0 0 8px #a78bfa' }} />
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-strong)', boxShadow: '0 0 8px var(--accent-strong)' }} />
             Active
           </div>
         ) : (

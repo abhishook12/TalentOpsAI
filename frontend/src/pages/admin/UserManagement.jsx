@@ -179,7 +179,7 @@ export default function UserManagement() {
           { label: 'Total Users', value: analytics?.total || 0, color: '#3b82f6' },
           { label: 'Active Users', value: analytics?.active || 0, color: '#10b981' },
           { label: 'Inactive Users', value: analytics?.inactive || 0, color: '#f59e0b' },
-          { label: 'New This Week', value: analytics?.new_last_7_days || 0, color: '#8b5cf6' }
+          { label: 'New This Week', value: analytics?.new_last_7_days || 0, color: 'var(--accent)' }
         ].map((stat, i) => (
           <div key={i} style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 20, position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: stat.color }} />
@@ -316,7 +316,7 @@ export default function UserManagement() {
             
             <div style={{ padding: 20, overflowY: 'auto', flex: 1 }}>
               <div style={{ textAlign: 'center', marginBottom: 24 }}>
-                <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', margin: '0 auto 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 800, color: 'var(--text-primary)' }}>
+                <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, var(--accent))', margin: '0 auto 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 800, color: 'var(--text-primary)' }}>
                   {selectedUserDetail.first_name[0]}{selectedUserDetail.last_name[0]}
                 </div>
                 <h3 style={{ margin: '0 0 4px', fontSize: 20 }}>{selectedUserDetail.first_name} {selectedUserDetail.last_name}</h3>

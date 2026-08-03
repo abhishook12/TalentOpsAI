@@ -12,7 +12,7 @@ const CHART_TICK = { fill: 'var(--text-primary)', fontSize: 12, fontWeight: 700 
 
 const BAR_LABEL_PROPS = { fill: 'var(--text-primary)', fontSize: 12, fontWeight: 700 }
 
-const PAGE_COLORS = ['#185FA5', '#0F6E56', '#534AB7', '#BA7517', '#C4394A', '#1695A3', '#7C3AED', '#D97706']
+const PAGE_COLORS = ['#C9A84C', '#0F6E56', '#94a3b8', '#BA7517', '#C4394A', '#1695A3', '#f0d78c', '#D97706']
 
 const STATE_FULL_NAMES = {
   AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',CT:'Connecticut',
@@ -273,7 +273,7 @@ export default function Analytics() {
       <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
         <h1 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: 0, lineHeight: 1.1 }}>Advanced Intelligence</h1>
         <div style={{ display: 'flex', gap: 8 }}>
-          <KPI inline label="Total Visits" value={(visits?.total_visits || 0).toLocaleString()} color="#7C3AED" icon="ti-eye" />
+          <KPI inline label="Total Visits" value={(visits?.total_visits || 0).toLocaleString()} color="var(--accent)" icon="ti-eye" />
           <KPI inline label="Today" value={(visits?.today || 0).toLocaleString()} sub={todayChange !== null ? `${todayChange > 0 ? '▲' : '▼'} ${Math.abs(todayChange)}%` : null} color="#185FA5" icon="ti-calendar-today" />
           <KPI inline label="Yesterday" value={(visits?.yesterday || 0).toLocaleString()} color="#0F6E56" icon="ti-calendar" />
         </div>
@@ -282,7 +282,7 @@ export default function Analytics() {
         <div style={{ display: 'flex', gap: 8 }}>
           <KPI inline label="Known State" value={dq?.known_state_count?.toLocaleString()} color="#0F6E56" icon="ti-map-pin-filled" />
           <KPI inline label="Explicit State" value={dq?.explicit_state_count?.toLocaleString()} color="#185FA5" icon="ti-target" />
-          <KPI inline label="Inferred State" value={dq?.inferred_state_count?.toLocaleString()} color="#7C3AED" icon="ti-wand" />
+          <KPI inline label="Inferred State" value={dq?.inferred_state_count?.toLocaleString()} color="var(--accent)" icon="ti-wand" />
           <KPI inline label="Unknown State" value={dq?.unknown_state_count?.toLocaleString()} color="#ef4444" icon="ti-alert-triangle" />
         </div>
         <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, padding: '8px 12px', background: 'rgba(239, 68, 68, 0.05)', borderRadius: 8, border: '1px solid rgba(239, 68, 68, 0.1)' }}>

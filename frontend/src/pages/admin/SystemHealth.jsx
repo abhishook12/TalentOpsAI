@@ -60,7 +60,7 @@ export default function SystemHealth() {
         {/* Database Status */}
         <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-            <Database size={20} color="#8b5cf6" />
+            <Database size={20} color="var(--accent)" />
             <span style={{ fontWeight: 600 }}>Database (PostgreSQL)</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>

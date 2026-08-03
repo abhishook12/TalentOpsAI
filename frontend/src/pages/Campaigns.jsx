@@ -679,7 +679,7 @@ export default function Campaigns() {
                             {c.is_test && <span className="text-[10px] px-1.5 py-0.5 border border-purple-500/30 text-purple-400 bg-purple-500/10 uppercase font-bold rounded">Test</span>}
                             {isFailed && <span className="text-[10px] px-1.5 py-0.5 bg-red-500 text-white font-bold rounded-full">{c.stats.failed} failed</span>}
                           </div>
-                          <div className="text-xs text-[#777] mt-1.5 font-medium">{c.campaign_id.slice(0,8)}</div>
+                          <div className="text-xs text-[#777] mt-1.5 font-medium">{String(c.campaign_id).slice(0,8)}</div>
                         </td>
                         <td className="px-6 py-5">
                           <span className={`inline-flex items-center gap-2 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest rounded-full ${

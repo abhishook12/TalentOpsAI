@@ -13,12 +13,9 @@ export default function EmailPreview({ campaignId, subjectTemplate, bodyTemplate
   useEffect(() => {
     if (currentRecipient && campaignId) {
       if (subjectTemplate && bodyTemplate) {
-        const timer = setTimeout(() => {
-          fetchPreview();
-        }, 500);
-        return () => clearTimeout(timer);
+        // Fetch instantly since we're in the preview step and not typing
+        fetchPreview();
       } else {
-        // Clear any stale preview when templates are empty
         setPreviewData(null);
         setLoading(false);
       }

@@ -1181,3 +1181,133 @@ def update_recruiter_status(
     db.commit()
     db.refresh(cr)
     return {"message": "Status updated", "enrollment": serialize_campaign_recruiter(cr)}
+
+from typing import Optional, List, Dict, Any
+from pydantic import BaseModel
+
+class PreparePreviewRequest(BaseModel):
+    name: str
+    from_email: Optional[str] = None
+    signature_id: Optional[int] = None
+    subject: str
+    body: str
+    recipients: List[Dict[str, Any]]
+
+# Add this to app/routes/campaigns.py
+@router.post("/{campaign_id}/prepare-preview")
+def api_prepare_preview(campaign_id: int, request: PreparePreviewRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    campaign = db.query(Campaign).filter(Campaign.user_id == current_user.id, Campaign.campaign_id == campaign_id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+        
+    campaign.name = request.name
+    campaign.from_email = request.from_email
+    campaign.signature_id = request.signature_id
+    
+    first_step = db.query(SequenceStep).filter(SequenceStep.campaign_id == campaign_id).order_by(SequenceStep.step_order.asc()).first()
+    if not first_step:
+        first_step = SequenceStep(campaign_id=campaign_id, step_order=1, step_type=SequenceStepType.email.value)
+        db.add(first_step)
+        db.flush() # flush to get step_id without a full commit
+        
+    t = None
+    if first_step.template_id:
+        t = db.query(EmailTemplate).filter(EmailTemplate.template_id == first_step.template_id).first()
+        
+    if not t:
+        t = EmailTemplate(campaign_id=campaign_id, user_id=current_user.id, name=request.subject or "Draft", subject=request.subject, body=request.body)
+        db.add(t)
+        db.flush() # flush to get template_id
+        first_step.template_id = t.template_id
+    else:
+        t.name = request.subject or "Draft"
+        t.subject = request.subject
+        t.body = request.body
+
+    email_map = {}
+    for rec_data in request.recipients:
+        clean_email = str(rec_data.get("email", "")).strip().lower()
+        if clean_email:
+            email_map[clean_email] = rec_data
+
+    enrolled = 0
+    if email_map:
+        emails_list = list(email_map.keys())
+        existing_recs = db.query(Recruiter).filter(func.lower(Recruiter.email).in_(emails_list)).all()
+        rec_by_email = {r.email.lower(): r for r in existing_recs}
+        for r in existing_recs:
+            if r.user_id is None:
+                r.user_id = current_user.id
+                
+        new_recs = []
+        for email, rec_data in email_map.items():
+            if email not in rec_by_email:
+                new_recs.append(Recruiter(
+                    user_id=current_user.id,
+                    email=email,
+                    recruiter_name=rec_data.get("name") or email.split('@')[0],
+                    title=rec_data.get("role"),
+                    data_source="campaign_import"
+                ))
+        
+        if new_recs:
+            db.add_all(new_recs)
+            db.flush()
+            for r in new_recs:
+                rec_by_email[r.email.lower()] = r
+
+        all_rec_ids = [r.recruiter_id for r in rec_by_email.values()]
+        existing_enrollments = db.query(CampaignRecruiter.recruiter_id).filter(
+            CampaignRecruiter.campaign_id == campaign_id,
+            CampaignRecruiter.recruiter_id.in_(all_rec_ids)
+        ).all()
+        existing_cr_ids = {row[0] for row in existing_enrollments}
+        
+        new_crs = []
+        for r in rec_by_email.values():
+            if r.recruiter_id not in existing_cr_ids:
+                new_crs.append(CampaignRecruiter(
+                    campaign_id=campaign_id,
+                    recruiter_id=r.recruiter_id,
+                    current_step_id=first_step.step_id,
+                    status=CampaignRecruiterStatus.pending.value,
+                    enrolled_at=utcnow(),
+                    next_send_at=campaign.start_at or utcnow()
+                ))
+                enrolled += 1
+                
+        if new_crs:
+            db.add_all(new_crs)
+
+    db.commit()
+
+    from ..services.send_engine import _check_bridge_health
+    bridge_healthy, bridge_error = _check_bridge_health(current_user.id)
+            
+    has_template = bool(request.subject and request.subject.strip() and request.body and request.body.strip())
+    
+    recipients_count = db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id).count()
+    has_recipients = recipients_count > 0
+    
+    validation_errors = []
+    if not campaign.from_email:
+        validation_errors.append({"code": "MISSING_SENDER", "message": "No sender email selected."})
+    if not bridge_healthy:
+        validation_errors.append({"code": "BRIDGE_DISCONNECTED", "message": bridge_error or "Email provider disconnected."})
+    if not has_recipients:
+        validation_errors.append({"code": "MISSING_RECIPIENTS", "message": "No valid recipients found."})
+    if not has_template:
+        validation_errors.append({"code": "MISSING_TEMPLATE", "message": "No template subject or body saved."})
+
+    ready = len(validation_errors) == 0
+
+    return {
+        "bridge_healthy": bridge_healthy,
+        "bridge_error": bridge_error,
+        "has_template": has_template,
+        "has_recipients": has_recipients,
+        "ready": ready,
+        "errors": validation_errors,
+        "valid_count": recipients_count,
+        "enrolled_count": enrolled
+    }

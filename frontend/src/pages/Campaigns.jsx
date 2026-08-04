@@ -408,14 +408,39 @@ export default function Campaigns() {
   };
 
   const runPreflight = async (currentId) => {
-    let cid = currentId || activeCampaignId;
-    if (!cid) cid = await saveDraft();
-    
     setIsValidating(true);
+    let cid = currentId || activeCampaignId;
+    if (!cid) {
+      try {
+        const res = await api.post('/campaigns', {
+          name: campaignName,
+          from_email: fromEmail,
+          status: 'draft',
+          signature_id: signatureId
+        });
+        cid = res.data.campaign_id;
+        setActiveCampaignId(cid);
+      } catch (e) {
+        toast.error("Failed to create campaign draft");
+        setIsValidating(false);
+        return;
+      }
+    }
+    
     try {
-      const res = await api.post(`/campaigns/${cid}/validate-before-send`);
+      const validRecipients = validatedRecipients.recipients.filter(r => r.status === 'valid');
+      const res = await api.post(`/campaigns/${cid}/prepare-preview`, {
+        name: campaignName,
+        from_email: fromEmail,
+        signature_id: signatureId,
+        subject: subject || '',
+        body: body || '',
+        recipients: validRecipients
+      });
       setPreflightData(res.data);
+      setLastSaved(new Date());
     } catch (e) {
+      console.error("Validation failed:", e);
       toast.error("Validation failed");
     } finally {
       setIsValidating(false);
@@ -430,14 +455,7 @@ export default function Campaigns() {
       setCurrentStep(STEPS.PREVIEW);
       setPreflightData(null);
       (async () => {
-        const cid = await saveDraft();
-        if (cid && validatedRecipients.valid_count > 0) {
-          const validRecipients = validatedRecipients.recipients.filter(r => r.status === 'valid');
-          try {
-            await api.post(`/campaigns/${cid}/enroll-emails`, { recipients: validRecipients });
-          } catch (e) {}
-        }
-        runPreflight(cid);
+        runPreflight(activeCampaignId);
       })();
     }
     else if (currentStep === STEPS.PREVIEW) {
@@ -1030,7 +1048,7 @@ export default function Campaigns() {
                         {preflightData.ready && (
                           <div className="mt-8 pt-4 border-t border-[var(--border)]">
                             <div className="bg-white/5 border border-white/10 rounded-lg p-3 text-sm text-white mb-4">
-                              ETA: <strong>~{Math.ceil(validatedRecipients.valid_count / 4)} mins</strong>
+                              ETA: <strong>{validatedRecipients.valid_count <= 50 ? `~${Math.max(5, Math.ceil(validatedRecipients.valid_count * 0.5))} secs` : `~${Math.ceil(validatedRecipients.valid_count / 60)} mins`}</strong>
                             </div>
                           </div>
                         )}

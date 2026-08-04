@@ -39,11 +39,11 @@ export function CompanyIdentity({
 
   const getMonogramColor = (n) => {
     const colors = [
-      { bg: 'rgba(59, 130, 246, 0.15)', text: '#60a5fa', border: 'rgba(59, 130, 246, 0.3)' }, // Blue
-      { bg: 'rgba(16, 185, 129, 0.15)', text: '#34d399', border: 'rgba(16, 185, 129, 0.3)' }, // Emerald
+      { bg: 'var(--accent-bg)', text: 'var(--accent-strong)', border: 'var(--accent-bg)' }, // Gold
       { bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', border: 'rgba(245, 158, 11, 0.3)' }, // Amber
-      { bg: 'rgba(239, 68, 68, 0.15)', text: '#f87171', border: 'rgba(239, 68, 68, 0.3)' }, // Red
-      { bg: 'rgba(139, 92, 246, 0.15)', text: '#a78bfa', border: 'rgba(139, 92, 246, 0.3)' }, // Purple
+      { bg: 'rgba(100, 116, 139, 0.15)', text: '#94a3b8', border: 'rgba(100, 116, 139, 0.3)' }, // Slate
+      { bg: 'rgba(20, 184, 166, 0.15)', text: '#2dd4bf', border: 'rgba(20, 184, 166, 0.3)' }, // Teal
+      { bg: 'rgba(168, 115, 68, 0.15)', text: '#d99c64', border: 'rgba(168, 115, 68, 0.3)' } // Warm Brown
     ]
     const index = n ? n.charCodeAt(0) % colors.length : 0
     return colors[index]
@@ -53,8 +53,16 @@ export function CompanyIdentity({
 
   // Determine Logo URL based on 4-tier cascade
   let logoUrl = null
-  if (cleanDomain && !failedDomains.has(cleanDomain) && errorLevel === 0) {
-    logoUrl = `https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${cleanDomain}&size=${logoSize * 4}`
+  if (cleanDomain && !failedDomains.has(cleanDomain)) {
+    if (errorLevel === 0) {
+      logoUrl = `https://logo.clearbit.com/${cleanDomain}?size=${logoSize * 4}`
+    } else if (errorLevel === 1) {
+      logoUrl = `https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${cleanDomain}&size=${logoSize * 4}`
+    } else if (errorLevel === 2) {
+      logoUrl = `https://icons.duckduckgo.com/ip3/${cleanDomain}.ico`
+    } else if (errorLevel === 3) {
+      logoUrl = `https://favicon.im/${cleanDomain}?larger=true`
+    }
   }
 
   const containerStyle = {
@@ -64,7 +72,7 @@ export function CompanyIdentity({
     padding: interactive ? '8px 12px' : 0,
     borderRadius: 12,
     background: isHovered && interactive ? 'rgba(255,255,255,0.03)' : 'transparent',
-    border: isHovered && interactive ? '1px solid rgba(139, 92, 246, 0.4)' : '1px solid transparent',
+    border: isHovered && interactive ? '1px solid var(--accent)' : '1px solid transparent',
     transform: isHovered && interactive ? 'translateY(-1px)' : 'translateY(0)',
     transition: 'all 200ms ease',
     cursor: interactive ? 'pointer' : 'default',
@@ -111,7 +119,7 @@ export function CompanyIdentity({
             flexShrink: 0
           }}
           onError={() => {
-            if (cleanDomain) failedDomains.add(cleanDomain)
+            if (cleanDomain && errorLevel >= 3) failedDomains.add(cleanDomain)
             setErrorLevel(prev => prev + 1)
           }}
         />

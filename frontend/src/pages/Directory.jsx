@@ -88,7 +88,7 @@ const EditableEmail = memo(function EditableEmail({ recruiter, onUpdate }) {
           onKeyDown={e => e.key === 'Enter' && save()}
           onBlur={save}
           disabled={saving}
-          style={{ width: '100%', padding: '4px 6px', borderRadius: 4, border: '1px solid var(--accent)', background: 'var(--main-bg)', color: 'var(--text-primary)', outline: 'none' }}
+          style={{ width: '100%', padding: '4px 6px', borderRadius: 4, border: '1px solid var(--brand)', background: 'var(--main-bg)', color: 'var(--text-primary)', outline: 'none' }}
         />
       </div>
     );
@@ -474,11 +474,45 @@ export default function Directory() {
                         interactive={false}
                         style={{ padding: 0 }}
                       />
+                      {(company.tags || company.notes || company.linkedin_url) && (
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8, paddingLeft: 44 + 16 }}>
+                          {company.linkedin_url && (
+                            <a 
+                              href={company.linkedin_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              title="LinkedIn Profile"
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, background: '#0a66c2', color: '#fff', borderRadius: 6, textDecoration: 'none', flexShrink: 0 }}
+                            >
+                              <i className="ti ti-brand-linkedin" style={{ fontSize: 14 }} />
+                            </a>
+                          )}
+                          {company.notes && (
+                            <div title="Has internal notes" style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px', background: 'rgba(245, 158, 11, 0.1)', color: '#fbbf24', borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+                              <i className="ti ti-file-description" /> Notes
+                            </div>
+                          )}
+                          {company.tags && (() => {
+                            try {
+                              const tags = typeof company.tags === 'string' ? JSON.parse(company.tags) : company.tags;
+                              if (!Array.isArray(tags)) return null;
+                              return tags.slice(0, 3).map((tag, i) => (
+                                <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '2px 8px', background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                  {tag}
+                                </div>
+                              ))
+                            } catch (e) {
+                              return null;
+                            }
+                          })()}
+                        </div>
+                      )}
                     </div>
                     <div style={{ fontFamily: 'var(--mono)', fontWeight: 900 }}>{company.recruiter_count || 0}</div>
                   </div>
                   <div style={{ marginTop: 8, height: 5, borderRadius: 99, background: 'var(--card-border)', overflow: 'hidden' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', background: active ? 'var(--accent)' : '#4f46e5', borderRadius: 99 }} />
+                    <div style={{ width: `${pct}%`, height: '100%', background: active ? 'var(--brand)' : '#4f46e5', borderRadius: 99 }} />
                   </div>
                 </button>
               )

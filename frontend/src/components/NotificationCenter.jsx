@@ -89,7 +89,7 @@ export default function NotificationCenter() {
               <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--card-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Notifications</h3>
                 {unreadCount > 0 && (
-                  <button onClick={markAllRead} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>
+                  <button onClick={markAllRead} style={{ background: 'none', border: 'none', color: 'var(--brand)', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>
                     Mark all read
                   </button>
                 )}
@@ -102,7 +102,7 @@ export default function NotificationCenter() {
                 ) : (
                   notifications.map(n => {
                     let Icon = Info;
-                    let color = 'var(--accent)';
+                    let color = 'var(--brand)';
                     if (n.type === 'success') { Icon = Check; color = 'var(--success)'; }
                     if (n.type === 'warning') { Icon = AlertTriangle; color = 'var(--warning)'; }
                     if (n.type === 'error') { Icon = AlertCircle; color = 'var(--danger)'; }

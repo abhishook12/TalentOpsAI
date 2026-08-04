@@ -60,7 +60,7 @@ export default function SystemHealth() {
         {/* Database Status */}
         <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-            <Database size={20} color="var(--accent)" />
+            <Database size={20} color="var(--brand)" />
             <span style={{ fontWeight: 600 }}>Database (PostgreSQL)</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
@@ -82,7 +82,7 @@ export default function SystemHealth() {
               {health?.components?.disk?.percent ?? 0}%
             </div>
           </div>
-          <div style={{ width: '100%', height: 6, background: 'var(--accent-bg)', borderRadius: 4, marginTop: 12, overflow: 'hidden' }}>
+          <div style={{ width: '100%', height: 6, background: 'var(--brand-bg)', borderRadius: 4, marginTop: 12, overflow: 'hidden' }}>
             <div style={{ width: `${health?.components?.disk?.percent ?? 0}%`, height: '100%', background: '#f59e0b', borderRadius: 4 }} />
           </div>
         </div>
@@ -98,7 +98,7 @@ export default function SystemHealth() {
               {health?.components?.memory?.percent ?? 0}%
             </div>
           </div>
-          <div style={{ width: '100%', height: 6, background: 'var(--accent-bg)', borderRadius: 4, marginTop: 12, overflow: 'hidden' }}>
+          <div style={{ width: '100%', height: 6, background: 'var(--brand-bg)', borderRadius: 4, marginTop: 12, overflow: 'hidden' }}>
             <div style={{ width: `${health?.components?.memory?.percent ?? 0}%`, height: '100%', background: '#10b981', borderRadius: 4 }} />
           </div>
         </div>

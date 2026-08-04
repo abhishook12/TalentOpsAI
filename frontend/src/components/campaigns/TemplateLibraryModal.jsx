@@ -134,7 +134,7 @@ export default function TemplateLibraryModal({ isOpen, onClose, onImport }) {
         
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--card-border)] bg-[var(--card-bg)]">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-[var(--accent)]/20 text-[var(--accent)] rounded-lg">
+            <div className="p-2 bg-[var(--brand)]/20 text-[var(--brand)] rounded-lg">
               <Bookmark size={24} />
             </div>
             <div>
@@ -149,16 +149,17 @@ export default function TemplateLibraryModal({ isOpen, onClose, onImport }) {
 
         {/* Last Email Banner */}
         {lastEmail && (
-          <div className="bg-purple-500/10 border-b border-purple-500/20 p-3 px-6 flex items-center justify-between">
+          <div className="border-b p-3 px-6 flex items-center justify-between" style={{ backgroundColor: 'var(--brand-bg)', borderColor: 'var(--brand-bg)' }}>
             <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-purple-400" />
-              <span className="text-sm text-purple-100">
+              <Clock className="w-4 h-4" style={{ color: 'var(--brand)' }} />
+              <span className="text-sm font-medium" style={{ color: 'var(--brand-strong)' }}>
                 You have an auto-saved draft from <strong>{new Date(lastEmail.updatedAt).toLocaleTimeString()}</strong>.
               </span>
             </div>
             <button 
               onClick={handleUseLastEmail}
-              className="text-xs bg-purple-500 hover:bg-purple-600 text-white px-3 py-1.5 rounded-lg font-medium transition-colors"
+              className="text-xs text-white px-3 py-1.5 rounded-lg font-medium transition-colors hover:brightness-110"
+              style={{ backgroundColor: 'var(--brand)' }}
             >
               Continue from Last Email
             </button>
@@ -171,13 +172,13 @@ export default function TemplateLibraryModal({ isOpen, onClose, onImport }) {
             <div className="flex border-b border-[var(--card-border)]">
               <button 
                 onClick={() => { setActiveTab('past'); setSelectedItem(null); setSearchQuery(''); }}
-                className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'past' ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'past' ? 'border-[var(--brand)] text-[var(--brand)]' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
               >
                 Past Campaigns
               </button>
               <button 
                 onClick={() => { setActiveTab('saved'); setSelectedItem(null); setSearchQuery(''); }}
-                className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'saved' ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'saved' ? 'border-[var(--brand)] text-[var(--brand)]' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
               >
                 Saved Templates
               </button>
@@ -189,7 +190,7 @@ export default function TemplateLibraryModal({ isOpen, onClose, onImport }) {
                 <input 
                   type="text"
                   placeholder={`Search ${activeTab === 'past' ? 'campaigns' : 'templates'}...`}
-                  className="w-full bg-[var(--main-bg)] border border-[var(--card-border)] rounded-lg pl-10 pr-4 py-2 text-sm text-[#fff] focus:outline-none focus:border-[var(--accent)] transition-colors h-11"
+                  className="w-full bg-[var(--main-bg)] border border-[var(--card-border)] rounded-lg pl-10 pr-4 py-2 text-sm text-[#fff] focus:outline-none focus:border-[var(--brand)] transition-colors h-11"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -210,7 +211,7 @@ export default function TemplateLibraryModal({ isOpen, onClose, onImport }) {
                     <button
                       key={camp.campaign_id}
                       onClick={() => loadCampaignDetails(camp)}
-                      className={'w-full text-left p-3 rounded-lg border transition-all ' + (selectedItem?.data?.campaign_id === camp.campaign_id ? 'bg-[var(--accent)]/10 border-[var(--accent)]/50' : 'bg-[var(--bg-page)] border-[var(--border)] hover:border-[var(--border-hover)] hover:bg-[var(--bg-surface)]')}
+                      className={'w-full text-left p-3 rounded-lg border transition-all ' + (selectedItem?.data?.campaign_id === camp.campaign_id ? 'bg-[var(--brand)]/10 border-[var(--brand)]/50' : 'bg-[var(--bg-page)] border-[var(--border)] hover:border-[var(--border-hover)] hover:bg-[var(--bg-surface)]')}
                     >
                       <div className="flex justify-between items-start mb-1">
                         <span className="font-medium text-[var(--text-primary)] truncate pr-2">{camp.name}</span>
@@ -231,7 +232,7 @@ export default function TemplateLibraryModal({ isOpen, onClose, onImport }) {
                     <button
                       key={template.id}
                       onClick={() => selectSavedTemplate(template)}
-                      className={'w-full text-left p-3 rounded-lg border transition-all relative group ' + (selectedItem?.data?.id === template.id ? 'bg-[var(--accent)]/10 border-[var(--accent)]/50' : 'bg-[var(--bg-page)] border-[var(--border)] hover:border-[var(--border-hover)] hover:bg-[var(--bg-surface)]')}
+                      className={'w-full text-left p-3 rounded-lg border transition-all relative group ' + (selectedItem?.data?.id === template.id ? 'bg-[var(--brand)]/10 border-[var(--brand)]/50' : 'bg-[var(--bg-page)] border-[var(--border)] hover:border-[var(--border-hover)] hover:bg-[var(--bg-surface)]')}
                     >
                       <div className="flex justify-between items-start mb-1">
                         <span className="font-medium text-[var(--text-primary)] truncate pr-6">{template.name || 'Untitled Template'}</span>
@@ -258,18 +259,18 @@ export default function TemplateLibraryModal({ isOpen, onClose, onImport }) {
               selectedItem.type === 'campaign' ? (
                 loadingDetails ? (
                   <div className="flex-1 flex flex-col items-center justify-center text-[var(--text-muted)]">
-                    <RefreshCw className="animate-spin mb-4 text-[var(--accent)]" size={32} />
+                    <RefreshCw className="animate-spin mb-4 text-[var(--brand)]" size={32} />
                     Loading template...
                   </div>
                 ) : campaignDetails ? (
                   <div className="flex flex-col h-full">
                     <div className="flex items-center justify-between p-4 border-b border-[var(--border)] bg-[var(--bg-surface)]">
                       <div className="flex items-center gap-2">
-                        <span className="px-3 py-1 bg-[var(--accent)]/10 text-[var(--accent)] rounded-full text-xs font-bold uppercase tracking-wider">{campaignDetails.status}</span>
+                        <span className="px-3 py-1 bg-[var(--brand)]/10 text-[var(--brand)] rounded-full text-xs font-bold uppercase tracking-wider">{campaignDetails.status}</span>
                       </div>
                       <button 
                         onClick={handleUseForCampaign}
-                        className="flex items-center gap-2 px-4 py-2 bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white text-sm font-bold rounded-lg shadow-md transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-white text-sm font-bold rounded-lg shadow-md transition-colors"
                       >
                         <Check size={18} /> Reuse This Template
                       </button>
@@ -282,7 +283,7 @@ export default function TemplateLibraryModal({ isOpen, onClose, onImport }) {
                           : 'No Subject'}
                       </h1>
                       <div className="flex gap-4 text-sm">
-                        <div className="w-12 h-12 rounded-full bg-[var(--accent)]/10 flex items-center justify-center text-[var(--accent)] font-bold text-lg shrink-0">
+                        <div className="w-12 h-12 rounded-full bg-[var(--brand)]/10 flex items-center justify-center text-[var(--brand)] font-bold text-lg shrink-0">
                           {campaignDetails.from_name ? campaignDetails.from_name.charAt(0).toUpperCase() : 'T'}
                         </div>
                         <div className="flex-1">
@@ -322,7 +323,7 @@ export default function TemplateLibraryModal({ isOpen, onClose, onImport }) {
                     </div>
                     <button 
                       onClick={handleUseForCampaign}
-                      className="flex items-center gap-2 px-4 py-2 bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white text-sm font-bold rounded-lg shadow-md transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-white text-sm font-bold rounded-lg shadow-md transition-colors"
                     >
                       <Check size={18} /> Use Template
                     </button>

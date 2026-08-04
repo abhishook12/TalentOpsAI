@@ -37,7 +37,7 @@ export default function CampaignLogs({ campaignId }) {
               onClick={() => setFilter(f)}
               className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors capitalize ${
                 filter === f 
-                  ? 'bg-[var(--accent)] text-white' 
+                  ? 'bg-[var(--brand)] text-white' 
                   : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border)] hover:bg-[var(--card-bg)]'
               }`}
             >
@@ -53,7 +53,7 @@ export default function CampaignLogs({ campaignId }) {
             placeholder="Search email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-48 bg-[var(--bg-surface)] border border-[var(--border)] rounded-md pl-8 pr-3 py-1.5 text-xs focus:border-[var(--accent)] outline-none"
+            className="w-48 bg-[var(--bg-surface)] border border-[var(--border)] rounded-md pl-8 pr-3 py-1.5 text-xs focus:border-[var(--brand)] outline-none"
           />
         </div>
       </div>
@@ -61,7 +61,7 @@ export default function CampaignLogs({ campaignId }) {
       <div className="flex-1 overflow-auto">
         {loading && logs.length === 0 ? (
           <div className="h-full flex items-center justify-center">
-            <Loader2 className="w-6 h-6 animate-spin text-[var(--accent)]" />
+            <Loader2 className="w-6 h-6 animate-spin text-[var(--brand)]" />
           </div>
         ) : filteredLogs.length === 0 ? (
           <div className="p-8 text-center text-sm text-[var(--text-muted)]">No logs match your filter.</div>

@@ -192,14 +192,14 @@ export default function RecipientValidator({ onValidated, initialRecipients = []
         <div className="flex border-b border-[var(--card-border)] bg-[var(--card-bg)]">
           <button 
             className={`flex-1 py-3 px-4 text-sm font-medium flex justify-center items-center gap-2 transition-colors
-              ${activeTab === 'directory' ? 'text-[var(--accent)] border-b-2 border-[var(--accent)] bg-[var(--bg-surface)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-surface)]'}`}
+              ${activeTab === 'directory' ? 'text-[var(--brand)] border-b-2 border-[var(--brand)] bg-[var(--bg-surface)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-surface)]'}`}
             onClick={() => setActiveTab('directory')}
           >
             <Database className="w-4 h-4" /> Directory
           </button>
           <button 
             className={`flex-1 py-3 px-4 text-sm font-medium flex justify-center items-center gap-2 transition-colors
-              ${activeTab === 'manual' ? 'text-[var(--accent)] border-b-2 border-[var(--accent)] bg-[var(--bg-surface)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-surface)]'}`}
+              ${activeTab === 'manual' ? 'text-[var(--brand)] border-b-2 border-[var(--brand)] bg-[var(--bg-surface)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-surface)]'}`}
             onClick={() => setActiveTab('manual')}
           >
             <Type className="w-4 h-4" /> Manual & CSV
@@ -215,7 +215,7 @@ export default function RecipientValidator({ onValidated, initialRecipients = []
                   <input
                     type="text"
                     placeholder="Search by name, email, or company..."
-                    className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-[var(--accent)]"
+                    className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-[var(--brand)]"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
@@ -254,7 +254,7 @@ export default function RecipientValidator({ onValidated, initialRecipients = []
                             className={`px-3 py-1 text-xs rounded-md border transition-colors ${
                               isAdded 
                                 ? 'bg-[var(--bg-surface)] border-[var(--border)] text-[var(--text-muted)]' 
-                                : 'bg-[var(--accent)]/10 border-[var(--accent)]/30 text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white'
+                                : 'bg-[var(--brand)]/10 border-[var(--brand)]/30 text-[var(--brand)] hover:bg-[var(--brand)] hover:text-white'
                             }`}
                           >
                             {isAdded ? 'Added' : 'Add'}
@@ -278,7 +278,7 @@ export default function RecipientValidator({ onValidated, initialRecipients = []
                   <button 
                     onClick={handleValidateManual} 
                     disabled={isValidating || !inputText.trim()}
-                    className="bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white text-xs px-3 py-1.5 rounded-md flex items-center gap-1.5 disabled:opacity-50 transition-colors"
+                    className="bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-white text-xs px-3 py-1.5 rounded-md flex items-center gap-1.5 disabled:opacity-50 transition-colors"
                   >
                     {isValidating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                     Validate & Add
@@ -287,7 +287,7 @@ export default function RecipientValidator({ onValidated, initialRecipients = []
               </div>
               
               <textarea
-                className="flex-1 w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-3 text-sm font-mono resize-none outline-none focus:border-[var(--accent)]"
+                className="flex-1 w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-3 text-sm font-mono resize-none outline-none focus:border-[var(--brand)]"
                 placeholder="Paste email addresses here (one per line)..."
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
@@ -301,7 +301,7 @@ export default function RecipientValidator({ onValidated, initialRecipients = []
       <div className="flex-1 bg-[var(--panel-bg)] border border-[var(--card-border)] rounded-xl overflow-hidden flex flex-col min-h-[300px]">
         <div className="p-3 border-b border-[var(--card-border)] bg-[var(--card-bg)] flex justify-between items-center">
           <span className="font-medium text-sm flex items-center gap-2 text-[var(--text-primary)]">
-            <Users className="w-4 h-4 text-[var(--accent)]" /> Selected Recipients ({validatedList.length})
+            <Users className="w-4 h-4 text-[var(--brand)]" /> Selected Recipients ({validatedList.length})
           </span>
           {validatedList.length > 0 && (
             <button 

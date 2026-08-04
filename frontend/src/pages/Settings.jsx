@@ -139,8 +139,8 @@ export default function Settings() {
                 alignItems: 'center',
                 gap: 12,
                 padding: '12px 16px',
-                background: activeTab === tab.id ? 'var(--accent-bg)' : 'transparent',
-                color: activeTab === tab.id ? 'var(--accent)' : 'var(--text-secondary)',
+                background: activeTab === tab.id ? 'var(--brand-bg)' : 'transparent',
+                color: activeTab === tab.id ? 'var(--brand)' : 'var(--text-secondary)',
                 border: 'none',
                 borderRadius: 12,
                 fontWeight: activeTab === tab.id ? 700 : 500,
@@ -161,13 +161,13 @@ export default function Settings() {
               <h2 style={{ margin: '0 0 24px', fontSize: 20, color: 'var(--text-primary)' }}>Profile Settings</h2>
               
               <div style={{ padding: 24, border: '1px solid var(--card-border)', borderRadius: 12, marginBottom: 24, display: 'flex', gap: 24, alignItems: 'center' }}>
-                <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent), var(--accent-strong))', display: 'grid', placeItems: 'center', color: '#ffffff', fontSize: 32, fontWeight: 800 }}>
+                <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'linear-gradient(135deg, var(--brand), var(--brand-strong))', display: 'grid', placeItems: 'center', color: '#ffffff', fontSize: 32, fontWeight: 800 }}>
                   {user?.first_name?.[0] || user?.email?.[0]?.toUpperCase()}
                 </div>
                 <div>
                   <h3 style={{ margin: '0 0 8px', fontSize: 16, color: 'var(--text-primary)' }}>Profile Picture</h3>
                   <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-secondary)' }}>JPG, GIF or PNG. Max size of 5MB.</p>
-                  <button type="button" style={{ padding: '8px 16px', background: 'var(--accent)', color: '#ffffff', border: 'none', borderRadius: 8, fontWeight: 500, cursor: 'pointer' }}>Change Avatar</button>
+                  <button type="button" style={{ padding: '8px 16px', background: 'var(--brand)', color: '#ffffff', border: 'none', borderRadius: 8, fontWeight: 500, cursor: 'pointer' }}>Change Avatar</button>
                 </div>
               </div>
 
@@ -194,7 +194,7 @@ export default function Settings() {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 24, borderTop: '1px solid var(--card-border)' }}>
-                <button type="submit" disabled={isSaving} style={{ padding: '10px 24px', background: 'var(--accent)', color: '#ffffff', border: 'none', borderRadius: 8, fontWeight: 600, cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.7 : 1 }}>
+                <button type="submit" disabled={isSaving} style={{ padding: '10px 24px', background: 'var(--brand)', color: '#ffffff', border: 'none', borderRadius: 8, fontWeight: 600, cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.7 : 1 }}>
                   {isSaving ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
@@ -218,7 +218,7 @@ export default function Settings() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <input type="password" value={passwordData.currentPassword} onChange={e => setPasswordData(p => ({...p, currentPassword: e.target.value}))} placeholder="Current Password" style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--card-border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', outline: 'none' }} />
                   <input type="password" value={passwordData.newPassword} onChange={e => setPasswordData(p => ({...p, newPassword: e.target.value}))} placeholder="New Password" style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--card-border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', outline: 'none' }} />
-                  <button onClick={handleUpdatePassword} disabled={isSaving} style={{ padding: '8px 16px', background: 'var(--accent-bg)', color: 'var(--accent)', border: 'none', borderRadius: 8, fontWeight: 600, cursor: isSaving ? 'not-allowed' : 'pointer', width: 'fit-content' }}>
+                  <button onClick={handleUpdatePassword} disabled={isSaving} style={{ padding: '8px 16px', background: 'var(--brand-bg)', color: 'var(--brand)', border: 'none', borderRadius: 8, fontWeight: 600, cursor: isSaving ? 'not-allowed' : 'pointer', width: 'fit-content' }}>
                     {isSaving ? 'Updating...' : 'Update Password'}
                   </button>
                 </div>
@@ -247,7 +247,7 @@ export default function Settings() {
               <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--text-primary)' }}>Active Sessions</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ padding: 16, background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--accent-bg)', color: 'var(--accent)', display: 'grid', placeItems: 'center' }}><Laptop size={20} /></div>
+                  <div style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--brand-bg)', color: 'var(--brand)', display: 'grid', placeItems: 'center' }}><Laptop size={20} /></div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Windows / Chrome</div>
@@ -279,7 +279,7 @@ export default function Settings() {
                       padding: 24, 
                       borderRadius: 16, 
                       border: '2px solid',
-                      borderColor: localStorage.getItem('theme') === theme ? 'var(--accent)' : 'var(--card-border)',
+                      borderColor: localStorage.getItem('theme') === theme ? 'var(--brand)' : 'var(--card-border)',
                       background: 'var(--bg-surface)',
                       color: 'var(--text-primary)',
                       cursor: 'pointer',
@@ -290,7 +290,7 @@ export default function Settings() {
                       textTransform: 'capitalize',
                       fontWeight: 600
                     }}>
-                    <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--accent-bg)', display: 'grid', placeItems: 'center', color: 'var(--accent)' }}>
+                    <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--brand-bg)', display: 'grid', placeItems: 'center', color: 'var(--brand)' }}>
                       <Globe size={24} />
                     </div>
                     {theme}

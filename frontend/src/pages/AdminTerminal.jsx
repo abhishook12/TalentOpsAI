@@ -586,7 +586,7 @@ export default function AdminTerminal() {
           >
             <i className="ti ti-clipboard-check" /> Review Panel
             {dataQuality?.needs_review_count != null && (
-              <span style={{ marginLeft: 4, padding: '1px 6px', borderRadius: 999, background: 'var(--accent-bg)', fontSize: 11 }}>
+              <span style={{ marginLeft: 4, padding: '1px 6px', borderRadius: 999, background: 'var(--brand-bg)', fontSize: 11 }}>
                 {fmt(dataQuality.needs_review_count)}
               </span>
             )}

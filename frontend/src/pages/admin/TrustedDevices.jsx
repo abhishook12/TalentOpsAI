@@ -286,23 +286,23 @@ export default function TrustedDevices() {
       <div className="td-metrics-grid">
         <MetricCard 
           loading={loading} title="Trusted Devices" 
-          val={stats.trusted} icon={ShieldCheck} color="var(--success)" 
+          val={stats.trusted} icon={ShieldCheck} color="var(--brand)" 
         />
         <MetricCard 
           loading={loading} title="Pending Approvals" 
-          val={stats.pending} icon={Activity} color="var(--danger)"
+          val={stats.pending} icon={Activity} color="var(--brand-strong)"
           glow={stats.pending > 0}
           subtitle={stats.pending > 0 ? 'Requires immediate action' : 'Queue is clear'}
         />
         <MetricCard 
           loading={loading} title="High-Risk Devices" 
-          val={stats.high_risk} icon={ShieldAlert} color="var(--warning)"
+          val={stats.high_risk} icon={ShieldAlert} color="var(--brand)"
           glow={stats.high_risk > 0}
           subtitle={stats.high_risk > 0 ? 'Review signals below' : 'No anomalies detected'}
         />
         <MetricCard 
           loading={loading} title="Active Sessions" 
-          val={stats.active_sessions} icon={MonitorSmartphone} color="var(--accent)" 
+          val={stats.active_sessions} icon={MonitorSmartphone} color="var(--brand)" 
         />
         <MetricCard 
           loading={loading} title="Blocked/Revoked" 
@@ -646,8 +646,8 @@ export default function TrustedDevices() {
           overflow: hidden;
         }
         .td-metric-card.glow {
-          box-shadow: 0 0 15px color-mix(in srgb, var(--danger) 30%, transparent);
-          border-color: color-mix(in srgb, var(--danger) 50%, transparent);
+          box-shadow: 0 0 15px color-mix(in srgb, var(--brand-strong) 30%, transparent);
+          border-color: color-mix(in srgb, var(--brand-strong) 50%, transparent);
         }
         .td-metric-header {
           display: flex;
@@ -714,7 +714,7 @@ export default function TrustedDevices() {
           left: 0;
           width: 100%;
           height: 2px;
-          background: var(--accent);
+          background: var(--brand);
           border-radius: 2px 2px 0 0;
         }
         .td-tab-pill {
@@ -725,7 +725,7 @@ export default function TrustedDevices() {
           border-radius: 12px;
         }
         .td-tab-pill.red {
-          background: var(--danger);
+          background: var(--brand-strong);
           color: white;
         }
 
@@ -753,8 +753,8 @@ export default function TrustedDevices() {
           transform: translateY(10px);
         }
         .td-bulk-bar {
-          background: color-mix(in srgb, var(--accent) 15%, transparent);
-          border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+          background: color-mix(in srgb, var(--brand) 15%, transparent);
+          border-color: color-mix(in srgb, var(--brand) 30%, transparent);
           opacity: 0;
           pointer-events: none;
           transform: translateY(-10px);
@@ -768,7 +768,7 @@ export default function TrustedDevices() {
         .td-bulk-count {
           font-size: 13px;
           font-weight: 800;
-          color: var(--accent);
+          color: var(--brand);
         }
         .td-bulk-actions {
           display: flex;
@@ -789,10 +789,10 @@ export default function TrustedDevices() {
           color: var(--text-primary);
         }
         .td-bulk-btn:hover { filter: brightness(1.2); }
-        .td-bulk-btn.trust { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success); }
-        .td-bulk-btn.block { background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger); }
-        .td-bulk-btn.revoke { background: color-mix(in srgb, var(--warning) 20%, transparent); color: var(--warning); }
-        .td-bulk-btn.reverify { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); }
+        .td-bulk-btn.trust { background: color-mix(in srgb, var(--brand) 20%, transparent); color: var(--brand); }
+        .td-bulk-btn.block { background: color-mix(in srgb, var(--brand-strong) 20%, transparent); color: var(--brand-strong); }
+        .td-bulk-btn.revoke { background: color-mix(in srgb, var(--brand) 20%, transparent); color: var(--brand); }
+        .td-bulk-btn.reverify { background: color-mix(in srgb, var(--brand) 20%, transparent); color: var(--brand); }
         .td-bulk-btn.clear { background: transparent; border: 1px solid var(--text-muted); }
         .td-bulk-divider { width: 1px; height: 16px; background: var(--card-border-strong); margin: 0 4px; }
 
@@ -848,7 +848,7 @@ export default function TrustedDevices() {
           vertical-align: top;
           transition: opacity 0.2s;
         }
-        .td-table tr.selected td { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+        .td-table tr.selected td { background: color-mix(in srgb, var(--brand) 5%, transparent); }
         .td-table tr.mutating td { opacity: 0.4; pointer-events: none; }
         .td-table tr:last-child td { border-bottom: none; }
         
@@ -871,7 +871,7 @@ export default function TrustedDevices() {
         .td-device-name .edit-icon { opacity: 0; transition: opacity 0.2s; }
         .td-device-name:hover .edit-icon { opacity: 1; }
         .td-inline-input {
-          background: var(--bg-surface); border: 1px solid var(--accent);
+          background: var(--bg-surface); border: 1px solid var(--brand);
           color: var(--text-primary); border-radius: 4px;
           font-size: 13px; font-weight: 700; padding: 2px 6px;
           position: absolute; top: -2px; left: -2px; outline: none; width: 100%;
@@ -892,9 +892,9 @@ export default function TrustedDevices() {
         .td-risk-pill {
           font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 12px; cursor: help;
         }
-        .td-risk-pill.low { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success); }
-        .td-risk-pill.med { background: color-mix(in srgb, var(--warning) 20%, transparent); color: var(--warning); }
-        .td-risk-pill.high { background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger); }
+        .td-risk-pill.low { background: color-mix(in srgb, var(--brand) 20%, transparent); color: var(--brand); }
+        .td-risk-pill.med { background: color-mix(in srgb, var(--brand) 20%, transparent); color: var(--brand); }
+        .td-risk-pill.high { background: color-mix(in srgb, var(--brand-strong) 20%, transparent); color: var(--brand-strong); }
         
         .td-risk-popover {
           position: absolute; bottom: 100%; left: 0; width: 220px;
@@ -907,15 +907,15 @@ export default function TrustedDevices() {
         .td-risk-pill-wrapper:hover .td-risk-popover { opacity: 1; }
         .td-rp-title { font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
         .td-rp-item { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: flex; gap: 6px; }
-        .td-rp-weight { color: var(--danger); font-weight: 700; }
+        .td-rp-weight { color: var(--brand-strong); font-weight: 700; }
 
         .td-sla { font-size: 11px; font-weight: 700; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; }
-        .td-sla.red { color: var(--danger); }
+        .td-sla.red { color: var(--brand-strong); }
         .td-expiry { font-size: 11px; font-weight: 700; color: var(--text-muted); }
 
         .td-activity-cell { font-size: 12px; }
         .td-active-sessions { font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
-        .td-pulse-dot { width: 6px; height: 6px; background: var(--success); border-radius: 50%; box-shadow: 0 0 5px var(--success); animation: td-pulse 2s infinite; }
+        .td-pulse-dot { width: 6px; height: 6px; background: var(--brand); border-radius: 50%; box-shadow: 0 0 5px var(--brand); animation: td-pulse 2s infinite; }
         .td-last-seen { color: var(--text-secondary); }
 
         .td-row-actions { display: flex; gap: 6px; justify-content: flex-end; align-items: center; }
@@ -925,9 +925,9 @@ export default function TrustedDevices() {
           display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;
         }
         .td-icon-btn:hover { background: var(--card-border-strong); color: var(--text-primary); }
-        .td-icon-btn.trust:hover { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success); }
-        .td-icon-btn.block:hover, .td-icon-btn.revoke:hover { background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger); }
-        .td-icon-btn.reverify:hover { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); }
+        .td-icon-btn.trust:hover { background: color-mix(in srgb, var(--brand) 20%, transparent); color: var(--brand); }
+        .td-icon-btn.block:hover, .td-icon-btn.revoke:hover { background: color-mix(in srgb, var(--brand-strong) 20%, transparent); color: var(--brand-strong); }
+        .td-icon-btn.reverify:hover { background: color-mix(in srgb, var(--brand) 20%, transparent); color: var(--brand); }
         .td-action-divider { width: 1px; height: 16px; background: var(--card-border-strong); margin: 0 4px; }
 
         .td-empty-state { text-align: center; padding: 60px 20px; }

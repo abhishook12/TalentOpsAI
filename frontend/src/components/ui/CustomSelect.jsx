@@ -39,7 +39,7 @@ export default function CustomSelect({
           height: '100%',
           padding: '0', // The wrapper will handle padding usually, or we pass it via class
           background: 'transparent',
-          color: selectedOption && selectedOption.value !== '' ? '#fff' : 'var(--text-secondary)',
+          color: selectedOption && selectedOption.value !== '' ? 'var(--text-primary)' : 'var(--text-secondary)',
           fontSize: 'inherit',
           fontFamily: 'inherit',
           width: '100%',
@@ -48,7 +48,7 @@ export default function CustomSelect({
           cursor: 'pointer',
         }}
       >
-        <span className="truncate pr-4">{selectedOption ? selectedOption.label : placeholder}</span>
+        <span className="truncate px-3 pr-4">{selectedOption ? selectedOption.label : placeholder}</span>
         <ChevronDown 
           size={16} 
           className="text-[var(--text-muted)] flex-shrink-0 transition-transform duration-200"
@@ -88,8 +88,8 @@ export default function CustomSelect({
                     className="w-full text-left px-3 py-2 rounded-md transition-colors flex items-center gap-2"
                     style={{
                       fontSize: '13px',
-                      color: isActive ? 'var(--accent)' : 'var(--text-primary)',
-                      background: isActive ? 'var(--accent-bg)' : 'transparent',
+                      color: isActive ? 'var(--brand)' : 'var(--text-primary)',
+                      background: isActive ? 'var(--brand-bg)' : 'transparent',
                       cursor: 'pointer',
                       border: 'none',
                       outline: 'none',
@@ -97,7 +97,7 @@ export default function CustomSelect({
                     onMouseEnter={(e) => {
                       if (!isActive) {
                         e.currentTarget.style.background = 'var(--main-bg)';
-                        e.currentTarget.style.color = '#fff';
+                        e.currentTarget.style.color = 'var(--text-primary)';
                       }
                     }}
                     onMouseLeave={(e) => {

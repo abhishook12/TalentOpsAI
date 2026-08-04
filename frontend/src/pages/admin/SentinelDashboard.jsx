@@ -98,7 +98,7 @@ export default function SentinelDashboard({ setToast }) {
             Overall Quality Score
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: '1rem' }}>
-            <span style={{ fontSize: '4rem', fontWeight: 800, lineHeight: 1, color: 'var(--accent)' }}>
+            <span style={{ fontSize: '4rem', fontWeight: 800, lineHeight: 1, color: 'var(--brand)' }}>
               {health?.overall_quality_score}
             </span>
             <span style={{ fontSize: '1.5rem', color: 'var(--text-muted)', paddingBottom: '0.5rem' }}>/ 100</span>
@@ -123,7 +123,7 @@ export default function SentinelDashboard({ setToast }) {
               <div style={{ 
                 width: `${progressPct}%`, 
                 height: '100%', 
-                background: 'linear-gradient(90deg, var(--accent), #ff00ff)',
+                background: 'linear-gradient(90deg, var(--brand), #ff00ff)',
                 transition: 'width 1s ease'
               }} />
             </div>

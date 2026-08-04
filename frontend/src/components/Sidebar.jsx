@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link as NavLink, useLocation } from '@tanstack/react-router'
 import api, { clearStoredToken } from '../services/api'
-import { LayoutDashboard, Activity, Users, Map, BarChart2, Search, Eye, Radar, LogOut, ShieldCheck, Settings, UserCircle, HeartPulse, UserCog, Server, Shield } from 'lucide-react'
+import { LayoutDashboard, Activity, Users, Map, BarChart2, Search, Eye, Radar, LogOut, ShieldCheck, Settings, UserCircle, HeartPulse, UserCog, Server, Shield, Mail } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 export default function Sidebar() {
@@ -52,7 +52,9 @@ export default function Sidebar() {
   const adminNav = [
     { isGroupHeader: true, label: 'Command Center' },
     { to: '/admin', label: 'Admin Terminal', icon: LayoutDashboard },
-    { to: '/sentinel', label: 'Data Quality (SENTINEL)', icon: HeartPulse },
+    { to: '/sentinel', label: 'Data Intelligence', icon: HeartPulse },
+    { to: '/review-queue', label: 'Review Queue', icon: Search },
+    { to: '/mailintel', label: 'MAILINTEL', icon: Mail },
     { to: '/admin/users', label: 'User Management', icon: UserCog },
     { to: '/admin/visitor-analytics', label: 'Visitor Analytics', icon: Eye },
     { 
@@ -156,9 +158,9 @@ export default function Sidebar() {
                 borderRadius: 8,
                 textDecoration: 'none',
                 color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
-                background: active ? 'var(--accent-bg)' : 'transparent',
+                background: active ? 'var(--brand-bg)' : 'transparent',
                 border: '1px solid transparent',
-                borderLeft: active ? '4px solid var(--accent)' : '4px solid transparent',
+                borderLeft: active ? '4px solid var(--brand)' : '4px solid transparent',
                 boxShadow: active ? 'var(--shadow)' : 'none',
                 transition: 'all 0.15s ease',
                 fontSize: 13.5,
@@ -167,7 +169,7 @@ export default function Sidebar() {
               }}
               onMouseEnter={(event) => {
                 if (active) return
-                event.currentTarget.style.background = 'var(--accent-bg)'
+                event.currentTarget.style.background = 'var(--brand-bg)'
                 event.currentTarget.style.borderColor = 'transparent'
                 event.currentTarget.style.boxShadow = 'var(--shadow)'
                 event.currentTarget.style.transform = 'translateY(-1px)'

@@ -18,7 +18,7 @@ const shellStyles = `
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: radial-gradient(circle at center, var(--accent-bg) 0%, rgba(16, 16, 20, 1) 60%), #101014;
+    background: radial-gradient(circle at center, var(--brand-bg) 0%, rgba(16, 16, 20, 1) 60%), #101014;
     border-right: 1px solid rgba(255, 255, 255, 0.05);
     overflow: hidden;
   }
@@ -64,7 +64,7 @@ const shellStyles = `
     position: absolute;
     width: 600px;
     height: 600px;
-    background: radial-gradient(circle, var(--accent-bg) 0%, transparent 70%);
+    background: radial-gradient(circle, var(--brand-bg) 0%, transparent 70%);
     border-radius: 50%;
     z-index: 0;
   }

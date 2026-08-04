@@ -273,7 +273,7 @@ export default function Analytics() {
       <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
         <h1 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: 0, lineHeight: 1.1 }}>Advanced Intelligence</h1>
         <div style={{ display: 'flex', gap: 8 }}>
-          <KPI inline label="Total Visits" value={(visits?.total_visits || 0).toLocaleString()} color="var(--accent)" icon="ti-eye" />
+          <KPI inline label="Total Visits" value={(visits?.total_visits || 0).toLocaleString()} color="var(--brand)" icon="ti-eye" />
           <KPI inline label="Today" value={(visits?.today || 0).toLocaleString()} sub={todayChange !== null ? `${todayChange > 0 ? '▲' : '▼'} ${Math.abs(todayChange)}%` : null} color="#185FA5" icon="ti-calendar-today" />
           <KPI inline label="Yesterday" value={(visits?.yesterday || 0).toLocaleString()} color="#0F6E56" icon="ti-calendar" />
         </div>
@@ -282,7 +282,7 @@ export default function Analytics() {
         <div style={{ display: 'flex', gap: 8 }}>
           <KPI inline label="Known State" value={dq?.known_state_count?.toLocaleString()} color="#0F6E56" icon="ti-map-pin-filled" />
           <KPI inline label="Explicit State" value={dq?.explicit_state_count?.toLocaleString()} color="#185FA5" icon="ti-target" />
-          <KPI inline label="Inferred State" value={dq?.inferred_state_count?.toLocaleString()} color="var(--accent)" icon="ti-wand" />
+          <KPI inline label="Inferred State" value={dq?.inferred_state_count?.toLocaleString()} color="var(--brand)" icon="ti-wand" />
           <KPI inline label="Unknown State" value={dq?.unknown_state_count?.toLocaleString()} color="#ef4444" icon="ti-alert-triangle" />
         </div>
         <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, padding: '8px 12px', background: 'rgba(239, 68, 68, 0.05)', borderRadius: 8, border: '1px solid rgba(239, 68, 68, 0.1)' }}>
@@ -296,8 +296,8 @@ export default function Analytics() {
         <SectionCard title="Analytics Setup" icon="ti-info-circle" compact style={{ gridColumn: '1 / -1' }}>
           <div style={{ display: 'grid', placeItems: 'center', height: '100%', padding: 18, textAlign: 'center' }}>
             <div style={{ maxWidth: 640 }}>
-              <div style={{ width: 54, height: 54, borderRadius: 16, background: 'var(--accent-bg)', border: '1px solid rgba(45, 212, 191, 0.22)', display: 'grid', placeItems: 'center', margin: '0 auto 10px' }}>
-                <i className="ti ti-chart-bar" style={{ fontSize: 18, color: 'var(--accent)' }} />
+              <div style={{ width: 54, height: 54, borderRadius: 16, background: 'var(--brand-bg)', border: '1px solid rgba(45, 212, 191, 0.22)', display: 'grid', placeItems: 'center', margin: '0 auto 10px' }}>
+                <i className="ti ti-chart-bar" style={{ fontSize: 18, color: 'var(--brand)' }} />
               </div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>No analytics data yet</div>
               <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
@@ -531,7 +531,7 @@ export default function Analytics() {
                 </ChartBox>
               ) : (
                 <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
-                  <i className="ti ti-category" style={{ fontSize: 24, display: 'block', marginBottom: 8, color: 'var(--accent)' }} />
+                  <i className="ti ti-category" style={{ fontSize: 24, display: 'block', marginBottom: 8, color: 'var(--brand)' }} />
                   No taxonomy data yet. Run AI Sync to categorize titles.
                 </div>
               )}
@@ -546,9 +546,9 @@ export default function Analytics() {
                 <KPI inline label="Total Active" value={taxonomyData?.total?.toLocaleString() || '0'} color="#185FA5" icon="ti-users" />
               </div>
 
-              <div style={{ padding: '14px 16px', background: 'var(--accent-bg)', border: '1px solid rgba(45, 212, 191, 0.15)', borderRadius: 10 }}>
+              <div style={{ padding: '14px 16px', background: 'var(--brand-bg)', border: '1px solid rgba(45, 212, 191, 0.15)', borderRadius: 10 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
-                  <i className="ti ti-sparkles" style={{ color: 'var(--accent)', marginRight: 4 }} />
+                  <i className="ti ti-sparkles" style={{ color: 'var(--brand)', marginRight: 4 }} />
                   AI Taxonomy Sync
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 10 }}>
@@ -559,7 +559,7 @@ export default function Analytics() {
                   disabled={syncing || (taxonomyData?.uncategorized === 0)}
                   style={{
                     padding: '8px 16px', borderRadius: 8, border: 'none',
-                    background: syncing ? 'var(--card-border)' : 'var(--accent)',
+                    background: syncing ? 'var(--card-border)' : 'var(--brand)',
                     color: 'var(--text-primary)', fontSize: 12, fontWeight: 600,
                     cursor: syncing ? 'not-allowed' : 'pointer',
                     display: 'flex', alignItems: 'center', gap: 6,

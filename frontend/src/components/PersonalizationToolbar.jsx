@@ -18,7 +18,7 @@ export default function PersonalizationToolbar({ onInsert }) {
           key={v.tag}
           type="button"
           onClick={() => onInsert(v.tag)}
-          className="text-xs px-2 py-1 bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 rounded font-mono transition-colors"
+          className="text-xs px-2 py-1 bg-[var(--brand)]/10 text-[var(--brand)] hover:bg-[var(--brand)]/20 rounded font-mono transition-colors"
         >
           {v.label}
         </button>

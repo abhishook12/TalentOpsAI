@@ -526,7 +526,7 @@ export default function Campaigns() {
             </button>
             <button 
               onClick={startNewCampaign}
-              className="bg-white text-black px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-gray-200 transition-colors shadow-sm"
+              className="bg-[var(--brand)] text-[#14161c] px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-[var(--brand-strong)] transition-colors shadow-sm"
             >
               <Plus size={16} /> New Campaign
             </button>
@@ -594,7 +594,7 @@ export default function Campaigns() {
                 placeholder="Search campaigns..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#1a1a1a] border border-white/5 rounded-xl pl-9 pr-9 py-2.5 text-sm text-white focus:border-white/20 focus:outline-none transition-colors placeholder:text-gray-500"
+                className="w-full bg-[#1a1a1a] border border-white/5 rounded-xl !pl-10 pr-9 py-2.5 text-sm text-white focus:border-white/20 focus:outline-none transition-colors placeholder:text-gray-500"
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-5 h-5 rounded border border-white/10 bg-[#222] text-gray-400 text-[10px] font-bold">/</div>
             </div>
@@ -644,7 +644,7 @@ export default function Campaigns() {
               exit={{ y: 20, opacity: 0 }}
               className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-[var(--main-bg)] border border-[var(--card-border)] rounded-xl shadow-2xl z-50 flex items-center p-2 px-4 gap-4"
             >
-              <div className="text-sm font-bold text-white bg-[var(--accent)]/20 px-3 py-1 rounded-lg">
+              <div className="text-sm font-bold text-white bg-[var(--brand)]/20 px-3 py-1 rounded-lg">
                 {selectedIds.size} Selected
               </div>
               <div className="w-[1px] h-6 bg-[var(--card-border)]"></div>
@@ -707,7 +707,7 @@ export default function Campaigns() {
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-2">
                             <div className="font-bold text-white text-[15px]">{c.name}</div>
-                            {c.is_test && <span className="text-[10px] px-1.5 py-0.5 border uppercase font-bold rounded" style={{ color: 'var(--accent)', backgroundColor: 'var(--accent-bg)', borderColor: 'var(--accent-bg)' }}>Test</span>}
+                            {c.is_test && <span className="text-[10px] px-1.5 py-0.5 border uppercase font-bold rounded" style={{ color: 'var(--brand)', backgroundColor: 'var(--brand-bg)', borderColor: 'var(--brand-bg)' }}>Test</span>}
                             {isFailed && <span className="text-[10px] px-1.5 py-0.5 bg-red-500 text-white font-bold rounded-full">{c.stats.failed} failed</span>}
                           </div>
                           <div className="text-xs text-[#777] mt-1.5 font-medium">{String(c.campaign_id).slice(0,8)}</div>
@@ -720,7 +720,7 @@ export default function Campaigns() {
                             c.status === 'draft' ? 'bg-transparent text-white' :
                             'bg-red-500/20 text-red-400 border border-red-500/30'
                           }`}
-                            style={c.status === 'active' ? { backgroundColor: 'var(--accent-bg)', color: 'var(--accent)' } : {}}
+                            style={c.status === 'active' ? { backgroundColor: 'var(--brand-bg)', color: 'var(--brand)' } : {}}
                           >
                             <div className={`w-1.5 h-1.5 rounded-full ${
                               c.status === 'active' ? '' :
@@ -729,7 +729,7 @@ export default function Campaigns() {
                               c.status === 'draft' ? 'bg-gray-400' :
                               'bg-red-500'
                             }`}
-                            style={c.status === 'active' ? { backgroundColor: 'var(--accent-strong)' } : {}}
+                            style={c.status === 'active' ? { backgroundColor: 'var(--brand-strong)' } : {}}
                             ></div>
                             {c.status}
                           </span>
@@ -827,7 +827,7 @@ export default function Campaigns() {
             </div>
             <div className="ml-4 flex items-center text-[10px] uppercase font-bold text-[var(--text-muted)] tracking-wider bg-[var(--bg-surface)] px-2 py-1 rounded border border-[var(--border)]">
               {isSaving ? (
-                <><Loader2 className="w-3 h-3 mr-1.5 animate-spin text-[var(--accent)]" /> Saving</>
+                <><Loader2 className="w-3 h-3 mr-1.5 animate-spin text-[var(--brand)]" /> Saving</>
               ) : lastSaved ? (
                 <><CheckCircle2 className="w-3 h-3 mr-1.5 text-green-500" /> Saved {lastSaved.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</>
               ) : (

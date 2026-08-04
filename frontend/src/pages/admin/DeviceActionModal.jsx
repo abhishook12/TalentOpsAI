@@ -6,7 +6,7 @@ const ACTION_CONFIG = {
     title: 'Approve device',
     consequence: 'Device signs in without further approval.',
     icon: CheckCircle,
-    color: 'var(--success)',
+    color: 'var(--brand)',
     requireReason: false,
     showDuration: true,
     showTerminate: false
@@ -15,7 +15,7 @@ const ACTION_CONFIG = {
     title: 'Block device',
     consequence: 'Sign-ins refused, existing sessions killed.',
     icon: ShieldAlert,
-    color: 'var(--danger)',
+    color: 'var(--brand-strong)',
     requireReason: true,
     showDuration: false,
     showTerminate: true
@@ -24,7 +24,7 @@ const ACTION_CONFIG = {
     title: 'Revoke trust',
     consequence: 'Returns to pending on next sign-in.',
     icon: ShieldAlert,
-    color: 'var(--warning)',
+    color: 'var(--brand)',
     requireReason: true,
     showDuration: false,
     showTerminate: true
@@ -42,7 +42,7 @@ const ACTION_CONFIG = {
     title: 'Force re-verification',
     consequence: 'Sessions stay, next sign-in needs MFA.',
     icon: Zap,
-    color: 'var(--accent)',
+    color: 'var(--brand)',
     requireReason: false,
     showDuration: false,
     showTerminate: false
@@ -51,7 +51,7 @@ const ACTION_CONFIG = {
     title: 'Terminate sessions',
     consequence: 'Active sessions end, trust status unchanged.',
     icon: X,
-    color: 'var(--danger)',
+    color: 'var(--brand-strong)',
     requireReason: false,
     showDuration: false,
     showTerminate: false
@@ -141,7 +141,7 @@ export default function DeviceActionModal({ isOpen, onClose, onConfirm, actionTy
                   type="checkbox" 
                   checked={terminateSessions}
                   onChange={e => setTerminateSessions(e.target.checked)}
-                  className="w-4 h-4 rounded border-[var(--card-border-strong)] bg-[var(--main-bg)] text-[var(--danger)] focus:ring-[var(--danger)]"
+                  className="w-4 h-4 rounded border-[var(--card-border-strong)] bg-[var(--main-bg)] text-[var(--brand-strong)] focus:ring-[var(--brand-strong)]"
                 />
                 <span className="text-sm font-semibold text-[var(--text-primary)]">Terminate active sessions immediately</span>
               </label>
@@ -149,7 +149,7 @@ export default function DeviceActionModal({ isOpen, onClose, onConfirm, actionTy
 
             <div>
               <label className="flex items-center justify-between text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
-                Reason {config.requireReason ? <span className="text-[var(--danger)]">*Required</span> : '(Optional)'}
+                Reason {config.requireReason ? <span className="text-[var(--brand-strong)]">*Required</span> : '(Optional)'}
               </label>
               
               <div className="flex flex-wrap gap-2 mb-3">

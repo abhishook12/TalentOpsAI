@@ -93,13 +93,13 @@ const activityRoute = createRoute({
 const reviewQueueRoute = createRoute({
   getParentRoute: () => adminLayoutRoute,
   path: '/review-queue',
-  component: lazyComponent(() => import('./pages/ReviewQueue')),
+  component: lazyComponent(() => import('./pages/admin/ReviewQueue')),
 })
 
 const sentinelRoute = createRoute({
   getParentRoute: () => adminLayoutRoute,
   path: '/sentinel',
-  component: lazyComponent(() => import('./pages/admin/SentinelDashboard')),
+  component: lazyComponent(() => import('./pages/admin/DataIntelligence')),
 })
 
 const settingsRoute = createRoute({
@@ -196,6 +196,12 @@ const campaignsRoute = createRoute({
   component: lazyComponent(() => import('./pages/Campaigns')),
 })
 
+const mailIntelRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/mailintel',
+  component: lazyComponent(() => import('./pages/MailIntelDashboard')),
+})
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -210,6 +216,7 @@ const routeTree = rootRoute.addChildren([
   statesRoute,
   companiesRoute,
   campaignsRoute,
+  mailIntelRoute,
   profileRoute,
   settingsRoute,
   adminLayoutRoute.addChildren([

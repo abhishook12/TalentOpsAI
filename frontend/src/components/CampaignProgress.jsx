@@ -49,8 +49,9 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
   const progressPercent = data.progress_percent || 0;
   
   const formatETA = (seconds) => {
-    if (!seconds) return 'Calculating...';
-    if (seconds < 60) return '< 1 min';
+    if (!seconds && seconds !== 0) return 'Calculating...';
+    if (seconds === 0) return 'Done!';
+    if (seconds < 60) return `~${Math.max(1, seconds)} secs`;
     const mins = Math.floor(seconds / 60);
     return `~${mins} min${mins > 1 ? 's' : ''}`;
   };
@@ -114,7 +115,7 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">Campaign Progress</span>
-                  {isConnecting && <Loader2 className="w-4 h-4 animate-spin text-[var(--accent)]" />}
+                  {isConnecting && <Loader2 className="w-4 h-4 animate-spin text-[var(--brand)]" />}
               <span className={`text-xs px-2 py-0.5 rounded-full border ${
                 data.status === 'active' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
                 data.status === 'paused' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
@@ -146,7 +147,7 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
               </button>
             ) : null}
             {data.status === 'paused' && data.sent > 0 && (
-              <button onClick={() => handleAction('resume')} className="btn-secondary text-sm py-1.5 px-4 flex items-center gap-1 border-[var(--accent)]/50 text-[var(--accent)]">
+              <button onClick={() => handleAction('resume')} className="btn-secondary text-sm py-1.5 px-4 flex items-center gap-1 border-[var(--brand)]/50 text-[var(--brand)]">
                 <RefreshCw className="w-4 h-4" /> Resume
               </button>
             )}
@@ -160,7 +161,7 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
         
         <div className="h-3 bg-[var(--card-bg)] rounded-full overflow-hidden">
           <div 
-            className="h-full bg-gradient-to-r from-[var(--accent)] to-purple-500 transition-all duration-500 ease-out"
+            className="h-full bg-gradient-to-r from-[var(--brand)] to-[var(--brand-strong)] transition-all duration-500 ease-out"
             style={{ width: `${progressPercent}%` }}
           />
         </div>

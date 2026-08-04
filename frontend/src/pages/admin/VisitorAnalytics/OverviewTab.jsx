@@ -26,9 +26,9 @@ export default function OverviewTab() {
 
   const kpis = [
     { label: 'Visitors Today', value: stats?.visitors_today, icon: Users, color: '#4ade80' },
-    { label: 'Active Now', value: stats?.active_now, icon: Activity, color: '#60a5fa' },
-    { label: 'Unique Users', value: stats?.unique_users, icon: Users, color: '#a78bfa' },
-    { label: 'Returning Users', value: stats?.returning_users, icon: MousePointerClick, color: '#f472b6' },
+    { label: 'Active Now', value: stats?.active_now, icon: Activity, color: 'var(--brand)' },
+    { label: 'Unique Users', value: stats?.unique_users, icon: Users, color: 'var(--brand)' },
+    { label: 'Returning Users', value: stats?.returning_users, icon: MousePointerClick, color: 'var(--brand)' },
     { label: 'Avg Session', value: stats ? formatSecs(stats.avg_session_duration_sec) : null, icon: Clock, color: '#fb923c' },
     { label: 'Bounce Rate', value: stats ? `${stats.bounce_rate}%` : null, icon: MousePointerClick, color: '#f87171' },
     { label: 'Avg Pages / Session', value: stats?.avg_pages_per_session, icon: MousePointerClick, color: '#2dd4bf' },

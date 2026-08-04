@@ -57,8 +57,8 @@ const formStyles = `
   }
 
   .auth-input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 4px var(--accent-bg);
+    border-color: var(--brand);
+    box-shadow: 0 0 0 4px var(--brand-bg);
   }
 
   .auth-select {
@@ -76,8 +76,8 @@ const formStyles = `
   }
 
   .auth-select:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 4px var(--accent-bg);
+    border-color: var(--brand);
+    box-shadow: 0 0 0 4px var(--brand-bg);
   }
 
   .auth-eye-button {
@@ -122,8 +122,8 @@ const formStyles = `
   }
   
   .auth-check:checked {
-    background: var(--accent);
-    border-color: var(--accent);
+    background: var(--brand);
+    border-color: var(--brand);
   }
   
   .auth-check:checked::after {
@@ -140,7 +140,7 @@ const formStyles = `
   
   .auth-check:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px var(--accent-bg);
+    box-shadow: 0 0 0 3px var(--brand-bg);
   }
 
   .auth-button {
@@ -148,7 +148,7 @@ const formStyles = `
     height: 44px;
     border: none;
     border-radius: 8px;
-    background: var(--accent);
+    background: var(--brand);
     color: #fff;
     font-size: 14px;
     font-weight: 500;
@@ -162,7 +162,7 @@ const formStyles = `
   }
 
   .auth-button:hover:not(:disabled) {
-    background: var(--accent-strong);
+    background: var(--brand-strong);
   }
 
   .auth-button:disabled {
@@ -191,7 +191,7 @@ const formStyles = `
   }
 
   .auth-mini-link {
-    color: var(--accent);
+    color: var(--brand);
     text-decoration: underline;
     text-underline-offset: 2px;
     font-weight: 500;
@@ -199,11 +199,11 @@ const formStyles = `
   }
   
   .auth-mini-link:hover {
-    color: var(--accent-strong);
+    color: var(--brand-strong);
   }
 
   .auth-footer-link {
-    color: var(--accent);
+    color: var(--brand);
     text-decoration: none;
     font-weight: 500;
   }

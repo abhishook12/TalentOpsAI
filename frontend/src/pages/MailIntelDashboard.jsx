@@ -96,8 +96,8 @@ export default function MailIntelDashboard() {
       <div className="mb-10 flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 rounded-lg border" style={{ background: 'var(--accent-bg)', borderColor: 'var(--accent-bg)' }}>
-              <Activity size={24} style={{ color: 'var(--accent-strong)' }} />
+            <div className="p-2 rounded-lg border" style={{ background: 'var(--brand-bg)', borderColor: 'var(--brand-bg)' }}>
+              <Activity size={24} style={{ color: 'var(--brand-strong)' }} />
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-white">MAILINTEL</h1>
           </div>
@@ -116,7 +116,7 @@ export default function MailIntelDashboard() {
         <div className="flex justify-between items-end mb-2 relative z-10">
           <div>
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Database size={18} style={{ color: 'var(--accent)' }} />
+              <Database size={18} style={{ color: 'var(--brand)' }} />
               Database Coverage Engine
             </h3>
             <p className="text-sm text-gray-400 mt-1">
@@ -124,7 +124,7 @@ export default function MailIntelDashboard() {
             </p>
           </div>
           <div className="text-right">
-            <span className="text-2xl font-bold" style={{ color: 'var(--accent)' }}>
+            <span className="text-2xl font-bold" style={{ color: 'var(--brand)' }}>
               {(((stats?.total - stats?.never_checked) / (stats?.total || 1)) * 100).toFixed(1)}%
             </span>
             <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mt-1">Processed</p>
@@ -135,8 +135,8 @@ export default function MailIntelDashboard() {
             className="h-full rounded-full transition-all duration-1000 ease-out"
             style={{ 
               width: `${((stats?.total - stats?.never_checked) / (stats?.total || 1)) * 100}%`,
-              background: 'linear-gradient(90deg, var(--accent), var(--accent-strong))',
-              boxShadow: '0 0 10px var(--accent-bg)'
+              background: 'linear-gradient(90deg, var(--brand), var(--brand-strong))',
+              boxShadow: '0 0 10px var(--brand-bg)'
             }}
           />
         </div>
@@ -186,11 +186,11 @@ export default function MailIntelDashboard() {
         
         {/* Domain Reputation Panel */}
         <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-[#121214] p-6 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 opacity-50" style={{ background: 'linear-gradient(to right, var(--accent), var(--accent-strong), #e0c274)' }} />
+          <div className="absolute top-0 left-0 w-full h-1 opacity-50" style={{ background: 'linear-gradient(to right, var(--brand), var(--brand-strong), #e0c274)' }} />
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-xl font-bold flex items-center gap-2">
-                <BarChart3 size={20} style={{ color: 'var(--accent-strong)' }} />
+                <BarChart3 size={20} style={{ color: 'var(--brand-strong)' }} />
                 Domain Reputation Insights
               </h2>
               <p className="text-sm text-gray-400 mt-1">Real-time deliverability across enterprise domains</p>
@@ -227,7 +227,7 @@ export default function MailIntelDashboard() {
                     <td className="py-4 px-4">
                       <span className={d.bounce_rate > 5 ? 'text-red-400' : 'text-gray-400'}>{d.bounce_rate}%</span>
                     </td>
-                    <td className="py-4 px-4 font-medium" style={{ color: 'var(--accent)' }}>{d.reply_rate}%</td>
+                    <td className="py-4 px-4 font-medium" style={{ color: 'var(--brand)' }}>{d.reply_rate}%</td>
                   </tr>
                 ))}
                 {domains.length === 0 && (
@@ -244,7 +244,7 @@ export default function MailIntelDashboard() {
         <div className="flex flex-col gap-6">
           <div className="rounded-2xl border border-white/10 bg-[#121214] p-6">
             <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
-              <Filter size={18} style={{ color: 'var(--accent)' }} />
+              <Filter size={18} style={{ color: 'var(--brand)' }} />
               Bulk Cleanup Rules
             </h2>
             <p className="text-sm text-gray-400 mb-6">Apply MAILINTEL filters to automatically quarantine hazardous contacts and protect sender reputation.</p>

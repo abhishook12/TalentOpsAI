@@ -76,7 +76,7 @@ export default function WorkerDashboard() {
         <div style={{ color: '#9ca3af' }}>Loading...</div>
       ) : (
         <table style={{ width: '100%', textAlign: 'left', background: 'var(--bg-surface)', backdropFilter: 'blur(4px)', borderRadius: '8px', overflow: 'hidden', borderCollapse: 'collapse' }}>
-          <thead style={{ background: 'var(--accent-bg)' }}>
+          <thead style={{ background: 'var(--brand-bg)' }}>
             <tr>
               <th style={{ padding: '12px 16px', color: '#e5e7eb', borderBottom: '1px solid var(--card-border)' }}>Name</th>
               <th style={{ padding: '12px 16px', color: '#e5e7eb', borderBottom: '1px solid var(--card-border)' }}>PID</th>
@@ -117,7 +117,7 @@ export default function WorkerDashboard() {
                     )}
                     <button
                       onClick={() => setExpandedWorker(expandedWorker === w.name ? null : w.name)}
-                      style={{ padding: '6px 12px', background: 'var(--accent-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)', borderRadius: '4px', cursor: 'pointer', fontSize: '14px' }}
+                      style={{ padding: '6px 12px', background: 'var(--brand-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)', borderRadius: '4px', cursor: 'pointer', fontSize: '14px' }}
                     >
                       {expandedWorker === w.name ? "Hide Logs" : "View Logs"}
                     </button>

@@ -62,7 +62,7 @@ export default function DevicePolicyPanel({ isOpen, onClose }) {
           {/* Auto-Approval Section */}
           <section className="space-y-4">
             <h3 className="flex items-center gap-2 text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">
-              <Shield size={16} className="text-[var(--accent)]" /> Network Trust
+              <Shield size={16} className="text-[var(--brand)]" /> Network Trust
             </h3>
             
             <label className="flex items-start justify-between cursor-pointer">
@@ -108,7 +108,7 @@ export default function DevicePolicyPanel({ isOpen, onClose }) {
           {/* Geography Section */}
           <section className="space-y-4">
             <h3 className="flex items-center gap-2 text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">
-              <Globe size={16} className="text-[var(--accent)]" /> Geography
+              <Globe size={16} className="text-[var(--brand)]" /> Geography
             </h3>
             
             <label className="flex items-start justify-between cursor-pointer">
@@ -139,7 +139,7 @@ export default function DevicePolicyPanel({ isOpen, onClose }) {
           {/* Limits & Expiry Section */}
           <section className="space-y-4">
             <h3 className="flex items-center gap-2 text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">
-              <Clock size={16} className="text-[var(--accent)]" /> Limits & Expiry
+              <Clock size={16} className="text-[var(--brand)]" /> Limits & Expiry
             </h3>
             
             <div className="flex gap-4">
@@ -177,7 +177,7 @@ export default function DevicePolicyPanel({ isOpen, onClose }) {
           {/* Alerts Section */}
           <section className="space-y-4">
             <h3 className="flex items-center gap-2 text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">
-              <Bell size={16} className="text-[var(--accent)]" /> Alerts
+              <Bell size={16} className="text-[var(--brand)]" /> Alerts
             </h3>
             
             <label className="flex items-start justify-between cursor-pointer">
@@ -237,8 +237,8 @@ export default function DevicePolicyPanel({ isOpen, onClose }) {
             transition: transform 0.2s, background 0.2s;
           }
           .toggle-switch:checked {
-            background: var(--success);
-            border-color: var(--success);
+            background: var(--brand);
+            border-color: var(--brand);
           }
           .toggle-switch:checked::after {
             transform: translateX(20px);

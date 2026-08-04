@@ -160,7 +160,7 @@ export default function CommandPalette() {
                       transition: 'background 0.1s'
                     }}
                   >
-                    <Icon size={18} style={{ color: isSelected ? 'var(--accent)' : 'inherit' }} />
+                    <Icon size={18} style={{ color: isSelected ? 'var(--brand)' : 'inherit' }} />
                     <span style={{ fontSize: 15, fontWeight: isSelected ? 600 : 500 }}>{action.title}</span>
                   </div>
                 );

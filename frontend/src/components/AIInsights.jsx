@@ -36,7 +36,7 @@ export default function AIInsights() {
         title="Smart Insights"
         subtitle="AI-driven analysis of your operational data."
         action={
-          <Badge tone="success" style={{ background: 'rgba(139, 92, 246, 0.1)', color: 'var(--accent)', borderColor: 'rgba(139, 92, 246, 0.2)' }}>
+          <Badge tone="success" style={{ background: 'rgba(139, 92, 246, 0.1)', color: 'var(--brand)', borderColor: 'rgba(139, 92, 246, 0.2)' }}>
             <Sparkles size={12} style={{ marginRight: 4 }} /> AI Active
           </Badge>
         }
@@ -66,8 +66,8 @@ export default function AIInsights() {
               >
                 <div style={{ 
                   width: 44, height: 44, flexShrink: 0, borderRadius: 10, 
-                  background: 'var(--accent-bg)', 
-                  display: 'grid', placeItems: 'center', color: 'var(--accent)', 
+                  background: 'var(--brand-bg)', 
+                  display: 'grid', placeItems: 'center', color: 'var(--brand)', 
                 }}>
                   <Icon size={22} strokeWidth={2.5} />
                 </div>

@@ -149,7 +149,7 @@ body {
 
 /* Global Focus Management */
 *:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--brand);
   outline-offset: 2px;
   border-radius: inherit;
 }
@@ -180,9 +180,9 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     --text-secondary: #cbd5e1;
     --text-muted: #64748b;
     --text-inverse: #ffffff;
-    --accent: #c9a84c;
-    --accent-strong: #f0d78c;
-    --accent-bg: rgba(201, 168, 76, 0.15);
+    --brand: #c9a84c;
+    --brand-strong: #f0d78c;
+    --brand-bg: rgba(201, 168, 76, 0.15);
     --success: #10b981;
     --warning: #f59e0b;
     --danger: #ef4444;
@@ -210,9 +210,9 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     --text-secondary: #cbd5e1;
     --text-muted: #64748b;
     --text-inverse: #ffffff;
-    --accent: #c9a84c;
-    --accent-strong: #f0d78c;
-    --accent-bg: rgba(201, 168, 76, 0.15);
+    --brand: #c9a84c;
+    --brand-strong: #f0d78c;
+    --brand-bg: rgba(201, 168, 76, 0.15);
     --success: #10b981;
     --warning: #f59e0b;
     --danger: #ef4444;
@@ -237,9 +237,9 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     --text-secondary: #4b5361;
     --text-muted: #6b7484;
     --text-inverse: #ffffff;
-    --accent: #96731f;
-    --accent-strong: #7a5c15;
-    --accent-bg: rgba(150, 115, 31, 0.15);
+    --brand: #96731f;
+    --brand-strong: #7a5c15;
+    --brand-bg: rgba(150, 115, 31, 0.15);
     --success: #047857;
     --warning: #b45309;
     --danger: #dc2626;
@@ -361,7 +361,7 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
   }
 
   button.btn-primary {
-    background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+    background: linear-gradient(135deg, var(--brand), var(--brand-strong));
     color: var(--text-inverse);
     box-shadow: 0 10px 22px rgba(195,93,8,0.16);
   }
@@ -386,8 +386,8 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease, background 0.15s ease;
   }
   input:focus, select:focus, textarea:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-bg);
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px var(--brand-bg);
   }
   input::placeholder, textarea::placeholder { color: var(--text-muted); }
 
@@ -412,7 +412,7 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     transition: background 0.15s ease;
   }
   .cc-table-row:hover {
-    background: var(--accent-bg);
+    background: var(--brand-bg);
   }
 
   .card, .cc-card {
@@ -533,14 +533,14 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
 
   .cc-primary-button {
     padding: 10px 14px;
-    background: var(--accent);
+    background: var(--brand);
     color: #ffffff;
     border: none;
     box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
     font-weight: 600;
   }
   .cc-primary-button:hover {
-    background: var(--accent-strong);
+    background: var(--brand-strong);
   }
 
   .cc-layout {
@@ -627,8 +627,8 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     border-radius: 12px;
     display: grid;
     place-items: center;
-    background: var(--accent-bg);
-    color: var(--accent);
+    background: var(--brand-bg);
+    color: var(--brand);
     border: 1px solid rgba(195,93,8,0.18);
     flex-shrink: 0;
   }
@@ -700,7 +700,7 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
 
   .cc-metric-icon {
     font-size: 18px;
-    color: var(--accent);
+    color: var(--brand);
     flex-shrink: 0;
   }
 
@@ -736,7 +736,7 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     height: 100%;
     border-radius: inherit;
     transition: width 0.25s ease;
-    background: linear-gradient(90deg, var(--accent), var(--accent-strong));
+    background: linear-gradient(90deg, var(--brand), var(--brand-strong));
   }
   .cc-progress-success { background: linear-gradient(90deg, var(--success), #26a96d); }
   .cc-progress-warning { background: linear-gradient(90deg, var(--warning), #d39a12); }
@@ -757,8 +757,8 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     border-radius: 18px;
     display: grid;
     place-items: center;
-    color: var(--accent);
-    background: var(--accent-bg);
+    color: var(--brand);
+    background: var(--brand-bg);
     border: 1px solid rgba(195,93,8,0.16);
     font-size: 20px;
   }

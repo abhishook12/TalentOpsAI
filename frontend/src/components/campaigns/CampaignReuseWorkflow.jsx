@@ -72,7 +72,7 @@ export default function CampaignReuseWorkflow({ importedEmail, onClose, onComple
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] bg-[var(--bg-surface)]">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-[var(--accent)]/20 text-[var(--accent)] rounded-lg">
+            <div className="p-2 bg-[var(--brand)]/20 text-[var(--brand)] rounded-lg">
               <Wand2 size={24} />
             </div>
             <div>
@@ -90,8 +90,8 @@ export default function CampaignReuseWorkflow({ importedEmail, onClose, onComple
           
           {/* Smart Cleanup */}
           {smartCleanupSuggestions.length > 0 && (
-            <div className="bg-[var(--accent)]/10 border border-[var(--accent)]/30 rounded-xl p-5">
-              <div className="flex items-center gap-2 text-[var(--accent)] font-medium mb-3">
+            <div className="bg-[var(--brand)]/10 border border-[var(--brand)]/30 rounded-xl p-5">
+              <div className="flex items-center gap-2 text-[var(--brand)] font-medium mb-3">
                 <Wand2 size={18} /> Smart Cleanup Suggestions
               </div>
               <p className="text-sm text-[var(--text-primary)] mb-4">We found some hardcoded values in your old email. Want to replace them with merge variables?</p>
@@ -106,7 +106,7 @@ export default function CampaignReuseWorkflow({ importedEmail, onClose, onComple
                     </div>
                     <button 
                       onClick={() => applyCleanup(s)}
-                      className="px-3 py-1.5 bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white text-xs font-medium rounded-lg"
+                      className="px-3 py-1.5 bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-white text-xs font-medium rounded-lg"
                     >
                       Apply
                     </button>
@@ -143,7 +143,7 @@ export default function CampaignReuseWorkflow({ importedEmail, onClose, onComple
                  </p>
                  <button 
                    onClick={handleFinish}
-                   className="w-full py-2.5 bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white font-medium rounded-lg shadow-md transition-colors"
+                   className="w-full py-2.5 bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-white font-medium rounded-lg shadow-md transition-colors"
                  >
                    Continue to Campaign
                  </button>
@@ -157,7 +157,7 @@ export default function CampaignReuseWorkflow({ importedEmail, onClose, onComple
                     type="text" 
                     value={subject} 
                     onChange={e => setSubject(e.target.value)}
-                    className="w-full text-lg font-semibold text-gray-900 bg-transparent focus:outline-none focus:border-[var(--accent)] border-b border-transparent pb-1"
+                    className="w-full text-lg font-semibold text-gray-900 bg-transparent focus:outline-none focus:border-[var(--brand)] border-b border-transparent pb-1"
                   />
                 </div>
                 <div className="flex-1 overflow-auto p-6">

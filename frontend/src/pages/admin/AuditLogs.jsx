@@ -63,7 +63,7 @@ export default function AuditLogs() {
               >
                 <div style={{ color: 'var(--text-muted)' }}>
                   {log.action_type.includes('AUTH') || log.action_type.includes('LOGIN') ? <Fingerprint size={18} /> : 
-                   log.action_type.includes('FAIL') || log.action_type.includes('ERROR') ? <ShieldAlert size={18} style={{ color: 'var(--danger)' }} /> : 
+                   log.action_type.includes('FAIL') || log.action_type.includes('ERROR') ? <ShieldAlert size={18} style={{ color: 'var(--brand-strong)' }} /> : 
                    <Terminal size={18} />}
                 </div>
                 <div>

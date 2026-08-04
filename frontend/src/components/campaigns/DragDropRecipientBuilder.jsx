@@ -77,7 +77,7 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
               onClick={() => tab.enabled && setActiveTab(tab.id)}
               className={`flex-1 flex flex-col items-center justify-center gap-0.5 px-2 py-1 text-[13.5px] font-medium transition-colors border-b-[3px] relative ${
                 activeTab === tab.id 
-                  ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--card-bg)]' 
+                  ? 'border-[var(--brand)] text-[var(--brand)] bg-[var(--card-bg)]' 
                   : !tab.enabled
                     ? 'border-transparent text-[var(--text-muted)] opacity-50 cursor-not-allowed'
                     : 'border-transparent text-[var(--text-muted)] hover:text-[#fff] hover:bg-white/5'
@@ -108,7 +108,7 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
         <div className="p-4 border-b border-[var(--card-border)] bg-[var(--card-bg)]">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Mail className="text-[var(--accent)]" size={20} />
+              <Mail className="text-[var(--brand)]" size={20} />
               <h3 className="font-semibold text-[var(--text-primary)]">Campaign Recipients</h3>
             </div>
             
@@ -132,7 +132,7 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
               <button 
                 onClick={() => onValidate(recipients.map(r => r.email).join(','))}
                 disabled={recipients.length === 0}
-                className="text-sm font-medium text-[var(--accent)] hover:text-[var(--accent)]/80 disabled:opacity-50 transition-colors"
+                className="text-sm font-medium text-[var(--brand)] hover:text-[var(--brand)]/80 disabled:opacity-50 transition-colors"
               >
                 Validate All
               </button>
@@ -165,14 +165,14 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
                   placeholder="Search recipients..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-[var(--bg-page)] border border-[var(--border)] rounded-md py-1.5 pl-8 pr-3 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                  className="w-full bg-[var(--bg-page)] border border-[var(--border)] rounded-md py-1.5 pl-8 pr-3 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)]"
                 />
               </div>
               <div className="relative">
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="bg-[var(--bg-page)] border border-[var(--border)] rounded-md py-1.5 pl-2 pr-6 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] appearance-none cursor-pointer"
+                  className="bg-[var(--bg-page)] border border-[var(--border)] rounded-md py-1.5 pl-2 pr-6 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] appearance-none cursor-pointer"
                 >
                   <option value="all">All</option>
                   <option value="valid">Valid</option>
@@ -219,7 +219,7 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
                     }}
                     className="pb-2" // add gap via padding
                   >
-                    <div className="flex items-center justify-between p-3 bg-[var(--bg-page)] border border-[var(--border)] rounded-lg shadow-sm group hover:border-[var(--accent)] transition-colors h-full">
+                    <div className="flex items-center justify-between p-3 bg-[var(--bg-page)] border border-[var(--border)] rounded-lg shadow-sm group hover:border-[var(--brand)] transition-colors h-full">
                       <div className="flex items-center gap-3 min-w-0">
                         {recipient.status === 'valid' ? (
                           <CheckCircle2 size={16} className="text-green-500 shrink-0" />

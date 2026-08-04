@@ -66,7 +66,7 @@ export default function EmailPreview({ campaignId, subjectTemplate, bodyTemplate
       {/* HEADER */}
       <div className="p-3 border-b border-[var(--card-border)] bg-[var(--bg-surface)] flex justify-between items-center">
         <span className="font-medium text-sm flex items-center gap-2 text-[var(--text-primary)]">
-          <Eye className="w-4 h-4 text-[var(--accent)]" /> Live Preview 
+          <Eye className="w-4 h-4 text-[var(--brand)]" /> Live Preview 
           {loading && <Loader2 className="w-3 h-3 animate-spin text-[var(--text-muted)] ml-2" />}
         </span>
         

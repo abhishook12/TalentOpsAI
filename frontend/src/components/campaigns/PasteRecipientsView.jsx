@@ -62,7 +62,7 @@ export default function PasteRecipientsView({ onAddRecipients }) {
       </div>
 
       <textarea
-        className="flex-1 w-full bg-[var(--bg-page)] border border-[var(--border)] rounded-lg p-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)] resize-none"
+        className="flex-1 w-full bg-[var(--bg-page)] border border-[var(--border)] rounded-lg p-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] resize-none"
         placeholder="john@example.com&#10;John Smith <john@example.com>"
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -78,7 +78,7 @@ export default function PasteRecipientsView({ onAddRecipients }) {
           <button 
             onClick={handleAdd}
             disabled={stats.valid === 0}
-            className="px-4 py-1.5 bg-[var(--accent)] text-white text-xs font-medium rounded shadow hover:bg-[var(--accent)]/90 disabled:opacity-50 transition-colors"
+            className="px-4 py-1.5 bg-[var(--brand)] text-white text-xs font-medium rounded shadow hover:bg-[var(--brand)]/90 disabled:opacity-50 transition-colors"
           >
             Add {stats.valid} Recipients
           </button>

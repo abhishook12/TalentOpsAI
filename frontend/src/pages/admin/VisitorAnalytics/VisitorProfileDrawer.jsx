@@ -64,7 +64,7 @@ export default function VisitorProfileDrawer({ sessionId, onClose }) {
               fontSize: 13
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'var(--text-primary)' }}>
-                <User size={16} style={{ color: '#a78bfa' }}/>
+                <User size={16} style={{ color: 'var(--brand)' }}/>
                 {data.profile.user_email || 'Anonymous'}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'var(--text-secondary)' }}>
@@ -95,13 +95,13 @@ export default function VisitorProfileDrawer({ sessionId, onClose }) {
                     height: 16, 
                     borderRadius: '50%',
                     background: '#141414',
-                    border: `2px solid ${event.type === 'page_view' ? '#60a5fa' : '#a78bfa'}`,
+                    border: `2px solid ${event.type === 'page_view' ? '#60a5fa' : 'var(--brand)'}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center'
                   }}>
                   </div>
                   
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-                    <div style={{ fontWeight: 600, color: event.type === 'page_view' ? '#60a5fa' : '#a78bfa', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ fontWeight: 600, color: event.type === 'page_view' ? '#60a5fa' : 'var(--brand)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
                       {event.type === 'page_view' ? <FileText size={14}/> : <Activity size={14}/>}
                       {event.type === 'page_view' ? 'Page View' : 'Action'}
                     </div>

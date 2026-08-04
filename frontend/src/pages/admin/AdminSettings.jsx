@@ -182,7 +182,7 @@ export default function AdminSettings() {
                       <div style={{ fontWeight: 600, color: '#10b981' }}>SMTP Connected</div>
                       <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>The email gateway is functioning normally.</div>
                     </div>
-                    <button style={{ marginLeft: 'auto', padding: '6px 12px', background: 'var(--accent-bg)', border: 'none', borderRadius: 6, color: 'var(--text-primary)', cursor: 'pointer', fontSize: 12 }}>Send Test Email</button>
+                    <button style={{ marginLeft: 'auto', padding: '6px 12px', background: 'var(--brand-bg)', border: 'none', borderRadius: 6, color: 'var(--text-primary)', cursor: 'pointer', fontSize: 12 }}>Send Test Email</button>
                   </div>
                 </>
               )}
@@ -217,7 +217,7 @@ export default function AdminSettings() {
                       <div style={{ fontWeight: 600 }}>Database Backup</div>
                       <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>Trigger a manual PostgreSQL dump to secure storage.</div>
                     </div>
-                    <button style={{ padding: '8px 16px', background: 'var(--accent-bg)', border: 'none', borderRadius: 6, color: 'var(--text-primary)', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Backup Now</button>
+                    <button style={{ padding: '8px 16px', background: 'var(--brand-bg)', border: 'none', borderRadius: 6, color: 'var(--text-primary)', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Backup Now</button>
                   </div>
                 </>
               )}

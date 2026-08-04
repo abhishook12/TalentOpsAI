@@ -97,7 +97,7 @@ export default function VerifyEmail() {
               display: 'inline-block',
               padding: '12px 24px',
               borderRadius: '8px',
-              background: 'var(--accent-bg)',
+              background: 'var(--brand-bg)',
               color: 'var(--text-primary)',
               textDecoration: 'none',
               fontWeight: '500',

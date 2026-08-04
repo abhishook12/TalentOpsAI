@@ -37,7 +37,7 @@ export default function DevicesTab() {
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
       <div className="glass-card" style={{ padding: 24, borderRadius: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-          <div style={{ background: 'rgba(167, 139, 250, 0.1)', color: '#a78bfa', padding: 8, borderRadius: 8 }}>
+          <div style={{ background: 'var(--brand-bg)', color: 'var(--brand)', padding: 8, borderRadius: 8 }}>
             <Monitor size={20} />
           </div>
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text-primary)' }}>Top Browsers</h2>

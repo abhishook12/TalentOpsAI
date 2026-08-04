@@ -124,7 +124,7 @@ export default function UploadRecipientsView({ onAddRecipients }) {
               <select
                 value={mapping[field]}
                 onChange={(e) => setMapping({ ...mapping, [field]: e.target.value })}
-                className="w-full bg-[var(--bg-page)] border border-[var(--border)] rounded-lg p-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                className="w-full bg-[var(--bg-page)] border border-[var(--border)] rounded-lg p-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)]"
               >
                 <option value="">-- Ignore --</option>
                 {headers.map(h => <option key={h} value={h}>{h}</option>)}
@@ -159,7 +159,7 @@ export default function UploadRecipientsView({ onAddRecipients }) {
           <button 
             onClick={handleImport}
             disabled={!mapping.email}
-            className="px-4 py-2 bg-[var(--accent)] text-white text-sm font-medium rounded-lg shadow flex items-center gap-2 hover:bg-[var(--accent)]/90 disabled:opacity-50 transition-colors"
+            className="px-4 py-2 bg-[var(--brand)] text-white text-sm font-medium rounded-lg shadow flex items-center gap-2 hover:bg-[var(--brand)]/90 disabled:opacity-50 transition-colors"
           >
             Import {data.length} Rows <ArrowRight size={16} />
           </button>
@@ -185,12 +185,12 @@ export default function UploadRecipientsView({ onAddRecipients }) {
         onDrop={handleDrop}
         className={`w-full h-48 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-colors group ${
           isDragging 
-            ? 'border-[var(--accent)] bg-[var(--accent)]/10 scale-[1.02]' 
-            : 'border-[var(--border)] hover:border-[var(--accent)] hover:bg-[var(--accent)]/5'
+            ? 'border-[var(--brand)] bg-[var(--brand)]/10 scale-[1.02]' 
+            : 'border-[var(--border)] hover:border-[var(--brand)] hover:bg-[var(--brand)]/5'
         }`}
       >
-        <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 transition-transform ${isDragging ? 'bg-[var(--accent)]/20 scale-110' : 'bg-[var(--bg-page)] border border-[var(--border)] group-hover:scale-110'}`}>
-          <FileSpreadsheet size={24} className={isDragging ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] group-hover:text-[var(--accent)]'} />
+        <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 transition-transform ${isDragging ? 'bg-[var(--brand)]/20 scale-110' : 'bg-[var(--bg-page)] border border-[var(--border)] group-hover:scale-110'}`}>
+          <FileSpreadsheet size={24} className={isDragging ? 'text-[var(--brand)]' : 'text-[var(--text-muted)] group-hover:text-[var(--brand)]'} />
         </div>
         <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">
           {isDragging ? 'Drop file here' : 'Upload CSV'}

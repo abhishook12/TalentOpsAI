@@ -108,7 +108,7 @@ export default function Profile() {
             padding: 32,
           }}>
             <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <User size={20} color="var(--accent)" /> Account Details
+              <User size={20} color="var(--brand)" /> Account Details
             </h3>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
@@ -156,7 +156,7 @@ export default function Profile() {
             padding: 32,
           }}>
             <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Link size={20} color="var(--accent)" /> Email Bridge & Outlook Connection
+              <Link size={20} color="var(--brand)" /> Email Bridge & Outlook Connection
             </h3>
             
             <div style={{ background: 'var(--bg-surface)', padding: 24, borderRadius: 16, border: '1px solid var(--card-border)' }}>
@@ -251,7 +251,7 @@ export default function Profile() {
             padding: 32,
           }}>
             <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Key size={20} color="var(--accent)" /> Authentication
+              <Key size={20} color="var(--brand)" /> Authentication
             </h3>
 
             {isGoogle ? (

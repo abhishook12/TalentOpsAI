@@ -24,9 +24,9 @@ export default function EnrichmentLiveFeed() {
   }, []);
 
   return (
-    <div style={{ padding: '24px', background: 'linear-gradient(135deg, #111827, #1f2937, #374151)', borderRadius: '8px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)', minHeight: '400px', maxHeight: '600px', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ padding: '24px', background: 'var(--bg-surface)', borderRadius: '8px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)', minHeight: '400px', maxHeight: '600px', display: 'flex', flexDirection: 'column' }}>
       <h2 style={{ fontSize: '24px', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10b981', boxShadow: '0 0 10px #10b981', animation: 'pulse 2s infinite' }} />
+        <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--brand)', boxShadow: '0 0 10px var(--brand)', animation: 'pulse 2s infinite' }} />
         Live Enrichment Feed
       </h2>
       
@@ -80,8 +80,8 @@ export default function EnrichmentLiveFeed() {
                 <div style={{ 
                   padding: '8px', 
                   borderRadius: '8px', 
-                  backgroundColor: item.type === 'discovery' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-                  color: item.type === 'discovery' ? '#34d399' : '#60a5fa',
+                  backgroundColor: item.type === 'discovery' ? 'var(--brand-bg)' : 'var(--brand-bg)',
+                  color: 'var(--brand)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'

@@ -85,7 +85,7 @@ export default function ApprovalProgress({ deviceId, onApproved }) {
         {/* Step 3: Admin Approval */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {status === 'pending' ? (
-            <Loader2 size={20} color="var(--accent, #6366f1)" className="animate-spin" />
+            <Loader2 size={20} color="var(--accent, #c9a84c)" className="animate-spin" />
           ) : status === 'approved' ? (
             <CheckCircle2 size={20} color="var(--success, #10b981)" />
           ) : (
@@ -94,7 +94,7 @@ export default function ApprovalProgress({ deviceId, onApproved }) {
           <span style={{ 
             fontSize: '14px', 
             fontWeight: 500, 
-            color: status === 'pending' ? 'var(--accent, #6366f1)' : status === 'rejected' ? 'var(--danger, #ef4444)' : 'var(--text-primary)'
+            color: status === 'pending' ? 'var(--accent, #c9a84c)' : status === 'rejected' ? 'var(--danger, #ef4444)' : 'var(--text-primary)'
           }}>
             {status === 'pending' ? 'Waiting for administrator approval...' : status === 'approved' ? 'Device approved' : 'Access denied by administrator'}
           </span>

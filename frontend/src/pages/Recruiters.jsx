@@ -88,7 +88,7 @@ function Modal({ title, onClose, onSave, form, setForm, saving }) {
 
 const getAvatarColor = (name) => {
   const colors = [
-    { bg: 'var(--accent-bg)', text: 'var(--accent-strong)', border: 'var(--accent-bg)' }, // Gold
+    { bg: 'var(--brand-bg)', text: 'var(--brand-strong)', border: 'var(--brand-bg)' }, // Gold
     { bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', border: 'rgba(245, 158, 11, 0.3)' }, // Amber
     { bg: 'rgba(100, 116, 139, 0.15)', text: '#94a3b8', border: 'rgba(100, 116, 139, 0.3)' }, // Slate
     { bg: 'rgba(20, 184, 166, 0.15)', text: '#2dd4bf', border: 'rgba(20, 184, 166, 0.3)' }, // Teal
@@ -112,7 +112,7 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r }) {
     }}
     onMouseEnter={(e) => {
       e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.02)'
-      e.currentTarget.style.boxShadow = 'inset 3px 0 0 0 var(--accent)'
+      e.currentTarget.style.boxShadow = 'inset 3px 0 0 0 var(--brand)'
     }}
     onMouseLeave={(e) => {
       e.currentTarget.style.backgroundColor = 'transparent'
@@ -132,7 +132,19 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r }) {
             {r.recruiter_name?.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?'}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <div style={{ fontWeight: 600, color: '#ffffff', fontSize: 14.5, letterSpacing: '-0.01em' }}>{r.recruiter_name}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ fontWeight: 600, color: '#ffffff', fontSize: 14.5, letterSpacing: '-0.01em' }}>{r.recruiter_name}</div>
+                {r.linkedin && (
+                  <a href={r.linkedin} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title="LinkedIn Profile" style={{ color: '#0a66c2', display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+                    <i className="ti ti-brand-linkedin" style={{ fontSize: 15 }} />
+                  </a>
+                )}
+                {r.notes && (
+                  <div title="Has internal notes" style={{ color: '#fbbf24', display: 'flex', alignItems: 'center' }}>
+                    <i className="ti ti-file-description" style={{ fontSize: 14 }} />
+                  </div>
+                )}
+              </div>
               {r.specialization && <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{r.specialization} Recruiter</div>}
               <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{r.email?.toLowerCase()}</div>
           </div>
@@ -146,12 +158,15 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r }) {
           const fallbackName = r.company_name || (!isFreemail && emailDomain ? emailDomain.split('.')[0] : null);
           
           return (
-            <CompanyIdentity 
-              domain={fallbackDomain} 
-              name={fallbackName} 
-              metadata={r.city ? `${r.city}, ${r.state}` : fallbackDomain}
-              interactive={false}
-            />
+            <div title={r.company_reasoning || ''}>
+              <CompanyIdentity 
+                domain={fallbackDomain} 
+                name={fallbackName} 
+                metadata={r.city ? `${r.city}, ${r.state}` : fallbackDomain}
+                subtitle={r.company_confidence ? `Confidence: ${r.company_confidence}%` : null}
+                interactive={false}
+              />
+            </div>
           );
         })()}
       </td>
@@ -168,11 +183,11 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r }) {
         {r.is_active ? (
           <div style={{ 
             display: 'inline-flex', alignItems: 'center', gap: 6, 
-            padding: '6px 12px', background: 'var(--accent-bg)', 
-            border: '1px solid var(--accent-bg)',
-            borderRadius: 100, fontSize: 12.5, color: 'var(--accent)', fontWeight: 500 
+            padding: '6px 12px', background: 'var(--brand-bg)', 
+            border: '1px solid var(--brand-bg)',
+            borderRadius: 100, fontSize: 12.5, color: 'var(--brand)', fontWeight: 500 
           }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-strong)', boxShadow: '0 0 8px var(--accent-strong)' }} />
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--brand-strong)', boxShadow: '0 0 8px var(--brand-strong)' }} />
             Active
           </div>
         ) : (
@@ -186,6 +201,32 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r }) {
             Inactive
           </div>
         )}
+      </td>
+      <td style={{ padding: '24px 20px', verticalAlign: 'middle' }}>
+        <div style={{ width: '100px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {r.quality_score > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }} title="AI Quality Score">
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: 700, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <span>Quality</span>
+                <span>{r.quality_score}%</span>
+              </div>
+              <div style={{ width: '100%', height: '3px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${r.quality_score}%`, background: '#fbbf24', transition: 'width 0.3s ease' }} />
+              </div>
+            </div>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }} title="Profile Completeness">
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <span>Profile</span>
+              <span style={{ color: r.completeness_score > 70 ? '#00ff66' : r.completeness_score > 40 ? '#fbbf24' : '#ff4444' }}>
+                {r.completeness_score || 0}%
+              </span>
+            </div>
+            <div style={{ width: '100%', height: '3px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${r.completeness_score || 0}%`, background: r.completeness_score > 70 ? '#00ff66' : r.completeness_score > 40 ? '#fbbf24' : '#ff4444', transition: 'width 0.3s ease' }} />
+            </div>
+          </div>
+        </div>
       </td>
       <td style={{ padding: '24px 24px', textAlign: 'right', verticalAlign: 'middle' }}>
         <button 
@@ -349,7 +390,7 @@ export default function Recruiters() {
           <div className="card" style={{ width: 300, flexShrink: 0, padding: 20, animation: 'fadeUp 0.2s ease', position: 'sticky', top: 24 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                   <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Advanced Filters</h3>
-                  <button onClick={clearFilters} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}>Clear All</button>
+                  <button onClick={clearFilters} style={{ background: 'none', border: 'none', color: 'var(--brand)', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}>Clear All</button>
               </div>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -432,7 +473,7 @@ export default function Recruiters() {
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
             <div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>Recruiters</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--brand)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>Recruiters</div>
               <h1 style={{ fontSize: 24, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.02em', marginBottom: 4 }}>Recruiters</h1>
               <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Manage and explore recruiter records across the database.</p>
             </div>
@@ -500,7 +541,7 @@ export default function Recruiters() {
                   style={{ width: 140, height: 36 }}
                 />
               </div>
-              <button onClick={clearFilters} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 12.5, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+              <button onClick={clearFilters} style={{ background: 'none', border: 'none', color: 'var(--brand)', fontSize: 12.5, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
                 <i className="ti ti-filter-off" style={{ fontSize: 14 }} /> Clear Filters
               </button>
             </div>
@@ -510,7 +551,7 @@ export default function Recruiters() {
           <div className="card" style={{ overflow: 'hidden' }}>
             {loading ? (
               <div style={{ padding: 120, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-                  <i className="ti ti-loader" style={{ fontSize: 36, animation: 'spin 1s linear infinite', color: 'var(--accent)' }} />
+                  <i className="ti ti-loader" style={{ fontSize: 36, animation: 'spin 1s linear infinite', color: 'var(--brand)' }} />
                   <div style={{ fontWeight: 500 }}>Scanning Talent Database...</div>
               </div>
             ) : recruiters.length === 0 ? (
@@ -542,6 +583,7 @@ export default function Recruiters() {
                       <th style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '20px 20px', borderBottom: '1px solid var(--card-border)' }}>Specialty</th>
                       <th style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '20px 20px', borderBottom: '1px solid var(--card-border)', textAlign: 'right' }}>Last Active</th>
                       <th style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '20px 20px', borderBottom: '1px solid var(--card-border)', textAlign: 'center' }}>Status</th>
+                      <th style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '20px 20px', borderBottom: '1px solid var(--card-border)' }}>Data Quality</th>
                       <th style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '20px 24px', borderBottom: '1px solid var(--card-border)', textAlign: 'right' }}>Actions</th>
                     </tr>
                   </thead>
@@ -563,7 +605,7 @@ export default function Recruiters() {
                       const pNum = i + 1;
                       const active = pNum === page;
                       return (
-                        <button key={pNum} onClick={() => setPage(pNum)} style={{ width: 32, height: 32, display: 'grid', placeItems: 'center', borderRadius: 6, fontSize: 13, background: active ? 'var(--accent)' : 'transparent', color: active ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', border: active ? 'none' : '1px solid transparent' }}>
+                        <button key={pNum} onClick={() => setPage(pNum)} style={{ width: 32, height: 32, display: 'grid', placeItems: 'center', borderRadius: 6, fontSize: 13, background: active ? 'var(--brand)' : 'transparent', color: active ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', border: active ? 'none' : '1px solid transparent' }}>
                           {pNum}
                         </button>
                       )

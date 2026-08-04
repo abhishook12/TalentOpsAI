@@ -127,7 +127,7 @@ export default function SignatureManager({ onSelectSignature, selectedSignatureI
               type="checkbox" 
               checked={isDefault}
               onChange={(e) => setIsDefault(e.target.checked)}
-              style={{ width: '16px', height: '16px', accentColor: 'var(--accent)' }}
+              style={{ width: '16px', height: '16px', accentColor: 'var(--brand)' }}
             />
             Set as default signature
           </label>
@@ -137,7 +137,7 @@ export default function SignatureManager({ onSelectSignature, selectedSignatureI
               onClick={handleSave}
               disabled={!name.trim() || !htmlContent.trim()}
               style={{
-                background: 'var(--accent)', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px',
+                background: 'var(--brand)', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px',
                 fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
               }}
             >
@@ -169,7 +169,7 @@ export default function SignatureManager({ onSelectSignature, selectedSignatureI
         <button 
           onClick={() => setEditingSig(false)} // false means creating new
           style={{
-            background: 'var(--accent)', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px',
+            background: 'var(--brand)', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px',
             fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px'
           }}
         >
@@ -186,7 +186,7 @@ export default function SignatureManager({ onSelectSignature, selectedSignatureI
               key={sig.signature_id}
               onClick={() => onSelectSignature && onSelectSignature(sig.signature_id)}
               style={{
-                border: `1px solid ${selectedSignatureId === sig.signature_id ? 'var(--accent)' : 'var(--border)'}`,
+                border: `1px solid ${selectedSignatureId === sig.signature_id ? 'var(--brand)' : 'var(--border)'}`,
                 borderRadius: '8px',
                 padding: '12px',
                 cursor: onSelectSignature ? 'pointer' : 'default',
@@ -202,7 +202,7 @@ export default function SignatureManager({ onSelectSignature, selectedSignatureI
                   <span style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: '14px' }}>{sig.name}</span>
                   {sig.is_default && (
                     <span style={{ 
-                      background: 'rgba(234, 179, 8, 0.1)', color: 'var(--accent)', padding: '2px 6px', 
+                      background: 'rgba(234, 179, 8, 0.1)', color: 'var(--brand)', padding: '2px 6px', 
                       borderRadius: '4px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '2px', fontWeight: 500
                     }}>
                       <Star size={10} /> Default

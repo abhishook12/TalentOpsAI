@@ -194,7 +194,7 @@ export default function Dashboard() {
               {isFetchingAny && (
                 <span style={{
                   display: 'inline-block', width: 12, height: 12, border: '2px solid var(--text-muted)',
-                  borderTopColor: 'var(--accent)', borderRadius: '50%',
+                  borderTopColor: 'var(--brand)', borderRadius: '50%',
                   animation: 'spin 0.8s linear infinite',
                 }} />
               )}
@@ -240,13 +240,13 @@ export default function Dashboard() {
       {dataQuality?.total_recruiters === 0 ? (
         <div style={{
           padding: 60,
-          background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.05), rgba(14, 165, 233, 0.02))',
+          background: 'linear-gradient(135deg, rgba(201, 168, 76, 0.05), rgba(201, 168, 76, 0.02))',
           borderRadius: 24,
-          border: '1px dashed var(--accent)',
+          border: '1px dashed var(--brand)',
           textAlign: 'center',
           marginTop: 20
         }}>
-          <div style={{ width: 64, height: 64, borderRadius: 32, background: 'var(--accent)', display: 'inline-grid', placeItems: 'center', color: '#fff', marginBottom: 20, boxShadow: '0 8px 24px rgba(14, 165, 233, 0.3)' }}>
+          <div style={{ width: 64, height: 64, borderRadius: 32, background: 'var(--brand)', display: 'inline-grid', placeItems: 'center', color: '#fff', marginBottom: 20, boxShadow: '0 8px 24px rgba(201, 168, 76, 0.3)' }}>
             <i className="ti ti-database-import" style={{ fontSize: 32 }} />
           </div>
           <h2 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 12 }}>Welcome to TalentOps AI</h2>

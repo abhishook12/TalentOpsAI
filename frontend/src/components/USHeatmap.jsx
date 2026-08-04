@@ -84,7 +84,7 @@ export default function USHeatmap() {
   // Logarithmic color scale helps show data even when heavily skewed
   const colorScale = scaleLinear()
     .domain([0, maxCount > 0 ? maxCount * 0.1 : 1, maxCount || 1])
-    .range(["#2e1b4d", "#7c3aed", "#d8b4fe"]);
+    .range(["#241d10", "#96731f", "#f0d78c"]);
 
   const handleMouseMove = (e) => {
     // Keep tooltip relative to the map container by using nativeEvent offset
@@ -132,7 +132,7 @@ export default function USHeatmap() {
         <h2 style={{ margin: "2px 0 0", fontSize: "18px", fontWeight: 700, color: "var(--text-primary)" }}>Recruiter Coverage by State</h2>
         <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>Choropleth of live recruiter density across the United States.</p>
         <div style={{ position: "absolute", top: 20, right: 20 }}>
-          <span style={{ fontSize: "10px", fontWeight: "bold", border: "1px solid rgba(139, 92, 246, 0.3)", background: "rgba(139, 92, 246, 0.1)", padding: "4px 10px", borderRadius: "100px", color: "var(--accent)" }}>LIVE</span>
+          <span style={{ fontSize: "10px", fontWeight: "bold", border: "1px solid var(--brand)", background: "var(--brand-bg)", padding: "4px 10px", borderRadius: "100px", color: "var(--brand)" }}>LIVE</span>
         </div>
       </div>
 
@@ -169,7 +169,7 @@ export default function USHeatmap() {
                       }}
                       style={{
                         default: { outline: "none", transition: "fill 250ms" },
-                        hover: { fill: "#c4b5fd", outline: "none", cursor: "pointer", transition: "fill 150ms" },
+                        hover: { fill: "var(--brand-strong)", outline: "none", cursor: "pointer", transition: "fill 150ms" },
                         pressed: { outline: "none" },
                       }}
                     />
@@ -243,7 +243,7 @@ export default function USHeatmap() {
       {/* Legend */}
       <div style={{ position: "absolute", top: 56, right: 20, display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", fontSize: "12px", color: "var(--text-muted)", fontWeight: 600 }}>
         <span>High ({maxCount})</span>
-        <div style={{ width: "8px", height: "140px", background: "linear-gradient(to bottom, #f59e0b, #1e3a5f)", borderRadius: "8px" }} />
+        <div style={{ width: "8px", height: "140px", background: "linear-gradient(to bottom, #f0d78c, #241d10)", borderRadius: "8px" }} />
         <span>Low</span>
       </div>
     </div>

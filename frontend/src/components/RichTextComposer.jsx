@@ -51,7 +51,7 @@ const ToolbarButton = ({ onClick, isActive, disabled, children, title }) => (
       justifyContent: 'center',
       borderRadius: '4px',
       border: 'none',
-      background: isActive ? 'var(--accent)' : 'transparent',
+      background: isActive ? 'var(--brand)' : 'transparent',
       color: isActive ? '#fff' : 'var(--text-secondary)',
       cursor: disabled ? 'not-allowed' : 'pointer',
       opacity: disabled ? 0.5 : 1,
@@ -122,7 +122,7 @@ export default function RichTextComposer({
   const insertVariable = (tag) => {
     if (editor) {
       // Create a spanned element that looks like a chip but is just styled text
-      const html = `<span style="background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 4px; padding: 2px 6px; font-family: monospace; color: var(--accent);">${tag}</span>&nbsp;`;
+      const html = `<span style="background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 4px; padding: 2px 6px; font-family: monospace; color: var(--brand);">${tag}</span>&nbsp;`;
       editor.chain().focus().insertContent(html).run();
     }
   };
@@ -272,7 +272,7 @@ export default function RichTextComposer({
               gap: '6px',
               padding: '6px 12px',
               borderRadius: '6px',
-              background: 'var(--accent)',
+              background: 'var(--brand)',
               color: 'white',
               border: 'none',
               fontSize: '13px',
@@ -337,7 +337,7 @@ export default function RichTextComposer({
         .ProseMirror h1 { font-size: 1.5em; font-weight: 700; margin: 1em 0 0.5em; }
         .ProseMirror h2 { font-size: 1.25em; font-weight: 700; margin: 1em 0 0.5em; }
         .ProseMirror h3 { font-size: 1.1em; font-weight: 600; margin: 1em 0 0.5em; }
-        .ProseMirror blockquote { border-left: 3px solid var(--accent); padding-left: 12px; margin-left: 0; color: var(--text-secondary); }
+        .ProseMirror blockquote { border-left: 3px solid var(--brand); padding-left: 12px; margin-left: 0; color: var(--text-secondary); }
         .ProseMirror code { background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
         .ProseMirror pre { background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; overflow-x: auto; font-family: monospace; }
         .ProseMirror pre code { background: none; padding: 0; color: inherit; }
@@ -345,7 +345,7 @@ export default function RichTextComposer({
         .ProseMirror td, .ProseMirror th { border: 1px solid var(--card-border); padding: 8px 12px; position: relative; }
         .ProseMirror th { background: rgba(255,255,255,0.04); font-weight: 600; text-align: left; }
         .ProseMirror img { max-width: 100%; border-radius: 8px; margin: 1em 0; }
-        .ProseMirror a { color: var(--accent); text-decoration: underline; cursor: pointer; }
+        .ProseMirror a { color: var(--brand); text-decoration: underline; cursor: pointer; }
         .ProseMirror ul { padding-left: 24px; list-style-type: disc; margin: 0.5em 0; }
         .ProseMirror ol { padding-left: 24px; list-style-type: decimal; margin: 0.5em 0; }
         .ProseMirror li > p { margin: 0; }

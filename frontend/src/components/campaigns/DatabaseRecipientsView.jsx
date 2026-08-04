@@ -84,7 +84,7 @@ export default function DatabaseRecipientsView({ onAddRecipients }) {
             placeholder="Search recruiters..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-[var(--bg-page)] border border-[var(--border)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+            className="w-full pl-9 pr-3 py-2 bg-[var(--bg-page)] border border-[var(--border)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition-colors"
           />
         </div>
       </div>
@@ -96,7 +96,7 @@ export default function DatabaseRecipientsView({ onAddRecipients }) {
             type="checkbox" 
             checked={recruiters.length > 0 && selectedIds.size === recruiters.length}
             onChange={handleSelectAll}
-            className="rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)]"
+            className="rounded border-[var(--border)] text-[var(--brand)] focus:ring-[var(--brand)]"
           />
           Select All
         </label>
@@ -104,7 +104,7 @@ export default function DatabaseRecipientsView({ onAddRecipients }) {
         <button
           onClick={handleAdd}
           disabled={selectedIds.size === 0}
-          className="text-xs font-medium px-3 py-1 bg-[var(--accent)] text-white rounded hover:bg-[var(--accent)]/90 disabled:opacity-50 transition-colors"
+          className="text-xs font-medium px-3 py-1 bg-[var(--brand)] text-white rounded hover:bg-[var(--brand)]/90 disabled:opacity-50 transition-colors"
         >
           Add {selectedIds.size} Selected
         </button>
@@ -114,7 +114,7 @@ export default function DatabaseRecipientsView({ onAddRecipients }) {
       <div className="flex-1 overflow-y-auto custom-scrollbar" ref={scrollRef}>
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-40 gap-3 text-[var(--text-muted)]">
-            <div className="w-6 h-6 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-6 h-6 border-2 border-[var(--brand)] border-t-transparent rounded-full animate-spin"></div>
             <p className="text-xs">Loading database...</p>
           </div>
         ) : recruiters.length === 0 ? (
@@ -129,14 +129,14 @@ export default function DatabaseRecipientsView({ onAddRecipients }) {
                 key={r.recruiter_id}
                 onClick={() => handleToggleSelect(r)}
                 className={`p-3 flex items-start gap-3 cursor-pointer transition-colors ${
-                  selectedIds.has(r.recruiter_id) ? 'bg-[var(--accent)]/5' : 'hover:bg-[var(--bg-page)]'
+                  selectedIds.has(r.recruiter_id) ? 'bg-[var(--brand)]/5' : 'hover:bg-[var(--bg-page)]'
                 }`}
               >
                 <input 
                   type="checkbox"
                   checked={selectedIds.has(r.recruiter_id)}
                   onChange={() => {}} // handled by parent div click
-                  className="mt-1 rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)]"
+                  className="mt-1 rounded border-[var(--border)] text-[var(--brand)] focus:ring-[var(--brand)]"
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">

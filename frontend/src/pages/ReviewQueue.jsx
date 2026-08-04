@@ -80,7 +80,7 @@ export default function ReviewQueue() {
   if (isLoading) {
     return (
       <div className="page-enter" style={{ display: 'grid', placeItems: 'center', minHeight: '60vh' }}>
-        <i className="ti ti-loader animate-spin" style={{ fontSize: 24, color: 'var(--accent)' }} />
+        <i className="ti ti-loader animate-spin" style={{ fontSize: 24, color: 'var(--brand)' }} />
       </div>
     )
   }

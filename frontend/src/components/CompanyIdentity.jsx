@@ -39,7 +39,7 @@ export function CompanyIdentity({
 
   const getMonogramColor = (n) => {
     const colors = [
-      { bg: 'var(--accent-bg)', text: 'var(--accent-strong)', border: 'var(--accent-bg)' }, // Gold
+      { bg: 'var(--brand-bg)', text: 'var(--brand-strong)', border: 'var(--brand-bg)' }, // Gold
       { bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', border: 'rgba(245, 158, 11, 0.3)' }, // Amber
       { bg: 'rgba(100, 116, 139, 0.15)', text: '#94a3b8', border: 'rgba(100, 116, 139, 0.3)' }, // Slate
       { bg: 'rgba(20, 184, 166, 0.15)', text: '#2dd4bf', border: 'rgba(20, 184, 166, 0.3)' }, // Teal
@@ -72,7 +72,7 @@ export function CompanyIdentity({
     padding: interactive ? '8px 12px' : 0,
     borderRadius: 12,
     background: isHovered && interactive ? 'rgba(255,255,255,0.03)' : 'transparent',
-    border: isHovered && interactive ? '1px solid var(--accent)' : '1px solid transparent',
+    border: isHovered && interactive ? '1px solid var(--brand)' : '1px solid transparent',
     transform: isHovered && interactive ? 'translateY(-1px)' : 'translateY(0)',
     transition: 'all 200ms ease',
     cursor: interactive ? 'pointer' : 'default',

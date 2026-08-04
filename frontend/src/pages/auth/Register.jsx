@@ -4,6 +4,228 @@ import { useNavigate, Link } from '@tanstack/react-router'
 import { GoogleLogin } from '@react-oauth/google'
 import AuthFrame from './AuthFrame'
 
+const formStyles = `
+  .auth-form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .auth-row {
+    display: flex;
+    gap: 16px;
+    width: 100%;
+  }
+
+  .auth-row .auth-field {
+    flex: 1;
+  }
+
+  .auth-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .auth-label {
+    font-size: 13px;
+    color: #a0a0a0;
+  }
+
+  .auth-password-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .auth-input {
+    width: 100%;
+    height: 44px;
+    border-radius: 8px;
+    border: 1px solid #333;
+    background: #111;
+    color: #ffffff;
+    padding: 0 16px;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s ease;
+  }
+
+  .auth-input::placeholder {
+    color: #555;
+  }
+
+  .auth-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-bg);
+  }
+
+  .auth-select {
+    width: 100%;
+    height: 44px;
+    border-radius: 8px;
+    border: 1px solid #333;
+    background: #111;
+    color: #ffffff;
+    padding: 0 16px;
+    font-size: 14px;
+    outline: none;
+    appearance: none;
+    transition: all 0.2s ease;
+  }
+
+  .auth-select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-bg);
+  }
+
+  .auth-eye-button {
+    position: absolute;
+    right: 14px;
+    background: transparent;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: color 0.2s;
+  }
+
+  .auth-eye-button:hover {
+    color: #fff;
+  }
+
+  .auth-remember {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 13px;
+    color: #a0a0a0;
+    cursor: pointer;
+  }
+
+  .auth-check {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    background: #111;
+    border: 1px solid #444;
+    border-radius: 4px;
+    position: relative;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  
+  .auth-check:checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  
+  .auth-check:checked::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 2px;
+    width: 4px;
+    height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  
+  .auth-check:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-bg);
+  }
+
+  .auth-button {
+    width: 100%;
+    height: 44px;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .auth-button:hover:not(:disabled) {
+    background: var(--accent-strong);
+  }
+
+  .auth-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .auth-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: #666;
+    font-size: 13px;
+    margin: 16px 0;
+  }
+  
+  .auth-divider::before,
+  .auth-divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #333;
+  }
+  
+  .auth-divider span {
+    padding: 0 16px;
+  }
+
+  .auth-mini-link {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  
+  .auth-mini-link:hover {
+    color: var(--accent-strong);
+  }
+
+  .auth-footer-link {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .auth-footer-link:hover {
+    text-decoration: underline;
+  }
+  
+  .auth-error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+`
+
 export default function Register() {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -93,6 +315,8 @@ export default function Register() {
   }
 
   return (
+    <>
+    <style dangerouslySetInnerHTML={{ __html: formStyles }} />
     <AuthFrame
       eyebrow="Create account"
       title="Sign Up for TalentOps"
@@ -248,6 +472,7 @@ export default function Register() {
         </div>
       ) : null}
     </AuthFrame>
+    </>
   )
 }
 

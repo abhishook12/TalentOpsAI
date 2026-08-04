@@ -1205,20 +1205,22 @@ def api_prepare_preview(campaign_id: int, request: PreparePreviewRequest, db: Se
     campaign.signature_id = request.signature_id
     
     first_step = db.query(SequenceStep).filter(SequenceStep.campaign_id == campaign_id).order_by(SequenceStep.step_order.asc()).first()
-    if not first_step:
-        first_step = SequenceStep(campaign_id=campaign_id, step_order=1, step_type=SequenceStepType.email.value)
-        db.add(first_step)
-        db.flush() # flush to get step_id without a full commit
-        
+    
     t = None
-    if first_step.template_id:
+    if first_step and first_step.template_id:
         t = db.query(EmailTemplate).filter(EmailTemplate.template_id == first_step.template_id).first()
         
     if not t:
         t = EmailTemplate(campaign_id=campaign_id, user_id=current_user.id, name=request.subject or "Draft", subject=request.subject, body=request.body)
         db.add(t)
         db.flush() # flush to get template_id
-        first_step.template_id = t.template_id
+        
+        if not first_step:
+            first_step = SequenceStep(campaign_id=campaign_id, step_order=1, template_id=t.template_id)
+            db.add(first_step)
+            db.flush()
+        else:
+            first_step.template_id = t.template_id
     else:
         t.name = request.subject or "Draft"
         t.subject = request.subject

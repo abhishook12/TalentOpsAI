@@ -427,6 +427,15 @@ export default function Campaigns() {
       }
     }
     
+    // Wait for any pending auto-saves to finish to prevent DB transaction deadlocks
+    if (savePromiseRef.current) {
+      try {
+        await savePromiseRef.current;
+      } catch (err) {
+        // ignore auto-save errors here
+      }
+    }
+
     try {
       const validRecipients = validatedRecipients.recipients.filter(r => r.status === 'valid');
       const res = await api.post(`/campaigns/${cid}/prepare-preview`, {
@@ -442,6 +451,10 @@ export default function Campaigns() {
     } catch (e) {
       console.error("Validation failed:", e);
       toast.error("Validation failed");
+      setPreflightData({
+        ready: false,
+        errors: [{ code: 'API_ERROR', message: e.response?.data?.detail || "Server error during validation" }]
+      });
     } finally {
       setIsValidating(false);
     }

@@ -319,48 +319,72 @@ def enroll_emails(campaign_id: int, payload: EnrollEmailsRequest, db: Session = 
         raise HTTPException(status_code=400, detail="Campaign must have at least one sequence step")
 
     enrolled = 0
-    processed_emails = set()
     try:
+        email_map = {}
         for rec_data in payload.recipients:
             clean_email = rec_data.email.strip().lower()
-            if not clean_email or clean_email in processed_emails:
-                continue
-            processed_emails.add(clean_email)
+            if clean_email:
+                email_map[clean_email] = rec_data
+
+        if not email_map:
+            return {"enrolled_count": 0}
+
+        emails_list = list(email_map.keys())
+
+        # 1. Bulk Select Recruiters
+        existing_recs = db.query(Recruiter).filter(func.lower(Recruiter.email).in_(emails_list)).all()
+        rec_by_email = {r.email.lower(): r for r in existing_recs}
+        
+        # Update user_id for existing recruiters if missing
+        for r in existing_recs:
+            if r.user_id is None:
+                r.user_id = current_user.id
                 
-            # Find or create recruiter (email is globally unique)
-            rec = db.query(Recruiter).filter(func.lower(Recruiter.email) == clean_email).first()
-            if not rec:
-                rec = Recruiter(
+        # 2. Bulk Insert Missing Recruiters
+        new_recs = []
+        for email, rec_data in email_map.items():
+            if email not in rec_by_email:
+                new_recs.append(Recruiter(
                     user_id=current_user.id,
-                    email=clean_email,
-                    recruiter_name=rec_data.name or clean_email.split('@')[0],
+                    email=email,
+                    recruiter_name=rec_data.name or email.split('@')[0],
                     title=rec_data.role,
                     data_source="campaign_import"
-                )
-                db.add(rec)
-                db.flush() # Flush instead of commit to get the ID within the transaction
-            elif rec.user_id is None:
-                rec.user_id = current_user.id
-                db.flush()
-                
-            # Check if already enrolled
-            existing = db.query(CampaignRecruiter).filter(
-                CampaignRecruiter.campaign_id == campaign_id,
-                CampaignRecruiter.recruiter_id == rec.recruiter_id
-            ).first()
-            
-            if not existing:
-                cr = CampaignRecruiter(
+                ))
+        
+        if new_recs:
+            db.add_all(new_recs)
+            db.flush()
+            for r in new_recs:
+                rec_by_email[r.email.lower()] = r
+
+        # 3. Bulk Select Enrollments
+        all_rec_ids = [r.recruiter_id for r in rec_by_email.values()]
+        
+        # In chunks if very large, but usually a few thousand is fine for PostgreSQL IN clause
+        existing_enrollments = db.query(CampaignRecruiter.recruiter_id).filter(
+            CampaignRecruiter.campaign_id == campaign_id,
+            CampaignRecruiter.recruiter_id.in_(all_rec_ids)
+        ).all()
+        existing_cr_ids = {row[0] for row in existing_enrollments}
+        
+        # 4. Bulk Insert Missing Enrollments
+        new_crs = []
+        for r in rec_by_email.values():
+            if r.recruiter_id not in existing_cr_ids:
+                new_crs.append(CampaignRecruiter(
                     campaign_id=campaign_id,
-                    recruiter_id=rec.recruiter_id,
+                    recruiter_id=r.recruiter_id,
                     current_step_id=first_step.step_id,
                     status=CampaignRecruiterStatus.pending.value,
                     enrolled_at=utcnow(),
                     next_send_at=campaign.start_at or utcnow()
-                )
-                db.add(cr)
+                ))
                 enrolled += 1
                 
+        if new_crs:
+            db.add_all(new_crs)
+            
         db.commit()
     except Exception as e:
         db.rollback()

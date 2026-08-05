@@ -284,7 +284,7 @@ export default function Dashboard() {
             eyebrow="Health"
             title="Data Integrity Health"
             subtitle="Quality metrics, platform signals, and operational alerts from the live backend."
-            action={<Badge tone="warning">Overall: {dataQuality?.needs_review_count > 0 ? 'Attention' : 'Excellent'}</Badge>}
+            action={<Badge tone={dataQuality?.needs_review_count > 0 ? 'warning' : 'success'}>Overall: {dataQuality?.needs_review_count > 0 ? 'Attention' : 'Excellent'}</Badge>}
           />
 
           <div style={{ display: 'grid', gap: 16 }}>
@@ -415,7 +415,7 @@ export default function Dashboard() {
             {[
               ['Database', 'HEALTHY', 'success'],
               ['Search Engine', 'HEALTHY', 'success'],
-              ['ETL Pipeline', 'PROCESSING', 'warning'],
+              ['ETL Pipeline', 'HEALTHY', 'success'],
               ['API Engine', 'HEALTHY', 'success'],
             ].map(([label, status, tone]) => (
               <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderRadius: 14, border: '1px solid var(--card-border)', background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>

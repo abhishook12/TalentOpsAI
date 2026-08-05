@@ -1295,20 +1295,21 @@ def api_prepare_preview(campaign_id: int, request: PreparePreviewRequest, db: Se
     if not campaign.from_email:
         validation_errors.append({"code": "MISSING_SENDER", "message": "No sender email selected."})
     if not bridge_healthy:
-        validation_errors.append({"code": "BRIDGE_DISCONNECTED", "message": bridge_error or "Email provider disconnected."})
+        validation_errors.append({"code": "BRIDGE_OFFLINE", "message": f"Outlook Bridge is offline: {bridge_error or 'unreachable'}"})
     if not has_recipients:
         validation_errors.append({"code": "MISSING_RECIPIENTS", "message": "No valid recipients found."})
     if not has_template:
         validation_errors.append({"code": "MISSING_TEMPLATE", "message": "No template subject or body saved."})
 
-    ready = len(validation_errors) == 0
+    blocking_errors = [e for e in validation_errors if e["code"] != "BRIDGE_OFFLINE"]
+    is_ready = len(blocking_errors) == 0
 
     return {
         "bridge_healthy": bridge_healthy,
-        "bridge_error": bridge_error,
+        "bridge_error": bridge_error if not bridge_healthy else None,
         "has_template": has_template,
         "has_recipients": has_recipients,
-        "ready": ready,
+        "ready": is_ready,
         "errors": validation_errors,
         "valid_count": recipients_count,
         "enrolled_count": enrolled

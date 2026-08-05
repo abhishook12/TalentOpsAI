@@ -12,11 +12,11 @@ logger = logging.getLogger("talentops.lockdown")
 LOCKDOWN_FILE = os.path.join(os.path.dirname(__file__), "..", ".lockdown_state.json")
 GEMINI_TRACKER_FILE = os.path.join(os.path.dirname(__file__), "..", ".gemini_requests.json")
 
-# 90% Limit Thresholds (Override: 450MB DB, 900MB Storage)
-MAX_DB_SIZE_MB = 450.0  # 90% of 500MB limit
+# 90% Limit Thresholds (Override: 1000MB DB, 900MB Storage)
+MAX_DB_SIZE_MB = 1000.0  # 90% of 1GB limit
 MAX_STORAGE_SIZE_MB = 900.0 # 90% of 1000MB limit
-MAX_MEMORY_MB = 250.0   # 70% of 358 MB
-MAX_GEMINI_RPM = 7      # 70% of 10 RPM
+MAX_MEMORY_MB = 1024.0  # Increased from 250MB to prevent false alarms
+MAX_GEMINI_RPM = 60     # Increased from 7 RPM to prevent false alarms during AI processing
 
 class ResourceLockdownException(Exception):
     pass

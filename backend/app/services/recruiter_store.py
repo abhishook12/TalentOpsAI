@@ -70,9 +70,37 @@ class RecruiterStore:
             self._load()
             self._last_mtime = current_mtime
 
+    def _download_from_storage(self):
+        """Download the Parquet file from Supabase Storage if it doesn't exist locally."""
+        if os.path.exists(PARQUET_FILE):
+            return
+            
+        logger.info(f"Downloading Parquet from Supabase Storage to {PARQUET_FILE}...")
+        try:
+            import requests
+            # Create the directory if it doesn't exist
+            os.makedirs(os.path.dirname(PARQUET_FILE), exist_ok=True)
+            
+            SUPABASE_URL = "https://dcqvsvgrdsrgnbwwssup.supabase.co"
+            url = f"{SUPABASE_URL}/storage/v1/object/public/data-assets/recruiters_full.parquet"
+            
+            response = requests.get(url, stream=True, timeout=30)
+            response.raise_for_status()
+            
+            with open(PARQUET_FILE, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+                        
+            logger.info(f"Successfully downloaded Parquet file ({os.path.getsize(PARQUET_FILE) / (1024*1024):.2f} MB)")
+        except Exception as e:
+            logger.error(f"Failed to download Parquet from Supabase: {e}")
+
     def _load(self):
         """Load the Parquet file into DuckDB."""
         duckdb = _get_duckdb()
+        
+        self._download_from_storage()
         
         if not os.path.exists(PARQUET_FILE):
             logger.warning(f"Parquet file not found: {PARQUET_FILE}. RecruiterStore will be empty.")

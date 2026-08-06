@@ -420,7 +420,7 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     gap: 16px;
     align-items: center;
     padding: 10px 14px 10px 12px;
-    background: rgba(255, 255, 255, 0.96);
+    background: var(--panel-bg);
     border-bottom: 1px solid var(--card-border);
     
   }
@@ -628,7 +628,7 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     padding: 18px 18px 16px;
     border: 1px solid var(--card-border);
     border-radius: 6px;
-    background: rgba(255,255,255,0.9);
+    background: var(--card-bg);
     box-shadow: var(--shadow);
     display: flex;
     flex-direction: column;

@@ -13,6 +13,7 @@ from app.models.sentinel_state import SentinelState
 from app.services.scraper import auto_enhance_recruiter_data, is_human_name
 from app.services.enrichment_service import jit_enrichment_service
 from app.services.mailintel_engine import extract_domain
+from app.services.parquet_writer import parquet_writer
 
 logger = logging.getLogger("sentinel")
 
@@ -226,6 +227,8 @@ class SentinelEngine:
                 return False # sleep long
 
             repaired_count = 0
+            parquet_updates = []
+            
             for r in recruiters:
                 try:
                     modifications = 0
@@ -402,11 +405,33 @@ class SentinelEngine:
                     db.commit() # Commit per recruiter to preserve partial progress
                     state.last_processed_id = r.recruiter_id
                     
+                    # Accumulate for Parquet Update
+                    parquet_updates.append({
+                        "recruiter_id": r.recruiter_id,
+                        "email": r.email,
+                        "phone": r.phone,
+                        "recruiter_name": r.recruiter_name,
+                        "company_id": r.company_id,
+                        "state": r.state,
+                        "normalized_city": r.normalized_city,
+                        "completeness_score": r.completeness_score,
+                        "quality_score": r.quality_score,
+                        "needs_review": r.needs_review,
+                        "sentinel_status": r.sentinel_status,
+                        "last_scan_at": r.last_scan_at.isoformat() if r.last_scan_at else None
+                    })
+                    
                 except Exception as e:
                     logger.error(f"Error processing recruiter {r.recruiter_id}: {e}")
                     db.rollback()
 
             # Batch complete
+            if parquet_updates:
+                try:
+                    parquet_writer.update_records(parquet_updates)
+                except Exception as e:
+                    logger.error(f"Failed to push sentinel updates to Parquet: {e}")
+
             state.profiles_analyzed += len(recruiters)
             state.profiles_repaired += repaired_count
             db.commit()

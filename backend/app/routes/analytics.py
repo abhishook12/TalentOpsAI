@@ -296,117 +296,75 @@ def companies_search(
         return cached["rows"]
 
     is_superadmin = current_user.role and current_user.role.name.lower() in ('admin', 'superadmin')
-    if is_superadmin:
-        where_clauses = ["c.is_active = true", "1 = 1"]
-    else:
-        where_clauses = ["c.is_active = true", "1 = 1"]
-    params = {"limit": limit, "min_recruiters": min_recruiters, "skip": skip, "user_id": current_user.id}
+    where_clauses = ["c.is_active = true", "1 = 1"]
+    params = {"limit": limit, "skip": skip}
 
     if q:
         q_clean = q.strip()
         import re
         q_ilike = re.sub(r'\s+', '%', q_clean)
-        # Use LIKE for SQLite compatibility (pg_trgm % and similarity() are Postgres-only)
-        where_clauses.append("(c.company_name LIKE '%' || :q_ilike || '%')")
+        where_clauses.append("(c.company_name ILIKE '%' || :q_ilike || '%')")
         params["q"] = q_clean
         params["q_ilike"] = q_ilike
-        sim_col = "0"
-    else:
-        sim_col = "0"
 
     if state and state.upper() != "ALL":
         where_clauses.append("c.state = :state")
         params["state"] = state.upper()
 
     where_sql = " AND ".join(where_clauses)
-
+    
+    # Get true recruiter counts from the Parquet store
+    from app.services.recruiter_store import recruiter_store
+    true_counts = recruiter_store.company_recruiter_counts()
+    
+    # Fast path: query companies metadata
     sql = f"""
-        WITH recruiter_counts AS (
-            SELECT company_id, COUNT(recruiter_id) as rc_count
-            FROM recruiters
-            WHERE company_id IS NOT NULL AND 1=1
-            GROUP BY company_id
-        ),
-        comp_stats AS (
-            SELECT 
-                c.company_id,
-                c.company_name,
-                c.location,
-                c.industry,
-                c.website,
-                c.email_pattern,
-                c.linkedin_url,
-                c.notes,
-                c.tags,
-                COALESCE(rc.rc_count, 0) AS recruiter_count,
-                COALESCE(NULLIF(TRIM(c.state), ''), 'US') AS state_abbr,
-                MAX({{sim_col}}) AS sim_score
-            FROM companies c
-            LEFT JOIN recruiter_counts rc ON c.company_id = rc.company_id
-            WHERE {{where_sql}}
-            GROUP BY c.company_id, rc.rc_count
-        )
-        SELECT *, 0 AS missing_state_count, 0 AS needs_review_count, COUNT(*) OVER() AS full_count
-        FROM comp_stats
-        WHERE recruiter_count >= :min_recruiters
-        ORDER BY sim_score DESC, recruiter_count DESC, company_name ASC
-        LIMIT :limit OFFSET :skip
+        SELECT 
+            c.company_id,
+            c.company_name,
+            c.location,
+            c.industry,
+            c.website,
+            c.email_pattern,
+            c.linkedin_url,
+            c.notes,
+            c.tags,
+            COALESCE(NULLIF(TRIM(c.state), ''), 'US') AS state_abbr,
+            0 AS sim_score,
+            0 AS missing_state_count, 
+            0 AS needs_review_count
+        FROM companies c
+        WHERE {where_sql}
     """
-    sql = sql.format(sim_col=sim_col, where_sql=where_sql)
-    rows = db.execute(text(sql), params).mappings().all()
+    
+    # Execute query
+    results = db.execute(text(sql), params).fetchall()
+    
+    # Stitch true counts and filter by min_recruiters
+    enriched_results = []
+    for row in results:
+        row_dict = dict(row._mapping)
+        # Inject the true count from Parquet
+        row_dict['recruiter_count'] = true_counts.get(row_dict['company_id'], 0)
+        row_dict['logo_domain'] = select_logo_domain(row_dict.get("website"), row_dict.get("email_pattern"))
+        
+        if row_dict['recruiter_count'] >= min_recruiters:
+            enriched_results.append(row_dict)
+            
+    # Sort by recruiter_count descending
+    enriched_results.sort(key=lambda x: x['recruiter_count'], reverse=True)
+    
+    # Apply pagination
+    total_count = len(enriched_results)
+    paginated = enriched_results[skip:skip+limit]
+    
+    # Add full_count to each row for frontend compatibility
+    for row in paginated:
+        row['full_count'] = total_count
 
-    total_count = rows[0]["full_count"] if rows and "full_count" in rows[0] else 0
+    final_result = {"total_count": total_count, "rows": paginated}
+    analytics_cache.set(cache_key, final_result, ttl=3600)
     response.headers["X-Total-Count"] = str(total_count)
-
-    # Get recruiter counts from DuckDB (full 2.1M dataset) to overlay PostgreSQL counts
-    duck_counts = {}
-    try:
-        recruiter_store._ensure_loaded()
-        duck_conn = recruiter_store._conn
-        if duck_conn:
-            company_ids = [int(row["company_id"]) for row in rows if row["company_id"]]
-            if company_ids:
-                placeholders = ','.join(str(cid) for cid in company_ids)
-                duck_rows = duck_conn.execute(f"""
-                    SELECT TRY_CAST(company_id AS INTEGER) AS cid, COUNT(*) AS cnt
-                    FROM recruiters
-                    WHERE TRY_CAST(company_id AS INTEGER) IN ({placeholders})
-                    GROUP BY cid
-                """).fetchall()
-                duck_counts = {int(r[0]): int(r[1]) for r in duck_rows if r[0] is not None}
-    except Exception as e:
-        logger.warning(f"DuckDB company count overlay failed: {e}")
-
-    res = []
-    for row in rows:
-        cid = row["company_id"]
-        # Use DuckDB count if available (much larger dataset), otherwise PostgreSQL count
-        rc = duck_counts.get(cid, int(row["recruiter_count"]))
-        res.append({
-            "company_id": cid,
-            "company_name": row["company_name"],
-            "location": row["location"],
-            "industry": row["industry"],
-            "website": row["website"],
-            "email_pattern": row["email_pattern"],
-            "linkedin_url": row["linkedin_url"],
-            "notes": row["notes"],
-            "tags": row["tags"],
-            "logo_domain": select_logo_domain(row["website"], row["email_pattern"]),
-            "recruiter_count": rc,
-            "state_abbr": row["state_abbr"] or "Unknown",
-            "missing_state_count": int(row["missing_state_count"]),
-            "needs_review_count": int(row["needs_review_count"]),
-        })
-
-    # Re-sort by recruiter_count descending since DuckDB counts may change the order
-    res.sort(key=lambda x: x["recruiter_count"], reverse=True)
-
-    # Cache all query results
-    analytics_cache.set(cache_key, {"total_count": total_count, "rows": res}, ttl=300)
-
-    return res
-
 
 class VisitPayload(BaseModel):
     page: str

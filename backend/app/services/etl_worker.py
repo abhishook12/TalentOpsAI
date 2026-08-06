@@ -12,8 +12,11 @@ from ..utils.normalizer import extract_domain, normalize_text
 from ..utils.state_normalizer import normalize_state_name
 from ..utils.state_recovery import build_company_domain_state_index, infer_state_from_sources
 from ..services.job_tracker import mark_progress, utc_now
-from ..services.adaptive_parser import parse_file
+from app.services.adaptive_parser import parse_file
+from app.services.parquet_writer import parquet_writer
 from ..services.dedup_engine import deduplicate_and_enrich
+
+logger = logging.getLogger("etl_worker")
 
 def build_company_name(company_name: str | None) -> str | None:
     if not company_name:
@@ -312,23 +315,23 @@ def process_smart_import(job_id: str, filepath: str, column_map: dict = None):
         if pending_rows:
             try:
                 db.bulk_insert_mappings(RawUpload, [item["raw_row"] for item in pending_rows])
-                db.bulk_insert_mappings(Recruiter, [item["recruiter_row"] for item in pending_rows])
                 db.commit()
+                
+                # Write to Parquet instead of Postgres
+                recruiter_rows = [item["recruiter_row"] for item in pending_rows]
+                if recruiter_rows:
+                    parquet_writer.append_records(recruiter_rows)
+                    
             except Exception as batch_error:
                 db.rollback()
+                logger.error(f"Batch insert failed: {batch_error}")
+                # Fallback to individual inserts for RawUpload, and skip Parquet for failed ones or do them individually
                 for item in pending_rows:
                     try:
                         raw_record = RawUpload(**item["raw_row"])
-                        recruiter_record = Recruiter(**item["recruiter_row"])
                         db.add(raw_record)
-                        db.add(recruiter_record)
                         db.commit()
-                    except IntegrityError as row_error:
-                        db.rollback()
-                        errors += 1
-                        failed_rows += 1
-                        # This happens when a unique constraint is violated (e.g., duplicate email)
-                        error_log.append({"row": "batch_retry", "reason": f"Duplicate or constraint violation: {row_error.orig}"})
+                        parquet_writer.append_records([item["recruiter_row"]])
                     except Exception as row_error:
                         db.rollback()
                         errors += 1

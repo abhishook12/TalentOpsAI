@@ -73,23 +73,36 @@ class RecruiterStore:
             self._last_mtime = current_mtime
 
     def _download_from_storage(self):
-        """Download the Parquet file from Supabase Storage if it doesn't exist locally."""
-        if os.path.exists(PARQUET_FILE):
-            return
+        """Download the Parquet file from Supabase Storage if it doesn't exist locally or if size differs."""
+        import urllib.request
+        import shutil
+        import time
+        
+        url = f"https://dcqvsvgrdsrgnbwwssup.supabase.co/storage/v1/object/public/data-assets/recruiters_full.parquet?v={int(time.time())}"
+        
+        try:
+            # Check remote size using a HEAD request (or just open and check length)
+            req = urllib.request.Request(url, method='HEAD')
+            with urllib.request.urlopen(req, timeout=10) as response:
+                remote_size = int(response.headers.get('Content-Length', 0))
+                
+            if os.path.exists(PARQUET_FILE):
+                local_size = os.path.getsize(PARQUET_FILE)
+                if local_size == remote_size and remote_size > 0:
+                    logger.info(f"Local Parquet file matches remote size ({local_size} bytes). Skipping download.")
+                    return
+                else:
+                    logger.info(f"Local size ({local_size}) differs from remote ({remote_size}). Re-downloading...")
+        except Exception as e:
+            logger.warning(f"Failed to check remote Parquet size: {e}. Will rely on local existence.")
+            if os.path.exists(PARQUET_FILE):
+                return
             
         logger.info(f"Downloading Parquet from Supabase Storage to {PARQUET_FILE}...")
         try:
-            import urllib.request
-            import shutil
-            # Create the directory if it doesn't exist
             os.makedirs(os.path.dirname(PARQUET_FILE), exist_ok=True)
-            
-            SUPABASE_URL = "https://dcqvsvgrdsrgnbwwssup.supabase.co"
-            url = f"{SUPABASE_URL}/storage/v1/object/public/data-assets/recruiters_full.parquet"
-            
             with urllib.request.urlopen(url, timeout=60) as response, open(PARQUET_FILE, 'wb') as out_file:
                 shutil.copyfileobj(response, out_file)
-                        
             logger.info(f"Successfully downloaded Parquet file ({os.path.getsize(PARQUET_FILE) / (1024*1024):.2f} MB)")
         except Exception as e:
             logger.error(f"Failed to download Parquet from Supabase: {e}")

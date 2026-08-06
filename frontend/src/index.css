@@ -291,32 +291,6 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     border-top-color: #313131 !important;
   }
 
-  html[data-theme='dark'] .card,
-  html[data-theme='dark'] .cc-card,
-  html[data-theme='dark'] .cc-metric {
-    background: #1c1c1c !important;
-    border-color: #343434 !important;
-    box-shadow: none !important;
-  }
-  
-  html[data-theme='dark'] .cc-topbar {
-    background: rgba(21, 21, 21, 0.96) !important;
-  }
-
-  html[data-theme='dark'] th {
-    background: #181818 !important;
-    color: #dddddd !important;
-    border-bottom-color: #333333 !important;
-  }
-
-  html[data-theme='dark'] td {
-    color: #f0f0f0 !important;
-    border-bottom-color: #333333 !important;
-  }
-
-  html[data-theme='dark'] tr:hover td {
-    background: #242424 !important;
-  }
 
 
   #root {

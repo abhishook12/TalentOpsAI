@@ -187,7 +187,7 @@ export default function Directory() {
         const { data } = await api.get('/analytics/companies-search', {
           params: {
             q: debouncedCompanyQuery || undefined,
-            limit: 200,
+            limit: 199,
             skip: 0,
             min_recruiters: 1,
           },

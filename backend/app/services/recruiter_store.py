@@ -14,7 +14,9 @@ from pathlib import Path
 
 logger = logging.getLogger("recruiter_store")
 
-PARQUET_DIR = os.environ.get("PARQUET_DIR", "C:/TalentOpsAI/backend/data")
+# Use an absolute path relative to this file's location to ensure it works on both Windows and Linux (Render)
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+PARQUET_DIR = os.environ.get("PARQUET_DIR", os.path.join(BASE_DIR, "data"))
 PARQUET_FILE = os.path.join(PARQUET_DIR, "recruiters_full.parquet")
 
 # Lazy import duckdb — only when needed

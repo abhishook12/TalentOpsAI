@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Link as NavLink, useLocation } from '@tanstack/react-router'
 import api, { clearStoredToken } from '../services/api'
 import { LayoutDashboard, Activity, Users, Map, BarChart2, Search, Eye, Radar, LogOut, ShieldCheck, Settings, UserCircle, HeartPulse, UserCog, Server, Shield, Mail } from 'lucide-react'
@@ -43,7 +43,7 @@ export default function Sidebar() {
     { to: '/recruiters', label: 'Recruiters', icon: Users },
     { to: '/directory', label: 'Directory', icon: Map, aliases: ['/states', '/companies'] },
     { to: '/analytics', label: 'Analytics', icon: BarChart2 },
-    { to: '/ai-search', label: 'AI Search', icon: Search },
+    { to: '/search', label: 'AI Search', icon: Search },
     { isGroupHeader: true, label: 'Account' },
     { to: '/profile', label: 'Profile', icon: UserCircle },
     { to: '/settings', label: 'Settings', icon: Settings },
@@ -52,7 +52,7 @@ export default function Sidebar() {
   const adminNav = [
     { isGroupHeader: true, label: 'Command Center' },
     { to: '/admin', label: 'Admin Terminal', icon: LayoutDashboard },
-    { to: '/sentinel', label: 'Data Intelligence', icon: HeartPulse },
+    { to: '/sentinel', label: 'Data Quality Center', icon: HeartPulse },
     { to: '/review-queue', label: 'Review Queue', icon: Search },
     { to: '/mailintel', label: 'MAILINTEL', icon: Mail },
     { to: '/admin/users', label: 'User Management', icon: UserCog },
@@ -114,7 +114,7 @@ export default function Sidebar() {
 
         <div style={{ minWidth: 0 }}>
           <div style={{ color: 'var(--text-primary)', fontSize: 14, fontWeight: 700 }}>
-            {isAdmin ? 'Admin Console' : 'TalentOps AI'}
+            {isAdmin ? 'Admin Console' : 'TalentOps'}
           </div>
           <div style={{ color: 'var(--text-muted)', fontSize: 10, fontWeight: 600, marginTop: 4, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
             {isAdmin ? 'OPERATIONS' : 'RECRUITER INTEL'}
@@ -162,7 +162,6 @@ export default function Sidebar() {
                 border: '1px solid transparent',
                 borderLeft: active ? '4px solid var(--brand)' : '4px solid transparent',
                 boxShadow: active ? 'var(--shadow)' : 'none',
-                transition: 'all 0.15s ease',
                 fontSize: 13.5,
                 fontWeight: active ? 900 : 700,
                 letterSpacing: '0.01em',
@@ -170,17 +169,11 @@ export default function Sidebar() {
               onMouseEnter={(event) => {
                 if (active) return
                 event.currentTarget.style.background = 'var(--brand-bg)'
-                event.currentTarget.style.borderColor = 'transparent'
-                event.currentTarget.style.boxShadow = 'var(--shadow)'
-                event.currentTarget.style.transform = 'translateY(-1px)'
                 event.currentTarget.style.color = 'var(--text-primary)'
               }}
               onMouseLeave={(event) => {
                 if (active) return
                 event.currentTarget.style.background = 'transparent'
-                event.currentTarget.style.borderColor = 'transparent'
-                event.currentTarget.style.boxShadow = 'none'
-                event.currentTarget.style.transform = 'translateY(0)'
                 event.currentTarget.style.color = 'var(--text-secondary)'
               }}
             >
@@ -193,7 +186,7 @@ export default function Sidebar() {
                   fontSize: '11px',
                   fontWeight: 'bold',
                   padding: '2px 6px',
-                  borderRadius: '12px',
+                  borderRadius: '6px',
                   minWidth: '20px',
                   textAlign: 'center',
                   animation: 'pulse-badge 2s infinite'
@@ -239,7 +232,7 @@ export default function Sidebar() {
             alignItems: 'center',
             gap: 12,
             padding: '12px 14px',
-            borderRadius: 14,
+            borderRadius: 6,
             border: 'none',
             background: 'transparent',
             color: 'var(--text-muted)',

@@ -1,9 +1,10 @@
 """
-Production-grade campaign send engine (High-Speed Worker Pool).
+Production-grade campaign send engine (Controlled Batch Processing).
 
 Processes campaign email queues with:
-- Asynchronous Worker Pool (Immediate Queuing)
-- No artificial delays (Fast execution)
+- Controlled batch processing (prevents memory spikes)
+- Hard recipient cap per campaign (MAX_RECIPIENTS_PER_CAMPAIGN)
+- Throttled worker pool (5 concurrent workers)
 - Intelligent retry with exponential backoff
 - Per-email lifecycle tracking
 - Campaign-level fault tolerance
@@ -30,8 +31,11 @@ logger = logging.getLogger(__name__)
 
 # Bridge configuration
 BRIDGE_URL = "http://127.0.0.1:1337"
-WORKER_COUNT = 100  # Number of concurrent workers sending emails
+WORKER_COUNT = 5  # Reduced from 100 to prevent memory spikes and system crashes
 MAX_RETRIES_OVERALL = 3
+MAX_RECIPIENTS_PER_CAMPAIGN = 50  # Hard cap — prevents system-wide lockdowns
+BATCH_SIZE = 10  # Process emails in small batches
+BATCH_COOLDOWN_SECONDS = 1.5  # Pause between batches to let memory settle
 
 # We use a ThreadPoolExecutor for requests.post to avoid blocking the asyncio event loop
 request_executor = concurrent.futures.ThreadPoolExecutor(max_workers=WORKER_COUNT * 2)
@@ -61,55 +65,38 @@ def _set_campaign_status(campaign_id: int, status: str):
             db.commit()
 
 def _get_campaign_eta(campaign_id: int) -> dict:
-    """Calculate ETA based on fast worker pool throughput (approx 1s per email per worker)."""
+    """Calculate ETA based on fast worker pool throughput — single GROUP BY query."""
+    from sqlalchemy import func as sa_func
     with SessionLocal() as db:
-        total = db.query(CampaignRecruiter).filter(
-            CampaignRecruiter.campaign_id == campaign_id
-        ).count()
-        
-        sent = db.query(CampaignRecruiter).filter(
-            CampaignRecruiter.campaign_id == campaign_id,
-            CampaignRecruiter.status.in_([
-                CampaignRecruiterStatus.sent.value,
-                CampaignRecruiterStatus.delivered.value,
-                CampaignRecruiterStatus.opened.value,
-                CampaignRecruiterStatus.replied.value,
-            ])
-        ).count()
-        
-        failed = db.query(CampaignRecruiter).filter(
-            CampaignRecruiter.campaign_id == campaign_id,
-            CampaignRecruiter.status == CampaignRecruiterStatus.failed.value
-        ).count()
-        
-        retrying = db.query(CampaignRecruiter).filter(
-            CampaignRecruiter.campaign_id == campaign_id,
-            CampaignRecruiter.status == CampaignRecruiterStatus.retrying.value
-        ).count()
-        
-        pending = db.query(CampaignRecruiter).filter(
-            CampaignRecruiter.campaign_id == campaign_id,
-            CampaignRecruiter.status.in_([
-                CampaignRecruiterStatus.pending.value,
-                CampaignRecruiterStatus.queued.value,
-            ])
-        ).count()
-        
-        remaining = pending + retrying
-        
-        # Estimate: e.g. 1 email takes 1.5s via Outlook. With 3 workers, 1 email takes 0.5s overall.
-        estimated_seconds_per_email = 0.5 
+        counts = dict(
+            db.query(CampaignRecruiter.status, sa_func.count())
+            .filter(CampaignRecruiter.campaign_id == campaign_id)
+            .group_by(CampaignRecruiter.status)
+            .all()
+        )
+        total = sum(counts.values())
+        terminal = ['Sent', 'Delivered', 'Opened', 'Replied', 'Bounced', 'Cancelled']
+        sent = sum(counts.get(s, 0) for s in terminal)
+        failed = counts.get('Failed', 0)
+        retrying = counts.get('Retrying', 0)
+        queued = counts.get('Queued', 0)
+        sending = counts.get('Sending', 0)
+        pending = counts.get('Pending', 0) + queued + sending + retrying
+
+        remaining = pending
+        # With concurrent workers, ~0.3s per email for ≤50 recipients
+        estimated_seconds_per_email = 0.3
         eta_seconds = int(remaining * estimated_seconds_per_email)
-        
-        # We assume max speed. We report "rate_per_minute" effectively as what we estimate.
         effective_rate = int(60 / estimated_seconds_per_email) if estimated_seconds_per_email > 0 else 0
-        
+
         return {
             "total": total,
             "sent": sent,
             "failed": failed,
             "retrying": retrying,
             "pending": pending,
+            "queued": queued,
+            "sending": sending,
             "remaining": remaining,
             "progress_percent": round((sent / total) * 100, 1) if total > 0 else 0,
             "eta_seconds": eta_seconds,
@@ -354,7 +341,8 @@ async def _schedule_retry(queue: asyncio.Queue, recipient_id: int, retry_count: 
             await queue.put(recipient_id)
 
 async def process_campaign_queue(campaign_id: int):
-    """Background task manager for a campaign's email queue."""
+    """Background task manager for a campaign's email queue.
+    Uses controlled batch processing to prevent memory spikes."""
     logger.info(f"Starting Campaign Manager for {campaign_id}")
     
     # 1. Extract configuration
@@ -409,30 +397,65 @@ async def process_campaign_queue(campaign_id: int):
             ])
         ).all()
         
+        # SAFETY: Enforce hard cap even if somehow more were enrolled
+        if len(pending_recipients) > MAX_RECIPIENTS_PER_CAMPAIGN:
+            logger.warning(f"Campaign {campaign_id} has {len(pending_recipients)} recipients, capping to {MAX_RECIPIENTS_PER_CAMPAIGN}")
+            # Only process the first MAX_RECIPIENTS_PER_CAMPAIGN, mark the rest as cancelled
+            for r in pending_recipients[MAX_RECIPIENTS_PER_CAMPAIGN:]:
+                r.status = CampaignRecruiterStatus.cancelled.value
+            pending_recipients = pending_recipients[:MAX_RECIPIENTS_PER_CAMPAIGN]
+    
+        # Batch loading: feed recipients into the queue in small batches
+        all_recipient_ids = []
         for i, r in enumerate(pending_recipients):
             r.status = CampaignRecruiterStatus.queued.value
             r.queue_position = i + 1
-            queue.put_nowait(r.campaign_recruiter_id)
+            all_recipient_ids.append(r.campaign_recruiter_id)
         
-        # Yield before blocking on commit
-        await asyncio.sleep(0)
         db.commit()
     
-    # Queue empty check removed to keep stream open for bridge
-    # 3. Start Workers
-    workers = []
-    for i in range(WORKER_COUNT):
-        task = asyncio.create_task(_worker_task(i, campaign_id, queue, signature_html, template, from_email, user_id))
-        workers.append(task)
-        
-    # 4. Wait for queue to complete
-    await queue.join()
+    # 3. Process in batches to control memory pressure
+    total_batches = math.ceil(len(all_recipient_ids) / BATCH_SIZE)
+    logger.info(f"Campaign {campaign_id}: Processing {len(all_recipient_ids)} recipients in {total_batches} batches of {BATCH_SIZE}")
     
-    # 5. Cleanup
-    for w in workers:
-        w.cancel()
+    for batch_num in range(total_batches):
+        # Check if campaign is still active before each batch
+        with SessionLocal() as db:
+            campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+            if not campaign or campaign.status != CampaignStatus.active.value:
+                logger.info(f"Campaign {campaign_id} is no longer active (status: {campaign.status if campaign else 'deleted'}). Stopping.")
+                return
         
-    # Check if we should mark as completed (if not cancelled/paused)
+        batch_start = batch_num * BATCH_SIZE
+        batch_end = min(batch_start + BATCH_SIZE, len(all_recipient_ids))
+        batch_ids = all_recipient_ids[batch_start:batch_end]
+        
+        logger.info(f"Campaign {campaign_id}: Batch {batch_num + 1}/{total_batches} — sending {len(batch_ids)} emails")
+        
+        # Feed this batch into the queue
+        batch_queue = asyncio.Queue()
+        for rid in batch_ids:
+            batch_queue.put_nowait(rid)
+        
+        # Start workers for this batch (capped at WORKER_COUNT)
+        workers = []
+        for i in range(min(WORKER_COUNT, len(batch_ids))):
+            task = asyncio.create_task(_worker_task(i, campaign_id, batch_queue, signature_html, template, from_email, user_id))
+            workers.append(task)
+        
+        # Wait for this batch to complete
+        await batch_queue.join()
+        
+        # Cleanup workers for this batch
+        for w in workers:
+            w.cancel()
+        
+        # Cooldown between batches to let memory settle
+        if batch_num < total_batches - 1:
+            logger.info(f"Campaign {campaign_id}: Batch {batch_num + 1} complete. Cooling down for {BATCH_COOLDOWN_SECONDS}s...")
+            await asyncio.sleep(BATCH_COOLDOWN_SECONDS)
+    
+    # Final status check
     with SessionLocal() as db:
         campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
         if campaign and campaign.status == CampaignStatus.active.value:

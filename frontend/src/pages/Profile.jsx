@@ -63,7 +63,7 @@ export default function Profile() {
         <div style={{
           background: 'rgba(25, 25, 25, 0.6)',
           border: '1px solid var(--card-border)',
-          borderRadius: 24,
+          borderRadius: 6,
           padding: 32,
           textAlign: 'center',
           backdropFilter: 'blur(12px)'
@@ -83,7 +83,7 @@ export default function Profile() {
           <button 
             onClick={logout} 
             style={{
-              width: '100%', padding: '12px', borderRadius: 12, 
+              width: '100%', padding: '12px', borderRadius: 6, 
               border: '1px solid color-mix(in srgb, var(--danger) 30%, transparent)',
               background: 'color-mix(in srgb, var(--danger) 8%, transparent)', 
               color: 'var(--danger)', fontWeight: 700, cursor: 'pointer',
@@ -104,7 +104,7 @@ export default function Profile() {
           <div style={{
             background: 'rgba(25, 25, 25, 0.6)',
             border: '1px solid var(--card-border)',
-            borderRadius: 24,
+            borderRadius: 6,
             padding: 32,
           }}>
             <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -126,7 +126,7 @@ export default function Profile() {
                   background: 'color-mix(in srgb, var(--success) 10%, transparent)',
                   border: '1px solid color-mix(in srgb, var(--success) 40%, transparent)',
                   color: 'var(--success)',
-                  padding: '4px 12px', borderRadius: 20
+                  padding: '4px 12px', borderRadius: 6
                 }}>
                   <Shield size={14} color="var(--success)" /> Active
                 </div>
@@ -152,18 +152,18 @@ export default function Profile() {
           <div style={{
             background: 'rgba(25, 25, 25, 0.6)',
             border: '1px solid var(--card-border)',
-            borderRadius: 24,
+            borderRadius: 6,
             padding: 32,
           }}>
             <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
               <Link size={20} color="var(--brand)" /> Email Bridge & Outlook Connection
             </h3>
             
-            <div style={{ background: 'var(--bg-surface)', padding: 24, borderRadius: 16, border: '1px solid var(--card-border)' }}>
+            <div style={{ background: 'var(--bg-surface)', padding: 24, borderRadius: 6, border: '1px solid var(--card-border)' }}>
               {!loadingBridge && bridgeStatus && bridgeStatus.connected_email ? (
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                    <div style={{ width: 48, height: 48, borderRadius: 12, background: bridgeStatus.status === 'online' ? 'rgba(74, 222, 128, 0.1)' : 'rgba(255, 170, 0, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: 48, height: 48, borderRadius: 6, background: bridgeStatus.status === 'online' ? 'rgba(74, 222, 128, 0.1)' : 'rgba(255, 170, 0, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Activity size={24} color={bridgeStatus.status === 'online' ? "#4ade80" : "#ffaa00"} />
                     </div>
                     <div>
@@ -192,7 +192,7 @@ export default function Profile() {
                   </div>
                   
                   {bridgeStatus.stats && (
-                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--card-border)', padding: 16, borderRadius: 12, marginBottom: 24 }}>
+                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--card-border)', padding: 16, borderRadius: 6, marginBottom: 24 }}>
                       <h5 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Current Queue Statistics</h5>
                       <div style={{ display: 'flex', gap: 24 }}>
                         <div style={{ flex: 1 }}>
@@ -229,7 +229,7 @@ export default function Profile() {
                   </div>
                   <h4 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 700 }}>Outlook Not Connected</h4>
                   <p style={{ margin: '0 auto 24px', fontSize: 14, color: 'var(--text-secondary)', maxWidth: 400, lineHeight: 1.5 }}>
-                    Connect your Microsoft Outlook account to enable the TalentOps AI Email Bridge. 
+                    Connect your Microsoft Outlook account to enable the TalentOps Email Bridge. 
                     Authentication will open in a secure window.
                   </p>
                   <button 
@@ -247,7 +247,7 @@ export default function Profile() {
           <div style={{
             background: 'rgba(25, 25, 25, 0.6)',
             border: '1px solid var(--card-border)',
-            borderRadius: 24,
+            borderRadius: 6,
             padding: 32,
           }}>
             <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -255,7 +255,7 @@ export default function Profile() {
             </h3>
 
             {isGoogle ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 20, background: 'var(--bg-surface)', borderRadius: 16, border: '1px solid var(--card-border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 20, background: 'var(--bg-surface)', borderRadius: 6, border: '1px solid var(--card-border)' }}>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Google Connected</div>
                   <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>You signed in using your Google account. Password resets are managed by Google.</div>
@@ -263,7 +263,7 @@ export default function Profile() {
                 <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" style={{ width: 24, height: 24 }} />
               </div>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 20, background: 'var(--bg-surface)', borderRadius: 16, border: '1px solid var(--card-border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 20, background: 'var(--bg-surface)', borderRadius: 6, border: '1px solid var(--card-border)' }}>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Password Authentication</div>
                   <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>You use a local password to sign in.</div>

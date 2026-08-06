@@ -100,7 +100,7 @@ export default function ActivityLog() {
       <header className="fixed top-0 left-0 right-0 z-50 flex w-full items-center justify-between border-b border-outline-variant bg-surface px-4 py-4">
         <div className="flex items-center gap-3">
           <i className="ti ti-cpu text-primary text-2xl" />
-          <h1 className="text-xl font-bold tracking-tighter text-on-surface">TalentOps AI</h1>
+          <h1 className="text-xl font-bold tracking-tighter text-on-surface">TalentOps</h1>
         </div>
         <div className="flex gap-2 bg-surface-container-low p-1 rounded-full border border-outline-variant">
           <button 

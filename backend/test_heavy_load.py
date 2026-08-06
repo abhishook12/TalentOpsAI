@@ -11,7 +11,7 @@ def simulate_heavy_load():
     
     # Create a dummy user
     dummy_email = f"test_{uuid.uuid4()}@example.com"
-    user = User(email=dummy_email, hashed_password="pwd", full_name="Test")
+    user = User(email=dummy_email, password_hash="pwd", first_name="Test", last_name="User")
     db.add(user)
     db.commit()
     

@@ -1,17 +1,21 @@
 from datetime import datetime, timedelta
 from threading import Lock
-from typing import Optional
+from typing import Optional, Dict, Any, List
 import logging
 import time
+import asyncio
+import functools
+import pandas as pd
 
-from fastapi import APIRouter, Depends, Query, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import text
+from sqlalchemy import text, func, String
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..services.auth_service import get_current_user_from_request
+from ..services.recruiter_store import recruiter_store
 from ..models.auth_models import User
 from ..models.models import Company, PageVisit, Recruiter, Vendor
 from ..utils.logo_domains import select_logo_domain
@@ -91,9 +95,12 @@ def get_data_quality(current_user: User = Depends(get_current_user_from_request)
 def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
 
     is_admin = current_user.role and current_user.role.name.lower() in ('admin', 'superadmin')
-    where_clause = "WHERE 1=1"
     
-    sql = text(f"""
+    # Force reload from disk to pick up any new Parquet data from bulk imports
+    recruiter_store.reload()
+    duck_conn = recruiter_store._conn
+    
+    sql = """
         SELECT 
             COUNT(*) as total_recruiters,
             COUNT(*) FILTER (WHERE is_active = true) as active_recruiters,
@@ -111,16 +118,25 @@ def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depen
                 (phone3 IS NOT NULL AND phone3 != '') OR 
                 (phone4 IS NOT NULL AND phone4 != '')
             ) as with_phone
-        FROM recruiters {where_clause}
-    """)
-    res = db.execute(sql).mappings().first()
-
-    total_recruiters = res["total_recruiters"] or 0
-    active_recruiters = res["active_recruiters"] or 0
-    needs_review = res["needs_review"] or 0
-    low_quality = res["low_quality"] or 0
-    with_email = res["with_email"] or 0
-    with_phone = res["with_phone"] or 0
+        FROM recruiters
+    """
+    if duck_conn:
+        res = duck_conn.execute(sql).fetchone()
+        total_recruiters = res[0] or 0
+        active_recruiters = res[1] or 0
+        needs_review = res[2] or 0
+        low_quality = res[3] or 0
+        with_email = res[4] or 0
+        with_phone = res[5] or 0
+    else:
+        # Fallback if DuckDB fails for some reason
+        res = db.execute(text(sql)).mappings().first()
+        total_recruiters = res["total_recruiters"] or 0
+        active_recruiters = res["active_recruiters"] or 0
+        needs_review = res["needs_review"] or 0
+        low_quality = res["low_quality"] or 0
+        with_email = res["with_email"] or 0
+        with_phone = res["with_phone"] or 0
 
     total_companies = db.query(Company).count()
     total_vendors = db.query(Vendor).count()
@@ -149,6 +165,25 @@ def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depen
 @router.get("/recruiters-by-state")
 @cached_endpoint(ttl_seconds=3600)
 def recruiters_by_state(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    # Use DuckDB Parquet store (2.1M full dataset) instead of PostgreSQL (128K subset)
+    try:
+        recruiter_store._ensure_loaded()
+        duck_conn = recruiter_store._conn
+        if duck_conn:
+            results = duck_conn.execute("""
+                SELECT
+                    state,
+                    COUNT(*) AS count
+                FROM recruiters
+                WHERE state IS NOT NULL AND state != '' AND state != 'US'
+                GROUP BY state
+                ORDER BY count DESC, state ASC
+            """).fetchall()
+            return [{"state": row[0], "count": int(row[1])} for row in results]
+    except Exception as e:
+        logger.warning(f"DuckDB recruiters-by-state failed, falling back to PostgreSQL: {e}")
+
+    # Fallback to PostgreSQL
     computed_state_sql = EFFECTIVE_RECRUITER_STATE_SQL_R
     is_admin = current_user.role and current_user.role.name.lower() == 'admin'
     where_clause = "1=1"
@@ -300,6 +335,9 @@ def companies_search(
                 c.industry,
                 c.website,
                 c.email_pattern,
+                c.linkedin_url,
+                c.notes,
+                c.tags,
                 COALESCE(rc.rc_count, 0) AS recruiter_count,
                 COALESCE(NULLIF(TRIM(c.state), ''), 'US') AS state_abbr,
                 MAX({{sim_col}}) AS sim_score
@@ -320,21 +358,49 @@ def companies_search(
     total_count = rows[0]["full_count"] if rows and "full_count" in rows[0] else 0
     response.headers["X-Total-Count"] = str(total_count)
 
+    # Get recruiter counts from DuckDB (full 2.1M dataset) to overlay PostgreSQL counts
+    duck_counts = {}
+    try:
+        recruiter_store._ensure_loaded()
+        duck_conn = recruiter_store._conn
+        if duck_conn:
+            company_ids = [int(row["company_id"]) for row in rows if row["company_id"]]
+            if company_ids:
+                placeholders = ','.join(str(cid) for cid in company_ids)
+                duck_rows = duck_conn.execute(f"""
+                    SELECT TRY_CAST(company_id AS INTEGER) AS cid, COUNT(*) AS cnt
+                    FROM recruiters
+                    WHERE TRY_CAST(company_id AS INTEGER) IN ({placeholders})
+                    GROUP BY cid
+                """).fetchall()
+                duck_counts = {int(r[0]): int(r[1]) for r in duck_rows if r[0] is not None}
+    except Exception as e:
+        logger.warning(f"DuckDB company count overlay failed: {e}")
+
     res = []
     for row in rows:
+        cid = row["company_id"]
+        # Use DuckDB count if available (much larger dataset), otherwise PostgreSQL count
+        rc = duck_counts.get(cid, int(row["recruiter_count"]))
         res.append({
-            "company_id": row["company_id"],
+            "company_id": cid,
             "company_name": row["company_name"],
             "location": row["location"],
             "industry": row["industry"],
             "website": row["website"],
             "email_pattern": row["email_pattern"],
+            "linkedin_url": row["linkedin_url"],
+            "notes": row["notes"],
+            "tags": row["tags"],
             "logo_domain": select_logo_domain(row["website"], row["email_pattern"]),
-            "recruiter_count": int(row["recruiter_count"]),
+            "recruiter_count": rc,
             "state_abbr": row["state_abbr"] or "Unknown",
             "missing_state_count": int(row["missing_state_count"]),
             "needs_review_count": int(row["needs_review_count"]),
         })
+
+    # Re-sort by recruiter_count descending since DuckDB counts may change the order
+    res.sort(key=lambda x: x["recruiter_count"], reverse=True)
 
     # Cache all query results
     analytics_cache.set(cache_key, {"total_count": total_count, "rows": res}, ttl=300)
@@ -454,6 +520,7 @@ def visit_stats(db: Session = Depends(get_db), current_user: User = Depends(get_
     return result
 
 @router.get("/enrichment-feed")
+@cached_endpoint(ttl_seconds=30)
 def get_enrichment_feed(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     try:
         discovered = db.execute(text("""
@@ -534,9 +601,11 @@ def get_enrichment_feed(db: Session = Depends(get_db), current_user: User = Depe
         return {"feed": []}
 
 @router.get("/global-activity")
+@cached_endpoint(ttl_seconds=30)
 def get_global_activity(
     limit: int = 200,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request)
 ):
     try:
         # Fetch the most recently updated high-quality records
@@ -823,3 +892,56 @@ def get_smart_insights(db: Session = Depends(get_db), current_user: User = Depen
 
     analytics_cache.set("dashboard_insights", {"insights": insights}, ttl=300)
     return {"insights": insights}
+
+@router.get("/quality-metrics")
+def get_quality_metrics(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    # Phase 8 Metrics
+    avg_rec_score = db.execute(text("SELECT AVG(completeness_score) FROM recruiters WHERE completeness_score IS NOT NULL")).scalar() or 0
+    avg_comp_score = db.execute(text("SELECT AVG(completeness_score) FROM companies WHERE completeness_score IS NOT NULL")).scalar() or 0
+    
+    overall_health = (avg_rec_score + avg_comp_score) / 2 if (avg_rec_score or avg_comp_score) else 0
+    
+    recs_completed = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE quality_flags IS NOT NULL")).scalar() or 0
+    comps_completed = db.execute(text("SELECT COUNT(*) FROM companies WHERE quality_flags IS NOT NULL")).scalar() or 0
+    
+    unknown_recs = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE recruiter_name ILIKE 'unknown%' OR location ILIKE 'unknown%'")).scalar() or 0
+    
+    duplicates = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE merged_into_id IS NOT NULL")).scalar() or 0
+    
+    low_profiles = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE completeness_score < 50")).scalar() or 0
+    
+    avg_confidence = db.execute(text("SELECT AVG(confidence) FROM repair_logs")).scalar() or 0
+    
+    return {
+        "overall_health": round(overall_health, 1),
+        "avg_recruiter_completeness": round(avg_rec_score, 1),
+        "avg_company_completeness": round(avg_comp_score, 1),
+        "recruiters_completed": recs_completed,
+        "companies_completed": comps_completed,
+        "unknown_remaining": unknown_recs,
+        "duplicates_identified": duplicates,
+        "low_quality_profiles": low_profiles,
+        "average_repair_confidence": round(avg_confidence, 1)
+    }
+
+@router.get("/repair-logs")
+def get_repair_logs(limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    logs = db.execute(text("SELECT id, entity_type, entity_id, field_name, old_value, new_value, confidence, evidence, source, created_at FROM repair_logs ORDER BY created_at DESC LIMIT :limit"), {"limit": limit}).fetchall()
+    
+    res = []
+    for l in logs:
+        ts = l[9].isoformat() if l[9] else None
+        if ts and not ts.endswith('Z') and '+' not in ts: ts += 'Z'
+        res.append({
+            "id": l[0],
+            "entity_type": l[1],
+            "entity_id": l[2],
+            "field_name": l[3],
+            "old_value": l[4],
+            "new_value": l[5],
+            "confidence": l[6],
+            "evidence": l[7],
+            "source": l[8],
+            "timestamp": ts
+        })
+    return {"logs": res}

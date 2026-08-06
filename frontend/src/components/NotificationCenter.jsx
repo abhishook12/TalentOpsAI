@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Bell, Check, Info, AlertTriangle, AlertCircle } from 'lucide-react';
 import api from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,6 +17,7 @@ export default function NotificationCenter() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 60000);
     return () => clearInterval(interval);
@@ -70,7 +71,7 @@ export default function NotificationCenter() {
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              transition={{ duration: 0.15, ease: 'easeOut' }}
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
               style={{
                 position: 'absolute',
                 top: 50, right: 10,
@@ -78,7 +79,7 @@ export default function NotificationCenter() {
                 maxHeight: '80vh',
                 background: 'var(--bg-surface)',
                 border: '1px solid var(--card-border)',
-                borderRadius: 16,
+                borderRadius: 6,
                 zIndex: 9002,
                 boxShadow: 'var(--shadow-lg)',
                 display: 'flex',
@@ -111,9 +112,9 @@ export default function NotificationCenter() {
                       <div key={n.id} style={{ 
                         display: 'flex', gap: 12, padding: '12px 16px', 
                         background: n.read ? 'transparent' : 'rgba(14, 165, 233, 0.04)',
-                        borderRadius: 12, margin: '4px 0'
+                        borderRadius: 6, margin: '4px 0'
                       }}>
-                        <div style={{ flexShrink: 0, width: 32, height: 32, borderRadius: 16, background: `${color}15`, color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ flexShrink: 0, width: 32, height: 32, borderRadius: 6, background: `${color}15`, color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Icon size={16} />
                         </div>
                         <div>

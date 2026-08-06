@@ -156,7 +156,7 @@ export default function RichTextComposer({
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      borderRadius: '12px',
+      borderRadius: '6px',
       border: '1px solid var(--card-border)',
       background: 'var(--card-bg)',
       overflow: 'hidden',

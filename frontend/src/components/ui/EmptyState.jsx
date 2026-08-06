@@ -16,7 +16,7 @@ export function EmptyState({ icon = 'ti-inbox', title = 'No data available', des
         textAlign: 'center',
         background: 'var(--main-bg)',
         border: '1px dashed var(--border)',
-        borderRadius: 12,
+        borderRadius: 6,
         color: 'var(--text-muted)'
       }}
     >

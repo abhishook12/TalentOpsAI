@@ -61,6 +61,13 @@ export default function Settings() {
       }
     };
     window.addEventListener('message', messageListener);
+
+    const checkInterval = setInterval(() => {
+      if (w && w.closed) {
+        clearInterval(checkInterval);
+        window.removeEventListener('message', messageListener);
+      }
+    }, 1000);
   };
 
   const handleDisconnectOutlook = async () => {
@@ -142,7 +149,7 @@ export default function Settings() {
                 background: activeTab === tab.id ? 'var(--brand-bg)' : 'transparent',
                 color: activeTab === tab.id ? 'var(--brand)' : 'var(--text-secondary)',
                 border: 'none',
-                borderRadius: 12,
+                borderRadius: 6,
                 fontWeight: activeTab === tab.id ? 700 : 500,
                 cursor: 'pointer',
                 textAlign: 'left',
@@ -160,7 +167,7 @@ export default function Settings() {
             <form onSubmit={handleSaveProfile} className="animate-fade-in">
               <h2 style={{ margin: '0 0 24px', fontSize: 20, color: 'var(--text-primary)' }}>Profile Settings</h2>
               
-              <div style={{ padding: 24, border: '1px solid var(--card-border)', borderRadius: 12, marginBottom: 24, display: 'flex', gap: 24, alignItems: 'center' }}>
+              <div style={{ padding: 24, border: '1px solid var(--card-border)', borderRadius: 6, marginBottom: 24, display: 'flex', gap: 24, alignItems: 'center' }}>
                 <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'linear-gradient(135deg, var(--brand), var(--brand-strong))', display: 'grid', placeItems: 'center', color: '#ffffff', fontSize: 32, fontWeight: 800 }}>
                   {user?.first_name?.[0] || user?.email?.[0]?.toUpperCase()}
                 </div>
@@ -205,7 +212,7 @@ export default function Settings() {
             <div className="animate-fade-in">
               <h2 style={{ margin: '0 0 24px', fontSize: 20, color: 'var(--text-primary)' }}>Account Settings</h2>
               
-              <div style={{ padding: 20, border: '1px solid var(--card-border)', borderRadius: 12, marginBottom: 24 }}>
+              <div style={{ padding: 20, border: '1px solid var(--card-border)', borderRadius: 6, marginBottom: 24 }}>
                 <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--text-primary)' }}>Email Address</h3>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ color: 'var(--text-secondary)' }}>{user?.email}</div>
@@ -213,7 +220,7 @@ export default function Settings() {
                 </div>
               </div>
 
-              <div style={{ padding: 20, border: '1px solid var(--card-border)', borderRadius: 12, marginBottom: 24 }}>
+              <div style={{ padding: 20, border: '1px solid var(--card-border)', borderRadius: 6, marginBottom: 24 }}>
                 <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--text-primary)' }}>Change Password</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <input type="password" value={passwordData.currentPassword} onChange={e => setPasswordData(p => ({...p, currentPassword: e.target.value}))} placeholder="Current Password" style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--card-border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', outline: 'none' }} />
@@ -224,7 +231,7 @@ export default function Settings() {
                 </div>
               </div>
 
-              <div style={{ padding: 20, border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 12, background: 'rgba(239, 68, 68, 0.05)' }}>
+              <div style={{ padding: 20, border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 6, background: 'rgba(239, 68, 68, 0.05)' }}>
                 <h3 style={{ margin: '0 0 8px', fontSize: 16, color: '#ef4444' }}>Delete Account</h3>
                 <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-secondary)' }}>Once you delete your account, there is no going back. Please be certain.</p>
                 <button disabled style={{ padding: '8px 16px', background: '#ef4444', color: '#ffffff', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'not-allowed', opacity: 0.5 }}>Delete Account (Coming Soon)</button>
@@ -236,7 +243,7 @@ export default function Settings() {
             <div className="animate-fade-in">
               <h2 style={{ margin: '0 0 24px', fontSize: 20, color: 'var(--text-primary)' }}>Privacy & Security</h2>
               
-              <div style={{ padding: 20, border: '1px solid var(--card-border)', borderRadius: 12, marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ padding: 20, border: '1px solid var(--card-border)', borderRadius: 6, marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--text-primary)' }}>Two-Factor Authentication</h3>
                   <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>Add an extra layer of security to your account.</p>
@@ -246,7 +253,7 @@ export default function Settings() {
 
               <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--text-primary)' }}>Active Sessions</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ padding: 16, background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{ padding: 16, background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 16 }}>
                   <div style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--brand-bg)', color: 'var(--brand)', display: 'grid', placeItems: 'center' }}><Laptop size={20} /></div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -257,7 +264,7 @@ export default function Settings() {
                   </div>
                 </div>
                 
-                <button disabled style={{ width: '100%', padding: 16, background: 'transparent', border: '1px dashed var(--card-border)', borderRadius: 12, color: 'var(--text-secondary)', cursor: 'not-allowed', fontWeight: 600, opacity: 0.5 }}>
+                <button disabled style={{ width: '100%', padding: 16, background: 'transparent', border: '1px dashed var(--card-border)', borderRadius: 6, color: 'var(--text-secondary)', cursor: 'not-allowed', fontWeight: 600, opacity: 0.5 }}>
                   Log out of all other devices (Coming Soon)
                 </button>
               </div>
@@ -277,7 +284,7 @@ export default function Settings() {
                     }}
                     style={{ 
                       padding: 24, 
-                      borderRadius: 16, 
+                      borderRadius: 6, 
                       border: '2px solid',
                       borderColor: localStorage.getItem('theme') === theme ? 'var(--brand)' : 'var(--card-border)',
                       background: 'var(--bg-surface)',
@@ -305,7 +312,7 @@ export default function Settings() {
               <h2 style={{ margin: '0 0 24px', fontSize: 20, color: 'var(--text-primary)' }}>API & Integrations</h2>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ padding: 20, border: '1px solid var(--card-border)', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ padding: 20, border: '1px solid var(--card-border)', borderRadius: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                     <div style={{ width: 40, height: 40, background: '#f3f4f6', borderRadius: 8, display: 'grid', placeItems: 'center' }}>
                       <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" style={{ width: 24, height: 24 }} />
@@ -318,7 +325,7 @@ export default function Settings() {
                   <button disabled style={{ padding: '6px 12px', background: 'transparent', border: '1px solid var(--card-border)', color: 'var(--text-primary)', borderRadius: 6, fontWeight: 500, cursor: 'not-allowed', opacity: 0.5 }}>Connect (Coming Soon)</button>
                 </div>
 
-                <div style={{ padding: 20, border: '1px solid var(--card-border)', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ padding: 20, border: '1px solid var(--card-border)', borderRadius: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                     <div style={{ width: 40, height: 40, background: '#0078d4', borderRadius: 8, display: 'grid', placeItems: 'center' }}>
                       <span style={{ color: '#ffffff', fontWeight: 900, fontSize: 18 }}>O</span>

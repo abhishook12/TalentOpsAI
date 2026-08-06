@@ -42,38 +42,75 @@ class MemoryOLAPSidecar:
                 
                 where_clause = "WHERE 1=1"
                 
-                recruiter_counts = db.execute(text(f"""
-                    SELECT
-                        COUNT(*) AS total_recruiters,
-                        COUNT(*) FILTER (WHERE email IS NOT NULL AND email != '') AS real_emails,
-                        COUNT(*) FILTER (WHERE phone IS NOT NULL AND phone != '') AS phones,
-                        COUNT(*) FILTER (WHERE company_id IS NOT NULL) AS companies_linked,
-                        COUNT(*) FILTER (WHERE state IS NOT NULL AND state != '') AS with_state,
-                        COUNT(DISTINCT state) FILTER (WHERE state IS NOT NULL AND state != '') AS states_covered,
-                        COUNT(*) FILTER (WHERE needs_review = true) AS needs_review,
-                        COUNT(*) FILTER (WHERE state IS NULL OR state = '') AS unknown_state_count,
-                        COUNT(*) FILTER (WHERE state_source IN ('state_column', 'recruiter_state_col', 'abbreviation_exact_match')) AS direct_state_count,
-                        COUNT(*) FILTER (WHERE state_source = 'company_state') AS company_state_count,
-                        COUNT(*) FILTER (WHERE state_source LIKE 'company_majority_state%') AS company_majority_count,
-                        COUNT(*) FILTER (WHERE state_source = 'email_domain') AS domain_state_count,
-                        COUNT(*) FILTER (WHERE state_source IN ('recruiter_location', 'company_location', 'notes', 'review_reason', 'metadata_json', 'raw_data')) AS text_inferred_count
-                    FROM recruiters
-                    {where_clause}
-                """), {"user_id": user_id}).mappings().one()
+                # ── Use DuckDB Parquet store for recruiter counts (unified 2.3M dataset) ──
+                from .services.recruiter_store import recruiter_store
+                recruiter_store._ensure_loaded()
+                duck_conn = recruiter_store._conn
 
-                total_recruiters = int(recruiter_counts["total_recruiters"] or 0)
-                real_emails = int(recruiter_counts["real_emails"] or 0)
-                phones = int(recruiter_counts["phones"] or 0)
-                companies_linked = int(recruiter_counts["companies_linked"] or 0)
-                with_state = int(recruiter_counts["with_state"] or 0)
-                states_covered = int(recruiter_counts["states_covered"] or 0)
-                needs_review = int(recruiter_counts["needs_review"] or 0)
-                unknown_state_count = int(recruiter_counts["unknown_state_count"] or 0)
-                direct_state_count = int(recruiter_counts["direct_state_count"] or 0)
-                company_state_count = int(recruiter_counts["company_state_count"] or 0)
-                company_majority_count = int(recruiter_counts["company_majority_count"] or 0)
-                domain_state_count = int(recruiter_counts["domain_state_count"] or 0)
-                text_inferred_count = int(recruiter_counts["text_inferred_count"] or 0)
+                if duck_conn:
+                    duck_row = duck_conn.execute("""
+                        SELECT
+                            COUNT(*) AS total_recruiters,
+                            COUNT(*) FILTER (WHERE email IS NOT NULL AND email != '') AS real_emails,
+                            COUNT(*) FILTER (WHERE phone IS NOT NULL AND phone != '') AS phones,
+                            COUNT(*) FILTER (WHERE company_id IS NOT NULL) AS companies_linked,
+                            COUNT(*) FILTER (WHERE state IS NOT NULL AND state != '') AS with_state,
+                            COUNT(DISTINCT state) FILTER (WHERE state IS NOT NULL AND state != '') AS states_covered,
+                            COUNT(*) FILTER (WHERE needs_review = true) AS needs_review,
+                            COUNT(*) FILTER (WHERE state IS NULL OR state = '') AS unknown_state_count,
+                            COUNT(*) FILTER (WHERE state_source IN ('state_column', 'recruiter_state_col', 'abbreviation_exact_match')) AS direct_state_count,
+                            COUNT(*) FILTER (WHERE state_source = 'company_state') AS company_state_count,
+                            COUNT(*) FILTER (WHERE state_source LIKE 'company_majority_state%') AS company_majority_count,
+                            COUNT(*) FILTER (WHERE state_source = 'email_domain') AS domain_state_count,
+                            COUNT(*) FILTER (WHERE state_source IN ('recruiter_location', 'company_location', 'notes', 'review_reason', 'metadata_json', 'raw_data')) AS text_inferred_count
+                        FROM recruiters
+                    """).fetchone()
+                    total_recruiters = int(duck_row[0] or 0)
+                    real_emails = int(duck_row[1] or 0)
+                    phones = int(duck_row[2] or 0)
+                    companies_linked = int(duck_row[3] or 0)
+                    with_state = int(duck_row[4] or 0)
+                    states_covered = int(duck_row[5] or 0)
+                    needs_review = int(duck_row[6] or 0)
+                    unknown_state_count = int(duck_row[7] or 0)
+                    direct_state_count = int(duck_row[8] or 0)
+                    company_state_count = int(duck_row[9] or 0)
+                    company_majority_count = int(duck_row[10] or 0)
+                    domain_state_count = int(duck_row[11] or 0)
+                    text_inferred_count = int(duck_row[12] or 0)
+                else:
+                    # Fallback to PostgreSQL if DuckDB is unavailable
+                    recruiter_counts = db.execute(text(f"""
+                        SELECT
+                            COUNT(*) AS total_recruiters,
+                            COUNT(*) FILTER (WHERE email IS NOT NULL AND email != '') AS real_emails,
+                            COUNT(*) FILTER (WHERE phone IS NOT NULL AND phone != '') AS phones,
+                            COUNT(*) FILTER (WHERE company_id IS NOT NULL) AS companies_linked,
+                            COUNT(*) FILTER (WHERE state IS NOT NULL AND state != '') AS with_state,
+                            COUNT(DISTINCT state) FILTER (WHERE state IS NOT NULL AND state != '') AS states_covered,
+                            COUNT(*) FILTER (WHERE needs_review = true) AS needs_review,
+                            COUNT(*) FILTER (WHERE state IS NULL OR state = '') AS unknown_state_count,
+                            COUNT(*) FILTER (WHERE state_source IN ('state_column', 'recruiter_state_col', 'abbreviation_exact_match')) AS direct_state_count,
+                            COUNT(*) FILTER (WHERE state_source = 'company_state') AS company_state_count,
+                            COUNT(*) FILTER (WHERE state_source LIKE 'company_majority_state%%') AS company_majority_count,
+                            COUNT(*) FILTER (WHERE state_source = 'email_domain') AS domain_state_count,
+                            COUNT(*) FILTER (WHERE state_source IN ('recruiter_location', 'company_location', 'notes', 'review_reason', 'metadata_json', 'raw_data')) AS text_inferred_count
+                        FROM recruiters
+                        {where_clause}
+                    """), {"user_id": user_id}).mappings().one()
+                    total_recruiters = int(recruiter_counts["total_recruiters"] or 0)
+                    real_emails = int(recruiter_counts["real_emails"] or 0)
+                    phones = int(recruiter_counts["phones"] or 0)
+                    companies_linked = int(recruiter_counts["companies_linked"] or 0)
+                    with_state = int(recruiter_counts["with_state"] or 0)
+                    states_covered = int(recruiter_counts["states_covered"] or 0)
+                    needs_review = int(recruiter_counts["needs_review"] or 0)
+                    unknown_state_count = int(recruiter_counts["unknown_state_count"] or 0)
+                    direct_state_count = int(recruiter_counts["direct_state_count"] or 0)
+                    company_state_count = int(recruiter_counts["company_state_count"] or 0)
+                    company_majority_count = int(recruiter_counts["company_majority_count"] or 0)
+                    domain_state_count = int(recruiter_counts["domain_state_count"] or 0)
+                    text_inferred_count = int(recruiter_counts["text_inferred_count"] or 0)
 
                 total_companies = db.execute(text(f"SELECT COUNT(*) FROM companies {where_clause}"), {"user_id": user_id}).scalar() or 0
 
@@ -92,18 +129,35 @@ class MemoryOLAPSidecar:
                 from .resource_lockdown import _get_lockdown_state
                 lockdown_state = _get_lockdown_state()
 
-                duplicate_risk = db.execute(
-                    text(f"SELECT COUNT(*) FROM (SELECT phone FROM recruiters {where_clause} AND phone IS NOT NULL AND phone != '' GROUP BY phone HAVING COUNT(*) > 1) t"), {"user_id": user_id}
-                ).scalar() or 0
+                if duck_conn:
+                    duplicate_risk = duck_conn.execute("""
+                        SELECT COUNT(*) FROM (
+                            SELECT phone FROM recruiters
+                            WHERE phone IS NOT NULL AND phone != ''
+                            GROUP BY phone HAVING COUNT(*) > 1
+                        ) t
+                    """).fetchone()[0] or 0
+                else:
+                    duplicate_risk = db.execute(
+                        text(f"SELECT COUNT(*) FROM (SELECT phone FROM recruiters {where_clause} AND phone IS NOT NULL AND phone != '' GROUP BY phone HAVING COUNT(*) > 1) t"), {"user_id": user_id}
+                    ).scalar() or 0
 
                 explicit_state_count = direct_state_count
-                pre_existing_states = db.execute(text(f"""
-                    SELECT COUNT(*)
-                    FROM recruiters
-                    WHERE (state IS NOT NULL AND state != '')
-                      AND (state_source IS NULL OR state_source = '')
-                      AND 1=1
-                """), {"user_id": user_id}).scalar() or 0
+                if duck_conn:
+                    pre_existing_states = duck_conn.execute("""
+                        SELECT COUNT(*)
+                        FROM recruiters
+                        WHERE (state IS NOT NULL AND state != '')
+                          AND (state_source IS NULL OR state_source = '')
+                    """).fetchone()[0] or 0
+                else:
+                    pre_existing_states = db.execute(text(f"""
+                        SELECT COUNT(*)
+                        FROM recruiters
+                        WHERE (state IS NOT NULL AND state != '')
+                          AND (state_source IS NULL OR state_source = '')
+                          AND 1=1
+                    """), {"user_id": user_id}).scalar() or 0
                 explicit_state_count += pre_existing_states
                 inferred_state_count = max(with_state - explicit_state_count, 0)
 

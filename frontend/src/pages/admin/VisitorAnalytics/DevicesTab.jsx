@@ -15,7 +15,7 @@ export default function DevicesTab() {
     refetchInterval: 300000
   })
 
-  if (isLoading) return <div className="glass-card" style={{ padding: 24, borderRadius: 16 }}><SkeletonRow rows={6} gap={16} height={30} /></div>
+  if (isLoading) return <div className="glass-card" style={{ padding: 24, borderRadius: 6 }}><SkeletonRow rows={6} gap={16} height={30} /></div>
   if (isError) return <EmptyState icon="ti-alert-circle" title="Failed to load devices data" />
 
   const sessions = data?.items || []
@@ -35,7 +35,7 @@ export default function DevicesTab() {
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
-      <div className="glass-card" style={{ padding: 24, borderRadius: 16 }}>
+      <div className="glass-card" style={{ padding: 24, borderRadius: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
           <div style={{ background: 'var(--brand-bg)', color: 'var(--brand)', padding: 8, borderRadius: 8 }}>
             <Monitor size={20} />
@@ -52,7 +52,7 @@ export default function DevicesTab() {
         </div>
       </div>
 
-      <div className="glass-card" style={{ padding: 24, borderRadius: 16 }}>
+      <div className="glass-card" style={{ padding: 24, borderRadius: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
           <div style={{ background: 'rgba(251, 146, 60, 0.1)', color: '#fb923c', padding: 8, borderRadius: 8 }}>
             <Smartphone size={20} />

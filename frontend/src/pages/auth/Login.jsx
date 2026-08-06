@@ -7,308 +7,6 @@ import AuthFrame from './AuthFrame'
 import AppLoadingOverlay from '../../components/AppLoadingOverlay'
 import api from '../../services/api'
 
-const formStyles = `
-  .login-form {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .login-title-wrapper {
-    margin-bottom: 24px;
-    text-align: left;
-  }
-  
-  .login-title {
-    font-size: 24px;
-    font-weight: 700;
-    color: #ffffff;
-    margin: 0 0 8px 0;
-    letter-spacing: -0.01em;
-  }
-
-  .login-subtitle {
-    font-size: 14px;
-    color: #a0a0a0;
-    margin: 0;
-    line-height: 1.5;
-  }
-
-  .login-field {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .login-label {
-    font-size: 13px;
-    color: #a0a0a0;
-  }
-
-  .login-input-wrap {
-    position: relative;
-    display: flex;
-    align-items: center;
-  }
-
-  .login-icon-left {
-    position: absolute;
-    left: 14px;
-    color: #666;
-    font-size: 16px;
-    pointer-events: none;
-  }
-
-  .login-input {
-    width: 100%;
-    height: 44px;
-    border-radius: 8px;
-    border: 1px solid #333;
-    background: #111;
-    color: #ffffff;
-    padding: 0 16px 0 40px;
-    font-size: 14px;
-    outline: none;
-    transition: all 0.2s ease;
-  }
-
-  .login-input::placeholder {
-    color: #555;
-  }
-
-  .login-input:focus {
-    border-color: var(--brand);
-    box-shadow: 0 0 0 4px var(--brand-bg);
-  }
-  
-  .login-input[aria-invalid="true"] {
-    border-color: #ef4444;
-  }
-  .login-input[aria-invalid="true"]:focus {
-    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
-  }
-
-  .login-input-wrap:focus-within .login-icon-left {
-    color: var(--brand);
-  }
-  
-  .login-validation-msg {
-    font-size: 12px;
-    color: #ef4444;
-    margin-top: 4px;
-  }
-
-  .login-eye-button {
-    position: absolute;
-    right: 14px;
-    background: transparent;
-    border: none;
-    color: #666;
-    cursor: pointer;
-    padding: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    transition: color 0.2s;
-  }
-
-  .login-eye-button:hover {
-    color: #fff;
-  }
-
-  .login-actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin: 4px 0 16px 0;
-  }
-
-  .login-remember {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    color: #a0a0a0;
-    cursor: pointer;
-  }
-
-  .login-checkbox {
-    appearance: none;
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
-    background: #111;
-    border: 1px solid #444;
-    border-radius: 4px;
-    position: relative;
-    transition: all 0.2s;
-  }
-  
-  .login-checkbox:checked {
-    background: var(--brand);
-    border-color: var(--brand);
-  }
-  
-  .login-checkbox:checked::after {
-    content: '';
-    position: absolute;
-    left: 4px;
-    top: 2px;
-    width: 4px;
-    height: 8px;
-    border: solid white;
-    border-width: 0 2px 2px 0;
-    transform: rotate(45deg);
-  }
-  
-  .login-checkbox:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--brand-bg);
-  }
-
-  .login-forgot {
-    font-size: 13px;
-    color: #a0a0a0;
-    text-decoration: none;
-    transition: color 0.2s;
-  }
-  
-  .login-forgot:hover {
-    color: #fff;
-  }
-
-  .login-button-primary {
-    width: 100%;
-    height: 44px;
-    border: none;
-    border-radius: 8px;
-    background: var(--brand);
-    color: #fff;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .login-button-primary:hover:not(:disabled) {
-    background: var(--brand-strong);
-  }
-
-  .login-button-primary:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-  }
-
-  .login-divider {
-    display: flex;
-    align-items: center;
-    text-align: center;
-    color: #666;
-    font-size: 13px;
-    margin: 16px 0;
-  }
-  
-  .login-divider::before,
-  .login-divider::after {
-    content: '';
-    flex: 1;
-    border-bottom: 1px solid #333;
-  }
-  
-  .login-divider span {
-    padding: 0 16px;
-  }
-
-  .login-button-google {
-    width: 100%;
-    height: 48px;
-    border-radius: 12px;
-    border: 1px solid var(--border, #e0e0e0);
-    background: transparent;
-    color: var(--text-primary, #111);
-    font-size: 15px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-  }
-
-  [data-theme="dark"] .login-button-google {
-    border-color: #2a2a2a;
-    background: #1e1e1e;
-    color: #ffffff;
-  }
-
-  .login-button-google:hover {
-    background: rgba(0, 0, 0, 0.02);
-  }
-
-  [data-theme="dark"] .login-button-google:hover {
-    background: rgba(255, 255, 255, 0.05);
-  }
-
-  .login-footer-links {
-    margin-top: 32px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
-  }
-
-  .login-link {
-    font-size: 13px;
-    color: var(--text-secondary, #666666);
-    text-decoration: none;
-    transition: color 0.2s ease;
-  }
-
-  [data-theme="dark"] .login-link {
-    color: #a0a0a0;
-  }
-
-  .login-link:hover {
-    color: var(--text-primary, #111);
-    text-decoration: underline;
-  }
-
-  [data-theme="dark"] .login-link:hover {
-    color: #ffffff;
-  }
-  
-  .login-create-account {
-    color: var(--brand) !important;
-  }
-  .login-create-account:hover {
-    color: var(--brand-strong) !important;
-  }
-
-  .login-error-banner {
-    padding: 14px 16px;
-    border-radius: 12px;
-    margin-bottom: 24px;
-    background: rgba(239, 68, 68, 0.08);
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    color: #ef4444;
-    font-size: 14px;
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    line-height: 1.4;
-  }
-
-  [data-theme="dark"] .login-error-banner {
-    color: #fca5a5;
-  }
-`
-
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -382,8 +80,6 @@ export default function Login() {
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: formStyles }} />
-      
       <AppLoadingOverlay isVisible={isAuthenticating} progress={authProgress} />
       
       {pendingDeviceId ? (
@@ -402,25 +98,25 @@ export default function Login() {
       <AuthFrame isAuthenticating={isAuthenticating}>
         
         {error && (
-          <div className="login-error-banner" role="alert">
-            <i className="ti ti-alert-circle" style={{ marginTop: '2px' }} />
+          <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3.5 rounded-xl mb-6 text-sm flex items-start gap-2.5 leading-[1.4]" role="alert">
+            <i className="ti ti-alert-circle mt-[2px]" />
             <span>{error}</span>
           </div>
         )}
 
-        <div className="login-title-wrapper">
-          <h1 className="login-title">Welcome Back</h1>
-          <p className="login-subtitle">Login to access your TalentOps account</p>
+        <div className="mb-6 text-left">
+          <h1 className="text-2xl font-bold text-white m-0 mb-2 tracking-tight">Welcome Back</h1>
+          <p className="text-sm text-[#a0a0a0] m-0 leading-relaxed">Login to access your TalentOps account</p>
         </div>
 
-        <div className="login-form" onKeyDown={(e) => { if (e.key === 'Enter' && isFormValid && !isAuthenticating) handleSubmit(e) }}>
-          <div className="login-field">
-            <label className="login-label" htmlFor="email-input">Email address</label>
-            <div className="login-input-wrap">
-              <i className="ti ti-mail login-icon-left" />
+        <div className="w-full flex flex-col gap-4" onKeyDown={(e) => { if (e.key === 'Enter' && isFormValid && !isAuthenticating) handleSubmit(e) }}>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[13px] text-[#a0a0a0]" htmlFor="email-input">Email address</label>
+            <div className="relative flex items-center group">
+              <i className="ti ti-mail absolute left-3.5 text-[#666] text-base pointer-events-none group-focus-within:text-[var(--brand)] transition-colors" />
               <input
                 id="email-input"
-                className="login-input"
+                className="w-full h-11 rounded-lg border border-[#333] bg-[#111] text-white pl-10 pr-4 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)] aria-[invalid=true]:border-red-500 aria-[invalid=true]:focus:shadow-[0_0_0_4px_rgba(239,68,68,0.1)]"
                 type="email"
                 required
                 autoComplete="email"
@@ -433,17 +129,17 @@ export default function Login() {
               />
             </div>
             {emailTouched && !isEmailValid && (
-              <div id="email-error" className="login-validation-msg">Enter a valid email address</div>
+              <div id="email-error" className="text-xs text-red-500 mt-1">Enter a valid email address</div>
             )}
           </div>
 
-          <div className="login-field">
-            <label className="login-label" htmlFor="password-input">Password</label>
-            <div className="login-input-wrap">
-              <i className="ti ti-lock login-icon-left" />
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[13px] text-[#a0a0a0]" htmlFor="password-input">Password</label>
+            <div className="relative flex items-center group">
+              <i className="ti ti-lock absolute left-3.5 text-[#666] text-base pointer-events-none group-focus-within:text-[var(--brand)] transition-colors" />
               <input
                 id="password-input"
-                className="login-input"
+                className="w-full h-11 rounded-lg border border-[#333] bg-[#111] text-white pl-10 pr-10 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]"
                 type={showPassword ? 'text' : 'password'}
                 required
                 autoComplete="current-password"
@@ -454,7 +150,7 @@ export default function Login() {
               <button 
                 type="button" 
                 onClick={() => setShowPassword(!showPassword)} 
-                className="login-eye-button" 
+                className="absolute right-3.5 bg-transparent border-none text-[#666] cursor-pointer p-1 flex items-center justify-center text-base transition-colors hover:text-white" 
                 aria-label="Toggle password visibility"
               >
                 <i className={`ti ${showPassword ? 'ti-eye-off' : 'ti-eye'}`} />
@@ -462,19 +158,22 @@ export default function Login() {
             </div>
           </div>
 
-          <div className="login-actions">
-            <label className="login-remember">
-              <input type="checkbox" className="login-checkbox" />
+          <div className="flex justify-between items-center my-1 mb-4">
+            <label className="flex items-center gap-2 text-[13px] text-[#a0a0a0] cursor-pointer">
+              <input 
+                type="checkbox" 
+                className="appearance-none w-4 h-4 cursor-pointer bg-[#111] border border-[#444] rounded flex-shrink-0 relative transition-all checked:bg-[var(--brand)] checked:border-[var(--brand)] focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_var(--brand-bg)] mt-[2px] after:content-[''] after:absolute after:left-[4px] after:top-[1px] after:w-[5px] after:h-[9px] after:border-solid after:border-white after:border-0 after:border-r-2 after:border-b-2 after:rotate-45 after:opacity-0 checked:after:opacity-100"
+              />
               Remember me
             </label>
-            <Link to="/forgot-password" className="login-forgot">
+            <Link to="/forgot-password" className="text-[13px] text-[#a0a0a0] no-underline transition-colors hover:text-white">
               Forgot password?
             </Link>
           </div>
 
-          <button type="button" onClick={handleSubmit} className="login-button-primary" disabled={!isFormValid || isAuthenticating}>
+          <button type="button" onClick={handleSubmit} className="w-full h-11 border-none rounded-lg bg-[var(--brand)] text-white text-sm font-medium cursor-pointer transition-all flex items-center justify-center hover:not-disabled:bg-[var(--brand-strong)] disabled:opacity-50 disabled:cursor-not-allowed" disabled={!isFormValid || isAuthenticating}>
             {isAuthenticating ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div className="flex items-center gap-2">
                 <i className="ti ti-loader animate-spin" />
                 <span>Signing in...</span>
               </div>
@@ -489,11 +188,11 @@ export default function Login() {
           </button>
           )}
 
-          <div className="login-divider">
-            <span>Or continue with</span>
+          <div className="flex items-center text-center text-[#666] text-[13px] my-4 before:content-[''] before:flex-1 before:border-b before:border-[#333] after:content-[''] after:flex-1 after:border-b after:border-[#333]">
+            <span className="px-4">Or continue with</span>
           </div>
 
-          <button type="button" onClick={() => customGoogleLogin()} disabled={isAuthenticating} className="login-button-google">
+          <button type="button" onClick={() => customGoogleLogin()} disabled={isAuthenticating} className="w-full h-12 rounded-xl border border-white/5 dark:border-[#2a2a2a] bg-white/5 dark:bg-[#1e1e1e] text-white text-[15px] font-medium cursor-pointer transition-all flex items-center justify-center gap-3 hover:bg-white/10 dark:hover:bg-white/10">
             <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
               <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -504,11 +203,13 @@ export default function Login() {
           </button>
         </div>
 
-        <div className="login-footer-links" style={{ display: 'flex', gap: 6, justifyContent: 'center', marginTop: 24, fontSize: 13 }}>
-          <span style={{ color: '#888' }}>Don't have an account?</span>
-          <Link to="/register" className="login-link login-create-account">
-            Create an account
-          </Link>
+        <div className="mt-8 flex flex-col items-center gap-4">
+          <div className="flex gap-1.5 text-[13px]">
+            <span className="text-[#888]">Don't have an account?</span>
+            <Link to="/register" className="text-[var(--brand)] no-underline transition-colors hover:text-[var(--brand-strong)] hover:underline">
+              Create an account
+            </Link>
+          </div>
         </div>
       </AuthFrame>
       )}

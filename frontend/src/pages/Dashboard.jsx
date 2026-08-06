@@ -208,7 +208,7 @@ export default function Dashboard() {
             >
               <i className="ti ti-refresh" style={isFetchingAny ? { animation: 'spin 0.8s linear infinite', display: 'inline-block' } : {}} /> Refresh Data
             </GhostButton>
-            <PrimaryButton onClick={() => navigate({ to: '/ai-search' })}>
+            <PrimaryButton onClick={() => navigate({ to: '/search' })}>
               <i className="ti ti-sparkles" /> Open AI Search
             </PrimaryButton>
             <GhostButton
@@ -241,7 +241,7 @@ export default function Dashboard() {
         <div style={{
           padding: 60,
           background: 'linear-gradient(135deg, rgba(201, 168, 76, 0.05), rgba(201, 168, 76, 0.02))',
-          borderRadius: 24,
+          borderRadius: 6,
           border: '1px dashed var(--brand)',
           textAlign: 'center',
           marginTop: 20
@@ -249,7 +249,7 @@ export default function Dashboard() {
           <div style={{ width: 64, height: 64, borderRadius: 32, background: 'var(--brand)', display: 'inline-grid', placeItems: 'center', color: '#fff', marginBottom: 20, boxShadow: '0 8px 24px rgba(201, 168, 76, 0.3)' }}>
             <i className="ti ti-database-import" style={{ fontSize: 32 }} />
           </div>
-          <h2 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 12 }}>Welcome to TalentOps AI</h2>
+          <h2 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 12 }}>Welcome to TalentOps</h2>
           <p style={{ fontSize: 16, color: 'var(--text-secondary)', maxWidth: 500, margin: '0 auto 32px' }}>
             {isAdmin 
               ? 'Your operational dashboard is completely isolated. To see insights, activity, and analytics, you need to import your first dataset of recruiters or companies.'
@@ -319,7 +319,7 @@ export default function Dashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr 0.9fr', gap: 12, minHeight: 0 }}>
         <ShellCard style={{ padding: 18, minHeight: 0 }}>
           <SectionHeader
-            eyebrow="Search Intelligence"
+            eyebrow="Search Logs"
             title="Top Companies"
             subtitle="Companies ranked by recruiter coverage from the live backend."
             action={<Badge tone="success">Real data</Badge>}
@@ -338,7 +338,7 @@ export default function Dashboard() {
                     gap: 12,
                     alignItems: 'center',
                     padding: '12px 14px',
-                    borderRadius: 14,
+                    borderRadius: 6,
                     border: '1px solid var(--card-border)',
                     background: 'var(--bg-surface)',
                     color: 'var(--text-primary)',
@@ -418,7 +418,7 @@ export default function Dashboard() {
               ['ETL Pipeline', 'HEALTHY', 'success'],
               ['API Engine', 'HEALTHY', 'success'],
             ].map(([label, status, tone]) => (
-              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderRadius: 14, border: '1px solid var(--card-border)', background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>
+              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ width: 10, height: 10, borderRadius: 999, background: tone === 'success' ? 'var(--success)' : 'var(--warning)' }} />
                   <span style={{ fontSize: 13, fontWeight: 800 }}>{label}</span>

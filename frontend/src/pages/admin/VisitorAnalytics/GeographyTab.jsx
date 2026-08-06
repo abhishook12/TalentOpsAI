@@ -15,7 +15,7 @@ export default function GeographyTab() {
     refetchInterval: 300000
   })
 
-  if (isLoading) return <div className="glass-card" style={{ padding: 24, borderRadius: 16 }}><SkeletonRow rows={6} gap={16} height={30} /></div>
+  if (isLoading) return <div className="glass-card" style={{ padding: 24, borderRadius: 6 }}><SkeletonRow rows={6} gap={16} height={30} /></div>
   if (isError) return <EmptyState icon="ti-alert-circle" title="Failed to load geography data" />
 
   const sessions = data?.items || []
@@ -30,7 +30,7 @@ export default function GeographyTab() {
   const sortedCountries = Object.entries(countries).sort((a, b) => b[1] - a[1])
 
   return (
-    <div className="glass-card" style={{ padding: 24, borderRadius: 16 }}>
+    <div className="glass-card" style={{ padding: 24, borderRadius: 6 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
         <div style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8', padding: 8, borderRadius: 8 }}>
           <Globe size={20} />

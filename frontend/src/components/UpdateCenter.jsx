@@ -166,7 +166,7 @@ export default function UpdateCenter() {
             </div>
             
             <div style={{ flex: 1, overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 24 }}>
-              <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 16, padding: 20 }}>
+              <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 20 }}>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Current local changes</div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10 }}>What is new right now</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>Last refreshed: {localRefreshLabel}</div>
@@ -180,7 +180,7 @@ export default function UpdateCenter() {
                 </div>
               </div>
 
-              <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 16, padding: 20 }}>
+              <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 20 }}>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Duplicate review preview</div>
                 <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 8 }}>One person, one entry</div>
                 <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
@@ -188,12 +188,12 @@ export default function UpdateCenter() {
                   Exact email and phone matches are merged into one canonical entry, while weaker matches stay flagged for review.
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 14 }}>
-                  <div style={{ padding: 12, borderRadius: 14, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.18)' }}>
+                  <div style={{ padding: 12, borderRadius: 6, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.18)' }}>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Auto-merge</div>
                     <div style={{ fontSize: 20, fontWeight: 900, color: '#22c55e', marginTop: 4 }}>Exact</div>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>Same email or same phone</div>
                   </div>
-                  <div style={{ padding: 12, borderRadius: 14, background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.18)' }}>
+                  <div style={{ padding: 12, borderRadius: 6, background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.18)' }}>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Review</div>
                     <div style={{ fontSize: 20, fontWeight: 900, color: '#fbbf24', marginTop: 4 }}>Safe</div>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>Same name + company, inspect first</div>
@@ -201,7 +201,7 @@ export default function UpdateCenter() {
                 </div>
               </div>
 
-              <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 16, padding: 20 }}>
+              <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 20 }}>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>What changed</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.25 }}>{briefHeadline}</div>
                 <div style={{ marginTop: 6, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
@@ -215,7 +215,7 @@ export default function UpdateCenter() {
               </div>
               
               {/* Current Status Card */}
-              <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 16, padding: 20 }}>
+              <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 20 }}>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Simple update summary</div>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -278,7 +278,7 @@ export default function UpdateCenter() {
                 </div>
               </div>
 
-              <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 16, padding: 20 }}>
+              <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 20 }}>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Quick take</div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10 }}>Here’s the short version</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

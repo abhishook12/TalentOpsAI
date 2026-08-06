@@ -271,7 +271,7 @@ export default function Analytics() {
     >
       {/* Header + KPI strip */}
       <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
-        <h1 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: 0, lineHeight: 1.1 }}>Advanced Intelligence</h1>
+        <h1 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: 0, lineHeight: 1.1 }}>Advanced Metrics</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           <KPI inline label="Total Visits" value={(visits?.total_visits || 0).toLocaleString()} color="var(--brand)" icon="ti-eye" />
           <KPI inline label="Today" value={(visits?.today || 0).toLocaleString()} sub={todayChange !== null ? `${todayChange > 0 ? '▲' : '▼'} ${Math.abs(todayChange)}%` : null} color="#185FA5" icon="ti-calendar-today" />
@@ -296,7 +296,7 @@ export default function Analytics() {
         <SectionCard title="Analytics Setup" icon="ti-info-circle" compact style={{ gridColumn: '1 / -1' }}>
           <div style={{ display: 'grid', placeItems: 'center', height: '100%', padding: 18, textAlign: 'center' }}>
             <div style={{ maxWidth: 640 }}>
-              <div style={{ width: 54, height: 54, borderRadius: 16, background: 'var(--brand-bg)', border: '1px solid rgba(45, 212, 191, 0.22)', display: 'grid', placeItems: 'center', margin: '0 auto 10px' }}>
+              <div style={{ width: 54, height: 54, borderRadius: 6, background: 'var(--brand-bg)', border: '1px solid rgba(45, 212, 191, 0.22)', display: 'grid', placeItems: 'center', margin: '0 auto 10px' }}>
                 <i className="ti ti-chart-bar" style={{ fontSize: 18, color: 'var(--brand)' }} />
               </div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>No analytics data yet</div>

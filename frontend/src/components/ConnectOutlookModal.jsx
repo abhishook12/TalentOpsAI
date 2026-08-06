@@ -1,16 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 import { API as API_BASE_URL } from '../services/api';
 
 const ConnectOutlookModal = ({ isOpen, onClose, onSuccess }) => {
   const [status, setStatus] = useState('idle'); // idle, connecting, verifying, success, error
   const [errorMessage, setErrorMessage] = useState('');
+  const windowCheckIntervalRef = useRef(null);
 
   // When modal closes, reset state
   useEffect(() => {
     if (!isOpen) {
       setStatus('idle');
       setErrorMessage('');
+      if (windowCheckIntervalRef.current) {
+        clearInterval(windowCheckIntervalRef.current);
+      }
     }
   }, [isOpen]);
 
@@ -40,6 +44,7 @@ const ConnectOutlookModal = ({ isOpen, onClose, onSuccess }) => {
     
     return () => {
       if (intervalId) clearInterval(intervalId);
+      if (windowCheckIntervalRef.current) clearInterval(windowCheckIntervalRef.current);
     };
   }, [status, onClose, onSuccess]);
 
@@ -65,9 +70,10 @@ const ConnectOutlookModal = ({ isOpen, onClose, onSuccess }) => {
     // Monitor if the user manually closes the window before success.
     // After popup closes, keep polling for a grace period to catch
     // late OAuth callbacks before reverting to idle.
-    const windowCheckInterval = setInterval(() => {
+    if (windowCheckIntervalRef.current) clearInterval(windowCheckIntervalRef.current);
+    windowCheckIntervalRef.current = setInterval(() => {
       if (authWindow && authWindow.closed) {
-        clearInterval(windowCheckInterval);
+        clearInterval(windowCheckIntervalRef.current);
         // Give the polling 8 more seconds to detect online status
         // (OAuth callback may arrive after popup closes)
         setTimeout(() => {
@@ -118,7 +124,7 @@ const ConnectOutlookModal = ({ isOpen, onClose, onSuccess }) => {
                 Authorize TalentOps
               </h3>
               <p className="text-[var(--text-secondary)] text-sm mb-6 max-w-sm">
-                Connect your Microsoft Outlook account to enable the TalentOps AI Email Bridge. A secure popup will open to authenticate.
+                Connect your Microsoft Outlook account to enable the TalentOps Email Bridge. A secure popup will open to authenticate.
               </p>
               
               <button 
@@ -153,7 +159,7 @@ const ConnectOutlookModal = ({ isOpen, onClose, onSuccess }) => {
                 Connected Successfully!
               </h3>
               <p className="text-[var(--text-secondary)] text-sm">
-                Your Outlook account is now securely linked to TalentOps AI.
+                Your Outlook account is now securely linked to TalentOps.
               </p>
             </div>
           )}

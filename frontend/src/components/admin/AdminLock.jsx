@@ -85,7 +85,7 @@ export default function AdminLock({ onUnlock, errorMessage }) {
         gap: 22,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(99,102,241,0.22)', border: '1px solid rgba(99,102,241,0.28)', display: 'grid', placeItems: 'center' }}>
+          <div style={{ width: 52, height: 52, borderRadius: 6, background: 'rgba(99,102,241,0.22)', border: '1px solid rgba(99,102,241,0.28)', display: 'grid', placeItems: 'center' }}>
             <i className="ti ti-terminal-2" style={{ fontSize: 22, color: '#c7d2fe' }} />
           </div>
           <div style={{ fontSize: 34, fontWeight: 900, letterSpacing: '-0.02em' }}>RECRUIT-INTEL</div>
@@ -95,14 +95,14 @@ export default function AdminLock({ onUnlock, errorMessage }) {
           Manage recruiter intelligence, company data, state directories, ETL operations, analytics, and platform administration within our unified operational command center.
         </div>
         <div style={{ marginTop: 'auto', display: 'flex', gap: 14, alignItems: 'center', opacity: 0.9 }}>
-          <div className="card" style={{ padding: 16, borderRadius: 18, width: 220, background: 'var(--bg-surface)', border: '1px solid var(--card-border)' }}>
+          <div className="card" style={{ padding: 16, borderRadius: 6, width: 220, background: 'var(--bg-surface)', border: '1px solid var(--card-border)' }}>
             <div style={{ fontSize: 10, color: 'rgba(229,231,235,0.65)', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' }}>ETL Pipeline</div>
             <div style={{ marginTop: 10, height: 6, borderRadius: 999, background: 'var(--bg-surface)', overflow: 'hidden' }}>
               <div style={{ width: '62%', height: '100%', background: 'rgba(99,102,241,0.75)' }} />
             </div>
             <div style={{ marginTop: 10, fontSize: 12, color: 'rgba(229,231,235,0.75)' }}>98.2% Accuracy Rate</div>
           </div>
-          <div className="card" style={{ padding: 16, borderRadius: 18, width: 220, background: 'var(--bg-surface)', border: '1px solid var(--card-border)' }}>
+          <div className="card" style={{ padding: 16, borderRadius: 6, width: 220, background: 'var(--bg-surface)', border: '1px solid var(--card-border)' }}>
             <div style={{ fontSize: 10, color: 'rgba(229,231,235,0.65)', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Active Clusters</div>
             <div style={{ marginTop: 8, fontSize: 26, fontWeight: 900 }}>1,204</div>
             <div style={{ marginTop: 2, fontSize: 12, color: '#34d399' }}>+12%</div>
@@ -124,14 +124,14 @@ export default function AdminLock({ onUnlock, errorMessage }) {
 
         <div style={{
           background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-          borderRadius: 20, padding: '40px 36px', backdropFilter: 'blur(12px)',
+          borderRadius: 6, padding: '40px 36px', backdropFilter: 'blur(12px)',
           boxShadow: '0 0 60px rgba(56,189,248,0.08), 0 24px 48px rgba(0,0,0,0.5)',
           display: 'flex', flexDirection: 'column', gap: 28, alignItems: 'center',
           position: 'relative',
         }}>
           {/* Icon */}
           <div style={{ position: 'relative' }}>
-            <div style={{ width: 64, height: 64, borderRadius: 16, background: 'linear-gradient(135deg, #0ea5e9, #1d4ed8)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 30px rgba(14,165,233,0.4)' }}>
+            <div style={{ width: 64, height: 64, borderRadius: 6, background: 'linear-gradient(135deg, #0ea5e9, #1d4ed8)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 30px rgba(14,165,233,0.4)' }}>
               <i className="ti ti-terminal-2" style={{ color: 'var(--text-primary)', fontSize: 30 }} />
             </div>
             <div style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16, borderRadius: '50%', background: '#ef4444', border: '2px solid #0d1829', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -291,7 +291,7 @@ export default function AdminLock({ onUnlock, errorMessage }) {
               width: '100%',
               maxWidth: 520,
               padding: 18,
-              borderRadius: 18,
+              borderRadius: 6,
               background: 'var(--card-bg)',
               border: '1px solid var(--card-border)',
               boxShadow: 'var(--shadow-lg)',
@@ -322,7 +322,7 @@ export default function AdminLock({ onUnlock, errorMessage }) {
                   { label: 'ETL Service', value: 'No Data Available', ok: null },
                   { label: 'Search Engine', value: 'No Data Available', ok: null },
                 ].map((r) => (
-                  <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 14, background: 'var(--panel-bg)', border: '1px solid var(--card-border)' }}>
+                  <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 6, background: 'var(--panel-bg)', border: '1px solid var(--card-border)' }}>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 800 }}>{r.label}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       {r.ok === true && <span className="badge badge-green">Healthy</span>}

@@ -49,7 +49,7 @@ export default function VerifyEmail() {
         width: '100%',
         maxWidth: '420px',
         background: 'var(--card-bg, #18181b)',
-        borderRadius: '16px',
+        borderRadius: '6px',
         padding: '40px',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
         border: '1px solid var(--card-border)',

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 
@@ -62,7 +62,7 @@ export default function CustomSelect({
             initial={{ opacity: 0, y: -4, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
+            transition={{ type: "spring", stiffness: 400, damping: 30 }}
             className="absolute z-[100] mt-1 min-w-[160px]"
             style={{
               left: 0,

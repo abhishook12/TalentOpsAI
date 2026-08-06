@@ -6,7 +6,7 @@ import { Save, ShieldCheck, Mail, Globe, Lock, HardDrive, RefreshCw } from 'luci
 export default function AdminSettings() {
   const [activeTab, setActiveTab] = useState('general');
   const [settings, setSettings] = useState({
-    general_platformName: 'TalentOps AI',
+    general_platformName: 'TalentOps',
     general_timezone: 'UTC',
     general_language: 'en-US',
     auth_googleEnabled: true,
@@ -68,7 +68,7 @@ export default function AdminSettings() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, background: 'linear-gradient(90deg, #fff, #aaa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Platform Settings</h1>
-          <p style={{ margin: '8px 0 0', color: 'var(--text-muted)', fontSize: 14 }}>Global configurations for the TalentOps AI platform.</p>
+          <p style={{ margin: '8px 0 0', color: 'var(--text-muted)', fontSize: 14 }}>Global configurations for the TalentOps platform.</p>
         </div>
         <button 
           onClick={handleSave} 
@@ -103,7 +103,7 @@ export default function AdminSettings() {
         </div>
 
         {/* Content Area */}
-        <div style={{ flex: 1, background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 32, minHeight: 500 }}>
+        <div style={{ flex: 1, background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 32, minHeight: 500 }}>
           {loading ? (
             <div style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: 100 }}>Loading settings...</div>
           ) : (

@@ -161,8 +161,8 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
         
         <div className="h-3 bg-[var(--card-bg)] rounded-full overflow-hidden">
           <div 
-            className="h-full bg-gradient-to-r from-[var(--brand)] to-[var(--brand-strong)] transition-all duration-500 ease-out"
-            style={{ width: `${progressPercent}%` }}
+            className="h-full bg-gradient-to-r from-[var(--brand)] to-[var(--brand-strong)]"
+            style={{ width: `${progressPercent}%`, transition: 'width 0.3s var(--ease-out)' }}
           />
         </div>
         <div className="flex justify-between text-xs text-[var(--text-muted)] mt-1.5">

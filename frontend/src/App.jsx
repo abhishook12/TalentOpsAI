@@ -76,7 +76,7 @@ const PAGE_NAMES = {
   '/': 'Dashboard',
   '/recruiters': 'Recruiters',
   '/analytics': 'Analytics',
-  '/ai-search': 'AI Search',
+  '/search': 'AI Search',
   '/directory': 'Directory',
   '/states': 'Directory > States',
   '/companies': 'Directory > Companies',

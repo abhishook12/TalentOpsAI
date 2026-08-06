@@ -28,7 +28,7 @@ export default function BackgroundJobs() {
             <EmptyState icon="ti-check" title="Queue is empty" description="No background jobs are currently running." />
           ) : (
             data?.map(job => (
-              <div key={job.job_id} style={{ display: 'grid', gap: 8, padding: 16, border: '1px solid var(--card-border)', borderRadius: 14, background: 'var(--bg-surface)' }}>
+              <div key={job.job_id} style={{ display: 'grid', gap: 8, padding: 16, border: '1px solid var(--card-border)', borderRadius: 6, background: 'var(--bg-surface)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Server size={18} style={{ color: 'var(--text-muted)' }} />

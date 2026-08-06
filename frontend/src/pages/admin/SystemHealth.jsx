@@ -44,7 +44,7 @@ export default function SystemHealth() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 24, marginBottom: 32 }}>
         
         {/* API Status */}
-        <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 24 }}>
+        <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
             <Server size={20} color="#3b82f6" />
             <span style={{ fontWeight: 600 }}>API Server</span>
@@ -58,7 +58,7 @@ export default function SystemHealth() {
         </div>
 
         {/* Database Status */}
-        <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 24 }}>
+        <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
             <Database size={20} color="var(--brand)" />
             <span style={{ fontWeight: 600 }}>Database (PostgreSQL)</span>
@@ -72,7 +72,7 @@ export default function SystemHealth() {
         </div>
 
         {/* CPU */}
-        <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 24 }}>
+        <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
             <Cpu size={20} color="#f59e0b" />
             <span style={{ fontWeight: 600 }}>Disk Usage</span>
@@ -88,7 +88,7 @@ export default function SystemHealth() {
         </div>
 
         {/* Memory */}
-        <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 24 }}>
+        <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
             <HardDrive size={20} color="#10b981" />
             <span style={{ fontWeight: 600 }}>Memory Usage</span>

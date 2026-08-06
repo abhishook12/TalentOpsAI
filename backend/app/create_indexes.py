@@ -56,6 +56,7 @@ def create_performance_indexes():
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_recruiters_company_id ON recruiters (company_id)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_recruiters_completeness_score ON recruiters (completeness_score DESC NULLS LAST)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_recruiters_data_source ON recruiters (data_source)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_recruiters_updated_at ON recruiters (updated_at DESC NULLS LAST)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_page_visits_visited_at ON page_visits (visited_at DESC)"))
 
         # 5. Campaign engine hot paths: SSE progress GROUP BY, bridge task polling, timeout sweep

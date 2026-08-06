@@ -59,13 +59,13 @@ export default function EnricherControlPanel() {
       />
       
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-        <div style={{ padding: 12, borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--bg-surface)' }}>
+        <div style={{ padding: 12, borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--bg-surface)' }}>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Records Scanned</div>
           <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--text-primary)' }}>
             {loading ? <Skeleton width={40} /> : (state?.records_processed || 0).toLocaleString()}
           </div>
         </div>
-        <div style={{ padding: 12, borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--bg-surface)' }}>
+        <div style={{ padding: 12, borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--bg-surface)' }}>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Successfully Enriched</div>
           <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--success)' }}>
             {loading ? <Skeleton width={40} /> : (state?.success_count || 0).toLocaleString()}

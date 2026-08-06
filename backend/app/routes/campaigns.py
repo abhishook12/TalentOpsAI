@@ -100,6 +100,11 @@ async def api_start_campaign(campaign_id: int, background_tasks: BackgroundTasks
     campaign = db.query(Campaign).filter(Campaign.user_id == current_user.id, Campaign.campaign_id == campaign_id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
+        
+    recipients_count = db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id).count()
+    if recipients_count > 50:
+        raise HTTPException(status_code=400, detail=f"Cannot start campaign: Max 50 recipients allowed per campaign for stability, but found {recipients_count}.")
+        
     background_tasks.add_task(start_campaign, campaign_id)
     return {"status": "started", "campaign_id": campaign_id}
 
@@ -1298,6 +1303,8 @@ def api_prepare_preview(campaign_id: int, request: PreparePreviewRequest, db: Se
         validation_errors.append({"code": "BRIDGE_OFFLINE", "message": f"Outlook Bridge is offline: {bridge_error or 'unreachable'}"})
     if not has_recipients:
         validation_errors.append({"code": "MISSING_RECIPIENTS", "message": "No valid recipients found."})
+    elif recipients_count > 50:
+        validation_errors.append({"code": "RECIPIENT_LIMIT_EXCEEDED", "message": f"Too many recipients ({recipients_count}). Max allowed is 50 per campaign to ensure stability."})
     if not has_template:
         validation_errors.append({"code": "MISSING_TEMPLATE", "message": "No template subject or body saved."})
 

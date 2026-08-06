@@ -98,7 +98,7 @@ const getAvatarColor = (name) => {
   return colors[index]
 }
 
-const RecruiterTableRow = memo(function RecruiterTableRow({ r }) {
+const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleActive, handleDelete }) {
   // Mock "Last Active" based on completeness to mimic the mockup's data variations
   const mockLastActive = r.completeness_score > 80 ? '2h ago' : r.completeness_score > 50 ? '3h ago' : '1d ago'
   
@@ -237,6 +237,7 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r }) {
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             transition: 'all 0.2s ease'
           }}
+          onClick={(e) => { e.stopPropagation(); if (openEdit) openEdit(r); }}
           onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(139, 92, 246, 0.15)'; e.currentTarget.style.color = '#c4b5fd' }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)' }}
         >
@@ -306,7 +307,7 @@ export default function Recruiters() {
   }, [refetch])
 
 
-  const exportRecruiters = () => {
+  const exportRecruiters = useCallback(() => {
     if (totalCount === 0) return toast.error('No recruiters to export');
     
     const params = new URLSearchParams()
@@ -325,9 +326,9 @@ export default function Recruiters() {
     if (debouncedFilters.state_status) params.append('state_status', debouncedFilters.state_status)
 
     window.open(`${api.defaults.baseURL}/recruiters/export?${params.toString()}`, '_blank');
-  }
+  }, [totalCount, debouncedSearch, debouncedFilters])
 
-  const openEdit = (r) => {
+  const openEdit = useCallback((r) => {
     setForm({
       recruiter_name: r.recruiter_name || '', email: r.email || '', phone: r.phone || '',
       linkedin: r.linkedin || '', specialization: r.specialization || '',
@@ -336,9 +337,9 @@ export default function Recruiters() {
       needs_review: r.needs_review || false, review_reason: r.review_reason || ''
     })
     setModal(r)
-  }
+  }, [])
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!form.recruiter_name || !form.email) return toast.error('Name and email are required.')
     setSaving(true)
     const payload = { ...form, company_id: form.company_id ? parseInt(form.company_id) : null }
@@ -354,25 +355,25 @@ export default function Recruiters() {
       toast.error(e.response?.data?.detail || 'Error saving recruiter')
     }
     setSaving(false)
-  }
+  }, [form, modal, refetch])
 
-  const handleDelete = async (id) => {
+  const handleDelete = useCallback(async (id) => {
     if (!window.confirm('Delete this recruiter?')) return
     await api.delete(`/recruiters/${id}`).catch(() => {})
     refetch()
-  }
+  }, [refetch])
 
-  const toggleActive = async (r) => {
+  const toggleActive = useCallback(async (r) => {
     await api.put(`/recruiters/${r.recruiter_id}`, { is_active: !r.is_active }).catch(() => {})
     refetch()
-  }
+  }, [refetch])
   
-  const updateFilter = (k, v) => {
+  const updateFilter = useCallback((k, v) => {
       setFilters(prev => ({...prev, [k]: v}))
       setPage(1)
-  }
+  }, [setFilters, setPage])
   
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
       setSearch('')
       setFilters({
           state: '', city: '', company: '', title: '',
@@ -380,7 +381,7 @@ export default function Recruiters() {
           sort_by: 'created_at', sort_desc: 'true'
       })
       setPage(1)
-  }
+  }, [setSearch, setFilters, setPage])
 
   return (
     <div className="page-enter" style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>

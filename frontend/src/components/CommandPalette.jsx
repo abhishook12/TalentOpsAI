@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { Search, Monitor, Settings, Users, Briefcase, BarChart, Database, Activity, MapPin } from 'lucide-react';
+import { Search, Monitor, Settings, Users, Briefcase, BarChart, Database, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function CommandPalette() {
@@ -22,7 +22,7 @@ export default function CommandPalette() {
     { id: 'admin_dashboard', title: 'Admin Terminal', icon: Monitor, route: '/admin' },
     { id: 'admin_users', title: 'User Management', icon: Users, route: '/admin/users' },
     { id: 'admin_visitors', title: 'Visitor Analytics', icon: Activity, route: '/admin/visitor-analytics' },
-    { id: 'ai_search', title: 'AI Search', icon: Search, route: '/ai-search' },
+    { id: 'ai_search', title: 'AI Search', icon: Search, route: '/search' },
   ];
 
   const filteredActions = actions.filter(action => 
@@ -46,12 +46,15 @@ export default function CommandPalette() {
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setQuery('');
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedIndex(0);
     }
   }, [isOpen]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedIndex(0);
   }, [query]);
 
@@ -103,11 +106,11 @@ export default function CommandPalette() {
           initial={{ opacity: 0, scale: 0.95, y: -20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: -20 }}
-          transition={{ duration: 0.15, ease: 'easeOut' }}
+          transition={{ type: "spring", stiffness: 400, damping: 30 }}
           style={{
             background: 'var(--bg-surface)',
             border: '1px solid var(--card-border)',
-            borderRadius: 16,
+            borderRadius: 6,
             width: '100%',
             maxWidth: 600,
             overflow: 'hidden',
@@ -153,7 +156,7 @@ export default function CommandPalette() {
                       alignItems: 'center',
                       gap: 12,
                       padding: '12px 16px',
-                      borderRadius: 12,
+                      borderRadius: 6,
                       cursor: 'pointer',
                       background: isSelected ? 'var(--card-border)' : 'transparent',
                       color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',

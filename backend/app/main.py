@@ -296,6 +296,8 @@ from .routes import analytics_session, bridge, sentinel
 app.include_router(analytics_session.router, prefix="/analytics/session", tags=["Analytics Session"])
 app.include_router(bridge.router, prefix="/bridge", tags=["Outlook Bridge"])
 app.include_router(sentinel.router)
+from .routes import mailintel
+app.include_router(mailintel.router, prefix="/mailintel", tags=["MailIntel"])
 
 
 @app.get("/")
@@ -388,8 +390,11 @@ async def timeout_stuck_emails_sweep():
 
 @app.on_event("startup")
 async def startup_event():
+    from .services.sync_layer import sync_manager
+    sync_manager.start()
     from .services.send_engine import restart_active_campaigns
     from .services.sentinel_engine import sentinel_engine
+    from .services.quality_engine import quality_engine
     from .services.sync_engine import sync_engine_loop
     from .database import engine
     from sqlalchemy import text
@@ -405,10 +410,18 @@ async def startup_event():
         asyncio.create_task(sync_engine_loop())
         restart_active_campaigns()
         sentinel_engine.start()
+        quality_engine.start()
         logger.info("Acquired leader lock; started background tasks.")
     else:
         conn.close()
         logger.info("Another worker is leader; skipping background tasks.")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    from .services.sync_layer import sync_manager
+    sync_manager.stop()
+    from .services.quality_engine import quality_engine
+    quality_engine.stop()
 
 from .routes import health
 app.include_router(health.router, prefix="/health", tags=["System Health"])

@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import { ShellCard, SectionHeader, Badge } from './CommandCenter';
 import { SkeletonRow } from './ui/Skeleton';
-import { Sparkles, TrendingUp, MapPin, Activity } from 'lucide-react';
+import { BarChart3, TrendingUp, MapPin, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const ICON_MAP = {
@@ -33,11 +33,11 @@ export default function AIInsights() {
     <ShellCard style={{ padding: 18, marginBottom: 16, background: 'var(--panel-bg)', border: '1px solid var(--card-border)' }}>
       <SectionHeader
         eyebrow="Intelligence"
-        title="Smart Insights"
+        title="Observations"
         subtitle="AI-driven analysis of your operational data."
         action={
           <Badge tone="success" style={{ background: 'rgba(139, 92, 246, 0.1)', color: 'var(--brand)', borderColor: 'rgba(139, 92, 246, 0.2)' }}>
-            <Sparkles size={12} style={{ marginRight: 4 }} /> AI Active
+            <BarChart3 size={12} style={{ marginRight: 4 }} /> AI Active
           </Badge>
         }
       />
@@ -50,7 +50,7 @@ export default function AIInsights() {
           </>
         ) : (
           data?.insights?.map((insight, idx) => {
-            const Icon = ICON_MAP[insight.type] || Sparkles;
+            const Icon = ICON_MAP[insight.type] || BarChart3;
             return (
               <motion.div 
                 key={insight.id}
@@ -59,7 +59,7 @@ export default function AIInsights() {
                 transition={{ delay: idx * 0.1 }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 16,
-                  padding: '16px 20px', borderRadius: 12,
+                  padding: '16px 20px', borderRadius: 6,
                   background: 'var(--card-bg)',
                   border: '1px solid var(--card-border)',
                 }}

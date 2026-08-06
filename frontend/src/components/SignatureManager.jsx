@@ -91,7 +91,7 @@ export default function SignatureManager({ onSelectSignature, selectedSignatureI
 
   if (editingSig !== null || signatures.length === 0) {
     return (
-      <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '12px', padding: '16px' }}>
+      <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '6px', padding: '16px' }}>
         <h3 style={{ margin: '0 0 16px', color: 'var(--text-primary)', fontSize: '16px', fontWeight: 600 }}>
           {editingSig ? 'Edit Signature' : 'Create Signature'}
         </h3>
@@ -163,7 +163,7 @@ export default function SignatureManager({ onSelectSignature, selectedSignatureI
   }
 
   return (
-    <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '12px', padding: '16px' }}>
+    <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '6px', padding: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '16px', fontWeight: 600 }}>Your Signatures</h3>
         <button 

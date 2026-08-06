@@ -4,228 +4,6 @@ import { useNavigate, Link } from '@tanstack/react-router'
 import { GoogleLogin } from '@react-oauth/google'
 import AuthFrame from './AuthFrame'
 
-const formStyles = `
-  .auth-form {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .auth-row {
-    display: flex;
-    gap: 16px;
-    width: 100%;
-  }
-
-  .auth-row .auth-field {
-    flex: 1;
-  }
-
-  .auth-field {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .auth-label {
-    font-size: 13px;
-    color: #a0a0a0;
-  }
-
-  .auth-password-wrap {
-    position: relative;
-    display: flex;
-    align-items: center;
-  }
-
-  .auth-input {
-    width: 100%;
-    height: 44px;
-    border-radius: 8px;
-    border: 1px solid #333;
-    background: #111;
-    color: #ffffff;
-    padding: 0 16px;
-    font-size: 14px;
-    outline: none;
-    transition: all 0.2s ease;
-  }
-
-  .auth-input::placeholder {
-    color: #555;
-  }
-
-  .auth-input:focus {
-    border-color: var(--brand);
-    box-shadow: 0 0 0 4px var(--brand-bg);
-  }
-
-  .auth-select {
-    width: 100%;
-    height: 44px;
-    border-radius: 8px;
-    border: 1px solid #333;
-    background: #111;
-    color: #ffffff;
-    padding: 0 16px;
-    font-size: 14px;
-    outline: none;
-    appearance: none;
-    transition: all 0.2s ease;
-  }
-
-  .auth-select:focus {
-    border-color: var(--brand);
-    box-shadow: 0 0 0 4px var(--brand-bg);
-  }
-
-  .auth-eye-button {
-    position: absolute;
-    right: 14px;
-    background: transparent;
-    border: none;
-    color: #666;
-    cursor: pointer;
-    padding: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    transition: color 0.2s;
-  }
-
-  .auth-eye-button:hover {
-    color: #fff;
-  }
-
-  .auth-remember {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    font-size: 13px;
-    color: #a0a0a0;
-    cursor: pointer;
-  }
-
-  .auth-check {
-    appearance: none;
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
-    background: #111;
-    border: 1px solid #444;
-    border-radius: 4px;
-    position: relative;
-    transition: all 0.2s;
-    flex-shrink: 0;
-  }
-  
-  .auth-check:checked {
-    background: var(--brand);
-    border-color: var(--brand);
-  }
-  
-  .auth-check:checked::after {
-    content: '';
-    position: absolute;
-    left: 4px;
-    top: 2px;
-    width: 4px;
-    height: 8px;
-    border: solid white;
-    border-width: 0 2px 2px 0;
-    transform: rotate(45deg);
-  }
-  
-  .auth-check:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--brand-bg);
-  }
-
-  .auth-button {
-    width: 100%;
-    height: 44px;
-    border: none;
-    border-radius: 8px;
-    background: var(--brand);
-    color: #fff;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin-top: 16px;
-  }
-
-  .auth-button:hover:not(:disabled) {
-    background: var(--brand-strong);
-  }
-
-  .auth-button:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-  }
-
-  .auth-divider {
-    display: flex;
-    align-items: center;
-    text-align: center;
-    color: #666;
-    font-size: 13px;
-    margin: 16px 0;
-  }
-  
-  .auth-divider::before,
-  .auth-divider::after {
-    content: '';
-    flex: 1;
-    border-bottom: 1px solid #333;
-  }
-  
-  .auth-divider span {
-    padding: 0 16px;
-  }
-
-  .auth-mini-link {
-    color: var(--brand);
-    text-decoration: underline;
-    text-underline-offset: 2px;
-    font-weight: 500;
-    cursor: pointer;
-  }
-  
-  .auth-mini-link:hover {
-    color: var(--brand-strong);
-  }
-
-  .auth-footer-link {
-    color: var(--brand);
-    text-decoration: none;
-    font-weight: 500;
-  }
-
-  .auth-footer-link:hover {
-    text-decoration: underline;
-  }
-  
-  .auth-error {
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    color: #ef4444;
-    padding: 12px;
-    border-radius: 8px;
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 16px;
-  }
-`
-
 export default function Register() {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -316,7 +94,6 @@ export default function Register() {
 
   return (
     <>
-    <style dangerouslySetInnerHTML={{ __html: formStyles }} />
     <AuthFrame
       eyebrow="Create account"
       title="Sign Up for TalentOps"
@@ -326,7 +103,7 @@ export default function Register() {
       footerLinkTo="/login"
     >
       {error ? (
-        <div className="auth-error">
+        <div className="bg-red-500/10 border border-red-500/20 text-red-500 px-3 py-3 rounded-lg text-sm flex items-center gap-2 mb-4">
           <i className="ti ti-alert-circle" />
           {error}
         </div>
@@ -344,35 +121,35 @@ export default function Register() {
           />
       </div>
 
-      <div className="auth-divider">
-          <span>or register with email</span>
+      <div className="flex items-center text-center text-[#666] text-[13px] my-4 before:content-[''] before:flex-1 before:border-b before:border-[#333] after:content-[''] after:flex-1 after:border-b after:border-[#333]">
+          <span className="px-4">or register with email</span>
       </div>
 
-      <form onSubmit={handleSubmit} className="auth-form">
-        <div className="auth-row">
-          <div className="auth-field">
-            <label className="auth-label">First name</label>
-            <input className="auth-input" type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First name" />
+      <form onSubmit={handleSubmit} className="w-full flex flex-col gap-4">
+        <div className="flex gap-4 w-full">
+          <div className="flex flex-col gap-1.5 flex-1">
+            <label className="text-[13px] text-[#a0a0a0]">First name</label>
+            <input className="w-full h-11 rounded-lg border border-[#333] bg-[#111] text-white px-4 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]" type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First name" />
           </div>
-          <div className="auth-field">
-            <label className="auth-label">Last name</label>
-            <input className="auth-input" type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last name" />
+          <div className="flex flex-col gap-1.5 flex-1">
+            <label className="text-[13px] text-[#a0a0a0]">Last name</label>
+            <input className="w-full h-11 rounded-lg border border-[#333] bg-[#111] text-white px-4 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]" type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last name" />
           </div>
         </div>
 
-        <div className="auth-field">
-          <label className="auth-label">Work Email</label>
-          <input className="auth-input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" />
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[13px] text-[#a0a0a0]">Work Email</label>
+          <input className="w-full h-11 rounded-lg border border-[#333] bg-[#111] text-white px-4 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" />
         </div>
 
-        <div className="auth-field">
-          <label className="auth-label">Company (Optional)</label>
-          <input className="auth-input" type="text" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Acme Corp" />
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[13px] text-[#a0a0a0]">Company (Optional)</label>
+          <input className="w-full h-11 rounded-lg border border-[#333] bg-[#111] text-white px-4 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]" type="text" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Acme Corp" />
         </div>
 
-        <div className="auth-field">
-          <label className="auth-label">Country</label>
-          <select className="auth-select" value={country} onChange={(e) => setCountry(e.target.value)}>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[13px] text-[#a0a0a0]">Country</label>
+          <select className="w-full h-11 rounded-lg border border-[#333] bg-[#111] text-white px-4 text-sm outline-none appearance-none transition-all focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]" value={country} onChange={(e) => setCountry(e.target.value)}>
             <option value="US">United States</option>
             <option value="CA">Canada</option>
             <option value="UK">United Kingdom</option>
@@ -381,22 +158,22 @@ export default function Register() {
           </select>
         </div>
 
-        <div className="auth-field">
-          <label className="auth-label">Password</label>
-          <div className="auth-password-wrap">
-            <input className="auth-input" type={showPassword ? 'text' : 'password'} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Create a strong password" />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} className="auth-eye-button" aria-label="Toggle password visibility">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[13px] text-[#a0a0a0]">Password</label>
+          <div className="relative flex items-center">
+            <input className="w-full h-11 rounded-lg border border-[#333] bg-[#111] text-white px-4 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]" type={showPassword ? 'text' : 'password'} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Create a strong password" />
+            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 bg-transparent border-none text-[#666] cursor-pointer p-1 flex items-center justify-center text-base transition-colors hover:text-white" aria-label="Toggle password visibility">
               <i className={`ti ${showPassword ? 'ti-eye-off' : 'ti-eye'}`} />
             </button>
           </div>
 
           {password.length > 0 ? (
-            <div className="auth-copy-note" style={{ marginTop: 10 }}>
+            <div className="mt-2 text-[13px]">
               Strength: <strong style={{ color: strengthColors[strength] }}>{strengthLabels[strength]}</strong>
             </div>
           ) : null}
 
-          <div className="auth-copy-note" style={{ display: 'grid', gap: 4 }}>
+          <div className="grid gap-1 mt-1 text-[13px]">
             <div style={{ color: password.length >= 8 ? '#67e8a8' : 'rgba(255,255,255,0.46)' }}>
               <i className={`ti ${password.length >= 8 ? 'ti-check' : 'ti-circle'}`} style={{ marginRight: 6 }} />
               At least 8 characters
@@ -416,34 +193,33 @@ export default function Register() {
           </div>
         </div>
 
-        <div className="auth-field">
-          <label className="auth-label">Confirm Password</label>
-          <input className="auth-input" type={showPassword ? 'text' : 'password'} required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm your password" />
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[13px] text-[#a0a0a0]">Confirm Password</label>
+          <input className="w-full h-11 rounded-lg border border-[#333] bg-[#111] text-white px-4 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]" type={showPassword ? 'text' : 'password'} required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm your password" />
         </div>
 
-        <div className="auth-field">
-          <label className="auth-remember" style={{ alignItems: 'flex-start' }}>
+        <div className="flex flex-col gap-1.5">
+          <label className="flex items-start gap-2 text-[13px] text-[#a0a0a0] cursor-pointer">
             <input
-              className="auth-check"
+              className="appearance-none w-4 h-4 cursor-pointer bg-[#111] border border-[#444] rounded flex-shrink-0 relative transition-all checked:bg-[var(--brand)] checked:border-[var(--brand)] focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_var(--brand-bg)] mt-[2px] after:content-[''] after:absolute after:left-[4px] after:top-[1px] after:w-[5px] after:h-[9px] after:border-solid after:border-white after:border-0 after:border-r-2 after:border-b-2 after:rotate-45 after:opacity-0 checked:after:opacity-100"
               type="checkbox"
               checked={agreeTerms}
               onChange={(e) => setAgreeTerms(e.target.checked)}
-              style={{ marginTop: 2 }}
             />
             <span>
               I agree to the{' '}
-              <button type="button" onClick={(e) => { e.preventDefault(); setShowTermsModal(true) }} className="auth-mini-link" style={{ background: 'none', border: 'none', padding: 0 }}>
+              <button type="button" onClick={(e) => { e.preventDefault(); setShowTermsModal(true) }} className="text-[var(--brand)] underline underline-offset-2 font-medium cursor-pointer bg-transparent border-none p-0 hover:text-[var(--brand-strong)]">
                 Terms of Service
               </button>{' '}
               and{' '}
-              <button type="button" onClick={(e) => { e.preventDefault(); setShowPrivacyModal(true) }} className="auth-mini-link" style={{ background: 'none', border: 'none', padding: 0 }}>
+              <button type="button" onClick={(e) => { e.preventDefault(); setShowPrivacyModal(true) }} className="text-[var(--brand)] underline underline-offset-2 font-medium cursor-pointer bg-transparent border-none p-0 hover:text-[var(--brand-strong)]">
                 Privacy Policy
               </button>
             </span>
           </label>
         </div>
 
-        <button type="submit" disabled={isSubmitting || !agreeTerms || strength < 4 || password !== confirmPassword} className="auth-button">
+        <button type="submit" disabled={isSubmitting || !agreeTerms || strength < 4 || password !== confirmPassword} className="w-full h-11 border-none rounded-lg bg-[var(--brand)] text-white text-sm font-medium cursor-pointer transition-all flex items-center justify-center gap-2 mt-4 hover:not-disabled:bg-[var(--brand-strong)] disabled:opacity-50 disabled:cursor-not-allowed">
           {isSubmitting ? (
             <>
               <i className="ti ti-loader animate-spin" /> Creating account...
@@ -454,13 +230,13 @@ export default function Register() {
         </button>
       </form>
 
-      <div className="auth-copy-note" style={{ textAlign: 'center', marginTop: 22 }}>
-        Need a quick login instead? <Link to="/login" className="auth-footer-link">Sign in</Link>
+      <div className="text-center mt-6 text-[13px] text-[#a0a0a0]">
+        Need a quick login instead? <Link to="/login" className="text-[var(--brand)] no-underline font-medium hover:underline">Sign in</Link>
       </div>
 
       {(showTermsModal || showPrivacyModal) ? (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'grid', placeItems: 'center', zIndex: 1000, backdropFilter: 'blur(2px)', padding: 20 }}>
-          <div style={{ width: 'min(420px, 100%)', background: '#18181b', padding: 24, borderRadius: 14, border: '1px solid #27272a' }}>
+          <div style={{ width: 'min(420px, 100%)', background: '#18181b', padding: 24, borderRadius: 6, border: '1px solid #27272a' }}>
             <h2 style={{ margin: '0 0 16px', fontSize: 18, color: 'var(--text-primary)' }}>{showTermsModal ? 'Terms of Service' : 'Privacy Policy'}</h2>
             <p style={{ color: '#a1a1aa', fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
               {showTermsModal ? 'Terms of Service — Coming Soon' : 'Privacy Policy — Coming Soon'}

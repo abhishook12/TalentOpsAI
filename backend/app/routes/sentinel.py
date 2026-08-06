@@ -1,129 +1,113 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from typing import List, Optional
-import json
+from typing import List, Dict, Any
 
 from app.database import get_db
-from app.models.models import Recruiter
-from app.models.sentinel_state import SentinelState
-from app.models.sentinel_audit import SentinelAuditLog
-from app.routes.auth import get_current_user_from_request
-from app.models.auth_models import User
+from app.models.models import Recruiter, Company, DomainIntelligence, EnrichmentAudit
 
-router = APIRouter(prefix="/sentinel", tags=["sentinel"])
+router = APIRouter(prefix="/sentinel", tags=["Sentinel Engine"])
 
-import time
-from sqlalchemy import text
-
-_health_cache = {"data": None, "expires": 0}
-
-@router.get("/health")
-def get_sentinel_health(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_request)
-):
-    now = time.time()
-    if _health_cache["data"] and now < _health_cache["expires"]:
-        return _health_cache["data"]
-        
-    try:
-        row = db.execute(text("""
-            SELECT 
-                AVG(quality_score) as avg_score,
-                COUNT(*) as total,
-                SUM(CASE WHEN email LIKE '%missing.local%' THEN 1 ELSE 0 END) as m_email,
-                SUM(CASE WHEN phone IS NULL OR phone = '' THEN 1 ELSE 0 END) as m_phone,
-                SUM(CASE WHEN linkedin IS NULL OR linkedin = '' THEN 1 ELSE 0 END) as m_linkedin,
-                SUM(CASE WHEN location IS NULL OR location = '' THEN 1 ELSE 0 END) as m_location,
-                SUM(CASE WHEN company_id IS NULL THEN 1 ELSE 0 END) as m_company
-            FROM recruiters
-        """)).mappings().one()
-        
-        result = {
-            "overall_quality_score": round(row["avg_score"] or 0, 1),
-            "total_profiles": row["total"] or 0,
-            "missing_breakdown": {
-                "email": row["m_email"] or 0,
-                "phone": row["m_phone"] or 0,
-                "linkedin": row["m_linkedin"] or 0,
-                "location": row["m_location"] or 0,
-                "company": row["m_company"] or 0
-            }
-        }
-        
-        _health_cache["data"] = result
-        _health_cache["expires"] = now + 60
-        return result
-    except Exception:
-        db.rollback()
-        return {
-            "overall_quality_score": 0,
-            "total_profiles": 0,
-            "missing_breakdown": {"email": 0, "phone": 0, "linkedin": 0, "location": 0, "company": 0}
-        }
-
-@router.get("/queue")
-def get_sentinel_queue(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_request)
-):
-    state = db.query(SentinelState).first()
-    if not state:
-        return {"status": "Idle", "profiles_analyzed": 0, "profiles_repaired": 0, "total_profiles": 0, "current_task_description": "Engine not initialized"}
-        
-    total = db.query(func.count(Recruiter.recruiter_id)).scalar() or 0
+@router.get("/stats")
+def get_sentinel_stats(db: Session = Depends(get_db)):
+    """Rule 13: Data Intelligence Dashboard Metrics"""
+    total_processed = db.query(Recruiter).filter(Recruiter.sentinel_status == "Completed").count()
+    total_queued = db.query(Recruiter).filter(Recruiter.sentinel_status.in_(["Pending", "Analyzing"])).count()
+    companies_identified = db.query(Recruiter).filter(Recruiter.company_id.isnot(None)).count()
+    unknown_companies = db.query(Recruiter).filter(Recruiter.company_id.is_(None)).count()
+    domains_mapped = db.query(DomainIntelligence).count()
+    
+    # Enrichment counts (from audit log)
+    profiles_enriched = db.query(EnrichmentAudit.recruiter_id).distinct().count()
     
     return {
-        "status": state.status,
-        "total_profiles": total,
-        "profiles_analyzed": state.profiles_analyzed,
-        "profiles_repaired": state.profiles_repaired,
-        "current_task_description": state.current_task_description,
-        "last_processed_id": state.last_processed_id,
-        "updated_at": state.updated_at
+        "total_processed": total_processed,
+        "total_queued": total_queued,
+        "companies_identified": companies_identified,
+        "unknown_companies": unknown_companies,
+        "domains_mapped": domains_mapped,
+        "profiles_enriched": profiles_enriched,
+        "duplicate_companies_merged": 0  # To be implemented
     }
 
-@router.get("/audit")
-def get_sentinel_audit(
-    limit: int = 50,
+@router.get("/review-queue")
+def get_review_queue(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_request)
+    limit: int = Query(50),
+    offset: int = Query(0)
 ):
-    logs = db.query(SentinelAuditLog, Recruiter.recruiter_name)\
-        .join(Recruiter, SentinelAuditLog.recruiter_id == Recruiter.recruiter_id)\
-        .order_by(SentinelAuditLog.timestamp.desc())\
-        .limit(limit).all()
+    """Rule 14: Manual Review Queue for low confidence company matches"""
+    query = db.query(Recruiter).filter(Recruiter.needs_review == True)
+    total = query.count()
+    
+    items = query.order_by(Recruiter.updated_at.desc()).limit(limit).offset(offset).all()
+    
+    results = []
+    for r in items:
+        company_data = None
+        if r.company:
+            company_data = {
+                "company_id": r.company.company_id,
+                "company_name": r.company.company_name,
+                "website": r.company.website
+            }
+            
+        results.append({
+            "recruiter_id": r.recruiter_id,
+            "recruiter_name": r.recruiter_name,
+            "email": r.email,
+            "company_confidence": r.company_confidence,
+            "review_reason": r.review_reason,
+            "suggested_company": company_data
+        })
         
-    return [
-        {
-            "id": log.SentinelAuditLog.id,
-            "recruiter_id": log.SentinelAuditLog.recruiter_id,
-            "recruiter_name": log.recruiter_name,
-            "field_changed": log.SentinelAuditLog.field_changed,
-            "previous_value": log.SentinelAuditLog.previous_value,
-            "new_value": log.SentinelAuditLog.new_value,
-            "reason": log.SentinelAuditLog.reason,
-            "timestamp": log.SentinelAuditLog.timestamp
-        }
-        for log in logs
-    ]
+    return {
+        "items": results,
+        "total": total
+    }
 
-@router.post("/toggle")
-def toggle_sentinel(
-    action: str = Query(..., description="start or stop"),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_request)
-):
-    state = db.query(SentinelState).first()
-    if not state:
-        state = SentinelState(status="Idle")
-        db.add(state)
+@router.post("/review-queue/{recruiter_id}/approve")
+def approve_review(recruiter_id: int, db: Session = Depends(get_db)):
+    r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Recruiter not found")
+        
+    r.needs_review = False
+    r.review_reason = None
+    r.company_confidence = 100
     
-    if action == "start":
-        state.status = "Running"
-    elif action == "stop":
-        state.status = "Paused"
-    
+    audit = EnrichmentAudit(
+        recruiter_id=r.recruiter_id,
+        enrichment_type="company_review",
+        action="approved",
+        reason="Manual admin approval of suggested company",
+        run_id="manual_review"
+    )
+    db.add(audit)
     db.commit()
-    return {"status": state.status}
+    return {"status": "success"}
+
+@router.post("/review-queue/{recruiter_id}/reject")
+def reject_review(recruiter_id: int, db: Session = Depends(get_db)):
+    r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Recruiter not found")
+        
+    old_company = r.company_id
+    r.needs_review = False
+    r.review_reason = None
+    r.company_id = None
+    r.company_confidence = 0
+    
+    audit = EnrichmentAudit(
+        recruiter_id=r.recruiter_id,
+        enrichment_type="company_review",
+        action="rejected",
+        reason="Manual admin rejection of suggested company",
+        original_value=str(old_company),
+        proposed_value="None",
+        run_id="manual_review"
+    )
+    db.add(audit)
+    db.commit()
+    return {"status": "success"}

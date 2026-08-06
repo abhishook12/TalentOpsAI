@@ -121,7 +121,7 @@ export default function USHeatmap() {
         width: "100%", 
         minHeight: "450px", 
         background: "var(--card-bg)", 
-        borderRadius: "12px", 
+        borderRadius: '6px', 
         border: "1px solid var(--card-border)", 
         display: "flex",
         flexDirection: "column"

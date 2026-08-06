@@ -1,0 +1,21 @@
+Sentinel Phase II - 3 Times Check Proof
+=========================================
+
+--- Check 1 ---
+Completed: 81912, Pending: 100
+Recruiters with Company: 174712
+Domains Mapped: 44
+Example Enrichment: None
+
+--- Check 2 ---
+Completed: 81962, Pending: 50
+Recruiters with Company: 174712
+Domains Mapped: 64
+Example Enrichment: None
+
+--- Check 3 ---
+Completed: 82012, Pending: 0
+Recruiters with Company: 174712
+Domains Mapped: 67
+Example Enrichment: None
+

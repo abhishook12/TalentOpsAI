@@ -29,7 +29,7 @@ export default function Maintenance() {
         maxWidth: 440,
         width: '100%',
         background: 'var(--card-bg)',
-        borderRadius: 20,
+        borderRadius: 6,
         border: '1px solid var(--card-border)',
         boxShadow: 'var(--shadow-lg)',
         overflow: 'hidden',
@@ -40,7 +40,7 @@ export default function Maintenance() {
             width: 72,
             height: 72,
             background: 'linear-gradient(135deg, rgba(56,189,248,0.1), rgba(59,130,246,0.15))',
-            borderRadius: 20,
+            borderRadius: 6,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -66,13 +66,13 @@ export default function Maintenance() {
           </h1>
           
           <p style={{ color: 'var(--text-secondary)', marginBottom: 28, fontSize: 14, lineHeight: 1.6 }}>
-            TalentOps AI is currently undergoing major improvements.
+            TalentOps is currently undergoing major improvements.
           </p>
 
           <div style={{
             background: 'var(--panel-bg)',
             padding: 20,
-            borderRadius: 14,
+            borderRadius: 6,
             border: '1px solid var(--card-border)',
             marginBottom: 32,
             textAlign: 'left',

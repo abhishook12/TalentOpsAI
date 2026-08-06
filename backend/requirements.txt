@@ -18,3 +18,7 @@ passlib[bcrypt]==1.7.4
 user-agents
 slowapi
 google-auth
+pytest
+pytest-asyncio
+httpx
+pytest-cov

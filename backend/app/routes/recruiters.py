@@ -1,5 +1,6 @@
 import json
 import re
+from app.services.sync_layer import sync_manager
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session, joinedload, contains_eager, selectinload
 from sqlalchemy import text
@@ -141,7 +142,15 @@ def _normalize_phone(value):
 
 
 def _search_quality_tier(record):
-    completeness = int(record.get("completeness_score") or 0)
+    score = record.get("completeness_score")
+    if score is None or (isinstance(score, float) and score != score):
+        completeness = 0
+    else:
+        try:
+            completeness = int(score)
+        except (ValueError, TypeError):
+            completeness = 0
+            
     if record.get("needs_review"):
         return "needs_review"
     if completeness >= 80:
@@ -413,6 +422,8 @@ def apply_recruiter_update(r, update_data: dict, db: Session):
     
     return r
 
+from ..services.recruiter_store import recruiter_store
+
 # --- Smart Ranked Search ---
 @router.get("/search")
 def search_recruiters(
@@ -424,233 +435,50 @@ def search_recruiters(
     db: Session = Depends(get_db)
 ):
     """
-    Smart weighted search using pg_trgm similarity + LIKE scoring.
-    Results are ranked by relevance_score descending.
+    Smart weighted search using DuckDB Parquet store.
     """
-    normalized_query = normalize_text(q)
-    q_digits = re.sub(r"\D+", "", q or "")
-    query_domain = extract_domain(q) if ("@" in q or "." in q) else ""
-    base_sql = """
-        SELECT
-            r.recruiter_id,
-            r.recruiter_name,
-            r.normalized_recruiter_name,
-            r.email,
-            r.phone,
-            r.email2,
-            r.phone2,
-            r.email3,
-            r.phone3,
-            r.email4,
-            r.phone4,
-            r.alternate_emails,
-            r.alternate_phones,
-            r.linkedin,
-            r.specialization,
-            r.notes,
-            r.state,
-            r.location_confidence,
-            r.state_source,
-            r.created_at,
-            r.is_active,
-            r.completeness_score,
-            r.needs_review,
-            r.company_id,
-            c.company_name,
-            c.normalized_company_name,
-            c.website,
-            c.email_pattern,
-            c.state AS company_state,
-            COALESCE(r.location, c.location) AS location,
-            (
-                CASE
-                    WHEN LOWER(r.recruiter_name) = LOWER(:q)
-                        THEN 200
-                    WHEN r.normalized_recruiter_name = :normalized_query
-                        THEN 190
-                    WHEN LOWER(r.recruiter_name) LIKE LOWER(:q) || '%'
-                        THEN 130
-                    WHEN LOWER(r.recruiter_name) LIKE '%' || LOWER(:q) || '%'
-                        THEN 100
-                    ELSE 0
-                END
-                +
-                CASE
-                    WHEN LOWER(r.email) = LOWER(:q)
-                        THEN 200
-                    WHEN LOWER(r.email) LIKE '%' || LOWER(:q) || '%'
-                        THEN 80
-                    ELSE 0
-                END
-                +
-                CASE
-                    WHEN LOWER(COALESCE(r.email2, '')) = LOWER(:q)
-                        OR LOWER(COALESCE(r.email3, '')) = LOWER(:q)
-                        OR LOWER(COALESCE(r.email4, '')) = LOWER(:q)
-                        OR LOWER(COALESCE(r.alternate_emails, '')) LIKE '%' || LOWER(:q) || '%'
-                        THEN 180
-                    WHEN LOWER(COALESCE(r.email2, '')) LIKE '%' || LOWER(:q) || '%'
-                        OR LOWER(COALESCE(r.email3, '')) LIKE '%' || LOWER(:q) || '%'
-                        OR LOWER(COALESCE(r.email4, '')) LIKE '%' || LOWER(:q) || '%'
-                        THEN 110
-                    ELSE 0
-                END
-                +
-                CASE
-                    WHEN :q_digits != ''
-                        AND (
-                            regexp_replace(COALESCE(r.phone, ''), '[^0-9]+', '', 'g') = :q_digits
-                            OR regexp_replace(COALESCE(r.phone2, ''), '[^0-9]+', '', 'g') = :q_digits
-                            OR regexp_replace(COALESCE(r.phone3, ''), '[^0-9]+', '', 'g') = :q_digits
-                            OR regexp_replace(COALESCE(r.phone4, ''), '[^0-9]+', '', 'g') = :q_digits
-                        )
-                        THEN 180
-                    WHEN :q_digits != ''
-                        AND (
-                            regexp_replace(COALESCE(r.phone, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
-                            OR regexp_replace(COALESCE(r.phone2, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
-                            OR regexp_replace(COALESCE(r.phone3, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
-                            OR regexp_replace(COALESCE(r.phone4, ''), '[^0-9]+', '', 'g') LIKE '%' || :q_digits || '%'
-                        )
-                        THEN 100
-                    ELSE 0
-                END
-                +
-                CASE
-                    WHEN c.normalized_company_name = :normalized_query
-                        THEN 120
-                    WHEN LOWER(COALESCE(c.company_name, '')) LIKE '%' || LOWER(:q) || '%'
-                        THEN 60
-                    ELSE 0
-                END
-                +
-                CASE
-                    WHEN LOWER(COALESCE(r.specialization, '')) LIKE '%' || LOWER(:q) || '%'
-                        THEN 40
-                    ELSE 0
-                END
-                + CAST(ROUND(similarity(r.recruiter_name, :q) * 30) AS INT)
-                + CAST(ROUND(similarity(r.email, :q) * 15) AS INT)
-            ) AS relevance_score
-        FROM recruiters r
-        LEFT JOIN companies c ON r.company_id = c.company_id
-        WHERE
-            r.is_active = true
-            AND (
-                r.recruiter_name LIKE '%' || :q || '%'
-                OR r.email LIKE '%' || :q || '%'
-                OR r.email2 LIKE '%' || :q || '%'
-                OR r.email3 LIKE '%' || :q || '%'
-                OR r.email4 LIKE '%' || :q || '%'
-                OR r.phone LIKE '%' || :q || '%'
-                OR r.phone2 LIKE '%' || :q || '%'
-                OR r.phone3 LIKE '%' || :q || '%'
-                OR r.phone4 LIKE '%' || :q || '%'
-                OR COALESCE(r.alternate_emails, '') LIKE '%' || :q || '%'
-                OR COALESCE(r.alternate_phones, '') LIKE '%' || :q || '%'
-                OR (
-                    :q_digits != ''
-                    AND (
-                        r.phone LIKE '%' || :q_digits || '%'
-                        OR r.phone2 LIKE '%' || :q_digits || '%'
-                        OR r.phone3 LIKE '%' || :q_digits || '%'
-                        OR r.phone4 LIKE '%' || :q_digits || '%'
-                        OR COALESCE(r.alternate_phones, '') LIKE '%' || :q_digits || '%'
-                    )
-                )
-                OR COALESCE(c.company_name, '') LIKE '%' || :q || '%'
-                OR COALESCE(r.specialization, '') LIKE '%' || :q || '%'
-                OR r.normalized_recruiter_name LIKE '%' || :normalized_query || '%'
-                OR c.normalized_company_name LIKE '%' || :normalized_query || '%'
-                OR similarity(r.recruiter_name, :q) > 0.3
-                OR similarity(r.email, :q) > 0.3
-            )
-    """
-
-    params = {
-        "q": q,
-        "normalized_query": normalized_query,
-        "q_digits": q_digits,
-        "limit": limit,
-        "candidate_limit": min(max(limit * 3, limit), 500),
-    }
-
-    if company:
-        clean_company = normalize_text(company)
-        base_sql += """ AND (
-            c.normalized_company_name LIKE '%' || :company || '%'
-            OR LOWER(c.company_name) LIKE '%' || LOWER(:raw_company) || '%'
-            OR similarity(c.company_name, :raw_company) > 0.15
-            OR c.website LIKE '%' || LOWER(:raw_company) || '%'
-            OR c.email_pattern LIKE '%' || LOWER(:raw_company) || '%'
-        )"""
-        params["company"] = clean_company
-        params["raw_company"] = company
-    if location:
-        abbr = normalize_state(location)
-        if abbr:
-            base_sql += " AND COALESCE(r.state, c.state) = :location"
-            params["location"] = abbr
-    if specialization:
-        base_sql += " AND r.specialization LIKE '%' || :specialization || '%'"
-        params["specialization"] = specialization
-
-    base_sql += " ORDER BY relevance_score DESC, r.completeness_score DESC NULLS LAST LIMIT :candidate_limit"
-
-    rows = db.execute(text(base_sql), params).mappings().all()
-    ranked_rows = []
-    for row in rows:
-        row_dict = dict(row)
-        row_dict["relevance_score"] = _refine_search_score(row_dict, q, normalized_query, q_digits, query_domain)
-        row_dict["match_reason"] = _match_reason_for_row(row_dict, q, normalized_query, q_digits, query_domain)
-        row_dict["quality_tier"] = _search_quality_tier(row_dict)
-        ranked_rows.append(row_dict)
-
-    ranked_rows.sort(
-        key=lambda row: (
-            -(int(row.get("relevance_score") or 0)),
-            -(int(row.get("completeness_score") or 0)),
-            1 if row.get("needs_review") else 0,
-            0 if row.get("is_active") else 1,
-        )
+    results = recruiter_store.search(
+        q=q,
+        company=company,
+        location=location,
+        specialization=specialization,
+        limit=limit
     )
-    ranked_rows = ranked_rows[:limit]
-
-    return [
-        {
-            "recruiter_id": row["recruiter_id"],
-            "recruiter_name": row["recruiter_name"],
-            "email": row["email"],
-            "phone": row["phone"],
-            "email2": row["email2"],
-            "phone2": row["phone2"],
-            "email3": row["email3"],
-            "phone3": row["phone3"],
-            "email4": row["email4"],
-            "phone4": row["phone4"],
-            "alternate_emails": row["alternate_emails"],
-            "alternate_phones": row["alternate_phones"],
-            "linkedin": row["linkedin"],
-            "specialization": row["specialization"],
-            "notes": row["notes"],
-            "company_id": row["company_id"],
-            "company_name": row["company_name"],
-            "website": row.get("website"),
-            "email_pattern": row.get("email_pattern"),
+    
+    # DuckDB returns dicts. Need to handle JSON serialization properly and format like original route.
+    formatted = []
+    for row in results:
+        formatted.append({
+            "recruiter_id": row.get("recruiter_id"),
+            "recruiter_name": row.get("recruiter_name"),
+            "email": row.get("email"),
+            "phone": row.get("phone"),
+            "email2": row.get("email2"),
+            "phone2": row.get("phone2"),
+            "email3": row.get("email3"),
+            "phone3": row.get("phone3"),
+            "email4": row.get("email4"),
+            "phone4": row.get("phone4"),
+            "alternate_emails": row.get("alternate_emails"),
+            "alternate_phones": row.get("alternate_phones"),
+            "linkedin": row.get("linkedin"),
+            "specialization": row.get("specialization"),
+            "notes": row.get("notes"),
+            "quality_score": row.get("quality_score"),
+            "company_id": row.get("company_id"),
+            "company_name": row.get("company_name"),  # Mapped later if missing
             "location": row.get("location"),
             "state": row.get("state"),
-            "is_active": row["is_active"],
-            "needs_review": row.get("needs_review"),
-            "completeness_score": row.get("completeness_score"),
+            "is_active": row.get("is_active", True),
+            "needs_review": row.get("needs_review", False),
+            "completeness_score": row.get("completeness_score", 0),
             "location_confidence": row.get("location_confidence"),
             "state_source": row.get("state_source"),
-            "created_at": str(row["created_at"]) if row.get("created_at") else None,
-            "relevance_score": int(row["relevance_score"]),
-            "match_reason": row.get("match_reason"),
-            "quality_tier": row.get("quality_tier"),
-        }
-        for row in ranked_rows
-    ]
+            "created_at": str(row.get("created_at")) if row.get("created_at") else None,
+            "relevance_score": int(row.get("relevance_score", 0)),
+            "quality_tier": _search_quality_tier(row),
+        })
+    return formatted
 
 from sqlalchemy.orm import load_only
 
@@ -682,127 +510,40 @@ def get_recruiters(
 ):
     print(f"GET /recruiters/ CALLED! needs_review={needs_review}", flush=True)
     # Cache ALL recruiter list queries aggressively
-    cache_key = f"rec_list_{current_user.id}_{page}_{limit}_{search or ''}_{state or ''}_{company_id or ''}_{sort_by}_{sort_desc}_{needs_review}_{has_phone}_{is_active}_{data_source or ''}"
+    cache_key = f"rec_list_duckdb_{current_user.id}_{page}_{limit}_{search or ''}_{state or ''}_{company_id or ''}_{sort_by}_{sort_desc}_{needs_review}_{has_phone}_{is_active}_{data_source or ''}"
     cached = analytics_cache.get(cache_key)
     if cached is not None:
         return cached
 
-    query = db.query(Recruiter, Company)\
-              .join(Company, Recruiter.company_id == Company.company_id, isouter=True)
-              
-    is_admin = current_user.role and current_user.role.name.lower() in ('admin', 'superadmin')
-    from ..utils.normalizer import normalize_text
+    # DuckDB handles all filtering, pagination, and sorting directly from Parquet
+    results, total_count = recruiter_store.list_recruiters(
+        page=page,
+        limit=limit,
+        search=search,
+        state=state,
+        company_id=company_id,
+        company_name=company,
+        specialization=title,
+        has_phone=has_phone,
+        is_active=is_active,
+        needs_review=needs_review,
+        email_status=email_inference_status,
+        data_source=data_source,
+        sort_by=sort_by,
+        sort_desc=sort_desc
+    )
     
-    if search:
-        clean_search = normalize_text(search)
-        query = query.filter(
-            Recruiter.normalized_recruiter_name.ilike(f"%{clean_search}%") |
-            Recruiter.email.ilike(f"%{search}%") |
-            Recruiter.specialization.ilike(f"%{search}%") |
-            Company.normalized_company_name.ilike(f"%{clean_search}%") |
-            Recruiter.location.ilike(f"%{search}%") |
-            Company.location.ilike(f"%{search}%")
-        )
-    
-    if state:
-        query = apply_state_filter(query, state)
-        
-    if state_status:
-        from sqlalchemy import or_, and_
-        if state_status == 'known':
-            query = query.filter(
-                or_(
-                    and_(Recruiter.state != None, Recruiter.state != ''),
-                    and_(Company.state != None, Company.state != '')
-                )
-            )
-        elif state_status == 'unknown':
-            query = query.filter(
-                or_(Recruiter.state == None, Recruiter.state == ''),
-                or_(Company.state == None, Company.state == '')
-            )
-        
-    if city:
-        query = query.filter(Recruiter.normalized_city.ilike(f"%{city}%"))
-        
-    if company_id is not None:
-        query = query.filter(Recruiter.company_id == company_id)
-    elif company:
-        query = apply_company_filter(query, company)
-        
-    if title:
-        query = query.filter(Recruiter.specialization.ilike(f"%{title}%"))
-        
-    if has_phone is True:
-        query = query.filter(Recruiter.phone.isnot(None), Recruiter.phone != "")
-    elif has_phone is False:
-        query = query.filter((Recruiter.phone.is_(None)) | (Recruiter.phone == ""))
-        
-    if missing_email is True:
-        query = query.filter((Recruiter.email.is_(None)) | (Recruiter.email == ""))
-    elif missing_email is False:
-        query = query.filter(Recruiter.email.isnot(None), Recruiter.email != "")
-        
-    if is_active is not None:
-        query = query.filter(Recruiter.is_active == is_active)
-        
-    if min_completeness is not None:
-        query = query.filter(Recruiter.completeness_score >= min_completeness)
-        
-    if needs_review is not None:
-        query = query.filter(Recruiter.needs_review == needs_review)
-        
-    if email_inference_status:
-        query = query.filter(Recruiter.email_status == email_inference_status)
-
-    if source_job_id:
-        query = query.filter(Recruiter.source_job_id == source_job_id)
-
-    if data_source:
-        query = query.filter(Recruiter.data_source == data_source)
-        
-    is_unfiltered = not any([search, state, state_status, city, company, company_id, title, has_phone, missing_email, is_active is not None, min_completeness, needs_review is not None, email_inference_status, source_job_id, data_source])
-    
-    if is_unfiltered:
-        base_cache_key = f"total_recruiters_count_base_{current_user.id}"
-        total_count = analytics_cache.get(base_cache_key)
-        if total_count is None:
-            total_count = query.count()
-            analytics_cache.set(base_cache_key, total_count, ttl=300)
-    else:
-        # Cache filtered counts too based on URL params to speed up paginating filtered results
-        filter_cache_key = f"rec_count_{current_user.id}_{search}_{state}_{company_id}_{is_active}_{needs_review}_{has_phone}_{missing_email}"
-        total_count = analytics_cache.get(filter_cache_key)
-        if total_count is None:
-            total_count = query.count()
-            analytics_cache.set(filter_cache_key, total_count, ttl=300)
-            
     response.headers["X-Total-Count"] = str(total_count)
-    
-    # Sorting
-    if sort_by == "name":
-        order_col = Recruiter.recruiter_name
-    elif sort_by == "company":
-        order_col = Company.company_name
-    elif sort_by == "state":
-        order_col = Recruiter.state
-    elif sort_by == "completeness":
-        order_col = Recruiter.completeness_score
-    elif sort_by == "last_scan_at":
-        order_col = Recruiter.last_scan_at
-    else:
-        order_col = Recruiter.created_at
-        
-    if sort_desc:
-        query = query.order_by(order_col.desc().nullslast())
-    else:
-        query = query.order_by(order_col.asc().nullslast())
-    
-    skip = (page - 1) * limit
-    results = query.offset(skip).limit(limit).all()
     
     import math
     total_pages = math.ceil(total_count / limit) if limit else 1
+    
+    # We need company details, so we'll fetch them from PostgreSQL for the results
+    comp_ids = list({r.get('company_id') for r in results if r.get('company_id')})
+    companies_dict = {}
+    if comp_ids:
+        companies = db.query(Company).filter(Company.company_id.in_(comp_ids)).all()
+        companies_dict = {c.company_id: c for c in companies}
     
     def _basic_company(company_row):
         return {
@@ -814,57 +555,62 @@ def get_recruiters(
             "email_pattern": company_row.email_pattern
         } if company_row else None
 
+    formatted_results = []
+    for r in results:
+        comp = companies_dict.get(r.get('company_id'))
+        formatted_results.append({
+            "recruiter_id": r.get("recruiter_id"),
+            "recruiter_name": r.get("recruiter_name"),
+            "email": r.get("email"),
+            "phone": r.get("phone"),
+            "email2": r.get("email2"),
+            "phone2": r.get("phone2"),
+            "email3": r.get("email3"),
+            "phone3": r.get("phone3"),
+            "email4": r.get("email4"),
+            "phone4": r.get("phone4"),
+            "alternate_emails": r.get("alternate_emails"),
+            "alternate_phones": r.get("alternate_phones"),
+            "linkedin": r.get("linkedin"),
+            "specialization": r.get("specialization"),
+            "notes": r.get("notes"),
+            "company_id": r.get("company_id"),
+            "company_name": comp.company_name if comp else None,
+            "company_domain": select_logo_domain(comp.website, comp.email_pattern) if comp else None,
+            "company": _basic_company(comp),
+            "location": r.get("location") or (comp.location if comp else None),
+            "state": r.get("state"),
+            "normalized_city": r.get("normalized_city"),
+            "completeness_score": r.get("completeness_score", 0),
+            "quality_score": r.get("quality_score", 0),
+            "needs_review": r.get("needs_review", False),
+            "review_reason": r.get("review_reason"),
+            "location_confidence": r.get("location_confidence"),
+            "company_confidence": r.get("company_confidence", 0),
+            "company_reasoning": r.get("company_reasoning"),
+            "email_status": r.get("email_status", "unknown"),
+            "email_confidence": r.get("email_confidence", 0),
+            "email_generated": r.get("email_generated", False),
+            "raw_email_value": r.get("raw_email_value"),
+            "repair_reason": r.get("repair_reason"),
+            "state_source": r.get("state_source"),
+            "state_confidence": r.get("state_confidence"),
+            "state_reason": r.get("state_reason"),
+            "last_scan_at": str(r.get("last_scan_at")) if r.get("last_scan_at") else None,
+            "is_active": r.get("is_active", True),
+            "data_source": r.get("data_source"),
+            "source_job_id": r.get("source_job_id"),
+            "created_at": str(r.get("created_at")) if r.get("created_at") else None,
+            "structured_emails": [],
+            "structured_phones": [],
+            "structured_locations": [],
+        })
+
     ret_data = {
         "total_count": total_count,
         "page": page,
         "total_pages": total_pages,
-        "results": [
-            {
-                "recruiter_id": recruiter.recruiter_id,
-                "recruiter_name": recruiter.recruiter_name,
-                "email": recruiter.email,
-                "phone": recruiter.phone,
-                "email2": recruiter.email2,
-                "phone2": recruiter.phone2,
-                "email3": recruiter.email3,
-                "phone3": recruiter.phone3,
-                "email4": recruiter.email4,
-                "phone4": recruiter.phone4,
-                "alternate_emails": recruiter.alternate_emails,
-                "alternate_phones": recruiter.alternate_phones,
-                "linkedin": recruiter.linkedin,
-                "specialization": recruiter.specialization,
-                "notes": recruiter.notes,
-                "company_id": recruiter.company_id,
-                "company_name": company.company_name if company else None,
-                "company_domain": select_logo_domain(company.website, company.email_pattern) if company else None,
-                "company": _basic_company(company),
-                "location": recruiter.location or (company.location if company else None),
-                "state": recruiter.state,
-                "normalized_city": recruiter.normalized_city,
-                "completeness_score": recruiter.completeness_score,
-                "needs_review": recruiter.needs_review,
-                "review_reason": recruiter.review_reason,
-                "location_confidence": recruiter.location_confidence,
-                "email_status": getattr(recruiter, "email_status", "unknown"),
-                "email_confidence": getattr(recruiter, "email_confidence", 0),
-                "email_generated": getattr(recruiter, "email_generated", False),
-                "raw_email_value": getattr(recruiter, "raw_email_value", None),
-                "repair_reason": getattr(recruiter, "repair_reason", None),
-                "state_source": recruiter.state_source,
-                "state_confidence": recruiter.state_confidence,
-                "state_reason": recruiter.state_reason,
-                "last_scan_at": str(recruiter.last_scan_at) if recruiter.last_scan_at else None,
-                "is_active": recruiter.is_active,
-                "data_source": recruiter.data_source,
-                "source_job_id": recruiter.source_job_id,
-                "created_at": str(recruiter.created_at) if recruiter.created_at else None,
-                "structured_emails": [],
-                "structured_phones": [],
-                "structured_locations": [],
-            }
-            for recruiter, company in results
-        ]
+        "results": formatted_results
     }
     analytics_cache.set(cache_key, ret_data, ttl=300)
     return ret_data
@@ -889,6 +635,8 @@ def approve_email(recruiter_id: int, db: Session = Depends(get_db), current_user
     r.repair_reason = "Manually approved by user"
     
     db.commit()
+    
+    sync_manager.request_sync()
     db.refresh(r)
     return serialize_recruiter(r)
 
@@ -909,6 +657,8 @@ def reject_email(recruiter_id: int, db: Session = Depends(get_db), current_user:
     r.repair_reason = "Manually rejected by user"
     
     db.commit()
+    
+    sync_manager.request_sync()
     db.refresh(r)
     return serialize_recruiter(r)
 
@@ -940,6 +690,7 @@ def create_recruiter(data: RecruiterCreate, db: Session = Depends(get_db), admin
     r = Recruiter(user_id=current_user.id, **r_data, state=state, state_source=state_source, state_confidence=state_confidence, state_reason=state_reason)
     db.add(r)
     db.commit()
+    sync_manager.request_sync()
     db.refresh(r)
     return serialize_recruiter(r)
 
@@ -957,6 +708,8 @@ def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Dep
     apply_recruiter_update(r, update_data, db)
         
     db.commit()
+        
+    sync_manager.request_sync()
     db.refresh(r)
     return serialize_recruiter(r)
 
@@ -971,6 +724,7 @@ def delete_recruiter(recruiter_id: int, db: Session = Depends(get_db), admin: Us
         raise HTTPException(status_code=404, detail="Recruiter not found")
     db.delete(r)
     db.commit()
+    sync_manager.request_sync()
     return {"message": "Recruiter deleted"}
 
 @router.post("/batch-delete")
@@ -980,6 +734,7 @@ def batch_delete_recruiters(payload: dict, db: Session = Depends(get_db), admin:
         raise HTTPException(status_code=400, detail="No recruiter ids supplied")
     deleted = db.query(Recruiter).filter(Recruiter.recruiter_id.in_(ids)).delete(synchronize_session=False)
     db.commit()
+    sync_manager.request_sync()
     return {"message": "Recruiters deleted", "deleted_count": deleted}
 
 @router.post("/batch-update")
@@ -1001,6 +756,7 @@ def batch_update_recruiters(payload: RecruiterBatchUpdate, db: Session = Depends
         apply_recruiter_update(recruiter, update_data, db)
         updated += 1
     db.commit()
+    sync_manager.request_sync()
     return {"message": "Recruiters updated", "updated_count": updated}
 
 import csv
@@ -1153,6 +909,7 @@ def report_recruiter(recruiter_id: int, db: Session = Depends(get_db), current_u
                 {"id": recruiter_id}
             )
         db.commit()
+        sync_manager.request_sync()
         return {"message": "Report logged successfully", "report_count": count}
     except Exception as e:
         db.rollback()
@@ -1259,6 +1016,7 @@ def enhance_recruiter(recruiter_id: int, db: Session = Depends(get_db), current_
         from sqlalchemy.sql import func
         recruiter.last_scan_at = func.now()
         db.commit()
+        sync_manager.request_sync()
         return {"message": f"Successfully enhanced {', '.join(updated)}!", "data": result}
     else:
         # Update last_scan_at using raw SQL to prevent SQLAlchemy onupdate trigger from modifying updated_at
@@ -1268,6 +1026,7 @@ def enhance_recruiter(recruiter_id: int, db: Session = Depends(get_db), current_
             {"rid": recruiter.recruiter_id}
         )
         db.commit()
+        sync_manager.request_sync()
         return {"message": "No new verified data found.", "data": result}
 
 from pydantic import BaseModel
@@ -1309,6 +1068,7 @@ def extension_webhook(data: ChromeExtensionPayload, db: Session = Depends(get_db
             )
             db.add(new_comp)
             db.commit()
+            sync_manager.request_sync()
             db.refresh(new_comp)
             company_id = new_comp.company_id
             
@@ -1345,6 +1105,7 @@ def extension_webhook(data: ChromeExtensionPayload, db: Session = Depends(get_db
     )
     db.add(new_rec)
     db.commit()
+    sync_manager.request_sync()
     db.refresh(new_rec)
     
 

@@ -4,6 +4,7 @@ import traceback
 from datetime import datetime
 
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from ..database import SessionLocal
 from ..models.models import Company, RawUpload, Recruiter, UploadJob
@@ -170,10 +171,12 @@ def process_smart_import(job_id: str, filepath: str, column_map: dict = None):
         for profile in unique_profiles:
             processed += 1
             try:
+                import re
                 email = profile.get("email")
-                if not email or '@' not in email:
+                if not email or not isinstance(email, str) or not re.match(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", email):
                     skipped += 1
                     failed_rows += 1
+                    error_log.append({"row": processed, "reason": f"Invalid or missing email format: {email}"})
                     continue
 
                 if email in existing_emails:
@@ -289,6 +292,7 @@ def process_smart_import(job_id: str, filepath: str, column_map: dict = None):
                         "trust_score": 80 if company_id else 65,
                         "is_active": True,
                         "source_job_id": job_id,
+                        "sentinel_status": "Pending",
                         "raw_data": json.dumps(profile.get("raw_data") or {}, default=str),
                         "metadata_json": json.dumps(metadata_dict, default=str),
                     },
@@ -319,6 +323,12 @@ def process_smart_import(job_id: str, filepath: str, column_map: dict = None):
                         db.add(raw_record)
                         db.add(recruiter_record)
                         db.commit()
+                    except IntegrityError as row_error:
+                        db.rollback()
+                        errors += 1
+                        failed_rows += 1
+                        # This happens when a unique constraint is violated (e.g., duplicate email)
+                        error_log.append({"row": "batch_retry", "reason": f"Duplicate or constraint violation: {row_error.orig}"})
                     except Exception as row_error:
                         db.rollback()
                         errors += 1

@@ -1,0 +1,2 @@
+ROWS_INSERTED: 300000
+CURRENT_FILE: local_deep_extract.db

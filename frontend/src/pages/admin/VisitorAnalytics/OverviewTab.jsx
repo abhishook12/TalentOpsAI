@@ -45,7 +45,7 @@ export default function OverviewTab() {
             display: 'flex',
             flexDirection: 'column',
             gap: 12,
-            borderRadius: 16
+            borderRadius: 6
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ 

@@ -137,7 +137,7 @@ export function OutlookComposeOverlay({ recipients, onClose, onSend }) {
                 ) : (
                   parseToChips(toStr).map((chip, idx) => (
                     <span key={idx} title={chip.email} style={{
-                      backgroundColor: '#333', padding: '2px 8px', borderRadius: '12px', fontSize: '12px', color: '#e0e0e0', border: '1px solid #444'
+                      backgroundColor: '#333', padding: '2px 8px', borderRadius: '6px', fontSize: '12px', color: '#e0e0e0', border: '1px solid #444'
                     }}>
                       {chip.name}
                     </span>

@@ -1,0 +1,7 @@
+{
+  "is_locked_down": false,
+  "lockdown_reason": "None",
+  "locked_at": null,
+  "unlock_confirmation_count": 0,
+  "unlock_attempts_log": []
+}

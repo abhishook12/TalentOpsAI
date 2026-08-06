@@ -1,0 +1,9 @@
+# Architecture: Split-Storage Layer
+
+The TalentOpsAI system uses a split-storage architecture for its 2.3 million recruiter records:
+- **Live Postgres Database**: Only holds ~129k active records. This is the layer that the Sentinel Engine queries and processes.
+- **Deep Storage Parquet**: The remaining 2.17 million records are archived into a deep storage DuckDB Parquet file (`data/recruiters_full.parquet`). 
+
+**Strict Constraints**:
+1. **Data Lookups**: The dashboard analytics (via `recruiter_store.py`) read the full 2.3M count directly from the Parquet file. Always remember to check both storage layers when investigating missing data, counts, or running mass data updates!
+2. **Data Routing**: ANY new data added of any type MUST be routed directly into the Parquet file instead of Postgres. The Parquet layer has significantly more storage capacity and is designed for this scale.

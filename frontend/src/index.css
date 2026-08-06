@@ -75,40 +75,32 @@ body {
 
 /* Premium Glassmorphic & Animation Utilities */
 .glass-panel {
-  background: var(--glass-panel-bg, rgba(15, 15, 35, 0.85));
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
 }
 
 .glass-card {
-  background: var(--glass-card-bg, rgba(20, 20, 50, 0.85));
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  transition: border-color 0.2s;
 }
 
 .glass-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(0, 238, 252, 0.35);
-  box-shadow: 0 12px 30px -10px rgba(0, 238, 252, 0.2);
-  background: rgba(33, 37, 41, 0.75);
+  border-color: color-mix(in srgb, var(--brand) 40%, transparent);
 }
 
 .glow-cyan {
-  text-shadow: 0 0 20px rgba(0, 238, 252, 0.6);
+  color: var(--brand);
 }
 
 .btn-premium {
   position: relative;
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: transform 0.2s var(--ease-out), background-color 0.2s var(--ease-out), color 0.2s var(--ease-out);
 }
 
 .btn-premium::after {
-  content: '';
-  position: absolute;
-  top: 0; left: -100%; width: 100%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-  transition: all 0.6s ease;
+  background: transparent;
 }
 
 .btn-premium:hover::after {
@@ -157,7 +149,7 @@ body {
 /* Tactile Active States */
 button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
   transform: scale(0.97);
-  transition: transform 0.1s ease;
+  transition: transform 0.1s var(--ease-out);
 }
 
 
@@ -166,6 +158,9 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
 
 
   :root {
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+    
     --sidebar-width: 276px;
     --main-bg: #101014;
     --panel-bg: #141419;
@@ -271,8 +266,8 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     min-height: 100%;
     margin: 0;
     background:
-      linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.0)),
-      linear-gradient(180deg, var(--bg-primary), var(--bg-primary));
+      
+      var(--bg-primary);
     color: var(--text-primary);
     font-family: var(--font);
     overflow-x: hidden;
@@ -288,7 +283,7 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
   }
 
   html[data-theme='dark'] .cc-content {
-    background: linear-gradient(180deg, var(--bg-primary), var(--bg-primary)) !important;
+    background: var(--bg-primary) !important;
   }
 
   html[data-theme='dark'] .cc-footer {
@@ -346,7 +341,7 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     justify-content: center;
     gap: 8px;
     padding: 10px 16px;
-    border-radius: 12px;
+    border-radius: 6px;
     font-weight: 700;
     transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
     cursor: pointer;
@@ -361,9 +356,9 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
   }
 
   button.btn-primary {
-    background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+    background: var(--brand);
     color: var(--text-inverse);
-    box-shadow: 0 10px 22px rgba(195,93,8,0.16);
+    
   }
 
   button.btn-secondary:hover:not(:disabled),
@@ -380,7 +375,7 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     background: var(--panel-bg);
     color: var(--text-primary);
     border: 1px solid var(--card-border);
-    border-radius: 12px;
+    border-radius: 6px;
     padding: 10px 12px;
     outline: none;
     transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease, background 0.15s ease;
@@ -424,7 +419,7 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
 
   .page-enter { animation: ccFadeUp 0.26s ease both; }
   .modal-enter { animation: ccFadeUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
-  .modal-backdrop { background: var(--modal-backdrop-bg, rgba(0, 0, 0, 0.6)); backdrop-filter: blur(8px); animation: fadeIn 0.3s ease; }
+  .modal-backdrop { background: var(--modal-backdrop-bg, rgba(0, 0, 0, 0.55));  animation: fadeIn 0.3s ease; }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
   .cc-shell {
@@ -453,7 +448,7 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     padding: 10px 14px 10px 12px;
     background: rgba(255, 255, 255, 0.96);
     border-bottom: 1px solid var(--card-border);
-    backdrop-filter: blur(8px);
+    
   }
 
   .cc-session-strip {
@@ -508,7 +503,7 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    border-radius: 12px;
+    border-radius: 6px;
     cursor: pointer;
     transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
   }
@@ -516,9 +511,16 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
   .cc-icon-button {
     width: 38px;
     height: 38px;
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
-    color: var(--text-secondary);
+    background: var(--bg-elevated, var(--card-bg));
+    border: 1px solid color-mix(in oklab, var(--text-primary) 22%, transparent);
+    color: var(--text-primary);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+  }
+
+  .cc-icon-button:hover {
+    background: var(--brand-bg);
+    border-color: var(--brand);
+    color: var(--brand);
   }
 
   .cc-icon-button:hover, .cc-ghost-button:hover, .cc-primary-button:hover { transform: translateY(-1px); }
@@ -536,7 +538,7 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     background: var(--brand);
     color: #ffffff;
     border: none;
-    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+    
     font-weight: 600;
   }
   .cc-primary-button:hover {
@@ -557,7 +559,7 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     display: flex;
     flex-direction: column;
     overflow: visible;
-    background: linear-gradient(180deg, rgba(244,245,242,0.8), rgba(244,245,242,1));
+    background: var(--bg-primary);
   }
 
   .cc-page-body {
@@ -580,7 +582,7 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     padding: 14px 20px;
     border-top: 1px solid var(--card-border);
     background: var(--bg-surface);
-    backdrop-filter: blur(6px);
+    
     font-size: 12px;
     color: var(--text-secondary);
   }
@@ -624,7 +626,7 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
   .cc-title-icon {
     width: 34px;
     height: 34px;
-    border-radius: 12px;
+    border-radius: 6px;
     display: grid;
     place-items: center;
     background: var(--brand-bg);
@@ -651,7 +653,7 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
   .cc-metric {
     padding: 18px 18px 16px;
     border: 1px solid var(--card-border);
-    border-radius: 16px;
+    border-radius: 6px;
     background: rgba(255,255,255,0.9);
     box-shadow: var(--shadow);
     display: flex;
@@ -661,10 +663,10 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
   }
 
   .cc-metric-contrast {
-    background: linear-gradient(180deg, #232323, #181818);
-    color: #fff;
-    border-color: rgba(255,255,255,0.08);
-  }
+  background: var(--card-bg);
+  color: var(--text-primary);
+  border-color: var(--card-border);
+}
 
   .cc-metric-top {
     display: flex;
@@ -736,11 +738,11 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     height: 100%;
     border-radius: inherit;
     transition: width 0.25s ease;
-    background: linear-gradient(90deg, var(--brand), var(--brand-strong));
+    background: var(--brand);
   }
-  .cc-progress-success { background: linear-gradient(90deg, var(--success), #26a96d); }
-  .cc-progress-warning { background: linear-gradient(90deg, var(--warning), #d39a12); }
-  .cc-progress-danger { background: linear-gradient(90deg, var(--danger), #d95d5d); }
+  .cc-progress-success { background: var(--success); }
+  .cc-progress-warning { background: var(--warning); }
+  .cc-progress-danger { background: var(--danger); }
 
   .cc-empty {
     display: grid;
@@ -754,7 +756,7 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
   .cc-empty-icon {
     width: 54px;
     height: 54px;
-    border-radius: 18px;
+    border-radius: 6px;
     display: grid;
     place-items: center;
     color: var(--brand);

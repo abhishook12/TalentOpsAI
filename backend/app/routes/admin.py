@@ -38,6 +38,57 @@ def workers_stop(name: str):
     return stop_worker(name)
 
 
+@router.get("/intelligence-stats")
+def intelligence_stats(db: Session = Depends(get_db)):
+    from ..models.models import EnrichmentAudit, RecruiterEmail, DomainIntelligence
+    from ..models.sentinel_state import SentinelState
+    
+    total_recruiters = db.query(func.count(Recruiter.recruiter_id)).scalar() or 0
+    total_processed = db.query(func.count(Recruiter.recruiter_id)).filter(Recruiter.sentinel_status == 'Completed').scalar() or 0
+    
+    # Needs review
+    needs_review = db.query(func.count(Recruiter.recruiter_id)).filter(Recruiter.needs_review == True).scalar() or 0
+    
+    # Enrichment audits (distinct recruiters enriched)
+    enriched = db.query(func.count(func.distinct(EnrichmentAudit.recruiter_id))).filter(EnrichmentAudit.enrichment_type != 'merge').scalar() or 0
+    
+    # Duplicates merged
+    merged = db.query(func.count(EnrichmentAudit.id)).filter(EnrichmentAudit.action == 'merge_duplicate').scalar() or 0
+    
+    # Domains & Logos
+    domains = db.query(func.count(DomainIntelligence.domain)).scalar() or 0
+    logos = db.query(func.count(DomainIntelligence.domain)).filter(DomainIntelligence.logo_url != None).scalar() or 0
+    
+    # Averages
+    avg_completeness = db.query(func.avg(Recruiter.completeness_score)).scalar() or 0
+    avg_email_conf = db.query(func.avg(RecruiterEmail.confidence_score)).scalar() or 0
+    
+    # Current State
+    state = db.query(SentinelState).first()
+    state_info = {
+        "status": state.status if state else "Idle",
+        "current_task": state.current_task_description if state else "No active task",
+        "profiles_analyzed": state.profiles_analyzed if state else 0,
+        "profiles_repaired": state.profiles_repaired if state else 0,
+        "last_processed_id": state.last_processed_id if state else 0
+    }
+    
+    return {
+        "metrics": {
+            "total_recruiters": total_recruiters,
+            "total_processed": total_processed,
+            "profiles_enriched": enriched,
+            "domains_mapped": domains,
+            "logos_assigned": logos,
+            "duplicates_merged": merged,
+            "records_needing_review": needs_review,
+            "average_completeness": int(avg_completeness),
+            "average_email_confidence": int(avg_email_conf)
+        },
+        "engine_state": state_info
+    }
+
+
 class SimpleCache:
     def __init__(self):
         self._cache = {}
@@ -407,12 +458,16 @@ def admin_delete_upload_job(job_id: str, db: Session = Depends(get_db)):
             .delete(synchronize_session=False)
         )
 
-    companies_deleted = 0
-    for company in db.query(Company).filter(Company.source_job_id == job_id).all():
-        has_other_recruiters = db.query(Recruiter.recruiter_id).filter(Recruiter.company_id == company.company_id).first()
-        if not has_other_recruiters:
-            db.delete(company)
-            companies_deleted += 1
+    companies_to_delete = db.query(Company.company_id).outerjoin(
+        Recruiter, Recruiter.company_id == Company.company_id
+    ).filter(
+        Company.source_job_id == job_id,
+        Recruiter.recruiter_id == None
+    ).all()
+    
+    if companies_to_delete:
+        company_ids = [c[0] for c in companies_to_delete]
+        companies_deleted = db.query(Company).filter(Company.company_id.in_(company_ids)).delete(synchronize_session=False)
 
     for table in ("raw_uploads", "staging_recruiters", "staging_companies", "smart_import_rows"):
         try:

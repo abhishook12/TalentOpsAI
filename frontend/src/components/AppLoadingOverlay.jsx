@@ -10,7 +10,7 @@ const overlayStyles = `
     align-items: center;
     background: var(--bg-primary, #ffffff);
     color: var(--text-primary, #111111);
-    transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.4s;
+    transition: opacity 0.25s var(--ease-out), visibility 0.25s;
     opacity: 0;
     visibility: hidden;
     padding: 40px 24px;
@@ -36,7 +36,7 @@ const overlayStyles = `
     max-width: 440px;
     margin-top: 12vh;
     transform-origin: top center;
-    animation: splash-transform-down 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    animation: splash-transform-down 0.8s var(--ease-in-out) forwards;
   }
 
   /* BRAND HEADER MATCHING AuthFrame.jsx */
@@ -114,7 +114,7 @@ const overlayStyles = `
     align-items: center;
     gap: 16px;
     opacity: 0;
-    animation: splash-fade-in-delay 0.8s ease forwards 0.6s;
+    animation: splash-fade-in-delay 0.5s var(--ease-out) forwards 0.3s;
     width: 100%;
   }
 
@@ -133,13 +133,13 @@ const overlayStyles = `
     left: 0;
     height: 100%;
     background: var(--text-primary, #111);
-    transition: width 0.3s ease-out;
+    transition: width 0.15s var(--ease-out);
   }
   [data-theme="dark"] .splash-progress-bar { background: #ffffff; }
   
   .splash-progress-bar.indeterminate {
     width: 30%;
-    animation: splash-progress-indeterminate 1.5s infinite ease-in-out;
+    animation: splash-progress-indeterminate 1s infinite var(--ease-in-out);
   }
 
   .splash-status {

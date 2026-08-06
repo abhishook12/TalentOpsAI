@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react'
 import api, { getErrorMessage, logout, setStoredToken, clearStoredToken } from '../services/api'
 import { exportToExcel } from '../services/export'
 import WorkerDashboard from '../components/WorkerDashboard'
@@ -13,7 +13,74 @@ import SessionRow from '../components/admin/SessionRow'
 function fmt(n) { return n?.toLocaleString?.() ?? '—' }
 function pct(n, t) { return t ? Math.round(n / t * 100) : 0 }
 
+const LiveRecruiterRow = memo(function LiveRecruiterRow({ r, isSelected, toggleSelection, openEdit, handleDelete }) {
+  return (
+    <tr style={{ borderTop: '1px solid var(--card-border)' }}>
+      <td style={{ padding: '10px 12px' }}>
+        <input type="checkbox" checked={isSelected} onChange={() => toggleSelection(r.recruiter_id)} />
+      </td>
+      <td style={{ padding: '10px 12px', color: 'var(--text-primary)', fontWeight: 600 }}>{r.recruiter_name || '—'}</td>
+      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{r.email || '—'}</td>
+      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{r.company_name || 'Independent / Unlisted'}</td>
+      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{r.location || r.state || '—'}</td>
+      <td style={{ padding: '10px 12px' }}>
+        <Badge color={r.is_active ? '#22c55e' : '#f87171'}>{r.is_active ? 'Active' : 'Inactive'}</Badge>
+      </td>
+      <td style={{ padding: '10px 12px' }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <button onClick={() => openEdit(r)} style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: '#38bdf8', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer' }}>
+            Edit
+          </button>
+          <button onClick={() => handleDelete(r)} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.22)', color: '#f87171', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer' }}>
+            Delete
+          </button>
+        </div>
+      </td>
+    </tr>
+  )
+})
 
+const ReviewQueueRow = memo(function ReviewQueueRow({ r, openReview, markReviewed }) {
+  return (
+    <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>{r.recruiter_name || 'Unnamed recruiter'}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+            {r.company?.company_name || r.company_name || 'No company'} · {r.location || 'No location'}
+          </div>
+        </div>
+        <span className="badge badge-amber">Needs review</span>
+      </div>
+
+      <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10, fontSize: 12.5 }}>
+        <div><span style={{ color: 'var(--text-muted)' }}>Email:</span> <span style={{ color: 'var(--text-primary)' }}>{r.email || '—'}</span></div>
+        <div><span style={{ color: 'var(--text-muted)' }}>Phone:</span> <span style={{ color: 'var(--text-primary)' }}>{r.phone || '—'}</span></div>
+        <div><span style={{ color: 'var(--text-muted)' }}>State:</span> <span style={{ color: 'var(--text-primary)' }}>{r.state || '—'}</span></div>
+        <div><span style={{ color: 'var(--text-muted)' }}>Source:</span> <span style={{ color: 'var(--text-primary)' }}>{r.state_source || '—'}</span></div>
+      </div>
+
+      <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+        {r.review_reason || 'No review reason provided.'}
+      </div>
+
+      <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <button
+          onClick={() => openReview(r)}
+          style={{ background: 'linear-gradient(135deg, #2563eb, #0ea5e9)', border: '1px solid #2563eb', color: 'var(--text-primary)', padding: '8px 12px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
+        >
+          Open editor
+        </button>
+        <button
+          onClick={() => markReviewed(r)}
+          style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: 'var(--text-secondary)', padding: '8px 12px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
+        >
+          Mark reviewed
+        </button>
+      </div>
+    </div>
+  )
+})
 // ── Main Terminal ─────────────────────────────────────────────────────────────
 export default function AdminTerminal() {
   // Admin Command Center is designed for dark mode; keep the theme consistent on this route.
@@ -95,10 +162,10 @@ export default function AdminTerminal() {
   const [logsError, setLogsError] = useState(null)
   const [actionNotice, setActionNotice] = useState(null)
 
-  const log = (msg, type = 'info') => {
+  const log = useCallback((msg, type = 'info') => {
     const ts = new Date().toLocaleTimeString('en-US', { hour12: false })
     setLogLines(prev => [...prev.slice(-80), { ts, msg, type }])
-  }
+  }, [])
 
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
@@ -150,7 +217,7 @@ export default function AdminTerminal() {
   const loadAll = useCallback(async () => {
     if (!unlocked) return
     setLoading(true)
-    log('Connecting to TalentOps AI backend…')
+    log('Connecting to TalentOps backend…')
     let sawUnauthorized = false
     
     const safeGet = async (url) => {
@@ -361,11 +428,11 @@ export default function AdminTerminal() {
     return () => clearTimeout(t)
   }, [loadReviewQueue, reviewPanelOpen, unlocked, reviewQueuePage])
 
-  const toggleRecruiterSelection = (id) => {
+  const toggleRecruiterSelection = useCallback((id) => {
     setSelectedRecruiters(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id])
-  }
+  }, [])
 
-  const openRecruiterEdit = (recruiter) => {
+  const openRecruiterEdit = useCallback((recruiter) => {
     setEditRecruiter(recruiter)
     setResolveAfterSave(false)
     setEditRecruiterForm({
@@ -381,9 +448,9 @@ export default function AdminTerminal() {
       phone2: recruiter.phone2 || '',
       notes: recruiter.notes || '',
     })
-  }
+  }, [])
 
-  const openReviewRecruiter = (recruiter) => {
+  const openReviewRecruiter = useCallback((recruiter) => {
     setEditRecruiter(recruiter)
     setResolveAfterSave(true)
     setEditRecruiterForm({
@@ -399,7 +466,7 @@ export default function AdminTerminal() {
       phone2: recruiter.phone2 || '',
       notes: recruiter.notes || '',
     })
-  }
+  }, [])
 
   const saveRecruiter = async () => {
     if (!editRecruiter) return
@@ -428,7 +495,7 @@ export default function AdminTerminal() {
     }
   }
 
-  const markRecruiterReviewed = async (recruiter) => {
+  const markRecruiterReviewed = useCallback(async (recruiter) => {
     if (!recruiter?.recruiter_id) return
     try {
       await api.put(`/recruiters/${recruiter.recruiter_id}`, {
@@ -456,9 +523,9 @@ export default function AdminTerminal() {
     } catch (e) {
       log('✗ Failed to mark recruiter reviewed: ' + getErrorMessage(e), 'error')
     }
-  }
+  }, [loadReviewQueue, loadLiveRecruiters, log])
 
-  const deleteRecruiter = async (recruiter) => {
+  const deleteRecruiter = useCallback(async (recruiter) => {
     if (!window.confirm(`Delete ${recruiter.recruiter_name}?`)) return
     try {
       await callWithRetry(() => api.delete(`/recruiters/${recruiter.recruiter_id}`), { retries: 1, treat404AsSuccess: true })
@@ -476,7 +543,7 @@ export default function AdminTerminal() {
       setActionNotice({ type: 'error', text: `Delete failed: ${msg}` })
       log('✗ Failed to delete recruiter: ' + msg, 'error')
     }
-  }
+  }, [loadLiveRecruiters, log])
 
   const batchUpdateRecruiters = async (updates) => {
     if (!selectedRecruiters.length) return
@@ -542,7 +609,7 @@ export default function AdminTerminal() {
   const TABS = [
     { id: 'overview', icon: 'ti-layout-dashboard', label: 'Overview' },
     { id: 'ops', icon: 'ti-database', label: 'Data Operations' },
-    { id: 'intel', icon: 'ti-sparkles', label: 'Search Intelligence' },
+    { id: 'intel', icon: 'ti-sparkles', label: 'Search Logs' },
     { id: 'exports', icon: 'ti-file-export', label: 'Export Analytics' },
     { id: 'system', icon: 'ti-server', label: 'System Health' },
     { id: 'logbook', icon: 'ti-book', label: 'Visitor Log Book' },
@@ -575,7 +642,7 @@ export default function AdminTerminal() {
         </div>
         <div>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Operational Command Center</div>
-          <div style={{ fontSize: 11, color: '#38bdf8', fontFamily: "'DM Mono', monospace" }}>TalentOps AI · Privileged Access</div>
+          <div style={{ fontSize: 11, color: '#38bdf8', fontFamily: "'DM Mono', monospace" }}>TalentOps · Privileged Access</div>
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
           {loading && <span style={{ fontSize: 12, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}><i className="ti ti-loader" style={{ animation: 'spin 0.8s linear infinite' }} /> Loading…</span>}
@@ -708,7 +775,7 @@ export default function AdminTerminal() {
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {alerts.slice(0, 4).map((a, i) => (
-                      <div key={i} style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 12, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                      <div key={i} style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 12, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                         <div style={{ width: 34, height: 34, borderRadius: 10, background: a.severity === 'critical' ? 'rgba(239,68,68,0.18)' : 'rgba(245,158,11,0.16)', border: `1px solid ${a.severity === 'critical' ? 'rgba(239,68,68,0.35)' : 'rgba(245,158,11,0.28)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <i className={`ti ${a.severity === 'critical' ? 'ti-alert-triangle' : 'ti-alert-circle'}`} style={{ color: a.severity === 'critical' ? '#f87171' : '#fbbf24' }} />
                         </div>
@@ -731,7 +798,7 @@ export default function AdminTerminal() {
               </Section>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                <Section title="Search Intelligence" icon="ti-sparkles" style={{ marginBottom: 0 }}>
+                <Section title="Search Logs" icon="ti-sparkles" style={{ marginBottom: 0 }}>
                   <div style={{ display: 'grid', gap: 10 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'center' }}>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Most Searched States</div>
@@ -955,7 +1022,7 @@ export default function AdminTerminal() {
                     </div>
                   </div>
 
-                  <div style={{ overflowX: 'auto', border: '1px solid var(--card-border)', borderRadius: 12, background: 'var(--panel-bg)' }}>
+                  <div style={{ overflowX: 'auto', border: '1px solid var(--card-border)', borderRadius: 6, background: 'var(--panel-bg)' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
                       <thead>
                         <tr style={{ background: 'var(--bg-hover)' }}>
@@ -970,28 +1037,14 @@ export default function AdminTerminal() {
                       </thead>
                       <tbody>
                         {!liveRecruitersLoading && (liveRecruiters.results || []).map((r) => (
-                          <tr key={r.recruiter_id} style={{ borderTop: '1px solid var(--card-border)' }}>
-                            <td style={{ padding: '10px 12px' }}>
-                              <input type="checkbox" checked={selectedRecruiters.includes(r.recruiter_id)} onChange={() => toggleRecruiterSelection(r.recruiter_id)} />
-                            </td>
-                            <td style={{ padding: '10px 12px', color: 'var(--text-primary)', fontWeight: 600 }}>{r.recruiter_name || '—'}</td>
-                            <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{r.email || '—'}</td>
-                            <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{r.company_name || 'Independent / Unlisted'}</td>
-                            <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{r.location || r.state || '—'}</td>
-                            <td style={{ padding: '10px 12px' }}>
-                              <Badge color={r.is_active ? '#22c55e' : '#f87171'}>{r.is_active ? 'Active' : 'Inactive'}</Badge>
-                            </td>
-                            <td style={{ padding: '10px 12px' }}>
-                              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                <button onClick={() => openRecruiterEdit(r)} style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: '#38bdf8', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer' }}>
-                                  Edit
-                                </button>
-                                <button onClick={() => deleteRecruiter(r)} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.22)', color: '#f87171', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer' }}>
-                                  Delete
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
+                          <LiveRecruiterRow
+                            key={r.recruiter_id}
+                            r={r}
+                            isSelected={selectedRecruiters.includes(r.recruiter_id)}
+                            toggleSelection={toggleRecruiterSelection}
+                            openEdit={openRecruiterEdit}
+                            handleDelete={deleteRecruiter}
+                          />
                         ))}
                         {liveRecruitersLoading && (
                           <tr>
@@ -1127,7 +1180,7 @@ export default function AdminTerminal() {
           </div>
         )}
 
-        {/* Search Intelligence */}
+        {/* Search Logs */}
         {activeTab === 'intel' && (
           <div style={{ animation: 'fadeUp 0.25s ease' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
@@ -1263,7 +1316,7 @@ export default function AdminTerminal() {
             )}
 
             {loadingLogs && !visitorSummary && (
-              <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 14, padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+              <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
                 <i className="ti ti-loader" style={{ fontSize: 28, animation: 'spin 0.8s linear infinite', display: 'block', marginBottom: 10 }} />
                 Loading visitor log book…
               </div>
@@ -1396,7 +1449,7 @@ export default function AdminTerminal() {
                 maxHeight: '90vh',
                 background: 'var(--card-bg)',
                 border: '1px solid var(--card-border)',
-                borderRadius: 18,
+                borderRadius: 6,
                 boxShadow: '0 24px 70px rgba(0,0,0,0.45)',
                 overflow: 'hidden',
                 display: 'flex',
@@ -1416,19 +1469,19 @@ export default function AdminTerminal() {
               </div>
 
               <div style={{ padding: 18, borderBottom: '1px solid var(--card-border)', display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
-                <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 14 }}>
+                <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 14 }}>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Flagged records</div>
                   <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', marginTop: 4 }}>{fmt(reviewQueue.total_count || 0)}</div>
                 </div>
-                <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 14 }}>
+                <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 14 }}>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Page</div>
                   <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', marginTop: 4 }}>{reviewQueue.page || 1}</div>
                 </div>
-                <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 14 }}>
+                <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 14 }}>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Shown now</div>
                   <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', marginTop: 4 }}>{(reviewQueue.results || []).length}</div>
                 </div>
-                <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 14 }}>
+                <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 14 }}>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Status</div>
                   <div style={{ fontSize: 16, fontWeight: 800, color: reviewQueueError ? '#f87171' : (reviewQueueLoading ? '#fbbf24' : '#22c55e'), marginTop: 8 }}>{reviewQueueError ? 'Unavailable' : (reviewQueueLoading ? 'Loading' : 'Ready')}</div>
                 </div>
@@ -1439,7 +1492,7 @@ export default function AdminTerminal() {
                   <div style={{
                     marginBottom: 14,
                     padding: '12px 14px',
-                    borderRadius: 12,
+                    borderRadius: 6,
                     border: '1px solid rgba(248,113,113,0.32)',
                     background: 'rgba(127,29,29,0.18)',
                     color: '#fecaca',
@@ -1458,43 +1511,12 @@ export default function AdminTerminal() {
                 )}
                 <div style={{ display: 'grid', gap: 12 }}>
                   {(reviewQueue.results || []).map((r) => (
-                    <div key={r.recruiter_id} style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 14, padding: 14 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>{r.recruiter_name || 'Unnamed recruiter'}</div>
-                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                            {r.company?.company_name || r.company_name || 'No company'} · {r.location || 'No location'}
-                          </div>
-                        </div>
-                        <span className="badge badge-amber">Needs review</span>
-                      </div>
-
-                      <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10, fontSize: 12.5 }}>
-                        <div><span style={{ color: 'var(--text-muted)' }}>Email:</span> <span style={{ color: 'var(--text-primary)' }}>{r.email || '—'}</span></div>
-                        <div><span style={{ color: 'var(--text-muted)' }}>Phone:</span> <span style={{ color: 'var(--text-primary)' }}>{r.phone || '—'}</span></div>
-                        <div><span style={{ color: 'var(--text-muted)' }}>State:</span> <span style={{ color: 'var(--text-primary)' }}>{r.state || '—'}</span></div>
-                        <div><span style={{ color: 'var(--text-muted)' }}>Source:</span> <span style={{ color: 'var(--text-primary)' }}>{r.state_source || '—'}</span></div>
-                      </div>
-
-                      <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                        {r.review_reason || 'No review reason provided.'}
-                      </div>
-
-                      <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                        <button
-                          onClick={() => openReviewRecruiter(r)}
-                          style={{ background: 'linear-gradient(135deg, #2563eb, #0ea5e9)', border: '1px solid #2563eb', color: 'var(--text-primary)', padding: '8px 12px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
-                        >
-                          Open editor
-                        </button>
-                        <button
-                          onClick={() => markRecruiterReviewed(r)}
-                          style={{ background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: 'var(--text-secondary)', padding: '8px 12px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
-                        >
-                          Mark reviewed
-                        </button>
-                      </div>
-                    </div>
+                    <ReviewQueueRow
+                      key={r.recruiter_id}
+                      r={r}
+                      openReview={openReviewRecruiter}
+                      markReviewed={markRecruiterReviewed}
+                    />
                   ))}
                 </div>
               </div>
@@ -1544,7 +1566,7 @@ export default function AdminTerminal() {
                 maxWidth: 720,
                 background: 'var(--card-bg)',
                 border: '1px solid var(--card-border)',
-                borderRadius: 18,
+                borderRadius: 6,
                 boxShadow: '0 24px 70px rgba(0,0,0,0.45)',
                 overflow: 'hidden',
               }}

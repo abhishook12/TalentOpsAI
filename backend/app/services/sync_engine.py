@@ -107,6 +107,12 @@ def process_replies_for_user(user_id: int, access_token: str, last_sync_time: da
                 cr.status = CampaignRecruiterStatus.replied.value
                 cr.replied_at = _utcnow()
                 
+                try:
+                    from .mailintel_engine import process_delivery_event
+                    process_delivery_event(db, sender, 'replied', cr.campaign_id)
+                except Exception as e:
+                    logger.error(f"MAILINTEL Reply Error: {e}")
+                
                 # Check if campaign is terminal
                 non_terminal = db.query(CampaignRecruiter).filter(
                     CampaignRecruiter.campaign_id == cr.campaign_id,

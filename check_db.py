@@ -1,51 +1,20 @@
-import sys
-import psycopg
+import sqlite3
+import json
 
-db_url = "postgresql://postgres.dcqvsvgrdsrgnbwwssup:sPMFmD3XYX6RW2PD@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres"
+conn = sqlite3.connect('backend/data/talentops.db')
+conn.row_factory = sqlite3.Row
+cur = conn.cursor()
 
-def check_db():
-    try:
-        conn = psycopg.connect(db_url)
-        cur = conn.cursor()
-        
-        email = "uat_test_1784228866643@talentops.com"
-        
-        # Check users table
-        cur.execute("SELECT id FROM users WHERE email = %s", (email,))
-        user = cur.fetchone()
-        if user:
-            print(f"[OK] Found user in database: {user[0]}")
-        else:
-            print("[FAIL] User not found in database.")
-            
-        # Check visitor_sessions table
-        cur.execute("SELECT session_id FROM visitor_sessions WHERE user_email = %s", (email,))
-        sessions = cur.fetchall()
-        if sessions:
-            print(f"[OK] Found {len(sessions)} analytics sessions for user.")
-        else:
-            print("[FAIL] No analytics sessions found for user.")
-            
-        # Check action_logs table
-        cur.execute("SELECT action_type FROM action_logs WHERE user_email = %s", (email,))
-        actions = cur.fetchall()
-        if actions:
-            print(f"[OK] Found {len(actions)} action logs for user.")
-        else:
-            print("[FAIL] No action logs found for user.")
-            
-        # Check page_visits table
-        cur.execute("SELECT path FROM page_visits WHERE user_email = %s", (email,))
-        visits = cur.fetchall()
-        if visits:
-            print(f"[OK] Found {len(visits)} page visits for user.")
-        else:
-            print("[FAIL] No page visits found for user.")
-            
-        cur.close()
-        conn.close()
-    except Exception as e:
-        print(f"Error: {e}")
+users = [dict(r) for r in cur.execute("SELECT * FROM users WHERE email LIKE '%bsen%'").fetchall()]
+print('Users:', json.dumps(users, indent=2, default=str))
 
-if __name__ == "__main__":
-    check_db()
+devices = [dict(r) for r in cur.execute("SELECT * FROM trusted_devices").fetchall()]
+print(f'Total devices: {len(devices)}')
+
+pending_devices = [dict(r) for r in cur.execute("SELECT * FROM trusted_devices WHERE status='Pending'").fetchall()]
+print(f'Pending devices: {len(pending_devices)}')
+
+if users:
+    user_id = users[0]['id']
+    user_devices = [dict(r) for r in cur.execute(f"SELECT * FROM trusted_devices WHERE user_id={user_id}").fetchall()]
+    print(f'Devices for {users[0]["email"]}:', json.dumps(user_devices, indent=2, default=str))

@@ -41,7 +41,7 @@ const SessionManagement = () => {
       <h2 style={{ fontSize: '24px', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '24px' }}>Active Sessions</h2>
       {error && <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '12px 16px', borderRadius: '8px', marginBottom: '20px', fontSize: '14px' }}>{error}</div>}
       
-      <div style={{ background: '#18181b', borderRadius: '12px', border: '1px solid #27272a', overflow: 'hidden' }}>
+      <div style={{ background: '#18181b', borderRadius: '6px', border: '1px solid #27272a', overflow: 'hidden' }}>
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           {sessions.map((session, index) => (
             <li key={session.id} style={{ 

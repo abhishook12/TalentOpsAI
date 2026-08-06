@@ -15,6 +15,7 @@ _WORKER_SCRIPTS = {
     "discovery_worker": "background_workers/discovery_worker.py",
     "bulk_enhancer": "background_workers/bulk_enhancer.py",
     "taxonomy_worker": "background_workers/taxonomy_worker.py",
+    "sentinel": "backend/app/services/sentinel_engine.py",
 }
 
 # In‑memory registry of running processes

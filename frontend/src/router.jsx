@@ -24,9 +24,9 @@ const lazyComponent = (importFn) => {
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div style={{ height: 28, width: 200, background: 'var(--border)', borderRadius: 4, animation: 'ccPulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite' }} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
-             <div style={{ height: 180, background: 'rgba(33, 37, 41, 0.3)', borderRadius: 12, animation: 'ccPulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite' }} />
-             <div style={{ height: 180, background: 'rgba(33, 37, 41, 0.3)', borderRadius: 12, animation: 'ccPulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite' }} />
-             <div style={{ height: 180, background: 'rgba(33, 37, 41, 0.3)', borderRadius: 12, animation: 'ccPulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite' }} />
+             <div style={{ height: 180, background: 'rgba(33, 37, 41, 0.3)', borderRadius: 6, animation: 'ccPulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite' }} />
+             <div style={{ height: 180, background: 'rgba(33, 37, 41, 0.3)', borderRadius: 6, animation: 'ccPulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite' }} />
+             <div style={{ height: 180, background: 'rgba(33, 37, 41, 0.3)', borderRadius: 6, animation: 'ccPulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite' }} />
           </div>
         </div>
       }>
@@ -54,10 +54,10 @@ const analyticsRoute = createRoute({
   component: lazyComponent(() => import('./pages/Analytics')),
 })
 
-const aiSearchRoute = createRoute({
+const searchRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/ai-search',
-  component: lazyComponent(() => import('./pages/AISearch')),
+  path: '/search',
+  component: lazyComponent(() => import('./pages/Search')),
 })
 
 const directoryRoute = createRoute({
@@ -99,7 +99,13 @@ const reviewQueueRoute = createRoute({
 const sentinelRoute = createRoute({
   getParentRoute: () => adminLayoutRoute,
   path: '/sentinel',
-  component: lazyComponent(() => import('./pages/admin/DataIntelligence')),
+  component: lazyComponent(() => import('./pages/admin/DataQualityCenter')),
+})
+
+const intelligenceCenterRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: '/admin/intelligence-center',
+  component: lazyComponent(() => import('./pages/DatabaseIntelligenceCenter')),
 })
 
 const settingsRoute = createRoute({
@@ -196,6 +202,12 @@ const campaignsRoute = createRoute({
   component: lazyComponent(() => import('./pages/Campaigns')),
 })
 
+const testCampaignsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/test-campaigns',
+  component: lazyComponent(() => import('./pages/Campaigns')),
+})
+
 const mailIntelRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/mailintel',
@@ -211,11 +223,12 @@ const routeTree = rootRoute.addChildren([
   verifyEmailRoute,
   recruitersRoute,
   analyticsRoute,
-  aiSearchRoute,
+  searchRoute,
   directoryRoute,
   statesRoute,
   companiesRoute,
   campaignsRoute,
+  testCampaignsRoute,
   mailIntelRoute,
   profileRoute,
   settingsRoute,
@@ -230,7 +243,8 @@ const routeTree = rootRoute.addChildren([
     systemHealthRoute,
     backgroundJobsRoute,
     auditLogsRoute,
-    trustedDevicesRoute
+    trustedDevicesRoute,
+    intelligenceCenterRoute
   ])
 ])
 

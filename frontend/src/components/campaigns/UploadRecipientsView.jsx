@@ -75,7 +75,7 @@ export default function UploadRecipientsView({ onAddRecipients }) {
 
     data.forEach(row => {
       const email = row[mapping.email]?.trim().toLowerCase();
-      if (email && email.includes('@') && !seenEmails.has(email)) {
+      if (email && /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/.test(email) && !seenEmails.has(email)) {
         seenEmails.add(email);
         parsedRecipients.push({
           id: `u_${Date.now()}_${validCount}`,
@@ -133,35 +133,60 @@ export default function UploadRecipientsView({ onAddRecipients }) {
           ))}
 
           <div className="mt-6">
-            <p className="text-xs font-medium text-[var(--text-muted)] mb-2">Preview (First 3 rows)</p>
-            <div className="border border-[var(--border)] rounded-lg overflow-hidden text-xs">
+            <p className="text-xs font-medium text-[var(--text-muted)] mb-2">Preview (Up to 50 rows)</p>
+            <div className="border border-[var(--border)] rounded-lg overflow-hidden text-xs max-h-48 overflow-y-auto">
               <table className="w-full text-left">
-                <thead className="bg-[var(--bg-page)] border-b border-[var(--border)]">
+                <thead className="bg-[var(--bg-page)] border-b border-[var(--border)] sticky top-0 z-10">
                   <tr>
                     <th className="p-2 font-medium text-[var(--text-primary)]">Email</th>
                     <th className="p-2 font-medium text-[var(--text-primary)]">Name</th>
+                    <th className="p-2 font-medium text-[var(--text-primary)]">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)] bg-[var(--bg-surface)]">
-                  {data.slice(0, 3).map((row, i) => (
-                    <tr key={i}>
-                      <td className="p-2 text-[var(--text-muted)]">{mapping.email ? row[mapping.email] : '-'}</td>
-                      <td className="p-2 text-[var(--text-muted)]">{mapping.name ? row[mapping.name] : '-'}</td>
-                    </tr>
-                  ))}
+                  {data.slice(0, 50).map((row, i) => {
+                    const rawEmail = mapping.email ? row[mapping.email] : '';
+                    const email = rawEmail?.trim().toLowerCase();
+                    const isValid = mapping.email && email && /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/.test(email);
+                    
+                    return (
+                      <tr key={i} className={!isValid && mapping.email ? "bg-red-500/10" : ""}>
+                        <td className={`p-2 ${!isValid && mapping.email ? "text-red-400 font-semibold" : "text-[var(--text-muted)]"}`}>{rawEmail || '-'}</td>
+                        <td className="p-2 text-[var(--text-muted)]">{mapping.name ? row[mapping.name] : '-'}</td>
+                        <td className="p-2">
+                          {!mapping.email ? (
+                            <span className="text-[var(--text-muted)]">Pending map</span>
+                          ) : isValid ? (
+                            <span className="text-green-500">Valid</span>
+                          ) : (
+                            <span className="text-red-500 font-medium">Invalid Email</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
 
-        <div className="mt-4 pt-4 border-t border-[var(--border)] flex justify-end">
+        <div className="mt-4 pt-4 border-t border-[var(--border)] flex justify-between items-center">
+          <div className="text-xs text-[var(--text-muted)]">
+            {mapping.email && (
+              <>
+                <span className="text-green-500 font-medium">{data.filter(r => /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/.test(r[mapping.email]?.trim().toLowerCase())).length} Valid</span>
+                {' • '}
+                <span className="text-red-500 font-medium">{data.filter(r => !/^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/.test(r[mapping.email]?.trim().toLowerCase())).length} Invalid</span>
+              </>
+            )}
+          </div>
           <button 
             onClick={handleImport}
             disabled={!mapping.email}
             className="px-4 py-2 bg-[var(--brand)] text-white text-sm font-medium rounded-lg shadow flex items-center gap-2 hover:bg-[var(--brand)]/90 disabled:opacity-50 transition-colors"
           >
-            Import {data.length} Rows <ArrowRight size={16} />
+            Import Valid Rows <ArrowRight size={16} />
           </button>
         </div>
       </div>

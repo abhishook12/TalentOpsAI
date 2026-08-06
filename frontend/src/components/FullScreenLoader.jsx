@@ -40,7 +40,7 @@ export default function FullScreenLoader({ error, onRetry, isSlowNetwork }) {
           width: 48,
           height: 48,
           background: 'linear-gradient(135deg, #0ea5e9, #3b82f6)',
-          borderRadius: 12,
+          borderRadius: 6,
           display: 'grid',
           placeItems: 'center',
           color: '#fff',

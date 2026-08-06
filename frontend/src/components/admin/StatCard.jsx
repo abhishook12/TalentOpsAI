@@ -2,7 +2,7 @@ export default function StatCard({ icon, label, value, sub, color = '#185FA5', g
   return (
     <div style={{
       background: 'var(--card-bg)', border: `1px solid ${glow ? color : 'var(--card-border)'}`,
-      borderRadius: 12, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 8,
+      borderRadius: 6, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 8,
       boxShadow: glow ? `0 0 20px ${color}33` : 'var(--shadow)',
       transition: 'all 0.2s',
     }}>

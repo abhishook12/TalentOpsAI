@@ -19,7 +19,7 @@ export default function LiveVisitorsTab() {
     refetchInterval: 300000
   })
 
-  if (isLoading) return <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}><div className="glass-card" style={{ padding: 20, borderRadius: 16 }}><SkeletonRow rows={4} gap={12} height={20} /></div></div>
+  if (isLoading) return <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}><div className="glass-card" style={{ padding: 20, borderRadius: 6 }}><SkeletonRow rows={4} gap={12} height={20} /></div></div>
 
   return (
     <>
@@ -36,7 +36,7 @@ export default function LiveVisitorsTab() {
             className="glass-card"
             onClick={() => setSelectedSession(s.session_id)}
             style={{
-              borderRadius: 16,
+              borderRadius: 6,
               padding: 20,
               cursor: 'pointer'
             }}

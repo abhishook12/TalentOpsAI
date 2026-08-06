@@ -48,7 +48,7 @@ export default function ApprovalProgress({ deviceId, onApproved }) {
     <div style={{
       background: 'var(--panel-bg)',
       border: '1px solid var(--card-border)',
-      borderRadius: '16px',
+      borderRadius: '6px',
       padding: '32px 24px',
       display: 'flex',
       flexDirection: 'column',

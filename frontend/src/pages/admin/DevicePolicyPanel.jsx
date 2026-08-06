@@ -217,7 +217,7 @@ export default function DevicePolicyPanel({ isOpen, onClose }) {
             width: 40px;
             height: 20px;
             background: var(--surface-container-highest);
-            border-radius: 20px;
+            border-radius: 6px;
             position: relative;
             cursor: pointer;
             outline: none;

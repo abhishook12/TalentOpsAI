@@ -1,10 +1,16 @@
+import os
+from sqlalchemy.orm import Session
 from app.database import SessionLocal
-from sqlalchemy import text
-db = SessionLocal()
+from app.models.models import Recruiter, RecruiterEmail
 
-tables = ['recruiters', 'companies', 'upload_jobs']
-for t in tables:
-    cols = db.execute(text(f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name='{t}'")).fetchall()
-    print(f"Table {t}:")
-    for c in cols:
-        print(f"  {c[0]}: {c[1]}")
+def check_schema():
+    db = SessionLocal()
+    r = db.query(Recruiter).first()
+    print("Recruiter keys:", r.__dict__.keys())
+    
+    re = db.query(RecruiterEmail).first()
+    if re:
+        print("RecruiterEmail keys:", re.__dict__.keys())
+
+if __name__ == "__main__":
+    check_schema()

@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { 
   Send, ArrowLeft, Plus, Mail, Activity, AlertCircle, FileText, 
   CheckCircle2, Loader2, ChevronRight, Play, Eye, Download, Search,
-  Pause, MoreHorizontal, Copy, Trash2, Archive, Save, Clock, RefreshCw
+  Pause, MoreHorizontal, Copy, Trash2, Archive, Save, Clock, RefreshCw, X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api, { API } from '../services/api';
@@ -18,7 +18,6 @@ import CampaignProgress from '../components/CampaignProgress';
 import CustomSelect from '../components/ui/CustomSelect';
 import CampaignLogs from '../components/CampaignLogs';
 import TemplateLibraryModal from '../components/campaigns/TemplateLibraryModal';
-import CampaignReuseWorkflow from '../components/campaigns/CampaignReuseWorkflow';
 import { setLastEmail, saveTemplate } from '../lib/emailTemplates';
 
 const STEPS = {
@@ -31,6 +30,40 @@ const STEPS = {
 export default function Campaigns() {
   const [view, setView] = useState('list'); // 'list' | 'wizard'
   
+  const bentoStyles = `
+    .campaigns-bento-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 24px;
+      align-items: start;
+    }
+    .bento-tile {
+      background: rgba(25, 25, 25, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 24px;
+      backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+    }
+    .bento-header {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .bento-body {
+      font-family: 'DM Sans', sans-serif;
+    }
+    .kpi-value {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 48px;
+      font-weight: 800;
+      line-height: 1;
+      margin-top: 12px;
+    }
+    .masthead-tile {
+      background: radial-gradient(circle at 100% 0%, rgba(200, 160, 50, 0.15) 0%, rgba(25, 25, 25, 0.6) 60%);
+    }
+  `;
+  
   // List State
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
@@ -38,7 +71,7 @@ export default function Campaigns() {
   const [showTest, setShowTest] = useState(false);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
-  const [sortBy, setSortBy] = useState('newest'); // newest, oldest, name, progress, failures
+  const [sortBy] = useState('newest'); // newest, oldest, name, progress, failures
   const [selectedIds, setSelectedIds] = useState(new Set());
   
   const searchInputRef = useRef(null);
@@ -67,17 +100,72 @@ export default function Campaigns() {
   // Pre-flight State
   const [preflightData, setPreflightData] = useState(null);
   const [isValidating, setIsValidating] = useState(false);
-  const [bridgeHealthy, setBridgeHealthy] = useState(false);
   
   // Templates & Modals
   const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
-  const [showOutlookImport, setShowOutlookImport] = useState(false);
-  const [pendingImportEmail, setPendingImportEmail] = useState(null);
 
   // Auto-save logic
   const [lastSaved, setLastSaved] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const savePromiseRef = useRef(null);
+
+  const startNewCampaign = useCallback(() => {
+    setActiveCampaignId(null);
+    setCampaignName('New Campaign');
+    setSubject('');
+    setBody('');
+    setSignatureId(null);
+    setValidatedRecipients({ recipients: [], valid_count: 0 });
+    setCurrentStep(STEPS.RECIPIENTS);
+    setView('wizard');
+  }, []);
+
+  const saveDraft = useCallback(async () => {
+    if (savePromiseRef.current) return savePromiseRef.current;
+
+    const doSave = async () => {
+      setIsSaving(true);
+      try {
+        let cid = activeCampaignId;
+        if (cid) {
+          await api.put(`/campaigns/${cid}`, {
+            name: campaignName,
+            from_email: fromEmail,
+            signature_id: signatureId
+          });
+        } else {
+          const res = await api.post('/campaigns', {
+            name: campaignName,
+            from_email: fromEmail,
+            status: 'draft',
+            signature_id: signatureId
+          });
+          cid = res.data.campaign_id;
+          setActiveCampaignId(cid);
+        }
+        
+        if (subject || body) {
+          await api.post(`/campaigns/${cid}/templates`, {
+            name: subject || 'Draft',
+            subject: subject || '',
+            body: body || ''
+          });
+        }
+        
+        setLastSaved(new Date());
+        return cid;
+      } catch {
+        console.error("Draft save failed");
+        return null;
+      } finally {
+        setIsSaving(false);
+        savePromiseRef.current = null;
+      }
+    };
+
+    savePromiseRef.current = doSave();
+    return savePromiseRef.current;
+  }, [activeCampaignId, campaignName, fromEmail, signatureId, subject, body]);
 
   useEffect(() => {
     if (view === 'wizard' && activeCampaignId) {
@@ -89,7 +177,7 @@ export default function Campaigns() {
       }, 1200);
       return () => clearTimeout(timer);
     }
-  }, [subject, body, signatureId, view, activeCampaignId, currentStep, campaignName]);
+  }, [subject, body, signatureId, view, activeCampaignId, currentStep, campaignName, saveDraft]);
 
   // Load campaigns with auto-refresh only when focused
   const { data: queryData, isLoading: loading, error: queryError, refetch: refetchCampaigns } = useQuery({
@@ -172,24 +260,25 @@ export default function Campaigns() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedIds]);
+  }, [selectedIds, startNewCampaign]);
 
-  const toggleSelection = (id) => {
-    const next = new Set(selectedIds);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setSelectedIds(next);
-  };
+  const toggleSelection = useCallback((id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
-  const toggleAll = () => {
-    if (selectedIds.size === sortedCampaigns.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(sortedCampaigns.map(c => c.campaign_id)));
-    }
-  };
+  const toggleAll = useCallback(() => {
+    setSelectedIds(prev => {
+      if (prev.size === sortedCampaigns.length) return new Set();
+      return new Set(sortedCampaigns.map(c => c.campaign_id));
+    });
+  }, [sortedCampaigns]);
 
-  const handleBulkAction = async (action) => {
+  const handleBulkAction = useCallback(async (action) => {
     if (selectedIds.size === 0) return;
     if (!window.confirm(`Are you sure you want to ${action} ${selectedIds.size} campaigns?`)) return;
     
@@ -205,10 +294,10 @@ export default function Campaigns() {
       toast.success(`Bulk ${action} successful`);
       setSelectedIds(new Set());
       refetchCampaigns();
-    } catch (e) {
+    } catch {
       toast.error(`Some actions failed during bulk ${action}`);
     }
-  };
+  }, [selectedIds, refetchCampaigns]);
 
   const exportCSV = () => {
     const headers = ['ID', 'Name', 'Status', 'Created', 'Sent', 'Failed', 'Progress'];
@@ -232,16 +321,7 @@ export default function Campaigns() {
     document.body.removeChild(link);
   };
 
-  const startNewCampaign = () => {
-    setActiveCampaignId(null);
-    setCampaignName('New Campaign');
-    setSubject('');
-    setBody('');
-    setSignatureId(null);
-    setValidatedRecipients({ recipients: [], valid_count: 0 });
-    setCurrentStep(STEPS.RECIPIENTS);
-    setView('wizard');
-  };
+  // startNewCampaign hoisted
 
   const handleTemplateImport = (template) => {
     setSubject(template.subject);
@@ -269,52 +349,7 @@ export default function Campaigns() {
     toast.success("Saved to Template Library");
   };
 
-  const saveDraft = async () => {
-    if (savePromiseRef.current) return savePromiseRef.current;
-
-    const doSave = async () => {
-      setIsSaving(true);
-      try {
-        let cid = activeCampaignId;
-        if (cid) {
-          await api.put(`/campaigns/${cid}`, {
-            name: campaignName,
-            from_email: fromEmail,
-            signature_id: signatureId
-          });
-        } else {
-          const res = await api.post('/campaigns', {
-            name: campaignName,
-            from_email: fromEmail,
-            status: 'draft',
-            signature_id: signatureId
-          });
-          cid = res.data.campaign_id;
-          setActiveCampaignId(cid);
-        }
-        
-        if (subject || body) {
-          await api.post(`/campaigns/${cid}/templates`, {
-            name: subject || 'Draft',
-            subject: subject || '',
-            body: body || ''
-          });
-        }
-        
-        setLastSaved(new Date());
-        return cid;
-      } catch (e) {
-        console.error("Draft save failed", e);
-        return null;
-      } finally {
-        setIsSaving(false);
-        savePromiseRef.current = null;
-      }
-    };
-
-    savePromiseRef.current = doSave();
-    return savePromiseRef.current;
-  };
+  // saveDraft hoisted
 
   const deleteCampaign = async (id) => {
     if (!window.confirm("Are you sure you want to delete this campaign?")) return;
@@ -322,7 +357,7 @@ export default function Campaigns() {
       await api.delete(`/campaigns/${id}`);
       toast.success("Campaign deleted");
       refetchCampaigns();
-    } catch (e) {
+    } catch {
       toast.error("Failed to delete campaign");
     }
   };
@@ -332,7 +367,7 @@ export default function Campaigns() {
       await api.put(`/campaigns/${id}/archive`);
       toast.success("Campaign archived");
       refetchCampaigns();
-    } catch (e) {
+    } catch {
       toast.error("Failed to archive campaign");
     }
   };
@@ -347,7 +382,7 @@ export default function Campaigns() {
         toast.success("Campaign resumed");
       }
       refetchCampaigns();
-    } catch (e) {
+    } catch {
       toast.error("Failed to change status");
     }
   };
@@ -357,7 +392,7 @@ export default function Campaigns() {
       await api.post(`/campaigns/${id}/duplicate`);
       toast.success("Campaign duplicated");
       refetchCampaigns();
-    } catch (e) {
+    } catch {
       toast.error("Failed to duplicate campaign");
     }
   };
@@ -402,7 +437,7 @@ export default function Campaigns() {
       }
       setView('wizard');
       
-    } catch (e) {
+    } catch {
       toast.error("Failed to load campaign details");
     }
   };
@@ -420,7 +455,7 @@ export default function Campaigns() {
         });
         cid = res.data.campaign_id;
         setActiveCampaignId(cid);
-      } catch (e) {
+      } catch {
         toast.error("Failed to create campaign draft");
         setIsValidating(false);
         return;
@@ -431,7 +466,7 @@ export default function Campaigns() {
     if (savePromiseRef.current) {
       try {
         await savePromiseRef.current;
-      } catch (err) {
+      } catch {
         // ignore auto-save errors here
       }
     }
@@ -505,135 +540,128 @@ export default function Campaigns() {
     }
 
     return (
-      <div className="h-full flex flex-col overflow-hidden relative">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-          <div>
-            <h1 className="text-[28px] font-bold text-white tracking-tight">Campaigns</h1>
-            <p className="text-sm text-[var(--text-secondary)] mt-1">Manage outbound email campaigns</p>
-          </div>
-          <div className="flex items-center gap-3 mt-4 sm:mt-0">
-            <button onClick={() => refetchCampaigns()} className="px-3 py-2 text-sm font-medium flex items-center gap-2 hover:bg-white/5 rounded-lg transition-colors text-white">
-              <RefreshCw size={16} /> Refresh
-            </button>
-            <button onClick={() => setShowTemplateLibrary(true)} className="px-3 py-2 text-sm font-medium flex items-center gap-2 hover:bg-white/5 rounded-lg transition-colors text-white">
-              <Clock size={16} /> Use last email
-            </button>
-            <button 
-              onClick={() => setShowTemplateLibrary(true)}
-              className="px-4 py-2 border rounded-lg text-sm font-medium flex items-center gap-2 transition-colors bg-transparent text-white border-white/20 hover:bg-white/10"
-            >
-              <FileText size={16} /> Reuse email
-            </button>
-            <button 
-              onClick={startNewCampaign}
-              className="bg-[var(--brand)] text-[#14161c] px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-[var(--brand-strong)] transition-colors shadow-sm"
-            >
-              <Plus size={16} /> New Campaign
-            </button>
-          </div>
-        </div>
+      <div className="h-full flex flex-col overflow-hidden relative bento-body">
+        <style dangerouslySetInnerHTML={{ __html: bentoStyles }} />
         
-        {/* Bridge Status dedicated row */}
-        <div className="mb-6">
-          <BridgeStatus onStatusChange={setBridgeHealthy} />
-        </div>
-
-        {/* KPI Strip */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6 shrink-0">
-          <div className="bg-transparent border border-white/10 rounded-xl p-5 shadow-sm">
-            <div className="text-[11px] uppercase font-bold text-[var(--text-muted)] tracking-widest mb-2">Campaigns</div>
-            <div className="text-3xl font-bold text-white leading-tight">{kpis.total}</div>
-            <div className="text-[13px] text-[var(--text-muted)] mt-1 font-medium">on this page</div>
-          </div>
-          <div className="bg-transparent border border-white/10 rounded-xl p-5 shadow-sm">
-            <div className="text-[11px] uppercase font-bold text-[var(--text-muted)] tracking-widest mb-2">Active</div>
-            <div className="text-3xl font-bold text-white leading-tight">{kpis.active}</div>
-            <div className="text-[13px] text-[var(--text-muted)] mt-1 font-medium">currently sending</div>
-          </div>
-          <div className="bg-transparent border border-white/10 rounded-xl p-5 shadow-sm">
-            <div className="text-[11px] uppercase font-bold text-[var(--text-muted)] tracking-widest mb-2">Emails Sent</div>
-            <div className="text-3xl font-bold text-white leading-tight">{kpis.sent}</div>
-            <div className="text-[13px] text-[var(--text-muted)] mt-1 font-medium">across listed campaigns</div>
-          </div>
-          <div className="bg-transparent border border-red-500/40 rounded-xl p-5 shadow-sm">
-            <div className="text-[11px] uppercase font-bold text-[var(--text-muted)] tracking-widest mb-2">Failures</div>
-            <div className="text-3xl font-bold text-red-400 leading-tight">{kpis.failures}</div>
-            <div className="text-[13px] text-[var(--text-muted)] mt-1 font-medium">need attention</div>
-          </div>
-        </div>
-
-        {/* Toolbar Card */}
-        <div className="bg-[#121212] border border-white/10 rounded-2xl p-2.5 mb-6 shrink-0 shadow-sm flex flex-col sm:flex-row gap-4 items-center justify-between">
-          <div className="flex items-center w-full sm:w-auto overflow-x-auto custom-scrollbar gap-1 hide-scrollbar bg-black p-1 rounded-xl">
-            {['all', 'active', 'draft', 'paused', 'completed', 'failed'].map(status => (
-              <button
-                key={status}
-                onClick={() => { setStatusFilter(status); setPage(1); }}
-                className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
-                  statusFilter === status 
-                    ? 'bg-white text-black shadow-sm' 
-                    : 'text-white hover:bg-white/10'
-                }`}
-              >
-                {status.charAt(0).toUpperCase() + status.slice(1)}
-                <span className={`text-[11px] font-bold ${
-                  statusFilter === status ? 'text-gray-500' : 'text-gray-500'
-                }`}>
-                  {kpis.counts[status] || 0}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-4 w-full sm:w-auto pl-2 sm:pl-0 pt-3 sm:pt-0">
-            <div className="relative w-56 shrink-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <input 
-                ref={searchInputRef}
-                type="text" 
-                placeholder="Search campaigns..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#1a1a1a] border border-white/5 rounded-xl !pl-10 pr-9 py-2.5 text-sm text-white focus:border-white/20 focus:outline-none transition-colors placeholder:text-gray-500"
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-5 h-5 rounded border border-white/10 bg-[#222] text-gray-400 text-[10px] font-bold">/</div>
-            </div>
+        <div className="flex-1 overflow-auto custom-scrollbar pr-2 pb-8">
+          <div className="campaigns-bento-grid">
             
-            <select 
-              value={sortBy} 
-              onChange={e => setSortBy(e.target.value)}
-              className="bg-[#1a1a1a] border border-white/5 rounded-xl px-4 py-2.5 text-sm font-medium text-white outline-none focus:border-white/20"
-            >
-              <option value="newest">Newest first</option>
-              <option value="oldest">Oldest first</option>
-              <option value="name">Name A-Z</option>
-              <option value="progress">Progress %</option>
-              <option value="failures">Most Failures</option>
-            </select>
-
-            <select 
-              value={limit} 
-              onChange={e => { setLimit(Number(e.target.value)); setPage(1); }}
-              className="bg-[#1a1a1a] border border-white/5 rounded-xl px-4 py-2.5 text-sm font-medium text-white outline-none focus:border-white/20"
-            >
-              <option value={10}>10 / page</option>
-              <option value={20}>20 / page</option>
-              <option value={50}>50 / page</option>
-            </select>
-
-            <button onClick={exportCSV} className="flex items-center gap-2 px-4 py-2.5 bg-transparent border border-white/10 rounded-xl text-sm font-medium text-white hover:bg-white/5 transition-colors">
-              <Download size={16} /> Export
-            </button>
-
-            <label className="flex items-center gap-2 text-sm text-white font-medium cursor-pointer ml-2">
-              <div className={`w-10 h-5 rounded-full relative transition-colors ${showTest ? 'bg-white' : 'bg-[#333]'}`}>
-                <div className={`absolute top-0.5 w-4 h-4 rounded-full transition-transform ${showTest ? 'bg-black left-5.5 translate-x-5' : 'bg-white left-0.5'}`}></div>
+            {/* Masthead Tile - Spans 8 cols */}
+            <div className="bento-tile masthead-tile" style={{ gridColumn: 'span 8' }}>
+              <div className="flex justify-between items-start h-full">
+                <div>
+                  <h1 className="bento-header" style={{ fontSize: 32, fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', margin: 0 }}>Campaigns</h1>
+                  <p className="bento-body" style={{ color: 'var(--text-secondary)', marginTop: 8, fontSize: 15 }}>Manage your outbound email campaigns and monitor delivery metrics.</p>
+                </div>
+                <div className="flex flex-col gap-3 items-end">
+                  <button 
+                    onClick={startNewCampaign}
+                    style={{ background: 'var(--brand)', color: '#111', padding: '12px 24px', borderRadius: 6, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8, border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}
+                    className="hover:scale-105"
+                  >
+                    <Plus size={18} /> New Campaign
+                  </button>
+                  <div className="flex gap-2 mt-2">
+                    <button onClick={() => setShowTemplateLibrary(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white text-xs font-bold hover:bg-white/10 transition-colors">
+                      <Clock size={14} /> Reuse Last
+                    </button>
+                    <button onClick={() => refetchCampaigns()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white text-xs font-bold hover:bg-white/10 transition-colors">
+                      <RefreshCw size={14} /> Refresh
+                    </button>
+                  </div>
+                </div>
               </div>
-              <input type="checkbox" checked={showTest} onChange={(e) => { setShowTest(e.target.checked); setPage(1); }} className="hidden" />
-              Test
-            </label>
-          </div>
-        </div>
+            </div>
+
+            {/* Bridge Status Tile - Spans 4 cols */}
+            <div style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column' }}>
+              <BridgeStatus />
+            </div>
+
+            {/* KPI Tiles - Span 4 cols each */}
+            <div className="bento-tile" style={{ gridColumn: 'span 4' }}>
+              <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', color: 'var(--brand)', letterSpacing: '0.05em' }} className="bento-header flex items-center gap-2">
+                <Activity size={16} /> Active Campaigns
+              </div>
+              <div className="kpi-value text-white">{kpis.active}</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 12, fontWeight: 500 }}>Sending on this page</div>
+            </div>
+
+            <div className="bento-tile" style={{ gridColumn: 'span 4' }}>
+              <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', color: '#4ade80', letterSpacing: '0.05em' }} className="bento-header flex items-center gap-2">
+                <Send size={16} /> Emails Sent
+              </div>
+              <div className="kpi-value" style={{ color: '#4ade80' }}>{kpis.sent}</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 12, fontWeight: 500 }}>Successfully delivered across listed campaigns</div>
+            </div>
+
+            <div className="bento-tile" style={{ gridColumn: 'span 4', border: kpis.failures > 0 ? '1px solid rgba(248, 113, 113, 0.3)' : undefined }}>
+              <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', color: kpis.failures > 0 ? '#f87171' : 'var(--text-muted)', letterSpacing: '0.05em' }} className="bento-header flex items-center gap-2">
+                <AlertCircle size={16} /> Failures
+              </div>
+              <div className="kpi-value" style={{ color: kpis.failures > 0 ? '#f87171' : 'var(--text-muted)' }}>{kpis.failures}</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 12, fontWeight: 500 }}>Bounced or failed deliveries</div>
+            </div>
+
+            {/* Toolbar and Table - Spans 12 cols */}
+            <div className="bento-tile" style={{ gridColumn: 'span 12', padding: 0, overflow: 'hidden' }}>
+              
+              {/* Toolbar Header inside the tile */}
+              <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--card-border)', background: 'rgba(0,0,0,0.2)' }} className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+                <div className="flex items-center w-full sm:w-auto overflow-x-auto custom-scrollbar gap-2 hide-scrollbar">
+                  {['all', 'active', 'draft', 'paused', 'completed', 'failed'].map(status => (
+                    <button
+                      key={status}
+                      onClick={() => { setStatusFilter(status); setPage(1); }}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+                        statusFilter === status 
+                          ? 'bg-white text-black' 
+                          : 'bg-white/5 text-white hover:bg-white/10'
+                      }`}
+                    >
+                      {status.charAt(0).toUpperCase() + status.slice(1)}
+                      <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${
+                        statusFilter === status ? 'bg-black/10 text-black' : 'bg-black/40 text-gray-400'
+                      }`}>
+                        {kpis.counts[status] || 0}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-3 w-full sm:w-auto pl-2 sm:pl-0 pt-3 sm:pt-0">
+                  <div className="relative w-56 shrink-0">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
+                    <input 
+                      ref={searchInputRef}
+                      type="text" 
+                      placeholder="Search campaigns..." 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl !pl-9 pr-8 py-2 text-sm text-white focus:border-white/30 focus:outline-none transition-colors placeholder:text-gray-500"
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-[10px] font-bold">/</div>
+                  </div>
+
+                  <select value={limit} onChange={e => { setLimit(Number(e.target.value)); setPage(1); }} className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30">
+                    <option value={10}>10 / page</option>
+                    <option value={20}>20 / page</option>
+                    <option value={50}>50 / page</option>
+                  </select>
+
+                  <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-2 bg-black/40 border border-white/10 rounded-xl text-sm font-medium text-white hover:bg-white/10 transition-colors">
+                    <Download size={14} /> Export
+                  </button>
+
+                  <label className="flex items-center gap-2 text-sm text-white font-medium cursor-pointer ml-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 hover:bg-white/10 transition-colors">
+                    <div className={`w-8 h-4 rounded-full relative transition-colors ${showTest ? 'bg-white' : 'bg-[#333]'}`}>
+                      <div className={`absolute top-0.5 w-3 h-3 rounded-full transition-transform ${showTest ? 'bg-black left-4.5 translate-x-4' : 'bg-white left-0.5'}`}></div>
+                    </div>
+                    <input type="checkbox" checked={showTest} onChange={(e) => { setShowTest(e.target.checked); setPage(1); }} className="hidden" />
+                    Test
+                  </label>
+                </div>
+              </div>
 
         {/* Sticky Bulk Action Bar */}
         <AnimatePresence>
@@ -657,8 +685,8 @@ export default function Campaigns() {
           )}
         </AnimatePresence>
 
-        {/* Table */}
-        <div className="bg-transparent border border-white/5 rounded-2xl flex-1 flex flex-col min-h-0 relative z-0">
+        {/* Table wrapper no longer has flex-1 since it's in the bento grid */}
+        <div className="flex-1 flex flex-col min-h-0 relative z-0">
           {loading && !queryData ? (
             <div className="h-full flex justify-center items-center">
               <Loader2 className="w-8 h-8 animate-spin text-[var(--text-muted)]" />
@@ -799,6 +827,9 @@ export default function Campaigns() {
             </div>
           </div>
         </div>
+        </div>
+      </div>
+      </div>
       </div>
     );
   };
@@ -848,7 +879,7 @@ export default function Campaigns() {
         
         {/* Bridge Status Row */}
         <div className="px-4 pb-3">
-          <BridgeStatus onStatusChange={setBridgeHealthy} compact />
+          <BridgeStatus compact />
         </div>
         
         {/* Stepper */}
@@ -927,7 +958,7 @@ export default function Campaigns() {
                         valid_count: updated.filter(r => r.status === 'valid').length
                       });
                       toast.success(`Validated ${emailsList.length} recipients. ${data.valid_count || 0} valid.`);
-                    } catch (e) {
+                    } catch {
                       toast.error("Failed to validate recipients");
                     }
                   }}
@@ -990,10 +1021,17 @@ export default function Campaigns() {
                                         setFromEmail(res.data.email);
                                         localStorage.setItem('talentops_from_email', res.data.email);
                                       }
-                                    } catch (err) {}
+                                    } catch { console.error('oauth check err'); }
                                   }
                                 };
                                 window.addEventListener('message', messageListener);
+                                
+                                const checkInterval = setInterval(() => {
+                                  if (w && w.closed) {
+                                    clearInterval(checkInterval);
+                                    window.removeEventListener('message', messageListener);
+                                  }
+                                }, 1000);
                               } else {
                                 setFromEmail(val);
                                 localStorage.setItem('talentops_from_email', val);

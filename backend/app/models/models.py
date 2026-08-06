@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, Integer, String, Boolean, Numeric, Date, Text, ForeignKey, TIMESTAMP, JSON, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, Numeric, Date, Text, ForeignKey, TIMESTAMP, JSON, DateTime, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from ..database import Base
@@ -57,6 +57,19 @@ class ActionLog(Base):
     ip_address     = Column(String(60), nullable=True)
     created_at     = Column(TIMESTAMP, server_default=func.now(), index=True)
 
+class RepairLog(Base):
+    __tablename__ = "repair_logs"
+    id            = Column(Integer, primary_key=True, index=True)
+    entity_type   = Column(String(50), nullable=False, index=True) # "Recruiter" or "Company"
+    entity_id     = Column(Integer, nullable=False, index=True)
+    field_name    = Column(String(100), nullable=False)
+    old_value     = Column(Text, nullable=True)
+    new_value     = Column(Text, nullable=True)
+    confidence    = Column(Integer, default=100)
+    evidence      = Column(Text, nullable=True)
+    source        = Column(String(100), nullable=True) # e.g. "DomainIntelligence", "DeduplicationEngine"
+    created_at    = Column(TIMESTAMP, server_default=func.now(), index=True)
+
 
 class Company(Base):
     __tablename__ = "companies"
@@ -81,6 +94,12 @@ class Company(Base):
     tags         = Column(Text, nullable=True)     # Comma-separated tags or JSON list
     created_at   = Column(TIMESTAMP, server_default=func.now(), index=True)
     updated_at   = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), index=True)
+    
+    completeness_score = Column(Integer, default=0)
+    quality_flags = Column(Text, default="[]") # JSON list
+    merged_into_id = Column(Integer, ForeignKey("companies.company_id", ondelete="SET NULL"), nullable=True, index=True)
+    canonical_id = Column(Integer, ForeignKey("companies.company_id", ondelete="SET NULL"), nullable=True, index=True)
+
     recruiters   = relationship("Recruiter", foreign_keys="[Recruiter.company_id]", back_populates="company")
     submissions  = relationship("Submission", back_populates="company")
     email_patterns = relationship("CompanyEmailPattern", backref="company", cascade="all, delete-orphan")
@@ -144,6 +163,9 @@ class Recruiter(Base):
     tags             = Column(Text, nullable=True)     # Comma-separated tags or JSON list
     created_at       = Column(TIMESTAMP, server_default=func.now(), index=True)
     updated_at       = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+    quality_flags    = Column(Text, default="[]") # JSON list
+    merged_into_id   = Column(Integer, ForeignKey("recruiters.recruiter_id", ondelete="SET NULL"), nullable=True, index=True)
+
 
     # --- SENTINEL TRACKING COLUMNS ---
     quality_score    = Column(Integer, default=0)
@@ -161,6 +183,8 @@ class Recruiter(Base):
     canonical_company_id = Column(Integer, ForeignKey("companies.company_id", ondelete="SET NULL"), nullable=True)
     historical_company_id = Column(Integer, ForeignKey("companies.company_id", ondelete="SET NULL"), nullable=True)
     company_domain_id = Column(Integer, nullable=True)
+    company_confidence = Column(Integer, default=0)
+    company_reasoning = Column(Text, nullable=True)
     raw_email_value  = Column(String(255), nullable=True)
     repair_reason    = Column(Text, nullable=True)
     company          = relationship("Company", foreign_keys=[company_id], back_populates="recruiters")
@@ -172,6 +196,22 @@ class Recruiter(Base):
     structured_phones = relationship("RecruiterPhone", backref="recruiter", cascade="all, delete-orphan")
     structured_locations = relationship("RecruiterLocation", backref="recruiter", cascade="all, delete-orphan")
     audits            = relationship("EnrichmentAudit", backref="recruiter", cascade="all, delete-orphan")
+
+
+class DomainIntelligence(Base):
+    __tablename__ = "domain_intelligence"
+    domain = Column(String(255), primary_key=True, index=True)
+    company_name = Column(String(255), nullable=True)
+    company_id = Column(Integer, ForeignKey("companies.company_id", ondelete="SET NULL"), nullable=True)
+    is_personal = Column(Boolean, default=False)
+    is_staffing_agency = Column(Boolean, default=False)
+    website = Column(String(255), nullable=True)
+    industry = Column(String(100), nullable=True)
+    logo_url = Column(String(500), nullable=True)
+    confidence_score = Column(Integer, default=0)
+    evidence = Column(Text, nullable=True)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
 
 
 class CompanyEmailPattern(Base):
@@ -487,6 +527,10 @@ class StagingRecruiter(Base):
     errors        = Column(Text, nullable=True) # JSON list of validation errors
     created_at    = Column(TIMESTAMP, server_default=func.now())
 
+    __table_args__ = (
+        UniqueConstraint('job_id', 'email', name='uq_staging_recruiter_job_email'),
+    )
+
 class StagingCompany(Base):
     __tablename__ = "staging_companies"
     id            = Column(Integer, primary_key=True, index=True)
@@ -497,6 +541,10 @@ class StagingCompany(Base):
     status        = Column(String(50), default="pending")
     confidence_score = Column(Integer, default=0)
     created_at    = Column(TIMESTAMP, server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint('job_id', 'company_name', name='uq_staging_company_job_name'),
+    )
 
 
 

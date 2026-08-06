@@ -1,5 +1,5 @@
 import { toast } from 'react-hot-toast'
-import React, { useEffect, useMemo, useRef, useState, memo } from 'react'
+import React, { useEffect, useMemo, useRef, useState, memo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import * as XLSX from 'xlsx'
 import api, { getErrorMessage } from '../services/api'
@@ -108,6 +108,29 @@ const EditableEmail = memo(function EditableEmail({ recruiter, onUpdate }) {
   );
 })
 
+const RecruiterRow = memo(function RecruiterRow({ recruiter, isSelected, toggleSelection, handleUpdateEmail }) {
+  return (
+    <tr style={{ borderBottom: '1px solid var(--card-border)' }}>
+      <td style={{ padding: '10px 12px' }}>
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={(e) => toggleSelection(recruiter, e.target.checked)}
+        />
+      </td>
+      <td style={{ padding: '10px 12px', fontWeight: 900, color: 'var(--text-primary)' }}>{recruiter.recruiter_name || ''}</td>
+      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>
+        <EditableEmail 
+          recruiter={recruiter} 
+          onUpdate={handleUpdateEmail} 
+        />
+      </td>
+      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{recruiter.location || recruiter.state || ''}</td>
+      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{recruiter.phone || ''}</td>
+    </tr>
+  );
+})
+
 export default function Directory() {
   const [companyQuery, setCompanyQuery] = useSessionState('dir_companyQuery', '')
   const [debouncedCompanyQuery, setDebouncedCompanyQuery] = useState('')
@@ -129,8 +152,21 @@ export default function Directory() {
   const [selectedRecruiters, setSelectedRecruiters] = useSessionState('dir_selectedRecruiters', new Map())
 
   const [isComposeOpen, setIsComposeOpen] = useState(false)
-  const [toast, setToast] = useState(null)
+  const [toastMsg, setToastMsg] = useState(null)
   const toastRef = useRef(null)
+
+  const toggleSelection = useCallback((recruiter, checked) => {
+    setSelectedRecruiters((prev) => {
+      const next = new Map(prev)
+      if (checked) next.set(recruiter.recruiter_id, recruiter)
+      else next.delete(recruiter.recruiter_id)
+      return next
+    })
+  }, [setSelectedRecruiters])
+
+  const handleUpdateEmail = useCallback((id, newEmail) => {
+    setRecruiters(prev => prev.map(r => r.recruiter_id === id ? { ...r, email: newEmail } : r))
+  }, [])
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedCompanyQuery(companyQuery), 250)
@@ -440,7 +476,7 @@ export default function Directory() {
             value={companyQuery}
             onChange={(event) => setCompanyQuery(event.target.value)}
             placeholder="Search company..."
-            style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', caretColor: 'var(--text-primary)' }}
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', caretColor: 'var(--text-primary)' }}
           />
           <div style={{ marginTop: 10, maxHeight: 'calc(100vh - 240px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
             {companiesLoading ? <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Loading companies...</div> : null}
@@ -458,7 +494,7 @@ export default function Directory() {
                   style={{
                     textAlign: 'left',
                     padding: 12,
-                    borderRadius: 14,
+                    borderRadius: 6,
                     border: active ? '1px solid rgba(24,95,165,0.35)' : '1px solid var(--card-border)',
                     background: active ? 'rgba(24,95,165,0.08)' : 'var(--panel-bg)',
                     cursor: 'pointer',
@@ -535,14 +571,14 @@ export default function Directory() {
                 value={stateQuery}
                 onChange={(event) => setStateQuery(event.target.value)}
                 placeholder="Filter states..."
-                style={{ width: '100%', padding: '9px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', marginBottom: 8 }}
+                style={{ width: '100%', padding: '9px 12px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', marginBottom: 8 }}
               />
               <button
                 onClick={() => selectState(null)}
                 style={{
                   width: '100%',
                   padding: 10,
-                  borderRadius: 12,
+                  borderRadius: 6,
                   marginBottom: 8,
                   border: !selectedState ? '1px solid rgba(24,95,165,0.35)' : '1px solid var(--card-border)',
                   background: !selectedState ? 'rgba(24,95,165,0.08)' : 'var(--panel-bg)',
@@ -575,7 +611,7 @@ export default function Directory() {
                       style={{
                         textAlign: 'left',
                         padding: 10,
-                        borderRadius: 12,
+                        borderRadius: 6,
                         border: active ? '1px solid rgba(24,95,165,0.35)' : '1px solid var(--card-border)',
                         background: active ? 'rgba(24,95,165,0.08)' : 'var(--panel-bg)',
                         cursor: 'pointer',
@@ -619,10 +655,10 @@ export default function Directory() {
             }}
             disabled={!selectedCompany}
             placeholder={selectedCompany ? 'Search recruiters by name, email, company, location...' : 'Select a company first'}
-            style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', caretColor: 'var(--text-primary)' }}
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', caretColor: 'var(--text-primary)' }}
           />
 
-          <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', borderRadius: 14, border: '1px solid var(--card-border)', background: 'var(--panel-bg)' }}>
+          <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--panel-bg)' }}>
             {!selectedCompany ? (
               <div style={{ padding: 16, color: 'var(--text-muted)', fontSize: 12 }}>Pick a company to see recruiters.</div>
             ) : recruitersLoading ? (
@@ -654,33 +690,13 @@ export default function Directory() {
                 </thead>
                 <tbody>
                   {recruiters.map((recruiter) => (
-                    <tr key={recruiter.recruiter_id} style={{ borderBottom: '1px solid var(--card-border)' }}>
-                      <td style={{ padding: '10px 12px' }}>
-                        <input
-                          type="checkbox"
-                          checked={selectedRecruiters.has(recruiter.recruiter_id)}
-                          onChange={(event) => {
-                            setSelectedRecruiters((prev) => {
-                              const next = new Map(prev)
-                              if (event.target.checked) next.set(recruiter.recruiter_id, recruiter)
-                              else next.delete(recruiter.recruiter_id)
-                              return next
-                            })
-                          }}
-                        />
-                      </td>
-                      <td style={{ padding: '10px 12px', fontWeight: 900, color: 'var(--text-primary)' }}>{recruiter.recruiter_name || ''}</td>
-                      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>
-                        <EditableEmail 
-                          recruiter={recruiter} 
-                          onUpdate={(id, newEmail) => {
-                            setRecruiters(prev => prev.map(r => r.recruiter_id === id ? { ...r, email: newEmail } : r))
-                          }} 
-                        />
-                      </td>
-                      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{recruiter.location || recruiter.state || ''}</td>
-                      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{recruiter.phone || ''}</td>
-                    </tr>
+                    <RecruiterRow
+                      key={recruiter.recruiter_id}
+                      recruiter={recruiter}
+                      isSelected={selectedRecruiters.has(recruiter.recruiter_id)}
+                      toggleSelection={toggleSelection}
+                      handleUpdateEmail={handleUpdateEmail}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -714,9 +730,9 @@ export default function Directory() {
         </div>
       </div>
 
-      {toast && (
+      {toastMsg && (
         <div style={{ position: 'fixed', bottom: 18, right: 18, zIndex: 50 }}>
-          <div className="card" style={{ padding: '10px 12px' }}>{toast.message}</div>
+          <div className="card" style={{ padding: '10px 12px' }}>{toastMsg.message}</div>
         </div>
       )}
 
@@ -724,7 +740,7 @@ export default function Directory() {
       {selectedCount > 0 && !isComposeOpen && createPortal(
         <div style={{
           position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)',
-          backgroundColor: '#1e1e1e', border: '1px solid #333', borderRadius: '24px',
+          backgroundColor: '#1e1e1e', border: '1px solid #333', borderRadius: '6px',
           padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '16px',
           boxShadow: '0 8px 32px rgba(0,0,0,0.4)', zIndex: 99999,
         }}>
@@ -735,7 +751,7 @@ export default function Directory() {
             onClick={() => setIsComposeOpen(true)}
             style={{
               backgroundColor: '#0078d4', color: 'white', border: 'none', padding: '6px 16px',
-              borderRadius: '16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer'
+              borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer'
             }}
           >
             Compose

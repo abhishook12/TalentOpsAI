@@ -154,7 +154,7 @@ function extractEmailsFromText(values) {
 function extractPhonesFromText(values) {
   const matches = []
   values.forEach((value) => {
-    const found = String(value).match(/\+?\d[\d\s().-]{7,}\d/g) || []
+    const found = String(value).match(/(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g) || []
     found.forEach((item) => {
       const digits = item.replace(/[^\d+]/g, '').trim()
       if (digits.replace(/\D/g, '').length < 10) return
@@ -163,6 +163,96 @@ function extractPhonesFromText(values) {
   })
   return dedupeValues(matches, (value) => value.replace(/[^\d+]/g, ''))
 }
+
+const SearchResultRow = React.memo(function SearchResultRow({ r, active, query, onClick }) {
+  const mt = matchTypeFor(r, query)
+  const badge = badgeForMatch(mt)
+  
+  return (
+    <button
+      onClick={() => onClick(r.recruiter_id)}
+      style={{
+        width: '100%',
+        textAlign: 'left',
+        border: 'none',
+        borderBottom: '1px solid var(--card-border)',
+        background: active ? 'var(--brand-bg)' : 'transparent',
+        padding: 0,
+        cursor: 'pointer',
+      }}
+    >
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1.2fr 1.2fr 0.9fr 1.1fr 0.55fr',
+          gap: 10,
+          padding: '12px 14px',
+          alignItems: 'center',
+          fontSize: 12,
+          color: 'var(--text-secondary)',
+        }}
+      >
+        <div style={{ color: 'var(--text-primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 10,
+              border: '1px solid var(--card-border)',
+              background: 'var(--card-bg)',
+              display: 'grid',
+              placeItems: 'center',
+              fontSize: 11,
+              fontWeight: 900,
+              color: 'var(--text-primary)',
+            }}
+          >
+            {initials(r.recruiter_name)}
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.recruiter_name)}</div>
+            <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {r.specialization || 'Recruiter'}
+            </div>
+            <div style={{ marginTop: 2, fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              Match: {labelizeMatchReason(r.match_reason)} (Score: {r.relevance_score || 0})
+            </div>
+          </div>
+        </div>
+        <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.email)}</div>
+        <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.phone)}</div>
+        <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+          <CompanyIdentity 
+            domain={r.website || r.email_pattern} 
+            name={r.company_name} 
+            interactive={false}
+            size={36}
+            logoSize={24}
+            style={{ padding: 0 }}
+          />
+        </div>
+        <div>
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '4px 8px',
+              borderRadius: 8,
+              fontSize: 10,
+              fontWeight: 800,
+              letterSpacing: '0.04em',
+              background: badge.bg,
+              color: badge.fg,
+              border: `1px solid ${badge.border}`,
+            }}
+          >
+            {badge.label}
+          </span>
+        </div>
+      </div>
+    </button>
+  )
+})
 
 function looksLikeEmailKey(key) {
   const normalized = String(key || '').toLowerCase()
@@ -321,6 +411,7 @@ function iconButtonStyle(disabled = false) {
 export default function AISearch() {
   const [query, setQuery] = useSessionState('ai_query', '')
   const [searchResults, setSearchResults] = useState([])
+  const [showRaw, setShowRaw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [selectedId, setSelectedId] = useSessionState('ai_selectedId', null)
@@ -329,6 +420,13 @@ export default function AISearch() {
   const [selectedDetail, setSelectedDetail] = useState(null)
   const [selectedDetailLoading, setSelectedDetailLoading] = useState(false)
   const [selectedDetailError, setSelectedDetailError] = useState('')
+  
+  const handleRowClick = React.useCallback((id) => {
+    setSelectedDetail(null)
+    setSelectedDetailLoading(true)
+    setSelectedDetailError('')
+    setSelectedId(id)
+  }, [])
 
   const [filterCompany, setFilterCompany] = useSessionState('ai_filterCompany', '')
   const [filterLocation, setFilterLocation] = useSessionState('ai_filterLocation', '')
@@ -513,7 +611,7 @@ export default function AISearch() {
           gap: 14,
           padding: '12px 14px',
           border: '1px solid var(--card-border)',
-          borderRadius: 14,
+          borderRadius: 6,
           background: 'var(--panel-bg)',
           boxShadow: 'var(--shadow)',
         }}
@@ -524,7 +622,7 @@ export default function AISearch() {
               style={{
                 width: 34,
                 height: 34,
-                borderRadius: 12,
+                borderRadius: 6,
                 background: 'var(--brand)', color: '#ffffff',
                 display: 'flex',
                 alignItems: 'center',
@@ -534,7 +632,7 @@ export default function AISearch() {
               <i className="ti ti-sparkles" style={{ fontSize: 16 }} />
             </div>
             <div>
-              <h1 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Recruiter Intelligence Search</h1>
+              <h1 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Recruiter Search</h1>
               <p style={{ marginTop: 2, fontSize: 12, color: 'var(--text-muted)' }}>
                 Ranked recruiter search — exact matches first, fuzzy matches after. No demo data.
               </p>
@@ -556,7 +654,7 @@ export default function AISearch() {
         <div
           style={{
             border: '1px solid var(--card-border)',
-            borderRadius: 14,
+            borderRadius: 6,
             background: 'var(--panel-bg)',
             boxShadow: 'var(--shadow)',
             overflow: 'hidden',
@@ -579,7 +677,7 @@ export default function AISearch() {
                   alignItems: 'center',
                   gap: 10,
                   padding: '10px 12px',
-                  borderRadius: 12,
+                  borderRadius: 6,
                   border: '1px solid var(--card-border)',
                   background: 'var(--card-bg)',
                 }}
@@ -641,7 +739,7 @@ export default function AISearch() {
                 style={{
                   marginTop: 10,
                   padding: 12,
-                  borderRadius: 14,
+                  borderRadius: 6,
                   border: '1px solid var(--card-border)',
                   background: 'var(--card-bg)',
                   display: 'grid',
@@ -674,7 +772,7 @@ export default function AISearch() {
                       style={{
                         width: '100%',
                         padding: '9px 10px',
-                        borderRadius: 12,
+                        borderRadius: 6,
                         border: '1px solid var(--card-border)',
                         background: 'var(--panel-bg)',
                         color: 'var(--text-primary)',
@@ -694,7 +792,7 @@ export default function AISearch() {
                     }}
                     style={{
                       padding: '9px 10px',
-                      borderRadius: 12,
+                      borderRadius: 6,
                       border: '1px solid var(--card-border)',
                       background: 'transparent',
                       color: 'var(--text-secondary)',
@@ -708,7 +806,7 @@ export default function AISearch() {
                     onClick={() => setShowFilters(false)}
                     style={{
                       padding: '9px 12px',
-                      borderRadius: 12,
+                      borderRadius: 6,
                       border: '1px solid var(--card-border)',
                       background: 'var(--brand)', color: '#ffffff',
                       fontSize: 12,
@@ -731,7 +829,7 @@ export default function AISearch() {
                     style={{
                       width: 52,
                       height: 52,
-                      borderRadius: 16,
+                      borderRadius: 6,
                       background: 'var(--card-bg)',
                       border: '1px solid var(--card-border)',
                       display: 'grid',
@@ -821,102 +919,15 @@ export default function AISearch() {
                     </div>
 
                     <div>
-                      {searchResults.map((r) => {
-                        const active = selectedId === r.recruiter_id
-                        const mt = matchTypeFor(r, query)
-                        const badge = badgeForMatch(mt)
-                        return (
-                          <button
-                            key={r.recruiter_id}
-                            onClick={() => {
-                              setSelectedDetail(null)
-                              setSelectedDetailLoading(true)
-                              setSelectedDetailError('')
-                              setSelectedId(r.recruiter_id)
-                            }}
-                            style={{
-                              width: '100%',
-                              textAlign: 'left',
-                              border: 'none',
-                              borderBottom: '1px solid var(--card-border)',
-                              background: active ? 'var(--brand-bg)' : 'transparent',
-                              padding: 0,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <div
-                              style={{
-                                display: 'grid',
-                                gridTemplateColumns: '1.2fr 1.2fr 0.9fr 1.1fr 0.55fr',
-                                gap: 10,
-                                padding: '12px 14px',
-                                alignItems: 'center',
-                                fontSize: 12,
-                                color: 'var(--text-secondary)',
-                              }}
-                            >
-                              <div style={{ color: 'var(--text-primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <div
-                                  style={{
-                                    width: 28,
-                                    height: 28,
-                                    borderRadius: 10,
-                                    border: '1px solid var(--card-border)',
-                                    background: 'var(--card-bg)',
-                                    display: 'grid',
-                                    placeItems: 'center',
-                                    fontSize: 11,
-                                    fontWeight: 900,
-                                    color: 'var(--text-primary)',
-                                  }}
-                                >
-                                  {initials(r.recruiter_name)}
-                                </div>
-                                <div style={{ minWidth: 0 }}>
-                                  <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.recruiter_name)}</div>
-                                  <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                    {r.specialization || 'Recruiter'}
-                                  </div>
-                                  <div style={{ marginTop: 2, fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                    Match: {labelizeMatchReason(r.match_reason)} (Score: {r.relevance_score || 0})
-                                  </div>
-                                </div>
-                              </div>
-                              <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.email)}</div>
-                              <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.phone)}</div>
-                              <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                                <CompanyIdentity 
-                                  domain={r.website || r.email_pattern} 
-                                  name={r.company_name} 
-                                  interactive={false}
-                                  size={36}
-                                  logoSize={24}
-                                  style={{ padding: 0 }}
-                                />
-                              </div>
-                              <div>
-                                <span
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    padding: '5px 8px',
-                                    borderRadius: 999,
-                                    border: `1px solid ${badge.border}`,
-                                    background: badge.bg,
-                                    color: badge.fg,
-                                    fontSize: 10,
-                                    fontWeight: 900,
-                                    letterSpacing: '0.03em',
-                                  }}
-                                >
-                                  {badge.label}
-                                </span>
-                              </div>
-                            </div>
-                          </button>
-                        )
-                      })}
+                      {searchResults.map((r) => (
+                        <SearchResultRow 
+                          key={r.recruiter_id} 
+                          r={r} 
+                          active={selectedId === r.recruiter_id} 
+                          query={query} 
+                          onClick={handleRowClick} 
+                        />
+                      ))}
                     </div>
                   </div>
                 )}
@@ -928,7 +939,7 @@ export default function AISearch() {
         <div
           style={{
             border: '1px solid var(--card-border)',
-            borderRadius: 14,
+            borderRadius: 6,
             background: 'var(--panel-bg)',
             boxShadow: 'var(--shadow)',
             overflow: 'hidden',
@@ -989,7 +1000,7 @@ export default function AISearch() {
           {!selected ? (
             <div style={{ flex: 1, display: 'grid', placeItems: 'center', padding: 22, textAlign: 'center', color: 'var(--text-muted)' }}>
               <div>
-                <div style={{ width: 56, height: 56, borderRadius: 18, border: '1px solid var(--card-border)', background: 'var(--card-bg)', display: 'grid', placeItems: 'center', margin: '0 auto 10px' }}>
+                <div style={{ width: 56, height: 56, borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--card-bg)', display: 'grid', placeItems: 'center', margin: '0 auto 10px' }}>
                   <i className="ti ti-user-search" style={{ fontSize: 18 }} />
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)' }}>No recruiter selected</div>
@@ -999,18 +1010,18 @@ export default function AISearch() {
           ) : (
             <div style={{ flex: 1, overflow: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
               {selectedDetailLoading && (
-                <div style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--card-bg)', color: 'var(--text-muted)', fontSize: 12 }}>
+                <div style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--card-bg)', color: 'var(--text-muted)', fontSize: 12 }}>
                   Loading full recruiter profile from source data...
                 </div>
               )}
               {selectedDetailError && (
-                <div style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.08)', color: '#fca5a5', fontSize: 12 }}>
+                <div style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.08)', color: '#fca5a5', fontSize: 12 }}>
                   {selectedDetailError}
                 </div>
               )}
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                  <div style={{ width: 52, height: 52, borderRadius: 16, background: 'var(--text-primary)', color: 'var(--main-bg)', display: 'grid', placeItems: 'center', fontSize: 18, fontWeight: 900 }}>
+                  <div style={{ width: 52, height: 52, borderRadius: 6, background: 'var(--text-primary)', color: 'var(--main-bg)', display: 'grid', placeItems: 'center', fontSize: 18, fontWeight: 900 }}>
                     {initials(selected.recruiter_name)}
                   </div>
                   <div style={{ minWidth: 0 }}>
@@ -1029,17 +1040,17 @@ export default function AISearch() {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <button onClick={() => fireSoon('Share profile')} style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--brand)', color: '#ffffff', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
+                <button onClick={() => fireSoon('Share profile')} style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--brand)', color: '#ffffff', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
                   <i className="ti ti-share-2" style={{ marginRight: 8 }} />
                   Share profile
                 </button>
-                <button onClick={() => fireSoon('Open timeline')} style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--card-bg)', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
+                <button onClick={() => fireSoon('Open timeline')} style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--card-bg)', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
                   <i className="ti ti-activity" style={{ marginRight: 8 }} />
                   Activity (soon)
                 </button>
               </div>
 
-              <div style={{ border: '1px solid var(--card-border)', borderRadius: 14, padding: 12, background: 'var(--card-bg)' }}>
+              <div style={{ border: '1px solid var(--card-border)', borderRadius: 6, padding: 12, background: 'var(--card-bg)' }}>
                 <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>Contact info</div>
                 <div style={{ display: 'grid', gap: 10 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'start' }}>
@@ -1095,7 +1106,7 @@ export default function AISearch() {
                 </div>
               </div>
 
-              <div style={{ border: '1px solid var(--card-border)', borderRadius: 14, padding: 12, background: 'var(--card-bg)' }}>
+              <div style={{ border: '1px solid var(--card-border)', borderRadius: 6, padding: 12, background: 'var(--card-bg)' }}>
                 <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>Company / firm analysis</div>
 
                 <div style={{ display: 'grid', gap: 10 }}>
@@ -1125,13 +1136,13 @@ export default function AISearch() {
                   )}
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 4 }}>
-                    <div style={{ border: '1px dashed var(--card-border)', borderRadius: 12, padding: 10, background: 'var(--panel-bg)' }}>
+                    <div style={{ border: '1px dashed var(--card-border)', borderRadius: 6, padding: 10, background: 'var(--panel-bg)' }}>
                       <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Completeness</div>
                       <div style={{ marginTop: 8, fontSize: 14, fontWeight: 900, color: selected?.completeness_score >= 80 ? 'var(--success)' : selected?.completeness_score >= 50 ? 'var(--warning)' : 'var(--danger)' }}>
                         {selected?.completeness_score ?? 0}%
                       </div>
                     </div>
-                    <div style={{ border: '1px dashed var(--card-border)', borderRadius: 12, padding: 10, background: 'var(--panel-bg)', borderColor: selected?.needs_review ? 'rgba(245,158,11,0.4)' : 'var(--card-border)' }}>
+                    <div style={{ border: '1px dashed var(--card-border)', borderRadius: 6, padding: 10, background: 'var(--panel-bg)', borderColor: selected?.needs_review ? 'rgba(245,158,11,0.4)' : 'var(--card-border)' }}>
                       <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Data Quality</div>
                       <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: selected?.needs_review ? '#d97706' : 'var(--success)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {selected?.needs_review ? (selected?.review_reason || 'Needs Review') : 'Verified Clean'}
@@ -1141,7 +1152,7 @@ export default function AISearch() {
                 </div>
               </div>
 
-              <details style={{ border: '1px solid var(--card-border)', borderRadius: 14, background: 'var(--card-bg)', overflow: 'hidden' }}>
+              <details style={{ border: '1px solid var(--card-border)', borderRadius: 6, background: 'var(--card-bg)', overflow: 'hidden' }}>
                 <summary style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', padding: 12, cursor: 'pointer', outline: 'none', background: 'var(--panel-bg)' }}>
                   Raw source text / needs review
                 </summary>
@@ -1168,7 +1179,7 @@ export default function AISearch() {
       </div>
 
       {toast && (
-        <div style={{ position: 'fixed', right: 18, bottom: 18, background: 'var(--text-primary)', color: 'var(--main-bg)', padding: '10px 12px', borderRadius: 12, fontSize: 12, zIndex: 1500, boxShadow: 'var(--shadow-lg)' }}>
+        <div style={{ position: 'fixed', right: 18, bottom: 18, background: 'var(--text-primary)', color: 'var(--main-bg)', padding: '10px 12px', borderRadius: 6, fontSize: 12, zIndex: 1500, boxShadow: 'var(--shadow-lg)' }}>
           {toast}
         </div>
       )}
@@ -1181,7 +1192,7 @@ export default function AISearch() {
           <div
             className="card"
             onClick={(e) => e.stopPropagation()}
-            style={{ width: '100%', maxWidth: 620, padding: 16, borderRadius: 18, background: 'var(--card-bg)', border: '1px solid var(--card-border)', boxShadow: 'var(--shadow-lg)' }}
+            style={{ width: '100%', maxWidth: 620, padding: 16, borderRadius: 6, background: 'var(--card-bg)', border: '1px solid var(--card-border)', boxShadow: 'var(--shadow-lg)' }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
               <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--text-primary)' }}>
@@ -1204,7 +1215,7 @@ export default function AISearch() {
                     type="password"
                     placeholder="Admin PIN"
                     autoFocus
-                    style={{ flex: 1, padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', outline: 'none' }}
+                    style={{ flex: 1, padding: '10px 12px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', outline: 'none' }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault()
@@ -1231,7 +1242,7 @@ export default function AISearch() {
                         setEditError(getErrorMessage(err, 'Invalid PIN'))
                       }
                     }}
-                    style={{ borderRadius: 12, padding: '10px 12px', fontWeight: 900 }}
+                    style={{ borderRadius: 6, padding: '10px 12px', fontWeight: 900 }}
                   >
                     <i className="ti ti-lock-open" /> Unlock
                   </button>
@@ -1260,7 +1271,7 @@ export default function AISearch() {
                       <input
                         value={editForm[key]}
                         onChange={(e) => setEditForm((p) => ({ ...p, [key]: e.target.value }))}
-                        style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', outline: 'none' }}
+                        style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', outline: 'none' }}
                       />
                     </div>
                   ))}
@@ -1271,14 +1282,14 @@ export default function AISearch() {
                   <textarea
                     value={editForm.notes}
                     onChange={(e) => setEditForm((p) => ({ ...p, notes: e.target.value }))}
-                    style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', outline: 'none', minHeight: 90, resize: 'vertical' }}
+                    style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', outline: 'none', minHeight: 90, resize: 'vertical' }}
                   />
                 </div>
 
                 {editError && <div style={{ fontSize: 12, color: '#f87171' }}>{editError}</div>}
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                  <button onClick={() => setEditOpen(false)} style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid var(--card-border)', background: 'var(--card-bg)', color: 'var(--text-secondary)', fontWeight: 900, cursor: 'pointer' }}>
+                  <button onClick={() => setEditOpen(false)} style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--card-bg)', color: 'var(--text-secondary)', fontWeight: 900, cursor: 'pointer' }}>
                     Cancel
                   </button>
                   <button
@@ -1317,7 +1328,7 @@ export default function AISearch() {
                         setEditSaving(false)
                       }
                     }}
-                    style={{ borderRadius: 12, padding: '10px 12px', fontWeight: 900, opacity: (editSaving || !selected?.recruiter_id) ? 0.75 : 1 }}
+                    style={{ borderRadius: 6, padding: '10px 12px', fontWeight: 900, opacity: (editSaving || !selected?.recruiter_id) ? 0.75 : 1 }}
                   >
                     <i className="ti ti-device-floppy" /> {editSaving ? 'Saving…' : 'Save changes'}
                   </button>

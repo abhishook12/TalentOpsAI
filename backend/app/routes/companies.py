@@ -34,6 +34,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import func, case
 from ..models.models import Recruiter
 
+from ..services.recruiter_store import recruiter_store
+
 @router.get("")
 @router.get("/")
 def get_companies(
@@ -43,34 +45,21 @@ def get_companies(
     state: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    query = db.query(
-        Company.company_id, 
-        Company.company_name, 
-        Company.location, 
-        Company.industry, 
-        Company.state,
-        Company.is_tracked,
-        func.count(Recruiter.recruiter_id).label("total_recruiters"),
-        func.count(case((Recruiter.is_active == True, 1))).label("active_recruiters")
-    ).outerjoin(Recruiter, Company.company_id == Recruiter.company_id)
+    query = db.query(Company).filter(Company.is_active == True)
     
     if state:
         abbr = normalize_state(state)
         if abbr:
             query = query.filter(Company.state == abbr)
             
-    query = query.filter(Company.is_active == True).group_by(Company.company_id)
-            
-    total_query = db.query(Company).filter(Company.is_active == True)
-    if state:
-        abbr = normalize_state(state)
-        if abbr:
-            total_query = total_query.filter(Company.state == abbr)
-    total_count = total_query.count()
-    
+    total_count = query.count()
     response.headers["X-Total-Count"] = str(total_count)
     
     results = query.offset(skip).limit(limit).all()
+    
+    # Get counts from DuckDB
+    counts_map = recruiter_store.company_recruiter_counts()
+    
     return [
         {
             "company_id": r.company_id,
@@ -79,8 +68,8 @@ def get_companies(
             "industry": r.industry,
             "state": r.state,
             "is_tracked": r.is_tracked or False,
-            "total_recruiters": r.total_recruiters or 0,
-            "active_recruiters": r.active_recruiters or 0
+            "total_recruiters": counts_map.get(r.company_id, 0),
+            "active_recruiters": counts_map.get(r.company_id, 0) # Assuming mostly active
         } for r in results
     ]
 

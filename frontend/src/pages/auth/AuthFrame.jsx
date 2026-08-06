@@ -147,7 +147,7 @@ const shellStyles = `
     width: 100%;
     max-width: 400px;
     padding: 40px;
-    border-radius: 24px;
+    border-radius: 6px;
     border: 1px solid var(--card-border, #333);
     box-shadow: 0 24px 60px rgba(0,0,0,0.4);
     background: #1a1a1a;

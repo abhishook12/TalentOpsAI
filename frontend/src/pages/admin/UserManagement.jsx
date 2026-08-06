@@ -181,7 +181,7 @@ export default function UserManagement() {
           { label: 'Inactive Users', value: analytics?.inactive || 0, color: '#f59e0b' },
           { label: 'New This Week', value: analytics?.new_last_7_days || 0, color: 'var(--brand)' }
         ].map((stat, i) => (
-          <div key={i} style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 12, padding: 20, position: 'relative', overflow: 'hidden' }}>
+          <div key={i} style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 20, position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: stat.color }} />
             <div style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{stat.label}</div>
             <div style={{ fontSize: 32, fontWeight: 800, marginTop: 8, color: 'var(--text-primary)' }}>{stat.value}</div>
@@ -235,7 +235,7 @@ export default function UserManagement() {
 
       <div style={{ display: 'flex', gap: 24 }}>
         {/* Main Table */}
-        <div style={{ flex: 1, background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.1)' }}>
+        <div style={{ flex: 1, background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.1)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
             <thead style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--card-border)' }}>
               <tr>
@@ -277,7 +277,7 @@ export default function UserManagement() {
                     </td>
                     <td style={{ padding: '16px' }}>
                       <span style={{ 
-                        padding: '4px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600,
+                        padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
                         background: user.status === 'Active' ? 'rgba(16, 185, 129, 0.1)' : user.status === 'Inactive' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)',
                         color: user.status === 'Active' ? '#10b981' : user.status === 'Inactive' ? '#f59e0b' : '#ef4444'
                       }}>
@@ -308,7 +308,7 @@ export default function UserManagement() {
 
         {/* Side Panel (Slide out) */}
         {selectedUserDetail && (
-          <div style={{ width: 400, background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+          <div style={{ width: 400, background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
             <div style={{ padding: 20, borderBottom: '1px solid var(--card-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-surface)' }}>
               <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>User Details</h2>
               <button onClick={() => setSelectedUserDetail(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 20 }}>&times;</button>

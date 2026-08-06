@@ -640,7 +640,7 @@ export default function TrustedDevices() {
         .td-metric-card {
           background: var(--surface-container);
           border: 1px solid var(--card-border);
-          border-radius: 12px;
+          border-radius: 6px;
           padding: 16px;
           position: relative;
           overflow: hidden;
@@ -722,7 +722,7 @@ export default function TrustedDevices() {
           color: var(--text-primary);
           font-size: 11px;
           padding: 2px 8px;
-          border-radius: 12px;
+          border-radius: 6px;
         }
         .td-tab-pill.red {
           background: var(--brand-strong);
@@ -780,7 +780,7 @@ export default function TrustedDevices() {
           align-items: center;
           gap: 6px;
           padding: 4px 10px;
-          border-radius: 16px;
+          border-radius: 6px;
           font-size: 11px;
           font-weight: 700;
           cursor: pointer;
@@ -825,7 +825,7 @@ export default function TrustedDevices() {
         .td-table-container {
           background: var(--surface-container);
           border: 1px solid var(--card-border);
-          border-radius: 12px;
+          border-radius: 6px;
           overflow: hidden;
         }
         .td-table {
@@ -890,7 +890,7 @@ export default function TrustedDevices() {
         .td-risk-cell { position: relative; }
         .td-risk-pill-wrapper { position: relative; display: inline-block; margin-bottom: 6px; }
         .td-risk-pill {
-          font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 12px; cursor: help;
+          font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 6px; cursor: help;
         }
         .td-risk-pill.low { background: color-mix(in srgb, var(--brand) 20%, transparent); color: var(--brand); }
         .td-risk-pill.med { background: color-mix(in srgb, var(--brand) 20%, transparent); color: var(--brand); }

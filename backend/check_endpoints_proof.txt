@@ -1,0 +1,18 @@
+--- Check 1 ---
+/recruiters  -> Status: 401
+/recruiters/ -> Status: 401
+/analytics   -> Status: 200, Body: {'status': 'Analytics engine active'}
+/analytics/  -> Status: 200, Body: {'status': 'Analytics engine active'}
+
+--- Check 2 ---
+/recruiters  -> Status: 401
+/recruiters/ -> Status: 401
+/analytics   -> Status: 200, Body: {'status': 'Analytics engine active'}
+/analytics/  -> Status: 200, Body: {'status': 'Analytics engine active'}
+
+--- Check 3 ---
+/recruiters  -> Status: 401
+/recruiters/ -> Status: 401
+/analytics   -> Status: 200, Body: {'status': 'Analytics engine active'}
+/analytics/  -> Status: 200, Body: {'status': 'Analytics engine active'}
+

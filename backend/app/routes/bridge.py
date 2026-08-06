@@ -180,6 +180,12 @@ def post_bridge_results(payload: BridgeResultsPayload, db: Session = Depends(get
                     recipient.last_sent_at = _utcnow()
                     recipient.sent_count += 1
                 
+                try:
+                    from ..services.mailintel_engine import process_delivery_event
+                    process_delivery_event(db, log.recipient_email, 'delivered', log.campaign_id)
+                except Exception as e:
+                    print("MAILINTEL Delivery Error:", e)
+
                 # Update bridge status
                 status_record = db.query(UserBridgeStatus).filter(UserBridgeStatus.user_id == current_user.id).first()
                 if status_record:
@@ -195,8 +201,18 @@ def post_bridge_results(payload: BridgeResultsPayload, db: Session = Depends(get
                     recipient.last_error = res.error
                     if recipient.retry_count >= recipient.max_retries:
                         recipient.status = CampaignRecruiterStatus.failed.value
+                        try:
+                            from ..services.mailintel_engine import process_delivery_event
+                            process_delivery_event(db, log.recipient_email, 'hard_bounce', log.campaign_id, res.error)
+                        except Exception as e:
+                            print("MAILINTEL Bounce Error:", e)
                     else:
                         recipient.status = CampaignRecruiterStatus.retrying.value
+                        try:
+                            from ..services.mailintel_engine import process_delivery_event
+                            process_delivery_event(db, log.recipient_email, 'soft_bounce', log.campaign_id, res.error)
+                        except Exception as e:
+                            print("MAILINTEL Bounce Error:", e)
     db.commit()
     
     # (Import moved to module level)

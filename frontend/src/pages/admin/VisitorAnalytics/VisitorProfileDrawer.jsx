@@ -55,7 +55,7 @@ export default function VisitorProfileDrawer({ sessionId, onClose }) {
           <>
             <div style={{ 
               background: 'var(--bg-surface)', 
-              borderRadius: 12, 
+              borderRadius: 6, 
               padding: 16,
               marginBottom: 32,
               display: 'flex',

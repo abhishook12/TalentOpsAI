@@ -79,20 +79,16 @@ class RecruiterStore:
             
         logger.info(f"Downloading Parquet from Supabase Storage to {PARQUET_FILE}...")
         try:
-            import requests
+            import urllib.request
+            import shutil
             # Create the directory if it doesn't exist
             os.makedirs(os.path.dirname(PARQUET_FILE), exist_ok=True)
             
             SUPABASE_URL = "https://dcqvsvgrdsrgnbwwssup.supabase.co"
             url = f"{SUPABASE_URL}/storage/v1/object/public/data-assets/recruiters_full.parquet"
             
-            response = requests.get(url, stream=True, timeout=30)
-            response.raise_for_status()
-            
-            with open(PARQUET_FILE, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        f.write(chunk)
+            with urllib.request.urlopen(url, timeout=60) as response, open(PARQUET_FILE, 'wb') as out_file:
+                shutil.copyfileobj(response, out_file)
                         
             logger.info(f"Successfully downloaded Parquet file ({os.path.getsize(PARQUET_FILE) / (1024*1024):.2f} MB)")
         except Exception as e:

@@ -2,41 +2,54 @@ import asyncio
 import json
 import logging
 import re
+import os
 import random
 from datetime import datetime, timezone
-from sqlalchemy.orm import Session, selectinload
-from sqlalchemy import text, func, desc
+from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from app.database import SessionLocal
 from app.models.models import Recruiter, Company, DomainIntelligence, EnrichmentAudit
-from app.models.sentinel_state import SentinelState
-from app.services.scraper import auto_enhance_recruiter_data, is_human_name
-from app.services.enrichment_service import jit_enrichment_service
+from app.models.sentinel_state import SentinelPhase4State
+from app.services.scraper import is_human_name
 from app.services.mailintel_engine import extract_domain
 from app.services.parquet_writer import parquet_writer
+from app.services.recruiter_store import recruiter_store
 
 logger = logging.getLogger("sentinel")
 
 # ─── INTELLIGENCE MODULES ───
 
-def normalize_email(email: str):
-    if not email: return None
-    email = email.strip().lower()
+import math
+
+def is_nan(val):
+    if val is None: return True
+    if isinstance(val, float) and math.isnan(val): return True
+    return False
+
+def normalize_email(email):
+    if is_nan(email): return None
+    email = str(email).strip().lower()
+    if email in ('n/a', 'null', 'none', '-', 'unknown', 'test', 'nan'): return None
     if re.match(r"^(info|admin|sales|careers|contact|test)@", email):
         return {"value": email, "issue": "role_based"}
     if "missing.local" in email or "example.com" in email:
         return {"value": email, "issue": "fake_domain"}
     return {"value": email, "issue": None}
 
-def normalize_phone(phone: str):
-    if not phone: return None
+def normalize_phone(phone):
+    if is_nan(phone): return None
+    phone = str(phone)
+    if phone.lower() in ('n/a', 'null', 'none', '-', 'unknown', 'test', 'nan'): return None
     cleaned = re.sub(r'[^\d\+]', '', phone)
     if len(cleaned) < 7:
         return {"value": phone, "issue": "invalid_length"}
     return {"value": cleaned, "issue": None}
 
-def normalize_name(name: str):
-    if not name: return None
+def normalize_name(name):
+    if is_nan(name): return None
+    name = str(name)
+    if name.lower() in ('n/a', 'null', 'none', '-', 'unknown', 'test', 'nan'): return None
     words = name.split()
     normalized = " ".join([w.capitalize() for w in words])
     return normalized
@@ -50,7 +63,35 @@ def is_non_human_name_heuristic(name: str) -> bool:
             return True
     return False
 
-def calculate_quality_score(recruiter: Recruiter, missing_fields: dict):
+def calculate_completeness(r_dict: dict, comp_dict: dict):
+    score = 0
+    total_fields = 10
+    missing = []
+    
+    fields = [
+        ("Name", r_dict.get('recruiter_name')),
+        ("Company", comp_dict.get('company_name')),
+        ("Title", r_dict.get('title')),
+        ("Primary email", r_dict.get('email')),
+        ("Phone", r_dict.get('phone')),
+        ("LinkedIn", r_dict.get('linkedin')),
+        ("City", r_dict.get('normalized_city')),
+        ("State", r_dict.get('state')),
+        ("Specialization", r_dict.get('specialization')),
+        ("Company website", comp_dict.get('website'))
+    ]
+    for fname, val in fields:
+        if val and str(val).strip() and "missing.local" not in str(val).lower() and val not in ('n/a', 'null', 'none', '-'):
+            if fname == "Name" and is_non_human_name_heuristic(str(val)):
+                missing.append("Name (Non-Human)")
+            else:
+                score += 1
+        else:
+            missing.append(fname)
+    pct = int((score / total_fields) * 100)
+    return pct, missing
+
+def calculate_quality(missing_fields: dict):
     score = 100
     if missing_fields.get("primary_email"): score -= 20
     if missing_fields.get("primary_phone"): score -= 15
@@ -63,112 +104,12 @@ def calculate_quality_score(recruiter: Recruiter, missing_fields: dict):
 
 FREEMAIL_DOMAINS = {"gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "aol.com", "icloud.com", "msn.com", "live.com"}
 
-def calculate_completeness_score(r: Recruiter, c: Company):
-    score = 0
-    total_fields = 15
-    missing = []
-    fields = [
-        ("Name", r.recruiter_name), ("Company", c.company_name if c else None),
-        ("Title", r.title), ("Primary email", r.email), ("Secondary email", r.email2),
-        ("Phone", r.phone), ("LinkedIn", r.linkedin), ("City", r.normalized_city),
-        ("State", r.state), ("Country", r.location), ("Skills", r.tags),
-        ("Department", r.taxonomy_category), ("Specialization", r.specialization),
-        ("Company logo", None), ("Company website", c.website if c else None)
-    ]
-    for fname, val in fields:
-        if val and str(val).strip() and "missing.local" not in str(val).lower():
-            if fname == "Name" and is_non_human_name_heuristic(str(val)):
-                missing.append("Name (Non-Human)")
-            else:
-                score += 1
-        else:
-            missing.append(fname)
-    pct = int((score / total_fields) * 100)
-    return pct, missing
-
-def infer_company_from_domain(db, domain: str, recruiter: Recruiter):
-    if domain in FREEMAIL_DOMAINS:
-        return None, 0, "Personal email domain (freemail)"
-    di = db.query(DomainIntelligence).filter(DomainIntelligence.domain == domain).first()
-    if not di:
-        di = DomainIntelligence(
-            domain=domain, is_personal=False, confidence_score=50,
-            evidence=json.dumps({"source": "Extracted from recruiter email", "recruiter_id": recruiter.recruiter_id})
-        )
-        db.add(di)
-        db.flush()
-    if di.company_id:
-        return di.company_id, di.confidence_score, f"Inferred from DomainIntelligence mapping for {domain}"
-    c = db.query(Company).filter((Company.website.ilike(f"%{domain}%")) | (Company.email_pattern == domain)).order_by(Company.trust_score.desc()).first()
-    if c:
-        di.company_id = c.company_id
-        di.company_name = c.company_name
-        di.confidence_score = 90
-        di.evidence = json.dumps({"source": "Matched existing canonical company", "company_id": c.company_id})
-        db.flush()
-        return c.company_id, 90, f"Matched existing company ({domain})"
-    new_company_name = domain.split('.')[0].capitalize()
-    new_comp = Company(
-        company_name=new_company_name, website=f"https://www.{domain}",
-        email_pattern=domain, data_source="sentinel_inference", trust_score=80
-    )
-    db.add(new_comp)
-    db.flush()
-    di.company_id = new_comp.company_id
-    di.company_name = new_company_name
-    di.confidence_score = 80
-    di.evidence = json.dumps({"source": "Auto-created from domain", "company_id": new_comp.company_id})
-    db.flush()
-    return new_comp.company_id, 80, f"Auto-created company '{new_company_name}' from domain {domain}"
-
-def detect_and_merge_duplicates(db: Session, recruiter: Recruiter):
-    # Rule 7: Duplicate Intelligence
-    # Returns (merged_recruiter_id, was_merged_and_deleted)
-    if not recruiter.email or "missing.local" in recruiter.email:
-        return recruiter.recruiter_id, False
-        
-    dupes = db.query(Recruiter).filter(
-        Recruiter.email == recruiter.email,
-        Recruiter.recruiter_id != recruiter.recruiter_id
-    ).all()
-    
-    if not dupes:
-        return recruiter.recruiter_id, False
-        
-    # High confidence merge logic: Merge into the oldest record (canonical)
-    canonical = min(dupes + [recruiter], key=lambda x: x.recruiter_id)
-    duplicates_to_delete = [d for d in dupes + [recruiter] if d.recruiter_id != canonical.recruiter_id]
-    
-    for d in duplicates_to_delete:
-        # Transfer data to canonical if missing
-        for attr in ['phone', 'linkedin', 'title', 'location', 'company_id']:
-            if getattr(d, attr) and not getattr(canonical, attr):
-                setattr(canonical, attr, getattr(d, attr))
-                
-        # Log merge
-        audit = EnrichmentAudit(
-            recruiter_id=canonical.recruiter_id,
-            enrichment_type="merge",
-            original_value=str(d.recruiter_id),
-            proposed_value="merged",
-            final_value="merged",
-            source="Sentinel Deduplication",
-            confidence_score=100,
-            action="merge_duplicate",
-            reason=f"Merged duplicate {d.recruiter_id} sharing email {canonical.email}",
-            run_id="sentinel_dedup"
-        )
-        db.add(audit)
-        db.delete(d)
-        
-    db.flush()
-    return canonical.recruiter_id, (recruiter.recruiter_id != canonical.recruiter_id)
-
 class SentinelEngine:
     def __init__(self):
         self.running = False
-        self.batch_size = 50
-        self.sleep_interval = 2.0
+        self.batch_size = 100
+        self.sleep_interval = 0.5
+        self.companies_cache = {} # id -> dict
 
     def start(self):
         self.running = True
@@ -179,273 +120,217 @@ class SentinelEngine:
 
     def log_audit(self, db: Session, recruiter_id: int, field: str, old: str, new: str, reason: str, confidence: float = 1.0):
         if old != new:
-            # Also write to EnrichmentAudit for Rule 14
             ea = EnrichmentAudit(
                 recruiter_id=recruiter_id, enrichment_type=field,
                 original_value=str(old) if old else None,
                 proposed_value=str(new) if new else None,
                 final_value=str(new) if new else None,
-                source="Sentinel Background", confidence_score=int(confidence*100),
-                action="update", reason=reason, run_id="sentinel_loop"
+                source="Sentinel Phase IV", confidence_score=int(confidence*100),
+                action="update", reason=reason, run_id="sentinel_phase_4"
             )
             db.add(ea)
             return True
         return False
 
-    def _process_batch(self):
+    def get_company(self, db, company_id):
+        if not company_id: return {}
+        if company_id in self.companies_cache:
+            return self.companies_cache[company_id]
+        comp = db.query(Company).filter(Company.company_id == company_id).first()
+        if comp:
+            res = {"company_name": comp.company_name, "website": comp.website, "industry": comp.industry}
+        else:
+            res = {}
+        if len(self.companies_cache) > 5000:
+            self.companies_cache.clear()
+        self.companies_cache[company_id] = res
+        return res
+
+    def _sync_audit(self):
+        """Phase 1: Run the full audit query against Parquet"""
+        logger.info("[Phase IV] Running Full Database Audit...")
+        try:
+            recruiter_store._ensure_loaded()
+            conn = recruiter_store._conn
+            if not conn: return
+            
+            # Global metrics
+            stats = conn.execute("""
+                SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE WHEN email IS NULL OR email = '' OR email ILIKE '%missing.local%' THEN 1 ELSE 0 END) as no_email,
+                    SUM(CASE WHEN phone IS NULL OR phone = '' THEN 1 ELSE 0 END) as no_phone,
+                    SUM(CASE WHEN linkedin IS NULL OR linkedin = '' THEN 1 ELSE 0 END) as no_li,
+                    SUM(CASE WHEN company_id IS NULL THEN 1 ELSE 0 END) as no_company,
+                    SUM(CASE WHEN completeness_score < 50 THEN 1 ELSE 0 END) as below_50,
+                    SUM(CASE WHEN completeness_score > 90 THEN 1 ELSE 0 END) as above_90,
+                    AVG(completeness_score) as avg_comp,
+                    AVG(quality_score) as avg_qual
+                FROM recruiters
+            """).fetchone()
+            
+            db = SessionLocal()
+            state = db.query(SentinelPhase4State).first()
+            if not state:
+                state = SentinelPhase4State()
+                db.add(state)
+            
+            state.total_recruiters = int(stats[0])
+            state.missing_emails = int(stats[1])
+            state.missing_phones = int(stats[2])
+            state.missing_linkedin = int(stats[3])
+            state.unknown_companies = int(stats[4])
+            state.profiles_below_50 = int(stats[5])
+            state.profiles_above_90 = int(stats[6])
+            state.avg_completeness = int(stats[7] or 0)
+            state.avg_confidence = int(stats[8] or 0)
+            
+            state.status = "Auditing"
+            db.commit()
+            db.close()
+            logger.info(f"[Phase IV] Audit Complete. Total Profiles: {stats[0]}")
+        except Exception as e:
+            logger.error(f"[Phase IV] Audit failed: {e}")
+
+    def _process_phase4(self):
         try:
             db = SessionLocal()
-            state = db.query(SentinelState).first()
+            state = db.query(SentinelPhase4State).first()
             if not state:
-                state = SentinelState(status="Running", last_processed_id=0)
-                db.add(state)
-                db.commit()
-            if state.status != "Running":
-                db.close()
-                return False # skip
-
-            state.current_task_description = f"Processing priority batch starting at ID {state.last_processed_id}"
+                db.close(); return False
+                
+            if state.status == "Paused":
+                db.close(); return False
+                
+            state.status = "Running"
             db.commit()
             
-            recruiters = db.query(Recruiter).options(
-                selectinload(Recruiter.structured_emails),
-                selectinload(Recruiter.structured_phones),
-                selectinload(Recruiter.company)
-            ).filter(
-                (Recruiter.sentinel_status == 'Pending') | (Recruiter.sentinel_status == None)
-            ).order_by(
-                Recruiter.recruiter_id.asc()
-            ).limit(self.batch_size).all()
-            
-            if not recruiters:
-                # Reset all to Pending if we want continuous scanning, or just sleep
-                db.execute(text("UPDATE recruiters SET sentinel_status = 'Pending' WHERE last_scan_at < NOW() - INTERVAL '7 days'"))
+            recruiter_store._ensure_loaded()
+            conn = recruiter_store._conn
+            if not conn: db.close(); return False
+
+            # Phase 5: Get ordered companies
+            companies_ordered = conn.execute("""
+                SELECT company_id, COUNT(*) as c 
+                FROM recruiters 
+                WHERE company_id IS NOT NULL 
+                GROUP BY company_id 
+                ORDER BY c DESC
+            """).fetchall()
+
+            for comp_row in companies_ordered:
+                if not self.running: break
+                c_id = comp_row[0]
+                total_in_comp = comp_row[1]
+                
+                # Fetch company details
+                c_dict = self.get_company(db, c_id)
+                state.current_company_name = c_dict.get("company_name", f"Company #{c_id}")
+                state.current_company_id = c_id
+                state.current_batch_count = total_in_comp
                 db.commit()
-                state.current_task_description = "Waiting for new records..."
-                db.commit()
-                db.close()
-                return False # sleep long
+                
+                logger.info(f"[Phase IV] Processing Company: {state.current_company_name} ({total_in_comp} recruiters)")
 
-            repaired_count = 0
-            parquet_updates = []
-            
-            for r in recruiters:
-                try:
-                    modifications = 0
+                # Phase 6: Process by State
+                states_ordered = conn.execute(f"SELECT state, COUNT(*) as c FROM recruiters WHERE company_id = {c_id} GROUP BY state ORDER BY c DESC").fetchall()
+                
+                for state_row in states_ordered:
+                    if not self.running: break
+                    st = state_row[0]
+                    st_filter = f"state = '{st}'" if st else "state IS NULL"
+                    state.current_state = st or "Unknown"
+                    db.commit()
                     
-                    # 0. Deduplication (Rule 7)
-                    canonical_id, was_deleted = detect_and_merge_duplicates(db, r)
-                    if was_deleted:
-                        continue # This record was merged and deleted
+                    # Fetch all recruiters for this company and state
+                    df = conn.execute(f"SELECT * FROM recruiters WHERE company_id = {c_id} AND {st_filter}").fetchdf()
                     
-                    # Refresh r if it was canonical but had updates
-                    if r.recruiter_id != canonical_id:
-                        r = db.query(Recruiter).get(canonical_id)
-
-                    # 1-3. Emails, Phones, CSVs
-                    for email_field in ["email", "email2", "email3", "email4"]:
-                        val = getattr(r, email_field)
-                        if val:
-                            res = normalize_email(val)
-                            if res["value"] != val:
-                                self.log_audit(db, r.recruiter_id, email_field, val, res["value"], "Normalized email")
-                                setattr(r, email_field, res["value"])
-                                modifications += 1
-
-                    for phone_field in ["phone", "phone2", "phone3", "phone4"]:
-                        val = getattr(r, phone_field)
-                        if val:
-                            res = normalize_phone(val)
-                            if res["value"] != val:
-                                self.log_audit(db, r.recruiter_id, phone_field, val, res["value"], "Normalized phone")
-                                setattr(r, phone_field, res["value"])
-                                modifications += 1
-
-                    # 4. Structured Entities
-                    for se in r.structured_emails:
-                        if se.email:
-                            res = normalize_email(se.email)
-                            if res["value"] != se.email:
-                                self.log_audit(db, r.recruiter_id, f"structured_email_{se.id}", se.email, res["value"], "Normalized")
-                                se.email = res["value"]
-                                modifications += 1
-                            if res["issue"] == "role_based" and se.status != "invalid":
-                                se.status = "invalid"
-                                modifications += 1
-
-                    for sp in r.structured_phones:
-                        if sp.phone_number:
-                            res = normalize_phone(sp.phone_number)
-                            if res["value"] != sp.phone_number:
-                                self.log_audit(db, r.recruiter_id, f"structured_phone_{sp.id}", sp.phone_number, res["value"], "Normalized")
-                                sp.phone_number = res["value"]
-                                modifications += 1
-
-                    # 5. Company Normalization
-                    if r.company:
-                        if r.company.company_name:
-                            new_cname = normalize_name(r.company.company_name)
-                            if new_cname != r.company.company_name:
-                                self.log_audit(db, r.recruiter_id, f"company_name", r.company.company_name, new_cname, "Capitalized")
-                                r.company.company_name = new_cname
-                                modifications += 1
-                        if r.company.website:
-                            clean_web = r.company.website.strip().lower()
-                            if not clean_web.startswith("http") and clean_web:
-                                clean_web = "https://" + clean_web
-                            if clean_web != r.company.website:
-                                self.log_audit(db, r.recruiter_id, f"company_website", r.company.website, clean_web, "Normalized URL")
-                                r.company.website = clean_web
-                                modifications += 1
-
-                    # 6. Recruiter Name
-                    if r.recruiter_name:
-                        new_name = normalize_name(r.recruiter_name)
-                        if new_name != r.recruiter_name:
-                            self.log_audit(db, r.recruiter_id, "recruiter_name", r.recruiter_name, new_name, "Capitalized")
-                            r.recruiter_name = new_name
-                            modifications += 1
-
-                    # 7. Location Intelligence (Rule 6)
-                    if r.location and not r.state:
-                        parts = [p.strip() for p in r.location.split(',')]
-                        if len(parts) >= 2:
-                            inferred_city = parts[0]
-                            inferred_state = parts[1][:2].upper() # naive mapping
-                            self.log_audit(db, r.recruiter_id, "state", r.state, inferred_state, "Inferred from location string")
-                            r.normalized_city = inferred_city
-                            r.state = inferred_state
-                            modifications += 1
-
-                    # 8. Phase II Company Inference (Rules 3, 4, 5)
-                    old_company_id = r.company_id
-                    if not r.company_id and r.email:
-                        domain = extract_domain(r.email)
-                        if domain:
-                            comp_id, conf, reason = infer_company_from_domain(db, domain, r)
-                            if comp_id:
-                                r.company_id = comp_id
-                                r.company_confidence = conf
-                                r.company_reasoning = reason
-                                ea = EnrichmentAudit(
-                                    recruiter_id=r.recruiter_id, enrichment_type="company_inference",
-                                    original_value=str(old_company_id), proposed_value=str(comp_id),
-                                    final_value=str(comp_id), source="Sentinel Domain Inference",
-                                    confidence_score=conf, action="assigned", reason=reason, run_id="sentinel_phase_2"
-                                )
-                                db.add(ea)
-                                modifications += 1
-                    if not old_company_id and r.company_id:
-                        db.flush()
-                        db.refresh(r)
-
-                    # 9. Omnipresent Enrichment (JIT) - We handle this mostly synchronously now since we are already in a thread
-                    enrichment_triggered = False
-                    if r.company and r.company.company_name and is_human_name(r.recruiter_name, r.company.company_name, r.email):
-                        missing_critical = not r.email or "missing.local" in r.email or not r.phone or not r.linkedin or not r.location
-                        if missing_critical:
-                            if not r.linkedin or not r.location:
-                                try:
-                                    success = jit_enrichment_service.enrich_recruiter_sync(db, r)
-                                    if success: modifications += 1; enrichment_triggered = True
-                                except Exception: pass
-                            if not r.email or "missing.local" in r.email or not r.phone:
-                                try:
-                                    # Since auto_enhance_recruiter_data is async, we can run it in a new event loop or just skip it here 
-                                    # for simplicity, but wait, we are in a thread, we can use asyncio.run
-                                    res = asyncio.run(auto_enhance_recruiter_data(r.recruiter_name, r.company.company_name, r.company.website))
-                                    if res.get('email') and (not r.email or "missing.local" in r.email):
-                                        self.log_audit(db, r.recruiter_id, "email", r.email, res['email'], "Tavily")
-                                        r.email = res['email']; modifications += 1; enrichment_triggered = True
-                                    if res.get('phone') and not r.phone:
-                                        self.log_audit(db, r.recruiter_id, "phone", r.phone, res['phone'], "Tavily")
-                                        r.phone = res['phone']; modifications += 1; enrichment_triggered = True
-                                except Exception: pass
-                    
-                    if enrichment_triggered:
-                        import time as _time
-                        _time.sleep(random.uniform(2.5, 4.5))
-
-                    # 10. Missing Fields & Scoring
-                    c = r.company
-                    score, missing_list = calculate_completeness_score(r, c)
-                    missing_dict = {
-                        "primary_email": not bool(r.email) or "missing.local" in r.email,
-                        "primary_phone": not bool(r.phone), "linkedin": not bool(r.linkedin),
-                        "company": not bool(r.company_id), "location": not bool(r.location),
-                        "title": not bool(r.title), "specialization": not bool(r.specialization)
-                    }
-                    r.missing_fields = json.dumps(missing_list)
-                    r.completeness_score = score
-                    r.quality_score = calculate_quality_score(r, missing_dict)
-
-                    # 11. Review Queue Rules (Rule 11)
-                    if r.company_confidence and r.company_confidence < 70:
-                        r.needs_review = True
-                        r.review_reason = f"Low confidence company match ({r.company_confidence}%)"
-                    critical_fields_missing = []
-                    if "Primary email" in missing_list: critical_fields_missing.append("Email")
-                    if "Phone" in missing_list: critical_fields_missing.append("Phone")
-                    if "City" in missing_list and "State" in missing_list and "Country" in missing_list: critical_fields_missing.append("Location")
-                    if "Name (Non-Human)" in missing_list: critical_fields_missing.append("Valid Human Name")
-
-                    if critical_fields_missing:
-                        r.needs_review = True
-                        r.review_reason = f"Missing critical fields: {', '.join(critical_fields_missing)}"
-                    elif is_non_human_name_heuristic(r.recruiter_name):
-                        r.needs_review = True
-                        r.review_reason = "Non-human name detected"
+                    batch_updates = []
+                    for idx, row in df.iterrows():
+                        if not self.running: break
+                        r_dict = row.to_dict()
+                        rid = r_dict["recruiter_id"]
                         
-                    # Finalize
-                    r.sentinel_status = "Completed"
-                    r.last_scan_at = datetime.now(timezone.utc)
-                    r.last_verified_at = datetime.now(timezone.utc)
-                    if modifications > 0: repaired_count += 1
-                    
-                    db.commit() # Commit per recruiter to preserve partial progress
-                    state.last_processed_id = r.recruiter_id
-                    
-                    # Accumulate for Parquet Update
-                    parquet_updates.append({
-                        "recruiter_id": r.recruiter_id,
-                        "email": r.email,
-                        "phone": r.phone,
-                        "recruiter_name": r.recruiter_name,
-                        "company_id": r.company_id,
-                        "state": r.state,
-                        "normalized_city": r.normalized_city,
-                        "completeness_score": r.completeness_score,
-                        "quality_score": r.quality_score,
-                        "needs_review": r.needs_review,
-                        "sentinel_status": r.sentinel_status,
-                        "last_scan_at": r.last_scan_at.isoformat() if r.last_scan_at else None
-                    })
-                    
-                except Exception as e:
-                    logger.error(f"Error processing recruiter {r.recruiter_id}: {e}")
-                    db.rollback()
+                        modified = False
+                        
+                        # 1. Normalize Email
+                        if r_dict.get("email"):
+                            res = normalize_email(r_dict["email"])
+                            if not res or res["value"] != r_dict["email"]:
+                                new_val = res["value"] if res else None
+                                self.log_audit(db, rid, "email", r_dict["email"], new_val, "Normalized via Phase IV Engine")
+                                r_dict["email"] = new_val
+                                modified = True
 
-            # Batch complete
-            if parquet_updates:
-                try:
-                    parquet_writer.update_records(parquet_updates)
-                except Exception as e:
-                    logger.error(f"Failed to push sentinel updates to Parquet: {e}")
+                        # 2. Normalize Phone
+                        if r_dict.get("phone"):
+                            res = normalize_phone(r_dict["phone"])
+                            if not res or res["value"] != r_dict["phone"]:
+                                new_val = res["value"] if res else None
+                                self.log_audit(db, rid, "phone", r_dict["phone"], new_val, "Normalized via Phase IV Engine")
+                                r_dict["phone"] = new_val
+                                modified = True
+                                
+                        # 3. Normalize Name
+                        if r_dict.get("recruiter_name"):
+                            new_name = normalize_name(r_dict["recruiter_name"])
+                            if new_name != r_dict["recruiter_name"]:
+                                self.log_audit(db, rid, "recruiter_name", r_dict["recruiter_name"], new_name, "Capitalized")
+                                r_dict["recruiter_name"] = new_name
+                                modified = True
 
-            state.profiles_analyzed += len(recruiters)
-            state.profiles_repaired += repaired_count
-            db.commit()
+                        # 4. Score Re-calculation
+                        score, missing_list = calculate_completeness(r_dict, c_dict)
+                        missing_dict = {
+                            "primary_email": not bool(r_dict.get("email")) or "missing.local" in r_dict.get("email", ""),
+                            "primary_phone": not bool(r_dict.get("phone")), "linkedin": not bool(r_dict.get("linkedin")),
+                            "company": not bool(r_dict.get("company_id")), "location": not bool(r_dict.get("location")),
+                            "title": not bool(r_dict.get("title")), "specialization": not bool(r_dict.get("specialization"))
+                        }
+                        q_score = calculate_quality(missing_dict)
+                        
+                        if score != r_dict.get("completeness_score") or q_score != r_dict.get("quality_score"):
+                            r_dict["completeness_score"] = score
+                            r_dict["quality_score"] = q_score
+                            modified = True
+                            
+                        r_dict["sentinel_status"] = "Completed"
+                        r_dict["last_scan_at"] = datetime.now(timezone.utc).isoformat()
+                        
+                        if modified:
+                            state.recruiters_completed += 1
+                            batch_updates.append(r_dict)
+                    
+                    if batch_updates:
+                        try:
+                            # Push updates to parquet
+                            parquet_writer.update_records(batch_updates)
+                        except Exception as e:
+                            logger.error(f"[Phase IV] Parquet Write Failed: {e}")
+                            
+                        # Commit the audits
+                        db.commit()
+
+                # Company completed
+                state.companies_completed += 1
+                db.commit()
+
+            # End of full run - recalculate audit
+            self._sync_audit()
             db.close()
             return True
             
         except Exception as e:
-            logger.error(f"SENTINEL Engine Loop Error: {e}")
+            logger.error(f"SENTINEL Phase IV Engine Error: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
     async def run_loop(self):
-        logger.info("SENTINEL Engine v2 Started")
+        logger.info("SENTINEL Engine Phase IV Started")
+        await asyncio.to_thread(self._sync_audit)
         while self.running:
-            processed = await asyncio.to_thread(self._process_batch)
+            processed = await asyncio.to_thread(self._process_phase4)
             if not processed:
                 await asyncio.sleep(10)
             else:

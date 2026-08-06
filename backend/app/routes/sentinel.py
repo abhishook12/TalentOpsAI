@@ -1,113 +1,55 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import func
-from typing import List, Dict, Any
-
 from app.database import get_db
-from app.models.models import Recruiter, Company, DomainIntelligence, EnrichmentAudit
+from app.models.auth_models import User
+from app.services.auth_service import get_current_user_from_request
+from app.models.sentinel_state import SentinelPhase4State
 
-router = APIRouter(prefix="/sentinel", tags=["Sentinel Engine"])
+router = APIRouter()
 
-@router.get("/stats")
-def get_sentinel_stats(db: Session = Depends(get_db)):
-    """Rule 13: Data Intelligence Dashboard Metrics"""
-    total_processed = db.query(Recruiter).filter(Recruiter.sentinel_status == "Completed").count()
-    total_queued = db.query(Recruiter).filter(Recruiter.sentinel_status.in_(["Pending", "Analyzing"])).count()
-    companies_identified = db.query(Recruiter).filter(Recruiter.company_id.isnot(None)).count()
-    unknown_companies = db.query(Recruiter).filter(Recruiter.company_id.is_(None)).count()
-    domains_mapped = db.query(DomainIntelligence).count()
+@router.get("/dashboard")
+def get_sentinel_dashboard(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    if not current_user.role or current_user.role.name.lower() not in ('admin', 'superadmin'):
+        return {"error": "Unauthorized"}
     
-    # Enrichment counts (from audit log)
-    profiles_enriched = db.query(EnrichmentAudit.recruiter_id).distinct().count()
+    state = db.query(SentinelPhase4State).first()
+    if not state:
+        return {
+            "status": "Offline",
+            "total_recruiters": 0,
+            "total_companies": 0,
+            "unknown_companies": 0,
+            "missing_emails": 0,
+            "missing_phones": 0,
+            "missing_linkedin": 0,
+            "missing_logos": 0,
+            "profiles_below_50": 0,
+            "profiles_above_90": 0,
+            "avg_confidence": 0,
+            "avg_completeness": 0,
+            "companies_completed": 0,
+            "recruiters_completed": 0,
+            "current_company_name": "-",
+            "current_state": "-",
+            "estimated_completion_hours": 0
+        }
     
     return {
-        "total_processed": total_processed,
-        "total_queued": total_queued,
-        "companies_identified": companies_identified,
-        "unknown_companies": unknown_companies,
-        "domains_mapped": domains_mapped,
-        "profiles_enriched": profiles_enriched,
-        "duplicate_companies_merged": 0  # To be implemented
+        "status": state.status,
+        "total_recruiters": state.total_recruiters,
+        "total_companies": state.total_companies,
+        "unknown_companies": state.unknown_companies,
+        "missing_emails": state.missing_emails,
+        "missing_phones": state.missing_phones,
+        "missing_linkedin": state.missing_linkedin,
+        "missing_logos": state.missing_logos,
+        "profiles_below_50": state.profiles_below_50,
+        "profiles_above_90": state.profiles_above_90,
+        "avg_confidence": state.avg_confidence,
+        "avg_completeness": state.avg_completeness,
+        "companies_completed": state.companies_completed,
+        "recruiters_completed": state.recruiters_completed,
+        "current_company_name": state.current_company_name,
+        "current_state": state.current_state,
+        "estimated_completion_hours": state.estimated_completion_hours
     }
-
-@router.get("/review-queue")
-def get_review_queue(
-    db: Session = Depends(get_db),
-    limit: int = Query(50),
-    offset: int = Query(0)
-):
-    """Rule 14: Manual Review Queue for low confidence company matches"""
-    query = db.query(Recruiter).filter(Recruiter.needs_review == True)
-    total = query.count()
-    
-    items = query.order_by(Recruiter.updated_at.desc()).limit(limit).offset(offset).all()
-    
-    results = []
-    for r in items:
-        company_data = None
-        if r.company:
-            company_data = {
-                "company_id": r.company.company_id,
-                "company_name": r.company.company_name,
-                "website": r.company.website
-            }
-            
-        results.append({
-            "recruiter_id": r.recruiter_id,
-            "recruiter_name": r.recruiter_name,
-            "email": r.email,
-            "company_confidence": r.company_confidence,
-            "review_reason": r.review_reason,
-            "suggested_company": company_data
-        })
-        
-    return {
-        "items": results,
-        "total": total
-    }
-
-@router.post("/review-queue/{recruiter_id}/approve")
-def approve_review(recruiter_id: int, db: Session = Depends(get_db)):
-    r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
-    if not r:
-        raise HTTPException(status_code=404, detail="Recruiter not found")
-        
-    r.needs_review = False
-    r.review_reason = None
-    r.company_confidence = 100
-    
-    audit = EnrichmentAudit(
-        recruiter_id=r.recruiter_id,
-        enrichment_type="company_review",
-        action="approved",
-        reason="Manual admin approval of suggested company",
-        run_id="manual_review"
-    )
-    db.add(audit)
-    db.commit()
-    return {"status": "success"}
-
-@router.post("/review-queue/{recruiter_id}/reject")
-def reject_review(recruiter_id: int, db: Session = Depends(get_db)):
-    r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
-    if not r:
-        raise HTTPException(status_code=404, detail="Recruiter not found")
-        
-    old_company = r.company_id
-    r.needs_review = False
-    r.review_reason = None
-    r.company_id = None
-    r.company_confidence = 0
-    
-    audit = EnrichmentAudit(
-        recruiter_id=r.recruiter_id,
-        enrichment_type="company_review",
-        action="rejected",
-        reason="Manual admin rejection of suggested company",
-        original_value=str(old_company),
-        proposed_value="None",
-        run_id="manual_review"
-    )
-    db.add(audit)
-    db.commit()
-    return {"status": "success"}

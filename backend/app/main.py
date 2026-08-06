@@ -278,11 +278,12 @@ app.include_router(recruiters.router, prefix="/recruiters", tags=["Recruiters"])
 app.include_router(companies.router, prefix="/companies", tags=["Companies"])
 app.include_router(vendors.router, prefix="/vendors", tags=["Vendors"])
 app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
-from .routes import admin_devices
+from .routes import admin_devices, sentinel
 app.include_router(admin_devices.router, prefix="/admin/devices", tags=["Admin Devices"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
 app.include_router(notifications.router)
 app.include_router(visitor_analytics.router, prefix="/admin/visitor-analytics", tags=["Visitor Analytics"])
+app.include_router(sentinel.router, prefix="/sentinel", tags=["Sentinel"])
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(actions.router, prefix="/actions", tags=["Actions"])
 app.include_router(updates.router)

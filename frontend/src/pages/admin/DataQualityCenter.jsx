@@ -3,8 +3,7 @@ import api from '../../services/api'
 import { Activity, Database, CheckCircle, AlertTriangle, XCircle, Search, ShieldAlert, Cpu } from 'lucide-react'
 
 export default function DataQualityCenter() {
-  const [metrics, setMetrics] = useState(null)
-  const [repairLogs, setRepairLogs] = useState([])
+  const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -12,14 +11,9 @@ export default function DataQualityCenter() {
     let alive = true
     const fetchData = async () => {
       try {
-        const [metricsRes, logsRes] = await Promise.all([
-          api.get('/analytics/quality-metrics'),
-          api.get('/analytics/repair-logs?limit=20')
-        ])
-        
+        const res = await api.get('/sentinel/dashboard')
         if (!alive) return
-        setMetrics(metricsRes.data)
-        setRepairLogs(logsRes.data.logs)
+        setData(res.data)
         setError(null)
       } catch (err) {
         if (alive) {
@@ -31,14 +25,14 @@ export default function DataQualityCenter() {
     }
 
     fetchData()
-    const interval = setInterval(fetchData, 10000)
+    const interval = setInterval(fetchData, 2000)
     return () => {
       alive = false
       clearInterval(interval)
     }
   }, [])
 
-  if (loading && !metrics) {
+  if (loading && !data) {
     return <div style={{ padding: '2rem', color: 'var(--text-muted)' }}>Loading Data Quality Center...</div>
   }
 
@@ -52,8 +46,35 @@ export default function DataQualityCenter() {
     )
   }
 
-  const overallHealth = metrics?.overall_health || 0
-  const healthColor = overallHealth >= 90 ? 'var(--success)' : overallHealth >= 70 ? 'var(--warning)' : 'var(--danger)'
+  const {
+    status,
+    total_recruiters,
+    total_companies,
+    unknown_companies,
+    missing_emails,
+    missing_phones,
+    missing_linkedin,
+    missing_logos,
+    profiles_below_50,
+    profiles_above_90,
+    avg_confidence,
+    avg_completeness,
+    companies_completed,
+    recruiters_completed,
+    current_company_name,
+    current_state,
+    estimated_completion_hours
+  } = data;
+
+  // Calculate Health Score based on completeness and missing core fields
+  const healthScore = Math.max(0, 100 - (
+    (missing_emails / (total_recruiters || 1)) * 40 +
+    (missing_phones / (total_recruiters || 1)) * 20 +
+    (missing_linkedin / (total_recruiters || 1)) * 20 +
+    (unknown_companies / (total_recruiters || 1)) * 20
+  )).toFixed(1);
+
+  const healthColor = healthScore >= 90 ? 'var(--success)' : healthScore >= 70 ? 'var(--warning)' : 'var(--danger)'
 
   return (
     <div style={{
@@ -78,7 +99,7 @@ export default function DataQualityCenter() {
               Overall DB Health
             </div>
             <div style={{ fontSize: '2.5rem', fontWeight: 900, color: healthColor, lineHeight: 1 }}>
-              {overallHealth}%
+              {healthScore}%
             </div>
           </div>
           <Database size={40} color={healthColor} opacity={0.5} />
@@ -86,77 +107,55 @@ export default function DataQualityCenter() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-        <MetricCard label="Recruiters Completed" value={metrics?.recruiters_completed} icon={CheckCircle} color="var(--success)" />
-        <MetricCard label="Companies Completed" value={metrics?.companies_completed} icon={CheckCircle} color="var(--success)" />
-        <MetricCard label="Unknown Remaining" value={metrics?.unknown_remaining} icon={Search} color="var(--warning)" />
-        <MetricCard label="Duplicates Identified" value={metrics?.duplicates_identified} icon={AlertTriangle} color="var(--warning)" />
-        <MetricCard label="Profiles < 50% Quality" value={metrics?.low_quality_profiles} icon={XCircle} color="var(--danger)" />
-        <MetricCard label="Avg Repair Confidence" value={`${(metrics?.average_repair_confidence * 100).toFixed(1)}%`} icon={Cpu} color="var(--brand)" />
+        <MetricCard label="Companies Audited" value={companies_completed} icon={CheckCircle} color="var(--success)" />
+        <MetricCard label="Profiles Audited" value={recruiters_completed} icon={CheckCircle} color="var(--success)" />
+        <MetricCard label="Unknown Companies" value={unknown_companies} icon={Search} color="var(--warning)" />
+        <MetricCard label="Missing Emails" value={missing_emails} icon={AlertTriangle} color="var(--warning)" />
+        <MetricCard label="Profiles < 50% Quality" value={profiles_below_50} icon={XCircle} color="var(--danger)" />
+        <MetricCard label="Avg Completeness" value={`${avg_completeness}%`} icon={Cpu} color="var(--brand)" />
       </div>
 
-      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
-        <h2 style={{ marginTop: 0, marginBottom: '1.5rem', color: 'var(--text-bright)', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <ShieldAlert size={20} color="var(--brand)" />
-          Recent Auto-Repairs
-        </h2>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', borderLeft: status === 'Running' ? '4px solid #22c55e' : '4px solid #f59e0b' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h2 style={{ marginTop: 0, marginBottom: 0, color: 'var(--text-bright)', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Activity size={20} color="var(--brand)" style={{ animation: status === 'Running' ? 'pulse 2s infinite' : 'none' }} />
+            Phase IV Engine Target
+          </h2>
+          <div style={{ 
+            background: status === 'Running' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)', 
+            color: status === 'Running' ? '#22c55e' : '#ef4444', 
+            padding: '4px 12px', 
+            borderRadius: 999, 
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6
+          }}>
+            {status === 'Running' && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', animation: 'pulse 2s infinite' }} />}
+            {status}
+          </div>
+        </div>
         
-        {repairLogs.length === 0 ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-            No recent repairs detected. The engine is monitoring.
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginTop: 24 }}>
+          <div>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Currently Processing Company</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>{current_company_name}</div>
           </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)', textAlign: 'left' }}>
-                  <th style={{ padding: '0.75rem 1rem' }}>Time</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Entity</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Field</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Change</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Confidence</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Source</th>
-                </tr>
-              </thead>
-              <tbody>
-                {repairLogs.map(log => (
-                  <tr key={log.id} style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
-                    <td style={{ padding: '0.75rem 1rem', whiteSpace: 'nowrap' }}>
-                      {new Date(log.timestamp).toLocaleTimeString()}
-                    </td>
-                    <td style={{ padding: '0.75rem 1rem', textTransform: 'capitalize' }}>
-                      {log.entity_type} #{log.entity_id}
-                    </td>
-                    <td style={{ padding: '0.75rem 1rem', fontFamily: 'var(--font-mono)' }}>
-                      {log.field_name}
-                    </td>
-                    <td style={{ padding: '0.75rem 1rem' }}>
-                      <span style={{ color: 'var(--danger)', textDecoration: 'line-through', marginRight: '0.5rem' }}>
-                        {log.old_value || 'NULL'}
-                      </span>
-                      <span style={{ color: 'var(--success)' }}>
-                        {log.new_value}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0.75rem 1rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <div style={{ width: 40, height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
-                          <div style={{ height: '100%', background: 'var(--success)', width: `${Math.min(100, log.confidence * 100)}%` }} />
-                        </div>
-                        <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>{(log.confidence * 100).toFixed(0)}%</span>
-                      </div>
-                    </td>
-                    <td style={{ padding: '0.75rem 1rem', fontSize: '0.75rem' }}>
-                      <span style={{ background: 'var(--brand-bg)', color: 'var(--brand)', padding: '2px 8px', borderRadius: 12 }}>
-                        {log.source}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Location Scope</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>{current_state}</div>
           </div>
-        )}
+        </div>
       </div>
+
+      <style>{`
+        @keyframes pulse {
+          0% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(1.1); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
     </div>
   )
 }

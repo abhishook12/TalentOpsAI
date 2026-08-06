@@ -242,37 +242,37 @@ def company_states(
     if cached is not None:
         return cached
 
-    computed_state_sql = EFFECTIVE_RECRUITER_STATE_SQL_R
-
-    where_clause = "r.company_id = :company_id" if company_id else "1=1"
-
-    rows = db.execute(text(f"""
-        SELECT
-            {computed_state_sql} AS state,
-            COUNT(r.recruiter_id) AS count
-        FROM recruiters r
-        LEFT JOIN companies c ON c.company_id = r.company_id
-        WHERE {where_clause}
-          AND {computed_state_sql} IS NOT NULL
-        GROUP BY {computed_state_sql}
-        ORDER BY count DESC, state ASC
-    """), {"company_id": company_id}).mappings().all()
-
-    unknown_row = db.execute(text(f"""
-        SELECT COUNT(r.recruiter_id) AS count
-        FROM recruiters r
-        LEFT JOIN companies c ON c.company_id = r.company_id
-        WHERE {where_clause}
-          AND {computed_state_sql} IS NULL
-    """), {"company_id": company_id}).mappings().first()
-
-    result = [{"state": row["state"], "count": int(row["count"])} for row in rows]
-    unknown_count = int(unknown_row["count"]) if unknown_row and unknown_row["count"] else 0
-    if unknown_count > 0:
-        result.append({"state": UNKNOWN_STATE_SENTINEL, "count": unknown_count})
-
-    analytics_cache.set(f"company_states_{company_id}", result, ttl=3600)
-    return result
+    try:
+        recruiter_store._ensure_loaded()
+        duck_conn = recruiter_store._conn
+        if duck_conn:
+            where_clause = f"WHERE company_id = {company_id}" if company_id else "WHERE 1=1"
+            
+            rows = duck_conn.execute(f"""
+                SELECT state, COUNT(*) as count
+                FROM recruiters
+                {where_clause} AND state IS NOT NULL AND state != ''
+                GROUP BY state
+                ORDER BY count DESC, state ASC
+            """).fetchall()
+            
+            unknown_row = duck_conn.execute(f"""
+                SELECT COUNT(*) as count
+                FROM recruiters
+                {where_clause} AND (state IS NULL OR state = '')
+            """).fetchone()
+            
+            result = [{"state": row[0], "count": int(row[1])} for row in rows]
+            unknown_count = int(unknown_row[0]) if unknown_row and unknown_row[0] else 0
+            if unknown_count > 0:
+                result.append({"state": UNKNOWN_STATE_SENTINEL, "count": unknown_count})
+                
+            analytics_cache.set(f"company_states_{company_id}", result, ttl=3600)
+            return result
+    except Exception as e:
+        logger.warning(f"DuckDB company-states failed: {e}")
+        
+    return []
 
 
 @router.get("/companies-search")
@@ -365,6 +365,7 @@ def companies_search(
     final_result = {"total_count": total_count, "rows": paginated}
     analytics_cache.set(cache_key, final_result, ttl=3600)
     response.headers["X-Total-Count"] = str(total_count)
+    return paginated
 
 class VisitPayload(BaseModel):
     page: str

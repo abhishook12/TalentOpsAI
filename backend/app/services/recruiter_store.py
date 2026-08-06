@@ -53,11 +53,18 @@ class RecruiterStore:
         if self._loaded and self._conn is not None and getattr(self, '_last_mtime', -1) == current_mtime:
             return
             
-        with self._lock:
+        if not self._lock.acquire(timeout=5.0):
+            logger.warning("Timeout acquiring RecruiterStore lock. Download may be in progress.")
+            if not self._conn:
+                raise Exception("Database is currently initializing (downloading Parquet). Please try again in 30 seconds.")
+            return
+
+        try:
+            current_mtime = 0
             try:
                 current_mtime = os.path.getmtime(PARQUET_FILE)
             except OSError:
-                current_mtime = 0
+                pass
                 
             if self._loaded and self._conn is not None and getattr(self, '_last_mtime', -1) == current_mtime:
                 return
@@ -70,7 +77,10 @@ class RecruiterStore:
                 self._conn = None
                 
             self._load()
+            self._record_count = self._conn.execute("SELECT COUNT(*) FROM recruiters").fetchone()[0]
             self._last_mtime = current_mtime
+        finally:
+            self._lock.release()
 
     def _download_from_storage(self):
         """Download the Parquet file from Supabase Storage if it doesn't exist locally or if size differs."""

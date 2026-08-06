@@ -808,6 +808,32 @@ def get_data_health(db: Session = Depends(get_db), current_user: User = Depends(
         return {"total_active": 0, "overall_health_score": 0, "metrics": []}
 
 
+@router.get("/debug-parquet")
+def debug_parquet(force_download: bool = False):
+    import os, traceback
+    from app.services.recruiter_store import PARQUET_FILE, recruiter_store
+    
+    res = {
+        "parquet_exists": os.path.exists(PARQUET_FILE),
+        "parquet_size": os.path.getsize(PARQUET_FILE) if os.path.exists(PARQUET_FILE) else -1,
+        "store_loaded": recruiter_store._loaded,
+        "record_count": recruiter_store._record_count
+    }
+    
+    if force_download:
+        try:
+            if os.path.exists(PARQUET_FILE):
+                os.remove(PARQUET_FILE)
+            recruiter_store.reload()
+            res["msg"] = "Force downloaded and reloaded"
+            res["new_size"] = os.path.getsize(PARQUET_FILE) if os.path.exists(PARQUET_FILE) else -1
+            res["new_count"] = recruiter_store._record_count
+        except Exception as e:
+            res["error"] = str(e)
+            res["trace"] = traceback.format_exc()
+            
+    return res
+
 @router.get("/insights")
 def get_smart_insights(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     cached = analytics_cache.get("dashboard_insights")

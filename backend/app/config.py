@@ -32,6 +32,13 @@ FEATURE_CSV_IMPORT = os.getenv("FEATURE_CSV_IMPORT", "false").lower() in ("1", "
 FEATURE_EXCEL_IMPORT = os.getenv("FEATURE_EXCEL_IMPORT", "false").lower() in ("1", "true", "yes", "on")
 FEATURE_OUTLOOK_LIBRARY = os.getenv("FEATURE_OUTLOOK_LIBRARY", "false").lower() in ("1", "true", "yes", "on")
 
+# Bulk data engines rewrite the recruiter Parquet dataset. Keep them opt-in so a
+# routine API restart can never begin a multi-million-row mutation job.
+ENABLE_SENTINEL_ENGINE = os.getenv("ENABLE_SENTINEL_ENGINE", "false").lower() in ("1", "true", "yes", "on")
+ENABLE_QUALITY_ENGINE = os.getenv("ENABLE_QUALITY_ENGINE", "false").lower() in ("1", "true", "yes", "on")
+ENABLE_EMAIL_VERIFICATION_ENGINE = os.getenv("ENABLE_EMAIL_VERIFICATION_ENGINE", "false").lower() in ("1", "true", "yes", "on")
+ENABLE_DATA_FILLER_ENGINE = os.getenv("ENABLE_DATA_FILLER_ENGINE", "false").lower() in ("1", "true", "yes", "on")
+
 SMTP_HOST = os.getenv("SMTP_HOST", "")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")

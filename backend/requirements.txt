@@ -21,5 +21,6 @@ google-auth
 pytest
 pytest-asyncio
 httpx
+requests
 pytest-cov
 duckdb

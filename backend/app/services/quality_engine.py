@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from ..database import SessionLocal, engine
 from ..models.models import Recruiter, Company, RepairLog
+from ..services.parquet_writer import parquet_writer
+from ..services.recruiter_store import recruiter_store
 
 logger = logging.getLogger(__name__)
 
@@ -86,42 +88,39 @@ class QualityEngine:
                 
             db.commit()
             
-            # Tier 1: Needs review recruiters that haven't been scanned
-            recruiters = db.query(Recruiter).filter(
-                Recruiter.quality_flags.is_(None),
-                Recruiter.needs_review == True
-            ).limit(500).all()
-            
-            if len(recruiters) < 500:
-                # Tier 2: Remaining unscanned recruiters
-                more_recruiters = db.query(Recruiter).filter(
-                    Recruiter.quality_flags.is_(None),
-                    or_(Recruiter.needs_review == False, Recruiter.needs_review.is_(None))
-                ).limit(500 - len(recruiters)).all()
-                recruiters.extend(more_recruiters)
-                
-            for r in recruiters:
+            # Recruiters are served from Parquet, not the legacy Postgres table.
+            # Writing quality values to Postgres here made the dashboard stale.
+            recruiter_store._ensure_loaded()
+            recruiter_rows = recruiter_store._conn.execute("""
+                SELECT recruiter_id, location, linkedin, title, phone
+                FROM recruiters
+                WHERE quality_flags IS NULL OR quality_flags = ''
+                LIMIT 5000
+            """).fetchdf()
+            recruiter_updates = []
+            for _, r in recruiter_rows.iterrows():
                 flags = []
-                if not r.location:
+                if not r.get('location'):
                     flags.append("missing_location")
-                if not r.linkedin:
+                if not r.get('linkedin'):
                     flags.append("missing_linkedin")
-                if not r.title:
+                if not r.get('title'):
                     flags.append("missing_title")
-                if not r.phone:
+                if not r.get('phone'):
                     flags.append("missing_phone")
-                
-                r.quality_flags = json.dumps(flags)
-                
                 score = 100
                 if 'missing_location' in flags: score -= 30
                 if 'missing_linkedin' in flags: score -= 30
                 if 'missing_title' in flags: score -= 20
                 if 'missing_phone' in flags: score -= 20
-                
-                r.completeness_score = max(0, score)
-                
-            db.commit()
+                recruiter_updates.append({
+                    'recruiter_id': int(r['recruiter_id']),
+                    'quality_flags': json.dumps(flags),
+                    'completeness_score': max(0, score),
+                })
+
+            if recruiter_updates:
+                parquet_writer.update_records(recruiter_updates)
             
         finally:
             db.close()
@@ -133,32 +132,22 @@ class QualityEngine:
         """
         db = SessionLocal()
         try:
-            # Example auto-repair: Capitalize lowercase recruiter names
-            # Tier 1 & 3: Needs review OR completeness score < 50 (High priority repairs)
-            recruiters = db.query(Recruiter).filter(
-                Recruiter.recruiter_name.isnot(None),
-                or_(Recruiter.needs_review == True, Recruiter.completeness_score < 50)
-            ).limit(100).all()
-            
-            if len(recruiters) < 100:
-                # Tier 4: General sweep for remaining recruiters
-                more_recruiters = db.query(Recruiter).filter(
-                    Recruiter.recruiter_name.isnot(None),
-                    or_(Recruiter.needs_review == False, Recruiter.needs_review.is_(None)),
-                    Recruiter.completeness_score >= 50
-                ).limit(100 - len(recruiters)).all()
-                recruiters.extend(more_recruiters)
-                
-            for r in recruiters:
-                if r.recruiter_name and r.recruiter_name.islower():
-                    old_val = r.recruiter_name
-                    new_val = r.recruiter_name.title()
-                    
-                    r.recruiter_name = new_val
-                    
+            recruiter_store._ensure_loaded()
+            recruiters = recruiter_store._conn.execute("""
+                SELECT recruiter_id, recruiter_name
+                FROM recruiters
+                WHERE recruiter_name IS NOT NULL AND recruiter_name = LOWER(recruiter_name)
+                LIMIT 1000
+            """).fetchdf()
+            updates = []
+            for _, r in recruiters.iterrows():
+                if r['recruiter_name']:
+                    old_val = r['recruiter_name']
+                    new_val = old_val.title()
+                    updates.append({'recruiter_id': int(r['recruiter_id']), 'recruiter_name': new_val})
                     repair_log = RepairLog(
                         entity_type='Recruiter',
-                        entity_id=r.recruiter_id,
+                        entity_id=int(r['recruiter_id']),
                         field_name='recruiter_name',
                         old_value=old_val,
                         new_value=new_val,
@@ -167,6 +156,8 @@ class QualityEngine:
                         source='QualityEngine'
                     )
                     db.add(repair_log)
+            if updates:
+                parquet_writer.update_records(updates)
             db.commit()
         except Exception as e:
             logger.error(f"Error in process_safe_repairs: {e}")

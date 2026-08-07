@@ -201,8 +201,6 @@ class EmailVerificationEngine:
         else:
             status = 'invalid'
             
-        verification_state.mark_email_processed(status, confidence)
-        
         return {
             'recruiter_id': recruiter_row['recruiter_id'],
             'email_status': status,
@@ -245,6 +243,8 @@ class EmailVerificationEngine:
                     verification_state.state["current_domain"] = domain
                     
                 batch_offset = 0
+                last_recruiter_id = 0
+                domain_failed = False
                 while True:
                     if self._stop_event.is_set():
                         break
@@ -258,6 +258,9 @@ class EmailVerificationEngine:
                     WHERE LOWER(SPLIT_PART(email, '@', 2)) = ? 
                     LIMIT ? OFFSET ?
                     """
+                    # parquet_writer reloads RecruiterStore after each write, so never
+                    # retain a DuckDB connection across a persisted batch.
+                    recruiter_store._ensure_loaded()
                     df = recruiter_store._conn.execute(query, [domain, self.batch_size, batch_offset]).df()
                     
                     if df.empty:
@@ -277,6 +280,10 @@ class EmailVerificationEngine:
                             parquet_writer.update_records(updates)
                             
                             duration = time.time() - start_time
+                            for update in updates:
+                                verification_state.mark_email_processed(
+                                    update['email_status'], update['email_confidence']
+                                )
                             verification_state.mark_batch_complete(domain, len(updates), duration)
                             logger.info(f"Batch completed: {len(updates)} emails for @{domain} in {duration:.1f}s")
                             
@@ -285,13 +292,21 @@ class EmailVerificationEngine:
                         except Exception as e:
                             logger.error(f"Failed to write batch updates: {e}")
                             verification_state.add_error(f"Write batch failed for {domain}: {str(e)}")
-                            
+                            domain_failed = True
+                            break
+
+                    last_recruiter_id = int(df['recruiter_id'].max())
                     batch_offset += self.batch_size
                     
                     if len(df) < self.batch_size:
                         break # Domain finished
                         
                     time.sleep(self.cooldown_seconds)
+
+                # A domain is resumable only after its final successful batch. A
+                # failed write leaves it pending for the next manually started run.
+                if not domain_failed and not self._stop_event.is_set():
+                    verification_state.mark_domain_complete(domain, last_recruiter_id)
                     
             logger.info("Verification Engine completed all domains.")
             

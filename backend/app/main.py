@@ -9,7 +9,15 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-from .config import CORS_ORIGINS, IS_PRODUCTION, ENV as APP_ENV
+from .config import (
+    CORS_ORIGINS,
+    IS_PRODUCTION,
+    ENV as APP_ENV,
+    ENABLE_DATA_FILLER_ENGINE,
+    ENABLE_EMAIL_VERIFICATION_ENGINE,
+    ENABLE_QUALITY_ENGINE,
+    ENABLE_SENTINEL_ENGINE,
+)
 from .routes import recruiters, companies, vendors, analytics, admin, auth, actions, updates, ai, campaigns, harvester, users, visitor_analytics, notifications, bridge, accounts
 from .database import get_db, engine
 from .models import models, auth_models
@@ -399,6 +407,7 @@ async def startup_event():
     from .services.quality_engine import quality_engine
     from .services.sync_engine import sync_engine_loop
     from .services.email_verification_engine import verification_engine
+    from .services.data_filler_engine import data_filler_engine
     from .database import engine
     from sqlalchemy import text
     
@@ -412,9 +421,14 @@ async def startup_event():
         asyncio.create_task(timeout_stuck_emails_sweep())
         asyncio.create_task(sync_engine_loop())
         restart_active_campaigns()
-        sentinel_engine.start()
-        quality_engine.start()
-        verification_engine.start()
+        if ENABLE_SENTINEL_ENGINE:
+            sentinel_engine.start()
+        if ENABLE_QUALITY_ENGINE:
+            quality_engine.start()
+        if ENABLE_EMAIL_VERIFICATION_ENGINE:
+            verification_engine.start()
+        if ENABLE_DATA_FILLER_ENGINE:
+            data_filler_engine.start()
         logger.info("Acquired leader lock; started background tasks.")
     else:
         conn.close()
@@ -426,8 +440,12 @@ async def shutdown_event():
     sync_manager.stop()
     from .services.quality_engine import quality_engine
     quality_engine.stop()
+    from .services.sentinel_engine import sentinel_engine
+    sentinel_engine.stop()
     from .services.email_verification_engine import verification_engine
     verification_engine.stop()
+    from .services.data_filler_engine import data_filler_engine
+    data_filler_engine.stop()
 
 from .routes import health
 app.include_router(health.router, prefix="/health", tags=["System Health"])

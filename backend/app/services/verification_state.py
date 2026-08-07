@@ -16,6 +16,7 @@ class VerificationState:
         
         # Default state
         self.state = {
+            "checkpoint_version": 2,
             "last_completed_domain": None,
             "last_completed_recruiter_id": 0,
             "total_processed": 0,
@@ -47,6 +48,14 @@ class VerificationState:
                     with open(STATE_FILE, 'r') as f:
                         saved_state = json.load(f)
                         self.state.update(saved_state)
+                        # Version 1 added domains to completed_domains after the
+                        # first batch, which can skip unfinished domains after a
+                        # restart. Those checkpoints are not trustworthy.
+                        if self.state.get("checkpoint_version") != 2:
+                            self.state["checkpoint_version"] = 2
+                            self.state["last_completed_domain"] = None
+                            self.state["last_completed_recruiter_id"] = 0
+                            self.state["completed_domains"] = []
                         
                         # Reset transient runtime flags
                         self.state["is_running"] = False
@@ -86,9 +95,6 @@ class VerificationState:
             self.state["batch_number"] += 1
             self.state["last_batch_at"] = now_iso
             
-            if domain not in self.state["completed_domains"]:
-                self.state["completed_domains"].append(domain)
-                
             # Update rolling speed (exponential moving average)
             current_speed = (count / duration) * 3600 if duration > 0 else 0
             if self.state["speed_emails_per_hour"] == 0:
@@ -109,6 +115,16 @@ class VerificationState:
                 self.state["batch_log"].pop()
                 
         self.save()
+
+    def mark_domain_complete(self, domain: str, last_recruiter_id: int = 0):
+        """Checkpoint completion only after every batch for a domain is persisted."""
+        with self._lock:
+            self.state["last_completed_domain"] = domain
+            self.state["last_completed_recruiter_id"] = last_recruiter_id
+            self.state["current_domain"] = None
+            if domain not in self.state["completed_domains"]:
+                self.state["completed_domains"].append(domain)
+        self.save()
         
     def add_error(self, message: str):
         with self._lock:
@@ -124,6 +140,7 @@ class VerificationState:
     def reset(self):
         with self._lock:
             self.state = {
+                "checkpoint_version": 2,
                 "last_completed_domain": None,
                 "last_completed_recruiter_id": 0,
                 "total_processed": 0,

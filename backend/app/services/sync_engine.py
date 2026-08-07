@@ -12,7 +12,6 @@ from sqlalchemy import func
 from ..database import SessionLocal
 from ..models.auth_models import ConnectedEmailAccount
 from ..models.campaigns import Campaign, CampaignRecruiter, CampaignRecruiterStatus, EmailLog, EmailLogStatus
-from ..models.models import Recruiter
 
 logger = logging.getLogger(__name__)
 
@@ -77,30 +76,22 @@ def process_replies_for_user(user_id: int, access_token: str, last_sync_time: da
             sender = sender.lower()
             subject = msg.get("subject", "")
             
-            # Find any active or sent CampaignRecruiter matching this sender
-            # We look for recruiters the user has emailed.
-            # 1. Find recruiters by email
-            recruiters = db.query(Recruiter).filter(func.lower(Recruiter.email) == sender).all()
-            if not recruiters:
-                continue
-                
-            recruiter_ids = [r.recruiter_id for r in recruiters]
-            
-            # 2. Find campaigns belonging to this user
-            user_campaign_ids = [c.campaign_id for c in db.query(Campaign.campaign_id).filter(Campaign.user_id == user_id).all()]
-            if not user_campaign_ids:
-                continue
-                
-            # 3. Find active enrollments
-            enrollments = db.query(CampaignRecruiter).filter(
-                CampaignRecruiter.recruiter_id.in_(recruiter_ids),
-                CampaignRecruiter.campaign_id.in_(user_campaign_ids),
+            # Recruiter records are now served from Parquet, while campaign logs
+            # stay in Postgres. Match replies against the actual sent recipient,
+            # rather than the legacy Postgres recruiter table.
+            enrollments = db.query(CampaignRecruiter).join(
+                EmailLog, EmailLog.campaign_recruiter_id == CampaignRecruiter.campaign_recruiter_id
+            ).join(
+                Campaign, Campaign.campaign_id == CampaignRecruiter.campaign_id
+            ).filter(
+                Campaign.user_id == user_id,
+                func.lower(EmailLog.recipient_email) == sender,
                 ~CampaignRecruiter.status.in_([
                     CampaignRecruiterStatus.cancelled.value,
                     CampaignRecruiterStatus.bounced.value,
                     CampaignRecruiterStatus.replied.value
                 ])
-            ).all()
+            ).distinct().all()
             
             for cr in enrollments:
                 logger.info(f"Marking CampaignRecruiter {cr.campaign_recruiter_id} as REPLIED. Sender: {sender}")

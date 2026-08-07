@@ -162,6 +162,7 @@ class SentinelEngine:
                     SUM(CASE WHEN phone IS NULL OR phone = '' THEN 1 ELSE 0 END) as no_phone,
                     SUM(CASE WHEN linkedin IS NULL OR linkedin = '' THEN 1 ELSE 0 END) as no_li,
                     SUM(CASE WHEN company_id IS NULL THEN 1 ELSE 0 END) as no_company,
+                    COUNT(DISTINCT company_id) as total_companies,
                     SUM(CASE WHEN completeness_score < 50 THEN 1 ELSE 0 END) as below_50,
                     SUM(CASE WHEN completeness_score > 90 THEN 1 ELSE 0 END) as above_90,
                     AVG(completeness_score) as avg_comp,
@@ -180,10 +181,11 @@ class SentinelEngine:
             state.missing_phones = int(stats[2])
             state.missing_linkedin = int(stats[3])
             state.unknown_companies = int(stats[4])
-            state.profiles_below_50 = int(stats[5])
-            state.profiles_above_90 = int(stats[6])
-            state.avg_completeness = int(stats[7] or 0)
-            state.avg_confidence = int(stats[8] or 0)
+            state.total_companies = int(stats[5] or 0)
+            state.profiles_below_50 = int(stats[6])
+            state.profiles_above_90 = int(stats[7])
+            state.avg_completeness = int(stats[8] or 0)
+            state.avg_confidence = int(stats[9] or 0)
             
             state.status = "Auditing"
             db.commit()
@@ -193,6 +195,12 @@ class SentinelEngine:
             logger.error(f"[Phase IV] Audit failed: {e}")
 
     def _process_phase4(self):
+        """Process one bounded batch of unscanned recruiters.
+
+        Parquet is immutable, so every write rewrites its containing file. Keeping
+        this batch bounded prevents the old nested company/state loop from holding
+        a database session and a stale DuckDB connection for an entire dataset run.
+        """
         try:
             db = SessionLocal()
             state = db.query(SentinelPhase4State).first()
@@ -209,114 +217,78 @@ class SentinelEngine:
             conn = recruiter_store._conn
             if not conn: db.close(); return False
 
-            # Phase 5: Get ordered companies
-            companies_ordered = conn.execute("""
-                SELECT company_id, COUNT(*) as c 
-                FROM recruiters 
-                WHERE company_id IS NOT NULL 
-                GROUP BY company_id 
-                ORDER BY c DESC
-            """).fetchall()
+            df = conn.execute("""
+                SELECT * FROM recruiters
+                WHERE COALESCE(sentinel_status, '') != 'Completed'
+                ORDER BY recruiter_id
+                LIMIT ?
+            """, [self.batch_size]).fetchdf()
 
-            for comp_row in companies_ordered:
-                if not self.running: break
-                c_id = comp_row[0]
-                total_in_comp = comp_row[1]
-                
-                # Fetch company details
+            if df.empty:
+                state.status = "Idle"
+                db.commit()
+                db.close()
+                self._sync_audit()
+                return False
+
+            batch_updates = []
+            completed_company_ids = set()
+            for _, row in df.iterrows():
+                if not self.running:
+                    break
+                r_dict = row.to_dict()
+                rid = r_dict["recruiter_id"]
+                c_id = r_dict.get("company_id")
                 c_dict = self.get_company(db, c_id)
-                state.current_company_name = c_dict.get("company_name", f"Company #{c_id}")
                 state.current_company_id = c_id
-                state.current_batch_count = total_in_comp
-                db.commit()
-                
-                logger.info(f"[Phase IV] Processing Company: {state.current_company_name} ({total_in_comp} recruiters)")
+                state.current_company_name = c_dict.get("company_name", f"Company #{c_id}" if c_id else "Unassigned")
+                state.current_state = r_dict.get("state") or "Unknown"
+                completed_company_ids.add(c_id)
 
-                # Phase 6: Process by State
-                states_ordered = conn.execute(f"SELECT state, COUNT(*) as c FROM recruiters WHERE company_id = {c_id} GROUP BY state ORDER BY c DESC").fetchall()
-                
-                for state_row in states_ordered:
-                    if not self.running: break
-                    st = state_row[0]
-                    st_filter = f"state = '{st}'" if st else "state IS NULL"
-                    state.current_state = st or "Unknown"
-                    db.commit()
-                    
-                    # Fetch all recruiters for this company and state
-                    df = conn.execute(f"SELECT * FROM recruiters WHERE company_id = {c_id} AND {st_filter}").fetchdf()
-                    
-                    batch_updates = []
-                    for idx, row in df.iterrows():
-                        if not self.running: break
-                        r_dict = row.to_dict()
-                        rid = r_dict["recruiter_id"]
-                        
-                        modified = False
-                        
-                        # 1. Normalize Email
-                        if r_dict.get("email"):
-                            res = normalize_email(r_dict["email"])
-                            if not res or res["value"] != r_dict["email"]:
-                                new_val = res["value"] if res else None
-                                self.log_audit(db, rid, "email", r_dict["email"], new_val, "Normalized via Phase IV Engine")
-                                r_dict["email"] = new_val
-                                modified = True
+                if r_dict.get("email"):
+                    res = normalize_email(r_dict["email"])
+                    new_val = res["value"] if res else None
+                    if new_val != r_dict["email"]:
+                        self.log_audit(db, rid, "email", r_dict["email"], new_val, "Normalized via Phase IV Engine")
+                        r_dict["email"] = new_val
 
-                        # 2. Normalize Phone
-                        if r_dict.get("phone"):
-                            res = normalize_phone(r_dict["phone"])
-                            if not res or res["value"] != r_dict["phone"]:
-                                new_val = res["value"] if res else None
-                                self.log_audit(db, rid, "phone", r_dict["phone"], new_val, "Normalized via Phase IV Engine")
-                                r_dict["phone"] = new_val
-                                modified = True
-                                
-                        # 3. Normalize Name
-                        if r_dict.get("recruiter_name"):
-                            new_name = normalize_name(r_dict["recruiter_name"])
-                            if new_name != r_dict["recruiter_name"]:
-                                self.log_audit(db, rid, "recruiter_name", r_dict["recruiter_name"], new_name, "Capitalized")
-                                r_dict["recruiter_name"] = new_name
-                                modified = True
+                if r_dict.get("phone"):
+                    res = normalize_phone(r_dict["phone"])
+                    new_val = res["value"] if res else None
+                    if new_val != r_dict["phone"]:
+                        self.log_audit(db, rid, "phone", r_dict["phone"], new_val, "Normalized via Phase IV Engine")
+                        r_dict["phone"] = new_val
 
-                        # 4. Score Re-calculation
-                        score, missing_list = calculate_completeness(r_dict, c_dict)
-                        missing_dict = {
-                            "primary_email": not bool(r_dict.get("email")) or "missing.local" in r_dict.get("email", ""),
-                            "primary_phone": not bool(r_dict.get("phone")), "linkedin": not bool(r_dict.get("linkedin")),
-                            "company": not bool(r_dict.get("company_id")), "location": not bool(r_dict.get("location")),
-                            "title": not bool(r_dict.get("title")), "specialization": not bool(r_dict.get("specialization"))
-                        }
-                        q_score = calculate_quality(missing_dict)
-                        
-                        if score != r_dict.get("completeness_score") or q_score != r_dict.get("quality_score"):
-                            r_dict["completeness_score"] = score
-                            r_dict["quality_score"] = q_score
-                            modified = True
-                            
-                        r_dict["sentinel_status"] = "Completed"
-                        r_dict["last_scan_at"] = datetime.now(timezone.utc).isoformat()
-                        
-                        if modified:
-                            state.recruiters_completed += 1
-                            batch_updates.append(r_dict)
-                    
-                    if batch_updates:
-                        try:
-                            # Push updates to parquet
-                            parquet_writer.update_records(batch_updates)
-                        except Exception as e:
-                            logger.error(f"[Phase IV] Parquet Write Failed: {e}")
-                            
-                        # Commit the audits
-                        db.commit()
+                if r_dict.get("recruiter_name"):
+                    new_name = normalize_name(r_dict["recruiter_name"])
+                    if new_name != r_dict["recruiter_name"]:
+                        self.log_audit(db, rid, "recruiter_name", r_dict["recruiter_name"], new_name, "Capitalized")
+                        r_dict["recruiter_name"] = new_name
 
-                # Company completed
-                state.companies_completed += 1
-                db.commit()
+                score, _ = calculate_completeness(r_dict, c_dict)
+                missing_dict = {
+                    "primary_email": not bool(r_dict.get("email")) or "missing.local" in str(r_dict.get("email") or ""),
+                    "primary_phone": not bool(r_dict.get("phone")), "linkedin": not bool(r_dict.get("linkedin")),
+                    "company": not bool(c_id), "location": not bool(r_dict.get("location")),
+                    "title": not bool(r_dict.get("title")), "specialization": not bool(r_dict.get("specialization"))
+                }
+                r_dict["completeness_score"] = score
+                r_dict["quality_score"] = calculate_quality(missing_dict)
+                r_dict["sentinel_status"] = "Completed"
+                r_dict["last_scan_at"] = datetime.now(timezone.utc).isoformat()
+                batch_updates.append(r_dict)
 
-            # End of full run - recalculate audit
-            self._sync_audit()
+            if not batch_updates:
+                db.close()
+                return False
+
+            # Persist Parquet first; audit and progress state are committed only if
+            # the actual recruiter changes were safely written.
+            parquet_writer.update_records(batch_updates)
+            state.recruiters_completed += len(batch_updates)
+            state.companies_completed += len(completed_company_ids - {None})
+            state.current_batch_count = len(batch_updates)
+            db.commit()
             db.close()
             return True
             
@@ -332,8 +304,8 @@ class SentinelEngine:
         while self.running:
             processed = await asyncio.to_thread(self._process_phase4)
             if not processed:
-                await asyncio.sleep(10)
+                await asyncio.sleep(300)
             else:
-                await asyncio.sleep(self.sleep_interval)
+                await asyncio.sleep(2)
 
 sentinel_engine = SentinelEngine()

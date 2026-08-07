@@ -116,7 +116,7 @@ export default function Login() {
               <i className="ti ti-mail absolute left-3.5 text-[#666] text-base pointer-events-none group-focus-within:text-[var(--brand)] transition-colors" />
               <input
                 id="email-input"
-                className="w-full h-11 rounded-lg border border-[#333] bg-[#111] text-white pl-10 pr-4 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)] aria-[invalid=true]:border-red-500 aria-[invalid=true]:focus:shadow-[0_0_0_4px_rgba(239,68,68,0.1)]"
+                className="w-full h-11 rounded-lg border border-[#333] bg-[var(--bg-surface)] text-white pl-10 pr-4 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)] aria-[invalid=true]:border-red-500 aria-[invalid=true]:focus:shadow-[0_0_0_4px_rgba(239,68,68,0.1)]"
                 type="email"
                 required
                 autoComplete="email"
@@ -139,7 +139,7 @@ export default function Login() {
               <i className="ti ti-lock absolute left-3.5 text-[#666] text-base pointer-events-none group-focus-within:text-[var(--brand)] transition-colors" />
               <input
                 id="password-input"
-                className="w-full h-11 rounded-lg border border-[#333] bg-[#111] text-white pl-10 pr-10 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]"
+                className="w-full h-11 rounded-lg border border-[#333] bg-[var(--bg-surface)] text-white pl-10 pr-10 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]"
                 type={showPassword ? 'text' : 'password'}
                 required
                 autoComplete="current-password"
@@ -162,7 +162,7 @@ export default function Login() {
             <label className="flex items-center gap-2 text-[13px] text-[#a0a0a0] cursor-pointer">
               <input 
                 type="checkbox" 
-                className="appearance-none w-4 h-4 cursor-pointer bg-[#111] border border-[#444] rounded flex-shrink-0 relative transition-all checked:bg-[var(--brand)] checked:border-[var(--brand)] focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_var(--brand-bg)] mt-[2px] after:content-[''] after:absolute after:left-[4px] after:top-[1px] after:w-[5px] after:h-[9px] after:border-solid after:border-white after:border-0 after:border-r-2 after:border-b-2 after:rotate-45 after:opacity-0 checked:after:opacity-100"
+                className="appearance-none w-4 h-4 cursor-pointer bg-[var(--bg-surface)] border border-[#444] rounded flex-shrink-0 relative transition-all checked:bg-[var(--brand)] checked:border-[var(--brand)] focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_var(--brand-bg)] mt-[2px] after:content-[''] after:absolute after:left-[4px] after:top-[1px] after:w-[5px] after:h-[9px] after:border-solid after:border-white after:border-0 after:border-r-2 after:border-b-2 after:rotate-45 after:opacity-0 checked:after:opacity-100"
               />
               Remember me
             </label>
@@ -192,7 +192,7 @@ export default function Login() {
             <span className="px-4">Or continue with</span>
           </div>
 
-          <button type="button" onClick={() => customGoogleLogin()} disabled={isAuthenticating} className="w-full h-12 rounded-xl border border-white/5 dark:border-[#2a2a2a] bg-white/5 dark:bg-[#1e1e1e] text-white text-[15px] font-medium cursor-pointer transition-all flex items-center justify-center gap-3 hover:bg-white/10 dark:hover:bg-white/10">
+          <button type="button" onClick={() => customGoogleLogin()} disabled={isAuthenticating} className="w-full h-12 rounded-xl border border-white/5 dark:border-[#2a2a2a] bg-[var(--bg-hover)] dark:bg-[#1e1e1e] text-white text-[15px] font-medium cursor-pointer transition-all flex items-center justify-center gap-3 hover:bg-[var(--bg-hover)] dark:hover:bg-[var(--bg-hover)]">
             <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
               <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>

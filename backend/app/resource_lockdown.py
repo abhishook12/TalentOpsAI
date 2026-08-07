@@ -15,7 +15,7 @@ GEMINI_TRACKER_FILE = os.path.join(os.path.dirname(__file__), "..", ".gemini_req
 # 90% Limit Thresholds (Override: 1000MB DB, 900MB Storage)
 MAX_DB_SIZE_MB = 1000.0  # 90% of 1GB limit
 MAX_STORAGE_SIZE_MB = 900.0 # 90% of 1000MB limit
-MAX_MEMORY_MB = 1024.0  # Increased from 250MB to prevent false alarms
+MAX_MEMORY_MB = 2048.0  # Increased to prevent false alarms (2GB limit)
 MAX_GEMINI_RPM = 60     # Increased from 7 RPM to prevent false alarms during AI processing
 
 class ResourceLockdownException(Exception):

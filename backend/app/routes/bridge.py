@@ -6,7 +6,7 @@ import time
 import os
 import json
 from ..database import get_db
-from ..models.auth_models import User, UserBridgeStatus, UserOutlookAccount
+from ..models.auth_models import User, UserBridgeStatus, ConnectedEmailAccount
 from ..services.auth_service import get_current_user_from_request
 from ..models.campaigns import EmailLog, EmailLogStatus, Campaign, CampaignRecruiter, CampaignStatus, CampaignRecruiterStatus
 
@@ -73,7 +73,7 @@ def bridge_heartbeat(payload: HeartbeatPayload = None, db: Session = Depends(get
 @router.get("/status")
 def get_bridge_status(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     status_record = db.query(UserBridgeStatus).filter(UserBridgeStatus.user_id == current_user.id).first()
-    outlook_account = db.query(UserOutlookAccount).filter(UserOutlookAccount.user_id == current_user.id).first()
+    outlook_account = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.user_id == current_user.id).first()
     connected_email = outlook_account.email_address if outlook_account else None
     
     # Calculate queue statistics
@@ -319,10 +319,10 @@ def bridge_oauth_callback(code: str = None, state: str = None, error: str = None
         if user:
             connected_email = user.email
 
-    # 3. Upsert UserOutlookAccount
-    outlook_account = db.query(UserOutlookAccount).filter(UserOutlookAccount.user_id == user_id).first()
+    # 3. Upsert ConnectedEmailAccount
+    outlook_account = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.user_id == user_id).first()
     if not outlook_account:
-        outlook_account = UserOutlookAccount(user_id=user_id)
+        outlook_account = ConnectedEmailAccount(user_id=user_id)
         db.add(outlook_account)
     
     outlook_account.email_address = connected_email
@@ -347,6 +347,111 @@ def bridge_oauth_callback(code: str = None, state: str = None, error: str = None
     # Redirect back to frontend profile
     return RedirectResponse(url=redirect_uri)
 
+
+# ---------------------------------------------------------
+# GOOGLE OAUTH
+# ---------------------------------------------------------
+from ..config import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI
+
+@router.get("/google/login")
+def bridge_google_login(redirect_uri: str = "/settings?tab=api", popup: str = "false", current_user: User = Depends(get_current_user_from_request)):
+    state_payload = {
+        "user_id": current_user.id,
+        "redirect_uri": redirect_uri,
+        "popup": popup,
+        "exp": datetime.utcnow() + timedelta(minutes=15)
+    }
+    state = jwt.encode(state_payload, SECRET_KEY, algorithm=ALGORITHM)
+    
+    if MOCK_OAUTH:
+        return RedirectResponse(url=f'/bridge/google/callback?code=mock_google_code&state={state}')
+        
+    # Request mail.google.com for sending, plus standard email/profile
+    scope = urllib.parse.quote("https://mail.google.com/ email profile")
+    google_url = (
+        "https://accounts.google.com/o/oauth2/v2/auth?"
+        f"client_id={GOOGLE_CLIENT_ID}&"
+        "response_type=code&"
+        f"redirect_uri={urllib.parse.quote(GOOGLE_REDIRECT_URI)}&"
+        f"scope={scope}&"
+        "access_type=offline&"
+        "prompt=consent&"
+        f"state={state}"
+    )
+    return RedirectResponse(url=google_url)
+
+
+@router.get('/google/callback')
+def bridge_google_callback(code: str = None, state: str = None, error: str = None, db: Session = Depends(get_db)):
+    if error:
+        return HTMLResponse(content=f"<html><body><h2>Google OAuth Error</h2><p>{error}</p></body></html>", status_code=400)
+    if not code or not state:
+        return HTMLResponse(content="<html><body><h2>Missing OAuth Parameters</h2></body></html>", status_code=400)
+        
+    try:
+        payload = jwt.decode(state, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("user_id")
+        redirect_uri = payload.get("redirect_uri", "/settings?tab=api")
+        popup = payload.get("popup", "false")
+    except Exception as e:
+        return HTMLResponse(content="<html><body><h2>Invalid State Token</h2></body></html>", status_code=400)
+
+    import requests
+    
+    access_token = "mock_google_access"
+    refresh_token = "mock_google_refresh"
+    connected_email = f"user_{user_id}@gmail.com"
+    
+    if not MOCK_OAUTH:
+        token_url = "https://oauth2.googleapis.com/token"
+        token_data = {
+            "client_id": GOOGLE_CLIENT_ID,
+            "client_secret": GOOGLE_CLIENT_SECRET,
+            "code": code,
+            "redirect_uri": GOOGLE_REDIRECT_URI,
+            "grant_type": "authorization_code"
+        }
+        try:
+            r = requests.post(token_url, data=token_data)
+            r.raise_for_status()
+            token_json = r.json()
+            access_token = token_json["access_token"]
+            refresh_token = token_json.get("refresh_token") # Note: only present if access_type=offline and prompt=consent
+            
+            # Fetch user email
+            headers = {"Authorization": f"Bearer {access_token}"}
+            me_r = requests.get("https://www.googleapis.com/oauth2/v3/userinfo", headers=headers)
+            me_r.raise_for_status()
+            connected_email = me_r.json().get("email")
+        except Exception as e:
+            return HTMLResponse(content=f"<html><body><h2>Failed to acquire Google tokens</h2><p>{str(e)}</p></body></html>", status_code=400)
+    else:
+        user = db.query(User).filter(User.id == user_id).first()
+        if user:
+            connected_email = user.email
+
+    # 3. Upsert ConnectedEmailAccount
+    account = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.user_id == user_id, ConnectedEmailAccount.provider == "google").first()
+    if not account:
+        account = ConnectedEmailAccount(user_id=user_id, provider="google")
+        db.add(account)
+    
+    account.email_address = connected_email
+    account.access_token = access_token
+    # Don't overwrite refresh_token with None if Google didn't return one on this login
+    if refresh_token:
+        account.refresh_token = refresh_token
+    account.status = "connected"
+    account.health_status = "healthy"
+    account.last_synced_at = _utcnow()
+    
+    db.commit()
+    
+    if popup == 'true':
+        return HTMLResponse(content="<html><script>window.opener.postMessage('oauth_success', '*'); window.close();</script><body style='font-family:sans-serif;text-align:center;padding:50px;'><h2>Connection Successful!</h2><p>This window will close automatically.</p></body></html>")
+        
+    return RedirectResponse(url=redirect_uri)
+
 @router.get("/tasks")
 def get_bridge_tasks(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     """Fetch pending emails for the bridge."""
@@ -355,7 +460,7 @@ def get_bridge_tasks(db: Session = Depends(get_db), current_user: User = Depends
 
 @router.post('/disconnect')
 def bridge_disconnect(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    outlook_account = db.query(UserOutlookAccount).filter(UserOutlookAccount.user_id == current_user.id).first()
+    outlook_account = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.user_id == current_user.id).first()
     if outlook_account:
         outlook_account.status = "disconnected"
         outlook_account.access_token = None

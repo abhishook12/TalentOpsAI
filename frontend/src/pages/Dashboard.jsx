@@ -194,7 +194,7 @@ export default function Dashboard() {
               {isFetchingAny && (
                 <span style={{
                   display: 'inline-block', width: 12, height: 12, border: '2px solid var(--text-muted)',
-                  borderTopColor: 'var(--brand)', borderRadius: '50%',
+                  borderTopColor: 'var(--text-primary)', borderRadius: '50%',
                   animation: 'spin 0.8s linear infinite',
                 }} />
               )}
@@ -240,13 +240,14 @@ export default function Dashboard() {
       {dataQuality?.total_recruiters === 0 ? (
         <div style={{
           padding: 60,
-          background: 'linear-gradient(135deg, rgba(201, 168, 76, 0.05), rgba(201, 168, 76, 0.02))',
           borderRadius: 6,
-          border: '1px dashed var(--brand)',
+          border: '1px dashed var(--card-border)',
+          background: 'var(--panel-bg)',
+          color: 'var(--text-primary)',
           textAlign: 'center',
           marginTop: 20
         }}>
-          <div style={{ width: 64, height: 64, borderRadius: 32, background: 'var(--brand)', display: 'inline-grid', placeItems: 'center', color: '#fff', marginBottom: 20, boxShadow: '0 8px 24px rgba(201, 168, 76, 0.3)' }}>
+          <div style={{ width: 64, height: 64, borderRadius: 32, background: 'var(--text-primary)', display: 'inline-grid', placeItems: 'center', color: 'var(--main-bg)', marginBottom: 20 }}>
             <i className="ti ti-database-import" style={{ fontSize: 32 }} />
           </div>
           <h2 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 12 }}>Welcome to TalentOps</h2>
@@ -328,7 +329,7 @@ export default function Dashboard() {
             <SkeletonRow rows={4} gap={10} height={52} />
           ) : Array.isArray(topCompanies) && topCompanies.length > 0 ? (
             <div style={{ display: 'grid', gap: 10 }}>
-              {topCompanies.map((company) => (
+              {topCompanies.map((company, index) => (
                 <button
                   key={company.company_id}
                   onClick={() => navigate({ to: '/companies' })}
@@ -346,14 +347,32 @@ export default function Dashboard() {
                     textAlign: 'left',
                   }}
                 >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <CompanyIdentity 
-                      domain={company.logo_domain || company.website || company.email_pattern} 
-                      name={company.company_name} 
-                      subtitle={[company.location, company.state_abbr].filter(Boolean).join(' • ') || 'Location unlisted'}
-                      interactive={false}
-                      style={{ padding: 0 }}
-                    />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, minWidth: 0 }}>
+                    <div style={{ 
+                      width: 28, 
+                      height: 28, 
+                      borderRadius: 6, 
+                      border: '1px solid var(--card-border)',
+                      background: 'var(--bg-base)',
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: 'var(--text-secondary)',
+                      flexShrink: 0
+                    }}>
+                      {index + 1}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <CompanyIdentity 
+                        domain={company.logo_domain || company.website || company.email_pattern} 
+                        name={company.company_name} 
+                        subtitle={company.website || company.email_pattern || 'Domain unlisted'}
+                        interactive={false}
+                        style={{ padding: 0 }}
+                      />
+                    </div>
                   </div>
                   <Badge tone="neutral">{formatCount(company.recruiter_count)} recruiters</Badge>
                 </button>

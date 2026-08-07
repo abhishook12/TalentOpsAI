@@ -291,7 +291,7 @@ export default function RichTextComposer({
                 type="button"
                 onClick={() => insertVariable(v.tag)}
                 disabled={disabled}
-                className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] hover:text-white transition-colors flex justify-between items-center"
+                className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] hover:text-[var(--text-primary)] transition-colors flex justify-between items-center"
               >
                 <span>{v.label}</span>
                 <span className="text-xs text-[var(--text-muted)] font-mono">{v.tag}</span>

@@ -105,14 +105,14 @@ export default function MailIntelDashboard() {
         </div>
         
         <div className="flex gap-4">
-          <button onClick={fetchData} className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-sm font-medium flex items-center gap-2 transition-colors">
+          <button onClick={fetchData} className="px-4 py-2 rounded-lg bg-[var(--bg-hover)] border border-[var(--border)] hover:bg-[var(--bg-hover)] text-sm font-medium flex items-center gap-2 transition-colors">
             <RefreshCw size={16} /> Sync Intelligence
           </button>
         </div>
       </div>
 
       {/* Coverage Progress */}
-      <div className="mb-8 bg-[#121214] border border-white/10 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
+      <div className="mb-8 bg-[#121214] border border-[var(--border)] rounded-2xl p-6 shadow-2xl relative overflow-hidden">
         <div className="flex justify-between items-end mb-2 relative z-10">
           <div>
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -130,7 +130,7 @@ export default function MailIntelDashboard() {
             <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mt-1">Processed</p>
           </div>
         </div>
-        <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden relative z-10">
+        <div className="h-3 w-full bg-[var(--bg-hover)] rounded-full overflow-hidden relative z-10">
           <div 
             className="h-full rounded-full transition-all duration-1000 ease-out"
             style={{ 
@@ -185,7 +185,7 @@ export default function MailIntelDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Domain Reputation Panel */}
-        <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-[#121214] p-6 shadow-2xl relative overflow-hidden">
+        <div className="lg:col-span-2 rounded-2xl border border-[var(--border)] bg-[#121214] p-6 shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 opacity-50" style={{ background: 'linear-gradient(to right, var(--brand), var(--brand-strong), #e0c274)' }} />
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -200,7 +200,7 @@ export default function MailIntelDashboard() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-gray-500 font-semibold">
+                <tr className="border-b border-[var(--border)] text-xs uppercase tracking-wider text-gray-500 font-semibold">
                   <th className="pb-3 px-4">Domain</th>
                   <th className="pb-3 px-4">Total Sent</th>
                   <th className="pb-3 px-4">Success Rate</th>
@@ -210,7 +210,7 @@ export default function MailIntelDashboard() {
               </thead>
               <tbody className="text-sm">
                 {domains.map((d, i) => (
-                  <tr key={d.domain} className="border-b border-white/5 hover:bg-white/5 transition-colors group">
+                  <tr key={d.domain} className="border-b border-white/5 hover:bg-[var(--bg-hover)] transition-colors group">
                     <td className="py-4 px-4 font-medium flex items-center gap-2">
                       <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-[10px] text-gray-400">
                         {d.domain.charAt(0).toUpperCase()}
@@ -242,7 +242,7 @@ export default function MailIntelDashboard() {
 
         {/* Intelligence Actions */}
         <div className="flex flex-col gap-6">
-          <div className="rounded-2xl border border-white/10 bg-[#121214] p-6">
+          <div className="rounded-2xl border border-[var(--border)] bg-[#121214] p-6">
             <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
               <Filter size={18} style={{ color: 'var(--brand)' }} />
               Bulk Cleanup Rules
@@ -252,7 +252,7 @@ export default function MailIntelDashboard() {
             <div className="space-y-3">
               <button 
                 onClick={() => setCleanupAction({ active: true, filter: 'suspicious', count: stats?.suspicious })}
-                className="w-full text-left p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all flex items-center justify-between group"
+                className="w-full text-left p-4 rounded-xl bg-[var(--bg-hover)] hover:bg-[var(--bg-hover)] border border-white/5 transition-all flex items-center justify-between group"
               >
                 <div>
                   <div className="font-medium text-amber-400 text-sm mb-1">Quarantine Low Confidence</div>
@@ -263,7 +263,7 @@ export default function MailIntelDashboard() {
 
               <button 
                 onClick={() => setCleanupAction({ active: true, filter: 'bounced', count: 0 })}
-                className="w-full text-left p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all flex items-center justify-between group"
+                className="w-full text-left p-4 rounded-xl bg-[var(--bg-hover)] hover:bg-[var(--bg-hover)] border border-white/5 transition-all flex items-center justify-between group"
               >
                 <div>
                   <div className="font-medium text-red-400 text-sm mb-1">Purge Serial Bouncers</div>
@@ -274,7 +274,7 @@ export default function MailIntelDashboard() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-[#121214] p-6">
+          <div className="rounded-2xl border border-[var(--border)] bg-[#121214] p-6">
              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Live Activity</h3>
              <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 mb-3">
                 <span className="text-sm text-emerald-400 font-medium flex items-center gap-2"><CheckCircle2 size={16}/> Recent Replies</span>
@@ -292,7 +292,7 @@ export default function MailIntelDashboard() {
       {/* Cleanup Modal */}
       {cleanupAction.active && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#1a1a1d] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+          <div className="bg-[#1a1a1d] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md shadow-2xl">
             <h3 className="text-xl font-bold mb-2">Confirm Action</h3>
             <p className="text-sm text-gray-400 mb-6">
               You are about to execute the <strong>{cleanupAction.filter}</strong> cleanup rule. This will permanently alter the status of targeted emails to protect your sender reputation.
@@ -300,7 +300,7 @@ export default function MailIntelDashboard() {
             <div className="flex justify-end gap-3">
               <button 
                 onClick={() => setCleanupAction({ active: false })}
-                className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/5 transition-colors"
+                className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--bg-hover)] transition-colors"
               >
                 Cancel
               </button>

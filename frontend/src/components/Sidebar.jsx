@@ -84,17 +84,15 @@ export default function Sidebar() {
       top: 0,
       flexShrink: 0,
       zIndex: 20,
-      overflow: 'visible',
     }}>
-      <div style={{ padding: '24px 20px', borderBottom: '1px solid var(--card-border)' }}>
+      <div style={{ padding: '32px 24px', flexShrink: 0 }}>
         
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 24 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 32 }}>
           <div style={{
-            fontFamily: '"Playfair Display", serif',
-            fontSize: 28,
+            fontSize: 24,
             fontWeight: 700,
             lineHeight: 1,
-            letterSpacing: '-0.02em',
+            letterSpacing: '-0.04em',
             color: 'var(--text-primary)',
             display: 'flex',
             alignItems: 'center',
@@ -103,7 +101,7 @@ export default function Sidebar() {
             <span>T</span><span style={{ fontWeight: 400 }}>O</span>
           </div>
           <div style={{ 
-            fontSize: 11, 
+            fontSize: 10, 
             fontWeight: 600, 
             letterSpacing: '0.25em', 
             color: 'var(--text-primary)' 
@@ -113,27 +111,26 @@ export default function Sidebar() {
         </div>
 
         <div style={{ minWidth: 0 }}>
-          <div style={{ color: 'var(--text-primary)', fontSize: 14, fontWeight: 700 }}>
+          <div style={{ color: 'var(--text-primary)', fontSize: 13, fontWeight: 600 }}>
             {isAdmin ? 'Admin Console' : 'TalentOps'}
           </div>
-          <div style={{ color: 'var(--text-muted)', fontSize: 10, fontWeight: 600, marginTop: 4, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+          <div style={{ color: 'var(--text-muted)', fontSize: 10, fontWeight: 500, marginTop: 4, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
             {isAdmin ? 'OPERATIONS' : 'RECRUITER INTEL'}
           </div>
         </div>
       </div>
 
-      <nav style={{ flex: 1, minHeight: 0, padding: '14px 12px', overflowY: 'auto' }}>
+      <nav style={{ flex: 1, minHeight: 0, padding: '0 12px 24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
         {nav.map((item, index) => {
           if (item.isGroupHeader) {
             return (
               <div key={`header-${index}`} style={{
                 color: 'var(--text-muted)',
                 fontSize: 10,
-                fontWeight: 700,
+                fontWeight: 600,
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
-                padding: '16px 14px 8px',
-                marginTop: 8
+                padding: '24px 12px 8px',
               }}>
                 {item.label}
               </div>
@@ -153,22 +150,18 @@ export default function Sidebar() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 12,
-                padding: '10px 14px',
-                marginBottom: 4,
-                borderRadius: 8,
+                padding: '10px 12px',
+                borderRadius: 6,
                 textDecoration: 'none',
                 color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
-                background: active ? 'var(--brand-bg)' : 'transparent',
-                border: '1px solid transparent',
-                borderLeft: active ? '4px solid var(--brand)' : '4px solid transparent',
-                boxShadow: active ? 'var(--shadow)' : 'none',
-                fontSize: 13.5,
-                fontWeight: active ? 900 : 700,
-                letterSpacing: '0.01em',
+                background: active ? '#1B1B1B' : 'transparent',
+                fontSize: 13,
+                fontWeight: active ? 500 : 400,
+                position: 'relative'
               }}
               onMouseEnter={(event) => {
                 if (active) return
-                event.currentTarget.style.background = 'var(--brand-bg)'
+                event.currentTarget.style.background = 'var(--hover-bg, #1D1D1D)'
                 event.currentTarget.style.color = 'var(--text-primary)'
               }}
               onMouseLeave={(event) => {
@@ -177,19 +170,28 @@ export default function Sidebar() {
                 event.currentTarget.style.color = 'var(--text-secondary)'
               }}
             >
-              <Icon size={18} strokeWidth={active ? 2.5 : 2} opacity={active ? 1 : 0.88} fill={active ? 'currentColor' : 'none'} />
+              {active && (
+                <div style={{
+                  position: 'absolute',
+                  left: -12,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: 3,
+                  height: 16,
+                  background: 'var(--text-primary)',
+                  borderRadius: '0 4px 4px 0'
+                }} />
+              )}
+              <Icon size={16} strokeWidth={active ? 2.5 : 2} />
               <span style={{ flex: 1 }}>{label}</span>
               {item.badge && (
                 <div style={{
                   background: 'var(--danger)',
                   color: 'white',
-                  fontSize: '11px',
-                  fontWeight: 'bold',
+                  fontSize: '10px',
+                  fontWeight: 600,
                   padding: '2px 6px',
-                  borderRadius: '6px',
-                  minWidth: '20px',
-                  textAlign: 'center',
-                  animation: 'pulse-badge 2s infinite'
+                  borderRadius: '999px',
                 }}>
                   {item.badge}
                 </div>
@@ -200,21 +202,20 @@ export default function Sidebar() {
       </nav>
 
       <div style={{
-        padding: '10px 14px 12px',
-        borderTop: '1px solid var(--card-border)',
+        padding: '24px 24px',
         flexShrink: 0,
       }}>
         {user && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px 16px', marginBottom: 8, borderBottom: '1px solid var(--card-border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
             {user.avatar_url ? (
               <img src={user.avatar_url} alt="User Avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
             ) : (
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #d8d8d8, #8c8c8c)', display: 'grid', placeItems: 'center', color: '#111', fontWeight: 800 }}>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#262626', display: 'grid', placeItems: 'center', color: '#F5F5F5', fontWeight: 500, fontSize: 12 }}>
                 {user.first_name?.[0]}
               </div>
             )}
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {user.first_name} {user.last_name}
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -231,41 +232,39 @@ export default function Sidebar() {
             display: 'flex',
             alignItems: 'center',
             gap: 12,
-            padding: '12px 14px',
+            padding: '10px 12px',
             borderRadius: 6,
             border: 'none',
             background: 'transparent',
             color: 'var(--text-muted)',
             cursor: 'pointer',
-            fontSize: 13.5,
-            fontWeight: 700,
-            transition: 'all 0.2s',
-            textAlign: 'left'
+            fontSize: 13,
+            fontWeight: 500,
+            transition: 'all 0.15s',
+            textAlign: 'left',
+            marginLeft: -12
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.color = 'var(--danger)'
-            e.currentTarget.style.background = 'color-mix(in srgb, var(--danger) 10%, transparent)'
+            e.currentTarget.style.color = 'var(--text-primary)'
+            e.currentTarget.style.background = 'var(--hover-bg, #1D1D1D)'
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.color = 'var(--text-muted)'
             e.currentTarget.style.background = 'transparent'
           }}
         >
-          <LogOut size={18} strokeWidth={2} />
+          <LogOut size={16} strokeWidth={2} />
           <span>Sign Out</span>
         </button>
         
         <div style={{
-          marginTop: 12,
-          paddingTop: 12,
-          borderTop: '1px solid var(--card-border)',
+          marginTop: 24,
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center',
           gap: 4,
           color: 'var(--text-muted)',
           fontSize: 10,
-          fontFamily: 'monospace',
+          fontFamily: 'var(--mono)',
           opacity: 0.6
         }}>
           <div>UI: {import.meta.env.VITE_APP_VERSION || 'local'}</div>

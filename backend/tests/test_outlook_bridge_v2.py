@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.main import app
 from app.database import Base, get_db
-from app.models.auth_models import User, UserOutlookAccount, UserBridgeStatus
+from app.models.auth_models import User, ConnectedEmailAccount, UserBridgeStatus
 from app.models.campaigns import Campaign, EmailLog, EmailLogStatus
 
 # Setup Test Database
@@ -75,11 +75,11 @@ def test_oauth_callback(auth_headers, test_user, db_session):
     import datetime
     state = jwt.encode({"user_id": test_user.id, "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=15)}, SECRET_KEY, algorithm=ALGORITHM)
     
-    # Test 2: OAuth Callback creates UserOutlookAccount
+    # Test 2: OAuth Callback creates ConnectedEmailAccount
     res = client.get(f"/api/bridge/oauth/callback?code=mock123&state={state}", headers=auth_headers, follow_redirects=False)
     assert res.status_code == 307  # Redirects back to app
     
-    account = db_session.query(UserOutlookAccount).filter_by(user_id=test_user.id).first()
+    account = db_session.query(ConnectedEmailAccount).filter_by(user_id=test_user.id).first()
     assert account is not None
     assert account.email_address == test_user.email
     assert account.status == "connected"
@@ -139,6 +139,6 @@ def test_bridge_disconnect(auth_headers, test_user, db_session):
     res = client.post("/api/bridge/disconnect", headers=auth_headers)
     assert res.status_code == 200
     
-    account = db_session.query(UserOutlookAccount).filter_by(user_id=test_user.id).first()
+    account = db_session.query(ConnectedEmailAccount).filter_by(user_id=test_user.id).first()
     assert account.status == "disconnected"
     assert account.access_token is None

@@ -81,7 +81,7 @@ class User(Base):
     resume_url = Column(String(500), nullable=True)
     
     # Global Preferences
-    default_sender_id = Column(Integer, nullable=True) # Will map to UserOutlookAccount
+    default_sender_id = Column(Integer, ForeignKey('connected_email_accounts.account_id', ondelete='SET NULL'), nullable=True) # Will map to ConnectedEmailAccount
     default_reply_to = Column(String(150), nullable=True)
     signature_html = Column(Text, nullable=True)
     
@@ -202,14 +202,22 @@ class APIKey(Base):
     created_at = Column(DateTime, server_default=func.now())
     is_active = Column(Boolean, default=True)
 
-class UserOutlookAccount(Base):
-    __tablename__ = 'user_outlook_accounts'
+class ConnectedEmailAccount(Base):
+    __tablename__ = 'connected_email_accounts'
     account_id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    provider = Column(String(50), nullable=False, default="smtp") # outlook, gmail, yahoo, smtp
     email_address = Column(String(255), nullable=False)
+    display_name = Column(String(255), nullable=True)
     refresh_token = Column(Text, nullable=True)
     access_token = Column(Text, nullable=True)
+    smtp_host = Column(String(255), nullable=True)
+    smtp_port = Column(Integer, nullable=True)
+    smtp_user = Column(String(255), nullable=True)
+    smtp_pass = Column(Text, nullable=True) # Encrypted
     status = Column(String(50), default="disconnected") # connected, disconnected, expired
+    health_status = Column(String(50), default="unknown") # healthy, error, unknown
+    last_verified_at = Column(DateTime, nullable=True)
     last_synced_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     

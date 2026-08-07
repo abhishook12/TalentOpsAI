@@ -54,7 +54,7 @@ const DatabaseIntelligenceCenter = () => {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-white/5 pb-6">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 mb-2">
+            <h1 className="text-3xl font-extrabold tracking-tight text-[var(--text-primary)] mb-2">
               Database Intelligence Center
             </h1>
             <p className="text-sm text-gray-400 font-medium max-w-2xl">
@@ -80,8 +80,8 @@ const DatabaseIntelligenceCenter = () => {
         </div>
 
         {/* Global Progress Bar */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm shadow-xl relative overflow-hidden group">
-          <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+        <div className="bg-[var(--bg-hover)] border border-[var(--border)] rounded-2xl p-6 backdrop-blur-sm shadow-xl relative overflow-hidden group">
+          <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
           <div className="flex justify-between items-end mb-4 relative z-10">
             <div>
               <h2 className="text-lg font-semibold text-gray-200">Overall Enrichment Progress</h2>
@@ -89,13 +89,13 @@ const DatabaseIntelligenceCenter = () => {
                 {metrics.total_processed.toLocaleString()} of {metrics.total_recruiters.toLocaleString()} profiles processed
               </p>
             </div>
-            <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-br from-indigo-400 to-purple-500">
+            <span className="text-3xl font-black text-[var(--text-primary)]">
               {progressPercent}%
             </span>
           </div>
           <div className="w-full bg-gray-900/80 rounded-full h-3 mb-2 overflow-hidden shadow-inner border border-black/50">
             <div 
-              className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 h-3 rounded-full transition-all duration-1000 ease-out relative"
+              className="bg-[var(--text-primary)] h-3 rounded-full transition-all duration-1000 ease-out relative"
               style={{ width: `${progressPercent}%` }}
             >
               <div className="absolute inset-0 bg-white/20 w-full animate-[shimmer_2s_infinite]"></div>
@@ -131,7 +131,7 @@ const DatabaseIntelligenceCenter = () => {
             title="Domains Mapped" 
             value={metrics.domains_mapped.toLocaleString()} 
             icon="🌐"
-            gradient="from-purple-500 to-indigo-400"
+            gradient="from-[var(--card-border)] to-[var(--card-border-strong)]"
           />
           <MetricCard 
             title="Logos Assigned" 
@@ -205,7 +205,7 @@ const MetricCard = ({ title, value, icon, gradient }) => (
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">{title}</p>
         <h4 className="text-3xl font-black text-gray-100">{value}</h4>
       </div>
-      <div className="text-2xl bg-white/5 p-3 rounded-xl border border-white/10 shadow-inner">
+      <div className="text-2xl bg-[var(--bg-hover)] p-3 rounded-xl border border-[var(--border)] shadow-inner">
         {icon}
       </div>
     </div>

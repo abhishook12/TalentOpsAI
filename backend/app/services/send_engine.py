@@ -43,17 +43,26 @@ request_executor = concurrent.futures.ThreadPoolExecutor(max_workers=WORKER_COUN
 def _utcnow():
     return datetime.now(timezone.utc)
 
-def _check_bridge_health(user_id: int) -> tuple[bool, str]:
-    """Check if the user has a valid OAuth token."""
-    from ..models.auth_models import UserOutlookAccount
+def _check_account_health(sender_account_id: int, user_id: int) -> tuple[bool, str]:
+    from ..models.auth_models import ConnectedEmailAccount, User
     from ..database import SessionLocal
     
     with SessionLocal() as db:
-        account = db.query(UserOutlookAccount).filter(UserOutlookAccount.user_id == user_id).first()
+        if sender_account_id:
+            account = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.account_id == sender_account_id).first()
+        else:
+            user = db.query(User).filter(User.id == user_id).first()
+            if user and user.default_sender_id:
+                account = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.account_id == user.default_sender_id).first()
+            else:
+                account = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.user_id == user_id).first()
+                
         if not account or account.status != "connected":
-            return False, "Outlook account not connected"
-        if not account.access_token:
-            return False, "Missing access token"
+            return False, "Email account not connected"
+        if account.provider == "microsoft" and not account.access_token:
+            return False, "Missing Microsoft access token"
+        if account.provider == "smtp" and not account.smtp_host:
+            return False, "Missing SMTP host"
             
     return True, "healthy"
 
@@ -108,12 +117,37 @@ MSAL_CLIENT_ID = os.getenv("MSAL_CLIENT_ID", "replace_me")
 MSAL_CLIENT_SECRET = os.getenv("MSAL_CLIENT_SECRET", "replace_me")
 MSAL_TENANT_ID = os.getenv("MSAL_TENANT_ID", "common")
 
-def _refresh_msal_token(user_id: int) -> str:
-    from ..models.auth_models import UserOutlookAccount
+from ..config import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+
+def _refresh_google_token(account) -> str:
     from ..database import SessionLocal
     with SessionLocal() as db:
-        account = db.query(UserOutlookAccount).filter(UserOutlookAccount.user_id == user_id).first()
-        if not account or not account.refresh_token:
+        if not account.refresh_token:
+            return None
+        token_url = "https://oauth2.googleapis.com/token"
+        data = {
+            "client_id": GOOGLE_CLIENT_ID,
+            "client_secret": GOOGLE_CLIENT_SECRET,
+            "refresh_token": account.refresh_token,
+            "grant_type": "refresh_token"
+        }
+        try:
+            r = requests.post(token_url, data=data, timeout=10)
+            if r.ok:
+                token_json = r.json()
+                account.access_token = token_json["access_token"]
+                if "refresh_token" in token_json:
+                    account.refresh_token = token_json["refresh_token"]
+                db.commit()
+                return account.access_token
+        except Exception:
+            pass
+    return None
+
+def _refresh_msal_token(account) -> str:
+    from ..database import SessionLocal
+    with SessionLocal() as db:
+        if not account.refresh_token:
             return None
         token_url = f"https://login.microsoftonline.com/{MSAL_TENANT_ID}/oauth2/v2.0/token"
         data = {
@@ -135,84 +169,150 @@ def _refresh_msal_token(user_id: int) -> str:
             pass
     return None
 
-async def _send_via_graph(user_id: int, payload: dict) -> tuple[bool, str, str]:
-    """Execute synchronous requests.post to Microsoft Graph API in a thread pool."""
-    from ..models.auth_models import UserOutlookAccount
+async def _send_email_via_provider(sender_account_id: int, user_id: int, payload: dict) -> tuple[bool, str, str]:
+    from ..models.auth_models import ConnectedEmailAccount, User
     from ..database import SessionLocal
     from ..routes.bridge import MOCK_OAUTH
     if MOCK_OAUTH:
-        # Simulate network delay and success (ultra-fast for local lightning speed)
         await asyncio.sleep(0.01)
         return True, None, None
         
     def _do_request(retry_auth=True):
         try:
             with SessionLocal() as db:
-                account = db.query(UserOutlookAccount).filter(UserOutlookAccount.user_id == user_id).first()
-                if not account or not account.access_token:
-                    return False, "Missing access token", "auth_error"
-                access_token = account.access_token
+                if sender_account_id:
+                    account = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.account_id == sender_account_id).first()
+                else:
+                    user = db.query(User).filter(User.id == user_id).first()
+                    if user and user.default_sender_id:
+                        account = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.account_id == user.default_sender_id).first()
+                    else:
+                        account = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.user_id == user_id).first()
                 
-            headers = {
-                "Authorization": f"Bearer {access_token}",
-                "Content-Type": "application/json"
-            }
-            # Determine sender email and name
-            sender_email = account.email_address or account.user.email if hasattr(account, 'user') else None
-            sender_name = sender_email.split('@')[0].replace('.', ' ').title() if sender_email else ""
-            
-            # Use provided from_email if exists, otherwise fallback to connected account email
-            final_sender_email = payload.get("from_email") or sender_email
-            
-            # Construct Graph API message payload
-            graph_payload = {
-                "message": {
-                    "subject": payload.get("subject", ""),
-                    "from": {
-                        "emailAddress": {
-                            "address": final_sender_email,
-                            "name": sender_name
-                        }
-                    },
-                    "body": {
-                        "contentType": "HTML",
-                        "content": payload.get("html_body", "")
-                    },
-                    "toRecipients": [
-                        {
-                            "emailAddress": {
-                                "address": payload.get("to_email")
-                            }
-                        }
-                    ]
-                },
-                "saveToSentItems": True
-            }
-            
-            resp = requests.post("https://graph.microsoft.com/v1.0/me/sendMail", headers=headers, json=graph_payload, timeout=10)
-            
-            if resp.status_code == 401 and retry_auth:
-                new_token = _refresh_msal_token(user_id)
-                if new_token:
-                    return _do_request(retry_auth=False)
-                return False, "Token expired", "auth_expired"
+                if not account:
+                    return False, "No sending account found", "auth_error"
                 
-            if resp.ok or resp.status_code == 202:
-                return True, None, None
-            else:
-                return False, f"Graph API Error: {resp.text}", "graph_error"
+                sender_email = account.email_address
+                sender_name = account.display_name or sender_email.split('@')[0].replace('.', ' ').title()
+                final_sender_email = payload.get("from_email") or sender_email
+                
+                if account.provider == "microsoft":
+                    if not account.access_token:
+                        return False, "Missing Microsoft access token", "auth_error"
+                    access_token = account.access_token
+                    headers = {
+                        "Authorization": f"Bearer {access_token}",
+                        "Content-Type": "application/json"
+                    }
+                    graph_payload = {
+                        "message": {
+                            "subject": payload.get("subject", ""),
+                            "from": {
+                                "emailAddress": {
+                                    "address": final_sender_email,
+                                    "name": sender_name
+                                }
+                            },
+                            "body": {
+                                "contentType": "HTML",
+                                "content": payload.get("html_body", "")
+                            },
+                            "toRecipients": [
+                                {
+                                    "emailAddress": {
+                                        "address": payload.get("to_email")
+                                    }
+                                }
+                            ]
+                        },
+                        "saveToSentItems": True
+                    }
+                    resp = requests.post("https://graph.microsoft.com/v1.0/me/sendMail", headers=headers, json=graph_payload, timeout=10)
+                    if resp.status_code == 401 and retry_auth:
+                        new_token = _refresh_msal_token(account)
+                        if new_token:
+                            return _do_request(retry_auth=False)
+                        return False, "Token expired", "auth_expired"
+                    if resp.ok or resp.status_code == 202:
+                        return True, None, None
+                    else:
+                        return False, f"Graph API Error: {resp.text}", "graph_error"
+                
+                elif account.provider == "smtp" or account.provider == "google" or account.provider == "yahoo":
+                    # Generic SMTP send
+                    import smtplib
+                    from email.mime.text import MIMEText
+                    from email.mime.multipart import MIMEMultipart
+                    from ..utils.encryption import decrypt_token
+                    
+                    msg = MIMEMultipart()
+                    msg['From'] = f"{sender_name} <{final_sender_email}>"
+                    msg['To'] = payload.get("to_email")
+                    msg['Subject'] = payload.get("subject", "")
+                    msg.attach(MIMEText(payload.get("html_body", ""), 'html'))
+                    
+                    if account.provider == "google" and account.access_token:
+                        # Use Gmail API for sending via OAuth
+                        import base64
+                        raw_msg = base64.urlsafe_b64encode(msg.as_bytes()).decode('utf-8')
+                        headers = {
+                            "Authorization": f"Bearer {account.access_token}",
+                            "Content-Type": "application/json"
+                        }
+                        gmail_payload = {"raw": raw_msg}
+                        resp = requests.post("https://gmail.googleapis.com/upload/gmail/v1/users/me/messages/send", headers=headers, json=gmail_payload, timeout=10)
+                        if resp.status_code == 401 and retry_auth:
+                            new_token = _refresh_google_token(account)
+                            if new_token:
+                                return _do_request(retry_auth=False)
+                            return False, "Google token expired", "auth_expired"
+                        if resp.ok:
+                            return True, None, None
+                        else:
+                            return False, f"Gmail API Error: {resp.text}", "graph_error"
+
+                    # Fallback to SMTP
+                    if account.provider == "google":
+                        smtp_host = "smtp.gmail.com"
+                        smtp_port = 587
+                        smtp_user = account.email_address
+                        # Should use an app password stored in smtp_pass
+                        smtp_pass = decrypt_token(account.smtp_pass) if account.smtp_pass else ""
+                    elif account.provider == "yahoo":
+                        smtp_host = "smtp.mail.yahoo.com"
+                        smtp_port = 587
+                        smtp_user = account.email_address
+                        smtp_pass = decrypt_token(account.smtp_pass) if account.smtp_pass else ""
+                    else:
+                        smtp_host = account.smtp_host
+                        smtp_port = account.smtp_port
+                        smtp_user = account.smtp_user
+                        smtp_pass = decrypt_token(account.smtp_pass) if account.smtp_pass else ""
+                        
+                    if not smtp_pass or not smtp_host:
+                        return False, "Missing SMTP credentials/host", "smtp_error"
+                        
+                    server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+                    server.starttls()
+                    server.login(smtp_user, smtp_pass)
+                    server.send_message(msg)
+                    server.quit()
+                    return True, None, None
+                    
+                else:
+                    return False, f"Unknown provider: {account.provider}", "unknown"
                 
         except requests.exceptions.Timeout:
-            return False, "Microsoft Graph request timed out (10s)", "smtp_timeout"
+            return False, "Request timed out (10s)", "timeout"
         except requests.exceptions.ConnectionError:
-            return False, "Cannot connect to Microsoft Graph", "network_lost"
+            return False, "Cannot connect to external API", "network_lost"
         except Exception as e:
             return False, str(e), "unknown"
             
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(request_executor, _do_request)
 
-async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, signature_html: str, template: dict, from_email: str, user_id: int):
+async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, signature_html: str, template: dict, from_email: str, user_id: int, sender_account_id: int):
     logger.info(f"Worker {worker_id} started for campaign {campaign_id}")
     while True:
         try:
@@ -279,8 +379,8 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                 "html_body": body or ""
             }
             
-            logger.info(f"Worker {worker_id}: Sending email to {rec_email} via Microsoft Graph API...")
-            success, error_msg, error_type = await _send_via_graph(user_id, payload)
+            logger.info(f"Worker {worker_id}: Sending email to {rec_email} via provider...")
+            success, error_msg, error_type = await _send_email_via_provider(sender_account_id, user_id, payload)
             
             def _update_result_db(success, error_msg):
                 with SessionLocal() as db:
@@ -351,6 +451,7 @@ async def process_campaign_queue(campaign_id: int):
     template = {}
     from_email = None
     user_id = None
+    sender_account_id = None
     
     with SessionLocal() as db:
         campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
@@ -359,14 +460,12 @@ async def process_campaign_queue(campaign_id: int):
         
         user_id = campaign.user_id
         from_email = campaign.from_email
+        sender_account_id = campaign.sender_account_id
         
-    # 2. Pre-flight: Check Outlook Bridge using the campaign's user_id
-    # Feature: Offline Queueing - We no longer fail if the bridge is offline.
-    # We simply let the engine queue the emails into the database, and the bridge will process them upon reconnect.
-    healthy, error = _check_bridge_health(user_id)
+    # 2. Pre-flight: Check provider health using the campaign's sender_account_id (or user fallback)
+    healthy, error = _check_account_health(sender_account_id, user_id)
     if not healthy:
-        logger.warning(f"Bridge is currently offline ({error}). Campaign {campaign_id} will be queued up for when it reconnects.")
-        # We do NOT fail the campaign anymore.
+        logger.warning(f"Sending account is currently offline or missing ({error}). Campaign {campaign_id} will be queued up for when it reconnects.")
         
     with SessionLocal() as db:
         campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
@@ -440,7 +539,7 @@ async def process_campaign_queue(campaign_id: int):
         # Start workers for this batch (capped at WORKER_COUNT)
         workers = []
         for i in range(min(WORKER_COUNT, len(batch_ids))):
-            task = asyncio.create_task(_worker_task(i, campaign_id, batch_queue, signature_html, template, from_email, user_id))
+            task = asyncio.create_task(_worker_task(i, campaign_id, batch_queue, signature_html, template, from_email, user_id, sender_account_id))
             workers.append(task)
         
         # Wait for this batch to complete

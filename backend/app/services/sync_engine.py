@@ -10,7 +10,7 @@ import requests
 from sqlalchemy import func
 
 from ..database import SessionLocal
-from ..models.auth_models import UserOutlookAccount
+from ..models.auth_models import ConnectedEmailAccount
 from ..models.campaigns import Campaign, CampaignRecruiter, CampaignRecruiterStatus, EmailLog, EmailLogStatus
 from ..models.models import Recruiter
 
@@ -149,7 +149,7 @@ async def sync_engine_loop():
             
         try:
             with SessionLocal() as db:
-                accounts = db.query(UserOutlookAccount).filter(UserOutlookAccount.status == "connected").all()
+                accounts = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.status == "connected").all()
                 for account in accounts:
                     if not account.access_token:
                         continue

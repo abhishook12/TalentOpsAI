@@ -22,6 +22,10 @@ TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY")
 TAVILY_API_KEYS = [k.strip() for k in os.environ.get("TAVILY_API_KEYS", "").split(",") if k.strip()]
 HUNTER_API_KEY = os.environ.get("HUNTER_API_KEY")
 
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "http://localhost:8000/bridge/google/callback")
+
 DEVELOPMENT_LOCKDOWN = os.getenv("DEVELOPMENT_LOCKDOWN", "false").lower() in ("1", "true", "yes", "on")
 FEATURE_PASTE_IMPORT = os.getenv("FEATURE_PASTE_IMPORT", "false").lower() in ("1", "true", "yes", "on")
 FEATURE_CSV_IMPORT = os.getenv("FEATURE_CSV_IMPORT", "false").lower() in ("1", "true", "yes", "on")

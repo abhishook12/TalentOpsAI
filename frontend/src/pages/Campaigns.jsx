@@ -18,13 +18,15 @@ import CampaignProgress from '../components/CampaignProgress';
 import CustomSelect from '../components/ui/CustomSelect';
 import CampaignLogs from '../components/CampaignLogs';
 import TemplateLibraryModal from '../components/campaigns/TemplateLibraryModal';
+import ConnectionWizard from '../components/ConnectionWizard';
 import { setLastEmail, saveTemplate } from '../lib/emailTemplates';
 
 const STEPS = {
   RECIPIENTS: 1,
-  COMPOSE: 2,
-  PREVIEW: 3,
-  SEND: 4
+  SENDING_ACCOUNT: 2,
+  COMPOSE: 3,
+  PREVIEW: 4,
+  SEND: 5
 };
 
 export default function Campaigns() {
@@ -87,9 +89,11 @@ export default function Campaigns() {
   const [campaignName, setCampaignName] = useState('New Campaign');
   
   // Compose State
-  const [fromEmail, setFromEmail] = useState(() => {
-    return localStorage.getItem('talentops_from_email') || 'Outlook Default';
-  });
+  const [senderAccountId, setSenderAccountId] = useState(null);
+  const [accounts, setAccounts] = useState([]);
+  const [showConnectionWizard, setShowConnectionWizard] = useState(false);
+  const [fromEmail, setFromEmail] = useState('');
+  
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [signatureId, setSignatureId] = useState(null);
@@ -115,6 +119,8 @@ export default function Campaigns() {
     setSubject('');
     setBody('');
     setSignatureId(null);
+    setSenderAccountId(null);
+    setFromEmail('');
     setValidatedRecipients({ recipients: [], valid_count: 0 });
     setCurrentStep(STEPS.RECIPIENTS);
     setView('wizard');
@@ -131,14 +137,16 @@ export default function Campaigns() {
           await api.put(`/campaigns/${cid}`, {
             name: campaignName,
             from_email: fromEmail,
-            signature_id: signatureId
+            signature_id: signatureId,
+            sender_account_id: senderAccountId
           });
         } else {
           const res = await api.post('/campaigns', {
             name: campaignName,
             from_email: fromEmail,
             status: 'draft',
-            signature_id: signatureId
+            signature_id: signatureId,
+            sender_account_id: senderAccountId
           });
           cid = res.data.campaign_id;
           setActiveCampaignId(cid);
@@ -179,7 +187,6 @@ export default function Campaigns() {
     }
   }, [subject, body, signatureId, view, activeCampaignId, currentStep, campaignName, saveDraft]);
 
-  // Load campaigns with auto-refresh only when focused
   const { data: queryData, isLoading: loading, error: queryError, refetch: refetchCampaigns } = useQuery({
     queryKey: ['campaigns', debouncedSearchQuery, statusFilter, showTest, page, limit],
     queryFn: async () => {
@@ -199,6 +206,21 @@ export default function Campaigns() {
     refetchOnWindowFocus: true, // Only poll when tab is in foreground
     retry: 1
   });
+
+  const fetchAccounts = async () => {
+    try {
+      const res = await api.get('/accounts');
+      setAccounts(res.data.items || []);
+    } catch (err) {
+      console.error('Failed to load accounts');
+    }
+  };
+
+  useEffect(() => {
+    if (view === 'wizard') {
+      fetchAccounts();
+    }
+  }, [view]);
 
   const rawCampaigns = useMemo(() => {
     return Array.isArray(queryData) ? queryData : queryData?.items || [];
@@ -405,6 +427,7 @@ export default function Campaigns() {
       setActiveCampaignId(campaign.campaign_id);
       setCampaignName(campaign.name);
       setFromEmail(campaign.from_email || 'Outlook Default');
+      setSenderAccountId(campaign.sender_account_id || null);
       setSignatureId(campaign.signature_id);
       
       if (campaign.templates && campaign.templates.length > 0) {
@@ -556,16 +579,16 @@ export default function Campaigns() {
                 <div className="flex flex-col gap-3 items-end">
                   <button 
                     onClick={startNewCampaign}
-                    style={{ background: 'var(--brand)', color: '#111', padding: '12px 24px', borderRadius: 6, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8, border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}
+                    style={{ background: 'var(--text-primary)', color: 'var(--main-bg)', padding: '12px 24px', borderRadius: 6, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8, border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}
                     className="hover:scale-105"
                   >
                     <Plus size={18} /> New Campaign
                   </button>
                   <div className="flex gap-2 mt-2">
-                    <button onClick={() => setShowTemplateLibrary(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white text-xs font-bold hover:bg-white/10 transition-colors">
+                    <button onClick={() => setShowTemplateLibrary(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] text-[var(--text-primary)] text-xs font-bold hover:bg-[var(--bg-hover)] transition-colors">
                       <Clock size={14} /> Reuse Last
                     </button>
-                    <button onClick={() => refetchCampaigns()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white text-xs font-bold hover:bg-white/10 transition-colors">
+                    <button onClick={() => refetchCampaigns()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] text-[var(--text-primary)] text-xs font-bold hover:bg-[var(--bg-hover)] transition-colors">
                       <RefreshCw size={14} /> Refresh
                     </button>
                   </div>
@@ -580,10 +603,10 @@ export default function Campaigns() {
 
             {/* KPI Tiles - Span 4 cols each */}
             <div className="bento-tile" style={{ gridColumn: 'span 4' }}>
-              <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', color: 'var(--brand)', letterSpacing: '0.05em' }} className="bento-header flex items-center gap-2">
+              <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-primary)', letterSpacing: '0.05em' }} className="bento-header flex items-center gap-2">
                 <Activity size={16} /> Active Campaigns
               </div>
-              <div className="kpi-value text-white">{kpis.active}</div>
+              <div className="kpi-value text-[var(--text-primary)]">{kpis.active}</div>
               <div style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 12, fontWeight: 500 }}>Sending on this page</div>
             </div>
 
@@ -616,12 +639,12 @@ export default function Campaigns() {
                       className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
                         statusFilter === status 
                           ? 'bg-white text-black' 
-                          : 'bg-white/5 text-white hover:bg-white/10'
+                          : 'bg-[var(--bg-hover)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
                       }`}
                     >
                       {status.charAt(0).toUpperCase() + status.slice(1)}
                       <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${
-                        statusFilter === status ? 'bg-black/10 text-black' : 'bg-black/40 text-gray-400'
+                        statusFilter === status ? 'bg-black/10 text-black' : 'bg-[var(--bg-surface)] text-gray-400'
                       }`}>
                         {kpis.counts[status] || 0}
                       </span>
@@ -638,22 +661,22 @@ export default function Campaigns() {
                       placeholder="Search campaigns..." 
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-black/40 border border-white/10 rounded-xl !pl-9 pr-8 py-2 text-sm text-white focus:border-white/30 focus:outline-none transition-colors placeholder:text-gray-500"
+                      className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl !pl-9 pr-8 py-2 text-sm text-[var(--text-primary)] focus:border-[var(--border)] focus:outline-none transition-colors placeholder:text-gray-500"
                     />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-[10px] font-bold">/</div>
                   </div>
 
-                  <select value={limit} onChange={e => { setLimit(Number(e.target.value)); setPage(1); }} className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30">
+                  <select value={limit} onChange={e => { setLimit(Number(e.target.value)); setPage(1); }} className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--border)]">
                     <option value={10}>10 / page</option>
                     <option value={20}>20 / page</option>
                     <option value={50}>50 / page</option>
                   </select>
 
-                  <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-2 bg-black/40 border border-white/10 rounded-xl text-sm font-medium text-white hover:bg-white/10 transition-colors">
+                  <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors">
                     <Download size={14} /> Export
                   </button>
 
-                  <label className="flex items-center gap-2 text-sm text-white font-medium cursor-pointer ml-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 hover:bg-white/10 transition-colors">
+                  <label className="flex items-center gap-2 text-sm text-[var(--text-primary)] font-medium cursor-pointer ml-1 bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl px-3 py-2 hover:bg-[var(--bg-hover)] transition-colors">
                     <div className={`w-8 h-4 rounded-full relative transition-colors ${showTest ? 'bg-white' : 'bg-[#333]'}`}>
                       <div className={`absolute top-0.5 w-3 h-3 rounded-full transition-transform ${showTest ? 'bg-black left-4.5 translate-x-4' : 'bg-white left-0.5'}`}></div>
                     </div>
@@ -672,15 +695,15 @@ export default function Campaigns() {
               exit={{ y: 20, opacity: 0 }}
               className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-[var(--main-bg)] border border-[var(--card-border)] rounded-xl shadow-2xl z-50 flex items-center p-2 px-4 gap-4"
             >
-              <div className="text-sm font-bold text-white bg-[var(--brand)]/20 px-3 py-1 rounded-lg">
+              <div className="text-sm font-bold text-[var(--text-primary)] bg-[var(--card-border)] px-3 py-1 rounded-lg">
                 {selectedIds.size} Selected
               </div>
               <div className="w-[1px] h-6 bg-[var(--card-border)]"></div>
-              <button onClick={() => handleBulkAction('duplicate')} className="text-sm font-medium text-[var(--text-secondary)] hover:text-white flex items-center gap-1.5"><Copy size={14}/> Duplicate</button>
+              <button onClick={() => handleBulkAction('duplicate')} className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1.5"><Copy size={14}/> Duplicate</button>
               <button onClick={() => handleBulkAction('archive')} className="text-sm font-medium text-[var(--text-secondary)] hover:text-yellow-400 flex items-center gap-1.5"><Archive size={14}/> Archive</button>
               <button onClick={() => handleBulkAction('delete')} className="text-sm font-medium text-red-400 hover:text-red-300 flex items-center gap-1.5"><Trash2 size={14}/> Delete</button>
               <div className="w-[1px] h-6 bg-[var(--card-border)]"></div>
-              <button onClick={() => setSelectedIds(new Set())} className="text-sm text-[var(--text-muted)] hover:text-white"><X size={16}/></button>
+              <button onClick={() => setSelectedIds(new Set())} className="text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)]"><X size={16}/></button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -695,12 +718,12 @@ export default function Campaigns() {
             <div className="h-full flex flex-col justify-center items-center text-[var(--text-muted)] space-y-4">
               <Activity className="w-12 h-12 opacity-20" />
               <p>No campaigns found.</p>
-              <button onClick={startNewCampaign} className="text-white hover:underline text-sm font-medium">Create your first campaign</button>
+              <button onClick={startNewCampaign} className="text-[var(--text-primary)] hover:underline text-sm font-medium">Create your first campaign</button>
             </div>
           ) : (
             <div className="flex-1 overflow-auto custom-scrollbar">
               <table className="w-full text-left text-sm border-collapse relative">
-                <thead className="bg-[#111] text-[11px] uppercase tracking-wider font-extrabold text-white sticky top-0 z-10 border-b border-white/10">
+                <thead className="bg-[var(--bg-surface)] text-[11px] uppercase tracking-wider font-extrabold text-[var(--text-primary)] sticky top-0 z-10 border-b border-[var(--border)]">
                   <tr>
                     <th className="px-5 py-4 w-12">
                       <input 
@@ -708,7 +731,7 @@ export default function Campaigns() {
                         checked={selectedIds.size > 0 && selectedIds.size === sortedCampaigns.length}
                         ref={input => { if (input) input.indeterminate = selectedIds.size > 0 && selectedIds.size < sortedCampaigns.length; }}
                         onChange={toggleAll}
-                        className="w-4 h-4 rounded border-gray-500 bg-transparent text-white focus:ring-0 focus:ring-offset-0"
+                        className="w-4 h-4 rounded border-gray-500 bg-transparent text-[var(--text-primary)] focus:ring-0 focus:ring-offset-0"
                       />
                     </th>
                     <th className="px-6 py-4">Campaign</th>
@@ -723,19 +746,19 @@ export default function Campaigns() {
                     const isSelected = selectedIds.has(c.campaign_id);
                     const isFailed = (c.stats?.failed || 0) > 0;
                     return (
-                      <tr key={c.campaign_id} className={`transition-colors ${isSelected ? 'bg-white/5' : 'hover:bg-white/[0.02]'}`}>
+                      <tr key={c.campaign_id} className={`transition-colors ${isSelected ? 'bg-[var(--bg-hover)]' : 'hover:bg-white/[0.02]'}`}>
                         <td className="px-5 py-5">
                           <input 
                             type="checkbox" 
                             checked={isSelected}
                             onChange={() => toggleSelection(c.campaign_id)}
-                            className="w-4 h-4 rounded border-gray-500 bg-transparent text-white focus:ring-0 focus:ring-offset-0"
+                            className="w-4 h-4 rounded border-gray-500 bg-transparent text-[var(--text-primary)] focus:ring-0 focus:ring-offset-0"
                           />
                         </td>
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-2">
-                            <div className="font-bold text-white text-[15px]">{c.name}</div>
-                            {c.is_test && <span className="text-[10px] px-1.5 py-0.5 border uppercase font-bold rounded" style={{ color: 'var(--brand)', backgroundColor: 'var(--brand-bg)', borderColor: 'var(--brand-bg)' }}>Test</span>}
+                            <div className="font-bold text-[var(--text-primary)] text-[15px]">{c.name}</div>
+                            {c.is_test && <span className="text-[10px] px-1.5 py-0.5 border uppercase font-bold rounded" style={{ color: 'var(--text-primary)', backgroundColor: 'var(--card-border)', borderColor: 'var(--card-border)' }}>Test</span>}
                             {isFailed && <span className="text-[10px] px-1.5 py-0.5 bg-red-500 text-white font-bold rounded-full">{c.stats.failed} failed</span>}
                           </div>
                           <div className="text-xs text-[#777] mt-1.5 font-medium">{String(c.campaign_id).slice(0,8)}</div>
@@ -745,10 +768,10 @@ export default function Campaigns() {
                             c.status === 'active' ? '' :
                             c.status === 'paused' ? 'bg-[#3b2a0c] text-[#fcd34d]' :
                             c.status === 'completed' ? 'bg-[#0f3d24] text-[#86efac]' :
-                            c.status === 'draft' ? 'bg-transparent text-white' :
+                            c.status === 'draft' ? 'bg-transparent text-[var(--text-primary)]' :
                             'bg-red-500/20 text-red-400 border border-red-500/30'
                           }`}
-                            style={c.status === 'active' ? { backgroundColor: 'var(--brand-bg)', color: 'var(--brand)' } : {}}
+                            style={c.status === 'active' ? { backgroundColor: 'var(--card-border)', color: 'var(--text-primary)' } : {}}
                           >
                             <div className={`w-1.5 h-1.5 rounded-full ${
                               c.status === 'active' ? '' :
@@ -757,12 +780,12 @@ export default function Campaigns() {
                               c.status === 'draft' ? 'bg-gray-400' :
                               'bg-red-500'
                             }`}
-                            style={c.status === 'active' ? { backgroundColor: 'var(--brand-strong)' } : {}}
+                            style={c.status === 'active' ? { backgroundColor: 'var(--text-primary)' } : {}}
                             ></div>
                             {c.status}
                           </span>
                         </td>
-                        <td className="px-6 py-5 text-white font-bold text-sm">
+                        <td className="px-6 py-5 text-[var(--text-primary)] font-bold text-sm">
                           {new Date(c.created_at).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric', year: 'numeric' })}
                         </td>
                         <td className="px-6 py-5 w-72">
@@ -771,8 +794,8 @@ export default function Campaigns() {
                           ) : (
                             <div className="flex flex-col gap-2">
                               <div className="flex justify-between text-sm font-bold">
-                                <span className="text-white">{c.stats?.sent || 0} / {c.stats?.total || 0}</span>
-                                <span className={isFailed ? 'text-red-400' : 'text-white'}>{c.stats?.progress_percent || 0}%</span>
+                                <span className="text-[var(--text-primary)]">{c.stats?.sent || 0} / {c.stats?.total || 0}</span>
+                                <span className={isFailed ? 'text-red-400' : 'text-[var(--text-primary)]'}>{c.stats?.progress_percent || 0}%</span>
                               </div>
                               <div className="w-full h-1.5 bg-[#333] rounded-full overflow-hidden">
                                 <div 
@@ -785,26 +808,26 @@ export default function Campaigns() {
                         </td>
                         <td className="px-6 py-5 text-right">
                           <div className="flex items-center justify-end gap-3 relative group/actions">
-                            <button onClick={() => loadCampaign(c.campaign_id)} className="p-1.5 text-gray-400 hover:text-white transition-colors" title="View & Manage">
+                            <button onClick={() => loadCampaign(c.campaign_id)} className="p-1.5 text-gray-400 hover:text-[var(--text-primary)] transition-colors" title="View & Manage">
                               <Eye size={18} strokeWidth={2.5} />
                             </button>
                             {(c.status === 'active' || c.status === 'paused') && (
-                              <button onClick={() => toggleCampaignStatus(c.campaign_id, c.status)} className="p-1.5 text-gray-400 hover:text-white transition-colors" title={c.status === 'active' ? 'Pause' : 'Resume'}>
+                              <button onClick={() => toggleCampaignStatus(c.campaign_id, c.status)} className="p-1.5 text-gray-400 hover:text-[var(--text-primary)] transition-colors" title={c.status === 'active' ? 'Pause' : 'Resume'}>
                                 {c.status === 'active' ? <Pause size={18} strokeWidth={2.5} /> : <Play size={18} strokeWidth={2.5} />}
                               </button>
                             )}
-                            <button onClick={() => duplicateCampaign(c.campaign_id)} className="p-1.5 text-gray-400 hover:text-white transition-colors" title="Duplicate">
+                            <button onClick={() => duplicateCampaign(c.campaign_id)} className="p-1.5 text-gray-400 hover:text-[var(--text-primary)] transition-colors" title="Duplicate">
                               <Copy size={18} strokeWidth={2.5} />
                             </button>
                             
                             <div className="relative">
-                              <button className="p-1.5 text-gray-400 hover:text-white transition-colors opacity-0 group-hover/actions:opacity-100 peer">
+                              <button className="p-1.5 text-gray-400 hover:text-[var(--text-primary)] transition-colors opacity-0 group-hover/actions:opacity-100 peer">
                                 <MoreHorizontal size={18} strokeWidth={2.5} />
                               </button>
-                              <div className="absolute right-0 top-full mt-1 w-32 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-xl opacity-0 invisible peer-focus:opacity-100 peer-focus:visible hover:opacity-100 hover:visible z-50 flex flex-col py-1">
-                                <button onClick={() => navigator.clipboard.writeText(c.campaign_id)} className="text-left px-4 py-2 text-sm text-white font-medium hover:bg-white/5 w-full">Copy ID</button>
-                                <button onClick={() => archiveCampaign(c.campaign_id)} className="text-left px-4 py-2 text-sm text-yellow-500 font-medium hover:bg-white/5 w-full">Archive</button>
-                                <button onClick={() => deleteCampaign(c.campaign_id)} className="text-left px-4 py-2 text-sm text-red-500 font-medium hover:bg-white/5 w-full">Delete</button>
+                              <div className="absolute right-0 top-full mt-1 w-32 bg-[#1a1a1a] border border-[var(--border)] rounded-lg shadow-xl opacity-0 invisible peer-focus:opacity-100 peer-focus:visible hover:opacity-100 hover:visible z-50 flex flex-col py-1">
+                                <button onClick={() => navigator.clipboard.writeText(c.campaign_id)} className="text-left px-4 py-2 text-sm text-[var(--text-primary)] font-medium hover:bg-[var(--bg-hover)] w-full">Copy ID</button>
+                                <button onClick={() => archiveCampaign(c.campaign_id)} className="text-left px-4 py-2 text-sm text-yellow-500 font-medium hover:bg-[var(--bg-hover)] w-full">Archive</button>
+                                <button onClick={() => deleteCampaign(c.campaign_id)} className="text-left px-4 py-2 text-sm text-red-500 font-medium hover:bg-[var(--bg-hover)] w-full">Delete</button>
                               </div>
                             </div>
                           </div>
@@ -817,13 +840,13 @@ export default function Campaigns() {
             </div>
           )}
           
-          <div className="p-4 flex items-center justify-between border-t border-white/10 shrink-0 z-10">
+          <div className="p-4 flex items-center justify-between border-t border-[var(--border)] shrink-0 z-10">
             <div className="text-sm text-[#777] font-bold">
               Page {page} of {totalPages}
             </div>
             <div className="flex items-center gap-2">
-              <button disabled={page === 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="px-4 py-2 rounded-lg bg-transparent border border-white/10 text-sm font-bold text-white disabled:opacity-30 hover:bg-white/5 transition-colors">Prev</button>
-              <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} className="px-4 py-2 rounded-lg bg-transparent border border-white/10 text-sm font-bold text-white disabled:opacity-30 hover:bg-white/5 transition-colors">Next</button>
+              <button disabled={page === 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="px-4 py-2 rounded-lg bg-transparent border border-[var(--border)] text-sm font-bold text-[var(--text-primary)] disabled:opacity-30 hover:bg-[var(--bg-hover)] transition-colors">Prev</button>
+              <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} className="px-4 py-2 rounded-lg bg-transparent border border-[var(--border)] text-sm font-bold text-[var(--text-primary)] disabled:opacity-30 hover:bg-[var(--bg-hover)] transition-colors">Next</button>
             </div>
           </div>
         </div>
@@ -848,7 +871,7 @@ export default function Campaigns() {
                 type="text" 
                 value={campaignName}
                 onChange={e => setCampaignName(e.target.value)}
-                className="bg-transparent text-xl font-bold text-white border-none focus:outline-none focus:ring-1 focus:ring-white/20 rounded px-1 -ml-1 w-64"
+                className="bg-transparent text-xl font-bold text-[var(--text-primary)] border-none focus:outline-none focus:ring-1 focus:ring-white/20 rounded px-1 -ml-1 w-64"
                 placeholder="Campaign Name"
               />
               <div className="flex items-center gap-2 mt-1 px-1">
@@ -858,7 +881,7 @@ export default function Campaigns() {
             </div>
             <div className="ml-4 flex items-center text-[10px] uppercase font-bold text-[var(--text-muted)] tracking-wider bg-[var(--bg-surface)] px-2 py-1 rounded border border-[var(--border)]">
               {isSaving ? (
-                <><Loader2 className="w-3 h-3 mr-1.5 animate-spin text-[var(--brand)]" /> Saving</>
+                <><Loader2 className="w-3 h-3 mr-1.5 animate-spin text-[var(--text-primary)]" /> Saving</>
               ) : lastSaved ? (
                 <><CheckCircle2 className="w-3 h-3 mr-1.5 text-green-500" /> Saved {lastSaved.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</>
               ) : (
@@ -886,6 +909,7 @@ export default function Campaigns() {
         <div className="flex items-center gap-2 px-4 pb-4 overflow-x-auto hide-scrollbar">
           {[
             { id: STEPS.RECIPIENTS, label: 'Recipients' },
+            { id: STEPS.SENDING_ACCOUNT, label: 'Sending Account' },
             { id: STEPS.COMPOSE, label: 'Compose' },
             { id: STEPS.PREVIEW, label: 'Preview' },
             { id: STEPS.SEND, label: 'Send' }
@@ -900,11 +924,11 @@ export default function Campaigns() {
                 currentStep === step.id 
                   ? 'bg-white text-black shadow-md' 
                   : currentStep > step.id 
-                    ? 'bg-[var(--bg-surface)] text-white border border-[var(--border)] cursor-pointer hover:bg-[var(--card-bg)]'
+                    ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border)] cursor-pointer hover:bg-[var(--card-bg)]'
                     : 'bg-transparent text-[var(--text-muted)] border border-transparent opacity-50 cursor-not-allowed'
               }`}>
                 <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                  currentStep === step.id ? 'bg-black text-white' : 
+                  currentStep === step.id ? 'bg-[var(--bg-surface)] text-[var(--text-primary)]' : 
                   currentStep > step.id ? 'bg-[var(--text-primary)] text-[var(--card-bg)]' : 
                   'bg-[var(--border)] text-[var(--text-muted)]'
                 }`}>
@@ -966,6 +990,65 @@ export default function Campaigns() {
               </div>
             )}
 
+            {currentStep === STEPS.SENDING_ACCOUNT && (
+              <div className="flex-1 h-full w-full bg-[var(--main-bg)] rounded-xl border border-[var(--card-border)] overflow-y-auto shadow-sm p-8">
+                <div className="max-w-3xl mx-auto">
+                  <div className="flex justify-between items-center mb-8">
+                    <div>
+                      <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-2">Select Sending Account</h2>
+                      <p className="text-[var(--text-secondary)]">Choose which email account will be used to send this campaign.</p>
+                    </div>
+                    <button 
+                      onClick={() => setShowConnectionWizard(true)}
+                      className="px-4 py-2 bg-[var(--text-primary)] text-[var(--main-bg)] font-bold rounded-lg hover:opacity-90 transition-all flex items-center gap-2"
+                    >
+                      <Plus size={16} /> Connect New Account
+                    </button>
+                  </div>
+                  
+                  {accounts.length === 0 ? (
+                    <div className="text-center py-12 border border-dashed border-[var(--card-border)] rounded-xl">
+                      <Mail size={32} className="text-[var(--text-secondary)] mx-auto mb-4" />
+                      <h3 className="text-lg font-bold text-[var(--text-primary)] mb-2">No sending account connected</h3>
+                      <p className="text-[var(--text-secondary)] mb-6">Connect an account to continue building your campaign.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-4">
+                      {accounts.map(acc => (
+                        <div 
+                          key={acc.account_id}
+                          onClick={() => {
+                            setSenderAccountId(acc.account_id);
+                            setFromEmail(acc.email_address);
+                          }}
+                          className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                            senderAccountId === acc.account_id ? 'border-[var(--text-primary)] bg-[var(--card-border)]' : 'border-[var(--card-border)] bg-[var(--bg-surface)] hover:border-[var(--text-secondary)]'
+                          }`}
+                        >
+                          <div className="w-12 h-12 rounded-lg bg-[var(--bg-base)] flex items-center justify-center shrink-0">
+                            {acc.provider === 'microsoft' && <span className="text-[#0078d4] font-black text-xl">O</span>}
+                            {acc.provider === 'google' && <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="w-6 h-6" />}
+                            {acc.provider === 'yahoo' && <span className="text-[#6001d2] font-black text-xl">Y!</span>}
+                            {acc.provider === 'smtp' && <Mail className="text-[var(--text-secondary)]" size={24} />}
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-bold text-[var(--text-primary)] flex items-center gap-2">
+                              {acc.email_address}
+                              {acc.is_default && <span className="text-[10px] bg-[var(--card-border)] text-[var(--text-primary)] px-1.5 py-0.5 rounded uppercase tracking-wider">Default</span>}
+                            </div>
+                            <div className="text-sm text-[var(--text-secondary)] capitalize">{acc.provider}</div>
+                          </div>
+                          <div className="w-6 h-6 rounded-full border-2 flex items-center justify-center border-[var(--text-secondary)]">
+                            {senderAccountId === acc.account_id && <div className="w-3 h-3 rounded-full bg-[var(--text-primary)]" />}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {currentStep === STEPS.COMPOSE && (
               <div className="flex-1 h-full flex gap-4 w-full">
                 <div className="flex-[2] h-full flex flex-col gap-4">
@@ -977,7 +1060,7 @@ export default function Campaigns() {
                           value={subject}
                           onChange={e => setSubject(e.target.value)}
                           placeholder="Subject (Tip: use {{FirstName}})"
-                          className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-4 py-2.5 text-sm font-medium text-white focus:border-white focus:outline-none transition-colors"
+                          className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-4 py-2.5 text-sm font-medium text-[var(--text-primary)] focus:border-[var(--border)] focus:outline-none transition-colors"
                         />
                       </div>
                       <div className="flex gap-2">
@@ -999,49 +1082,21 @@ export default function Campaigns() {
                 <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-1">
                   <div className="bg-[var(--main-bg)] border border-[var(--card-border)] rounded-xl p-4 shadow-sm">
                     <h3 className="text-xs uppercase font-bold tracking-wider text-[var(--text-muted)] mb-4 flex items-center gap-2">
-                      <Activity className="w-4 h-4 text-white" /> Settings
+                      <Activity className="w-4 h-4 text-[var(--text-primary)]" /> Settings
                     </h3>
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">From Email</label>
-                        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg h-10 flex items-center">
-                          <CustomSelect
-                            value={fromEmail}
-                            onChange={(val) => {
-                              if (val === 'connect_new') {
-                                const token = localStorage.getItem('session_token') || sessionStorage.getItem('session_token');
-                                const w = window.open(`${API}/bridge/oauth/login?popup=true&token=${token}`, 'Connect Microsoft Outlook', 'width=500,height=600');
-                                const messageListener = async (event) => {
-                                  if (event.data === 'oauth_success') {
-                                    window.removeEventListener('message', messageListener);
-                                    try {
-                                      const res = await api.get('/auth/outlook/status');
-                                      if (res.data.connected) {
-                                        toast.success('Successfully connected Outlook account!');
-                                        setFromEmail(res.data.email);
-                                        localStorage.setItem('talentops_from_email', res.data.email);
-                                      }
-                                    } catch { console.error('oauth check err'); }
-                                  }
-                                };
-                                window.addEventListener('message', messageListener);
-                                
-                                const checkInterval = setInterval(() => {
-                                  if (w && w.closed) {
-                                    clearInterval(checkInterval);
-                                    window.removeEventListener('message', messageListener);
-                                  }
-                                }, 1000);
-                              } else {
-                                setFromEmail(val);
-                                localStorage.setItem('talentops_from_email', val);
-                              }
-                            }}
-                            options={[
-                              { value: 'Outlook Default', label: 'Outlook Default' },
-                              { value: 'connect_new', label: '+ Connect new Outlook account' }
-                            ]}
-                          />
+                        <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">Sending Account</label>
+                        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg h-10 flex items-center px-4">
+                          <span className="text-[var(--text-primary)] font-medium text-sm flex items-center gap-2">
+                            <Mail size={16} className="text-[var(--text-secondary)]" />
+                            {fromEmail || 'No account selected'}
+                          </span>
+                        </div>
+                        <div className="mt-2 text-right">
+                          <button onClick={() => setCurrentStep(STEPS.SENDING_ACCOUNT)} className="text-xs text-[var(--text-primary)] hover:underline">
+                            Change Account
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -1075,7 +1130,7 @@ export default function Campaigns() {
                     
                     {isValidating ? (
                       <div className="flex-1 flex flex-col items-center justify-center text-[var(--text-muted)] space-y-3">
-                        <Loader2 className="w-6 h-6 animate-spin text-white" />
+                        <Loader2 className="w-6 h-6 animate-spin text-[var(--text-primary)]" />
                         <span className="text-sm font-medium">Running checks...</span>
                       </div>
                     ) : preflightData ? (
@@ -1098,7 +1153,7 @@ export default function Campaigns() {
                         
                         {preflightData.ready && (
                           <div className="mt-8 pt-4 border-t border-[var(--border)]">
-                            <div className="bg-white/5 border border-white/10 rounded-lg p-3 text-sm text-white mb-4">
+                            <div className="bg-[var(--bg-hover)] border border-[var(--border)] rounded-lg p-3 text-sm text-[var(--text-primary)] mb-4">
                               ETA: <strong>{validatedRecipients.valid_count <= 50 ? `~${Math.max(5, Math.ceil(validatedRecipients.valid_count * 0.5))} secs` : `~${Math.ceil(validatedRecipients.valid_count / 60)} mins`}</strong>
                             </div>
                           </div>
@@ -1120,7 +1175,7 @@ export default function Campaigns() {
                 <CampaignProgress campaignId={activeCampaignId} />
                 <div className="bg-[var(--main-bg)] border border-[var(--card-border)] rounded-xl p-4 min-h-[300px] shadow-sm">
                    <h3 className="text-xs uppercase font-bold tracking-wider text-[var(--text-muted)] mb-4 flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-white" /> Delivery Logs
+                      <FileText className="w-4 h-4 text-[var(--text-primary)]" /> Delivery Logs
                     </h3>
                    <CampaignLogs campaignId={activeCampaignId} />
                 </div>
@@ -1136,26 +1191,32 @@ export default function Campaigns() {
           <button
             onClick={() => setCurrentStep(prev => prev - 1)}
             disabled={currentStep === STEPS.RECIPIENTS}
-            className="px-6 py-2.5 text-sm font-bold text-[var(--text-secondary)] hover:text-white disabled:opacity-30 transition-colors uppercase tracking-wide"
+            className="px-6 py-2.5 text-sm font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 transition-colors uppercase tracking-wide"
           >
             Back
           </button>
           
           <button
-            onClick={handleNextStep}
+            onClick={() => {
+              if (currentStep === STEPS.RECIPIENTS) setCurrentStep(STEPS.SENDING_ACCOUNT);
+              else if (currentStep === STEPS.SENDING_ACCOUNT) setCurrentStep(STEPS.COMPOSE);
+              else if (currentStep === STEPS.COMPOSE) setCurrentStep(STEPS.PREVIEW);
+              else if (currentStep === STEPS.PREVIEW) setCurrentStep(STEPS.SEND);
+            }}
             disabled={
               (currentStep === STEPS.RECIPIENTS && validatedRecipients.valid_count === 0) ||
+              (currentStep === STEPS.SENDING_ACCOUNT && !senderAccountId) ||
               (currentStep === STEPS.COMPOSE && (!subject.trim() || !body.trim())) ||
               (currentStep === STEPS.PREVIEW && !preflightData?.ready)
             }
-            className={`px-8 py-2.5 rounded-lg text-sm font-bold uppercase tracking-wide flex items-center gap-2 transition-all shadow-md ${
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold tracking-wide transition-all ${
                currentStep === STEPS.PREVIEW && preflightData?.ready
-                ? 'bg-white text-black hover:bg-gray-200'
+                ? 'bg-white text-black hover:bg-gray-100 shadow-[0_0_20px_rgba(255,255,255,0.3)]'
                 : currentStep === STEPS.PREVIEW && !preflightData?.ready
-                ? 'bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border)] cursor-not-allowed'
-                : (currentStep === STEPS.RECIPIENTS && validatedRecipients.valid_count === 0) || (currentStep === STEPS.COMPOSE && (!subject.trim() || !body.trim()))
-                ? 'bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border)] cursor-not-allowed'
-                : 'bg-white text-black hover:bg-gray-200'
+                  ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]/30 cursor-not-allowed border border-[var(--border)]'
+                : (currentStep === STEPS.RECIPIENTS && validatedRecipients.valid_count === 0) || (currentStep === STEPS.SENDING_ACCOUNT && !senderAccountId) || (currentStep === STEPS.COMPOSE && (!subject.trim() || !body.trim()))
+                  ? 'bg-[var(--bg-surface)] text-[var(--text-secondary)] cursor-not-allowed border border-[var(--card-border)]'
+                  : 'bg-white text-black hover:bg-gray-100 border border-transparent'
             }`}
           >
             {currentStep === STEPS.PREVIEW ? (
@@ -1180,6 +1241,16 @@ export default function Campaigns() {
           onImport={handleTemplateImport} 
         />
       )}
+
+      {showConnectionWizard && (
+        <ConnectionWizard 
+          onClose={() => setShowConnectionWizard(false)} 
+          onSuccess={() => {
+            setShowConnectionWizard(false);
+            fetchAccounts();
+          }} 
+        />
+      )}
     </div>
   );
 }
@@ -1197,7 +1268,7 @@ function ValidationItem({ label, success, error, info, warning }) {
         )}
       </div>
       <div>
-        <div className="text-sm font-bold text-white">{label}</div>
+        <div className="text-sm font-bold text-[var(--text-primary)]">{label}</div>
         {info && <div className="text-xs text-[var(--text-muted)] mt-1 font-medium">{info}</div>}
         {error && <div className={`text-xs mt-1 font-medium ${warning ? 'text-yellow-400/80' : 'text-red-400/90'}`}>{error}</div>}
       </div>

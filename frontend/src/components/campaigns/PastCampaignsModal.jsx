@@ -83,7 +83,7 @@ export default function PastCampaignsModal({ isOpen, onClose, onImport }) {
               <p className="text-sm text-[var(--text-muted)]">Browse and reuse your previously sent campaigns lightning fast.</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 text-[var(--text-muted)] hover:text-[#fff] hover:bg-white/5 rounded-lg transition-colors">
+          <button onClick={onClose} className="p-2 text-[var(--text-muted)] hover:text-[#fff] hover:bg-[var(--bg-hover)] rounded-lg transition-colors">
             <X size={24} />
           </button>
         </div>
@@ -148,7 +148,7 @@ export default function PastCampaignsModal({ isOpen, onClose, onImport }) {
                     </div>
                     <button 
                       onClick={handleUseForCampaign}
-                      className="flex items-center gap-2 px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-white text-sm font-bold rounded-lg shadow-md transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-[var(--text-primary)] text-sm font-bold rounded-lg shadow-md transition-colors"
                     >
                       <Check size={18} /> Reuse This Template
                     </button>
@@ -176,7 +176,7 @@ export default function PastCampaignsModal({ isOpen, onClose, onImport }) {
                     </div>
                   </div>
                   
-                  <div className="flex-1 overflow-auto bg-white p-6 relative">
+                  <div className="flex-1 overflow-auto bg-[var(--bg-surface)] p-6 relative">
                     {/* Note: Iframe content background kept white intentionally for email template rendering accuracy */}
                     {campaignDetails.templates && campaignDetails.templates.length > 0 ? (
                       <iframe 

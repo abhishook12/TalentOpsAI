@@ -88,7 +88,7 @@ const EditableEmail = memo(function EditableEmail({ recruiter, onUpdate }) {
           onKeyDown={e => e.key === 'Enter' && save()}
           onBlur={save}
           disabled={saving}
-          style={{ width: '100%', padding: '4px 6px', borderRadius: 4, border: '1px solid var(--brand)', background: 'var(--main-bg)', color: 'var(--text-primary)', outline: 'none' }}
+          style={{ width: '100%', padding: '4px 6px', borderRadius: 4, border: '1px solid var(--text-primary)', background: 'var(--main-bg)', color: 'var(--text-primary)', outline: 'none' }}
         />
       </div>
     );
@@ -483,7 +483,7 @@ export default function Directory() {
             {!companiesLoading && companyRows.length === 0 ? (
               <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No companies match this search.</div>
             ) : null}
-            {companyRows.map((company) => {
+            {companyRows.map((company, index) => {
               const active = selectedCompany?.company_id === company.company_id
               const pct = Math.max((company.recruiter_count || 0) / maxCompanies * 100, 4)
 
@@ -501,15 +501,32 @@ export default function Directory() {
                     color: 'var(--text-primary)',
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <CompanyIdentity 
-                        domain={company.logo_domain || company.website || company.email_pattern} 
-                        name={company.company_name} 
-                        metadata={company.location || 'Location not listed'}
-                        interactive={false}
-                        style={{ padding: 0 }}
-                      />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, minWidth: 0 }}>
+                      <div style={{ 
+                        width: 28, 
+                        height: 28, 
+                        borderRadius: 6, 
+                        border: '1px solid var(--card-border)',
+                        background: 'var(--bg-base)',
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: 'var(--text-secondary)',
+                        flexShrink: 0
+                      }}>
+                        {index + 1}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <CompanyIdentity 
+                          domain={company.logo_domain || company.website || company.email_pattern} 
+                          name={company.company_name} 
+                          metadata={company.website || company.email_pattern || 'Domain unlisted'}
+                          interactive={false}
+                          style={{ padding: 0 }}
+                        />
                       {(company.tags || company.notes || company.linkedin_url) && (
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8, paddingLeft: 44 + 16 }}>
                           {company.linkedin_url && (
@@ -544,11 +561,9 @@ export default function Directory() {
                           })()}
                         </div>
                       )}
-                    </div>
+                      </div>
                     <div style={{ fontFamily: 'var(--mono)', fontWeight: 900 }}>{company.recruiter_count || 0}</div>
                   </div>
-                  <div style={{ marginTop: 8, height: 5, borderRadius: 99, background: 'var(--card-border)', overflow: 'hidden' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', background: active ? 'var(--brand)' : '#4f46e5', borderRadius: 99 }} />
                   </div>
                 </button>
               )

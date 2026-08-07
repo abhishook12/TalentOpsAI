@@ -10,7 +10,7 @@ from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from .config import CORS_ORIGINS, IS_PRODUCTION, ENV as APP_ENV
-from .routes import recruiters, companies, vendors, analytics, admin, auth, actions, updates, ai, campaigns, harvester, users, visitor_analytics, notifications, bridge
+from .routes import recruiters, companies, vendors, analytics, admin, auth, actions, updates, ai, campaigns, harvester, users, visitor_analytics, notifications, bridge, accounts
 from .database import get_db, engine
 from .models import models, auth_models
 from .create_indexes import create_performance_indexes
@@ -285,6 +285,7 @@ app.include_router(notifications.router)
 app.include_router(visitor_analytics.router, prefix="/admin/visitor-analytics", tags=["Visitor Analytics"])
 app.include_router(sentinel.router, prefix="/sentinel", tags=["Sentinel"])
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
+app.include_router(accounts.router, prefix="/accounts", tags=["Accounts"])
 app.include_router(actions.router, prefix="/actions", tags=["Actions"])
 app.include_router(updates.router)
 app.include_router(ai.router, prefix="/ai", tags=["AI"])

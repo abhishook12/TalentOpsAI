@@ -106,7 +106,7 @@ export default function CampaignReuseWorkflow({ importedEmail, onClose, onComple
                     </div>
                     <button 
                       onClick={() => applyCleanup(s)}
-                      className="px-3 py-1.5 bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-white text-xs font-medium rounded-lg"
+                      className="px-3 py-1.5 bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-[var(--text-primary)] text-xs font-medium rounded-lg"
                     >
                       Apply
                     </button>
@@ -143,7 +143,7 @@ export default function CampaignReuseWorkflow({ importedEmail, onClose, onComple
                  </p>
                  <button 
                    onClick={handleFinish}
-                   className="w-full py-2.5 bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-white font-medium rounded-lg shadow-md transition-colors"
+                   className="w-full py-2.5 bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-[var(--text-primary)] font-medium rounded-lg shadow-md transition-colors"
                  >
                    Continue to Campaign
                  </button>
@@ -151,8 +151,8 @@ export default function CampaignReuseWorkflow({ importedEmail, onClose, onComple
             </div>
             
             <div className="col-span-2">
-              <div className="bg-white rounded-xl border border-[var(--border)] overflow-hidden h-[400px] flex flex-col">
-                <div className="p-4 border-b border-[var(--border)] bg-gray-50">
+              <div className="bg-[var(--bg-surface)] rounded-xl border border-[var(--border)] overflow-hidden h-[400px] flex flex-col">
+                <div className="p-4 border-b border-[var(--border)] bg-black">
                   <input 
                     type="text" 
                     value={subject} 

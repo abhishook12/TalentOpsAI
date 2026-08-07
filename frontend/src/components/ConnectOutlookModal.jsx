@@ -130,7 +130,7 @@ const ConnectOutlookModal = ({ isOpen, onClose, onSuccess }) => {
               <button 
                 id="modal-connect-btn"
                 onClick={handleConnect}
-                className="w-full bg-[#0078D4] hover:bg-[#006cbd] text-white px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-[#0078D4] hover:bg-[#006cbd] text-[var(--text-primary)] px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
               >
                 <i className="ti ti-brand-windows"></i>
                 Connect Outlook Account

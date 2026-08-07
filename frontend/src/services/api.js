@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const RAW_API_URL = import.meta.env.VITE_API_URL || 'https://talentopsai-1.onrender.com'
-const API_URL = import.meta.env.DEV ? 'http://127.0.0.1:8000' : '/api'
+const API_URL = 'http://127.0.0.1:8000' // Hardcoded for local dev to avoid ambiguity
 export const API = API_URL
 
 const clientCache = new Map()
@@ -142,7 +142,9 @@ export function getErrorMessage(err, fallback = 'Something went wrong') {
   if (err?.message === 'Network Error' || err?.code === 'ERR_NETWORK') {
     return `Cannot reach the API at ${API}. Start the backend (uvicorn) or check VITE_API_URL in frontend/.env`
   }
-  return err?.response?.data?.detail || err?.message || fallback
+  const url = err?.config?.url || 'unknown';
+  const status = err?.response?.status || 'none';
+  return err?.response?.data?.detail || `API Error [${status}] on ${url}: ${err?.message || fallback}`
 }
 
 export default api

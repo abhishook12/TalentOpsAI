@@ -3,7 +3,7 @@ from sqlalchemy import create_engine, text
 from app.database import Base, engine
 from app.models import auth_models, models, campaigns, system_settings
 
-# Create new tables (UserOutlookAccount, UserPreference)
+# Create new tables (ConnectedEmailAccount, UserPreference)
 Base.metadata.create_all(bind=engine)
 
 def run_migration():

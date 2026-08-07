@@ -131,7 +131,7 @@ export default function EmailPreview({ campaignId, subjectTemplate, bodyTemplate
             )}
             
             {/* Email Body */}
-            <div className="flex-1 p-6 bg-white dark:bg-[#1e1e1e] text-black dark:text-[#d4d4d4] m-4 rounded-lg border border-[var(--border)] shadow-sm">
+            <div className="flex-1 p-6 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] text-[#fff] dark:text-[#d4d4d4] m-4 rounded-lg border border-[var(--border)] shadow-sm">
               <div 
                 className="prose dark:prose-invert max-w-none text-sm font-sans"
                 style={{ fontFamily: 'Inter, sans-serif' }}

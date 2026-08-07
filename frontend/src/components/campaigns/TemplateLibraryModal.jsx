@@ -142,7 +142,7 @@ export default function TemplateLibraryModal({ isOpen, onClose, onImport }) {
               <p className="text-sm text-[var(--text-muted)]">Reuse past campaigns or access your saved templates.</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 text-[var(--text-muted)] hover:text-[#fff] hover:bg-white/5 rounded-lg transition-colors">
+          <button onClick={onClose} className="p-2 text-[var(--text-muted)] hover:text-[#fff] hover:bg-[var(--bg-hover)] rounded-lg transition-colors">
             <X size={24} />
           </button>
         </div>
@@ -158,7 +158,7 @@ export default function TemplateLibraryModal({ isOpen, onClose, onImport }) {
             </div>
             <button 
               onClick={handleUseLastEmail}
-              className="text-xs text-white px-3 py-1.5 rounded-lg font-medium transition-colors hover:brightness-110"
+              className="text-xs text-[var(--text-primary)] px-3 py-1.5 rounded-lg font-medium transition-colors hover:brightness-110"
               style={{ backgroundColor: 'var(--brand)' }}
             >
               Continue from Last Email
@@ -270,7 +270,7 @@ export default function TemplateLibraryModal({ isOpen, onClose, onImport }) {
                       </div>
                       <button 
                         onClick={handleUseForCampaign}
-                        className="flex items-center gap-2 px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-white text-sm font-bold rounded-lg shadow-md transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-[var(--text-primary)] text-sm font-bold rounded-lg shadow-md transition-colors"
                       >
                         <Check size={18} /> Reuse This Template
                       </button>
@@ -298,7 +298,7 @@ export default function TemplateLibraryModal({ isOpen, onClose, onImport }) {
                       </div>
                     </div>
                     
-                    <div className="flex-1 overflow-auto bg-white p-6 relative">
+                    <div className="flex-1 overflow-auto bg-[var(--bg-surface)] p-6 relative">
                       {campaignDetails.templates && campaignDetails.templates.length > 0 ? (
                         <iframe 
                           title="Email Body"
@@ -323,7 +323,7 @@ export default function TemplateLibraryModal({ isOpen, onClose, onImport }) {
                     </div>
                     <button 
                       onClick={handleUseForCampaign}
-                      className="flex items-center gap-2 px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-white text-sm font-bold rounded-lg shadow-md transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-[var(--text-primary)] text-sm font-bold rounded-lg shadow-md transition-colors"
                     >
                       <Check size={18} /> Use Template
                     </button>
@@ -336,7 +336,7 @@ export default function TemplateLibraryModal({ isOpen, onClose, onImport }) {
                     </h1>
                   </div>
                   
-                  <div className="flex-1 overflow-auto bg-white p-6 relative">
+                  <div className="flex-1 overflow-auto bg-[var(--bg-surface)] p-6 relative">
                     {selectedItem.data.body ? (
                       <iframe 
                         title="Template Body"

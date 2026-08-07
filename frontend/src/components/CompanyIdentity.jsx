@@ -8,7 +8,7 @@ export function CompanyIdentity({
   name, 
   subtitle, 
   metadata, 
-  size = 44, 
+  size = 40, 
   logoSize = 32,
   interactive = true,
   style = {}
@@ -20,7 +20,6 @@ export function CompanyIdentity({
   const formatDisplayName = (n) => {
     if (!n) return 'Unknown Company'
     const name = n.trim()
-    // If it looks like a slug (e.g. spencer-ogden)
     if (name === name.toLowerCase()) {
       return name.split(/[-_]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
     }
@@ -28,7 +27,6 @@ export function CompanyIdentity({
   }
   const displayName = formatDisplayName(name)
   
-  // Extract initials for monogram
   const getInitials = (n) => {
     if (!n) return '?'
     const words = n.trim().split(' ')
@@ -37,21 +35,6 @@ export function CompanyIdentity({
   }
   const initials = getInitials(displayName)
 
-  const getMonogramColor = (n) => {
-    const colors = [
-      { bg: 'var(--brand-bg)', text: 'var(--brand-strong)', border: 'var(--brand-bg)' }, // Gold
-      { bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', border: 'rgba(245, 158, 11, 0.3)' }, // Amber
-      { bg: 'rgba(100, 116, 139, 0.15)', text: '#94a3b8', border: 'rgba(100, 116, 139, 0.3)' }, // Slate
-      { bg: 'rgba(20, 184, 166, 0.15)', text: '#2dd4bf', border: 'rgba(20, 184, 166, 0.3)' }, // Teal
-      { bg: 'rgba(168, 115, 68, 0.15)', text: '#d99c64', border: 'rgba(168, 115, 68, 0.3)' } // Warm Brown
-    ]
-    const index = n ? n.charCodeAt(0) % colors.length : 0
-    return colors[index]
-  }
-
-  const monogramColor = getMonogramColor(displayName)
-
-  // Determine Logo URL based on 4-tier cascade
   let logoUrl = null
   if (cleanDomain && !failedDomains.has(cleanDomain)) {
     if (errorLevel === 0) {
@@ -72,7 +55,7 @@ export function CompanyIdentity({
     padding: interactive ? '8px 12px' : 0,
     borderRadius: 6,
     background: isHovered && interactive ? 'rgba(255,255,255,0.03)' : 'transparent',
-    border: isHovered && interactive ? '1px solid var(--brand)' : '1px solid transparent',
+    border: isHovered && interactive ? '1px solid var(--card-border)' : '1px solid transparent',
     transform: isHovered && interactive ? 'translateY(-1px)' : 'translateY(0)',
     transition: 'background 150ms var(--ease-out), border-color 150ms var(--ease-out), transform 150ms var(--ease-out)',
     cursor: interactive ? 'pointer' : 'default',
@@ -83,17 +66,18 @@ export function CompanyIdentity({
     width: size,
     height: size,
     minWidth: size,
-    borderRadius: 6,
-    background: monogramColor.bg,
-    border: `1px solid ${monogramColor.border}`,
-    color: monogramColor.text,
+    borderRadius: 8,
+    background: '#1D1D1D',
+    border: '1px solid var(--card-border)',
+    color: 'var(--text-secondary)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
     fontSize: size * 0.4,
-    fontWeight: 700,
-    letterSpacing: '0.02em'
+    fontWeight: 600,
+    letterSpacing: '0.02em',
+    padding: 8
   }
 
   return (
@@ -112,10 +96,11 @@ export function CompanyIdentity({
             width: size, 
             height: size, 
             minWidth: size,
-            borderRadius: 6, 
-            objectFit: 'cover',
-            background: 'var(--card-bg)',
+            borderRadius: 8, 
+            objectFit: 'contain',
+            background: '#1D1D1D',
             border: '1px solid var(--card-border)',
+            padding: 8,
             flexShrink: 0
           }}
           onError={() => {

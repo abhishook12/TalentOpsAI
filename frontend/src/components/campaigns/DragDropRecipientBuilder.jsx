@@ -80,7 +80,7 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
                   ? 'border-[var(--brand)] text-[var(--brand)] bg-[var(--card-bg)]' 
                   : !tab.enabled
                     ? 'border-transparent text-[var(--text-muted)] opacity-50 cursor-not-allowed'
-                    : 'border-transparent text-[var(--text-muted)] hover:text-[#fff] hover:bg-white/5'
+                    : 'border-transparent text-[var(--text-muted)] hover:text-[#fff] hover:bg-[var(--bg-hover)]'
               }`}
             >
               <div className="flex items-center gap-1.5">
@@ -117,7 +117,7 @@ export default function DragDropRecipientBuilder({ recipients, onChange, onValid
                 showClearConfirm ? (
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-red-500 font-medium">Are you sure?</span>
-                    <button onClick={clearAll} className="text-xs text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded transition-colors">Yes</button>
+                    <button onClick={clearAll} className="text-xs text-[var(--text-primary)] bg-red-500 hover:bg-red-600 px-2 py-1 rounded transition-colors">Yes</button>
                     <button onClick={() => setShowClearConfirm(false)} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] px-2 py-1 transition-colors">No</button>
                   </div>
                 ) : (

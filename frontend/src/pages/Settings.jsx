@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { User, Bell, Lock, Key, Globe, Shield, Smartphone, ArrowRight, Laptop, LogOut, Mail } from 'lucide-react';
+import { User, Bell, Lock, Key, Globe, Shield, Smartphone, ArrowRight, Laptop, LogOut, Mail, Server, MoreVertical, ExternalLink, Star } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { API } from '../services/api';
+import ConnectionWizard from '../components/ConnectionWizard';
 
 export default function Settings() {
   const { user, checkAuth } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
-  const [outlookConnected, setOutlookConnected] = useState(false);
-  const [outlookEmail, setOutlookEmail] = useState('');
+  const [accounts, setAccounts] = useState([]);
+  const [showConnectionWizard, setShowConnectionWizard] = useState(false);
   
   const [formData, setFormData] = useState({
     firstName: user?.first_name || '',
@@ -25,60 +26,55 @@ export default function Settings() {
   });
 
   const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    // Check if outlook is already connected
-    api.get('/auth/outlook/status')
-      .then(res => {
-        if (res.data.connected) {
-          setOutlookConnected(true);
-          setOutlookEmail(res.data.email);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  const handleConnectOutlook = () => {
-    // Open the real OAuth popup targeting the backend
-    const token = localStorage.getItem('session_token') || sessionStorage.getItem('session_token');
-    const w = window.open(`${API}/bridge/oauth/login?popup=true&token=${token}`, 'Connect Microsoft Outlook', 'width=500,height=600');
-    
-    // Listen for the success message from the popup
-    const messageListener = async (event) => {
-      if (event.data === 'oauth_success') {
-        window.removeEventListener('message', messageListener);
-        try {
-          // Re-fetch status to get the connected email
-          const res = await api.get('/auth/outlook/status');
-          if (res.data.connected) {
-            setOutlookConnected(true);
-            setOutlookEmail(res.data.email);
-            toast.success('Successfully connected Outlook account!');
-          }
-        } catch (err) {
-          toast.error('Failed to verify Outlook connection');
-        }
-      }
-    };
-    window.addEventListener('message', messageListener);
-
-    const checkInterval = setInterval(() => {
-      if (w && w.closed) {
-        clearInterval(checkInterval);
-        window.removeEventListener('message', messageListener);
-      }
-    }, 1000);
+  
+  const fetchAccounts = async () => {
+    try {
+      const res = await api.get('/accounts');
+      setAccounts(res.data.items || []);
+    } catch (err) {
+      toast.error('Failed to load connected accounts');
+    }
   };
 
-  const handleDisconnectOutlook = async () => {
-    if (!window.confirm('Are you sure you want to disconnect your Outlook account?')) return;
+  useEffect(() => {
+    fetchAccounts();
+  }, []);
+
+  const handleDeleteAccount = async (id) => {
+    if (!window.confirm('Are you sure you want to remove this account?')) return;
     try {
-      await api.delete('/auth/outlook/disconnect');
-      setOutlookConnected(false);
-      setOutlookEmail('');
-      toast.success('Outlook account disconnected');
+      await api.delete(`/accounts/${id}`);
+      toast.success('Account removed');
+      fetchAccounts();
     } catch (err) {
-      toast.error('Failed to disconnect');
+      toast.error('Failed to remove account');
+    }
+  };
+
+  const handleSetDefaultAccount = async (id) => {
+    try {
+      await api.post(`/accounts/${id}/set-default`);
+      toast.success('Default account updated');
+      fetchAccounts();
+      checkAuth(); // update current user default sender in context
+    } catch (err) {
+      toast.error('Failed to set default account');
+    }
+  };
+
+  const handleTestConnection = async (id) => {
+    const t = toast.loading('Testing connection...');
+    try {
+      const res = await api.post(`/accounts/${id}/verify`);
+      if (res.data.health_status === 'healthy') {
+        toast.success('Connection successful', { id: t });
+      } else {
+        toast.error('Connection failed', { id: t });
+      }
+      fetchAccounts();
+    } catch (err) {
+      toast.error('Connection test failed', { id: t });
+      fetchAccounts();
     }
   };
   const handleSaveProfile = async (e) => {
@@ -120,239 +116,440 @@ export default function Settings() {
   };
 
   const tabs = [
-    { id: 'profile', label: 'Profile', icon: User },
-    { id: 'account', label: 'Account', icon: Lock },
-    { id: 'appearance', label: 'Appearance', icon: Globe },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'security', label: 'Privacy & Security', icon: Shield },
-    { id: 'integrations', label: 'API / Integrations', icon: Key },
+    { id: 'profile', label: 'Profile' },
+    { id: 'account', label: 'Account' },
+    { id: 'appearance', label: 'Appearance' },
+    { id: 'notifications', label: 'Notifications' },
+    { id: 'security', label: 'Privacy & Security' },
+    { id: 'integrations', label: 'API & Integrations' },
   ];
 
   return (
-    <div className="page-container page-enter" style={{ padding: '0 32px 32px', maxWidth: 1000, margin: '0 auto', width: '100%' }}>
-      <header style={{ padding: '32px 0 24px', borderBottom: '1px solid var(--card-border)' }}>
-        <h1 className="page-title" style={{ fontSize: 28, color: 'var(--text-primary)' }}>Settings</h1>
-        <p className="page-subtitle">Manage your personal preferences, security, and integrations.</p>
-      </header>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 40, marginTop: 32 }}>
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div className="page-container page-enter" style={{ padding: '0 32px 100px', maxWidth: 1200, margin: '0 auto', width: '100%' }}>
+      <header style={{ paddingTop: 32, marginBottom: 40 }}>
+        <h1 className="page-title" style={{ fontSize: 24, color: 'var(--text-primary)', marginBottom: 24 }}>Settings</h1>
+        
+        <nav style={{ display: 'flex', gap: 32, borderBottom: '1px solid var(--card-border)' }}>
           {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '12px 16px',
-                background: activeTab === tab.id ? 'var(--brand-bg)' : 'transparent',
-                color: activeTab === tab.id ? 'var(--brand)' : 'var(--text-secondary)',
+                padding: '0 0 16px',
+                background: 'transparent',
+                color: activeTab === tab.id ? 'var(--text-primary)' : 'var(--text-secondary)',
                 border: 'none',
-                borderRadius: 6,
-                fontWeight: activeTab === tab.id ? 700 : 500,
+                borderBottom: activeTab === tab.id ? '2px solid var(--text-primary)' : '2px solid transparent',
+                fontWeight: activeTab === tab.id ? 500 : 400,
+                fontSize: 14,
                 cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'all 0.15s'
+                transition: 'all 0.15s',
+                marginBottom: -1
               }}
             >
-              <tab.icon size={18} />
               {tab.label}
             </button>
           ))}
         </nav>
+      </header>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 48 }}>
+        <aside>
+          {activeTab === 'integrations' ? (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 16 }}>
+                Integrations
+              </div>
+              <button
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  width: '100%',
+                  padding: '10px 16px',
+                  background: 'var(--bg-panel)',
+                  border: '1px solid var(--card-border)',
+                  color: 'var(--text-primary)',
+                  borderRadius: 6,
+                  fontWeight: 500,
+                  fontSize: 13,
+                  cursor: 'pointer'
+                }}
+              >
+                <Mail size={16} />
+                Sending Accounts
+              </button>
+            </div>
+          ) : (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 16 }}>
+                {tabs.find(t => t.id === activeTab)?.label}
+              </div>
+              <button
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  width: '100%',
+                  padding: '10px 16px',
+                  background: 'var(--bg-panel)',
+                  border: '1px solid var(--card-border)',
+                  color: 'var(--text-primary)',
+                  borderRadius: 6,
+                  fontWeight: 500,
+                  fontSize: 13,
+                  cursor: 'pointer'
+                }}
+              >
+                {activeTab === 'profile' && <User size={16} />}
+                {activeTab === 'account' && <Lock size={16} />}
+                {activeTab === 'appearance' && <Globe size={16} />}
+                {activeTab === 'notifications' && <Bell size={16} />}
+                {activeTab === 'security' && <Shield size={16} />}
+                General
+              </button>
+            </div>
+          )}
+        </aside>
 
         <main style={{ minWidth: 0 }}>
           {activeTab === 'profile' && (
-            <form onSubmit={handleSaveProfile} className="animate-fade-in">
-              <h2 style={{ margin: '0 0 24px', fontSize: 20, color: 'var(--text-primary)' }}>Profile Settings</h2>
+            <form onSubmit={handleSaveProfile} className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
               
-              <div style={{ padding: 24, border: '1px solid var(--card-border)', borderRadius: 6, marginBottom: 24, display: 'flex', gap: 24, alignItems: 'center' }}>
-                <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'linear-gradient(135deg, var(--brand), var(--brand-strong))', display: 'grid', placeItems: 'center', color: '#ffffff', fontSize: 32, fontWeight: 800 }}>
-                  {user?.first_name?.[0] || user?.email?.[0]?.toUpperCase()}
+              <div style={{ background: 'var(--bg-panel)', borderRadius: 8, border: '1px solid var(--card-border)', overflow: 'hidden' }}>
+                <div style={{ padding: 24, borderBottom: '1px solid var(--card-border)' }}>
+                  <h2 style={{ margin: '0 0 8px', fontSize: 18, color: 'var(--text-primary)', fontWeight: 600 }}>Profile Settings</h2>
+                  <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)' }}>Update your personal information and profile picture.</p>
                 </div>
-                <div>
-                  <h3 style={{ margin: '0 0 8px', fontSize: 16, color: 'var(--text-primary)' }}>Profile Picture</h3>
-                  <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-secondary)' }}>JPG, GIF or PNG. Max size of 5MB.</p>
-                  <button type="button" style={{ padding: '8px 16px', background: 'var(--brand)', color: '#ffffff', border: 'none', borderRadius: 8, fontWeight: 500, cursor: 'pointer' }}>Change Avatar</button>
-                </div>
-              </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>First Name</label>
-                  <input value={formData.firstName} onChange={e => setFormData(p => ({...p, firstName: e.target.value}))} style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid var(--card-border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', outline: 'none' }} />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Last Name</label>
-                  <input value={formData.lastName} onChange={e => setFormData(p => ({...p, lastName: e.target.value}))} style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid var(--card-border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', outline: 'none' }} />
-                </div>
-              </div>
+                <div style={{ padding: 32 }}>
+                  {/* Profile Picture */}
+                  <div style={{ display: 'flex', gap: 24, alignItems: 'center', marginBottom: 32 }}>
+                    <div style={{ width: 80, height: 80, borderRadius: '50%', background: '#1D1D1D', display: 'grid', placeItems: 'center', color: '#ffffff', fontSize: 32, fontWeight: 800, border: '4px solid var(--card-bg)' }}>
+                      {user?.first_name?.[0] || user?.email?.[0]?.toUpperCase() || 'A'}
+                    </div>
+                    <div>
+                      <h3 style={{ margin: '0 0 8px', fontSize: 15, color: 'var(--text-primary)', fontWeight: 500 }}>Profile Picture</h3>
+                      <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-secondary)' }}>JPG, GIF or PNG. Max size of 5MB.</p>
+                      <button type="button" style={{ padding: '8px 16px', background: 'var(--text-primary)', color: 'var(--main-bg)', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Change Avatar</button>
+                    </div>
+                  </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 32 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Company</label>
-                  <input value={formData.company} onChange={e => setFormData(p => ({...p, company: e.target.value}))} style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid var(--card-border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', outline: 'none' }} />
+                  {/* Form Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24, marginBottom: 24 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>First Name</label>
+                      <input value={formData.firstName} onChange={e => setFormData(p => ({...p, firstName: e.target.value}))} style={{ padding: '10px 14px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--bg-base)', color: 'var(--text-primary)', outline: 'none', fontSize: 14 }} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Last Name</label>
+                      <input value={formData.lastName} onChange={e => setFormData(p => ({...p, lastName: e.target.value}))} style={{ padding: '10px 14px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--bg-base)', color: 'var(--text-primary)', outline: 'none', fontSize: 14 }} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Company</label>
+                      <input value={formData.company} onChange={e => setFormData(p => ({...p, company: e.target.value}))} style={{ padding: '10px 14px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--bg-base)', color: 'var(--text-primary)', outline: 'none', fontSize: 14 }} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Country</label>
+                      <input value={formData.country} onChange={e => setFormData(p => ({...p, country: e.target.value}))} style={{ padding: '10px 14px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--bg-base)', color: 'var(--text-primary)', outline: 'none', fontSize: 14 }} />
+                    </div>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Country</label>
-                  <input value={formData.country} onChange={e => setFormData(p => ({...p, country: e.target.value}))} style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid var(--card-border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', outline: 'none' }} />
-                </div>
-              </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 24, borderTop: '1px solid var(--card-border)' }}>
-                <button type="submit" disabled={isSaving} style={{ padding: '10px 24px', background: 'var(--brand)', color: '#ffffff', border: 'none', borderRadius: 8, fontWeight: 600, cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.7 : 1 }}>
-                  {isSaving ? 'Saving...' : 'Save Changes'}
-                </button>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '16px 32px', background: 'var(--bg-base)', borderTop: '1px solid var(--card-border)' }}>
+                  <button type="submit" disabled={isSaving} style={{ padding: '10px 24px', background: 'var(--text-primary)', color: 'var(--main-bg)', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 14, cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.7 : 1 }}>
+                    {isSaving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
               </div>
             </form>
           )}
 
           {activeTab === 'account' && (
-            <div className="animate-fade-in">
-              <h2 style={{ margin: '0 0 24px', fontSize: 20, color: 'var(--text-primary)' }}>Account Settings</h2>
+            <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
               
-              <div style={{ padding: 20, border: '1px solid var(--card-border)', borderRadius: 6, marginBottom: 24 }}>
-                <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--text-primary)' }}>Email Address</h3>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ color: 'var(--text-secondary)' }}>{user?.email}</div>
-                  <button style={{ padding: '6px 12px', background: 'transparent', border: '1px solid var(--card-border)', borderRadius: 6, color: 'var(--text-primary)', cursor: 'not-allowed', opacity: 0.5 }} disabled>Change Email (Coming Soon)</button>
+              <div style={{ background: 'var(--bg-panel)', borderRadius: 8, border: '1px solid var(--card-border)', overflow: 'hidden' }}>
+                <div style={{ padding: 24, borderBottom: '1px solid var(--card-border)' }}>
+                  <h2 style={{ margin: '0 0 8px', fontSize: 18, color: 'var(--text-primary)', fontWeight: 600 }}>Account Settings</h2>
+                  <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)' }}>Manage your email address and password.</p>
+                </div>
+
+                <div style={{ padding: 32 }}>
+                  <div style={{ marginBottom: 32 }}>
+                    <h3 style={{ margin: '0 0 8px', fontSize: 15, color: 'var(--text-primary)', fontWeight: 500 }}>Email Address</h3>
+                    <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-secondary)' }}>The email address associated with your account.</p>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--bg-base)', border: '1px solid var(--card-border)', borderRadius: 6 }}>
+                      <div style={{ color: 'var(--text-primary)', fontSize: 14 }}>{user?.email}</div>
+                      <button style={{ padding: '6px 12px', background: 'transparent', border: '1px solid var(--card-border)', borderRadius: 6, color: 'var(--text-secondary)', fontSize: 13, cursor: 'not-allowed', opacity: 0.5 }} disabled>Change Email (Coming Soon)</button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 style={{ margin: '0 0 8px', fontSize: 15, color: 'var(--text-primary)', fontWeight: 500 }}>Change Password</h3>
+                    <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-secondary)' }}>Update your password to keep your account secure.</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 400 }}>
+                      <input type="password" value={passwordData.currentPassword} onChange={e => setPasswordData(p => ({...p, currentPassword: e.target.value}))} placeholder="Current Password" style={{ width: '100%', padding: '10px 14px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--bg-base)', color: 'var(--text-primary)', outline: 'none', fontSize: 14 }} />
+                      <input type="password" value={passwordData.newPassword} onChange={e => setPasswordData(p => ({...p, newPassword: e.target.value}))} placeholder="New Password" style={{ width: '100%', padding: '10px 14px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--bg-base)', color: 'var(--text-primary)', outline: 'none', fontSize: 14 }} />
+                      <button onClick={handleUpdatePassword} disabled={isSaving} style={{ marginTop: 8, padding: '10px 16px', background: 'var(--text-primary)', color: 'var(--main-bg)', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: isSaving ? 'not-allowed' : 'pointer', width: 'fit-content' }}>
+                        {isSaving ? 'Updating...' : 'Update Password'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div style={{ padding: 20, border: '1px solid var(--card-border)', borderRadius: 6, marginBottom: 24 }}>
-                <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--text-primary)' }}>Change Password</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <input type="password" value={passwordData.currentPassword} onChange={e => setPasswordData(p => ({...p, currentPassword: e.target.value}))} placeholder="Current Password" style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--card-border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', outline: 'none' }} />
-                  <input type="password" value={passwordData.newPassword} onChange={e => setPasswordData(p => ({...p, newPassword: e.target.value}))} placeholder="New Password" style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--card-border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', outline: 'none' }} />
-                  <button onClick={handleUpdatePassword} disabled={isSaving} style={{ padding: '8px 16px', background: 'var(--brand-bg)', color: 'var(--brand)', border: 'none', borderRadius: 8, fontWeight: 600, cursor: isSaving ? 'not-allowed' : 'pointer', width: 'fit-content' }}>
-                    {isSaving ? 'Updating...' : 'Update Password'}
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ padding: 20, border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 6, background: 'rgba(239, 68, 68, 0.05)' }}>
-                <h3 style={{ margin: '0 0 8px', fontSize: 16, color: '#ef4444' }}>Delete Account</h3>
-                <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-secondary)' }}>Once you delete your account, there is no going back. Please be certain.</p>
-                <button disabled style={{ padding: '8px 16px', background: '#ef4444', color: '#ffffff', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'not-allowed', opacity: 0.5 }}>Delete Account (Coming Soon)</button>
+              <div style={{ background: 'rgba(239, 68, 68, 0.02)', borderRadius: 8, border: '1px solid rgba(239, 68, 68, 0.2)', padding: 24 }}>
+                <h3 style={{ margin: '0 0 8px', fontSize: 16, color: '#ef4444', fontWeight: 600 }}>Danger Zone</h3>
+                <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--text-secondary)' }}>Once you delete your account, there is no going back. Please be certain.</p>
+                <button disabled style={{ padding: '8px 16px', background: '#ef4444', color: '#ffffff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: 'not-allowed', opacity: 0.5 }}>Delete Account</button>
               </div>
             </div>
           )}
 
           {activeTab === 'security' && (
-            <div className="animate-fade-in">
-              <h2 style={{ margin: '0 0 24px', fontSize: 20, color: 'var(--text-primary)' }}>Privacy & Security</h2>
-              
-              <div style={{ padding: 20, border: '1px solid var(--card-border)', borderRadius: 6, marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--text-primary)' }}>Two-Factor Authentication</h3>
-                  <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>Add an extra layer of security to your account.</p>
-                </div>
-                <button disabled style={{ padding: '8px 16px', background: 'transparent', border: '1px solid var(--card-border)', color: 'var(--text-primary)', borderRadius: 8, fontWeight: 500, cursor: 'not-allowed', opacity: 0.5 }}>Enable 2FA (Coming Soon)</button>
-              </div>
-
-              <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--text-primary)' }}>Active Sessions</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ padding: 16, background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--brand-bg)', color: 'var(--brand)', display: 'grid', placeItems: 'center' }}><Laptop size={20} /></div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Windows / Chrome</div>
-                      <span style={{ fontSize: 10, background: 'rgba(23,114,69,0.12)', color: 'var(--success)', padding: '2px 6px', borderRadius: 4, fontWeight: 800 }}>CURRENT</span>
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>New York, United States &bull; Active now</div>
-                  </div>
+            <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div style={{ background: 'var(--bg-panel)', borderRadius: 8, border: '1px solid var(--card-border)', overflow: 'hidden' }}>
+                <div style={{ padding: 24, borderBottom: '1px solid var(--card-border)' }}>
+                  <h2 style={{ margin: '0 0 8px', fontSize: 18, color: 'var(--text-primary)', fontWeight: 600 }}>Privacy & Security</h2>
+                  <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)' }}>Manage your account security and active sessions.</p>
                 </div>
                 
-                <button disabled style={{ width: '100%', padding: 16, background: 'transparent', border: '1px dashed var(--card-border)', borderRadius: 6, color: 'var(--text-secondary)', cursor: 'not-allowed', fontWeight: 600, opacity: 0.5 }}>
-                  Log out of all other devices (Coming Soon)
-                </button>
+                <div style={{ padding: 32 }}>
+                  <div style={{ marginBottom: 32 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--text-primary)', fontWeight: 500 }}>Two-Factor Authentication</h3>
+                        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>Add an extra layer of security to your account.</p>
+                      </div>
+                      <button disabled style={{ padding: '8px 16px', background: 'transparent', border: '1px solid var(--card-border)', color: 'var(--text-primary)', borderRadius: 6, fontWeight: 500, fontSize: 13, cursor: 'not-allowed', opacity: 0.5 }}>Enable 2FA (Coming Soon)</button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 style={{ margin: '0 0 16px', fontSize: 15, color: 'var(--text-primary)', fontWeight: 500 }}>Active Sessions</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div style={{ padding: 16, background: 'var(--bg-base)', border: '1px solid var(--card-border)', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 16 }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 8, background: '#1D1D1D', color: 'var(--text-primary)', display: 'grid', placeItems: 'center' }}><Laptop size={20} /></div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: 14 }}>Windows / Chrome</div>
+                            <span style={{ fontSize: 10, background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '2px 6px', borderRadius: 4, fontWeight: 800 }}>CURRENT</span>
+                          </div>
+                          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>New York, United States &bull; Active now</div>
+                        </div>
+                      </div>
+                      
+                      <button disabled style={{ width: '100%', padding: 16, background: 'transparent', border: '1px dashed var(--card-border)', borderRadius: 6, color: 'var(--text-secondary)', cursor: 'not-allowed', fontWeight: 500, fontSize: 13, opacity: 0.5 }}>
+                        Log out of all other devices (Coming Soon)
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
           {activeTab === 'appearance' && (
-            <div className="animate-fade-in">
-              <h2 style={{ margin: '0 0 24px', fontSize: 20, color: 'var(--text-primary)' }}>Appearance</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
-                {['light', 'dark', 'system'].map(theme => (
-                  <button 
-                    key={theme}
-                    onClick={() => {
-                      localStorage.setItem('theme', theme);
-                      document.documentElement.setAttribute('data-theme', theme);
-                    }}
-                    style={{ 
-                      padding: 24, 
-                      borderRadius: 6, 
-                      border: '2px solid',
-                      borderColor: localStorage.getItem('theme') === theme ? 'var(--brand)' : 'var(--card-border)',
-                      background: 'var(--bg-surface)',
-                      color: 'var(--text-primary)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: 12,
-                      textTransform: 'capitalize',
-                      fontWeight: 600
-                    }}>
-                    <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--brand-bg)', display: 'grid', placeItems: 'center', color: 'var(--brand)' }}>
-                      <Globe size={24} />
-                    </div>
-                    {theme}
-                  </button>
-                ))}
+            <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div style={{ background: 'var(--bg-panel)', borderRadius: 8, border: '1px solid var(--card-border)', overflow: 'hidden' }}>
+                <div style={{ padding: 24, borderBottom: '1px solid var(--card-border)' }}>
+                  <h2 style={{ margin: '0 0 8px', fontSize: 18, color: 'var(--text-primary)', fontWeight: 600 }}>Appearance</h2>
+                  <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)' }}>Customize how the application looks.</p>
+                </div>
+                
+                <div style={{ padding: 32 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }}>
+                    {['light', 'dark', 'system'].map(theme => (
+                      <button 
+                        key={theme}
+                        onClick={() => {
+                          localStorage.setItem('theme', theme);
+                          document.documentElement.setAttribute('data-theme', theme);
+                        }}
+                        style={{ 
+                          padding: 24, 
+                          borderRadius: 8, 
+                          border: '2px solid',
+                          borderColor: localStorage.getItem('theme') === theme ? 'var(--text-primary)' : 'var(--card-border)',
+                          background: 'var(--bg-base)',
+                          color: 'var(--text-primary)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 16,
+                          textTransform: 'capitalize',
+                          fontWeight: 500,
+                          fontSize: 14
+                        }}>
+                        <div style={{ width: 48, height: 48, borderRadius: '50%', background: localStorage.getItem('theme') === theme ? 'var(--text-primary)' : 'var(--bg-panel)', border: '1px solid var(--card-border)', display: 'grid', placeItems: 'center', color: localStorage.getItem('theme') === theme ? 'var(--main-bg)' : 'var(--text-secondary)' }}>
+                          <Globe size={24} />
+                        </div>
+                        {theme} Theme
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
           {activeTab === 'integrations' && (
-            <div className="animate-fade-in">
-              <h2 style={{ margin: '0 0 24px', fontSize: 20, color: 'var(--text-primary)' }}>API & Integrations</h2>
+            <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
               
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ padding: 20, border: '1px solid var(--card-border)', borderRadius: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                    <div style={{ width: 40, height: 40, background: '#f3f4f6', borderRadius: 8, display: 'grid', placeItems: 'center' }}>
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" style={{ width: 24, height: 24 }} />
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Google Workspace</div>
-                      <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Sync calendar and emails</div>
-                    </div>
+              {/* Top Panel: Header & Table */}
+              <div style={{ background: 'var(--bg-panel)', borderRadius: 8, border: '1px solid var(--card-border)', overflow: 'hidden' }}>
+                {/* Header */}
+                <div style={{ padding: 24, borderBottom: '1px solid var(--card-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <h2 style={{ margin: '0 0 8px', fontSize: 18, color: 'var(--text-primary)', fontWeight: 600 }}>Sending Accounts</h2>
+                    <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)' }}>Connect and manage the email accounts you use to send campaigns.</p>
                   </div>
-                  <button disabled style={{ padding: '6px 12px', background: 'transparent', border: '1px solid var(--card-border)', color: 'var(--text-primary)', borderRadius: 6, fontWeight: 500, cursor: 'not-allowed', opacity: 0.5 }}>Connect (Coming Soon)</button>
+                  <button onClick={() => setShowConnectionWizard(true)} style={{ padding: '8px 16px', background: 'var(--text-primary)', color: 'var(--bg-base)', borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    + Connect Account
+                  </button>
                 </div>
 
-                <div style={{ padding: 20, border: '1px solid var(--card-border)', borderRadius: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                    <div style={{ width: 40, height: 40, background: '#0078d4', borderRadius: 8, display: 'grid', placeItems: 'center' }}>
-                      <span style={{ color: '#ffffff', fontWeight: 900, fontSize: 18 }}>O</span>
+                {/* Table */}
+                <div style={{ width: '100%', overflowX: 'auto' }}>
+                  {accounts.length === 0 ? (
+                    <div style={{ padding: 48, textAlign: 'center' }}>
+                      <Mail size={32} style={{ color: 'var(--text-secondary)', marginBottom: 16 }} />
+                      <h3 style={{ margin: '0 0 8px', fontSize: 16, color: 'var(--text-primary)' }}>No accounts connected</h3>
+                      <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)' }}>Connect an email account to start sending campaigns.</p>
                     </div>
-                    <div>
-                      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Microsoft Outlook</div>
-                      <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                        {outlookConnected ? (
-                          <span style={{ color: '#10b981' }}>Connected as {outlookEmail}</span>
-                        ) : 'Office 365 Integration'}
-                      </div>
-                    </div>
-                  </div>
-                  {outlookConnected ? (
-                    <button onClick={handleDisconnectOutlook} style={{ padding: '6px 12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', borderRadius: 6, fontWeight: 500, cursor: 'pointer' }}>Disconnect</button>
                   ) : (
-                    <button onClick={handleConnectOutlook} className="btn-primary" style={{ padding: '6px 12px', borderRadius: 6, fontWeight: 500, cursor: 'pointer', fontSize: 13 }}>Connect Account</button>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ padding: '12px 24px', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--card-border)' }}>Account</th>
+                          <th style={{ padding: '12px 24px', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--card-border)' }}>Provider</th>
+                          <th style={{ padding: '12px 24px', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--card-border)' }}>Status</th>
+                          <th style={{ padding: '12px 24px', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--card-border)' }}>Default</th>
+                          <th style={{ padding: '12px 24px', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--card-border)', textAlign: 'right' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {accounts.map((acc, idx) => (
+                          <tr key={acc.account_id} style={{ borderBottom: idx === accounts.length - 1 ? 'none' : '1px solid var(--card-border)' }}>
+                            <td style={{ padding: '16px 24px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--bg-base)', display: 'grid', placeItems: 'center', color: 'var(--text-primary)', fontWeight: 600, fontSize: 14, border: '1px solid var(--card-border)' }}>
+                                  {acc.email_address ? acc.email_address[0].toUpperCase() : 'A'}
+                                </div>
+                                <div>
+                                  <div style={{ color: 'var(--text-primary)', fontWeight: 500, fontSize: 14 }}>{acc.email_address}</div>
+                                  <div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{formData.firstName} {formData.lastName}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td style={{ padding: '16px 24px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)', fontSize: 13 }}>
+                                {acc.provider === 'microsoft' && <span style={{ color: '#0078d4', fontWeight: 900, fontSize: 14 }}>O</span>}
+                                {acc.provider === 'google' && <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" style={{ width: 14, height: 14 }} />}
+                                {acc.provider === 'yahoo' && <span style={{ color: '#6001d2', fontWeight: 900, fontSize: 14 }}>Y!</span>}
+                                {acc.provider === 'smtp' && <Server size={14} />}
+                                {acc.provider === 'microsoft' ? 'Microsoft 365' : acc.provider === 'google' ? 'Gmail' : acc.provider === 'yahoo' ? 'Yahoo Mail' : 'Custom SMTP'}
+                              </div>
+                            </td>
+                            <td style={{ padding: '16px 24px' }}>
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: acc.health_status === 'healthy' ? '#10b981' : '#ef4444', fontSize: 13, background: acc.health_status === 'healthy' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', padding: '4px 8px', borderRadius: 12 }}>
+                                <div style={{ width: 6, height: 6, borderRadius: '50%', background: acc.health_status === 'healthy' ? '#10b981' : '#ef4444' }} />
+                                {acc.health_status === 'healthy' ? 'Connected' : 'Error'}
+                              </div>
+                            </td>
+                            <td style={{ padding: '16px 24px', textAlign: 'center' }}>
+                              <Star size={16} style={{ color: acc.is_default ? '#f59e0b' : 'var(--text-tertiary)', fill: acc.is_default ? '#f59e0b' : 'transparent' }} />
+                            </td>
+                            <td style={{ padding: '16px 24px', textAlign: 'right' }}>
+                              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
+                                {!acc.is_default && (
+                                  <button onClick={() => handleSetDefaultAccount(acc.account_id)} style={{ padding: '6px 12px', background: 'transparent', border: '1px solid var(--card-border)', color: 'var(--text-primary)', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>Make Default</button>
+                                )}
+                                <button onClick={() => handleTestConnection(acc.account_id)} style={{ padding: '6px 12px', background: 'transparent', border: '1px solid var(--card-border)', color: 'var(--text-primary)', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>Test</button>
+                                <button onClick={() => handleDeleteAccount(acc.account_id)} style={{ padding: '6px 8px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                                  <MoreVertical size={16} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   )}
                 </div>
               </div>
+
+              {/* Supported Providers */}
+              <div style={{ background: 'var(--bg-panel)', borderRadius: 8, border: '1px solid var(--card-border)', padding: 24 }}>
+                <h3 style={{ margin: '0 0 8px', fontSize: 16, color: 'var(--text-primary)', fontWeight: 600 }}>Supported Providers</h3>
+                <p style={{ margin: '0 0 24px', fontSize: 14, color: 'var(--text-secondary)' }}>Choose a provider to connect your email account.</p>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+                  {[
+                    { id: 'microsoft', name: 'Microsoft 365', desc: 'Connect your Outlook or Microsoft 365 account.', icon: <span style={{ color: '#0078d4', fontWeight: 900, fontSize: 20 }}>O</span> },
+                    { id: 'google', name: 'Gmail', desc: 'Connect your Gmail or Google Workspace account.', icon: <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" style={{ width: 20, height: 20 }} /> },
+                    { id: 'yahoo', name: 'Yahoo Mail', desc: 'Connect your Yahoo Mail account securely.', icon: <span style={{ color: '#6001d2', fontWeight: 900, fontSize: 20 }}>Y!</span> },
+                    { id: 'smtp', name: 'Custom SMTP', desc: 'Use custom SMTP settings for any email provider.', icon: <Mail size={20} style={{ color: 'var(--text-secondary)' }} /> }
+                  ].map(provider => (
+                    <div key={provider.id} style={{ border: '1px solid var(--card-border)', borderRadius: 8, padding: 20, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                        <div style={{ width: 36, height: 36, background: 'var(--bg-base)', borderRadius: 8, display: 'grid', placeItems: 'center' }}>
+                          {provider.icon}
+                        </div>
+                        <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 15 }}>{provider.name}</div>
+                      </div>
+                      <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, flex: 1 }}>{provider.desc}</p>
+                      <button onClick={() => setShowConnectionWizard(true)} style={{ width: '100%', padding: '8px', background: 'var(--bg-base)', border: '1px solid var(--card-border)', color: 'var(--text-primary)', borderRadius: 6, fontWeight: 500, fontSize: 13, cursor: 'pointer' }}>
+                        Connect
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Security Alert */}
+              <div style={{ background: 'var(--bg-panel)', borderRadius: 8, border: '1px solid var(--card-border)', padding: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <div style={{ width: 40, height: 40, background: 'rgba(255, 255, 255, 0.05)', borderRadius: '50%', display: 'grid', placeItems: 'center' }}>
+                    <Lock size={18} style={{ color: 'var(--text-secondary)' }} />
+                  </div>
+                  <div>
+                    <div style={{ color: 'var(--text-primary)', fontWeight: 500, fontSize: 14, marginBottom: 4 }}>Your credentials are encrypted and stored securely.</div>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>We never store your password. You can revoke access at any time.</div>
+                  </div>
+                </div>
+                <a href="#" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: 13, textDecoration: 'none' }}>
+                  Learn more <ExternalLink size={14} />
+                </a>
+              </div>
+
+              {showConnectionWizard && (
+                <ConnectionWizard 
+                  onClose={() => setShowConnectionWizard(false)}
+                  onSuccess={() => {
+                    setShowConnectionWizard(false);
+                    fetchAccounts();
+                  }}
+                />
+              )}
             </div>
           )}
 
           {activeTab === 'notifications' && (
-            <div className="animate-fade-in">
-              <h2 style={{ margin: '0 0 24px', fontSize: 20, color: 'var(--text-primary)' }}>Notifications</h2>
-              <p style={{ color: 'var(--text-secondary)' }}>Notification settings are currently managed globally by your organization administrator.</p>
+            <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div style={{ background: 'var(--bg-panel)', borderRadius: 8, border: '1px solid var(--card-border)', overflow: 'hidden' }}>
+                <div style={{ padding: 24, borderBottom: '1px solid var(--card-border)' }}>
+                  <h2 style={{ margin: '0 0 8px', fontSize: 18, color: 'var(--text-primary)', fontWeight: 600 }}>Notifications</h2>
+                  <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)' }}>Manage how you receive alerts and updates.</p>
+                </div>
+                
+                <div style={{ padding: 48, textAlign: 'center' }}>
+                  <Bell size={32} style={{ color: 'var(--text-secondary)', marginBottom: 16 }} />
+                  <h3 style={{ margin: '0 0 8px', fontSize: 16, color: 'var(--text-primary)', fontWeight: 500 }}>Notifications are managed globally</h3>
+                  <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)' }}>Notification settings are currently managed by your organization administrator.</p>
+                </div>
+              </div>
             </div>
           )}
 

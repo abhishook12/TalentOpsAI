@@ -642,6 +642,8 @@ def serialize_campaign(c: Campaign):
         "template_count": getattr(c, "template_count", 0),
         "sequence_step_count": getattr(c, "sequence_step_count", 0),
         "recruiter_count": getattr(c, "recruiter_count", 0),
+        "sender_account_id": c.sender_account_id,
+        "signature_id": getattr(c, "signature_id", None)
     }
 
 def serialize_campaign_list(c: Campaign, stats: dict = None):
@@ -715,6 +717,7 @@ class CampaignBase(BaseModel):
     is_active: bool = True
     metadata: Optional[dict[str, Any]] = None
     signature_id: Optional[int] = None
+    sender_account_id: Optional[int] = None
 
 
 class CampaignCreate(CampaignBase):
@@ -736,6 +739,7 @@ class CampaignUpdate(BaseModel):
     is_archived: Optional[bool] = None
     metadata: Optional[dict[str, Any]] = None
     signature_id: Optional[int] = None
+    sender_account_id: Optional[int] = None
 
 
 class TemplateCreate(BaseModel):
@@ -885,6 +889,8 @@ def create_campaign(payload: CampaignCreate, db: Session = Depends(get_db), curr
         timezone=payload.timezone or "UTC",
         is_active=payload.is_active,
         metadata_json=to_json_text(payload.metadata),
+        signature_id=payload.signature_id,
+        sender_account_id=payload.sender_account_id,
         created_at=now,
         updated_at=now
     )

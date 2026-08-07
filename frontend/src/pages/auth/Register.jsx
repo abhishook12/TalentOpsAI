@@ -129,27 +129,27 @@ export default function Register() {
         <div className="flex gap-4 w-full">
           <div className="flex flex-col gap-1.5 flex-1">
             <label className="text-[13px] text-[#a0a0a0]">First name</label>
-            <input className="w-full h-11 rounded-lg border border-[#333] bg-[#111] text-white px-4 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]" type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First name" />
+            <input className="w-full h-11 rounded-lg border border-[#333] bg-[var(--bg-surface)] text-white px-4 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]" type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First name" />
           </div>
           <div className="flex flex-col gap-1.5 flex-1">
             <label className="text-[13px] text-[#a0a0a0]">Last name</label>
-            <input className="w-full h-11 rounded-lg border border-[#333] bg-[#111] text-white px-4 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]" type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last name" />
+            <input className="w-full h-11 rounded-lg border border-[#333] bg-[var(--bg-surface)] text-white px-4 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]" type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last name" />
           </div>
         </div>
 
         <div className="flex flex-col gap-1.5">
           <label className="text-[13px] text-[#a0a0a0]">Work Email</label>
-          <input className="w-full h-11 rounded-lg border border-[#333] bg-[#111] text-white px-4 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" />
+          <input className="w-full h-11 rounded-lg border border-[#333] bg-[var(--bg-surface)] text-white px-4 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" />
         </div>
 
         <div className="flex flex-col gap-1.5">
           <label className="text-[13px] text-[#a0a0a0]">Company (Optional)</label>
-          <input className="w-full h-11 rounded-lg border border-[#333] bg-[#111] text-white px-4 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]" type="text" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Acme Corp" />
+          <input className="w-full h-11 rounded-lg border border-[#333] bg-[var(--bg-surface)] text-white px-4 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]" type="text" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Acme Corp" />
         </div>
 
         <div className="flex flex-col gap-1.5">
           <label className="text-[13px] text-[#a0a0a0]">Country</label>
-          <select className="w-full h-11 rounded-lg border border-[#333] bg-[#111] text-white px-4 text-sm outline-none appearance-none transition-all focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]" value={country} onChange={(e) => setCountry(e.target.value)}>
+          <select className="w-full h-11 rounded-lg border border-[#333] bg-[var(--bg-surface)] text-white px-4 text-sm outline-none appearance-none transition-all focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]" value={country} onChange={(e) => setCountry(e.target.value)}>
             <option value="US">United States</option>
             <option value="CA">Canada</option>
             <option value="UK">United Kingdom</option>
@@ -161,7 +161,7 @@ export default function Register() {
         <div className="flex flex-col gap-1.5">
           <label className="text-[13px] text-[#a0a0a0]">Password</label>
           <div className="relative flex items-center">
-            <input className="w-full h-11 rounded-lg border border-[#333] bg-[#111] text-white px-4 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]" type={showPassword ? 'text' : 'password'} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Create a strong password" />
+            <input className="w-full h-11 rounded-lg border border-[#333] bg-[var(--bg-surface)] text-white px-4 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]" type={showPassword ? 'text' : 'password'} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Create a strong password" />
             <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 bg-transparent border-none text-[#666] cursor-pointer p-1 flex items-center justify-center text-base transition-colors hover:text-white" aria-label="Toggle password visibility">
               <i className={`ti ${showPassword ? 'ti-eye-off' : 'ti-eye'}`} />
             </button>
@@ -195,13 +195,13 @@ export default function Register() {
 
         <div className="flex flex-col gap-1.5">
           <label className="text-[13px] text-[#a0a0a0]">Confirm Password</label>
-          <input className="w-full h-11 rounded-lg border border-[#333] bg-[#111] text-white px-4 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]" type={showPassword ? 'text' : 'password'} required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm your password" />
+          <input className="w-full h-11 rounded-lg border border-[#333] bg-[var(--bg-surface)] text-white px-4 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]" type={showPassword ? 'text' : 'password'} required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm your password" />
         </div>
 
         <div className="flex flex-col gap-1.5">
           <label className="flex items-start gap-2 text-[13px] text-[#a0a0a0] cursor-pointer">
             <input
-              className="appearance-none w-4 h-4 cursor-pointer bg-[#111] border border-[#444] rounded flex-shrink-0 relative transition-all checked:bg-[var(--brand)] checked:border-[var(--brand)] focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_var(--brand-bg)] mt-[2px] after:content-[''] after:absolute after:left-[4px] after:top-[1px] after:w-[5px] after:h-[9px] after:border-solid after:border-white after:border-0 after:border-r-2 after:border-b-2 after:rotate-45 after:opacity-0 checked:after:opacity-100"
+              className="appearance-none w-4 h-4 cursor-pointer bg-[var(--bg-surface)] border border-[#444] rounded flex-shrink-0 relative transition-all checked:bg-[var(--brand)] checked:border-[var(--brand)] focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_var(--brand-bg)] mt-[2px] after:content-[''] after:absolute after:left-[4px] after:top-[1px] after:w-[5px] after:h-[9px] after:border-solid after:border-white after:border-0 after:border-r-2 after:border-b-2 after:rotate-45 after:opacity-0 checked:after:opacity-100"
               type="checkbox"
               checked={agreeTerms}
               onChange={(e) => setAgreeTerms(e.target.checked)}

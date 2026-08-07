@@ -112,7 +112,7 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
     }}
     onMouseEnter={(e) => {
       e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.02)'
-      e.currentTarget.style.boxShadow = 'inset 3px 0 0 0 var(--brand)'
+      e.currentTarget.style.boxShadow = 'inset 3px 0 0 0 var(--text-primary)'
     }}
     onMouseLeave={(e) => {
       e.currentTarget.style.backgroundColor = 'transparent'
@@ -183,11 +183,11 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
         {r.is_active ? (
           <div style={{ 
             display: 'inline-flex', alignItems: 'center', gap: 6, 
-            padding: '6px 12px', background: 'var(--brand-bg)', 
-            border: '1px solid var(--brand-bg)',
-            borderRadius: 100, fontSize: 12.5, color: 'var(--brand)', fontWeight: 500 
+            padding: '6px 12px', background: 'var(--card-border)', 
+            border: '1px solid var(--card-border)',
+            borderRadius: 100, fontSize: 12.5, color: 'var(--text-primary)', fontWeight: 500 
           }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--brand-strong)', boxShadow: '0 0 8px var(--brand-strong)' }} />
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-primary)' }} />
             Active
           </div>
         ) : (
@@ -391,7 +391,7 @@ export default function Recruiters() {
           <div className="card" style={{ width: 300, flexShrink: 0, padding: 20, animation: 'fadeUp 0.2s ease', position: 'sticky', top: 24 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                   <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Advanced Filters</h3>
-                  <button onClick={clearFilters} style={{ background: 'none', border: 'none', color: 'var(--brand)', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}>Clear All</button>
+                  <button onClick={clearFilters} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}>Clear All</button>
               </div>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -474,7 +474,7 @@ export default function Recruiters() {
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
             <div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--brand)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>Recruiters</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>Recruiters</div>
               <h1 style={{ fontSize: 24, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.02em', marginBottom: 4 }}>Recruiters</h1>
               <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Manage and explore recruiter records across the database.</p>
             </div>
@@ -542,7 +542,7 @@ export default function Recruiters() {
                   style={{ width: 140, height: 36 }}
                 />
               </div>
-              <button onClick={clearFilters} style={{ background: 'none', border: 'none', color: 'var(--brand)', fontSize: 12.5, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+              <button onClick={clearFilters} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', fontSize: 12.5, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
                 <i className="ti ti-filter-off" style={{ fontSize: 14 }} /> Clear Filters
               </button>
             </div>
@@ -552,7 +552,7 @@ export default function Recruiters() {
           <div className="card" style={{ overflow: 'hidden' }}>
             {loading ? (
               <div style={{ padding: 120, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-                  <i className="ti ti-loader" style={{ fontSize: 36, animation: 'spin 1s linear infinite', color: 'var(--brand)' }} />
+                  <i className="ti ti-loader" style={{ fontSize: 36, animation: 'spin 1s linear infinite', color: 'var(--text-primary)' }} />
                   <div style={{ fontWeight: 500 }}>Scanning Talent Database...</div>
               </div>
             ) : recruiters.length === 0 ? (
@@ -606,7 +606,7 @@ export default function Recruiters() {
                       const pNum = i + 1;
                       const active = pNum === page;
                       return (
-                        <button key={pNum} onClick={() => setPage(pNum)} style={{ width: 32, height: 32, display: 'grid', placeItems: 'center', borderRadius: 6, fontSize: 13, background: active ? 'var(--brand)' : 'transparent', color: active ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', border: active ? 'none' : '1px solid transparent' }}>
+                        <button key={pNum} onClick={() => setPage(pNum)} style={{ width: 32, height: 32, display: 'grid', placeItems: 'center', borderRadius: 6, fontSize: 13, background: active ? 'var(--text-primary)' : 'transparent', color: active ? 'var(--main-bg)' : 'var(--text-secondary)', cursor: 'pointer', border: active ? 'none' : '1px solid transparent' }}>
                           {pNum}
                         </button>
                       )

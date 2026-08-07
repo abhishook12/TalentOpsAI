@@ -51,6 +51,7 @@ class Campaign(Base):
     status = Column(String(50), default=CampaignStatus.draft.value, index=True)
     from_name = Column(String(150), nullable=True)
     from_email = Column(String(255), nullable=True)
+    sender_account_id = Column(Integer, ForeignKey('connected_email_accounts.account_id', ondelete='SET NULL'), nullable=True, index=True)
     reply_to_email = Column(String(255), nullable=True)
     start_at = Column(TIMESTAMP, nullable=True)
     timezone = Column(String(100), nullable=True, default="UTC")

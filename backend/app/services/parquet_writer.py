@@ -39,17 +39,18 @@ class ParquetWriter:
             logger.error(f"Error getting max id: {e}")
             return 0
 
-    def _get_parquet_schema(self, con) -> List[str]:
-        """Get the schema of the existing Parquet file."""
+    def _get_parquet_schema(self, con) -> Dict[str, str]:
+        """Get the schema of the existing Parquet file as dict {col: type}."""
         if not os.path.exists(PARQUET_FILE):
-            return []
+            return {}
         res = con.execute(f"DESCRIBE SELECT * FROM read_parquet('{PARQUET_FILE.replace(os.sep, '/')}') LIMIT 1").fetchall()
-        return [row[0] for row in res]
+        return {row[0]: row[1] for row in res}
 
-    def _align_schema(self, df: pd.DataFrame, schema_cols: List[str]) -> pd.DataFrame:
+    def _align_schema(self, df: pd.DataFrame, schema: Dict[str, str]) -> pd.DataFrame:
         """Ensure the DataFrame has exactly the columns required by the Parquet schema."""
-        if not schema_cols:
+        if not schema:
             return df
+        schema_cols = list(schema.keys())
         for col in schema_cols:
             if col not in df.columns:
                 df[col] = None
@@ -139,7 +140,8 @@ class ParquetWriter:
             start_time = time.time()
             con = duckdb.connect()
             
-            schema_cols = self._get_parquet_schema(con)
+            schema = self._get_parquet_schema(con)
+            schema_cols = list(schema.keys())
             
             df_updates = pd.DataFrame(valid_updates)
             # Ensure df_updates only contains columns that exist in the schema, but don't force all columns
@@ -158,10 +160,9 @@ class ParquetWriter:
                     if col == 'recruiter_id':
                         select_exprs.append("base.recruiter_id")
                     elif col in update_cols:
-                        # Use updated value if joined, else base value.
-                        # Wait, what if the update explicitly sets it to NULL? COALESCE(upd.col, base.col) ignores explicit NULLs.
-                        # We should use IF(upd.recruiter_id IS NOT NULL, upd.col, base.col)
-                        select_exprs.append(f"CASE WHEN upd.recruiter_id IS NOT NULL THEN upd.{col} ELSE base.{col} END AS {col}")
+                        # We should use CASE WHEN upd.recruiter_id IS NOT NULL THEN CAST(upd.col AS type) ELSE base.col
+                        col_type = schema[col]
+                        select_exprs.append(f"CASE WHEN upd.recruiter_id IS NOT NULL THEN CAST(upd.{col} AS {col_type}) ELSE base.{col} END AS {col}")
                     else:
                         select_exprs.append(f"base.{col}")
                         
@@ -175,6 +176,7 @@ class ParquetWriter:
                     ) TO '{tmp_file.replace(os.sep, '/')}' (FORMAT PARQUET, COMPRESSION 'ZSTD')
                 """
                 
+                logger.info(f"Update query: {query}")
                 con.execute(query)
                 
                 # Atomic swap

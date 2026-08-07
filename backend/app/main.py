@@ -398,6 +398,7 @@ async def startup_event():
     from .services.sentinel_engine import sentinel_engine
     from .services.quality_engine import quality_engine
     from .services.sync_engine import sync_engine_loop
+    from .services.email_verification_engine import verification_engine
     from .database import engine
     from sqlalchemy import text
     
@@ -413,6 +414,7 @@ async def startup_event():
         restart_active_campaigns()
         sentinel_engine.start()
         quality_engine.start()
+        verification_engine.start()
         logger.info("Acquired leader lock; started background tasks.")
     else:
         conn.close()
@@ -424,6 +426,8 @@ async def shutdown_event():
     sync_manager.stop()
     from .services.quality_engine import quality_engine
     quality_engine.stop()
+    from .services.email_verification_engine import verification_engine
+    verification_engine.stop()
 
 from .routes import health
 app.include_router(health.router, prefix="/health", tags=["System Health"])

@@ -146,7 +146,28 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
                 )}
               </div>
               {r.specialization && <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{r.specialization} Recruiter</div>}
-              <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{r.email?.toLowerCase()}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{r.email?.toLowerCase()}</div>
+                {r.email_status && r.email_status !== 'unknown' && r.email_status !== '' && (
+                  <div style={{ 
+                    display: 'inline-flex', alignItems: 'center', gap: 4, 
+                    padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
+                    background: r.email_status === 'verified' ? 'rgba(16,185,129,0.1)' : 
+                                r.email_status === 'likely_valid' ? 'rgba(59,130,246,0.1)' :
+                                r.email_status === 'needs_monitoring' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
+                    color: r.email_status === 'verified' ? '#10b981' : 
+                           r.email_status === 'likely_valid' ? '#3b82f6' :
+                           r.email_status === 'needs_monitoring' ? '#f59e0b' : '#ef4444',
+                    border: `1px solid ${
+                      r.email_status === 'verified' ? 'rgba(16,185,129,0.2)' : 
+                      r.email_status === 'likely_valid' ? 'rgba(59,130,246,0.2)' :
+                      r.email_status === 'needs_monitoring' ? 'rgba(245,158,11,0.2)' : 'rgba(239,68,68,0.2)'
+                    }`
+                  }} title={r.email_source ? `Confidence: ${r.email_confidence}% | Source: ${r.email_source}` : `Confidence: ${r.email_confidence || 0}%`}>
+                    {r.email_status.replace('_', ' ')}
+                  </div>
+                )}
+              </div>
           </div>
         </div>
       </td>

@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, AlertTriangle, XCircle, Mail, Database, 
   Activity, ArrowUpRight, ArrowDownRight, CheckCircle2,
-  Trash2, RefreshCw, ChevronRight, BarChart3, Filter
+  Trash2, RefreshCw, ChevronRight, BarChart3, Filter,
+  Play, Pause, Zap, Clock
 } from 'lucide-react';
 
-const API_BASE_URL = 'http://localhost:8000';
+import api from '../services/api';
 
 const StatCard = ({ title, value, subtitle, icon: Icon, colorClass, gradientClass }) => (
   <div className={`relative overflow-hidden rounded-2xl p-6 ${gradientClass} border border-white/5 shadow-xl transition-all hover:scale-[1.02] hover:shadow-2xl`}>
@@ -26,56 +27,48 @@ const StatCard = ({ title, value, subtitle, icon: Icon, colorClass, gradientClas
 export default function MailIntelDashboard() {
   const [stats, setStats] = useState(null);
   const [domains, setDomains] = useState([]);
+  const [engineState, setEngineState] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [cleanupAction, setCleanupAction] = useState({ active: false, filter: 'suspicious', count: 0 });
 
   useEffect(() => {
     fetchData();
+    const interval = setInterval(fetchEngineState, 3000); // Poll every 3 seconds
+    return () => clearInterval(interval);
   }, []);
 
   const fetchData = async () => {
-    setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const headers = { 'Authorization': `Bearer ${token}` };
-      
-      const [statsRes, domainsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/mailintel/stats`, { headers }),
-        fetch(`${API_BASE_URL}/mailintel/domains`, { headers })
+      const [statsRes, domainsRes, engineRes] = await Promise.all([
+        api.get(`/mailintel/stats`),
+        api.get(`/mailintel/domains`),
+        api.get(`/mailintel/verification-progress`)
       ]);
       
-      if (statsRes.ok) setStats(await statsRes.json());
-      if (domainsRes.ok) setDomains(await domainsRes.json());
+      if (statsRes.data) setStats(statsRes.data);
+      if (domainsRes.data) setDomains(domainsRes.data);
+      if (engineRes.data) setEngineState(engineRes.data);
     } catch (e) {
       console.error("Error fetching mailintel data", e);
     }
     setLoading(false);
   };
 
-  const handleCleanup = async () => {
+  const fetchEngineState = async () => {
     try {
-      const token = localStorage.getItem('token');
-      let payload = {};
-      if (cleanupAction.filter === 'suspicious') payload = { confidence_less_than: 40 };
-      if (cleanupAction.filter === 'bounced') payload = { hard_bounce_gte: 2 };
-      
-      const res = await fetch(`${API_BASE_URL}/mailintel/cleanup`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        const data = await res.json();
-        alert(data.message);
-        fetchData();
-        setCleanupAction({ ...cleanupAction, active: false });
-      }
-    } catch(e) {
-      console.error(e);
-      alert("Cleanup failed.");
+      const res = await api.get(`/mailintel/verification-progress`);
+      if (res.data) setEngineState(res.data);
+    } catch (e) {
+      console.error("Error polling engine state", e);
+    }
+  };
+
+  const toggleEngine = async (action) => {
+    try {
+      const endpoint = action === 'start' ? 'start-verification' : 'pause-verification';
+      await api.post(`/mailintel/${endpoint}`);
+      fetchEngineState();
+    } catch (e) {
+      console.error(`Failed to ${action} engine`, e);
     }
   };
 
@@ -89,6 +82,13 @@ export default function MailIntelDashboard() {
       </div>
     );
   }
+
+  const engineRunning = engineState?.is_running && !engineState?.is_paused;
+  const enginePaused = engineState?.is_running && engineState?.is_paused;
+  const totalProcessed = engineState?.total_processed || 0;
+  const totalPending = engineState?.total_pending || (stats?.never_checked || 0);
+  const totalEmails = totalProcessed + totalPending;
+  const progressPercent = totalEmails > 0 ? (totalProcessed / totalEmails) * 100 : 0;
 
   return (
     <div className="flex-1 min-h-screen bg-[#0A0A0B] text-white p-8">
@@ -111,71 +111,105 @@ export default function MailIntelDashboard() {
         </div>
       </div>
 
-      {/* Coverage Progress */}
+      {/* VERIFICATION ENGINE LIVE PANEL */}
       <div className="mb-8 bg-[#121214] border border-[var(--border)] rounded-2xl p-6 shadow-2xl relative overflow-hidden">
-        <div className="flex justify-between items-end mb-2 relative z-10">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 relative z-10 gap-4">
           <div>
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Database size={18} style={{ color: 'var(--brand)' }} />
-              Database Coverage Engine
+            <h3 className="text-xl font-bold text-white flex items-center gap-3">
+              <Database size={22} style={{ color: 'var(--brand)' }} />
+              Active Verification Engine
+              {engineRunning && <span className="flex h-3 w-3 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981] animate-pulse"></span>}
+              {enginePaused && <span className="flex h-3 w-3 rounded-full bg-amber-500 shadow-[0_0_10px_#f59e0b]"></span>}
+              {!engineState?.is_running && <span className="flex h-3 w-3 rounded-full bg-gray-500"></span>}
             </h3>
-            <p className="text-sm text-gray-400 mt-1">
-              Background workers actively verifying {stats?.total?.toLocaleString()} records
+            <p className="text-sm text-gray-400 mt-2">
+              Processing {totalEmails.toLocaleString()} recruiter records autonomously.
             </p>
+            {engineState?.current_domain && engineRunning && (
+              <p className="text-sm text-emerald-400 font-medium mt-1 flex items-center gap-2">
+                <RefreshCw size={14} className="animate-spin" /> Analyzing @{engineState.current_domain}
+              </p>
+            )}
           </div>
-          <div className="text-right">
-            <span className="text-2xl font-bold" style={{ color: 'var(--brand)' }}>
-              {(((stats?.total - stats?.never_checked) / (stats?.total || 1)) * 100).toFixed(1)}%
-            </span>
-            <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mt-1">Processed</p>
+          
+          <div className="flex items-center gap-3">
+            <div className="bg-[#0A0A0B] border border-[var(--border)] rounded-xl px-4 py-2 flex flex-col items-end">
+              <span className="text-xs text-gray-500 uppercase font-bold tracking-wider">Speed</span>
+              <span className="text-lg font-mono text-white flex items-center gap-2">
+                <Zap size={14} className="text-yellow-400"/> {Math.round(engineState?.speed_emails_per_hour || 0).toLocaleString()} <span className="text-xs text-gray-500">/hr</span>
+              </span>
+            </div>
+            
+            {!engineState?.is_running ? (
+              <button onClick={() => toggleEngine('start')} className="h-12 px-6 rounded-xl bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600/30 flex items-center gap-2 font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                <Play size={18} fill="currentColor" /> Initialize Engine
+              </button>
+            ) : enginePaused ? (
+              <button onClick={() => toggleEngine('start')} className="h-12 px-6 rounded-xl bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600/30 flex items-center gap-2 font-bold transition-all">
+                <Play size={18} fill="currentColor" /> Resume
+              </button>
+            ) : (
+              <button onClick={() => toggleEngine('pause')} className="h-12 px-6 rounded-xl bg-amber-600/20 text-amber-400 border border-amber-500/30 hover:bg-amber-600/30 flex items-center gap-2 font-bold transition-all">
+                <Pause size={18} fill="currentColor" /> Pause Engine
+              </button>
+            )}
           </div>
         </div>
-        <div className="h-3 w-full bg-[var(--bg-hover)] rounded-full overflow-hidden relative z-10">
+
+        {/* Progress Bar */}
+        <div className="mb-2 flex justify-between text-sm">
+          <span className="text-gray-400 font-medium">Global Progress</span>
+          <span className="font-bold text-white">{progressPercent.toFixed(1)}%</span>
+        </div>
+        <div className="h-4 w-full bg-[#0A0A0B] rounded-full overflow-hidden relative z-10 border border-white/5 shadow-inner">
           <div 
-            className="h-full rounded-full transition-all duration-1000 ease-out"
+            className="h-full rounded-full transition-all duration-1000 ease-out relative"
             style={{ 
-              width: `${((stats?.total - stats?.never_checked) / (stats?.total || 1)) * 100}%`,
+              width: `${progressPercent}%`,
               background: 'linear-gradient(90deg, var(--brand), var(--brand-strong))',
-              boxShadow: '0 0 10px var(--brand-bg)'
+              boxShadow: '0 0 20px var(--brand-bg)'
             }}
-          />
+          >
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGcgc3Ryb2tlPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMikiIHN0cm9rZS13aWR0aD0iNCI+PHBhdGggZD0iTS0xMCA1MEw1MCAtMTAiLz48L2c+PC9zdmc+')] opacity-20 animate-[slide_2s_linear_infinite]" />
+          </div>
         </div>
+        
         <div className="flex justify-between items-center mt-3 text-xs font-medium text-gray-500 relative z-10">
-          <span>{(stats?.total - stats?.never_checked)?.toLocaleString()} Verified & Scored</span>
-          <span>{stats?.never_checked?.toLocaleString()} Remaining in Queue</span>
+          <span>{totalProcessed.toLocaleString()} Processed</span>
+          <span>{totalPending.toLocaleString()} Remaining</span>
         </div>
       </div>
 
       {/* Main Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
         <StatCard 
-          title="Total Processed" 
-          value={stats?.total?.toLocaleString() || 0}
-          subtitle={`Avg Confidence: ${stats?.average_confidence || 0}%`}
-          icon={Database} 
-          gradientClass="bg-gradient-to-br from-blue-900/40 to-[#0A0A0B]"
-          colorClass="text-blue-400"
-        />
-        <StatCard 
           title="Verified Contacts" 
-          value={stats?.verified?.toLocaleString() || 0}
-          subtitle="95-100% Confidence"
+          value={(stats?.verified || 0).toLocaleString()}
+          subtitle="90-100% Confidence"
           icon={CheckCircle2} 
           gradientClass="bg-gradient-to-br from-emerald-900/40 to-[#0A0A0B]"
           colorClass="text-emerald-400"
         />
         <StatCard 
+          title="Likely Valid" 
+          value={(stats?.likely_valid || 0).toLocaleString()}
+          subtitle="70-89% Confidence"
+          icon={ShieldCheck} 
+          gradientClass="bg-gradient-to-br from-blue-900/40 to-[#0A0A0B]"
+          colorClass="text-blue-400"
+        />
+        <StatCard 
           title="Needs Monitoring" 
-          value={stats?.needs_monitoring?.toLocaleString() || 0}
-          subtitle="60-79% Confidence"
+          value={(stats?.needs_monitoring || 0).toLocaleString()}
+          subtitle="50-69% Confidence"
           icon={AlertTriangle} 
           gradientClass="bg-gradient-to-br from-amber-900/40 to-[#0A0A0B]"
           colorClass="text-amber-400"
         />
         <StatCard 
-          title="Invalid / Blocked" 
-          value={stats?.invalid?.toLocaleString() || 0}
-          subtitle="Hard bounced multiple times"
+          title="Invalid / Suspicious" 
+          value={((stats?.invalid || 0) + (stats?.suspicious || 0)).toLocaleString()}
+          subtitle="< 50% Confidence"
           icon={XCircle} 
           gradientClass="bg-gradient-to-br from-red-900/40 to-[#0A0A0B]"
           colorClass="text-red-400"
@@ -193,13 +227,13 @@ export default function MailIntelDashboard() {
                 <BarChart3 size={20} style={{ color: 'var(--brand-strong)' }} />
                 Domain Reputation Insights
               </h2>
-              <p className="text-sm text-gray-400 mt-1">Real-time deliverability across enterprise domains</p>
+              <p className="text-sm text-gray-400 mt-1">Deliverability rates by enterprise domain</p>
             </div>
           </div>
           
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[400px] overflow-y-auto custom-scrollbar">
             <table className="w-full text-left border-collapse">
-              <thead>
+              <thead className="sticky top-0 bg-[#121214] z-10">
                 <tr className="border-b border-[var(--border)] text-xs uppercase tracking-wider text-gray-500 font-semibold">
                   <th className="pb-3 px-4">Domain</th>
                   <th className="pb-3 px-4">Total Sent</th>
@@ -240,38 +274,30 @@ export default function MailIntelDashboard() {
           </div>
         </div>
 
-        {/* Intelligence Actions */}
+        {/* Intelligence Actions & Logs */}
         <div className="flex flex-col gap-6">
-          <div className="rounded-2xl border border-[var(--border)] bg-[#121214] p-6">
-            <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
-              <Filter size={18} style={{ color: 'var(--brand)' }} />
-              Bulk Cleanup Rules
-            </h2>
-            <p className="text-sm text-gray-400 mb-6">Apply MAILINTEL filters to automatically quarantine hazardous contacts and protect sender reputation.</p>
-            
-            <div className="space-y-3">
-              <button 
-                onClick={() => setCleanupAction({ active: true, filter: 'suspicious', count: stats?.suspicious })}
-                className="w-full text-left p-4 rounded-xl bg-[var(--bg-hover)] hover:bg-[var(--bg-hover)] border border-white/5 transition-all flex items-center justify-between group"
-              >
-                <div>
-                  <div className="font-medium text-amber-400 text-sm mb-1">Quarantine Low Confidence</div>
-                  <div className="text-xs text-gray-500">Moves {stats?.suspicious || 0} emails to Invalid state (Confidence &lt; 40)</div>
-                </div>
-                <ChevronRight className="text-gray-600 group-hover:text-amber-400 transition-colors" size={18} />
-              </button>
-
-              <button 
-                onClick={() => setCleanupAction({ active: true, filter: 'bounced', count: 0 })}
-                className="w-full text-left p-4 rounded-xl bg-[var(--bg-hover)] hover:bg-[var(--bg-hover)] border border-white/5 transition-all flex items-center justify-between group"
-              >
-                <div>
-                  <div className="font-medium text-red-400 text-sm mb-1">Purge Serial Bouncers</div>
-                  <div className="text-xs text-gray-500">Quarantines emails with 2+ hard bounces</div>
-                </div>
-                <ChevronRight className="text-gray-600 group-hover:text-red-400 transition-colors" size={18} />
-              </button>
-            </div>
+          
+          <div className="rounded-2xl border border-[var(--border)] bg-[#121214] p-6 shadow-xl">
+             <h3 className="text-sm font-bold text-gray-300 uppercase tracking-widest mb-4 flex items-center gap-2">
+               <Clock size={16} /> Recent Batches
+             </h3>
+             <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+               {engineState?.batch_log?.slice(0, 5).map((log, idx) => (
+                 <div key={idx} className="bg-[#0A0A0B] border border-white/5 p-3 rounded-xl">
+                   <div className="flex justify-between items-center mb-1">
+                     <span className="text-sm font-bold text-blue-400">@{log.domain}</span>
+                     <span className="text-xs text-gray-500">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                   </div>
+                   <div className="flex justify-between text-xs text-gray-400">
+                     <span>{log.count.toLocaleString()} emails</span>
+                     <span>{log.duration_seconds}s</span>
+                   </div>
+                 </div>
+               ))}
+               {(!engineState?.batch_log || engineState.batch_log.length === 0) && (
+                 <div className="text-center py-6 text-sm text-gray-600">No batches processed yet.</div>
+               )}
+             </div>
           </div>
 
           <div className="rounded-2xl border border-[var(--border)] bg-[#121214] p-6">
@@ -289,32 +315,26 @@ export default function MailIntelDashboard() {
 
       </div>
 
-      {/* Cleanup Modal */}
-      {cleanupAction.active && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#1a1a1d] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md shadow-2xl">
-            <h3 className="text-xl font-bold mb-2">Confirm Action</h3>
-            <p className="text-sm text-gray-400 mb-6">
-              You are about to execute the <strong>{cleanupAction.filter}</strong> cleanup rule. This will permanently alter the status of targeted emails to protect your sender reputation.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button 
-                onClick={() => setCleanupAction({ active: false })}
-                className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--bg-hover)] transition-colors"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleCleanup}
-                className="px-4 py-2 rounded-lg text-sm font-medium bg-red-500 hover:bg-red-600 text-white transition-colors flex items-center gap-2"
-              >
-                <AlertTriangle size={16} /> Execute Cleanup
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes slide {
+          from { background-position: 0 0; }
+          to { background-position: 40px 0; }
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.02);
+          border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.2);
+        }
+      `}} />
     </div>
   );
 }

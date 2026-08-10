@@ -263,8 +263,7 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
       var(--bg-primary);
     color: var(--text-primary);
     font-family: var(--font);
-    overflow-x: hidden;
-    overflow-y: auto;
+    
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -532,9 +531,10 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
   }
 
   .cc-page-body {
-    flex: 1 0 auto;
-    min-height: auto;
-    overflow: visible;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
     padding: 18px 18px 96px;
   }
 

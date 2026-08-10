@@ -227,13 +227,16 @@ export default function Directory() {
 
     ;(async () => {
       setStatesLoading(true)
-      try {
-        const { data } = await api.get('/analytics/company-states', {
-          params: { company_id: selectedCompany.company_id },
-        })
-        if (!alive) return
-        setCompanyStates(Array.isArray(data) ? data : [])
-      } catch (err) {
+        try {
+          const { data } = await api.get('/analytics/company-states', {
+            params: { 
+              company_id: selectedCompany.company_id,
+              company_key: selectedCompany.company_key 
+            },
+          })
+          if (!alive) return
+          setCompanyStates(Array.isArray(data) ? data : [])
+        } catch (err) {
         if (alive) setToast({ type: 'error', message: getErrorMessage(err, 'Failed to load states') })
       } finally {
         if (alive) setStatesLoading(false)
@@ -267,6 +270,7 @@ export default function Directory() {
             page,
             limit: PAGE_SIZE,
             company_id: selectedCompany.company_id,
+            company_key: selectedCompany.company_key,
             state: selectedState || undefined,
             search: debouncedRecruiterQuery || undefined,
             sort_by: 'created_at',
@@ -400,6 +404,7 @@ export default function Directory() {
         const { data } = await api.get('/recruiters', {
           params: {
             company_id: selectedCompany.company_id,
+            company_key: selectedCompany.company_key,
             limit: 100,
             page: currentPage
           }
@@ -453,7 +458,7 @@ export default function Directory() {
   const allOnPageSelected = recruiters.length > 0 && recruiters.every((recruiter) => selectedRecruiters.has(recruiter.recruiter_id))
 
   return (
-    <div className="page-enter" style={{ minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div className="page-enter" style={{ height: 'calc(100vh - 180px)', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 950, margin: 0 }}>Directory</h1>
@@ -469,8 +474,8 @@ export default function Directory() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '340px 300px 1fr', gap: 12, minHeight: 0, alignItems: 'start' }}>
-        <div className="card" style={{ padding: 14, minHeight: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '340px 300px 1fr', gap: 12, flex: 1, minHeight: 0, alignItems: 'stretch' }}>
+        <div className="card" style={{ padding: 14, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 10 }}>1. Search Company</div>
           <input
             value={companyQuery}
@@ -478,7 +483,7 @@ export default function Directory() {
             placeholder="Search company..."
             style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', caretColor: 'var(--text-primary)' }}
           />
-          <div style={{ marginTop: 10, maxHeight: 'calc(100vh - 240px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ marginTop: 10, flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
             {companiesLoading ? <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Loading companies...</div> : null}
             {!companiesLoading && companyRows.length === 0 ? (
               <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No companies match this search.</div>
@@ -571,7 +576,7 @@ export default function Directory() {
           </div>
         </div>
 
-        <div className="card" style={{ padding: 14, minHeight: 0 }}>
+        <div className="card" style={{ padding: 14, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 10 }}>2. Select State</div>
           {!selectedCompany ? (
             <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Pick a company first.</div>
@@ -608,7 +613,7 @@ export default function Directory() {
                 <span><strong>All states</strong></span>
                 <span style={{ fontFamily: 'var(--mono)', fontWeight: 900 }}>{allStatesCount}</span>
               </button>
-              <div style={{ maxHeight: 'calc(100vh - 320px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {statesLoading ? <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Loading states...</div> : null}
                 {!statesLoading && filteredStateRows.length === 0 ? (
                   <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>

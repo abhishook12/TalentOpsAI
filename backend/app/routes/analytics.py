@@ -236,9 +236,13 @@ def companies_count_by_state(db: Session = Depends(get_db), current_user: User =
 @router.get("/company-states")
 def company_states(
     company_id: Optional[int] = Query(None, ge=1),
+    company_key: Optional[str] = Query(None, min_length=1),
     db: Session = Depends(get_db),
 ):
-    cached = analytics_cache.get(f"company_states_{company_id}")
+    data_version = recruiter_store.data_version
+    selected_key = company_key or (str(company_id) if company_id is not None else None)
+    cache_key = f"company_states_{data_version}_{selected_key or 'all'}"
+    cached = analytics_cache.get(cache_key)
     if cached is not None:
         return cached
 
@@ -246,7 +250,8 @@ def company_states(
         recruiter_store._ensure_loaded()
         duck_conn = recruiter_store._conn
         if duck_conn:
-            where_clause = f"WHERE company_id = {company_id}" if company_id else "WHERE 1=1"
+            where_clause = "WHERE CAST(company_id AS VARCHAR) = ?" if selected_key else "WHERE 1=1"
+            params = [selected_key] if selected_key else []
             
             rows = duck_conn.execute(f"""
                 SELECT state, COUNT(*) as count
@@ -254,20 +259,20 @@ def company_states(
                 {where_clause} AND state IS NOT NULL AND state != ''
                 GROUP BY state
                 ORDER BY count DESC, state ASC
-            """).fetchall()
+            """, params).fetchall()
             
             unknown_row = duck_conn.execute(f"""
                 SELECT COUNT(*) as count
                 FROM recruiters
                 {where_clause} AND (state IS NULL OR state = '')
-            """).fetchone()
+            """, params).fetchone()
             
             result = [{"state": row[0], "count": int(row[1])} for row in rows]
             unknown_count = int(unknown_row[0]) if unknown_row and unknown_row[0] else 0
             if unknown_count > 0:
                 result.append({"state": UNKNOWN_STATE_SENTINEL, "count": unknown_count})
                 
-            analytics_cache.set(f"company_states_{company_id}", result, ttl=3600)
+            analytics_cache.set(cache_key, result, ttl=60)
             return result
     except Exception as e:
         logger.warning(f"DuckDB company-states failed: {e}")
@@ -286,73 +291,67 @@ def companies_search(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_request),
 ):
-    dashboard_query = not q and (not state or state.upper() == 'ALL') and min_recruiters == 1 and limit == 6 and skip == 0
-    dir_query = not q and (not state or state.upper() == 'ALL') and min_recruiters == 1 and limit == 200 and skip == 0
-    # Cache ALL company search queries aggressively
-    cache_key = f"companies_search_{current_user.id}_{q or ''}_{state or ''}_{min_recruiters}_{limit}_{skip}"
+    # Counts and company keys live in the active Parquet dataset. Include its
+    # version in the cache key so Directory never mixes old company metadata
+    # with the current recruiter file.
+    data_version = recruiter_store.data_version
+    cache_key = f"companies_search_{data_version}_{current_user.id}_{q or ''}_{state or ''}_{min_recruiters}_{limit}_{skip}"
     cached = analytics_cache.get(cache_key)
     if cached is not None:
         response.headers["X-Total-Count"] = str(cached["total_count"])
         return cached["rows"]
 
-    is_superadmin = current_user.role and current_user.role.name.lower() in ('admin', 'superadmin')
-    where_clauses = ["c.is_active = true", "1 = 1"]
-    params = {"limit": limit, "skip": skip}
+    active_companies = recruiter_store.company_directory(q, state)
+    active_companies = [row for row in active_companies if row['recruiter_count'] >= min_recruiters]
 
-    if q:
-        q_clean = q.strip()
-        import re
-        q_ilike = re.sub(r'\s+', '%', q_clean)
-        where_clauses.append("(c.company_name ILIKE '%' || :q_ilike || '%')")
-        params["q"] = q_clean
-        params["q_ilike"] = q_ilike
+    # Numeric values can retain database metadata. Name-based keys are still
+    # valid companies in the active data and must remain discoverable.
+    numeric_ids = []
+    for row in active_companies:
+        try:
+            value = float(row['company_key'])
+            if value.is_integer():
+                val_int = int(value)
+                # Filter out values that exceed PostgreSQL 32-bit integer limits
+                if -2147483648 <= val_int <= 2147483647:
+                    numeric_ids.append(val_int)
+        except ValueError:
+            pass
+    metadata = {}
+    if numeric_ids:
+        for company in db.query(Company).filter(Company.company_id.in_(numeric_ids)).all():
+            metadata[str(company.company_id)] = company
 
-    if state and state.upper() != "ALL":
-        where_clauses.append("c.state = :state")
-        params["state"] = state.upper()
-
-    where_sql = " AND ".join(where_clauses)
-    
-    # Get true recruiter counts from the Parquet store
-    from app.services.recruiter_store import recruiter_store
-    true_counts = recruiter_store.company_recruiter_counts()
-    
-    # Fast path: query companies metadata
-    sql = f"""
-        SELECT 
-            c.company_id,
-            c.company_name,
-            c.location,
-            c.industry,
-            c.website,
-            c.email_pattern,
-            c.linkedin_url,
-            c.notes,
-            c.tags,
-            COALESCE(NULLIF(TRIM(c.state), ''), 'US') AS state_abbr,
-            0 AS sim_score,
-            0 AS missing_state_count, 
-            0 AS needs_review_count
-        FROM companies c
-        WHERE {where_sql}
-    """
-    
-    # Execute query
-    results = db.execute(text(sql), params).fetchall()
-    
-    # Stitch true counts and filter by min_recruiters
     enriched_results = []
-    for row in results:
-        row_dict = dict(row._mapping)
-        # Inject the true count from Parquet
-        row_dict['recruiter_count'] = true_counts.get(row_dict['company_id'], 0)
-        row_dict['logo_domain'] = select_logo_domain(row_dict.get("website"), row_dict.get("email_pattern"))
-        
-        if row_dict['recruiter_count'] >= min_recruiters:
-            enriched_results.append(row_dict)
-            
-    # Sort by recruiter_count descending
-    enriched_results.sort(key=lambda x: x['recruiter_count'], reverse=True)
+    for row in active_companies:
+        key = row['company_key']
+        normalized_numeric_key = None
+        try:
+            numeric_value = float(key)
+            if numeric_value.is_integer():
+                normalized_numeric_key = str(int(numeric_value))
+        except ValueError:
+            pass
+        company = metadata.get(normalized_numeric_key)
+        name = company.company_name if company else key
+        enriched_results.append({
+            "company_key": key,
+            "company_id": company.company_id if company else None,
+            "company_name": name,
+            "location": company.location if company else None,
+            "industry": company.industry if company else None,
+            "website": company.website if company else None,
+            "email_pattern": company.email_pattern if company else None,
+            "linkedin_url": company.linkedin_url if company else None,
+            "notes": company.notes if company else None,
+            "tags": company.tags if company else None,
+            "state_abbr": company.state if company and company.state else "US",
+            "sim_score": 0,
+            "missing_state_count": 0,
+            "needs_review_count": 0,
+            "recruiter_count": row['recruiter_count'],
+            "logo_domain": select_logo_domain(company.website, company.email_pattern) if company else None,
+        })
     
     # Apply pagination
     total_count = len(enriched_results)
@@ -363,7 +362,7 @@ def companies_search(
         row['full_count'] = total_count
 
     final_result = {"total_count": total_count, "rows": paginated}
-    analytics_cache.set(cache_key, final_result, ttl=3600)
+    analytics_cache.set(cache_key, final_result, ttl=60)
     response.headers["X-Total-Count"] = str(total_count)
     return paginated
 

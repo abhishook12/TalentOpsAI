@@ -159,6 +159,56 @@ class RecruiterStore:
         self._ensure_loaded()
         return self._record_count
 
+    @property
+    def data_version(self) -> str:
+        """A cheap cache key that changes whenever the active Parquet file changes."""
+        self._ensure_loaded()
+        try:
+            stat = os.stat(PARQUET_FILE)
+            return f"{stat.st_mtime_ns}:{stat.st_size}"
+        except OSError:
+            return "missing"
+
+    def company_directory(
+        self,
+        query: Optional[str] = None,
+        state: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Return company keys and counts from the active recruiter dataset.
+
+        Imported data contains both numeric database IDs and company-name strings
+        in ``company_id``. The raw value is therefore the only stable key shared
+        by company search, state drill-down, and recruiter listings.
+        """
+        self._ensure_loaded()
+        where = [
+            "company_id IS NOT NULL",
+            "TRIM(CAST(company_id AS VARCHAR)) != ''",
+            # These are import placeholders or concatenated source artifacts,
+            # not selectable company identities.
+            "LOWER(TRIM(CAST(company_id AS VARCHAR))) NOT IN ('need to fill data', 'unknown', 'n/a', 'none', 'null')",
+            "INSTR(CAST(company_id AS VARCHAR), '|') = 0",
+        ]
+        params = []
+        if query:
+            where.append("LOWER(CAST(company_id AS VARCHAR)) LIKE ?")
+            params.append(f"%{query.strip().lower()}%")
+        if state and state.upper() != "ALL":
+            where.append("UPPER(COALESCE(state, '')) = ?")
+            params.append(state.upper())
+
+        rows = self._conn.execute(f"""
+            SELECT CAST(company_id AS VARCHAR) AS company_key, COUNT(*) AS recruiter_count
+            FROM recruiters
+            WHERE {' AND '.join(where)}
+            GROUP BY company_key
+            ORDER BY recruiter_count DESC, company_key ASC
+        """, params).fetchall()
+        return [
+            {"company_key": str(key), "recruiter_count": int(count)}
+            for key, count in rows
+        ]
+
     # ─── Core Query Methods ───
 
     def _df_to_dict(self, df):
@@ -200,6 +250,7 @@ class RecruiterStore:
         search: Optional[str] = None,
         state: Optional[str] = None,
         company_id: Optional[int] = None,
+        company_key: Optional[str] = None,
         company_name: Optional[str] = None,
         specialization: Optional[str] = None,
         has_phone: Optional[bool] = None,
@@ -240,6 +291,10 @@ class RecruiterStore:
         if company_id is not None:
             where_clauses.append("company_id = ?")
             params.append(company_id)
+
+        if company_key:
+            where_clauses.append("CAST(company_id AS VARCHAR) = ?")
+            params.append(company_key)
 
         if specialization:
             where_clauses.append("LOWER(COALESCE(specialization, '')) LIKE ?")

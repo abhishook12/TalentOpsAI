@@ -115,19 +115,19 @@ export function CompanyIdentity({
       )}
 
       {/* Typography */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <div style={{ fontSize: 16, fontWeight: 600, color: '#ffffff', letterSpacing: '-0.01em', lineHeight: 1.2 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 16, fontWeight: 600, color: '#ffffff', letterSpacing: '-0.01em', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {displayName}
         </div>
         
         {subtitle && (
-          <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.2 }}>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {subtitle}
           </div>
         )}
         
         {metadata && (
-          <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.2 }}>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {metadata}
           </div>
         )}

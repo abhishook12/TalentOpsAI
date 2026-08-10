@@ -494,6 +494,7 @@ def get_recruiters(
     city: Optional[str] = None,
     company: Optional[str] = None,
     company_id: Optional[int] = None,
+    company_key: Optional[str] = None,
     title: Optional[str] = None,
     has_phone: Optional[bool] = None,
     missing_email: Optional[bool] = None,
@@ -510,7 +511,8 @@ def get_recruiters(
 ):
     print(f"GET /recruiters/ CALLED! needs_review={needs_review}", flush=True)
     # Cache ALL recruiter list queries aggressively
-    cache_key = f"rec_list_duckdb_{current_user.id}_{page}_{limit}_{search or ''}_{state or ''}_{company_id or ''}_{sort_by}_{sort_desc}_{needs_review}_{has_phone}_{is_active}_{data_source or ''}"
+    data_version = recruiter_store.data_version
+    cache_key = f"rec_list_duckdb_{data_version}_{current_user.id}_{page}_{limit}_{search or ''}_{state or ''}_{company_id or ''}_{company_key or ''}_{sort_by}_{sort_desc}_{needs_review}_{has_phone}_{is_active}_{data_source or ''}"
     cached = analytics_cache.get(cache_key)
     if cached is not None:
         return cached
@@ -522,6 +524,7 @@ def get_recruiters(
         search=search,
         state=state,
         company_id=company_id,
+        company_key=company_key,
         company_name=company,
         specialization=title,
         has_phone=has_phone,
@@ -539,7 +542,20 @@ def get_recruiters(
     total_pages = math.ceil(total_count / limit) if limit else 1
     
     # We need company details, so we'll fetch them from PostgreSQL for the results
-    comp_ids = list({r.get('company_id') for r in results if r.get('company_id')})
+    # Active Parquet imports can store company names in company_id. Only pass
+    # actual integer IDs to PostgreSQL; string keys remain valid and are used
+    # directly as the recruiter company name below.
+    comp_ids = []
+    for value in {r.get('company_id') for r in results if r.get('company_id') is not None}:
+        try:
+            numeric_value = float(value)
+            if numeric_value.is_integer():
+                val_int = int(numeric_value)
+                # Filter out values that exceed PostgreSQL 32-bit integer limits
+                if -2147483648 <= val_int <= 2147483647:
+                    comp_ids.append(val_int)
+        except (TypeError, ValueError):
+            continue
     companies_dict = {}
     if comp_ids:
         companies = db.query(Company).filter(Company.company_id.in_(comp_ids)).all()
@@ -575,7 +591,9 @@ def get_recruiters(
             "specialization": r.get("specialization"),
             "notes": r.get("notes"),
             "company_id": r.get("company_id"),
-            "company_name": comp.company_name if comp else None,
+            "company_name": comp.company_name if comp else (
+                str(r.get("company_id")) if r.get("company_id") is not None else None
+            ),
             "company_domain": select_logo_domain(comp.website, comp.email_pattern) if comp else None,
             "company": _basic_company(comp),
             "location": r.get("location") or (comp.location if comp else None),

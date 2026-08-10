@@ -256,6 +256,16 @@ export default function Directory() {
     prevStateRef.current = selectedState
   }, [selectedState])
 
+  // Validate selectedState against loaded companyStates
+  useEffect(() => {
+    if (statesLoading) return
+    if (selectedState) {
+      if (companyStates.length === 0 || !companyStates.some(s => s.state === selectedState)) {
+        setSelectedState(null)
+      }
+    }
+  }, [companyStates, selectedState, setSelectedState, statesLoading])
+
   useEffect(() => {
     if (!selectedCompany?.company_id) return
 

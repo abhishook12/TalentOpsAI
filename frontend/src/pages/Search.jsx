@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { exportToExcel } from '../services/export'
 import api, { API, getErrorMessage, logAction } from '../services/api'
 import { CompanyIdentity } from '../components/CompanyIdentity'

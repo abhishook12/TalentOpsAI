@@ -310,6 +310,16 @@ export default function Directory() {
     }
   }, [selectedCompany, selectedState, page, debouncedRecruiterQuery])
 
+  // Clear ghost companies that were removed from the backend
+  useEffect(() => {
+    if (recruitersLoading) return
+    if (selectedCompany && !selectedState && !debouncedRecruiterQuery) {
+      if (recruitersTotal === 0) {
+        setSelectedCompany(null)
+      }
+    }
+  }, [recruitersTotal, selectedCompany, selectedState, debouncedRecruiterQuery, recruitersLoading, setSelectedCompany])
+
   const totalPages = Math.max(1, Math.ceil((recruitersTotal || 0) / PAGE_SIZE))
   const selectedCount = selectedRecruiters.size
   const selectedCompanyName = selectedCompany?.company_name || ''

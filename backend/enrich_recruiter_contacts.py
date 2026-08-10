@@ -159,7 +159,7 @@ class EnrichmentWorker:
         lower_name = name.lower().strip()
 
         # Exact match rejections for placeholders
-        if lower_name in ('unknown', 'no answer', 'n/a', 'na'):
+        if lower_name in ('unknown', 'no answer', 'n/a', 'na') or 'unknown' in lower_name:
             return False
             
         parts = lower_name.replace('.', ' ').split()
@@ -503,14 +503,14 @@ class EnrichmentWorker:
                 )
                 self.db.add(prop)
 
-            return OUTCOME_APPLIED
+            return OUTCOME_APPLIED_MISSING_EMAIL
 
         except IntegrityError:
             self.db.rollback()
             return OUTCOME_REJECTED_DUPLICATE
         except Exception:
             self.db.rollback()
-            return OUTCOME_FAILED
+            return OUTCOME_FAILED_TECHNICAL_ERROR
 
     # ─── Backup ───────────────────────────────────────────────────────
     def create_backup(self) -> str:

@@ -4,7 +4,7 @@ import logging
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-import google.generativeai as genai
+from google import genai
 from sqlalchemy.orm import Session
 from ..database import get_db
 
@@ -14,8 +14,7 @@ logger = logging.getLogger(__name__)
 
 # Try to initialize Gemini API
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+# Initialization is per-client now
 
 class AISearchQuery(BaseModel):
     query: str
@@ -29,13 +28,12 @@ class SmartImportRequest(BaseModel):
 
 from ..resource_lockdown import track_gemini_call
 
-def get_model():
+def get_client():
     if not GEMINI_API_KEY:
         raise HTTPException(status_code=500, detail="GEMINI_API_KEY is not set.")
     # Track call to enforce 70% rate limit
     track_gemini_call()
-    # Use flash for speed
-    return genai.GenerativeModel('gemini-2.5-flash')
+    return genai.Client(api_key=GEMINI_API_KEY)
 
 @router.post("/search-filter")
 def ai_search_filter(payload: AISearchQuery):
@@ -82,7 +80,7 @@ def ai_search_filter(payload: AISearchQuery):
         }
 
     # Fallback to Gemini if complex query
-    model = get_model()
+    client = get_client()
     prompt = f"""
 You are an AI assistant for a recruiter database. Parse the user's natural language search query and return ONLY a valid JSON object. Do NOT use markdown code blocks, return raw JSON string.
 
@@ -98,7 +96,10 @@ Schema to follow:
 User Query: "{payload.query}"
 """
     try:
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt
+        )
         text_resp = response.text.strip()
         if text_resp.startswith("```json"): text_resp = text_resp[7:]
         if text_resp.endswith("```"): text_resp = text_resp[:-3]
@@ -114,7 +115,7 @@ def resolve_duplicate(payload: ResolveDuplicateRequest):
     """
     Analyzes two records and returns confidence that they are the same person.
     """
-    model = get_model()
+    client = get_client()
     prompt = f"""
 You are an expert data analyst. Look at these two recruiter records and determine if they represent the EXACT SAME PERSON.
 
@@ -132,7 +133,10 @@ Return ONLY a valid JSON object in this format (no markdown code blocks):
 }}
 """
     try:
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt
+        )
         text_resp = response.text.strip()
         if text_resp.startswith("```json"):
             text_resp = text_resp[7:]
@@ -149,7 +153,7 @@ def smart_import(payload: SmartImportRequest):
     """
     Cleans messy CSV rows.
     """
-    model = get_model()
+    client = get_client()
     prompt = f"""
 You are an expert data cleaner. I am giving you an array of messy CSV rows representing recruiters. 
 Clean them up based on these rules:
@@ -163,7 +167,10 @@ Messy Rows:
 Return ONLY a JSON array of the cleaned rows. No markdown code blocks.
 """
     try:
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt
+        )
         text_resp = response.text.strip()
         if text_resp.startswith("```json"):
             text_resp = text_resp[7:]
@@ -181,7 +188,7 @@ def ai_taxonomy_sync():
     Finds unique un-categorized titles and categorizes them via AI, then bulk updates.
     """
     from sqlalchemy import text
-    model = get_model()
+    client = get_client()
     db: Session = next(get_db())
     try:
         # 1. Fetch unique uncategorized titles
@@ -208,7 +215,10 @@ Job Titles to categorize:
 
 Return ONLY a valid JSON dictionary where the keys are the exact job titles provided, and the values are the standard categories. No markdown code blocks.
 """
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt
+        )
         text_resp = response.text.strip()
         if text_resp.startswith("```json"):
             text_resp = text_resp[7:]

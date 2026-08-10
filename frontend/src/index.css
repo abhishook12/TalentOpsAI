@@ -198,7 +198,7 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     --mono: 'IBM Plex Mono', monospace;
   }
 
-  [data-theme='dark'], html[data-theme='light'] {
+  [data-theme='dark'] {
     color-scheme: dark;
     --main-bg: #0B0B0C;
     --panel-bg: #121212;
@@ -226,9 +226,36 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     --glass-card-bg: rgba(11, 11, 12, 0.85);
   }
 
+  html[data-theme='light'] {
+    color-scheme: light;
+    --main-bg: #F9FAFB;
+    --panel-bg: #FFFFFF;
+    --card-bg: #FFFFFF;
+    --bg-primary: #F3F4F6;
+    --bg-surface: #FFFFFF;
+    --card-border: #E5E7EB;
+    --card-border-strong: #D1D5DB;
+    --sidebar-bg: #F9FAFB;
+    --sidebar-border: #E5E7EB;
+    --text-primary: #111827;
+    --text-secondary: #4B5563;
+    --text-muted: #6B7280;
+    --text-inverse: #FFFFFF;
+    --brand: #000000;
+    --brand-strong: #1F2937;
+    --brand-bg: rgba(0, 0, 0, 0.05);
+    --success: #059669;
+    --warning: #D97706;
+    --danger: #DC2626;
+    --shadow: 0 1px 3px rgba(0,0,0,0.1);
+    --shadow-lg: 0 4px 6px rgba(0,0,0,0.1);
+    --modal-backdrop-bg: rgba(255, 255, 255, 0.8);
+    --glass-panel-bg: rgba(255, 255, 255, 0.85);
+    --glass-card-bg: rgba(255, 255, 255, 0.85);
+  }
+
   *, *::before, *::after { box-sizing: border-box; }
   html, body, #root {
-    color-scheme: dark;
     min-height: 100%;
     margin: 0;
     background:
@@ -478,7 +505,7 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
   .cc-primary-button {
     padding: 10px 14px;
     background: var(--brand);
-    color: #ffffff;
+    color: var(--text-inverse);
     border: none;
     
     font-weight: 600;

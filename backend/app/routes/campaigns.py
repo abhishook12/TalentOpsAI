@@ -96,14 +96,32 @@ def validate_recipients_endpoint(payload: ValidateRecipientsRequest, db: Session
 
 @router.post("/{campaign_id}/start")
 async def api_start_campaign(campaign_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    from ..services.send_engine import start_campaign
+    from ..services.send_engine import start_campaign, _check_account_health
     campaign = db.query(Campaign).filter(Campaign.user_id == current_user.id, Campaign.campaign_id == campaign_id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
         
+    if campaign.status in ["active"]:
+        return {"status": "started", "campaign_id": campaign_id, "message": "Campaign is already running"}
+        
     recipients_count = db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id).count()
     if recipients_count > 50:
         raise HTTPException(status_code=400, detail=f"Cannot start campaign: Max 50 recipients allowed per campaign for stability, but found {recipients_count}.")
+        
+    if not campaign.from_email:
+        raise HTTPException(status_code=400, detail="Your sending account needs attention. No sender selected.")
+        
+    healthy, error = _check_account_health(campaign.sender_account_id, current_user.id)
+    if not healthy:
+        raise HTTPException(status_code=400, detail="Your sending account needs attention. Reconnect the account and try again.")
+        
+    locked_campaign = db.query(Campaign).with_for_update().filter(Campaign.campaign_id == campaign_id).first()
+    if not locked_campaign or locked_campaign.status == "active":
+        db.rollback()
+        return {"status": "started", "campaign_id": campaign_id, "message": "Campaign is already running"}
+        
+    locked_campaign.status = "active"
+    db.commit()
         
     background_tasks.add_task(start_campaign, campaign_id)
     return {"status": "started", "campaign_id": campaign_id}
@@ -178,16 +196,16 @@ def api_preview_email(campaign_id: int, request: PreviewRequest, db: Session = D
 
 @router.post("/{campaign_id}/validate-before-send")
 def api_validate_before_send(campaign_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    from ..services.send_engine import _check_bridge_health
+    from ..services.send_engine import _check_account_health
     campaign = db.query(Campaign).filter(Campaign.user_id == current_user.id, Campaign.campaign_id == campaign_id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
         
-    healthy, error = _check_bridge_health(current_user.id)
+    healthy, error = _check_account_health(campaign.sender_account_id, current_user.id)
     validation_errors = []
     
     if not healthy:
-        validation_errors.append({"code": "BRIDGE_OFFLINE", "message": f"Outlook Bridge is offline: {error or 'unreachable'}"})
+        validation_errors.append({"code": "PROVIDER_OFFLINE", "message": f"Your sending account needs attention: {error or 'unreachable'}"})
         
     if not campaign.from_email:
         validation_errors.append({"code": "MISSING_SENDER", "message": "No sender email selected."})
@@ -494,7 +512,7 @@ async def stream_campaign_progress(campaign_id: int):
                 # One final status, then close
                 break
 
-            await asyncio.sleep(2)
+            await asyncio.sleep(0.5)
             
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
@@ -1294,8 +1312,8 @@ def api_prepare_preview(campaign_id: int, request: PreparePreviewRequest, db: Se
 
     db.commit()
 
-    from ..services.send_engine import _check_bridge_health
-    bridge_healthy, bridge_error = _check_bridge_health(current_user.id)
+    from ..services.send_engine import _check_account_health
+    bridge_healthy, bridge_error = _check_account_health(campaign.sender_account_id, current_user.id)
             
     has_template = bool(request.subject and request.subject.strip() and request.body and request.body.strip())
     
@@ -1306,7 +1324,7 @@ def api_prepare_preview(campaign_id: int, request: PreparePreviewRequest, db: Se
     if not campaign.from_email:
         validation_errors.append({"code": "MISSING_SENDER", "message": "No sender email selected."})
     if not bridge_healthy:
-        validation_errors.append({"code": "BRIDGE_OFFLINE", "message": f"Outlook Bridge is offline: {bridge_error or 'unreachable'}"})
+        validation_errors.append({"code": "PROVIDER_OFFLINE", "message": f"Your sending account needs attention: {bridge_error or 'unreachable'}"})
     if not has_recipients:
         validation_errors.append({"code": "MISSING_RECIPIENTS", "message": "No valid recipients found."})
     elif recipients_count > 50:
@@ -1314,8 +1332,7 @@ def api_prepare_preview(campaign_id: int, request: PreparePreviewRequest, db: Se
     if not has_template:
         validation_errors.append({"code": "MISSING_TEMPLATE", "message": "No template subject or body saved."})
 
-    blocking_errors = [e for e in validation_errors if e["code"] != "BRIDGE_OFFLINE"]
-    is_ready = len(blocking_errors) == 0
+    is_ready = True
 
     return {
         "bridge_healthy": bridge_healthy,

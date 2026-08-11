@@ -98,6 +98,18 @@ def _get_campaign_eta(campaign_id: int) -> dict:
         eta_seconds = int(remaining * estimated_seconds_per_email)
         effective_rate = int(60 / estimated_seconds_per_email) if estimated_seconds_per_email > 0 else 0
 
+        from sqlalchemy import or_
+        has_auth_error = db.query(CampaignRecruiter).filter(
+            CampaignRecruiter.campaign_id == campaign_id,
+            CampaignRecruiter.status == 'Failed',
+            or_(
+                CampaignRecruiter.last_error.like('%Gmail API Error%'),
+                CampaignRecruiter.last_error.like('%Token expired%'),
+                CampaignRecruiter.last_error.like('%Graph API Error%401%'),
+                CampaignRecruiter.last_error.like('%Graph API Error%403%')
+            )
+        ).first() is not None
+
         return {
             "total": total,
             "sent": sent,
@@ -110,6 +122,7 @@ def _get_campaign_eta(campaign_id: int) -> dict:
             "progress_percent": round((sent / total) * 100, 1) if total > 0 else 0,
             "eta_seconds": eta_seconds,
             "rate_per_minute": effective_rate,
+            "has_auth_error": has_auth_error,
         }
 
 import os
@@ -236,7 +249,8 @@ async def _send_email_via_provider(sender_account_id: int, user_id: int, payload
                     if resp.ok or resp.status_code == 202:
                         return True, None, None
                     else:
-                        return False, f"Graph API Error: {resp.text}", "graph_error"
+                        error_type = "auth_permanent" if resp.status_code in [401, 403] else "graph_error"
+                        return False, f"Graph API Error: {resp.text}", error_type
                 
                 elif account.provider == "smtp" or account.provider == "google" or account.provider == "yahoo":
                     # Generic SMTP send
@@ -260,7 +274,7 @@ async def _send_email_via_provider(sender_account_id: int, user_id: int, payload
                             "Content-Type": "application/json"
                         }
                         gmail_payload = {"raw": raw_msg}
-                        resp = requests.post("https://gmail.googleapis.com/upload/gmail/v1/users/me/messages/send", headers=headers, json=gmail_payload, timeout=10)
+                        resp = requests.post("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", headers=headers, json=gmail_payload, timeout=10)
                         if resp.status_code == 401 and retry_auth:
                             new_token = _refresh_google_token(account)
                             if new_token:
@@ -269,7 +283,8 @@ async def _send_email_via_provider(sender_account_id: int, user_id: int, payload
                         if resp.ok:
                             return True, None, None
                         else:
-                            return False, f"Gmail API Error: {resp.text}", "graph_error"
+                            error_type = "auth_permanent" if resp.status_code in [401, 403] else "api_error"
+                            return False, f"Gmail API Error: {resp.text}", error_type
 
                     # Fallback to SMTP
                     if account.provider == "google":
@@ -311,6 +326,36 @@ async def _send_email_via_provider(sender_account_id: int, user_id: int, payload
             
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(request_executor, _do_request)
+
+def _check_and_finalize_campaign(campaign_id: int):
+    from ..database import SessionLocal
+    from ..models.campaigns import Campaign, CampaignStatus, CampaignRecruiter, CampaignRecruiterStatus
+    
+    with SessionLocal() as db:
+        campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+        if not campaign or campaign.status != CampaignStatus.active.value:
+            return
+
+        active_count = db.query(CampaignRecruiter).filter(
+            CampaignRecruiter.campaign_id == campaign_id,
+            CampaignRecruiter.status.in_([
+                CampaignRecruiterStatus.pending.value,
+                CampaignRecruiterStatus.queued.value,
+                CampaignRecruiterStatus.sending.value,
+                CampaignRecruiterStatus.retrying.value
+            ])
+        ).count()
+
+        if active_count == 0:
+            failed_count = db.query(CampaignRecruiter).filter(
+                CampaignRecruiter.campaign_id == campaign_id,
+                CampaignRecruiter.status == CampaignRecruiterStatus.failed.value
+            ).count()
+
+            new_status = CampaignStatus.failed.value if failed_count > 0 else CampaignStatus.completed.value
+            logger.info(f"Campaign {campaign_id} finalized as {new_status}")
+            campaign.status = new_status
+            db.commit()
 
 async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, signature_html: str, template: dict, from_email: str, user_id: int, sender_account_id: int):
     logger.info(f"Worker {worker_id} started for campaign {campaign_id}")
@@ -369,6 +414,8 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
             result = await asyncio.to_thread(_process_recipient_db, recipient_id)
             if not result:
                 queue.task_done()
+                # Run finalize step immediately!
+                await asyncio.to_thread(_check_and_finalize_campaign, campaign_id)
                 continue
                 
             rec_email, subject, body, log_id = result
@@ -382,7 +429,7 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
             logger.info(f"Worker {worker_id}: Sending email to {rec_email} via provider...")
             success, error_msg, error_type = await _send_email_via_provider(sender_account_id, user_id, payload)
             
-            def _update_result_db(success, error_msg):
+            def _update_result_db(success, error_msg, error_type):
                 with SessionLocal() as db:
                     from ..models.campaigns import EmailLog, CampaignRecruiter, EmailLogStatus, CampaignRecruiterStatus
                     log = db.query(EmailLog).filter(EmailLog.log_id == log_id).first()
@@ -407,20 +454,27 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                             recipient.last_sent_at = _utcnow()
                             recipient.sent_count += 1
                         else:
-                            recipient.retry_count += 1
-                            retry_count = recipient.retry_count
                             recipient.last_error = error_msg
-                            if recipient.retry_count >= recipient.max_retries:
+                            if error_type in ["auth_expired", "auth_permanent", "smtp_error"]:
+                                recipient.retry_count = recipient.max_retries
                                 recipient.status = CampaignRecruiterStatus.failed.value
+                                retry_count = 0
                             else:
-                                recipient.status = CampaignRecruiterStatus.retrying.value
+                                recipient.retry_count += 1
+                                retry_count = recipient.retry_count
+                                if recipient.retry_count >= recipient.max_retries:
+                                    recipient.status = CampaignRecruiterStatus.failed.value
+                                else:
+                                    recipient.status = CampaignRecruiterStatus.retrying.value
                     
                     db.commit()
-                    return retry_count
+                # Run finalize step immediately!
+                _check_and_finalize_campaign(campaign_id)
+                return retry_count
                     
-            retry_count = await asyncio.to_thread(_update_result_db, success, error_msg)
+            retry_count = await asyncio.to_thread(_update_result_db, success, error_msg, error_type)
             
-            if not success and error_msg != "Token expired" and retry_count > 0:
+            if not success and retry_count > 0:
                 asyncio.create_task(_schedule_retry(queue, recipient_id, retry_count))
                 
         except Exception as e:
@@ -442,10 +496,9 @@ async def _schedule_retry(queue: asyncio.Queue, recipient_id: int, retry_count: 
 
 async def process_campaign_queue(campaign_id: int):
     """Background task manager for a campaign's email queue.
-    Uses controlled batch processing to prevent memory spikes."""
+    Uses continuous loop to prevent hangs and drops batches to speed up sending."""
     logger.info(f"Starting Campaign Manager for {campaign_id}")
     
-    # 1. Extract configuration
     queue = asyncio.Queue()
     signature_html = None
     template = {}
@@ -462,7 +515,6 @@ async def process_campaign_queue(campaign_id: int):
         from_email = campaign.from_email
         sender_account_id = campaign.sender_account_id
         
-    # 2. Pre-flight: Check provider health using the campaign's sender_account_id (or user fallback)
     healthy, error = _check_account_health(sender_account_id, user_id)
     if not healthy:
         logger.warning(f"Sending account is currently offline or missing ({error}). Campaign {campaign_id} will be queued up for when it reconnects.")
@@ -470,16 +522,11 @@ async def process_campaign_queue(campaign_id: int):
     with SessionLocal() as db:
         campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
         if campaign.signature_id:
-            sig = db.query(EmailSignature).filter(
-                EmailSignature.signature_id == campaign.signature_id
-            ).first()
+            sig = db.query(EmailSignature).filter(EmailSignature.signature_id == campaign.signature_id).first()
             if sig:
                 signature_html = sig.html_content
         
-        active_steps = sorted(
-            [s for s in campaign.sequence_steps if s.is_active],
-            key=lambda s: s.step_order
-        )
+        active_steps = sorted([s for s in campaign.sequence_steps if s.is_active], key=lambda s: s.step_order)
         if active_steps and active_steps[0].template:
             template = {
                 "subject": active_steps[0].template.subject or campaign.name,
@@ -496,80 +543,52 @@ async def process_campaign_queue(campaign_id: int):
             ])
         ).all()
         
-        # SAFETY: Enforce hard cap even if somehow more were enrolled
         if len(pending_recipients) > MAX_RECIPIENTS_PER_CAMPAIGN:
             logger.warning(f"Campaign {campaign_id} has {len(pending_recipients)} recipients, capping to {MAX_RECIPIENTS_PER_CAMPAIGN}")
-            # Only process the first MAX_RECIPIENTS_PER_CAMPAIGN, mark the rest as cancelled
             for r in pending_recipients[MAX_RECIPIENTS_PER_CAMPAIGN:]:
                 r.status = CampaignRecruiterStatus.cancelled.value
             pending_recipients = pending_recipients[:MAX_RECIPIENTS_PER_CAMPAIGN]
     
-        # Batch loading: feed recipients into the queue in small batches
         all_recipient_ids = []
         for i, r in enumerate(pending_recipients):
             r.status = CampaignRecruiterStatus.queued.value
             r.queue_position = i + 1
             all_recipient_ids.append(r.campaign_recruiter_id)
-        
         db.commit()
+
+    # Guard: if no recipients were found, do NOT silently complete
+    if not all_recipient_ids:
+        logger.warning(f"Campaign {campaign_id} has 0 pending recipients. Marking as failed.")
+        _set_campaign_status(campaign_id, CampaignStatus.failed.value)
+        return
+
+    # Start workers once
+    workers = []
+    for i in range(min(WORKER_COUNT, len(all_recipient_ids))):
+        task = asyncio.create_task(_worker_task(i, campaign_id, queue, signature_html, template, from_email, user_id, sender_account_id))
+        workers.append(task)
     
-    # 3. Process in batches to control memory pressure
-    total_batches = math.ceil(len(all_recipient_ids) / BATCH_SIZE)
-    logger.info(f"Campaign {campaign_id}: Processing {len(all_recipient_ids)} recipients in {total_batches} batches of {BATCH_SIZE}")
+    for rid in all_recipient_ids:
+        queue.put_nowait(rid)
+        
+    # Wait for the queue to completely drain, which includes any retries put back into the queue
+    # because queue.join() blocks until queue.task_done() matches the number of items put.
+    await queue.join()
     
-    for batch_num in range(total_batches):
-        # Check if campaign is still active before each batch
-        with SessionLocal() as db:
-            campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
-            if not campaign or campaign.status != CampaignStatus.active.value:
-                logger.info(f"Campaign {campaign_id} is no longer active (status: {campaign.status if campaign else 'deleted'}). Stopping.")
-                return
-        
-        batch_start = batch_num * BATCH_SIZE
-        batch_end = min(batch_start + BATCH_SIZE, len(all_recipient_ids))
-        batch_ids = all_recipient_ids[batch_start:batch_end]
-        
-        logger.info(f"Campaign {campaign_id}: Batch {batch_num + 1}/{total_batches} — sending {len(batch_ids)} emails")
-        
-        # Feed this batch into the queue
-        batch_queue = asyncio.Queue()
-        for rid in batch_ids:
-            batch_queue.put_nowait(rid)
-        
-        # Start workers for this batch (capped at WORKER_COUNT)
-        workers = []
-        for i in range(min(WORKER_COUNT, len(batch_ids))):
-            task = asyncio.create_task(_worker_task(i, campaign_id, batch_queue, signature_html, template, from_email, user_id, sender_account_id))
-            workers.append(task)
-        
-        # Wait for this batch to complete
-        await batch_queue.join()
-        
-        # Cleanup workers for this batch
-        for w in workers:
-            w.cancel()
-        
-        # Cooldown between batches to let memory settle
-        if batch_num < total_batches - 1:
-            logger.info(f"Campaign {campaign_id}: Batch {batch_num + 1} complete. Cooling down for {BATCH_COOLDOWN_SECONDS}s...")
-            await asyncio.sleep(BATCH_COOLDOWN_SECONDS)
+    # We still wait up to a few seconds just in case there are pending DB commits, but the worker finalize handles it.
+    await asyncio.to_thread(_check_and_finalize_campaign, campaign_id)
     
-    # Final status check
-    with SessionLocal() as db:
-        campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
-        if campaign and campaign.status == CampaignStatus.active.value:
-            pass # We leave the campaign active until the Outlook Bridge reports all terminal states
+    for w in workers:
+        w.cancel()
 
 _background_tasks = set()
 _active_campaign_managers = set()
 
 async def start_campaign(campaign_id: int):
-    """Set campaign to active and start background processor."""
+    """Start background processor for campaign. Status is already set to active by the route."""
     if campaign_id in _active_campaign_managers:
         logger.warning(f"Campaign {campaign_id} manager already running, skipping double-start.")
         return
-        
-    _set_campaign_status(campaign_id, CampaignStatus.active.value)
     
     async def managed_task():
         _active_campaign_managers.add(campaign_id)

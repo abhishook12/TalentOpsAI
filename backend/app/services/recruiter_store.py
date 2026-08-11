@@ -77,7 +77,10 @@ class RecruiterStore:
                 self._conn = None
                 
             self._load()
-            self._record_count = self._conn.execute("SELECT COUNT(*) FROM recruiters").fetchone()[0]
+            try:
+                self._record_count = self._conn.execute("SELECT COUNT(*) FROM recruiters").fetchone()[0]
+            except Exception:
+                self._record_count = 0
             self._last_mtime = current_mtime
         finally:
             self._lock.release()
@@ -126,6 +129,8 @@ class RecruiterStore:
         if not os.path.exists(PARQUET_FILE):
             logger.warning(f"Parquet file not found: {PARQUET_FILE}. RecruiterStore will be empty.")
             self._conn = duckdb.connect(":memory:")
+            self._conn.execute("CREATE TABLE recruiters (id INTEGER)")
+            self._record_count = 0
             self._loaded = True
             return
 

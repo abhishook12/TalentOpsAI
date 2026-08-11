@@ -137,7 +137,7 @@ export default function SignatureManager({ onSelectSignature, selectedSignatureI
               onClick={handleSave}
               disabled={!name.trim() || !htmlContent.trim()}
               style={{
-                background: 'var(--brand)', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px',
+                background: 'var(--brand)', color: 'var(--text-inverse)', border: 'none', padding: '8px 16px', borderRadius: '6px',
                 fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
               }}
             >
@@ -169,7 +169,7 @@ export default function SignatureManager({ onSelectSignature, selectedSignatureI
         <button 
           onClick={() => setEditingSig(false)} // false means creating new
           style={{
-            background: 'var(--brand)', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px',
+            background: 'var(--brand)', color: 'var(--text-inverse)', border: 'none', padding: '6px 12px', borderRadius: '6px',
             fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px'
           }}
         >

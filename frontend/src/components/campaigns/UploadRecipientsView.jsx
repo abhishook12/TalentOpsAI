@@ -184,7 +184,7 @@ export default function UploadRecipientsView({ onAddRecipients }) {
           <button 
             onClick={handleImport}
             disabled={!mapping.email}
-            className="px-4 py-2 bg-[var(--brand)] text-white text-sm font-medium rounded-lg shadow flex items-center gap-2 hover:bg-[var(--brand)]/90 disabled:opacity-50 transition-colors"
+            className="px-4 py-2 bg-[var(--brand)] text-[var(--text-inverse)] text-sm font-medium rounded-lg shadow flex items-center gap-2 hover:bg-[var(--brand)]/90 disabled:opacity-50 transition-colors"
           >
             Import Valid Rows <ArrowRight size={16} />
           </button>

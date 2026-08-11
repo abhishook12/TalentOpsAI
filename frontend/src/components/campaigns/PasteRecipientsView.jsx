@@ -78,7 +78,7 @@ export default function PasteRecipientsView({ onAddRecipients }) {
           <button 
             onClick={handleAdd}
             disabled={stats.valid === 0}
-            className="px-4 py-1.5 bg-[var(--brand)] text-white text-xs font-medium rounded shadow hover:bg-[var(--brand)]/90 disabled:opacity-50 transition-colors"
+            className="px-4 py-1.5 bg-[var(--brand)] text-[var(--text-inverse)] text-xs font-medium rounded shadow hover:bg-[var(--brand)]/90 disabled:opacity-50 transition-colors"
           >
             Add {stats.valid} Recipients
           </button>

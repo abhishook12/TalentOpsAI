@@ -37,7 +37,7 @@ export default function CampaignLogs({ campaignId }) {
               onClick={() => setFilter(f)}
               className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors capitalize ${
                 filter === f 
-                  ? 'bg-[var(--brand)] text-white' 
+                  ? 'bg-[var(--brand)] text-[var(--text-inverse)]' 
                   : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border)] hover:bg-[var(--card-bg)]'
               }`}
             >

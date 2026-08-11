@@ -104,7 +104,7 @@ export default function DatabaseRecipientsView({ onAddRecipients }) {
         <button
           onClick={handleAdd}
           disabled={selectedIds.size === 0}
-          className="text-xs font-medium px-3 py-1 bg-[var(--brand)] text-white rounded hover:bg-[var(--brand)]/90 disabled:opacity-50 transition-colors"
+          className="text-xs font-medium px-3 py-1 bg-[var(--brand)] text-[var(--text-inverse)] rounded hover:bg-[var(--brand)]/90 disabled:opacity-50 transition-colors"
         >
           Add {selectedIds.size} Selected
         </button>

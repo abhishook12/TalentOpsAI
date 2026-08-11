@@ -24,3 +24,4 @@ httpx
 requests
 pytest-cov
 duckdb
+google-genai==2.11.0

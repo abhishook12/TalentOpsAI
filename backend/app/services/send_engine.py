@@ -220,12 +220,6 @@ async def _send_email_via_provider(sender_account_id: int, user_id: int, payload
                     graph_payload = {
                         "message": {
                             "subject": payload.get("subject", ""),
-                            "from": {
-                                "emailAddress": {
-                                    "address": final_sender_email,
-                                    "name": sender_name
-                                }
-                            },
                             "body": {
                                 "contentType": "HTML",
                                 "content": payload.get("html_body", "")

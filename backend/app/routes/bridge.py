@@ -311,7 +311,24 @@ def bridge_oauth_callback(code: str = None, state: str = None, error: str = None
             headers = {"Authorization": f"Bearer {access_token}"}
             me_r = requests.get("https://graph.microsoft.com/v1.0/me", headers=headers)
             me_r.raise_for_status()
-            connected_email = me_r.json().get("mail") or me_r.json().get("userPrincipalName")
+            me_data = me_r.json()
+            
+            # Personal MS accounts return proxy addresses like outlook_7A059DD98AD2C46D@outlook.com
+            # Try multiple fields in priority order to find the real email
+            candidate = me_data.get("mail") or ""
+            upn = me_data.get("userPrincipalName") or ""
+            other_mails = me_data.get("otherMails") or []
+            
+            if candidate and not candidate.startswith("outlook_"):
+                connected_email = candidate
+            elif other_mails and not other_mails[0].startswith("outlook_"):
+                connected_email = other_mails[0]
+            elif upn and not upn.startswith("outlook_"):
+                connected_email = upn
+            else:
+                # All Graph fields are proxy addresses — use the user's registered TalentOps email
+                user = db.query(User).filter(User.id == user_id).first()
+                connected_email = user.email if user else (candidate or upn)
         except Exception as e:
             return HTMLResponse(content=f"<html><body><h2>Failed to acquire tokens</h2><p>{str(e)}</p></body></html>", status_code=400)
     else:

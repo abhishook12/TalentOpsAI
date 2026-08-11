@@ -163,7 +163,22 @@ if RUN_STARTUP_MIGRATIONS:
                 })
                 _ensure_columns("email_logs", {
                     "body_html": "TEXT",
+                    "is_deleted": "BOOLEAN DEFAULT FALSE",
                 })
+                
+                _ensure_columns("connected_email_accounts", {
+                    "smtp_host": "VARCHAR(255)",
+                    "smtp_port": "INTEGER",
+                    "smtp_user": "VARCHAR(255)",
+                    "smtp_pass": "TEXT",
+                    "health_status": "VARCHAR(50) DEFAULT 'unknown'",
+                    "last_verified_at": "TIMESTAMP",
+                })
+                
+                _ensure_columns("user_bridge_status", {
+                    "uptime_seconds": "INTEGER DEFAULT 0",
+                })
+
                 _ensure_columns("smart_import_rows", {
                     "job_id": "VARCHAR(36)",
                     "original_row_index": "INTEGER",

@@ -47,8 +47,12 @@ def sync():
             'last_verified_at', 'company_confidence', 'company_reasoning', 'is_archived', 'company_id'
         ]
         
+        pg_columns = parquet_columns.copy()
+        # Replace 'is_archived' with 'false AS is_archived' since it doesn't exist in Postgres
+        pg_columns[pg_columns.index('is_archived')] = 'false AS is_archived'
+        
         query = f"""
-            SELECT {', '.join(parquet_columns)} 
+            SELECT {', '.join(pg_columns)} 
             FROM recruiters 
             WHERE updated_at > %s
         """

@@ -26,7 +26,7 @@ from .create_indexes import create_performance_indexes
 from .core.logger import setup_logger
 logger = setup_logger(level=logging.INFO if IS_PRODUCTION else logging.DEBUG)
 
-RUN_STARTUP_MIGRATIONS = os.getenv("RUN_STARTUP_MIGRATIONS", "false").lower() in ("1", "true", "yes")
+RUN_STARTUP_MIGRATIONS = os.getenv("RUN_STARTUP_MIGRATIONS", "true").lower() in ("1", "true", "yes")
 
 if RUN_STARTUP_MIGRATIONS:
     try:

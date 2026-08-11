@@ -320,9 +320,13 @@ def bridge_oauth_callback(code: str = None, state: str = None, error: str = None
             connected_email = user.email
 
     # 3. Upsert ConnectedEmailAccount
-    outlook_account = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.user_id == user_id).first()
+    outlook_account = db.query(ConnectedEmailAccount).filter(
+        ConnectedEmailAccount.user_id == user_id,
+        ConnectedEmailAccount.provider == "microsoft",
+        ConnectedEmailAccount.email_address == connected_email
+    ).first()
     if not outlook_account:
-        outlook_account = ConnectedEmailAccount(user_id=user_id)
+        outlook_account = ConnectedEmailAccount(user_id=user_id, provider="microsoft", email_address=connected_email)
         db.add(outlook_account)
     
     outlook_account.email_address = connected_email
@@ -366,8 +370,8 @@ def bridge_google_login(redirect_uri: str = "/settings?tab=api", popup: str = "f
     if MOCK_OAUTH:
         return RedirectResponse(url=f'/bridge/google/callback?code=mock_google_code&state={state}')
         
-    # Request mail.google.com for sending, plus standard email/profile
-    scope = urllib.parse.quote("https://mail.google.com/ email profile")
+    # Request gmail.send for sending, plus standard email/profile
+    scope = urllib.parse.quote("https://www.googleapis.com/auth/gmail.send email profile")
     google_url = (
         "https://accounts.google.com/o/oauth2/v2/auth?"
         f"client_id={GOOGLE_CLIENT_ID}&"
@@ -431,9 +435,13 @@ def bridge_google_callback(code: str = None, state: str = None, error: str = Non
             connected_email = user.email
 
     # 3. Upsert ConnectedEmailAccount
-    account = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.user_id == user_id, ConnectedEmailAccount.provider == "google").first()
+    account = db.query(ConnectedEmailAccount).filter(
+        ConnectedEmailAccount.user_id == user_id, 
+        ConnectedEmailAccount.provider == "google",
+        ConnectedEmailAccount.email_address == connected_email
+    ).first()
     if not account:
-        account = ConnectedEmailAccount(user_id=user_id, provider="google")
+        account = ConnectedEmailAccount(user_id=user_id, provider="google", email_address=connected_email)
         db.add(account)
     
     account.email_address = connected_email

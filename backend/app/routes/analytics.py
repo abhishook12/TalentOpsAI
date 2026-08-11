@@ -486,7 +486,7 @@ def get_enrichment_feed(db: Session = Depends(get_db), current_user: User = Depe
                    c.company_name, r.email, r.phone, r.location
             FROM recruiters r
             JOIN companies c ON r.company_id = c.company_id
-            WHERE r.user_id = :user_id AND r.data_source = 'discovery_worker'
+            WHERE (r.user_id = :user_id OR r.user_id IS NULL) AND r.data_source = 'discovery_worker'
             AND r.company_id IS NOT NULL
             ORDER BY r.created_at DESC 
             LIMIT 50
@@ -497,7 +497,7 @@ def get_enrichment_feed(db: Session = Depends(get_db), current_user: User = Depe
                    c.company_name, r.email, r.phone, r.location
             FROM recruiters r
             JOIN companies c ON r.company_id = c.company_id
-            WHERE r.user_id = :user_id
+            WHERE (r.user_id = :user_id OR r.user_id IS NULL)
             AND (r.phone IS NOT NULL OR r.email IS NOT NULL) 
             AND r.company_id IS NOT NULL
             AND r.updated_at > r.created_at

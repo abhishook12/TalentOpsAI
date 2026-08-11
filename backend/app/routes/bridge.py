@@ -343,7 +343,13 @@ def bridge_oauth_callback(code: str = None, state: str = None, error: str = None
     
     status_record.status = 'online'
     status_record.last_heartbeat = _utcnow()
-    db.commit()
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        import traceback
+        err_str = traceback.format_exc()
+        return HTMLResponse(content=f"<html><body><h2>Database Error in Bridge</h2><pre>{err_str}</pre></body></html>", status_code=500)
     
     if popup == 'true':
         return HTMLResponse(content="<html><script>window.opener.postMessage('oauth_success', '*'); window.close();</script><body style='font-family:sans-serif;text-align:center;padding:50px;'><h2>Connection Successful!</h2><p>This window will close automatically.</p></body></html>")

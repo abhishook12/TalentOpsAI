@@ -86,16 +86,19 @@ class RecruiterStore:
             self._lock.release()
 
     def _download_from_storage(self):
-        """Download the Parquet file from Supabase Storage if it doesn't exist locally or if size differs."""
+        """Download the Parquet file from GitHub Releases (primary) or Supabase Storage (fallback)."""
         import urllib.request
         import shutil
         import time
         
-        url = f"https://dcqvsvgrdsrgnbwwssup.supabase.co/storage/v1/object/public/data-assets/recruiters_full.parquet?v={int(time.time())}"
+        # Primary: GitHub Releases (no bandwidth limits for public repos)
+        primary_url = "https://github.com/abhishook12/TalentOpsAI/releases/download/data-v1/recruiters_full.parquet"
+        # Fallback: Supabase Storage (may hit 402 bandwidth limit)
+        fallback_url = f"https://dcqvsvgrdsrgnbwwssup.supabase.co/storage/v1/object/public/data-assets/recruiters_full.parquet?v={int(time.time())}"
         
         try:
-            # Check remote size using a HEAD request (or just open and check length)
-            req = urllib.request.Request(url, method='HEAD')
+            # Check remote size using a HEAD request
+            req = urllib.request.Request(primary_url, method='HEAD')
             with urllib.request.urlopen(req, timeout=10) as response:
                 remote_size = int(response.headers.get('Content-Length', 0))
                 
@@ -111,14 +114,19 @@ class RecruiterStore:
             if os.path.exists(PARQUET_FILE):
                 return
             
-        logger.info(f"Downloading Parquet from Supabase Storage to {PARQUET_FILE}...")
-        try:
-            os.makedirs(os.path.dirname(PARQUET_FILE), exist_ok=True)
-            with urllib.request.urlopen(url, timeout=60) as response, open(PARQUET_FILE, 'wb') as out_file:
-                shutil.copyfileobj(response, out_file)
-            logger.info(f"Successfully downloaded Parquet file ({os.path.getsize(PARQUET_FILE) / (1024*1024):.2f} MB)")
-        except Exception as e:
-            logger.error(f"Failed to download Parquet from Supabase: {e}")
+        # Try primary (GitHub), then fallback (Supabase)
+        for label, url in [("GitHub Releases", primary_url), ("Supabase Storage", fallback_url)]:
+            logger.info(f"Downloading Parquet from {label} to {PARQUET_FILE}...")
+            try:
+                os.makedirs(os.path.dirname(PARQUET_FILE), exist_ok=True)
+                with urllib.request.urlopen(url, timeout=120) as response, open(PARQUET_FILE, 'wb') as out_file:
+                    shutil.copyfileobj(response, out_file)
+                logger.info(f"Successfully downloaded Parquet file from {label} ({os.path.getsize(PARQUET_FILE) / (1024*1024):.2f} MB)")
+                return  # Success — stop trying
+            except Exception as e:
+                logger.error(f"Failed to download Parquet from {label}: {e}")
+        
+        logger.error("All download sources failed. RecruiterStore will be empty.")
 
     def _load(self):
         """Load the Parquet file into DuckDB."""

@@ -322,53 +322,6 @@ def companies_search(
         for company in db.query(Company).filter(Company.company_id.in_(numeric_ids)).all():
             metadata[str(company.company_id)] = company
 
-    # Maps common recruiter email domains to proper display names for companies
-    # that may not have PostgreSQL records on production.
-    DOMAIN_DISPLAY_NAMES = {
-        'roberthalf.com': 'Robert Half',
-        'insightglobal.com': 'Insight Global',
-        'teksystems.com': 'TEKsystems',
-        'randstadusa.com': 'Randstad',
-        'randstaddigital.com': 'Randstad Digital',
-        'beaconhillstaffing.com': 'Beacon Hill Staffing Group',
-        'kforce.com': 'Kforce',
-        'brooksource.com': 'Brooksource',
-        'aerotek.com': 'Aerotek',
-        'kornferry.com': 'Korn Ferry',
-        'apexsystems.com': 'Apex Systems',
-        'oxfordcorp.com': 'Oxford Global Resources',
-        'inspyrsolutions.com': 'INSPYR Solutions',
-        'kellyservices.com': 'Kelly Services',
-        'cybercoders.com': 'CyberCoders',
-        'actalentsservices.com': 'Actalent Services',
-        'judge.com': 'The Judge Group',
-        'vaco.com': 'Vaco',
-        'manpower.com': 'Manpower',
-        'manpowergroup.com': 'ManpowerGroup',
-        'experis.com': 'Experis',
-        'hays.com': 'Hays',
-        'adeccousa.com': 'Adecco',
-        'modis.com': 'Modis',
-        'akkodis.com': 'Akkodis',
-        'accenture.com': 'Accenture',
-        'deloitte.com': 'Deloitte',
-        'cognizant.com': 'Cognizant',
-        'infosys.com': 'Infosys',
-        'wipro.com': 'Wipro',
-        'collabera.com': 'Collabera',
-        'eliassen.com': 'Eliassen Group',
-        'addisongroup.com': 'Addison Group',
-        'astoncarter.com': 'Aston Carter',
-        'allegisgroup.com': 'Allegis Group',
-        'russelltobin.com': 'Russell Tobin',
-        'kellymitchell.com': 'KellyMitchell',
-        'heidrick.com': 'Heidrick & Struggles',
-        'spencerstuart.com': 'Spencer Stuart',
-        'russellreynolds.com': 'Russell Reynolds',
-        'stand8.io': 'Stand 8',
-        'bhsg.com': 'BHSG',
-    }
-
     enriched_results = []
     for row in active_companies:
         key = row['company_key']

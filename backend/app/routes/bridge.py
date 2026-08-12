@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 from pydantic import BaseModel
@@ -249,10 +249,22 @@ MOCK_OAUTH = os.getenv("MOCK_OAUTH", "False").lower() in ("true", "1", "yes")
 MSAL_CLIENT_ID = os.getenv("MSAL_CLIENT_ID", "replace_me")
 MSAL_CLIENT_SECRET = os.getenv("MSAL_CLIENT_SECRET", "replace_me")
 MSAL_TENANT_ID = os.getenv("MSAL_TENANT_ID", "common")
-MSAL_REDIRECT_URI = os.getenv("MSAL_REDIRECT_URI", "http://localhost:8000/api/bridge/oauth/callback")
+
+def _get_msal_redirect_uri(request=None):
+    """Auto-detect the correct redirect URI based on request origin or env var."""
+    explicit = os.getenv("MSAL_REDIRECT_URI")
+    if explicit:
+        return explicit
+    # Auto-detect from request
+    if request:
+        scheme = request.headers.get("x-forwarded-proto", request.url.scheme)
+        host = request.headers.get("x-forwarded-host") or request.headers.get("host") or request.url.netloc
+        return f"{scheme}://{host}/api/bridge/oauth/callback"
+    return "http://localhost:8000/api/bridge/oauth/callback"
 
 @router.get('/oauth/login')
-def bridge_oauth_login(redirect_uri: str = '/profile?bridge=connected', popup: str = 'false', current_user: User = Depends(get_current_user_from_request)):
+def bridge_oauth_login(request: Request, redirect_uri: str = '/profile?bridge=connected', popup: str = 'false', current_user: User = Depends(get_current_user_from_request)):
+    msal_redirect = _get_msal_redirect_uri(request)
     # Generate secure state token
     state_payload = {
         "user_id": current_user.id,
@@ -264,15 +276,21 @@ def bridge_oauth_login(redirect_uri: str = '/profile?bridge=connected', popup: s
     
     if MOCK_OAUTH:
         # Mock redirect directly to callback with a fake auth code
-        return RedirectResponse(url=f'/bridge/oauth/callback?code=mock_auth_code_123&state={state}')
+        return RedirectResponse(url=f'/api/bridge/oauth/callback?code=mock_auth_code_123&state={state}')
         
-    msal_url = f"https://login.microsoftonline.com/{MSAL_TENANT_ID}/oauth2/v2.0/authorize?client_id={MSAL_CLIENT_ID}&response_type=code&redirect_uri={urllib.parse.quote(MSAL_REDIRECT_URI)}&scope=Mail.Send%20Mail.ReadWrite%20offline_access%20User.Read&prompt=consent&state={state}"
+    msal_url = f"https://login.microsoftonline.com/{MSAL_TENANT_ID}/oauth2/v2.0/authorize?client_id={MSAL_CLIENT_ID}&response_type=code&redirect_uri={urllib.parse.quote(msal_redirect)}&scope=Mail.Send%20Mail.ReadWrite%20offline_access%20User.Read&prompt=consent&state={state}"
     return RedirectResponse(url=msal_url)
 
 @router.get('/oauth/callback')
-def bridge_oauth_callback(code: str = None, state: str = None, error: str = None, db: Session = Depends(get_db)):
+def bridge_oauth_callback(request: Request, code: str = None, state: str = None, error: str = None, error_description: str = None, db: Session = Depends(get_db)):
+    """Handle Microsoft OAuth callback after user authorizes."""
     if error:
-        return HTMLResponse(content=f"<html><body><h2>OAuth Error</h2><p>{error}</p></body></html>", status_code=400)
+        # Show a proper error page with details from Microsoft
+        desc = error_description or error
+        return HTMLResponse(content=f"""
+        <html><head><style>body{{font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#1a1a2e;color:#fff}}div{{max-width:480px;text-align:center;padding:40px}}.icon{{font-size:48px;margin-bottom:16px}}h2{{color:#ff6b6b;margin-bottom:8px}}p{{color:#a0a0b0;line-height:1.6;font-size:14px}}button{{margin-top:20px;padding:10px 24px;background:#0078D4;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px}}</style></head>
+        <body><div><div class="icon">⚠️</div><h2>Connection Failed</h2><p>{desc}</p><button onclick="window.close()">Close Window</button></div></body></html>
+        """, status_code=400)
     if not code or not state:
         return HTMLResponse(content="<html><body><h2>Missing OAuth Parameters</h2></body></html>", status_code=400)
         
@@ -292,12 +310,13 @@ def bridge_oauth_callback(code: str = None, state: str = None, error: str = None
     connected_email = f"user_{user_id}@outlook.com"
     
     if not MOCK_OAUTH:
+        msal_redirect = _get_msal_redirect_uri(request)
         token_url = f"https://login.microsoftonline.com/{MSAL_TENANT_ID}/oauth2/v2.0/token"
         token_data = {
             "client_id": MSAL_CLIENT_ID,
             "client_secret": MSAL_CLIENT_SECRET,
             "code": code,
-            "redirect_uri": MSAL_REDIRECT_URI,
+            "redirect_uri": msal_redirect,
             "grant_type": "authorization_code"
         }
         try:
@@ -329,8 +348,28 @@ def bridge_oauth_callback(code: str = None, state: str = None, error: str = None
                 # All Graph fields are proxy addresses — use the user's registered TalentOps email
                 user = db.query(User).filter(User.id == user_id).first()
                 connected_email = user.email if user else (candidate or upn)
+        except requests.exceptions.ConnectionError:
+            return HTMLResponse(content=f"""
+            <html><head><style>body{{font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#1a1a2e;color:#fff}}div{{max-width:480px;text-align:center;padding:40px}}.icon{{font-size:48px;margin-bottom:16px}}h2{{color:#ff6b6b;margin-bottom:8px}}p{{color:#a0a0b0;line-height:1.6;font-size:14px}}button{{margin-top:20px;padding:10px 24px;background:#0078D4;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px}}</style></head>
+            <body><div><div class="icon">🌐</div><h2>Network Error</h2><p>Could not reach Microsoft servers. Please check your internet connection and try again.</p><button onclick="window.close()">Close Window</button></div></body></html>
+            """, status_code=502)
         except Exception as e:
-            return HTMLResponse(content=f"<html><body><h2>Failed to acquire tokens</h2><p>{str(e)}</p></body></html>", status_code=400)
+            error_msg = str(e)
+            # Parse common Microsoft errors for user-friendly messages
+            if "AADSTS50011" in error_msg:
+                friendly = "The redirect URL does not match the one configured in Azure. Contact your administrator."
+            elif "AADSTS700016" in error_msg:
+                friendly = "The application is not registered in Azure AD. Contact your administrator."
+            elif "AADSTS65001" in error_msg:
+                friendly = "Your organization's admin needs to grant consent for TalentOps to access Outlook."
+            elif "AADSTS7000218" in error_msg:
+                friendly = "The request must include a client_secret. The Azure app may need reconfiguration."
+            else:
+                friendly = error_msg
+            return HTMLResponse(content=f"""
+            <html><head><style>body{{font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#1a1a2e;color:#fff}}div{{max-width:480px;text-align:center;padding:40px}}.icon{{font-size:48px;margin-bottom:16px}}h2{{color:#ff6b6b;margin-bottom:8px}}p{{color:#a0a0b0;line-height:1.6;font-size:14px}}pre{{background:#0d0d1a;padding:12px;border-radius:8px;font-size:11px;overflow-x:auto;text-align:left;color:#888;margin-top:12px}}button{{margin-top:20px;padding:10px 24px;background:#0078D4;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px}}</style></head>
+            <body><div><div class="icon">⚠️</div><h2>Token Exchange Failed</h2><p>{friendly}</p><button onclick="window.close()">Close Window</button></div></body></html>
+            """, status_code=400)
     else:
         user = db.query(User).filter(User.id == user_id).first()
         if user:

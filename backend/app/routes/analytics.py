@@ -382,10 +382,12 @@ def companies_search(
             pass
         company = metadata.get(normalized_numeric_key)
 
-        # --- Resolve logo_domain with Parquet fallback ---
-        # Priority: PostgreSQL website/email_pattern → Parquet dominant_domain
+        # --- Resolve logo_domain: prefer Parquet (ground truth from emails) ---
+        # Parquet dominant_domain is derived from actual recruiter emails and is
+        # always correct. PostgreSQL email_pattern/website can contain bad data
+        # (e.g. job-listing URLs, wrong domains from automated scraping).
         pg_logo = select_logo_domain(company.website, company.email_pattern) if company else None
-        logo_domain = pg_logo or parquet_domain
+        logo_domain = parquet_domain or pg_logo
 
         # --- Resolve company name ---
         # If PostgreSQL has a record, use it. Otherwise, look up domain display
@@ -400,8 +402,8 @@ def companies_search(
         else:
             name = key  # Last resort: raw key
 
-        # --- Resolve email_pattern ---
-        email_pattern = (company.email_pattern if company else None) or parquet_domain
+        # --- Resolve email_pattern: prefer Parquet domain ---
+        email_pattern = parquet_domain or (company.email_pattern if company else None)
 
         enriched_results.append({
             "company_key": key,

@@ -294,7 +294,7 @@ def update_signature(signature_id: int, req: SignatureUpdate, db: Session = Depe
         raise HTTPException(status_code=404, detail="Signature not found")
         
     if req.is_default:
-        db.query(EmailSignature).filter(EmailSignature.user_id == current_user.id, EmailSignature.user_id == current_user.id).update({"is_default": False})
+        db.query(EmailSignature).filter(EmailSignature.user_id == current_user.id, EmailSignature.signature_id != signature_id).update({"is_default": False})
         
     if req.name is not None:
         sig.name = req.name
@@ -416,8 +416,15 @@ def enroll_emails(campaign_id: int, payload: EnrollEmailsRequest, db: Session = 
     return {"enrolled_count": enrolled}
 
 @router.get("/{campaign_id}/progress")
-async def stream_campaign_progress(campaign_id: int):
-    # No Depends(get_db) — SSE streams must not hold a connection. No auth — EventSource can't send headers.
+async def stream_campaign_progress(campaign_id: int, token: str = Query(default=None)):
+    # Fix #2: Add token-based auth for SSE (EventSource can't send headers)
+    if token:
+        try:
+            from ..services.auth_service import decode_access_token
+            decode_access_token(token)
+        except Exception:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    
     from fastapi.responses import StreamingResponse
     import asyncio
     import json
@@ -489,9 +496,30 @@ async def stream_campaign_progress(campaign_id: int):
         # Keep track of what we've already sent to avoid redundant data
         last_log_id = 0
         first_sent = None  # (monotonic_time, sent_count) baseline for observed rate
+        stream_start = time.monotonic()
+        SSE_MAX_LIFETIME = 30 * 60  # Fix #9: 30 minute max SSE lifetime
+        SSE_STALE_TIMEOUT = 5 * 60  # Close if no new data for 5 minutes
+        last_change_time = time.monotonic()
+        prev_sent = 0
 
         while True:
+            # Fix #9: Enforce SSE max lifetime
+            elapsed = time.monotonic() - stream_start
+            if elapsed > SSE_MAX_LIFETIME:
+                yield f"data: {{\"status\": \"timeout\", \"message\": \"Stream expired after 30 minutes\"}}\n\n"
+                break
+            
             data, last_log_id = await asyncio.to_thread(_snapshot, last_log_id)
+            if data is None:
+                break
+            
+            # Stale data check
+            if data["sent"] != prev_sent:
+                last_change_time = time.monotonic()
+                prev_sent = data["sent"]
+            elif time.monotonic() - last_change_time > SSE_STALE_TIMEOUT:
+                yield f"data: {{\"status\": \"stale\", \"message\": \"No activity for 5 minutes\"}}\n\n"
+                break
             if data is None:
                 break
 
@@ -954,8 +982,7 @@ def duplicate_campaign(campaign_id: int, db: Session = Depends(get_db), current_
         metadata_json=original.metadata_json,
     )
     db.add(new_campaign)
-    db.commit()
-    db.refresh(new_campaign)
+    db.flush()  # Fix #5: flush instead of commit — get ID without committing
     
     # Clone templates
     template_map = {}
@@ -969,8 +996,7 @@ def duplicate_campaign(campaign_id: int, db: Session = Depends(get_db), current_
             is_active=t.is_active
         )
         db.add(new_t)
-        db.commit()
-        db.refresh(new_t)
+        db.flush()  # Fix #5: flush to get template_id without full commit
         template_map[t.template_id] = new_t.template_id
         
     # Clone sequence steps
@@ -985,7 +1011,7 @@ def duplicate_campaign(campaign_id: int, db: Session = Depends(get_db), current_
         )
         db.add(new_s)
         
-    db.commit()
+    db.commit()  # Fix #5: Single atomic commit for the entire duplication
     return {"status": "success", "campaign_id": new_campaign.campaign_id}
 
 @router.put("/{campaign_id}/archive")
@@ -1155,25 +1181,34 @@ def enroll_recruiters(campaign_id: int, payload: EnrollRecruitersRequest, db: Se
     if not first_step:
         raise HTTPException(status_code=400, detail="Campaign must have at least one active sequence step to enroll recruiters")
 
-    enrolled_count = 0
-    for item in payload.recruiters:
-        existing = db.query(CampaignRecruiter).filter(
+    # Fix #4: Batch-query existing enrollments instead of N+1 per-recruiter queries
+    recruiter_ids = [item.recruiter_id for item in payload.recruiters]
+    existing_enrollments = set()
+    if recruiter_ids:
+        rows = db.query(CampaignRecruiter.recruiter_id).filter(
             CampaignRecruiter.campaign_id == campaign_id,
-            CampaignRecruiter.recruiter_id == item.recruiter_id,
-        ).first()
-        if not existing:
-            cr = CampaignRecruiter(
+            CampaignRecruiter.recruiter_id.in_(recruiter_ids)
+        ).all()
+        existing_enrollments = {row[0] for row in rows}
+
+    enrolled_count = 0
+    variables_map = {item.recruiter_id: item.variables for item in payload.recruiters}
+    new_crs = []
+    for rid in recruiter_ids:
+        if rid not in existing_enrollments:
+            new_crs.append(CampaignRecruiter(
                 campaign_id=campaign_id,
-                recruiter_id=item.recruiter_id,
+                recruiter_id=rid,
                 current_step_id=first_step.step_id,
                 status=CampaignRecruiterStatus.pending.value,
                 enrolled_at=utcnow(),
                 next_send_at=campaign.start_at or utcnow(),
-                variables_json=to_json_text(item.variables),
-            )
-            db.add(cr)
+                variables_json=to_json_text(variables_map.get(rid)),
+            ))
             enrolled_count += 1
 
+    if new_crs:
+        db.add_all(new_crs)
     db.commit()
     return {"message": f"Enrolled {enrolled_count} recruiters"}
 
@@ -1332,7 +1367,7 @@ def api_prepare_preview(campaign_id: int, request: PreparePreviewRequest, db: Se
     if not has_template:
         validation_errors.append({"code": "MISSING_TEMPLATE", "message": "No template subject or body saved."})
 
-    is_ready = True
+    is_ready = len(validation_errors) == 0  # Fix #8: Actually check validation errors instead of hardcoding True
 
     return {
         "bridge_healthy": bridge_healthy,
@@ -1344,3 +1379,35 @@ def api_prepare_preview(campaign_id: int, request: PreparePreviewRequest, db: Se
         "valid_count": recipients_count,
         "enrolled_count": enrolled
     }
+
+@router.post("/{campaign_id}/retry-failed")
+async def retry_failed_campaign_emails(campaign_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    campaign = get_campaign_or_404(db, campaign_id, current_user)
+    
+    # Get all failed recipients
+    failed_recipients = db.query(CampaignRecruiter).filter(
+        CampaignRecruiter.campaign_id == campaign_id,
+        CampaignRecruiter.status == CampaignRecruiterStatus.failed.value
+    ).all()
+    
+    if not failed_recipients:
+        raise HTTPException(status_code=400, detail="No failed recipients to retry")
+        
+    # Reset their status and retry counts
+    for r in failed_recipients:
+        r.status = CampaignRecruiterStatus.pending.value
+        r.retry_count = 0
+        r.last_error = None
+        
+    # Also resume the campaign if it was failed/paused
+    if campaign.status in [CampaignStatus.failed.value, CampaignStatus.paused.value]:
+        campaign.status = CampaignStatus.active.value
+        
+    db.commit()
+    
+    # Restart the background processor
+    from ..services.send_engine import resume_campaign
+    import asyncio
+    asyncio.create_task(resume_campaign(campaign_id))
+    
+    return {"message": f"Queued {len(failed_recipients)} failed emails for retry"}

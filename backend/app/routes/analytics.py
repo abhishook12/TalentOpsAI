@@ -1001,3 +1001,34 @@ def get_repair_logs(limit: int = 100, db: Session = Depends(get_db), current_use
             "timestamp": ts
         })
     return {"logs": res}
+
+
+@router.get("/identity-quality")
+def get_identity_quality(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    from ..services.identity_engine import identity_engine
+    
+    total_companies = db.query(Company).count()
+    verified_companies = db.query(Company).filter(Company.verification_status == "verified").count()
+    missing_logos = db.query(Company).filter(Company.verification_status == "missing").count()
+    unresolved_companies = db.query(Company).filter(Company.verification_status == "unresolved").count()
+    invalid_logos = db.query(Company).filter(Company.verification_status == "invalid").count()
+    duplicates_merged = identity_engine.state.get("duplicates_merged", 0)
+    
+    return {
+        "total_companies": total_companies,
+        "verified_companies": verified_companies,
+        "missing_logos": missing_logos,
+        "invalid_logos": invalid_logos,
+        "unresolved_companies": unresolved_companies,
+        "duplicates_merged": duplicates_merged,
+        "job_state": identity_engine.state
+    }
+
+@router.post("/trigger-identity-job")
+async def trigger_identity_job(current_user: User = Depends(get_current_user_from_request)):
+    from ..services.identity_engine import identity_engine
+    if identity_engine.is_running:
+        return {"status": "already running", "state": identity_engine.state}
+    
+    await identity_engine.start_job()
+    return {"status": "started", "state": identity_engine.state}

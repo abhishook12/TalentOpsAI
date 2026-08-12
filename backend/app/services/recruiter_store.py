@@ -97,22 +97,12 @@ class RecruiterStore:
         fallback_url = f"https://dcqvsvgrdsrgnbwwssup.supabase.co/storage/v1/object/public/data-assets/recruiters_full.parquet?v={int(time.time())}"
         
         try:
-            # Check remote size using a HEAD request
-            req = urllib.request.Request(primary_url, method='HEAD')
-            with urllib.request.urlopen(req, timeout=10) as response:
-                remote_size = int(response.headers.get('Content-Length', 0))
-                
             if os.path.exists(PARQUET_FILE):
                 local_size = os.path.getsize(PARQUET_FILE)
-                if local_size == remote_size and remote_size > 0:
-                    logger.info(f"Local Parquet file matches remote size ({local_size} bytes). Skipping download.")
-                    return
-                else:
-                    logger.info(f"Local size ({local_size}) differs from remote ({remote_size}). Re-downloading...")
-        except Exception as e:
-            logger.warning(f"Failed to check remote Parquet size: {e}. Will rely on local existence.")
-            if os.path.exists(PARQUET_FILE):
+                logger.info(f"Local Parquet file exists ({local_size} bytes). Skipping remote download to preserve local changes.")
                 return
+        except Exception as e:
+            logger.warning(f"Error checking local Parquet file: {e}")
             
         # Try primary (GitHub), then fallback (Supabase)
         for label, url in [("GitHub Releases", primary_url), ("Supabase Storage", fallback_url)]:

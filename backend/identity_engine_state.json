@@ -1,0 +1,11 @@
+{
+  "total_companies": 25485,
+  "processed": 4000,
+  "resolved": 3981,
+  "unresolved": 19,
+  "logos_verified": 98,
+  "logos_rejected": 3883,
+  "duplicates_merged": 1724,
+  "errors": 0,
+  "status": "completed"
+}

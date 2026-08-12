@@ -175,14 +175,15 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
         {(() => {
           const emailDomain = r.email ? r.email.split('@')[1].toLowerCase() : null;
           const isFreemail = emailDomain && ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com'].includes(emailDomain);
-          const fallbackDomain = r.company_domain || (r.company && (r.company.website || r.company.email_pattern)) || (!isFreemail ? emailDomain : null);
-          const fallbackName = r.company_name || (!isFreemail && emailDomain ? emailDomain.split('.')[0] : null);
+          const fallbackDomain = (r.company && r.company.primary_domain) || r.company_domain || (r.company && (r.company.website || r.company.email_pattern)) || (!isFreemail ? emailDomain : null);
+          const fallbackName = (r.company && r.company.canonical_name) || r.company_name || (!isFreemail && emailDomain ? emailDomain.split('.')[0] : null);
           
           return (
             <div title={r.company_reasoning || ''}>
               <CompanyIdentity 
                 domain={fallbackDomain} 
                 name={fallbackName} 
+                logo_url={r.company ? r.company.logo_url : null}
                 metadata={r.city ? `${r.city}, ${r.state}` : fallbackDomain}
                 subtitle={r.company_confidence ? `Confidence: ${r.company_confidence}%` : null}
                 interactive={false}

@@ -565,9 +565,12 @@ def get_recruiters(
         return {
             "company_id": company_row.company_id,
             "company_name": company_row.company_name,
+            "canonical_name": getattr(company_row, "canonical_name", None) or company_row.company_name,
             "location": company_row.location,
             "state": company_row.state,
             "website": company_row.website,
+            "primary_domain": getattr(company_row, "primary_domain", None),
+            "logo_url": getattr(company_row, "logo_url", None),
             "email_pattern": company_row.email_pattern
         } if company_row else None
     from .analytics import DOMAIN_DISPLAY_NAMES

@@ -92,14 +92,14 @@ class ParquetWriter:
             
             try:
                 if not os.path.exists(PARQUET_FILE):
-                    con.execute(f"COPY df_new TO '{tmp_file.replace(os.sep, '/')}' (FORMAT PARQUET, COMPRESSION 'ZSTD')")
+                    con.execute(f"COPY df_new TO '{tmp_file.replace(os.sep, '/')}' (FORMAT PARQUET)")
                 else:
                     con.execute(f"""
                         COPY (
                             SELECT * FROM read_parquet('{PARQUET_FILE.replace(os.sep, '/')}')
                             UNION ALL
                             SELECT * FROM df_new
-                        ) TO '{tmp_file.replace(os.sep, '/')}' (FORMAT PARQUET, COMPRESSION 'ZSTD')
+                        ) TO '{tmp_file.replace(os.sep, '/')}' (FORMAT PARQUET)
                     """)
                     
                 # Atomic swap
@@ -108,9 +108,6 @@ class ParquetWriter:
                 
                 # Reload the read replica
                 recruiter_store.reload()
-                
-                # Trigger background upload
-                self._trigger_upload()
                 
                 return len(records)
             except Exception as e:
@@ -138,56 +135,40 @@ class ParquetWriter:
                 return 0
 
             start_time = time.time()
-            con = duckdb.connect()
-            
-            schema = self._get_parquet_schema(con)
-            schema_cols = list(schema.keys())
-            
-            df_updates = pd.DataFrame(valid_updates)
-            # Ensure df_updates only contains columns that exist in the schema, but don't force all columns
-            update_cols = [c for c in df_updates.columns if c in schema_cols]
-            df_updates = df_updates[update_cols]
-            
-            con.register('df_updates', df_updates)
+            logger.info("Executing update via Pure Pandas to prevent corruption...")
             tmp_file = f"{PARQUET_FILE}.{os.getpid()}.update.tmp"
             
             try:
-                # We do a LEFT JOIN to update the rows.
-                # In DuckDB, we can use an exclude and replace strategy or COALESCE.
-                # Since updates might only have a few columns, COALESCE is safest.
-                select_exprs = []
-                for col in schema_cols:
-                    if col == 'recruiter_id':
-                        select_exprs.append("base.recruiter_id")
-                    elif col in update_cols:
-                        # We should use CASE WHEN upd.recruiter_id IS NOT NULL THEN CAST(upd.col AS type) ELSE base.col
-                        col_type = schema[col]
-                        select_exprs.append(f"CASE WHEN upd.recruiter_id IS NOT NULL THEN CAST(upd.{col} AS {col_type}) ELSE base.{col} END AS {col}")
-                    else:
-                        select_exprs.append(f"base.{col}")
-                        
-                select_clause = ",\n".join(select_exprs)
+                # Pure Pandas update
+                import pandas as pd
+                df_base = pd.read_parquet(PARQUET_FILE)
                 
-                query = f"""
-                    COPY (
-                        SELECT {select_clause}
-                        FROM read_parquet('{PARQUET_FILE.replace(os.sep, '/')}') base
-                        LEFT JOIN df_updates upd ON base.recruiter_id = upd.recruiter_id
-                    ) TO '{tmp_file.replace(os.sep, '/')}' (FORMAT PARQUET, COMPRESSION 'ZSTD')
-                """
+                # Create an updates dataframe
+                df_updates = pd.DataFrame(valid_updates)
+                df_updates.set_index('recruiter_id', inplace=True)
                 
-                logger.info(f"Update query: {query}")
-                con.execute(query)
+                # Drop duplicate indices if the parquet file has corrupt duplicate recruiter_ids
+                df_updates = df_updates[~df_updates.index.duplicated(keep='last')]
+                
+                # Ensure string types match
+                for col in df_updates.columns:
+                    if col in df_base.columns and pd.api.types.is_string_dtype(df_base[col]):
+                        df_updates[col] = df_updates[col].astype(str)
+                
+                # Apply updates efficiently
+                df_base.set_index('recruiter_id', inplace=True)
+                df_base.update(df_updates)
+                df_base.reset_index(inplace=True)
+                
+                # Write back with pyarrow
+                df_base.to_parquet(tmp_file, engine='pyarrow', compression='zstd')
                 
                 # Atomic swap
                 shutil.move(tmp_file, PARQUET_FILE)
-                logger.info(f"Updated {len(valid_updates)} records in Parquet in {time.time() - start_time:.2f}s")
-                
+                logger.info(f"Updated {len(valid_updates)} records in Parquet via Pandas in {time.time() - start_time:.2f}s")
+                    
                 # Reload the read replica
                 recruiter_store.reload()
-                
-                # Trigger background upload
-                self._trigger_upload()
                 
                 return len(valid_updates)
             except Exception as e:
@@ -195,39 +176,12 @@ class ParquetWriter:
                 if os.path.exists(tmp_file):
                     os.remove(tmp_file)
                 raise
-            finally:
-                con.close()
 
     def _trigger_upload(self):
-        if self._upload_thread is None or not self._upload_thread.is_alive():
-            self._upload_thread = threading.Thread(target=self._upload_to_supabase, daemon=True)
-            self._upload_thread.start()
+        # Disabled: Keep operations local to the Parquet file to avoid hitting storage quotas
+        pass
 
     def _upload_to_supabase(self):
-        """Uploads the local Parquet file to Supabase in the background."""
-        if not SUPABASE_KEY:
-            logger.warning("SUPABASE_KEY not set. Cannot upload to Supabase.")
-            return
-
-        bucket_name = "data-assets"
-        file_path = "recruiters_full.parquet"
-        url = f"{SUPABASE_URL}/storage/v1/object/{bucket_name}/{file_path}"
-
-        logger.info(f"Uploading {PARQUET_FILE} to Supabase bucket '{bucket_name}'...")
-        try:
-            with open(PARQUET_FILE, 'rb') as f:
-                data = f.read()
-
-            req = urllib.request.Request(url, data=data, method='PUT')
-            req.add_header('Authorization', f'Bearer {SUPABASE_KEY}')
-            req.add_header('Content-Type', 'application/vnd.apache.parquet')
-
-            with urllib.request.urlopen(req, timeout=120) as response:
-                if response.status in (200, 201):
-                    logger.info("Successfully uploaded Parquet to Supabase.")
-                else:
-                    logger.error(f"Failed to upload Parquet to Supabase: {response.status} {response.read()}")
-        except Exception as e:
-            logger.error(f"Error uploading Parquet to Supabase: {e}")
+        pass
 
 parquet_writer = ParquetWriter()

@@ -26,6 +26,37 @@ import { setLastEmail, saveTemplate } from '../lib/emailTemplates';
 // View: 'list' | 'workspace'
 // ─────────────────────────────────────────────────────────────────────────────
 
+class CampaignErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('Campaign workspace error:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '40px', textAlign: 'center' }}>
+          <AlertCircle style={{ width: 48, height: 48, color: '#ef4444', margin: '0 auto 16px' }} />
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: 8 }}>Something went wrong</h2>
+          <p style={{ color: '#888', marginBottom: 24 }}>The campaign workspace encountered an error.</p>
+          <button
+            onClick={() => { this.setState({ hasError: false, error: null }); this.props.onReset?.(); }}
+            style={{ padding: '10px 24px', background: '#fff', color: '#000', border: '1px solid #333', borderRadius: 8, cursor: 'pointer', fontWeight: 500 }}
+          >
+            Return to Campaign List
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function Campaigns() {
   // ── View State ──────────────────────────────────────────────────────────────
   const [view, setView] = useState('list');
@@ -123,9 +154,7 @@ export default function Campaigns() {
   const rawCampaigns = useMemo(() => Array.isArray(queryData) ? queryData : queryData?.items || [], [queryData]);
   const totalPages = useMemo(() => queryData?.pages || 1, [queryData]);
 
-  const sortedCampaigns = useMemo(() => {
-    return [...rawCampaigns].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  }, [rawCampaigns]);
+  const sortedCampaigns = rawCampaigns;
 
   const kpis = useMemo(() => {
     let active = 0, sent = 0, failures = 0;
@@ -291,14 +320,24 @@ export default function Campaigns() {
   }, [senderAccountId, validatedRecipients, subject, body, view, workspaceMode]);
 
   // Background recipient validation (debounced 800ms after recipients change)
+  const lastValidatedCountRef = useRef(0);
   useEffect(() => {
-    if (view !== 'workspace' || validatedRecipients.recipients.length === 0) return;
+    if (view !== 'workspace') return;
+    const currentCount = validatedRecipients.recipients.length;
+    // Only validate if new recipients were added
+    if (currentCount <= lastValidatedCountRef.current || currentCount === 0) {
+      lastValidatedCountRef.current = currentCount;
+      return;
+    }
     clearTimeout(validationTimerRef.current);
     validationTimerRef.current = setTimeout(async () => {
-      const emails = validatedRecipients.recipients.map(r => r.email);
-      if (emails.length === 0) return;
+      // Only send newly-added emails for validation
+      const newEmails = validatedRecipients.recipients
+        .slice(lastValidatedCountRef.current)
+        .map(r => r.email);
+      if (newEmails.length === 0) return;
       try {
-        const res = await api.post('/campaigns/validate-recipients', { emails });
+        const res = await api.post('/campaigns/validate-recipients', { emails: newEmails });
         const statusMap = new Map();
         (res.data.recipients || []).forEach(r => statusMap.set(r.email, r.status));
         const updated = validatedRecipients.recipients.map(r =>
@@ -306,6 +345,7 @@ export default function Campaigns() {
         );
         setValidatedRecipients({ recipients: updated, valid_count: updated.filter(r => r.status === 'valid').length });
       } catch { /* silent */ }
+      lastValidatedCountRef.current = currentCount;
     }, 800);
     return () => clearTimeout(validationTimerRef.current);
   }, [validatedRecipients.recipients.length, view]);
@@ -653,7 +693,8 @@ export default function Campaigns() {
   // RENDER: Campaign Workspace (Single Page)
   // ─────────────────────────────────────────────────────────────────────────────
   return (
-    <div className="h-full bg-[var(--bg-page)] text-[var(--text-primary)] flex flex-col overflow-hidden">
+    <CampaignErrorBoundary onReset={() => setView('list')}>
+      <div className="h-full bg-[var(--bg-page)] text-[var(--text-primary)] flex flex-col overflow-hidden">
 
       {/* ── Workspace Header ── */}
       <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--card-border)', background: 'var(--bg-surface)', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
@@ -929,7 +970,8 @@ export default function Campaigns() {
       {showConnectionWizard && (
         <ConnectionWizard onClose={() => setShowConnectionWizard(false)} onSuccess={() => { setShowConnectionWizard(false); fetchAccounts(); }} />
       )}
-    </div>
+      </div>
+    </CampaignErrorBoundary>
   );
 }
 

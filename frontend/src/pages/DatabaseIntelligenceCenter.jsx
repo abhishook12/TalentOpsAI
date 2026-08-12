@@ -3,14 +3,20 @@ import api from '../services/api';
 
 const DatabaseIntelligenceCenter = () => {
   const [stats, setStats] = useState(null);
+  const [identityStats, setIdentityStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [identityJobLoading, setIdentityJobLoading] = useState(false);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await api.get('/admin/intelligence-stats');
-        setStats(response.data);
+        const [statsRes, idRes] = await Promise.all([
+          api.get('/admin/intelligence-stats'),
+          api.get('/analytics/identity-quality')
+        ]);
+        setStats(statsRes.data);
+        setIdentityStats(idRes.data);
         setError(null);
       } catch (err) {
         console.error('Failed to fetch intelligence stats:', err);
@@ -191,6 +197,68 @@ const DatabaseIntelligenceCenter = () => {
           </div>
           
         </div>
+
+        {/* Company Identity Quality Section */}
+        {identityStats && (
+          <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-6 backdrop-blur-md shadow-lg">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-100 flex items-center gap-2">
+                <span>🏢</span> Company Identity Engine
+              </h3>
+              <button 
+                onClick={async () => {
+                  setIdentityJobLoading(true);
+                  await api.post('/analytics/trigger-identity-job');
+                  setTimeout(() => setIdentityJobLoading(false), 2000);
+                }}
+                disabled={identityJobLoading || identityStats.job_state.status === 'running'}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-lg shadow-md transition-colors"
+              >
+                {identityStats.job_state.status === 'running' ? 'Job Running...' : 'Trigger Full Identity Sweep'}
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+                <p className="text-sm text-gray-400">Total Companies</p>
+                <p className="text-2xl font-bold text-white mt-1">{identityStats.total_companies.toLocaleString()}</p>
+              </div>
+              <div className="bg-gray-900/50 p-4 rounded-xl border border-emerald-900/30">
+                <p className="text-sm text-gray-400">Verified Logos</p>
+                <p className="text-2xl font-bold text-emerald-400 mt-1">{identityStats.verified_companies.toLocaleString()}</p>
+              </div>
+              <div className="bg-gray-900/50 p-4 rounded-xl border border-rose-900/30">
+                <p className="text-sm text-gray-400">Missing/Invalid Logos</p>
+                <p className="text-2xl font-bold text-rose-400 mt-1">{(identityStats.missing_logos + identityStats.invalid_logos).toLocaleString()}</p>
+              </div>
+              <div className="bg-gray-900/50 p-4 rounded-xl border border-amber-900/30">
+                <p className="text-sm text-gray-400">Unresolved</p>
+                <p className="text-2xl font-bold text-amber-400 mt-1">{identityStats.unresolved_companies.toLocaleString()}</p>
+              </div>
+            </div>
+
+            {identityStats.job_state.status !== 'idle' && (
+              <div className="bg-gray-900/30 p-5 rounded-xl border border-indigo-500/20">
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="font-medium text-indigo-300">Background Job Status: {identityStats.job_state.status.toUpperCase()}</span>
+                  <span className="text-gray-400">{identityStats.job_state.processed} / {identityStats.job_state.total_companies} Processed</span>
+                </div>
+                <div className="w-full bg-gray-900 rounded-full h-2 mb-3">
+                  <div 
+                    className="bg-indigo-500 h-2 rounded-full transition-all duration-500" 
+                    style={{ width: `${identityStats.job_state.total_companies > 0 ? (identityStats.job_state.processed / identityStats.job_state.total_companies) * 100 : 0}%` }}
+                  ></div>
+                </div>
+                <div className="flex gap-4 text-xs text-gray-400">
+                  <span>Resolved: {identityStats.job_state.resolved}</span>
+                  <span>Unresolved: {identityStats.job_state.unresolved}</span>
+                  <span>Merged: {identityStats.job_state.duplicates_merged}</span>
+                  <span>Errors: {identityStats.job_state.errors}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         
       </div>
     </div>

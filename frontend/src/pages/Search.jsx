@@ -223,8 +223,9 @@ const SearchResultRow = React.memo(function SearchResultRow({ r, active, query, 
         <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.phone)}</div>
         <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
           <CompanyIdentity 
-            domain={r.website || r.email_pattern} 
-            name={r.company_name} 
+            domain={(r.company && r.company.primary_domain) || r.website || r.email_pattern} 
+            name={(r.company && r.company.canonical_name) || r.company_name} 
+            logo_url={r.company ? r.company.logo_url : null}
             interactive={false}
             size={36}
             logoSize={24}
@@ -1114,8 +1115,9 @@ export default function AISearch() {
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Company</div>
                     <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                       <CompanyIdentity 
-                        domain={selected.website || selected.email_pattern} 
-                        name={selected.company_name} 
+                        domain={(selected.company && selected.company.primary_domain) || selected.website || selected.email_pattern} 
+                        name={(selected.company && selected.company.canonical_name) || selected.company_name} 
+                        logo_url={selected.company ? selected.company.logo_url : null}
                         interactive={false}
                         style={{ padding: 0 }}
                       />

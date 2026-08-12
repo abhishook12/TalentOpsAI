@@ -9,6 +9,9 @@ Processes campaign email queues with:
 - Per-email lifecycle tracking
 - Campaign-level fault tolerance
 - Pause/Resume/Cancel support
+- Circuit breaker for provider failures
+- Campaign timeout watchdog
+- Graceful cancel signal propagation
 """
 import asyncio
 import logging
@@ -36,9 +39,16 @@ MAX_RETRIES_OVERALL = 3
 MAX_RECIPIENTS_PER_CAMPAIGN = 50  # Hard cap — prevents system-wide lockdowns
 BATCH_SIZE = 10  # Process emails in small batches
 BATCH_COOLDOWN_SECONDS = 1.5  # Pause between batches to let memory settle
+CIRCUIT_BREAKER_THRESHOLD = 3  # Auto-pause after N consecutive provider failures
+CAMPAIGN_TIMEOUT_SECONDS = 30 * 60  # 30 minute max campaign duration
 
 # We use a ThreadPoolExecutor for requests.post to avoid blocking the asyncio event loop
 request_executor = concurrent.futures.ThreadPoolExecutor(max_workers=WORKER_COUNT * 2)
+
+# Campaign start lock — prevents double-start race condition
+_campaign_start_lock = asyncio.Lock()
+# Per-campaign cancel signals — workers check these before processing
+_cancel_events: dict[int, asyncio.Event] = {}
 
 def _utcnow():
     return datetime.now(timezone.utc)
@@ -74,15 +84,36 @@ def _set_campaign_status(campaign_id: int, status: str):
             db.commit()
 
 def _get_campaign_eta(campaign_id: int) -> dict:
-    """Calculate ETA based on fast worker pool throughput — single GROUP BY query."""
-    from sqlalchemy import func as sa_func
+    """Calculate ETA based on fast worker pool throughput — single GROUP BY query with auth-error detection folded in."""
+    from sqlalchemy import func as sa_func, case, or_
     with SessionLocal() as db:
-        counts = dict(
-            db.query(CampaignRecruiter.status, sa_func.count())
+        # Single query: counts by status + auth error detection (no second query needed)
+        rows = (
+            db.query(
+                CampaignRecruiter.status,
+                sa_func.count().label('cnt'),
+                sa_func.sum(
+                    case(
+                        (or_(
+                            CampaignRecruiter.last_error.like('%Gmail API Error%'),
+                            CampaignRecruiter.last_error.like('%Token expired%'),
+                            CampaignRecruiter.last_error.like('%Graph API Error%401%'),
+                            CampaignRecruiter.last_error.like('%Graph API Error%403%'),
+                        ), 1),
+                        else_=0
+                    )
+                ).label('auth_errors')
+            )
             .filter(CampaignRecruiter.campaign_id == campaign_id)
             .group_by(CampaignRecruiter.status)
             .all()
         )
+        counts = {}
+        total_auth_errors = 0
+        for status, cnt, auth_errs in rows:
+            counts[status] = cnt
+            total_auth_errors += (auth_errs or 0)
+
         total = sum(counts.values())
         terminal = ['Sent', 'Delivered', 'Opened', 'Replied', 'Bounced', 'Cancelled']
         sent = sum(counts.get(s, 0) for s in terminal)
@@ -98,18 +129,6 @@ def _get_campaign_eta(campaign_id: int) -> dict:
         eta_seconds = int(remaining * estimated_seconds_per_email)
         effective_rate = int(60 / estimated_seconds_per_email) if estimated_seconds_per_email > 0 else 0
 
-        from sqlalchemy import or_
-        has_auth_error = db.query(CampaignRecruiter).filter(
-            CampaignRecruiter.campaign_id == campaign_id,
-            CampaignRecruiter.status == 'Failed',
-            or_(
-                CampaignRecruiter.last_error.like('%Gmail API Error%'),
-                CampaignRecruiter.last_error.like('%Token expired%'),
-                CampaignRecruiter.last_error.like('%Graph API Error%401%'),
-                CampaignRecruiter.last_error.like('%Graph API Error%403%')
-            )
-        ).first() is not None
-
         return {
             "total": total,
             "sent": sent,
@@ -122,7 +141,7 @@ def _get_campaign_eta(campaign_id: int) -> dict:
             "progress_percent": round((sent / total) * 100, 1) if total > 0 else 0,
             "eta_seconds": eta_seconds,
             "rate_per_minute": effective_rate,
-            "has_auth_error": has_auth_error,
+            "has_auth_error": total_auth_errors > 0,
         }
 
 import os
@@ -134,52 +153,70 @@ from ..config import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 
 def _refresh_google_token(account) -> str:
     from ..database import SessionLocal
-    with SessionLocal() as db:
-        if not account.refresh_token:
-            return None
-        token_url = "https://oauth2.googleapis.com/token"
-        data = {
-            "client_id": GOOGLE_CLIENT_ID,
-            "client_secret": GOOGLE_CLIENT_SECRET,
-            "refresh_token": account.refresh_token,
-            "grant_type": "refresh_token"
-        }
-        try:
-            r = requests.post(token_url, data=data, timeout=10)
-            if r.ok:
-                token_json = r.json()
-                account.access_token = token_json["access_token"]
-                if "refresh_token" in token_json:
-                    account.refresh_token = token_json["refresh_token"]
-                db.commit()
-                return account.access_token
-        except Exception:
-            pass
+    if not account.refresh_token:
+        return None
+    token_url = "https://oauth2.googleapis.com/token"
+    data = {
+        "client_id": GOOGLE_CLIENT_ID,
+        "client_secret": GOOGLE_CLIENT_SECRET,
+        "refresh_token": account.refresh_token,
+        "grant_type": "refresh_token"
+    }
+    try:
+        r = requests.post(token_url, data=data, timeout=10)
+        if r.ok:
+            token_json = r.json()
+            new_access = token_json["access_token"]
+            new_refresh = token_json.get("refresh_token")
+            # Merge into a fresh session to avoid stale object bug
+            with SessionLocal() as db:
+                fresh = db.query(type(account)).filter_by(account_id=account.account_id).first()
+                if fresh:
+                    fresh.access_token = new_access
+                    if new_refresh:
+                        fresh.refresh_token = new_refresh
+                    db.commit()
+            # Update the in-memory object too for the current request
+            account.access_token = new_access
+            if new_refresh:
+                account.refresh_token = new_refresh
+            return new_access
+    except Exception:
+        pass
     return None
 
 def _refresh_msal_token(account) -> str:
     from ..database import SessionLocal
-    with SessionLocal() as db:
-        if not account.refresh_token:
-            return None
-        token_url = f"https://login.microsoftonline.com/{MSAL_TENANT_ID}/oauth2/v2.0/token"
-        data = {
-            "client_id": MSAL_CLIENT_ID,
-            "client_secret": MSAL_CLIENT_SECRET,
-            "refresh_token": account.refresh_token,
-            "grant_type": "refresh_token"
-        }
-        try:
-            r = requests.post(token_url, data=data, timeout=10)
-            if r.ok:
-                token_json = r.json()
-                account.access_token = token_json["access_token"]
-                if "refresh_token" in token_json:
-                    account.refresh_token = token_json["refresh_token"]
-                db.commit()
-                return account.access_token
-        except Exception:
-            pass
+    if not account.refresh_token:
+        return None
+    token_url = f"https://login.microsoftonline.com/{MSAL_TENANT_ID}/oauth2/v2.0/token"
+    data = {
+        "client_id": MSAL_CLIENT_ID,
+        "client_secret": MSAL_CLIENT_SECRET,
+        "refresh_token": account.refresh_token,
+        "grant_type": "refresh_token"
+    }
+    try:
+        r = requests.post(token_url, data=data, timeout=10)
+        if r.ok:
+            token_json = r.json()
+            new_access = token_json["access_token"]
+            new_refresh = token_json.get("refresh_token")
+            # Merge into a fresh session to avoid stale object bug
+            with SessionLocal() as db:
+                fresh = db.query(type(account)).filter_by(account_id=account.account_id).first()
+                if fresh:
+                    fresh.access_token = new_access
+                    if new_refresh:
+                        fresh.refresh_token = new_refresh
+                    db.commit()
+            # Update the in-memory object too for the current request
+            account.access_token = new_access
+            if new_refresh:
+                account.refresh_token = new_refresh
+            return new_access
+    except Exception:
+        pass
     return None
 
 async def _send_email_via_provider(sender_account_id: int, user_id: int, payload: dict) -> tuple[bool, str, str]:
@@ -300,12 +337,18 @@ async def _send_email_via_provider(sender_account_id: int, user_id: int, payload
                         
                     if not smtp_pass or not smtp_host:
                         return False, "Missing SMTP credentials/host", "smtp_error"
-                        
+                    
+                    # Fix #1: Use try/finally to prevent SMTP connection leak
                     server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
-                    server.starttls()
-                    server.login(smtp_user, smtp_pass)
-                    server.send_message(msg)
-                    server.quit()
+                    try:
+                        server.starttls()
+                        server.login(smtp_user, smtp_pass)
+                        server.send_message(msg)
+                    finally:
+                        try:
+                            server.quit()
+                        except Exception:
+                            pass
                     return True, None, None
                     
                 else:
@@ -351,9 +394,13 @@ def _check_and_finalize_campaign(campaign_id: int):
             campaign.status = new_status
             db.commit()
 
-async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, signature_html: str, template: dict, from_email: str, user_id: int, sender_account_id: int):
+async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, signature_html: str, template: dict, from_email: str, user_id: int, sender_account_id: int, cancel_event: asyncio.Event = None, failure_counter: dict = None):
     logger.info(f"Worker {worker_id} started for campaign {campaign_id}")
     while True:
+        # Fix #21: Check cancel signal before processing next item
+        if cancel_event and cancel_event.is_set():
+            logger.info(f"Worker {worker_id} received cancel signal for campaign {campaign_id}")
+            break
         try:
             recipient_id = await queue.get()
         except asyncio.CancelledError:
@@ -430,7 +477,7 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                     recipient = db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_recruiter_id == recipient_id).first()
                     
                     if log:
-                        log.body_html = None
+                        log.body_html = None  # Fix #6: Always null body_html (both success and failure) to prevent DB bloat
                         if success:
                             log.status = EmailLogStatus.delivered.value
                             log.delivered_at = _utcnow()
@@ -467,6 +514,19 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                 return retry_count
                     
             retry_count = await asyncio.to_thread(_update_result_db, success, error_msg, error_type)
+            
+            # Fix #16: Circuit breaker — track consecutive failures
+            if failure_counter is not None:
+                if success:
+                    failure_counter['consecutive'] = 0
+                else:
+                    failure_counter['consecutive'] = failure_counter.get('consecutive', 0) + 1
+                    if failure_counter['consecutive'] >= CIRCUIT_BREAKER_THRESHOLD:
+                        logger.error(f"Circuit breaker triggered for campaign {campaign_id} after {CIRCUIT_BREAKER_THRESHOLD} consecutive failures")
+                        _set_campaign_status(campaign_id, CampaignStatus.paused.value)
+                        if cancel_event:
+                            cancel_event.set()
+                        break
             
             if not success and retry_count > 0:
                 asyncio.create_task(_schedule_retry(queue, recipient_id, retry_count))
@@ -556,36 +616,67 @@ async def process_campaign_queue(campaign_id: int):
         _set_campaign_status(campaign_id, CampaignStatus.failed.value)
         return
 
+    # Fix #21: Create per-campaign cancel event for graceful worker shutdown
+    cancel_event = asyncio.Event()
+    _cancel_events[campaign_id] = cancel_event
+    
+    # Fix #16: Shared failure counter for circuit breaker
+    failure_counter = {'consecutive': 0}
+    
     # Start workers once
     workers = []
     for i in range(min(WORKER_COUNT, len(all_recipient_ids))):
-        task = asyncio.create_task(_worker_task(i, campaign_id, queue, signature_html, template, from_email, user_id, sender_account_id))
+        task = asyncio.create_task(_worker_task(
+            i, campaign_id, queue, signature_html, template, from_email, user_id, sender_account_id,
+            cancel_event=cancel_event, failure_counter=failure_counter
+        ))
         workers.append(task)
     
     for rid in all_recipient_ids:
         queue.put_nowait(rid)
-        
+    
+    # Fix #18: Campaign timeout watchdog
+    async def _timeout_watchdog():
+        await asyncio.sleep(CAMPAIGN_TIMEOUT_SECONDS)
+        if not cancel_event.is_set():
+            logger.error(f"Campaign {campaign_id} exceeded {CAMPAIGN_TIMEOUT_SECONDS}s timeout, force-completing")
+            cancel_event.set()
+            _set_campaign_status(campaign_id, CampaignStatus.failed.value)
+    
+    watchdog = asyncio.create_task(_timeout_watchdog())
+    
     # Wait for the queue to completely drain, which includes any retries put back into the queue
     # because queue.join() blocks until queue.task_done() matches the number of items put.
-    await queue.join()
+    try:
+        await queue.join()
+    except asyncio.CancelledError:
+        pass
+    
+    # Cancel the watchdog if we finished normally
+    watchdog.cancel()
     
     # We still wait up to a few seconds just in case there are pending DB commits, but the worker finalize handles it.
     await asyncio.to_thread(_check_and_finalize_campaign, campaign_id)
     
     for w in workers:
         w.cancel()
+    
+    # Cleanup cancel event
+    _cancel_events.pop(campaign_id, None)
 
 _background_tasks = set()
 _active_campaign_managers = set()
 
 async def start_campaign(campaign_id: int):
     """Start background processor for campaign. Status is already set to active by the route."""
-    if campaign_id in _active_campaign_managers:
-        logger.warning(f"Campaign {campaign_id} manager already running, skipping double-start.")
-        return
+    # Fix #3: Use asyncio.Lock to prevent race condition in double-start check
+    async with _campaign_start_lock:
+        if campaign_id in _active_campaign_managers:
+            logger.warning(f"Campaign {campaign_id} manager already running, skipping double-start.")
+            return
+        _active_campaign_managers.add(campaign_id)
     
     async def managed_task():
-        _active_campaign_managers.add(campaign_id)
         try:
             await process_campaign_queue(campaign_id)
         finally:
@@ -600,8 +691,12 @@ def pause_campaign(campaign_id: int):
     _set_campaign_status(campaign_id, CampaignStatus.paused.value)
 
 def cancel_campaign(campaign_id: int):
-    """Set campaign to cancelled. The processor will mark remaining as cancelled."""
+    """Set campaign to cancelled and signal active workers to stop."""
     _set_campaign_status(campaign_id, CampaignStatus.cancelled.value)
+    # Fix #21: Signal active workers to stop immediately
+    cancel_event = _cancel_events.get(campaign_id)
+    if cancel_event:
+        cancel_event.set()
     with SessionLocal() as db:
         db.query(CampaignRecruiter).filter(
             CampaignRecruiter.campaign_id == campaign_id,
@@ -636,7 +731,8 @@ def get_campaign_progress(campaign_id: int) -> dict:
         return _get_campaign_eta(campaign_id)
 
 def restart_active_campaigns():
-    """Crash recovery: Resume any campaign that was in active state when the server crashed."""
+    """Crash recovery: Resume any campaign that was in active state when the server crashed.
+    Fix #10: Route through start_campaign() which has dedup guard to prevent double-send."""
     try:
         with SessionLocal() as db:
             # Reset any queued items back to pending in case of crash
@@ -647,9 +743,8 @@ def restart_active_campaigns():
             
             active_campaigns = db.query(Campaign).filter(Campaign.status == CampaignStatus.active.value).all()
             for c in active_campaigns:
-                logger.info(f"Crash recovery: Restarting campaign {c.campaign_id}...")
-                task = asyncio.create_task(process_campaign_queue(c.campaign_id))
-                _background_tasks.add(task)
-                task.add_done_callback(_background_tasks.discard)
+                logger.info(f"Crash recovery: Restarting campaign {c.campaign_id} via start_campaign()...")
+                # Route through start_campaign which has the _campaign_start_lock dedup guard
+                asyncio.create_task(start_campaign(c.campaign_id))
     except Exception as e:
         logger.error(f"Failed to run crash recovery for active campaigns: {e}")

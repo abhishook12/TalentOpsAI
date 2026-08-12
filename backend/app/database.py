@@ -51,8 +51,8 @@ engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
     pool_recycle=300,
-    pool_size=20,
-    max_overflow=10,
+    pool_size=10,
+    max_overflow=5,
     pool_timeout=30,
     pool_use_lifo=True,
     connect_args=connect_args

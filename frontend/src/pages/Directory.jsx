@@ -550,6 +550,7 @@ export default function Directory() {
                           name={company.company_name} 
                           metadata={company.website || company.email_pattern || 'Domain unlisted'}
                           interactive={false}
+                          size={48}
                           style={{ padding: 0 }}
                         />
                       {(company.tags || company.notes || company.linkedin_url) && (

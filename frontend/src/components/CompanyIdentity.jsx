@@ -6,6 +6,7 @@ const failedDomains = new Set()
 export function CompanyIdentity({ 
   domain, 
   name, 
+  logo_url,
   subtitle, 
   metadata, 
   size = 40, 
@@ -35,16 +36,19 @@ export function CompanyIdentity({
   }
   const initials = getInitials(displayName)
 
-  let logoUrl = null
-  if (cleanDomain && !failedDomains.has(cleanDomain)) {
-    if (errorLevel === 0) {
-      logoUrl = `https://logo.clearbit.com/${cleanDomain}?size=${logoSize * 4}`
+  let currentLogo = null
+  
+  if (errorLevel === 0 && logo_url) {
+    currentLogo = logo_url
+  } else if (cleanDomain && !failedDomains.has(cleanDomain)) {
+    if (errorLevel === 0 && !logo_url) {
+      currentLogo = `https://logo.clearbit.com/${cleanDomain}?size=${logoSize * 4}`
     } else if (errorLevel === 1) {
-      logoUrl = `https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${cleanDomain}&size=${logoSize * 4}`
+      currentLogo = `https://logo.clearbit.com/${cleanDomain}?size=${logoSize * 4}` // fallback to clearbit if logo_url failed
     } else if (errorLevel === 2) {
-      logoUrl = `https://icons.duckduckgo.com/ip3/${cleanDomain}.ico`
+      currentLogo = `https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${cleanDomain}&size=${logoSize * 4}`
     } else if (errorLevel === 3) {
-      logoUrl = `https://favicon.im/${cleanDomain}?larger=true`
+      currentLogo = `https://icons.duckduckgo.com/ip3/${cleanDomain}.ico`
     }
   }
 
@@ -87,20 +91,19 @@ export function CompanyIdentity({
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Logo Render */}
-      {logoUrl ? (
+      {currentLogo ? (
         <img 
-          src={logoUrl} 
+          src={currentLogo} 
           alt={`${displayName} logo`}
           loading="lazy"
           style={{ 
             width: size, 
             height: size, 
             minWidth: size,
-            borderRadius: 8, 
-            objectFit: 'contain',
-            background: '#1D1D1D',
+            borderRadius: 12, 
+            objectFit: 'cover',
+            background: '#ffffff',
             border: '1px solid var(--card-border)',
-            padding: 8,
             flexShrink: 0
           }}
           onError={() => {

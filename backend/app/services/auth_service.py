@@ -106,6 +106,9 @@ def get_current_user_from_request(request: Request, db: Session = Depends(get_db
         # 2. Check query parameter (often used in OAuth popups from frontend)
         token = request.query_params.get("token")
         
+    if token in ("null", "undefined"):
+        token = None
+        
     # 3. Fallback to cookies
     if not token:
         token = request.cookies.get("access_token")

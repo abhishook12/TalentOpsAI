@@ -204,11 +204,11 @@ export default function Directory() {
     return () => { alive = false }
   }, [debouncedCompanyQuery])
 
-  const prevCompanyRef = useRef(selectedCompany?.company_id)
+  const prevCompanyRef = useRef(selectedCompany?.company_key)
 
   useEffect(() => {
     // Only reset state if the company ACTUALLY changed from a previous selection
-    if (prevCompanyRef.current !== undefined && prevCompanyRef.current !== selectedCompany?.company_id) {
+    if (prevCompanyRef.current !== undefined && prevCompanyRef.current !== selectedCompany?.company_key) {
       setSelectedState(null)
       setStateQuery('')
       setRecruiterQuery('')
@@ -219,9 +219,9 @@ export default function Directory() {
       setPage(1)
       setSelectedRecruiters(new Map())
     }
-    prevCompanyRef.current = selectedCompany?.company_id
+    prevCompanyRef.current = selectedCompany?.company_key
 
-    if (!selectedCompany?.company_id) return
+    if (!selectedCompany?.company_key) return
 
     let alive = true
 
@@ -267,7 +267,7 @@ export default function Directory() {
   }, [companyStates, selectedState, setSelectedState, statesLoading])
 
   useEffect(() => {
-    if (!selectedCompany?.company_id) return
+    if (!selectedCompany?.company_key) return
 
     let alive = true
     const controller = new AbortController()
@@ -412,7 +412,7 @@ export default function Directory() {
   }
 
   const exportEntireCompany = async () => {
-    if (!selectedCompany?.company_id) return showToast('No company selected', 'error')
+    if (!selectedCompany?.company_key) return showToast('No company selected', 'error')
     
     showToast('Exporting entire company...', 'info')
     try {
@@ -490,7 +490,7 @@ export default function Directory() {
           <button className="btn-secondary" onClick={clearSelectedRecruiters} disabled={!selectedCount}>Clear Selected</button>
           <button className="btn-secondary" onClick={exportSelected} disabled={!selectedCount}>Export Selected</button>
           <button className="btn-secondary" onClick={exportCurrentPage} disabled={!recruiters.length}>Export Page</button>
-          <button className="btn-primary" onClick={exportEntireCompany} disabled={!selectedCompany?.company_id}>Export Entire Company</button>
+          <button className="btn-primary" onClick={exportEntireCompany} disabled={!selectedCompany?.company_key}>Export Entire Company</button>
         </div>
       </div>
 
@@ -509,12 +509,12 @@ export default function Directory() {
               <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No companies match this search.</div>
             ) : null}
             {companyRows.map((company, index) => {
-              const active = selectedCompany?.company_id === company.company_id
+              const active = selectedCompany?.company_key === company.company_key
               const pct = Math.max((company.recruiter_count || 0) / maxCompanies * 100, 4)
 
               return (
                 <button
-                  key={company.company_id}
+                  key={company.company_key}
                   onClick={() => selectCompany(company)}
                   style={{
                     textAlign: 'left',

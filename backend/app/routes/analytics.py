@@ -390,17 +390,18 @@ def companies_search(
         logo_domain = parquet_domain or pg_logo
 
         # --- Resolve company name ---
-        # If PostgreSQL has a record, use it. Otherwise, look up domain display
-        # name, then fall back to deriving a name from the domain string.
-        if company:
-            name = company.company_name
-        elif parquet_domain and parquet_domain in DOMAIN_DISPLAY_NAMES:
+        # 1. Highest priority: Hardcoded DOMAIN_DISPLAY_NAMES mapping (immune to scraping errors)
+        # 2. Next: PostgreSQL company_name
+        # 3. Next: Derive from Parquet dominant_domain
+        # 4. Last resort: Raw key (if numeric, label as Unknown)
+        if parquet_domain and parquet_domain in DOMAIN_DISPLAY_NAMES:
             name = DOMAIN_DISPLAY_NAMES[parquet_domain]
+        elif company and company.company_name:
+            name = company.company_name
         elif parquet_domain:
-            # Derive a readable name from domain: "insightglobal.com" → "Insightglobal"
             name = parquet_domain.split('.')[0].replace('-', ' ').title()
         else:
-            name = key  # Last resort: raw key
+            name = f"Unknown Company" if key.isdigit() else key
 
         # --- Resolve email_pattern: prefer Parquet domain ---
         email_pattern = parquet_domain or (company.email_pattern if company else None)

@@ -182,16 +182,29 @@ class RecruiterStore:
         except OSError:
             return "missing"
 
+    # Free/generic email domains to exclude when computing dominant company domain
+    _FREE_EMAIL_DOMAINS = frozenset({
+        'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com',
+        'icloud.com', 'live.com', 'msn.com', 'comcast.net', 'att.net',
+        'sbcglobal.net', 'verizon.net', 'me.com', 'mail.com', 'protonmail.com',
+        'ymail.com', 'cox.net', 'charter.net', 'earthlink.net',
+        'talentops.ai',  # Internal placeholder domain
+    })
+
     def company_directory(
         self,
         query: Optional[str] = None,
         state: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        """Return company keys and counts from the active recruiter dataset.
+        """Return company keys, counts, and dominant email domain from the active recruiter dataset.
 
         Imported data contains both numeric database IDs and company-name strings
         in ``company_id``. The raw value is therefore the only stable key shared
         by company search, state drill-down, and recruiter listings.
+
+        The ``dominant_domain`` is the most common email domain among recruiters
+        for each company (excluding free email providers). This allows fallback
+        logo and name inference even when PostgreSQL metadata is missing.
         """
         self._ensure_loaded()
         where = [
@@ -210,16 +223,31 @@ class RecruiterStore:
             where.append("UPPER(COALESCE(state, '')) = ?")
             params.append(state.upper())
 
+        # Build the exclusion list for MODE() filter
+        free_domains_sql = ", ".join(f"'{d}'" for d in self._FREE_EMAIL_DOMAINS)
+
         rows = self._conn.execute(f"""
-            SELECT CAST(company_id AS VARCHAR) AS company_key, COUNT(*) AS recruiter_count
+            SELECT
+                CAST(company_id AS VARCHAR) AS company_key,
+                COUNT(*) AS recruiter_count,
+                MODE(LOWER(SPLIT_PART(email, '@', 2))) FILTER (
+                    WHERE email IS NOT NULL
+                      AND email LIKE '%@%'
+                      AND LOWER(SPLIT_PART(email, '@', 2)) NOT IN ({free_domains_sql})
+                      AND LENGTH(SPLIT_PART(email, '@', 2)) > 2
+                ) AS dominant_domain
             FROM recruiters
             WHERE {' AND '.join(where)}
             GROUP BY company_key
             ORDER BY recruiter_count DESC, company_key ASC
         """, params).fetchall()
         return [
-            {"company_key": str(key), "recruiter_count": int(count)}
-            for key, count in rows
+            {
+                "company_key": str(key),
+                "recruiter_count": int(count),
+                "dominant_domain": str(domain) if domain else None,
+            }
+            for key, count, domain in rows
         ]
 
     # ─── Core Query Methods ───

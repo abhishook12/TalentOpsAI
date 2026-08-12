@@ -259,8 +259,8 @@ def _get_msal_redirect_uri(request=None):
     if request:
         scheme = request.headers.get("x-forwarded-proto", request.url.scheme)
         host = request.headers.get("x-forwarded-host") or request.headers.get("host") or request.url.netloc
-        return f"{scheme}://{host}/api/bridge/oauth/callback"
-    return "http://localhost:8000/api/bridge/oauth/callback"
+        return f"{scheme}://{host}/bridge/oauth/callback"
+    return "http://localhost:8000/bridge/oauth/callback"
 
 @router.get('/oauth/login')
 def bridge_oauth_login(request: Request, redirect_uri: str = '/profile?bridge=connected', popup: str = 'false', current_user: User = Depends(get_current_user_from_request)):
@@ -276,7 +276,7 @@ def bridge_oauth_login(request: Request, redirect_uri: str = '/profile?bridge=co
     
     if MOCK_OAUTH:
         # Mock redirect directly to callback with a fake auth code
-        return RedirectResponse(url=f'/api/bridge/oauth/callback?code=mock_auth_code_123&state={state}')
+        return RedirectResponse(url=f'/bridge/oauth/callback?code=mock_auth_code_123&state={state}')
         
     msal_url = f"https://login.microsoftonline.com/{MSAL_TENANT_ID}/oauth2/v2.0/authorize?client_id={MSAL_CLIENT_ID}&response_type=code&redirect_uri={urllib.parse.quote(msal_redirect)}&scope=Mail.Send%20Mail.ReadWrite%20offline_access%20User.Read&prompt=consent&state={state}"
     return RedirectResponse(url=msal_url)

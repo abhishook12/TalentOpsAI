@@ -549,6 +549,7 @@ export default function Directory() {
                           domain={company.logo_domain || company.website || company.email_pattern} 
                           name={company.company_name} 
                           metadata={company.website || company.email_pattern || 'Domain unlisted'}
+                          logo_url={company.logo_url}
                           interactive={false}
                           size={48}
                           style={{ padding: 0 }}

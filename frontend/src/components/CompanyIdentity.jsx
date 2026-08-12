@@ -38,17 +38,16 @@ export function CompanyIdentity({
 
   let currentLogo = null
   
-  if (errorLevel === 0 && logo_url) {
-    currentLogo = logo_url
-  } else if (cleanDomain && !failedDomains.has(cleanDomain)) {
-    if (errorLevel === 0 && !logo_url) {
-      currentLogo = `https://logo.clearbit.com/${cleanDomain}?size=${logoSize * 4}`
-    } else if (errorLevel === 1) {
-      currentLogo = `https://logo.clearbit.com/${cleanDomain}?size=${logoSize * 4}` // fallback to clearbit if logo_url failed
-    } else if (errorLevel === 2) {
-      currentLogo = `https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${cleanDomain}&size=${logoSize * 4}`
-    } else if (errorLevel === 3) {
-      currentLogo = `https://icons.duckduckgo.com/ip3/${cleanDomain}.ico`
+  if (cleanDomain && !failedDomains.has(cleanDomain)) {
+    const urls = []
+    if (logo_url) urls.push(logo_url)
+    urls.push(`https://logo.clearbit.com/${cleanDomain}?size=${logoSize * 4}`)
+    urls.push(`https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${cleanDomain}&size=${logoSize * 4}`)
+    urls.push(`https://icons.duckduckgo.com/ip3/${cleanDomain}.ico`)
+    
+    const uniqueUrls = [...new Set(urls)]
+    if (errorLevel < uniqueUrls.length) {
+      currentLogo = uniqueUrls[errorLevel]
     }
   }
 

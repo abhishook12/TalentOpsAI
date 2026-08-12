@@ -38,20 +38,16 @@ export function CompanyLogo({ domain, name, logo_url, size = 32, style = {} }) {
   // Level 2: Google Favicon v2 (Reliable fallback for almost all web servers, scalable)
   // Level 3: DuckDuckGo Favicons
   
-  let currentLogo = null
+  const urls = []
+  if (logo_url) urls.push(logo_url)
+  urls.push(`https://logo.clearbit.com/${cleanDomain}?size=${size * 4}`)
+  urls.push(`https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${cleanDomain}&size=${size * 4}`)
+  urls.push(`https://icons.duckduckgo.com/ip3/${cleanDomain}.ico`)
   
-  if (errorLevel === 0 && logo_url) {
-    currentLogo = logo_url
-  } else if (errorLevel === 0 && !logo_url) {
-    // Skip to clearbit if we don't have a verified logo url
-    currentLogo = `https://logo.clearbit.com/${cleanDomain}?size=${size * 4}`
-  } else if (errorLevel === 1) {
-    // If we had logo_url but it failed, or clearbit failed
-    currentLogo = `https://logo.clearbit.com/${cleanDomain}?size=${size * 4}`
-  } else if (errorLevel === 2) {
-    currentLogo = `https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${cleanDomain}&size=${size * 4}`
-  } else if (errorLevel === 3) {
-    currentLogo = `https://icons.duckduckgo.com/ip3/${cleanDomain}.ico`
+  const uniqueUrls = [...new Set(urls)]
+  let currentLogo = null
+  if (errorLevel < uniqueUrls.length) {
+    currentLogo = uniqueUrls[errorLevel]
   }
 
   if (errorLevel >= 4 || !currentLogo) {

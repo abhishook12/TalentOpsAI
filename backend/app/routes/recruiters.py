@@ -570,10 +570,33 @@ def get_recruiters(
             "website": company_row.website,
             "email_pattern": company_row.email_pattern
         } if company_row else None
-
+    from .analytics import DOMAIN_DISPLAY_NAMES
+    
+    free_domains = {'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com', 'live.com', 'msn.com', 'comcast.net', 'att.net', 'sbcglobal.net', 'verizon.net', 'me.com', 'mail.com', 'protonmail.com', 'ymail.com', 'cox.net', 'charter.net', 'earthlink.net', 'talentops.ai'}
+    
     formatted_results = []
     for r in results:
         comp = companies_dict.get(r.get('company_id'))
+        
+        pg_logo = select_logo_domain(comp.website, comp.email_pattern) if comp else None
+        rec_domain = None
+        email_val = r.get('email')
+        if email_val and '@' in email_val:
+            d = email_val.split('@')[-1].lower()
+            if d not in free_domains:
+                rec_domain = d
+        company_domain = rec_domain or pg_logo
+
+        raw_key = str(r.get('company_id')) if r.get('company_id') is not None else None
+        if company_domain and company_domain in DOMAIN_DISPLAY_NAMES:
+            c_name = DOMAIN_DISPLAY_NAMES[company_domain]
+        elif comp and comp.company_name:
+            c_name = comp.company_name
+        elif company_domain:
+            c_name = company_domain.split('.')[0].replace('-', ' ').title()
+        else:
+            c_name = "Unknown Company" if raw_key and raw_key.isdigit() else raw_key
+
         formatted_results.append({
             "recruiter_id": r.get("recruiter_id"),
             "recruiter_name": r.get("recruiter_name"),
@@ -591,10 +614,8 @@ def get_recruiters(
             "specialization": r.get("specialization"),
             "notes": r.get("notes"),
             "company_id": r.get("company_id"),
-            "company_name": comp.company_name if comp else (
-                str(r.get("company_id")) if r.get("company_id") is not None else None
-            ),
-            "company_domain": select_logo_domain(comp.website, comp.email_pattern) if comp else None,
+            "company_name": c_name,
+            "company_domain": company_domain,
             "company": _basic_company(comp),
             "location": r.get("location") or (comp.location if comp else None),
             "state": r.get("state"),

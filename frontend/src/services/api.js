@@ -25,7 +25,7 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
 const SESSION_TOKEN_KEY = 'session_token'
 
-const getStoredToken = () => {
+export const getStoredToken = () => {
   if (typeof window === 'undefined') return null
   return localStorage.getItem(SESSION_TOKEN_KEY) || sessionStorage.getItem(SESSION_TOKEN_KEY)
 }

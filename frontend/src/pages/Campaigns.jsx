@@ -480,7 +480,7 @@ export default function Campaigns() {
   const toggleCampaignStatus = async (id, status) => {
     try {
       const action = status === 'active' ? 'pause' : 'resume';
-      await api.post(`/campaigns/${id}/control`, { action });
+      await api.post(`/campaigns/${id}/${action}`);
       toast.success(`Campaign ${action}d`);
       refetch();
     } catch { toast.error('Failed to change status'); }

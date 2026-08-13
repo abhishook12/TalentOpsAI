@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, CheckCircle, XCircle, Clock, Loader2, AlertTriangle, ExternalLink } from 'lucide-react';
-import api, { API } from '../services/api';
+import api, { API, getStoredToken } from '../services/api';
 
 export default function CampaignProgress({ campaignId, onStatusChange }) {
   const [data, setData] = useState({
@@ -16,7 +16,12 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
   useEffect(() => {
     if (!campaignId) return;
 
-    const eventSource = new EventSource(`${API}/campaigns/${campaignId}/progress`);
+    const token = getStoredToken();
+    if (!token) {
+      setIsConnecting(false);
+      return;
+    }
+    const eventSource = new EventSource(`${API}/campaigns/${campaignId}/progress?token=${encodeURIComponent(token)}`);
 
     eventSource.onmessage = (event) => {
       try {

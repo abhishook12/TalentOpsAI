@@ -8,6 +8,7 @@ from app.services.data_filler_engine import DataFillerEngine
 from app.services.mailintel_engine import _status_for_score
 from app.services.sentinel_engine import normalize_email, normalize_phone
 from app.services.verification_state import VerificationState
+from app.models.campaigns import CampaignRecruiterStatus
 
 
 def test_verification_marks_domain_only_after_completion(tmp_path, monkeypatch):
@@ -45,3 +46,19 @@ def test_mailintel_status_thresholds():
 def test_sentinel_normalizers_handle_invalid_values():
     assert normalize_email(" ADMIN@example.com ") == {"value": "admin@example.com", "issue": "role_based"}
     assert normalize_phone("123") == {"value": "123", "issue": "invalid_length"}
+
+
+def test_campaign_statuses_preserve_individual_delivery_lifecycle():
+    assert CampaignRecruiterStatus.pending.value == "Pending"
+    assert CampaignRecruiterStatus.sending.value == "Sending"
+    assert CampaignRecruiterStatus.sent.value == "Sent"
+    assert CampaignRecruiterStatus.retrying.value == "Retrying"
+
+
+def test_legacy_bulk_send_is_disabled_and_authenticated():
+    import inspect
+    from app.routes.campaigns import bulk_send_emails
+
+    source = inspect.getsource(bulk_send_emails)
+    assert "Legacy bulk SMTP sending is disabled" in source
+    assert "get_current_user_from_request" in source

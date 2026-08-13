@@ -97,47 +97,70 @@ class RecruiterStore:
         finally:
             self._lock.release()
 
-    def _download_from_storage(self):
-        """Download the Parquet file from GitHub Releases (primary) or Supabase Storage (fallback)."""
-        import urllib.request
-        import shutil
-        import time
-        
-        # Primary: GitHub Releases (no bandwidth limits for public repos)
-        primary_url = "https://github.com/abhishook12/TalentOpsAI/releases/download/data-v1/recruiters_full.parquet"
-        # Fallback: Supabase Storage (may hit 402 bandwidth limit)
-        fallback_url = f"https://dcqvsvgrdsrgnbwwssup.supabase.co/storage/v1/object/public/data-assets/recruiters_full.parquet?v={int(time.time())}"
-        
-        try:
-            if os.path.exists(PARQUET_FILE):
-                local_size = os.path.getsize(PARQUET_FILE)
-                logger.info(f"Local Parquet file exists ({local_size} bytes). Skipping remote download to preserve local changes.")
-                return
-        except Exception as e:
-            logger.warning(f"Error checking local Parquet file: {e}")
-            
-        # Try primary (GitHub), then fallback (Supabase)
-        for label, url in [("GitHub Releases", primary_url), ("Supabase Storage", fallback_url)]:
-            logger.info(f"Downloading Parquet from {label} to {PARQUET_FILE}...")
-            try:
-                os.makedirs(os.path.dirname(PARQUET_FILE), exist_ok=True)
-                with urllib.request.urlopen(url, timeout=120) as response, open(PARQUET_FILE, 'wb') as out_file:
-                    shutil.copyfileobj(response, out_file)
-                logger.info(f"Successfully downloaded Parquet file from {label} ({os.path.getsize(PARQUET_FILE) / (1024*1024):.2f} MB)")
-                return  # Success — stop trying
-            except Exception as e:
-                logger.error(f"Failed to download Parquet from {label}: {e}")
-        
-        logger.error("All download sources failed. RecruiterStore will be empty.")
-
     def _load(self):
-        """Load the Parquet file into DuckDB."""
+        """Load the Parquet file into DuckDB using HTTPFS for serverless environments."""
+        import time
         duckdb = _get_duckdb()
         
-        self._download_from_storage()
+        primary_url = "https://github.com/abhishook12/TalentOpsAI/releases/download/data-v1/recruiters_full.parquet"
         
-        if not os.path.exists(PARQUET_FILE):
-            logger.warning(f"Parquet file not found: {PARQUET_FILE}. RecruiterStore will be empty.")
+        start = time.time()
+        self._conn = duckdb.connect(":memory:")
+        
+        try:
+            self._conn.execute("INSTALL httpfs;")
+            self._conn.execute("LOAD httpfs;")
+        except Exception as e:
+            logger.warning(f"Could not load httpfs extension: {e}")
+
+        # In local environments where we have the file, use it. In production serverless, stream it directly.
+        if os.path.exists(PARQUET_FILE):
+            logger.info(f"Using local Parquet file: {PARQUET_FILE}")
+            parquet_path = f"'{PARQUET_FILE.replace(os.sep, '/')}'"
+        else:
+            logger.info(f"Parquet file not found locally. Streaming directly via HTTPFS from {primary_url}")
+            parquet_path = f"'{primary_url}'"
+
+        try:
+            # Create a view over the Parquet file (memory-efficient, reads on demand or via HTTP range requests)
+            self._conn.execute(f"""
+                CREATE VIEW recruiters AS 
+                SELECT * FROM read_parquet({parquet_path})
+            """)
+            
+            res = self._conn.execute("SELECT COUNT(*) FROM recruiters").fetchone()
+            self._record_count = res[0] if res else 0
+            
+            # Build the exclusion list for MODE() filter
+            free_domains_sql = ", ".join(f"'{d}'" for d in self._FREE_EMAIL_DOMAINS)
+            
+            # Pre-aggregate company stats to prevent API timeouts on every search
+            self._conn.execute(f"""
+                CREATE TABLE company_summary AS 
+                SELECT
+                    CAST(company_id AS VARCHAR) AS company_key,
+                    UPPER(COALESCE(state, '')) AS state_upper,
+                    COUNT(*) AS recruiter_count,
+                    MODE(LOWER(SPLIT_PART(email, '@', 2))) FILTER (
+                        WHERE email IS NOT NULL
+                          AND email LIKE '%@%'
+                          AND LOWER(SPLIT_PART(email, '@', 2)) NOT IN ({free_domains_sql})
+                          AND LENGTH(SPLIT_PART(email, '@', 2)) > 2
+                    ) AS dominant_domain
+                FROM recruiters
+                WHERE company_id IS NOT NULL 
+                  AND TRIM(CAST(company_id AS VARCHAR)) != ''
+                  AND LOWER(TRIM(CAST(company_id AS VARCHAR))) NOT IN ('need to fill data', 'unknown', 'n/a', 'none', 'null')
+                  AND INSTR(CAST(company_id AS VARCHAR), '|') = 0
+                GROUP BY company_key, state_upper
+            """)
+
+            elapsed = time.time() - start
+            logger.info(f"RecruiterStore loaded {self._record_count:,} recruiters from Parquet in {elapsed:.2f}s")
+            
+        except Exception as e:
+            logger.error(f"Failed to load Parquet dataset from {parquet_path}: {e}. Falling back to empty tables.")
+            # Safety fallback to prevent 500 errors on the API
             self._conn = duckdb.connect(":memory:")
             self._conn.execute("CREATE TABLE recruiters (id INTEGER)")
             self._conn.execute("""
@@ -149,47 +172,7 @@ class RecruiterStore:
                 )
             """)
             self._record_count = 0
-            self._loaded = True
-            return
-
-        start = time.time()
-        self._conn = duckdb.connect(":memory:")
-        
-        # Create a view over the Parquet file (memory-efficient, reads on demand)
-        self._conn.execute(f"""
-            CREATE VIEW recruiters AS 
-            SELECT * FROM read_parquet('{PARQUET_FILE.replace(os.sep, '/')}')
-        """)
-        
-        self._record_count = self._conn.execute("SELECT COUNT(*) FROM recruiters").fetchone()[0]
-        
-        # Build the exclusion list for MODE() filter
-        free_domains_sql = ", ".join(f"'{d}'" for d in self._FREE_EMAIL_DOMAINS)
-        
-        # Pre-aggregate company stats to prevent 20-second API timeouts on every search
-        self._conn.execute(f"""
-            CREATE TABLE company_summary AS 
-            SELECT
-                CAST(company_id AS VARCHAR) AS company_key,
-                UPPER(COALESCE(state, '')) AS state_upper,
-                COUNT(*) AS recruiter_count,
-                MODE(LOWER(SPLIT_PART(email, '@', 2))) FILTER (
-                    WHERE email IS NOT NULL
-                      AND email LIKE '%@%'
-                      AND LOWER(SPLIT_PART(email, '@', 2)) NOT IN ({free_domains_sql})
-                      AND LENGTH(SPLIT_PART(email, '@', 2)) > 2
-                ) AS dominant_domain
-            FROM recruiters
-            WHERE company_id IS NOT NULL 
-              AND TRIM(CAST(company_id AS VARCHAR)) != ''
-              AND LOWER(TRIM(CAST(company_id AS VARCHAR))) NOT IN ('need to fill data', 'unknown', 'n/a', 'none', 'null')
-              AND INSTR(CAST(company_id AS VARCHAR), '|') = 0
-            GROUP BY company_key, state_upper
-        """)
-
-        elapsed = time.time() - start
-        
-        logger.info(f"RecruiterStore loaded {self._record_count:,} recruiters from Parquet in {elapsed:.2f}s")
+            
         self._loaded = True
         self._last_load_time = time.time()
 

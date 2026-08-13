@@ -17,13 +17,17 @@ def get_sentinel_dashboard(db: Session = Depends(get_db), current_user: User = D
     
     state = db.query(SentinelPhase4State).first()
     
-    # Calculate perfectly synced LIVE counts from Postgres
-    total_recruiters = db.query(func.count(Recruiter.recruiter_id)).scalar() or 0
+    # Calculate perfectly synced LIVE counts from Postgres / Parquet
+    from app.services.recruiter_store import RecruiterStore
+    store = RecruiterStore.get_instance()
+    
+    total_recruiters = store._record_count if store._loaded else (db.query(func.count(Recruiter.recruiter_id)).scalar() or 0)
+    total_comps = (store._conn.execute("SELECT COUNT(*) FROM company_summary").fetchone()[0] if store._loaded else db.query(func.count(func.distinct(Recruiter.company_id))).scalar() or 0)
+    
     missing_emails = db.query(func.count(Recruiter.recruiter_id)).filter((Recruiter.email == None) | (Recruiter.email == '') | (Recruiter.email.ilike('%missing.local%'))).scalar() or 0
     missing_phones = db.query(func.count(Recruiter.recruiter_id)).filter((Recruiter.phone == None) | (Recruiter.phone == '')).scalar() or 0
     missing_li = db.query(func.count(Recruiter.recruiter_id)).filter((Recruiter.linkedin == None) | (Recruiter.linkedin == '')).scalar() or 0
     unknown_comps = db.query(func.count(Recruiter.recruiter_id)).filter(Recruiter.company_id == None).scalar() or 0
-    total_comps = db.query(func.count(func.distinct(Recruiter.company_id))).scalar() or 0
     
     below_50 = db.query(func.count(Recruiter.recruiter_id)).filter(Recruiter.completeness_score < 50).scalar() or 0
     above_90 = db.query(func.count(Recruiter.recruiter_id)).filter(Recruiter.completeness_score > 90).scalar() or 0

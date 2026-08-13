@@ -43,7 +43,9 @@ def intelligence_stats(db: Session = Depends(get_db)):
     from ..models.models import EnrichmentAudit, RecruiterEmail, DomainIntelligence
     from ..models.sentinel_state import SentinelState
     
-    total_recruiters = db.query(func.count(Recruiter.recruiter_id)).scalar() or 0
+    from app.services.recruiter_store import RecruiterStore
+    store = RecruiterStore.get_instance()
+    total_recruiters = store._record_count if store._loaded else (db.query(func.count(Recruiter.recruiter_id)).scalar() or 0)
     total_processed = db.query(func.count(Recruiter.recruiter_id)).filter(Recruiter.sentinel_status == 'Completed').scalar() or 0
     
     # Needs review
@@ -196,6 +198,9 @@ def admin_lockdown_status():
 def admin_stats(db: Session = Depends(get_db)):
     t0 = time.time()
     
+    from app.services.recruiter_store import RecruiterStore
+    store = RecruiterStore.get_instance()
+    
     def safe_count(query):
         try:
             return db.execute(text(query)).scalar() or 0
@@ -204,11 +209,11 @@ def admin_stats(db: Session = Depends(get_db)):
             return 0
     
     result = {
-        "total_recruiters": safe_count("SELECT COUNT(*) FROM recruiters"),
+        "total_recruiters": store._record_count if store._loaded else safe_count("SELECT COUNT(*) FROM recruiters"),
         "active_recruiters": safe_count("SELECT COUNT(*) FROM recruiters WHERE is_active = 1"),
         "with_email": safe_count("SELECT COUNT(*) FROM recruiters WHERE email IS NOT NULL AND email <> '' AND email NOT LIKE '%@missing.local%'"),
         "with_phone": safe_count("SELECT COUNT(*) FROM recruiters WHERE phone IS NOT NULL AND phone <> ''"),
-        "total_companies": safe_count("SELECT COUNT(*) FROM companies"),
+        "total_companies": (store._conn.execute("SELECT COUNT(*) FROM company_summary").fetchone()[0] if store._loaded else safe_count("SELECT COUNT(*) FROM companies")),
         "total_candidates": safe_count("SELECT COUNT(*) FROM candidates"),
         "total_submissions": safe_count("SELECT COUNT(*) FROM submissions"),
         "total_vendors": safe_count("SELECT COUNT(*) FROM vendors"),

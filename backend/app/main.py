@@ -320,7 +320,7 @@ app.include_router(system.router, prefix="/system", tags=["System Controls"])
 from .routes import analytics_session, bridge, sentinel
 app.include_router(analytics_session.router, prefix="/analytics/session", tags=["Analytics Session"])
 app.include_router(bridge.router, prefix="/bridge", tags=["Outlook Bridge"])
-app.include_router(sentinel.router)
+app.include_router(sentinel.router, prefix="/sentinel", tags=["Sentinel"])
 from .routes import mailintel
 app.include_router(mailintel.router, prefix="/mailintel", tags=["MailIntel"])
 

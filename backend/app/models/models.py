@@ -1,3 +1,4 @@
+from datetime import timezone
 import datetime
 from sqlalchemy import Column, Integer, String, Boolean, Numeric, Date, Text, ForeignKey, TIMESTAMP, JSON, DateTime, UniqueConstraint
 from sqlalchemy.orm import relationship
@@ -650,4 +651,4 @@ class Notification(Base):
     message = Column(Text, nullable=False)
     type = Column(String(50), default="info") # info, success, warning, error
     read = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.datetime.now(timezone.utc))

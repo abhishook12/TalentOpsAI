@@ -142,6 +142,31 @@ class RecruiterStore:
         """)
         
         self._record_count = self._conn.execute("SELECT COUNT(*) FROM recruiters").fetchone()[0]
+        
+        # Build the exclusion list for MODE() filter
+        free_domains_sql = ", ".join(f"'{d}'" for d in self._FREE_EMAIL_DOMAINS)
+        
+        # Pre-aggregate company stats to prevent 20-second API timeouts on every search
+        self._conn.execute(f"""
+            CREATE TABLE company_summary AS 
+            SELECT
+                CAST(company_id AS VARCHAR) AS company_key,
+                UPPER(COALESCE(state, '')) AS state_upper,
+                COUNT(*) AS recruiter_count,
+                MODE(LOWER(SPLIT_PART(email, '@', 2))) FILTER (
+                    WHERE email IS NOT NULL
+                      AND email LIKE '%@%'
+                      AND LOWER(SPLIT_PART(email, '@', 2)) NOT IN ({free_domains_sql})
+                      AND LENGTH(SPLIT_PART(email, '@', 2)) > 2
+                ) AS dominant_domain
+            FROM recruiters
+            WHERE company_id IS NOT NULL 
+              AND TRIM(CAST(company_id AS VARCHAR)) != ''
+              AND LOWER(TRIM(CAST(company_id AS VARCHAR))) NOT IN ('need to fill data', 'unknown', 'n/a', 'none', 'null')
+              AND INSTR(CAST(company_id AS VARCHAR), '|') = 0
+            GROUP BY company_key, state_upper
+        """)
+
         elapsed = time.time() - start
         
         logger.info(f"RecruiterStore loaded {self._record_count:,} recruiters from Parquet in {elapsed:.2f}s")
@@ -197,36 +222,21 @@ class RecruiterStore:
         logo and name inference even when PostgreSQL metadata is missing.
         """
         self._ensure_loaded()
-        where = [
-            "company_id IS NOT NULL",
-            "TRIM(CAST(company_id AS VARCHAR)) != ''",
-            # These are import placeholders or concatenated source artifacts,
-            # not selectable company identities.
-            "LOWER(TRIM(CAST(company_id AS VARCHAR))) NOT IN ('need to fill data', 'unknown', 'n/a', 'none', 'null')",
-            "INSTR(CAST(company_id AS VARCHAR), '|') = 0",
-        ]
+        where = ["1=1"]
         params = []
         if query:
-            where.append("LOWER(CAST(company_id AS VARCHAR)) LIKE ?")
+            where.append("LOWER(company_key) LIKE ?")
             params.append(f"%{query.strip().lower()}%")
         if state and state.upper() != "ALL":
-            where.append("UPPER(COALESCE(state, '')) = ?")
+            where.append("state_upper = ?")
             params.append(state.upper())
-
-        # Build the exclusion list for MODE() filter
-        free_domains_sql = ", ".join(f"'{d}'" for d in self._FREE_EMAIL_DOMAINS)
 
         rows = self._conn.execute(f"""
             SELECT
-                CAST(company_id AS VARCHAR) AS company_key,
-                COUNT(*) AS recruiter_count,
-                MODE(LOWER(SPLIT_PART(email, '@', 2))) FILTER (
-                    WHERE email IS NOT NULL
-                      AND email LIKE '%@%'
-                      AND LOWER(SPLIT_PART(email, '@', 2)) NOT IN ({free_domains_sql})
-                      AND LENGTH(SPLIT_PART(email, '@', 2)) > 2
-                ) AS dominant_domain
-            FROM recruiters
+                company_key,
+                SUM(recruiter_count) AS recruiter_count,
+                MAX(dominant_domain) AS dominant_domain
+            FROM company_summary
             WHERE {' AND '.join(where)}
             GROUP BY company_key
             ORDER BY recruiter_count DESC, company_key ASC

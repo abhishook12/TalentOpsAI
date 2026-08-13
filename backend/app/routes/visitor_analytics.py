@@ -15,8 +15,8 @@ router = APIRouter(dependencies=[Depends(require_admin)])
 @cached_route(ttl=60)
 def visitor_overview(days: int = 30, db: Session = Depends(get_db)):
     """KPIs for Overview Tab"""
-    since = datetime.utcnow() - timedelta(days=days)
-    today = datetime.utcnow().date()
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    today = datetime.now(timezone.utc).date()
     
     # Visitors Today
     visitors_today = db.query(func.count(VisitorSession.session_id)).filter(
@@ -24,7 +24,7 @@ def visitor_overview(days: int = 30, db: Session = Depends(get_db)):
     ).scalar() or 0
     
     # Active Now (Active within last 10 minutes)
-    active_cutoff = datetime.utcnow() - timedelta(minutes=10)
+    active_cutoff = datetime.now(timezone.utc) - timedelta(minutes=10)
     active_now = db.query(func.count(VisitorSession.session_id)).filter(
         VisitorSession.ended_at >= active_cutoff
     ).scalar() or 0
@@ -77,7 +77,7 @@ def visitor_overview(days: int = 30, db: Session = Depends(get_db)):
 @router.get("/live")
 def visitor_live(db: Session = Depends(get_db)):
     """Live Visitors Tab (Active in last 10 mins)"""
-    active_cutoff = datetime.utcnow() - timedelta(minutes=10)
+    active_cutoff = datetime.now(timezone.utc) - timedelta(minutes=10)
     live_sessions = db.query(VisitorSession).filter(
         VisitorSession.last_activity >= active_cutoff
     ).order_by(VisitorSession.last_activity.desc()).limit(100).all()

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text, func
 from typing import List, Optional, Dict, Any
 import math
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from ..database import get_db
 from ..models.auth_models import User, Role, Session as DBSession, LoginHistory
@@ -20,7 +20,7 @@ def get_user_analytics(
     active_users = db.query(User).filter(User.status == "Active").count()
     inactive_users = db.query(User).filter(User.status == "Inactive").count()
     
-    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
     new_users = db.query(User).filter(User.created_at >= seven_days_ago).count()
     
     return {

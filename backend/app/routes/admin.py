@@ -154,7 +154,7 @@ def _resolve_upload_batch_recruiters(db: Session, job: UploadJob):
         return []
 
     start_window = job.started_at - timedelta(minutes=10)
-    end_window = (job.completed_at or datetime.utcnow()) + timedelta(minutes=10)
+    end_window = (job.completed_at or datetime.now(timezone.utc)) + timedelta(minutes=10)
     fallback = (
         db.query(Recruiter)
         .filter(Recruiter.data_source == "etl")
@@ -498,7 +498,7 @@ def admin_search_activity(days: int = 1, db: Session = Depends(get_db)):
     """
     Aggregates recent SEARCH_* action logs. Only counts events that stored JSON details.
     """
-    since = datetime.utcnow() - timedelta(days=max(1, days))
+    since = datetime.now(timezone.utc) - timedelta(days=max(1, days))
 
     def top(field: str, action_type: str, limit: int = 10):
         try:
@@ -529,7 +529,7 @@ def admin_search_activity(days: int = 1, db: Session = Depends(get_db)):
 @router.get("/export-analytics")
 @cached_route(ttl=60)
 def admin_export_analytics(days: int = 1, db: Session = Depends(get_db)):
-    since = datetime.utcnow() - timedelta(days=max(1, days))
+    since = datetime.now(timezone.utc) - timedelta(days=max(1, days))
 
     try:
         exports = db.execute(text("""
@@ -927,7 +927,7 @@ def admin_visitor_logs(
     """
     Returns visitor sessions grouped in Python (reliable across all visit rows).
     """
-    since = datetime.utcnow() - timedelta(days=max(1, days))
+    since = datetime.now(timezone.utc) - timedelta(days=max(1, days))
     visits = (
         db.query(PageVisit)
         .filter(PageVisit.visited_at >= since)
@@ -989,7 +989,7 @@ def admin_visitor_logs(
 @cached_route(ttl=60)
 def admin_visitor_summary(days: int = 30, db: Session = Depends(get_db)):
     """Daily unique visitors, total page views, avg session length."""
-    since = datetime.utcnow() - timedelta(days=days)
+    since = datetime.now(timezone.utc) - timedelta(days=days)
     rows = db.execute(text("""
         SELECT
             date(visited_at) AS day,

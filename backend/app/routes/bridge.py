@@ -32,7 +32,7 @@ def bridge_auth_bypass(payload: AuthBypassPayload, db: Session = Depends(get_db)
     if not user:
         raise HTTPException(status_code=404, detail=f"No user found with email: {payload.email}")
     
-    from datetime import timedelta
+    from datetime import timedelta, timezone
     access_token_expires = timedelta(days=30)
     access_token = create_access_token(
         data={"sub": str(user.id)}, expires_delta=access_token_expires
@@ -56,7 +56,7 @@ def bridge_heartbeat(payload: HeartbeatPayload = None, db: Session = Depends(get
             db.add(status_record)
         
         status_record.status = "online"
-        status_record.last_heartbeat = _utcnow()
+        status_record.last_heartbeat = _datetime.now(timezone.utc)
         if payload:
             status_record.uptime_seconds = payload.uptime_seconds
             status_record.consecutive_errors = payload.consecutive_errors
@@ -143,7 +143,7 @@ def get_bridge_tasks(db: Session = Depends(get_db), current_user: User = Depends
         # Prevent re-fetching the same task repeatedly if bridge crashes
         # We'll rely on the bridge to update outlook_accepted
         # Reset the timeout clock on dispatch so the sweep measures bridge time, not queue wait
-        log.sending_at = _utcnow()
+        log.sending_at = _datetime.now(timezone.utc)
         tasks.append({
             "log_id": log.log_id,
             "to_email": log.recipient_email,
@@ -159,7 +159,7 @@ from ..models.campaigns import EmailLog, EmailLogStatus, CampaignRecruiter, Camp
 from datetime import datetime
 
 def _utcnow():
-    return datetime.utcnow()
+    return datetime.now(timezone.utc)
 
 @router.post("/results")
 def post_bridge_results(payload: BridgeResultsPayload, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
@@ -174,10 +174,10 @@ def post_bridge_results(payload: BridgeResultsPayload, db: Session = Depends(get
             if res.success:
                 log.outlook_accepted = True
                 log.status = EmailLogStatus.delivered.value
-                log.delivered_at = _utcnow()
+                log.delivered_at = _datetime.now(timezone.utc)
                 if recipient:
                     recipient.status = CampaignRecruiterStatus.sent.value
-                    recipient.last_sent_at = _utcnow()
+                    recipient.last_sent_at = _datetime.now(timezone.utc)
                     recipient.sent_count += 1
                 
                 try:
@@ -189,13 +189,13 @@ def post_bridge_results(payload: BridgeResultsPayload, db: Session = Depends(get
                 # Update bridge status
                 status_record = db.query(UserBridgeStatus).filter(UserBridgeStatus.user_id == current_user.id).first()
                 if status_record:
-                    status_record.last_successful_email_at = _utcnow()
+                    status_record.last_successful_email_at = _datetime.now(timezone.utc)
                     status_record.consecutive_errors = 0
             else:
                 log.outlook_accepted = False
                 log.status = EmailLogStatus.failed.value
                 log.error_message = res.error
-                log.failed_at = _utcnow()
+                log.failed_at = _datetime.now(timezone.utc)
                 if recipient:
                     recipient.retry_count += 1
                     recipient.last_error = res.error
@@ -270,7 +270,7 @@ def bridge_oauth_login(request: Request, redirect_uri: str = '/profile?bridge=co
         "user_id": current_user.id,
         "redirect_uri": redirect_uri,
         "popup": popup,
-        "exp": datetime.utcnow() + timedelta(minutes=15)
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=15)
     }
     state = jwt.encode(state_payload, SECRET_KEY, algorithm=ALGORITHM)
     
@@ -389,7 +389,7 @@ def bridge_oauth_callback(request: Request, code: str = None, state: str = None,
     outlook_account.access_token = access_token
     outlook_account.refresh_token = refresh_token
     outlook_account.status = "connected"
-    outlook_account.last_synced_at = _utcnow()
+    outlook_account.last_synced_at = _datetime.now(timezone.utc)
     
     # 4. Upsert UserBridgeStatus (mark online immediately since server IS the bridge now)
     status_record = db.query(UserBridgeStatus).filter(UserBridgeStatus.user_id == user_id).first()
@@ -398,7 +398,7 @@ def bridge_oauth_callback(request: Request, code: str = None, state: str = None,
         db.add(status_record)
     
     status_record.status = 'online'
-    status_record.last_heartbeat = _utcnow()
+    status_record.last_heartbeat = _datetime.now(timezone.utc)
     try:
         db.commit()
     except Exception as e:
@@ -425,7 +425,7 @@ def bridge_google_login(redirect_uri: str = "/settings?tab=api", popup: str = "f
         "user_id": current_user.id,
         "redirect_uri": redirect_uri,
         "popup": popup,
-        "exp": datetime.utcnow() + timedelta(minutes=15)
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=15)
     }
     state = jwt.encode(state_payload, SECRET_KEY, algorithm=ALGORITHM)
     
@@ -513,7 +513,7 @@ def bridge_google_callback(code: str = None, state: str = None, error: str = Non
         account.refresh_token = refresh_token
     account.status = "connected"
     account.health_status = "healthy"
-    account.last_synced_at = _utcnow()
+    account.last_synced_at = _datetime.now(timezone.utc)
     
     db.commit()
     

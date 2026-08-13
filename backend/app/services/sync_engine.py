@@ -96,7 +96,7 @@ def process_replies_for_user(user_id: int, access_token: str, last_sync_time: da
             for cr in enrollments:
                 logger.info(f"Marking CampaignRecruiter {cr.campaign_recruiter_id} as REPLIED. Sender: {sender}")
                 cr.status = CampaignRecruiterStatus.replied.value
-                cr.replied_at = _utcnow()
+                cr.replied_at = _datetime.now(timezone.utc)
                 
                 try:
                     from .mailintel_engine import process_delivery_event

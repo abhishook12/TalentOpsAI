@@ -6,7 +6,7 @@ import os
 import re
 import sys
 from collections import Counter, defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -286,7 +286,7 @@ def apply_updates(db, records, clusters, same_name_company_groups, dry_run: bool
                 "role": "duplicate",
                 "canonical_recruiter_id": canonical_id,
                 "strong_signals": cluster.get("strong_signals", []),
-                "verified_at": datetime.utcnow().isoformat(),
+                "verified_at": datetime.now(timezone.utc).isoformat(),
             })
             meta["contact_verification"] = contact_meta
             new_reason = f"Cross-contact verifier found duplicate cluster #{cluster.get('cluster_id')} via {', '.join(cluster.get('strong_signals', [])) or 'shared contact data'}."
@@ -294,7 +294,7 @@ def apply_updates(db, records, clusters, same_name_company_groups, dry_run: bool
                 "recruiter_id": recruiter_id,
                 "needs_review": True,
                 "review_reason": merge_review_reason(instance.review_reason, new_reason),
-                "last_scan_at": datetime.utcnow(),
+                "last_scan_at": datetime.now(timezone.utc),
                 "metadata_json": json.dumps(meta, default=str),
             })
             touched += 1
@@ -317,7 +317,7 @@ def apply_updates(db, records, clusters, same_name_company_groups, dry_run: bool
                 "role": "review_candidate",
                 "reason": "same_name_same_company",
                 "shared_contact_overlap": bool(group.get("shared_contact_overlap")),
-                "verified_at": datetime.utcnow().isoformat(),
+                "verified_at": datetime.now(timezone.utc).isoformat(),
             })
             meta["contact_verification"] = contact_meta
             group_reason = "Cross-contact review candidate: same name and company."
@@ -327,7 +327,7 @@ def apply_updates(db, records, clusters, same_name_company_groups, dry_run: bool
                 "recruiter_id": member["recruiter_id"],
                 "needs_review": True,
                 "review_reason": merge_review_reason(instance.review_reason, group_reason),
-                "last_scan_at": datetime.utcnow(),
+                "last_scan_at": datetime.now(timezone.utc),
                 "metadata_json": json.dumps(meta, default=str),
             })
             flagged += 1
@@ -363,7 +363,7 @@ def write_report(records, clusters, same_name_company_groups, touched, flagged, 
     review_duplicate_total = confidence_duplicate_counts.get("medium", 0)
     weak_duplicate_total = confidence_duplicate_counts.get("low", 0)
     report = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "dry_run": dry_run,
         "total_recruiters_scanned": total,
         "duplicate_clusters": len(strong_clusters),

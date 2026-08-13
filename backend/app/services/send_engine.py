@@ -435,7 +435,7 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                         recipient_name=rec_name,
                         status=EmailLogStatus.sending.value,
                         attempt_number=retry_count + 1,
-                        sending_at=_utcnow(),
+                        sending_at=_datetime.now(timezone.utc),
                         sent_via="outlook_bridge"
                     )
                     db.add(log)
@@ -480,19 +480,19 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                         log.body_html = None  # Fix #6: Always null body_html (both success and failure) to prevent DB bloat
                         if success:
                             log.status = EmailLogStatus.delivered.value
-                            log.delivered_at = _utcnow()
+                            log.delivered_at = _datetime.now(timezone.utc)
                             log.outlook_accepted = True
                         else:
                             log.status = EmailLogStatus.failed.value
                             log.error_message = error_msg
-                            log.failed_at = _utcnow()
+                            log.failed_at = _datetime.now(timezone.utc)
                             log.outlook_accepted = False
                             
                     retry_count = 0
                     if recipient:
                         if success:
                             recipient.status = CampaignRecruiterStatus.sent.value
-                            recipient.last_sent_at = _utcnow()
+                            recipient.last_sent_at = _datetime.now(timezone.utc)
                             recipient.sent_count += 1
                         else:
                             recipient.last_error = error_msg

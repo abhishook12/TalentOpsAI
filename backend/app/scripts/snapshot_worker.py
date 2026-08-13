@@ -1,7 +1,7 @@
 import os
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 import psycopg
 
 DB_URL = "postgresql://postgres.dcqvsvgrdsrgnbwwssup:sPMFmD3XYX6RW2PD@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres"
@@ -29,7 +29,7 @@ def run_snapshot_worker():
     top_states = dict(cur.fetchall())
 
     snapshot_data = {
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
         "total_recruiters": total_rec,
         "verified_known_states": known_state,
         "state_coverage_percent": round((known_state / total_rec * 100), 2) if total_rec > 0 else 0,
@@ -39,7 +39,7 @@ def run_snapshot_worker():
         "needs_review_count": 0
     }
 
-    timestamp_str = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     filepath = os.path.join(BACKUP_DIR, f"snapshot_{timestamp_str}.json")
     latest_path = os.path.join(BACKUP_DIR, "snapshot_latest.json")
 

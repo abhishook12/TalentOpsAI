@@ -97,7 +97,7 @@ class MemoryOLAPSidecar:
                             COUNT(*) FILTER (WHERE state_source IN ('recruiter_location', 'company_location', 'notes', 'review_reason', 'metadata_json', 'raw_data')) AS text_inferred_count
                         FROM recruiters
                         {where_clause}
-                    """), {"user_id": user_id}).mappings().one()
+                    """)).mappings().one()
                     total_recruiters = int(recruiter_counts["total_recruiters"] or 0)
                     real_emails = int(recruiter_counts["real_emails"] or 0)
                     phones = int(recruiter_counts["phones"] or 0)

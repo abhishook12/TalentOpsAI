@@ -111,6 +111,14 @@ function AppShell() {
   const { user, isAdmin, loading } = useAuth()
   const pageName = useMemo(() => PAGE_NAMES[location.pathname] || 'Dashboard', [location.pathname])
   
+  const [backendVersion, setBackendVersion] = useState('v4.0.2-Stable')
+
+  useEffect(() => {
+    api.get('/version').then(res => {
+      if (res.data?.version) setBackendVersion(res.data.version)
+    }).catch(err => console.error("Failed to fetch version", err))
+  }, [])
+
   useEffect(() => {
     const el = document.querySelector('.cc-content')
     if (el) el.scrollTop = 0
@@ -224,7 +232,7 @@ function AppShell() {
               </div>
 
               <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                <span><strong>Version</strong> v4.0.2-Stable</span>
+                <span><strong>Version</strong> {backendVersion}</span>
                 <span><strong>Server Node</strong> US-EAST-01A</span>
                 <span>Copyright {new Date().getFullYear()} TalentOpsAI</span>
               </div>

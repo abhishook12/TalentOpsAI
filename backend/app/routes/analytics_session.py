@@ -61,7 +61,7 @@ def start_session(payload: SessionStartPayload, request: Request, db: Session = 
         ))
     else:
         session.status = "Active"
-        session.last_activity = datetime.utcnow()
+        session.last_activity = datetime.now(timezone.utc)
         if payload.user_email and not session.user_email:
             db.add(ActionLog(
                 session_id=payload.session_id,
@@ -102,7 +102,7 @@ def log_event(payload: SessionEventPayload, request: Request, db: Session = Depe
     if not session:
         return {"ok": False, "error": "session not found"}
         
-    session.last_activity = datetime.utcnow()
+    session.last_activity = datetime.now(timezone.utc)
     
     if payload.user_email and not session.user_email:
         db.add(ActionLog(
@@ -152,7 +152,7 @@ def heartbeat(payload: SessionHeartbeatPayload, request: Request, db: Session = 
     if not session:
         return {"ok": False, "error": "session not found"}
         
-    session.last_activity = datetime.utcnow()
+    session.last_activity = datetime.now(timezone.utc)
     session.status = payload.status
     
     if payload.user_email and not session.user_email:
@@ -173,8 +173,8 @@ def heartbeat(payload: SessionHeartbeatPayload, request: Request, db: Session = 
         session.current_page = payload.current_page
         
     if payload.status == "Active":
-        duration = (datetime.utcnow() - session.started_at).total_seconds()
-        session.ended_at = datetime.utcnow()
+        duration = (datetime.now(timezone.utc) - session.started_at).total_seconds()
+        session.ended_at = datetime.now(timezone.utc)
         
     db.commit()
     return {"ok": True}
@@ -188,7 +188,7 @@ def end_session(payload: SessionEndPayload, request: Request, db: Session = Depe
     session = db.query(VisitorSession).filter(VisitorSession.session_id == payload.session_id).first()
     if session:
         session.status = "Ended"
-        session.ended_at = datetime.utcnow()
+        session.ended_at = datetime.now(timezone.utc)
         db.add(ActionLog(
             session_id=payload.session_id,
             user_email=session.user_email,

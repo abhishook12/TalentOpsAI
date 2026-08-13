@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 from collections import defaultdict
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 # Load dotenv if needed, though we will hardcode the engine to be sure or use app.database
@@ -381,7 +381,7 @@ def insert_to_supabase(records, companies):
     
     # 2. Insert Companies
     comp_inserts = []
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     for c in companies:
         comp_inserts.append({
             'company_id': c['company_id'],

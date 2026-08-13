@@ -219,7 +219,7 @@ class IdentityEngine:
                 canonical_name="Unknown / Individual",
                 verification_status="unresolved",
                 identity_confidence=0,
-                last_verified_at=datetime.utcnow()
+                last_verified_at=datetime.now(timezone.utc)
             )
             db.add(comp)
             db.commit()
@@ -243,7 +243,7 @@ class IdentityEngine:
                 logo_source="clearbit" if logo_url else None,
                 verification_status=status,
                 identity_confidence=90 if logo_url else 50,
-                last_verified_at=datetime.utcnow()
+                last_verified_at=datetime.now(timezone.utc)
             )
             db.add(comp)
             db.commit()
@@ -258,7 +258,7 @@ class IdentityEngine:
                 canonical.logo_source = "clearbit"
             canonical.verification_status = status
             canonical.canonical_name = name
-            canonical.last_verified_at = datetime.utcnow()
+            canonical.last_verified_at = datetime.now(timezone.utc)
             
             # Merge others
             for other in comps[1:]:

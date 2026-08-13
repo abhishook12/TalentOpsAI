@@ -400,8 +400,8 @@ def enroll_emails(campaign_id: int, payload: EnrollEmailsRequest, db: Session = 
                     recruiter_id=r.recruiter_id,
                     current_step_id=first_step.step_id,
                     status=CampaignRecruiterStatus.pending.value,
-                    enrolled_at=utcnow(),
-                    next_send_at=campaign.start_at or utcnow()
+                    enrolled_at=datetime.now(timezone.utc),
+                    next_send_at=campaign.start_at or datetime.now(timezone.utc)
                 ))
                 enrolled += 1
                 
@@ -922,7 +922,7 @@ def list_campaigns(
 @router.post("")
 def create_campaign(payload: CampaignCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     from datetime import datetime
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     campaign = Campaign(
         user_id=current_user.id,
         name=payload.name.strip(),
@@ -1201,8 +1201,8 @@ def enroll_recruiters(campaign_id: int, payload: EnrollRecruitersRequest, db: Se
                 recruiter_id=rid,
                 current_step_id=first_step.step_id,
                 status=CampaignRecruiterStatus.pending.value,
-                enrolled_at=utcnow(),
-                next_send_at=campaign.start_at or utcnow(),
+                enrolled_at=datetime.now(timezone.utc),
+                next_send_at=campaign.start_at or datetime.now(timezone.utc),
                 variables_json=to_json_text(variables_map.get(rid)),
             ))
             enrolled_count += 1
@@ -1337,8 +1337,8 @@ def api_prepare_preview(campaign_id: int, request: PreparePreviewRequest, db: Se
                     recruiter_id=r.recruiter_id,
                     current_step_id=first_step.step_id,
                     status=CampaignRecruiterStatus.pending.value,
-                    enrolled_at=utcnow(),
-                    next_send_at=campaign.start_at or utcnow()
+                    enrolled_at=datetime.now(timezone.utc),
+                    next_send_at=campaign.start_at or datetime.now(timezone.utc)
                 ))
                 enrolled += 1
                 

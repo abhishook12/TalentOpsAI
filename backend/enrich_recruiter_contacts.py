@@ -35,7 +35,7 @@ import datetime
 import subprocess
 from typing import List, Dict, Tuple, Optional
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
@@ -120,6 +120,7 @@ class EnrichmentWorker:
         self.run_id: str = ""
         self.run_record: Optional[EnrichmentRun] = None
         self.pattern_cache: Dict[int, Optional[dict]] = {}  # company_id -> pattern_data
+        self.company_name_cache: Dict[int, Tuple[set, str]] = {} # company_id -> (company_words, company_concat)
         self.batch_start_time = None
         self.run_start_time = None
 
@@ -216,6 +217,76 @@ class EnrichmentWorker:
         return True
 
     # ─── Pattern detection ────────────────────────────────────────────
+    def prefetch_company_patterns(self, company_ids: set):
+        missing_ids = {cid for cid in company_ids if cid not in self.pattern_cache and cid is not None}
+        if not missing_ids:
+            return
+
+        recruiters = self.db.query(Recruiter).filter(
+            Recruiter.company_id.in_(missing_ids),
+            Recruiter.email.isnot(None),
+            Recruiter.email.like('%@%')
+        ).all()
+
+        company_recs = {cid: [] for cid in missing_ids}
+        for r in recruiters:
+            if r.company_id in company_recs:
+                company_recs[r.company_id].append(r)
+
+        for cid, recs in company_recs.items():
+            if not recs:
+                self.pattern_cache[cid] = None
+                continue
+
+            domains = {}
+            for r in recs:
+                if r.email and ("@missing.local" in r.email or "@invalid.local" in r.email or "@example.com" in r.email or getattr(r, 'email_status', '') == "invalid"):
+                    continue
+                parts = str(r.email).split('@')
+                if len(parts) == 2:
+                    domains.setdefault(parts[1].lower(), []).append(r)
+
+            if not domains:
+                self.pattern_cache[cid] = None
+                continue
+
+            best_domain = max(domains.keys(), key=lambda d: len(domains[d]))
+            domain_recs = domains[best_domain]
+
+            patterns = {}
+            for r in domain_recs:
+                fn, ln = self.extract_names(r.recruiter_name, r.email)
+                if not fn or not ln:
+                    continue
+                pat = get_email_pattern(fn, ln, r.email, best_domain)
+                if pat != "unknown":
+                    patterns[pat] = patterns.get(pat, 0) + 1
+
+            if not patterns:
+                self.pattern_cache[cid] = None
+                continue
+
+            best_pat = max(patterns.keys(), key=lambda p: patterns[p])
+            count = patterns[best_pat]
+            total = len(domain_recs)
+            match_pct = (count / total) * 100
+
+            conf = 0
+            if count >= 3 and match_pct >= 90:
+                conf = 90
+            elif count >= 2 and match_pct >= 75:
+                conf = 70
+            else:
+                conf = 30
+
+            self.pattern_cache[cid] = {
+                "domain": best_domain,
+                "pattern": best_pat,
+                "count": count,
+                "match_pct": match_pct,
+                "confidence": conf
+            }
+
     def detect_company_patterns(self, company: Company) -> Optional[dict]:
         if company.company_id in self.pattern_cache:
             return self.pattern_cache[company.company_id]
@@ -346,9 +417,14 @@ class EnrichmentWorker:
             return OUTCOME_REJECTED_INSUFFICIENT_EVIDENCE
             
         # Dynamic check against the recruiter's specific company name
-        company_clean = re.sub(r'[^a-z0-9\s]', '', company.company_name.lower())
-        company_words = {w for w in company_clean.split() if len(w) > 2}
-        company_concat = company_clean.replace(' ', '')
+        if company.company_id not in self.company_name_cache:
+            company_clean = re.sub(r'[^a-z0-9\s]', '', company.company_name.lower())
+            company_words = {w for w in company_clean.split() if len(w) > 2}
+            company_concat = company_clean.replace(' ', '')
+            self.company_name_cache[company.company_id] = (company_words, company_concat)
+        
+        company_words, company_concat = self.company_name_cache[company.company_id]
+        
         local_clean = re.sub(r'[^a-z0-9]', '', local_part)
         
         if local_clean == company_concat or any(seg in company_words for seg in segments):
@@ -445,6 +521,12 @@ class EnrichmentWorker:
 
     def _save_proposal(self, r: Recruiter, candidate: str, pattern_data: dict, status: str, evidence_data: dict = None):
         """Save an enrichment proposal without modifying primary tables."""
+        existing = self.db.query(EnrichmentProposal).filter_by(
+            run_id=self.run_id, recruiter_id=r.recruiter_id, enrichment_type="email"
+        ).first()
+        if existing:
+            return # Already exists (idempotency)
+            
         try:
             prop = EnrichmentProposal(
                 run_id=self.run_id,
@@ -460,7 +542,6 @@ class EnrichmentWorker:
             self.db.add(prop)
         except IntegrityError:
             self.db.rollback()
-            # Already exists (idempotency)
 
     def _apply_update(self, r: Recruiter, candidate: str, pattern_data: dict, fn: str = "", ln: str = "", evidence_data: dict = None) -> str:
         """Apply the email update within a nested transaction."""
@@ -770,8 +851,18 @@ class EnrichmentWorker:
     # ─── Save result row ──────────────────────────────────────────────
     def _save_result(self, r: Recruiter, outcome: str, error: str = None):
         """Write an enrichment_results row for this recruiter."""
-        old_vals = {"email": r.email, "email_status": r.email_status}
+        existing = self.db.query(EnrichmentResult).filter_by(
+            run_id=self.run_id, recruiter_id=r.recruiter_id
+        ).first()
+        
+        if existing:
+            if existing.overall_outcome == OUTCOME_FAILED_TECHNICAL_ERROR or existing.overall_outcome.startswith("PENDING_REVIEW_"):
+                existing.overall_outcome = outcome
+                existing.processing_completed_at = datetime.datetime.utcnow()
+                existing.failure_category = None if outcome != OUTCOME_FAILED_TECHNICAL_ERROR else "retryable"
+            return
 
+        old_vals = {"email": r.email, "email_status": r.email_status}
         result = EnrichmentResult(
             run_id=self.run_id,
             recruiter_id=r.recruiter_id,
@@ -786,19 +877,7 @@ class EnrichmentWorker:
             failure_category="retryable" if outcome == OUTCOME_FAILED_TECHNICAL_ERROR else None,
             rejection_reason=error
         )
-        try:
-            self.db.add(result)
-            self.db.flush()
-        except IntegrityError:
-            self.db.rollback()
-            # Already processed (idempotency) – update existing
-            existing = self.db.query(EnrichmentResult).filter_by(
-                run_id=self.run_id, recruiter_id=r.recruiter_id
-            ).first()
-            if existing and (existing.overall_outcome == OUTCOME_FAILED_TECHNICAL_ERROR or existing.overall_outcome.startswith("PENDING_REVIEW_")):
-                existing.overall_outcome = outcome
-                existing.processing_completed_at = datetime.datetime.utcnow()
-                existing.failure_category = None if outcome != OUTCOME_FAILED_TECHNICAL_ERROR else "retryable"
+        self.db.add(result)
 
     # ─── Update run counters ──────────────────────────────────────────
     def _update_counters(self, outcome: str):
@@ -976,7 +1055,7 @@ class EnrichmentWorker:
 
         # Build base query
         from sqlalchemy import or_, not_
-        base_query = self.db.query(Recruiter)
+        base_query = self.db.query(Recruiter).options(joinedload(Recruiter.company))
         
         if not self.args.all_recruiters:
             if self.args.company:
@@ -1011,6 +1090,10 @@ class EnrichmentWorker:
                 batch_num += 1
                 prev_last_id = last_id
                 batch_count = 0
+
+                # Prefetch patterns for all companies in this batch
+                batch_company_ids = {r.company_id for r in batch if r.company_id is not None}
+                self.prefetch_company_patterns(batch_company_ids)
 
                 for recruiter in batch:
                     # Idempotency: skip if already processed in this run

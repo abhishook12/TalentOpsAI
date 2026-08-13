@@ -6,7 +6,7 @@ import os
 import re
 import sys
 from collections import Counter, defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -213,7 +213,7 @@ def execute_delete_plan(db, records_by_id, plan, dry_run: bool):
 
 def write_report(dry_run: bool, plan, deleted_ids, kept_ids, cluster_summaries):
     report = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "dry_run": dry_run,
         "clusters_selected": len(plan),
         "deleted_copies": len(deleted_ids),

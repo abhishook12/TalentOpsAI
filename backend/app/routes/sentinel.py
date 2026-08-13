@@ -12,44 +12,39 @@ def get_sentinel_dashboard(db: Session = Depends(get_db), current_user: User = D
     if not current_user.role or current_user.role.name.lower() not in ('admin', 'superadmin'):
         return {"error": "Unauthorized"}
     
+    from sqlalchemy import func
+    from app.models.models import Recruiter
+    
     state = db.query(SentinelPhase4State).first()
-    if not state:
-        return {
-            "status": "Offline",
-            "total_recruiters": 0,
-            "total_companies": 0,
-            "unknown_companies": 0,
-            "missing_emails": 0,
-            "missing_phones": 0,
-            "missing_linkedin": 0,
-            "missing_logos": 0,
-            "profiles_below_50": 0,
-            "profiles_above_90": 0,
-            "avg_confidence": 0,
-            "avg_completeness": 0,
-            "companies_completed": 0,
-            "recruiters_completed": 0,
-            "current_company_name": "-",
-            "current_state": "-",
-            "estimated_completion_hours": 0
-        }
+    
+    # Calculate perfectly synced LIVE counts from Postgres
+    total_recruiters = db.query(func.count(Recruiter.recruiter_id)).scalar() or 0
+    missing_emails = db.query(func.count(Recruiter.recruiter_id)).filter((Recruiter.email == None) | (Recruiter.email == '') | (Recruiter.email.ilike('%missing.local%'))).scalar() or 0
+    missing_phones = db.query(func.count(Recruiter.recruiter_id)).filter((Recruiter.phone == None) | (Recruiter.phone == '')).scalar() or 0
+    missing_li = db.query(func.count(Recruiter.recruiter_id)).filter((Recruiter.linkedin == None) | (Recruiter.linkedin == '')).scalar() or 0
+    unknown_comps = db.query(func.count(Recruiter.recruiter_id)).filter(Recruiter.company_id == None).scalar() or 0
+    total_comps = db.query(func.count(func.distinct(Recruiter.company_id))).scalar() or 0
+    
+    below_50 = db.query(func.count(Recruiter.recruiter_id)).filter(Recruiter.completeness_score < 50).scalar() or 0
+    above_90 = db.query(func.count(Recruiter.recruiter_id)).filter(Recruiter.completeness_score > 90).scalar() or 0
+    avg_comp = db.query(func.avg(Recruiter.completeness_score)).scalar() or 0
     
     return {
-        "status": state.status,
-        "total_recruiters": state.total_recruiters,
-        "total_companies": state.total_companies,
-        "unknown_companies": state.unknown_companies,
-        "missing_emails": state.missing_emails,
-        "missing_phones": state.missing_phones,
-        "missing_linkedin": state.missing_linkedin,
-        "missing_logos": state.missing_logos,
-        "profiles_below_50": state.profiles_below_50,
-        "profiles_above_90": state.profiles_above_90,
-        "avg_confidence": state.avg_confidence,
-        "avg_completeness": state.avg_completeness,
-        "companies_completed": state.companies_completed,
-        "recruiters_completed": state.recruiters_completed,
-        "current_company_name": state.current_company_name,
-        "current_state": state.current_state,
-        "estimated_completion_hours": state.estimated_completion_hours
+        "status": state.status if state else "Offline",
+        "total_recruiters": total_recruiters,
+        "total_companies": total_comps,
+        "unknown_companies": unknown_comps,
+        "missing_emails": missing_emails,
+        "missing_phones": missing_phones,
+        "missing_linkedin": missing_li,
+        "missing_logos": state.missing_logos if state else 0, # Assuming logo requires company join, we can keep cached for speed
+        "profiles_below_50": below_50,
+        "profiles_above_90": above_90,
+        "avg_confidence": state.avg_confidence if state else 0,
+        "avg_completeness": int(avg_comp),
+        "companies_completed": state.companies_completed if state else 0,
+        "recruiters_completed": state.recruiters_completed if state else 0,
+        "current_company_name": state.current_company_name if state else "-",
+        "current_state": state.current_state if state else "-",
+        "estimated_completion_hours": state.estimated_completion_hours if state else 0
     }

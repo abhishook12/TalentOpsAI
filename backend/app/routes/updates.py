@@ -2,7 +2,7 @@ import subprocess
 import os
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from ..database import get_db
 from ..services.auth_service import require_role
@@ -46,7 +46,7 @@ def get_current_status():
     """
     commits = get_git_commits(1)
     if not commits:
-         return {"version": "v1.0.0", "status": "Operational", "date": datetime.utcnow().isoformat(), "features": []}
+         return {"version": "v1.0.0", "status": "Operational", "date": datetime.now(timezone.utc).isoformat(), "features": []}
          
     latest = commits[0]
     return {

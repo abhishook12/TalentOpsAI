@@ -3,7 +3,7 @@ import re
 
 from sqlalchemy.orm import Session
 from sqlalchemy import update, text
-from datetime import datetime
+from datetime import datetime, timezone
 import io
 
 from ..database import SessionLocal
@@ -301,8 +301,8 @@ def validate_and_save_rows(job_id: str, column_mapping: dict):
                     update(SmartImportJob).where(SmartImportJob.job_id == job_id).values(
                         current_step=step_text,
                         progress_percent=prog_val,
-                        last_heartbeat_at=datetime.utcnow(),
-                        updated_at=datetime.utcnow()
+                        last_heartbeat_at=datetime.now(timezone.utc),
+                        updated_at=datetime.now(timezone.utc)
                     )
                 )
                 progress_db.commit()
@@ -392,8 +392,8 @@ def process_commit(job_id: str):
                     current_step=step_text,
                     progress_percent=prog_val,
                     processed_rows=processed,
-                    last_heartbeat_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow()
+                    last_heartbeat_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc)
                 )
             )
             db.commit()

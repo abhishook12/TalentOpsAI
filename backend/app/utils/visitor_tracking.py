@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from user_agents import parse
 from ..models.models import VisitorSession
@@ -72,7 +72,7 @@ def upsert_visitor_session(
             v_session.idle_time_seconds = (v_session.idle_time_seconds or 0) + time_on_page
             
         # Update ended_at to now to track active session length
-        v_session.ended_at = datetime.utcnow()
+        v_session.ended_at = datetime.now(timezone.utc)
         
     try:
         db.commit()

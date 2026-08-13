@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from threading import Lock
 from typing import Optional, Dict, Any, List
 import logging
@@ -269,7 +269,7 @@ def companies_count_by_state(db: Session = Depends(get_db), current_user: User =
         WHERE 1=1
         GROUP BY 1
         ORDER BY count DESC
-    """), {"user_email": current_user.email, "user_id": current_user.id}).mappings().all()
+    """)).mappings().all()
 
     counts = {"user_id": current_user.id}
     for row in rows:
@@ -349,12 +349,16 @@ def companies_search(
         return cached["rows"]
 
     active_companies = recruiter_store.company_directory(q, state)
-    active_companies = [row for row in active_companies if row['recruiter_count'] >= min_recruiters]
+    if min_recruiters > 0:
+        active_companies = [row for row in active_companies if row['recruiter_count'] >= min_recruiters]
+
+    total_count = len(active_companies)
+    paginated_companies = active_companies[skip:skip+limit]
 
     # Numeric values can retain database metadata. Name-based keys are still
     # valid companies in the active data and must remain discoverable.
     numeric_ids = []
-    for row in active_companies:
+    for row in paginated_companies:
         try:
             value = float(row['company_key'])
             if value.is_integer():
@@ -364,13 +368,14 @@ def companies_search(
                     numeric_ids.append(val_int)
         except ValueError:
             pass
+            
     metadata = {}
     if numeric_ids:
         for company in db.query(Company).filter(Company.company_id.in_(numeric_ids)).all():
             metadata[str(company.company_id)] = company
 
     enriched_results = []
-    for row in active_companies:
+    for row in paginated_companies:
         key = row['company_key']
         parquet_domain = row.get('dominant_domain')  # Most common email domain from Parquet
         normalized_numeric_key = None
@@ -383,17 +388,10 @@ def companies_search(
         company = metadata.get(normalized_numeric_key)
 
         # --- Resolve logo_domain: prefer Parquet (ground truth from emails) ---
-        # Parquet dominant_domain is derived from actual recruiter emails and is
-        # always correct. PostgreSQL email_pattern/website can contain bad data
-        # (e.g. job-listing URLs, wrong domains from automated scraping).
         pg_logo = select_logo_domain(company.website, company.email_pattern) if company else None
         logo_domain = parquet_domain or pg_logo
 
         # --- Resolve company name ---
-        # 1. Highest priority: Hardcoded DOMAIN_DISPLAY_NAMES mapping (immune to scraping errors)
-        # 2. Next: PostgreSQL company_name
-        # 3. Next: Derive from Parquet dominant_domain
-        # 4. Last resort: Raw key (if numeric, label as Unknown)
         if parquet_domain and parquet_domain in DOMAIN_DISPLAY_NAMES:
             name = DOMAIN_DISPLAY_NAMES[parquet_domain]
         elif company and company.company_name:
@@ -423,20 +421,13 @@ def companies_search(
             "needs_review_count": 0,
             "recruiter_count": row['recruiter_count'],
             "logo_domain": logo_domain,
+            "full_count": total_count,
         })
     
-    # Apply pagination
-    total_count = len(enriched_results)
-    paginated = enriched_results[skip:skip+limit]
-    
-    # Add full_count to each row for frontend compatibility
-    for row in paginated:
-        row['full_count'] = total_count
-
-    final_result = {"total_count": total_count, "rows": paginated}
+    final_result = {"total_count": total_count, "rows": enriched_results}
     analytics_cache.set(cache_key, final_result, ttl=60)
     response.headers["X-Total-Count"] = str(total_count)
-    return paginated
+    return enriched_results
 
 class VisitPayload(BaseModel):
     page: str
@@ -485,7 +476,7 @@ def visit_stats(db: Session = Depends(get_db), current_user: User = Depends(get_
     if cached is not None:
         return cached
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     seven_days_ago = now - timedelta(days=7)
     daily = db.execute(text("""
         SELECT DATE(visited_at) AS day, COUNT(*) AS visits
@@ -911,13 +902,13 @@ def get_smart_insights(db: Session = Depends(get_db), current_user: User = Depen
     if cached is not None:
         return cached
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     yesterday_start = today_start - timedelta(days=1)
 
     # 1. Recruiter Growth
-    today_recs = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE user_id = :user_id AND created_at >= :s"), {"s": today_start, "user_id": current_user.id, "user_email": current_user.email}).scalar() or 0
-    yest_recs = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE user_id = :user_id AND created_at >= :s AND created_at < :e"), {"s": yesterday_start, "e": today_start, "user_id": current_user.id, "user_email": current_user.email}).scalar() or 0
+    today_recs = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE user_id = :user_id AND created_at >= :s"), {"s": today_start, "user_id": current_user.id}).scalar() or 0
+    yest_recs = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE user_id = :user_id AND created_at >= :s AND created_at < :e"), {"s": yesterday_start, "e": today_start, "user_id": current_user.id}).scalar() or 0
     
     growth_insight = "Recruiter database is stable with normal operations."
     if today_recs > yest_recs and yest_recs > 0:
@@ -927,13 +918,13 @@ def get_smart_insights(db: Session = Depends(get_db), current_user: User = Depen
         growth_insight = f"You added {today_recs} new recruiters today."
 
     # 2. Top State Insight
-    top_state_row = db.execute(text("SELECT location, COUNT(*) as c FROM recruiters WHERE user_id = :user_id AND location IS NOT NULL AND location != '' GROUP BY location ORDER BY c DESC LIMIT 1"), {"user_email": current_user.email, "user_id": current_user.id}).fetchone()
+    top_state_row = db.execute(text("SELECT location, COUNT(*) as c FROM recruiters WHERE user_id = :user_id AND location IS NOT NULL AND location != '' GROUP BY location ORDER BY c DESC LIMIT 1"), {"user_id": current_user.id}).fetchone()
     state_insight = "Geographic distribution is balanced."
     if top_state_row:
         state_insight = f"{top_state_row[0]} generated the highest recruiter density."
 
     # 3. Traffic Insight
-    searches = db.execute(text("SELECT COUNT(*) FROM action_logs WHERE user_email = :user_email AND created_at >= :s AND action_type = 'SEARCH_RECRUITERS'"), {"s": today_start, "user_id": current_user.id, "user_email": current_user.email}).scalar() or 0
+    searches = db.execute(text("SELECT COUNT(*) FROM action_logs WHERE user_email = :user_email AND created_at >= :s AND action_type = 'SEARCH_RECRUITERS'"), {"s": today_start, "user_email": current_user.email}).scalar() or 0
     traffic_insight = "System traffic is at baseline levels."
     if searches > 10:
         traffic_insight = f"High search volume detected: {searches} recruiter searches today."

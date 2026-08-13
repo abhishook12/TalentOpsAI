@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 
@@ -9,7 +9,7 @@ TERMINAL_STATES = {"completed", "failed", "cancelled", "stuck"}
 
 
 def utc_now() -> datetime:
-    return datetime.utcnow()
+    return datetime.now(timezone.utc)
 
 
 def update_fields(job: Any, **fields: Any) -> Any:

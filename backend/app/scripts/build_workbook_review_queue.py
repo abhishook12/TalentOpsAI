@@ -3,7 +3,7 @@ import json
 import re
 import sys
 from collections import Counter, defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from openpyxl import load_workbook
@@ -422,7 +422,7 @@ def main():
                     "source_file": str(SOURCE_FILE),
                     "review_reason": result["review_reason"],
                     "evidence": result["evidence"],
-                    "queued_at": datetime.utcnow().isoformat(),
+                    "queued_at": datetime.now(timezone.utc).isoformat(),
                 }
                 updates.append(
                     {

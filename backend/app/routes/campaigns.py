@@ -76,12 +76,21 @@ def send_bulk_emails_background(request: BulkSendRequest):
         print(f"❌ SMTP connection failed: {e}")
 
 @router.post("/bulk-send")
-def bulk_send_emails(request: BulkSendRequest, background_tasks: BackgroundTasks):
-    if not request.emails:
-        raise HTTPException(status_code=400, detail="No recipients provided.")
-    
-    background_tasks.add_task(send_bulk_emails_background, request)
-    return {"status": "queued", "count": len(request.emails)}
+def bulk_send_emails(
+    request: BulkSendRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """Retired unsafe SMTP path.
+
+    Campaign delivery must preserve one-recipient records, bridge handoff,
+    validation, and audit logs. This legacy endpoint bypassed all four and also
+    permitted CC/BCC, so it must never send production outreach.
+    """
+    raise HTTPException(
+        status_code=410,
+        detail="Legacy bulk SMTP sending is disabled. Create a campaign to send individual emails through the Outlook Bridge.",
+    )
 
 
 class ValidateRecipientsRequest(BaseModel):
@@ -417,13 +426,16 @@ def enroll_emails(campaign_id: int, payload: EnrollEmailsRequest, db: Session = 
 
 @router.get("/{campaign_id}/progress")
 async def stream_campaign_progress(campaign_id: int, token: str = Query(default=None)):
-    # Fix #2: Add token-based auth for SSE (EventSource can't send headers)
-    if token:
-        try:
-            from ..services.auth_service import decode_access_token
-            decode_access_token(token)
-        except Exception:
-            raise HTTPException(status_code=401, detail="Invalid token")
+    # EventSource cannot send an Authorization header, so require a JWT query
+    # token and use it to scope the campaign before streaming any recipient data.
+    if not token:
+        raise HTTPException(status_code=401, detail="Stream token is required")
+    try:
+        from ..services.auth_service import decode_access_token
+        claims = decode_access_token(token)
+        stream_user_id = int(claims.get("sub"))
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
     
     from fastapi.responses import StreamingResponse
     import asyncio
@@ -436,7 +448,10 @@ async def stream_campaign_progress(campaign_id: int, token: str = Query(default=
         from sqlalchemy import func as sa_func
 
         with SessionLocal() as s_db:
-            camp_status = s_db.query(Campaign.status).filter(Campaign.campaign_id == campaign_id).scalar()
+            camp_status = s_db.query(Campaign.status).filter(
+                Campaign.campaign_id == campaign_id,
+                Campaign.user_id == stream_user_id,
+            ).scalar()
             if camp_status is None:
                 return None, last_log_id
 
@@ -1221,6 +1236,7 @@ def update_recruiter_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_request),
 ):
+    get_campaign_or_404(db, campaign_id, current_user)
     cr = db.query(CampaignRecruiter).filter(
         CampaignRecruiter.campaign_id == campaign_id,
         CampaignRecruiter.recruiter_id == recruiter_id,

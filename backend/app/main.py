@@ -387,6 +387,18 @@ def _do_sweep():
             db.commit()
             
             for cid in campaign_ids_to_check:
+                retrying_count = db.query(CampaignRecruiter).filter(
+                    CampaignRecruiter.campaign_id == cid,
+                    CampaignRecruiter.status == CampaignRecruiterStatus.retrying.value,
+                ).count()
+                if retrying_count:
+                    # The in-memory worker queue may be gone after a restart or
+                    # a bridge timeout. Return retries to Pending so the normal
+                    # campaign manager can pick them up deterministically.
+                    db.query(CampaignRecruiter).filter(
+                        CampaignRecruiter.campaign_id == cid,
+                        CampaignRecruiter.status == CampaignRecruiterStatus.retrying.value,
+                    ).update({"status": CampaignRecruiterStatus.pending.value}, synchronize_session=False)
                 non_terminal = db.query(CampaignRecruiter).filter(
                     CampaignRecruiter.campaign_id == cid,
                     ~CampaignRecruiter.status.in_([
@@ -404,14 +416,25 @@ def _do_sweep():
                     if campaign and campaign.status == CampaignStatus.active.value:
                         campaign.status = CampaignStatus.completed.value
             db.commit()
+
+            active_campaign_ids = {
+                cid for cid in campaign_ids_to_check
+                if db.query(Campaign.status).filter(Campaign.campaign_id == cid).scalar() == CampaignStatus.active.value
+            }
+            return active_campaign_ids
     except Exception as e:
         import logging
         logging.getLogger(__name__).error(f"Error in timeout sweep: {e}")
+    return set()
 
 async def timeout_stuck_emails_sweep():
     while True:
         await asyncio.sleep(15)
-        await asyncio.to_thread(_do_sweep)
+        restart_ids = await asyncio.to_thread(_do_sweep)
+        if restart_ids:
+            from .services.send_engine import start_campaign
+            for campaign_id in restart_ids:
+                asyncio.create_task(start_campaign(campaign_id))
 
 @app.on_event("startup")
 async def startup_event():

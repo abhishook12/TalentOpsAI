@@ -71,7 +71,7 @@ def connect_smtp(req: SMTPConnectionRequest, db: Session = Depends(get_db), curr
         smtp_pass=encrypt_token(req.smtp_pass),
         status="connected",
         health_status="healthy",
-        last_verified_at=_datetime.now(timezone.utc)
+        last_verified_at=datetime.now(timezone.utc)
     )
     db.add(account)
     db.commit()
@@ -157,7 +157,7 @@ def verify_account(account_id: int, db: Session = Depends(get_db), current_user:
         account.health_status = "healthy"
         account.status = "connected"
         
-    account.last_verified_at = _datetime.now(timezone.utc)
+    account.last_verified_at = datetime.now(timezone.utc)
     db.commit()
     
     return {"status": "success", "health_status": account.health_status}

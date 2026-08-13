@@ -435,7 +435,7 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                         recipient_name=rec_name,
                         status=EmailLogStatus.sending.value,
                         attempt_number=retry_count + 1,
-                        sending_at=_datetime.now(timezone.utc),
+                        sending_at=datetime.now(timezone.utc),
                         sent_via="outlook_bridge"
                     )
                     db.add(log)
@@ -454,7 +454,6 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
 
             result = await asyncio.to_thread(_process_recipient_db, recipient_id)
             if not result:
-                queue.task_done()
                 # Run finalize step immediately!
                 await asyncio.to_thread(_check_and_finalize_campaign, campaign_id)
                 continue
@@ -467,69 +466,12 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                 "html_body": body or ""
             }
             
-            logger.info(f"Worker {worker_id}: Sending email to {rec_email} via provider...")
-            success, error_msg, error_type = await _send_email_via_provider(sender_account_id, user_id, payload)
-            
-            def _update_result_db(success, error_msg, error_type):
-                with SessionLocal() as db:
-                    from ..models.campaigns import EmailLog, CampaignRecruiter, EmailLogStatus, CampaignRecruiterStatus
-                    log = db.query(EmailLog).filter(EmailLog.log_id == log_id).first()
-                    recipient = db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_recruiter_id == recipient_id).first()
-                    
-                    if log:
-                        log.body_html = None  # Fix #6: Always null body_html (both success and failure) to prevent DB bloat
-                        if success:
-                            log.status = EmailLogStatus.delivered.value
-                            log.delivered_at = _datetime.now(timezone.utc)
-                            log.outlook_accepted = True
-                        else:
-                            log.status = EmailLogStatus.failed.value
-                            log.error_message = error_msg
-                            log.failed_at = _datetime.now(timezone.utc)
-                            log.outlook_accepted = False
-                            
-                    retry_count = 0
-                    if recipient:
-                        if success:
-                            recipient.status = CampaignRecruiterStatus.sent.value
-                            recipient.last_sent_at = _datetime.now(timezone.utc)
-                            recipient.sent_count += 1
-                        else:
-                            recipient.last_error = error_msg
-                            if error_type in ["auth_expired", "auth_permanent", "smtp_error"]:
-                                recipient.retry_count = recipient.max_retries
-                                recipient.status = CampaignRecruiterStatus.failed.value
-                                retry_count = 0
-                            else:
-                                recipient.retry_count += 1
-                                retry_count = recipient.retry_count
-                                if recipient.retry_count >= recipient.max_retries:
-                                    recipient.status = CampaignRecruiterStatus.failed.value
-                                else:
-                                    recipient.status = CampaignRecruiterStatus.retrying.value
-                    
-                    db.commit()
-                # Run finalize step immediately!
-                _check_and_finalize_campaign(campaign_id)
-                return retry_count
-                    
-            retry_count = await asyncio.to_thread(_update_result_db, success, error_msg, error_type)
-            
-            # Fix #16: Circuit breaker — track consecutive failures
-            if failure_counter is not None:
-                if success:
-                    failure_counter['consecutive'] = 0
-                else:
-                    failure_counter['consecutive'] = failure_counter.get('consecutive', 0) + 1
-                    if failure_counter['consecutive'] >= CIRCUIT_BREAKER_THRESHOLD:
-                        logger.error(f"Circuit breaker triggered for campaign {campaign_id} after {CIRCUIT_BREAKER_THRESHOLD} consecutive failures")
-                        _set_campaign_status(campaign_id, CampaignStatus.paused.value)
-                        if cancel_event:
-                            cancel_event.set()
-                        break
-            
-            if not success and retry_count > 0:
-                asyncio.create_task(_schedule_retry(queue, recipient_id, retry_count))
+            # Delivery is intentionally performed only by the local Outlook
+            # Bridge. The bridge polls this EmailLog, invokes one Outlook COM
+            # mail.Send() per recipient, then reports the terminal result.
+            # Do not call Graph/Gmail/SMTP here: doing so created duplicate
+            # sends while still labelling the log as an Outlook Bridge send.
+            logger.info(f"Worker {worker_id}: queued Outlook Bridge task for {rec_email} (log {log_id})")
                 
         except Exception as e:
             logger.error(f"Worker {worker_id} exception for {recipient_id}: {e}")
@@ -710,13 +652,18 @@ def cancel_campaign(campaign_id: int):
 async def resume_campaign(campaign_id: int):
     """Resume a paused campaign."""
     with SessionLocal() as db:
+        campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+        if not campaign:
+            return
+        campaign.status = CampaignStatus.active.value
         db.query(CampaignRecruiter).filter(
             CampaignRecruiter.campaign_id == campaign_id,
             CampaignRecruiter.status.in_([
                 CampaignRecruiterStatus.pending.value,
+                CampaignRecruiterStatus.queued.value,
                 CampaignRecruiterStatus.retrying.value,
             ])
-        ).update({"status": CampaignRecruiterStatus.queued.value}, synchronize_session=False)
+        ).update({"status": CampaignRecruiterStatus.pending.value}, synchronize_session=False)
         db.commit()
     
     await start_campaign(campaign_id)

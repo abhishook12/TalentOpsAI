@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar'
 import UpdateCenter from './components/UpdateCenter'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Maintenance from './pages/Maintenance'
+import api from './lib/api'
 class GlobalErrorBoundary extends Component {
   constructor(props) {
     super(props)

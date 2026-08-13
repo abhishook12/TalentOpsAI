@@ -140,7 +140,7 @@ export default function Sidebar() {
           const { to, label, icon: Icon, aliases = [] } = item
           const active = to === '/'
             ? location.pathname === '/'
-            : location.pathname.startsWith(to) || aliases.some((alias) => location.pathname.startsWith(alias))
+            : location.pathname === to || location.pathname.startsWith(to + '/') || aliases.some((alias) => location.pathname === alias || location.pathname.startsWith(alias + '/'))
           
           return (
             <NavLink

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
+import { useSessionState } from '../hooks/useSessionState';
 
 import BridgeStatus from '../components/BridgeStatus';
 import RichTextComposer from '../components/RichTextComposer';
@@ -59,21 +60,21 @@ class CampaignErrorBoundary extends React.Component {
 
 export default function Campaigns() {
   // ── View State ──────────────────────────────────────────────────────────────
-  const [view, setView] = useState('list');
-  const [workspaceMode, setWorkspaceMode] = useState('compose'); // 'compose' | 'sending'
+  const [view, setView] = useSessionState('camp_view', 'list');
+  const [workspaceMode, setWorkspaceMode] = useSessionState('camp_wsMode', 'compose'); // 'compose' | 'sending'
 
   // ── List State ───────────────────────────────────────────────────────────────
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useSessionState('camp_search', '');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useSessionState('camp_statusFilter', 'all');
   const [showTest, setShowTest] = useState(false);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useSessionState('camp_page', 1);
   const [limit, setLimit] = useState(20);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const searchInputRef = useRef(null);
 
   // ── Campaign Core State ───────────────────────────────────────────────────────
-  const [activeCampaignId, setActiveCampaignId] = useState(null);
+  const [activeCampaignId, setActiveCampaignId] = useSessionState('camp_activeId', null);
   const [campaignName, setCampaignName] = useState('New Campaign');
   const [senderAccountId, setSenderAccountId] = useState(null);
   const [sendError, setSendError] = useState(null);
@@ -135,7 +136,7 @@ export default function Campaigns() {
     return () => clearTimeout(t);
   }, [searchQuery]);
 
-  const { data: queryData, isLoading: loading, error: queryError, refetch: refetchCampaigns } = useQuery({
+  const { data: queryData, isLoading: loading, error: campaignsError, refetch } = useQuery({
     queryKey: ['campaigns', debouncedSearchQuery, statusFilter, showTest, page, limit],
     queryFn: async () => {
       const params = new URLSearchParams({ page: page.toString(), limit: limit.toString() });
@@ -597,6 +598,13 @@ export default function Campaigns() {
           </AnimatePresence>
 
           {/* Table */}
+          {campaignsError && (
+            <div style={{ padding: '16px 20px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#ef4444', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 16px' }}>
+              <AlertCircle style={{ width: 16, height: 16, flexShrink: 0 }} />
+              <span>Failed to load campaigns. Please try again.</span>
+              <button onClick={() => refetch()} style={{ marginLeft: 'auto', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>Retry</button>
+            </div>
+          )}
           {loading && !queryData ? (
             <div className="flex justify-center items-center py-16"><Loader2 className="w-6 h-6 animate-spin text-[var(--text-muted)]" /></div>
           ) : sortedCampaigns.length === 0 ? (

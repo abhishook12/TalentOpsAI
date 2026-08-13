@@ -416,7 +416,7 @@ export default function AISearch() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [selectedId, setSelectedId] = useSessionState('ai_selectedId', null)
-  const [showFilters, setShowFilters] = useState(false)
+  const [showFilters, setShowFilters] = useSessionState('ai_showFilters', false)
   const [toast, setToast] = useState('')
   const [selectedDetail, setSelectedDetail] = useState(null)
   const [selectedDetailLoading, setSelectedDetailLoading] = useState(false)
@@ -477,6 +477,8 @@ export default function AISearch() {
   }
 
   useEffect(() => {
+    const controller = new AbortController()
+
     const t = setTimeout(async () => {
       if (!query.trim()) {
         setSearchResults([])
@@ -494,7 +496,7 @@ export default function AISearch() {
         if (filterLocation.trim()) params.location = filterLocation.trim()
         if (filterSpecialization.trim()) params.specialization = filterSpecialization.trim()
 
-        const res = await api.get('/recruiters/search', { params })
+        const res = await api.get('/recruiters/search', { params, signal: controller.signal })
         const sorted = [...(res.data || [])].sort((a, b) => {
           const ma = matchTypeFor(a, query) === 'Exact' ? 0 : 1
           const mb = matchTypeFor(b, query) === 'Exact' ? 0 : 1
@@ -514,15 +516,19 @@ export default function AISearch() {
           context: 'ai_search',
         })
       } catch (err) {
+        if (controller.signal.aborted) return
         setError('Could not load recruiter search results.')
         setSearchResults([])
         setSelectedId(null)
       } finally {
-        setLoading(false)
+        if (!controller.signal.aborted) setLoading(false)
       }
     }, 260)
 
-    return () => clearTimeout(t)
+    return () => {
+      clearTimeout(t)
+      controller.abort()
+    }
   }, [query, filterCompany, filterLocation, filterSpecialization])
 
   const selectedSummary = useMemo(

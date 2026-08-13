@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { User, Bell, Lock, Key, Globe, Shield, Smartphone, ArrowRight, Laptop, LogOut, Mail, Server, MoreVertical, ExternalLink, Star } from 'lucide-react';
+import { User, Bell, Lock, Key, Globe, Shield, Smartphone, ArrowRight, Laptop, LogOut, Mail, Server, MoreVertical, ExternalLink, Star, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { API } from '../services/api';
+import { useSessionState } from '../hooks/useSessionState';
 import ConnectionWizard from '../components/ConnectionWizard';
 
 export default function Settings() {
   const { user, checkAuth } = useAuth();
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useSessionState('settings_activeTab', 'profile');
   const [accounts, setAccounts] = useState([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(true);
   const [showConnectionWizard, setShowConnectionWizard] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -28,11 +30,14 @@ export default function Settings() {
   const [isSaving, setIsSaving] = useState(false);
   
   const fetchAccounts = async () => {
+    setLoadingAccounts(true);
     try {
       const res = await api.get('/accounts');
       setAccounts(res.data.items || []);
     } catch (err) {
       toast.error('Failed to load connected accounts');
+    } finally {
+      setLoadingAccounts(false);
     }
   };
 
@@ -412,7 +417,12 @@ export default function Settings() {
 
                 {/* Table */}
                 <div style={{ width: '100%', overflowX: 'auto' }}>
-                  {accounts.length === 0 ? (
+                  {loadingAccounts ? (
+                    <div style={{ padding: 48, textAlign: 'center' }}>
+                      <Loader2 className="animate-spin" size={32} style={{ color: 'var(--text-secondary)', margin: '0 auto 16px' }} />
+                      <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)' }}>Loading accounts...</p>
+                    </div>
+                  ) : !loadingAccounts && accounts.length === 0 ? (
                     <div style={{ padding: 48, textAlign: 'center' }}>
                       <Mail size={32} style={{ color: 'var(--text-secondary)', marginBottom: 16 }} />
                       <h3 style={{ margin: '0 0 8px', fontSize: 16, color: 'var(--text-primary)' }}>No accounts connected</h3>

@@ -214,6 +214,20 @@ const mailIntelRoute = createRoute({
   component: lazyComponent(() => import('./pages/MailIntelDashboard')),
 })
 
+const notFoundRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '*',
+  component: function NotFound() {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 16, color: 'var(--text-secondary)' }}>
+        <div style={{ fontSize: 72, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1 }}>404</div>
+        <p style={{ fontSize: 15, margin: 0 }}>This page doesn't exist.</p>
+        <a href="/" style={{ marginTop: 8, padding: '10px 24px', background: 'var(--brand)', color: '#fff', borderRadius: 8, textDecoration: 'none', fontSize: 13, fontWeight: 500 }}>Return to Dashboard</a>
+      </div>
+    )
+  },
+})
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -245,7 +259,8 @@ const routeTree = rootRoute.addChildren([
     auditLogsRoute,
     trustedDevicesRoute,
     intelligenceCenterRoute
-  ])
+  ]),
+  notFoundRoute
 ])
 
 export const router = createRouter({ routeTree, defaultPreload: 'intent' })

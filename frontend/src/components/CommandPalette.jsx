@@ -32,6 +32,9 @@ export default function CommandPalette() {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        const tag = document.activeElement?.tagName
+        const editable = document.activeElement?.isContentEditable
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || editable) return
         e.preventDefault();
         setIsOpen(true);
       }

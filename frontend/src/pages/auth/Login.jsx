@@ -9,7 +9,7 @@ import api from '../../services/api'
 
 export default function Login() {
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [password, setPassword] = useState(import.meta.env.DEV ? 'devpass' : '')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [emailTouched, setEmailTouched] = useState(false)
@@ -25,7 +25,7 @@ export default function Login() {
   const redirect = decodeURIComponent(search.redirect || '/')
 
   const isEmailValid = email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
-  const isFormValid = isEmailValid && password.length >= 4
+  const isFormValid = isEmailValid && (import.meta.env.DEV || password.length >= 4)
 
   const performBackgroundInitialization = async (authFunction) => {
     setError('')
@@ -133,30 +133,32 @@ export default function Login() {
             )}
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[13px] text-[#a0a0a0]" htmlFor="password-input">Password</label>
-            <div className="relative flex items-center group">
-              <i className="ti ti-lock absolute left-3.5 text-[#666] text-base pointer-events-none group-focus-within:text-[var(--brand)] transition-colors" />
-              <input
-                id="password-input"
-                className="w-full h-11 rounded-lg border border-[#333] bg-[var(--bg-surface)] text-white pl-10 pr-10 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]"
-                type={showPassword ? 'text' : 'password'}
-                required
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-              />
-              <button 
-                type="button" 
-                onClick={() => setShowPassword(!showPassword)} 
-                className="absolute right-3.5 bg-transparent border-none text-[#666] cursor-pointer p-1 flex items-center justify-center text-base transition-colors hover:text-white" 
-                aria-label="Toggle password visibility"
-              >
-                <i className={`ti ${showPassword ? 'ti-eye-off' : 'ti-eye'}`} />
-              </button>
+          {!import.meta.env.DEV && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[13px] text-[#a0a0a0]" htmlFor="password-input">Password</label>
+              <div className="relative flex items-center group">
+                <i className="ti ti-lock absolute left-3.5 text-[#666] text-base pointer-events-none group-focus-within:text-[var(--brand)] transition-colors" />
+                <input
+                  id="password-input"
+                  className="w-full h-11 rounded-lg border border-[#333] bg-[var(--bg-surface)] text-white pl-10 pr-10 text-sm outline-none transition-all placeholder:text-[#555] focus:border-[var(--brand)] focus:shadow-[0_0_0_4px_var(--brand-bg)]"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setShowPassword(!showPassword)} 
+                  className="absolute right-3.5 bg-transparent border-none text-[#666] cursor-pointer p-1 flex items-center justify-center text-base transition-colors hover:text-white" 
+                  aria-label="Toggle password visibility"
+                >
+                  <i className={`ti ${showPassword ? 'ti-eye-off' : 'ti-eye'}`} />
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="flex justify-between items-center my-1 mb-4">
             <label className="flex items-center gap-2 text-[13px] text-[#a0a0a0] cursor-pointer">

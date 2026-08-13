@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react'
+import { useSessionState } from '../hooks/useSessionState'
 import api, { getErrorMessage, logout, setStoredToken, clearStoredToken } from '../services/api'
 import { exportToExcel } from '../services/export'
 import WorkerDashboard from '../components/WorkerDashboard'
@@ -113,11 +114,11 @@ export default function AdminTerminal() {
   const [orphans, setOrphans] = useState(null)
   const [liveRecruiters, setLiveRecruiters] = useState({ results: [], total_count: 0, page: 1, total_pages: 1 })
   const [liveRecruitersLoading, setLiveRecruitersLoading] = useState(false)
-  const [liveRecruiterQuery, setLiveRecruiterQuery] = useState('')
-  const [liveRecruiterState, setLiveRecruiterState] = useState('')
-  const [liveRecruiterCompany, setLiveRecruiterCompany] = useState('')
-  const [liveRecruiterJobId, setLiveRecruiterJobId] = useState('')
-  const [liveRecruiterPage, setLiveRecruiterPage] = useState(1)
+  const [liveRecruiterQuery, setLiveRecruiterQuery] = useSessionState('at_lrQuery', '')
+  const [liveRecruiterState, setLiveRecruiterState] = useSessionState('at_lrState', '')
+  const [liveRecruiterCompany, setLiveRecruiterCompany] = useSessionState('at_lrCompany', '')
+  const [liveRecruiterJobId, setLiveRecruiterJobId] = useSessionState('at_lrJobId', '')
+  const [liveRecruiterPage, setLiveRecruiterPage] = useSessionState('at_lrPage', 1)
   const [selectedRecruiters, setSelectedRecruiters] = useState([])
   const [reviewPanelOpen, setReviewPanelOpen] = useState(false)
   const [reviewQueue, setReviewQueue] = useState({ results: [], total_count: 0, page: 1, total_pages: 1 })
@@ -156,7 +157,7 @@ export default function AdminTerminal() {
   const logRef = useRef()
   const [visitorLogs, setVisitorLogs] = useState(null)
   const [visitorSummary, setVisitorSummary] = useState(null)
-  const [logDays, setLogDays] = useState(7)
+  const [logDays, setLogDays] = useSessionState('at_logDays', 7)
   const [expandedSession, setExpandedSession] = useState(null)
   const [loadingLogs, setLoadingLogs] = useState(false)
   const [logsError, setLogsError] = useState(null)
@@ -368,7 +369,7 @@ export default function AdminTerminal() {
     setLoadingLogs(false)
   }
 
-  const loadLiveRecruiters = useCallback(async () => {
+  const loadLiveRecruiters = useCallback(async (signal) => {
     if (!unlocked || activeTab !== 'ops') return
     setLiveRecruitersLoading(true)
     try {
@@ -381,10 +382,11 @@ export default function AdminTerminal() {
       if (liveRecruiterState.trim()) params.set('state', liveRecruiterState.trim())
       if (liveRecruiterCompany.trim()) params.set('company', liveRecruiterCompany.trim())
       if (liveRecruiterJobId.trim()) params.set('source_job_id', liveRecruiterJobId.trim())
-      const { data } = await api.get(`/recruiters/?${params.toString()}`)
+      const { data } = await api.get(`/recruiters/?${params.toString()}`, { signal })
       setLiveRecruiters(data || { results: [], total_count: 0, page: 1, total_pages: 1 })
       setSelectedRecruiters([])
     } catch (e) {
+      if (e?.name === 'CanceledError' || e?.code === 'ERR_CANCELED') return
       log('✗ Failed to load live recruiter data: ' + getErrorMessage(e), 'error')
       setLiveRecruiters({ results: [], total_count: 0, page: 1, total_pages: 1 })
     } finally {
@@ -417,8 +419,12 @@ export default function AdminTerminal() {
 
   useEffect(() => {
     if (unlocked && activeTab === 'ops') {
-      const t = setTimeout(() => loadLiveRecruiters(), 250)
-      return () => clearTimeout(t)
+      const controller = new AbortController()
+      const t = setTimeout(() => loadLiveRecruiters(controller.signal), 250)
+      return () => {
+        clearTimeout(t)
+        controller.abort()
+      }
     }
   }, [unlocked, activeTab, liveRecruiterPage, liveRecruiterQuery, liveRecruiterState, liveRecruiterCompany, loadLiveRecruiters])
 

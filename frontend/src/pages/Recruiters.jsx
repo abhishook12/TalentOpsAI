@@ -293,14 +293,14 @@ export default function Recruiters() {
     return () => clearTimeout(t)
   }, [search, filters])
 
-  const [showFilters, setShowFilters] = useState(false)
+  const [showFilters, setShowFilters] = useSessionState('recruiters_showFilters', false)
 
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
 
   // React Query Data Fetching
-  const { data, isLoading: loading, isFetching, refetch } = useRecruiters(page, debouncedSearch, debouncedFilters)
+  const { data, isLoading: loading, isFetching, refetch, isError } = useRecruiters(page, debouncedSearch, debouncedFilters)
   const recruiters = data?.results || []
   const totalCount = data?.total_count || 0
   const totalPages = data?.total_pages || 1
@@ -572,7 +572,12 @@ export default function Recruiters() {
     
           {/* Table */}
           <div className="card" style={{ overflow: 'hidden' }}>
-            {loading ? (
+            {isError ? (
+              <div style={{ padding: '16px 20px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#ef4444', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>Failed to load recruiters. Please try again.</span>
+                <button onClick={() => refetch()} style={{ marginLeft: 'auto', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>Retry</button>
+              </div>
+            ) : loading ? (
               <div style={{ padding: 120, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
                   <i className="ti ti-loader" style={{ fontSize: 36, animation: 'spin 1s linear infinite', color: 'var(--text-primary)' }} />
                   <div style={{ fontWeight: 500 }}>Scanning Talent Database...</div>

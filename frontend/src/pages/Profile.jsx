@@ -8,14 +8,17 @@ export default function Profile() {
   const { user, logout } = useAuth()
   const [bridgeStatus, setBridgeStatus] = useState(null)
   const [loadingBridge, setLoadingBridge] = useState(true)
+  const [bridgeError, setBridgeError] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const fetchBridgeStatus = async () => {
+    setBridgeError(false)
     try {
       const res = await api.get('/bridge/status')
       setBridgeStatus(res.data)
     } catch (e) {
       console.error(e)
+      setBridgeError(true)
     } finally {
       setLoadingBridge(false)
     }
@@ -227,7 +230,9 @@ export default function Profile() {
                   <div style={{ width: 64, height: 64, borderRadius: 32, background: 'rgba(255, 255, 255, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
                     <Link size={32} color="var(--text-muted)" />
                   </div>
-                  <h4 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 700 }}>Outlook Not Connected</h4>
+                  <h4 style={{ margin: '0 0 8px 0', fontSize: 18, fontWeight: 700 }}>
+                    {bridgeError ? 'Failed to check status — please refresh' : 'Outlook Not Connected'}
+                  </h4>
                   <p style={{ margin: '0 auto 24px', fontSize: 14, color: 'var(--text-secondary)', maxWidth: 400, lineHeight: 1.5 }}>
                     Connect your Microsoft Outlook account to enable the TalentOps Email Bridge. 
                     Authentication will open in a secure window.

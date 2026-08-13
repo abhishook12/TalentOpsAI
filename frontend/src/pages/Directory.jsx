@@ -141,7 +141,7 @@ export default function Directory() {
   const [companyStates, setCompanyStates] = useState([])
   const [statesLoading, setStatesLoading] = useState(false)
   const [selectedState, setSelectedState] = useSessionState('dir_selectedState', null)
-  const [stateQuery, setStateQuery] = useState('')
+  const [stateQuery, setStateQuery] = useSessionState('dir_stateQuery', '')
 
   const [recruiterQuery, setRecruiterQuery] = useSessionState('dir_recruiterQuery', '')
   const [debouncedRecruiterQuery, setDebouncedRecruiterQuery] = useState('')

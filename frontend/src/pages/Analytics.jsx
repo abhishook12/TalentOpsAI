@@ -160,7 +160,7 @@ export default function Analytics() {
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState(null)
 
-  const { data: taxonomyData, refetch: refetchTaxonomy } = useQuery({
+  const { data: taxonomyData, refetch: refetchTaxonomy, isError: isTaxError, error: taxError } = useQuery({
     queryKey: ['taxonomy-distribution'],
     queryFn: async () => (await api.get('/analytics/taxonomy-distribution')).data,
     staleTime: 60_000,
@@ -180,7 +180,7 @@ export default function Analytics() {
     }
   }
 
-  const { data: analyticsData, isLoading: loading } = useQuery({
+  const { data: analyticsData, isLoading: loading, isError: isAnalyticsError, error: analyticsError, refetch: refetchAnalytics } = useQuery({
     queryKey: ['analytics-dashboard'],
     queryFn: async () => {
       const [v, s, dq] = await Promise.all([
@@ -208,6 +208,13 @@ export default function Analytics() {
     <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
       <i className="ti ti-chart-bar" style={{ fontSize: 28, display: 'block', marginBottom: 10 }} />
       Loading analytics...
+    </div>
+  )
+
+  if (isAnalyticsError) return (
+    <div style={{ padding: '16px 20px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#ef4444', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0' }}>
+      <span>Failed to load data. Please try again.</span>
+      <button onClick={() => refetchAnalytics()} style={{ marginLeft: 'auto', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>Retry</button>
     </div>
   )
 
@@ -503,6 +510,12 @@ export default function Analytics() {
       {/* Taxonomy Intelligence Row */}
       {!isEmptyAnalytics && (
         <SectionCard title="Industry Taxonomy Intelligence" icon="ti-category" compact style={{ gridColumn: '1 / -1', minHeight: 0 }}>
+          {isTaxError && (
+            <div style={{ padding: '16px 20px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#ef4444', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0' }}>
+              <span>Failed to load data. Please try again.</span>
+              <button onClick={() => refetchTaxonomy()} style={{ marginLeft: 'auto', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>Retry</button>
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
             {/* Pie Chart */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -609,13 +622,19 @@ export default function Analytics() {
 }
 
 function DataHealthScorecard() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError: isHealthError, error: healthError, refetch: refetchHealth } = useQuery({
     queryKey: ['data-health'],
     queryFn: async () => (await api.get('/analytics/data-health')).data,
     staleTime: 60_000,
   })
 
   if (isLoading) return <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)' }}>Loading health data...</div>
+  if (isHealthError) return (
+    <div style={{ padding: '16px 20px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#ef4444', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0' }}>
+      <span>Failed to load data. Please try again.</span>
+      <button onClick={() => refetchHealth()} style={{ marginLeft: 'auto', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>Retry</button>
+    </div>
+  )
   if (!data || !data.metrics) return <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)' }}>No data available</div>
 
   const getScoreColor = (score) => {

@@ -111,6 +111,11 @@ function AppShell() {
   const { user, isAdmin, loading } = useAuth()
   const pageName = useMemo(() => PAGE_NAMES[location.pathname] || 'Dashboard', [location.pathname])
   
+  useEffect(() => {
+    const el = document.querySelector('.cc-content')
+    if (el) el.scrollTop = 0
+  }, [location.pathname])
+
   if (loading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--main-bg)', color: 'var(--text-secondary)' }}>

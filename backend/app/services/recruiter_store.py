@@ -14,9 +14,21 @@ from pathlib import Path
 
 logger = logging.getLogger("recruiter_store")
 
-# Use an absolute path relative to this file's location to ensure it works on both Windows and Linux (Render)
+# Use an absolute path relative to this file's location to ensure it works on both Windows and Linux
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 PARQUET_DIR = os.environ.get("PARQUET_DIR", os.path.join(BASE_DIR, "data"))
+
+# Fallback to /tmp in read-only serverless environments (like Vercel/AWS Lambda)
+try:
+    os.makedirs(PARQUET_DIR, exist_ok=True)
+    test_file = os.path.join(PARQUET_DIR, '.test_write')
+    with open(test_file, 'w') as f:
+        f.write('1')
+    os.remove(test_file)
+except OSError:
+    PARQUET_DIR = "/tmp/talentops_data"
+    os.makedirs(PARQUET_DIR, exist_ok=True)
+
 PARQUET_FILE = os.path.join(PARQUET_DIR, "recruiters_full.parquet")
 
 # Lazy import duckdb — only when needed
@@ -128,6 +140,14 @@ class RecruiterStore:
             logger.warning(f"Parquet file not found: {PARQUET_FILE}. RecruiterStore will be empty.")
             self._conn = duckdb.connect(":memory:")
             self._conn.execute("CREATE TABLE recruiters (id INTEGER)")
+            self._conn.execute("""
+                CREATE TABLE company_summary (
+                    company_key VARCHAR,
+                    state_upper VARCHAR,
+                    recruiter_count INTEGER,
+                    dominant_domain VARCHAR
+                )
+            """)
             self._record_count = 0
             self._loaded = True
             return

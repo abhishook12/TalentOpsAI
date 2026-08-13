@@ -464,17 +464,17 @@ export default function Campaigns() {
       }));
       toast.success(`Bulk ${action} successful`);
       setSelectedIds(new Set());
-      refetchCampaigns();
+      refetch();
     } catch { toast.error(`Some actions failed`); }
-  }, [selectedIds, refetchCampaigns]);
+  }, [selectedIds, refetch]);
 
   const deleteCampaign = async (id) => {
     if (!window.confirm('Delete this campaign?')) return;
-    try { await api.delete(`/campaigns/${id}`); toast.success('Deleted'); refetchCampaigns(); }
+    try { await api.delete(`/campaigns/${id}`); toast.success('Deleted'); refetch(); }
     catch { toast.error('Failed to delete'); }
   };
   const archiveCampaign = async (id) => {
-    try { await api.put(`/campaigns/${id}/archive`); toast.success('Archived'); refetchCampaigns(); }
+    try { await api.put(`/campaigns/${id}/archive`); toast.success('Archived'); refetch(); }
     catch { toast.error('Failed to archive'); }
   };
   const toggleCampaignStatus = async (id, status) => {
@@ -482,11 +482,11 @@ export default function Campaigns() {
       const action = status === 'active' ? 'pause' : 'resume';
       await api.post(`/campaigns/${id}/control`, { action });
       toast.success(`Campaign ${action}d`);
-      refetchCampaigns();
+      refetch();
     } catch { toast.error('Failed to change status'); }
   };
   const duplicateCampaign = async (id) => {
-    try { await api.post(`/campaigns/${id}/duplicate`); toast.success('Duplicated'); refetchCampaigns(); }
+    try { await api.post(`/campaigns/${id}/duplicate`); toast.success('Duplicated'); refetch(); }
     catch { toast.error('Failed to duplicate'); }
   };
   const exportCSV = () => {
@@ -577,7 +577,7 @@ export default function Campaigns() {
               <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-2 border border-[var(--border)] rounded-lg text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors">
                 <Download size={13} /> Export
               </button>
-              <button onClick={() => refetchCampaigns()} className="p-2 border border-[var(--border)] rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors">
+              <button onClick={() => refetch()} className="p-2 border border-[var(--border)] rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors">
                 <RefreshCw size={14} />
               </button>
             </div>

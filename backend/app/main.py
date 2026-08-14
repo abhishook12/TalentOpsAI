@@ -281,10 +281,12 @@ import traceback
 
 @app.exception_handler(SQLAlchemyError)
 async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
-    logger.error(f"Database error on {request.url.path}: {exc}")
+    import traceback
+    err = traceback.format_exc()
+    logger.error(f"Database error on {request.url.path}: {exc}\n{err}")
     return JSONResponse(
         status_code=500,
-        content={"detail": "A database error occurred.", "type": "database_error"}
+        content={"detail": f"Database error on {request.url.path}: {str(exc)}", "type": "database_error"}
     )
 
 @app.exception_handler(Exception)

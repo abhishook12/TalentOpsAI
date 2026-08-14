@@ -558,8 +558,15 @@ def get_recruiters(
             continue
     companies_dict = {}
     if comp_ids:
-        companies = db.query(Company).filter(Company.company_id.in_(comp_ids)).all()
-        companies_dict = {c.company_id: c for c in companies}
+        try:
+            companies = db.query(Company).filter(Company.company_id.in_(comp_ids)).all()
+            companies_dict = {c.company_id: c for c in companies}
+        except Exception as e:
+            logger.warning(f"Failed to fetch PostgreSQL company details for recruiters: {e}")
+            try:
+                db.rollback()
+            except Exception:
+                pass
     
     def _basic_company(company_row):
         return {

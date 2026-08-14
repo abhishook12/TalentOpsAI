@@ -371,8 +371,15 @@ def companies_search(
             
     metadata = {}
     if numeric_ids:
-        for company in db.query(Company).filter(Company.company_id.in_(numeric_ids)).all():
-            metadata[str(company.company_id)] = company
+        try:
+            for company in db.query(Company).filter(Company.company_id.in_(numeric_ids)).all():
+                metadata[str(company.company_id)] = company
+        except Exception as e:
+            logger.warning(f"Failed to fetch PostgreSQL metadata for companies: {e}")
+            try:
+                db.rollback()
+            except Exception:
+                pass
 
     enriched_results = []
     for row in paginated_companies:

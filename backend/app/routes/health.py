@@ -90,6 +90,22 @@ def system_health(db: Session = Depends(get_db)):
         health_data["status"] = "degraded"
         logger.error(f"Database health check failed: {e}")
 
+    # Check RecruiterStore Parquet
+    try:
+        from ..services.recruiter_store import recruiter_store
+        recruiter_store._ensure_loaded()
+        comp_count = 0
+        if recruiter_store._conn:
+            comp_count = recruiter_store._conn.execute("SELECT COUNT(*) FROM company_summary").fetchone()[0]
+        health_data["components"]["recruiter_store"] = {
+            "status": "healthy" if recruiter_store._record_count > 0 else "empty",
+            "records": recruiter_store._record_count,
+            "companies": comp_count,
+            "error": getattr(recruiter_store, "_last_error", None)
+        }
+    except Exception as e:
+        health_data["components"]["recruiter_store"] = {"status": "unhealthy", "error": str(e)}
+
     # Check System Resources
     disk = get_disk_usage()
     health_data["components"]["disk"] = disk
@@ -104,3 +120,25 @@ def system_health(db: Session = Depends(get_db)):
         logger.warning(f"Memory usage critically high: {memory.get('percent')}%")
         
     return health_data
+
+
+@router.get("/store")
+def recruiter_store_health():
+    from ..services.recruiter_store import recruiter_store
+    try:
+        recruiter_store._ensure_loaded()
+        comp_count = 0
+        if recruiter_store._conn:
+            comp_count = recruiter_store._conn.execute("SELECT COUNT(*) FROM company_summary").fetchone()[0]
+        sample = recruiter_store.company_directory() if hasattr(recruiter_store, 'company_directory') else []
+        return {
+            "loaded": recruiter_store._loaded,
+            "record_count": recruiter_store._record_count,
+            "last_error": getattr(recruiter_store, "_last_error", None),
+            "company_summary_count": comp_count,
+            "sample_count": len(sample),
+            "sample": sample[:3]
+        }
+    except Exception as e:
+        return {"error": str(e)}
+

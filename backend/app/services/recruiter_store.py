@@ -53,6 +53,7 @@ class RecruiterStore:
         self._loaded = False
         self._record_count = 0
         self._last_load_time = None
+        self._last_error = None
 
     def _ensure_loaded(self):
         """Load Parquet into DuckDB if not already loaded, or if local file changed."""
@@ -164,9 +165,11 @@ class RecruiterStore:
             """)
 
             elapsed = time.time() - start
+            self._last_error = None
             logger.info(f"RecruiterStore loaded {self._record_count:,} recruiters from Parquet in {elapsed:.2f}s")
             
         except Exception as e:
+            self._last_error = f"{type(e).__name__}: {e}"
             logger.error(f"Failed to load Parquet dataset from {parquet_path}: {e}. Falling back to empty tables.")
             # Safety fallback to prevent 500 errors on the API
             self._conn = duckdb.connect(":memory:")

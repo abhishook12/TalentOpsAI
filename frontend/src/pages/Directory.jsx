@@ -155,6 +155,21 @@ export default function Directory() {
   const [toastMsg, setToastMsg] = useState(null)
   const toastRef = useRef(null)
 
+  const setToast = useCallback((t) => {
+    if (!t) {
+      setToastMsg(null)
+      return
+    }
+    if (t.type === 'error') {
+      toast.error(t.message)
+    } else if (t.type === 'success') {
+      toast.success(t.message)
+    } else {
+      toast(t.message)
+    }
+    setToastMsg(t)
+  }, [])
+
   const toggleSelection = useCallback((recruiter, checked) => {
     setSelectedRecruiters((prev) => {
       const next = new Map(prev)

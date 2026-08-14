@@ -55,7 +55,11 @@ class RecruiterStore:
         self._last_load_time = None
 
     def _ensure_loaded(self):
-        """Load Parquet into DuckDB if not already loaded, or if file changed."""
+        """Load Parquet into DuckDB if not already loaded, or if local file changed."""
+        # If already loaded and using httpfs (no local file), stay loaded — nothing to compare.
+        if self._loaded and self._conn is not None and not os.path.exists(PARQUET_FILE):
+            return
+
         current_mtime = 0
         try:
             current_mtime = os.path.getmtime(PARQUET_FILE)
@@ -72,6 +76,10 @@ class RecruiterStore:
             return
 
         try:
+            # Re-check inside lock for TOCTOU safety
+            if self._loaded and self._conn is not None and not os.path.exists(PARQUET_FILE):
+                return
+
             current_mtime = 0
             try:
                 current_mtime = os.path.getmtime(PARQUET_FILE)
@@ -198,7 +206,8 @@ class RecruiterStore:
             stat = os.stat(PARQUET_FILE)
             return f"{stat.st_mtime_ns}:{stat.st_size}"
         except OSError:
-            return "missing"
+            # No local file — using httpfs streaming. Use load time as a stable version.
+            return f"httpfs:{self._last_load_time or 'unloaded'}"
 
     # Free/generic email domains to exclude when computing dominant company domain
     _FREE_EMAIL_DOMAINS = frozenset({

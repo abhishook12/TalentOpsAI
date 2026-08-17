@@ -39,7 +39,7 @@ export default function DatabaseRecipientsView({ onAddRecipients }) {
         params.append('timezone_code', 'PT');
       }
       
-      const res = await api.get(`/recruiters?${params.toString()}`);
+      const res = await api.get(`/recruiters/?${params.toString()}`);
       return res.data || { items: [], total: 0, pages: 1 };
     }
   });

@@ -38,7 +38,7 @@ export default function RecipientValidator({ onValidated, initialRecipients = []
   const fetchRecruiters = async () => {
     try {
       setLoadingRecruiters(true);
-      const res = await api.get('/recruiters');
+      const res = await api.get('/recruiters/');
       // If it returns a standard structure with items
       const items = Array.isArray(res.data) ? res.data : (res.data.items || []);
       setRecruiters(items);

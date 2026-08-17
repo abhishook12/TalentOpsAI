@@ -19,7 +19,7 @@ export default function ReviewQueue() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['review-queue'],
     queryFn: async () => {
-      const res = await api.get('/recruiters', {
+      const res = await api.get('/recruiters/', {
         params: { needs_review: true, limit: 100 }
       })
       return res.data

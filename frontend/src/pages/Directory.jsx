@@ -290,7 +290,7 @@ export default function Directory() {
     ;(async () => {
       setRecruitersLoading(true)
       try {
-        const { data, headers } = await api.get('/recruiters', {
+        const { data, headers } = await api.get('/recruiters/', {
           params: {
             page,
             limit: PAGE_SIZE,
@@ -436,7 +436,7 @@ export default function Directory() {
       let hasMore = true
 
       while (hasMore) {
-        const { data } = await api.get('/recruiters', {
+        const { data } = await api.get('/recruiters/', {
           params: {
             company_id: selectedCompany.company_id,
             company_key: selectedCompany.company_key,

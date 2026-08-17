@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
 import { User, Bell, Lock, Key, Globe, Shield, Smartphone, ArrowRight, Laptop, LogOut, Mail, Server, MoreVertical, ExternalLink, Star, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -10,6 +11,7 @@ import ConnectionWizard from '../components/ConnectionWizard';
 
 export default function Settings() {
   const { user, checkAuth } = useAuth();
+  const { theme: currentTheme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useSessionState('settings_activeTab', 'profile');
   const [accounts, setAccounts] = useState([]);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
@@ -364,18 +366,16 @@ export default function Settings() {
                 
                 <div style={{ padding: 32 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }}>
-                    {['light', 'dark', 'system'].map(theme => (
+                    {['light', 'dark', 'system'].map(t => (
                       <button 
-                        key={theme}
-                        onClick={() => {
-                          localStorage.setItem('theme', theme);
-                          document.documentElement.setAttribute('data-theme', theme);
-                        }}
+                        key={t}
+                        type="button"
+                        onClick={() => setTheme(t)}
                         style={{ 
                           padding: 24, 
                           borderRadius: 8, 
                           border: '2px solid',
-                          borderColor: localStorage.getItem('theme') === theme ? 'var(--text-primary)' : 'var(--card-border)',
+                          borderColor: (t === currentTheme || (t === 'system' && !localStorage.getItem('theme'))) ? 'var(--text-primary)' : 'var(--card-border)',
                           background: 'var(--bg-base)',
                           color: 'var(--text-primary)',
                           cursor: 'pointer',
@@ -387,10 +387,10 @@ export default function Settings() {
                           fontWeight: 500,
                           fontSize: 14
                         }}>
-                        <div style={{ width: 48, height: 48, borderRadius: '50%', background: localStorage.getItem('theme') === theme ? 'var(--text-primary)' : 'var(--bg-panel)', border: '1px solid var(--card-border)', display: 'grid', placeItems: 'center', color: localStorage.getItem('theme') === theme ? 'var(--main-bg)' : 'var(--text-secondary)' }}>
+                        <div style={{ width: 48, height: 48, borderRadius: '50%', background: (t === currentTheme) ? 'var(--text-primary)' : 'var(--bg-panel)', border: '1px solid var(--card-border)', display: 'grid', placeItems: 'center', color: (t === currentTheme) ? 'var(--main-bg)' : 'var(--text-secondary)' }}>
                           <Globe size={24} />
                         </div>
-                        {theme} Theme
+                        {t} Theme
                       </button>
                     ))}
                   </div>

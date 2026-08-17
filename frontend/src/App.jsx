@@ -43,6 +43,7 @@ class GlobalErrorBoundary extends Component {
 
 
 import { AnalyticsProvider } from './context/AnalyticsProvider'
+import { ThemeProvider, useTheme } from './context/ThemeContext'
 import { Toaster } from 'react-hot-toast'
 import CommandPalette from './components/CommandPalette'
 import NotificationCenter from './components/NotificationCenter'
@@ -51,20 +52,12 @@ import NotificationCenter from './components/NotificationCenter'
 // axios credentials set in main.jsx
 
 function ThemeSwitcher() {
-  const [theme, setTheme] = useState(() => {
-    const savedTheme = localStorage.getItem('theme')
-    return savedTheme || 'light'
-  })
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-    localStorage.setItem('theme', theme)
-  }, [theme])
+  const { theme, toggleTheme } = useTheme()
 
   return (
     <button
       className="cc-icon-button"
-      onClick={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))}
+      onClick={toggleTheme}
       title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
       aria-label="Toggle theme"
     >
@@ -97,11 +90,13 @@ function getSessionId() {
 
 export default function AppShellWrapper() {
   return (
-    <AnalyticsProvider>
-      <AuthProvider>
-        <AppShell />
-      </AuthProvider>
-    </AnalyticsProvider>
+    <ThemeProvider>
+      <AnalyticsProvider>
+        <AuthProvider>
+          <AppShell />
+        </AuthProvider>
+      </AnalyticsProvider>
+    </ThemeProvider>
   )
 }
 

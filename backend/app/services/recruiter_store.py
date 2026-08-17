@@ -300,15 +300,38 @@ class RecruiterStore:
         logo and name inference even when PostgreSQL metadata is missing.
         """
         self._ensure_loaded()
+        clean_q = "".join(c for c in (query or "").lower() if c.isalnum())
+        tokens = [t.strip().lower() for t in (query or "").split() if t.strip()]
+
         if state and state.upper() != "ALL":
             where = ["state_upper = ?"]
             params = [state.upper()]
+            order_by = "recruiter_count DESC, cs.company_key ASC"
+
             if query or matched_keys:
                 sub_conds = []
                 if query:
-                    q_str = f"%{query.strip().lower()}%"
-                    sub_conds.append("(LOWER(cs.company_key) LIKE ? OR LOWER(COALESCE(co.dominant_domain, '')) LIKE ?)")
-                    params.extend([q_str, q_str])
+                    token_conds = []
+                    for t in tokens:
+                        token_conds.append("(LOWER(cs.company_key) LIKE ? OR LOWER(COALESCE(co.dominant_domain, '')) LIKE ?)")
+                        params.extend([f"%{t}%", f"%{t}%"])
+                    
+                    fuzzy_sql = f"""(
+                        ({' AND '.join(token_conds)})
+                        OR LOWER(REPLACE(REPLACE(cs.company_key, ' ', ''), '-', '')) LIKE '%{clean_q}%'
+                        OR LOWER(REPLACE(REPLACE(COALESCE(co.dominant_domain, ''), ' ', ''), '-', '')) LIKE '%{clean_q}%'
+                        OR jaro_winkler_similarity(LOWER(REPLACE(REPLACE(cs.company_key, ' ', ''), '-', '')), '{clean_q}') > 0.80
+                        OR jaro_winkler_similarity(LOWER(REPLACE(REPLACE(COALESCE(co.dominant_domain, ''), ' ', ''), '-', '')), '{clean_q}') > 0.80
+                    )"""
+                    sub_conds.append(fuzzy_sql)
+                    order_by = f"""
+                        GREATEST(
+                            jaro_winkler_similarity(LOWER(REPLACE(REPLACE(cs.company_key, ' ', ''), '-', '')), '{clean_q}'),
+                            jaro_winkler_similarity(LOWER(REPLACE(REPLACE(COALESCE(co.dominant_domain, ''), ' ', ''), '-', '')), '{clean_q}')
+                        ) >= 0.88 DESC,
+                        recruiter_count DESC,
+                        cs.company_key ASC
+                    """
                 if matched_keys:
                     placeholders = ", ".join("?" for _ in matched_keys)
                     sub_conds.append(f"cs.company_key IN ({placeholders})")
@@ -324,17 +347,37 @@ class RecruiterStore:
                 LEFT JOIN company_overall co ON cs.company_key = co.company_key
                 WHERE {' AND '.join(where)}
                 GROUP BY cs.company_key, co.dominant_domain
-                ORDER BY recruiter_count DESC, cs.company_key ASC
+                ORDER BY {order_by}
             """, params).fetchall()
         else:
             where = ["1=1"]
             params = []
+            order_by = "recruiter_count DESC, company_key ASC"
+
             if query or matched_keys:
                 sub_conds = []
                 if query:
-                    q_str = f"%{query.strip().lower()}%"
-                    sub_conds.append("(LOWER(company_key) LIKE ? OR LOWER(COALESCE(dominant_domain, '')) LIKE ?)")
-                    params.extend([q_str, q_str])
+                    token_conds = []
+                    for t in tokens:
+                        token_conds.append("(LOWER(company_key) LIKE ? OR LOWER(COALESCE(dominant_domain, '')) LIKE ?)")
+                        params.extend([f"%{t}%", f"%{t}%"])
+                    
+                    fuzzy_sql = f"""(
+                        ({' AND '.join(token_conds)})
+                        OR LOWER(REPLACE(REPLACE(company_key, ' ', ''), '-', '')) LIKE '%{clean_q}%'
+                        OR LOWER(REPLACE(REPLACE(COALESCE(dominant_domain, ''), ' ', ''), '-', '')) LIKE '%{clean_q}%'
+                        OR jaro_winkler_similarity(LOWER(REPLACE(REPLACE(company_key, ' ', ''), '-', '')), '{clean_q}') > 0.80
+                        OR jaro_winkler_similarity(LOWER(REPLACE(REPLACE(COALESCE(dominant_domain, ''), ' ', ''), '-', '')), '{clean_q}') > 0.80
+                    )"""
+                    sub_conds.append(fuzzy_sql)
+                    order_by = f"""
+                        GREATEST(
+                            jaro_winkler_similarity(LOWER(REPLACE(REPLACE(company_key, ' ', ''), '-', '')), '{clean_q}'),
+                            jaro_winkler_similarity(LOWER(REPLACE(REPLACE(COALESCE(dominant_domain, ''), ' ', ''), '-', '')), '{clean_q}')
+                        ) >= 0.88 DESC,
+                        recruiter_count DESC,
+                        company_key ASC
+                    """
                 if matched_keys:
                     placeholders = ", ".join("?" for _ in matched_keys)
                     sub_conds.append(f"company_key IN ({placeholders})")
@@ -348,7 +391,7 @@ class RecruiterStore:
                     dominant_domain
                 FROM company_overall
                 WHERE {' AND '.join(where)}
-                ORDER BY recruiter_count DESC, company_key ASC
+                ORDER BY {order_by}
             """, params).fetchall()
 
         return [

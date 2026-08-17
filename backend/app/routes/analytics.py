@@ -9,7 +9,7 @@ import pandas as pd
 
 from fastapi import APIRouter, Depends, Query, Request, Response, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import text, func, String
+from sqlalchemy import text, func, String, or_
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session
 
@@ -387,8 +387,12 @@ def companies_search(
     matched_keys = []
     if q and q.strip():
         try:
-            pattern = f"%{q.strip()}%"
-            matching_pg = db.query(Company.company_id).filter(Company.company_name.ilike(pattern)).all()
+            tokens = [t.strip() for t in q.split() if t.strip()]
+            q_conds = [Company.company_name.ilike(f"%{q.strip()}%")]
+            for t in tokens:
+                if len(t) >= 3:
+                    q_conds.append(Company.company_name.ilike(f"%{t}%"))
+            matching_pg = db.query(Company.company_id).filter(or_(*q_conds)).limit(100).all()
             matched_keys = [str(r[0]) for r in matching_pg]
         except Exception:
             pass

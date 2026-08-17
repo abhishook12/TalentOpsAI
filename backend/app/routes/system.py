@@ -23,44 +23,24 @@ enricher_process = None
 
 @router.get("/enricher/status")
 def get_status():
-    state = get_enricher_state()
-    # Check if process is actually running if state says 'running' or 'paused'
-    # For simplicity, we just rely on state.last_active or state itself.
-    if state["status"] in ["running", "paused"]:
-        if time.time() - state["last_active"] > 120:
-            # Hasn't updated state in 2 minutes, probably dead
-            state = set_enricher_state({"status": "stopped"})
-    return state
+    from app.services.enrichment_service import enrichment_engine
+    return enrichment_engine.get_status()
 
 @router.post("/enricher/control")
 def control_enricher(req: ControlRequest):
-    global enricher_process
+    from app.services.enrichment_service import enrichment_engine
     
     action = req.action.lower()
-    if action not in ["start", "stop", "pause"]:
-        raise HTTPException(status_code=400, detail="Invalid action")
-        
-    state = get_enricher_state()
-    
     if action == "start":
-        if state["status"] == "running":
-            return {"message": "Already running", "state": state}
-            
-        set_enricher_state({"status": "running"})
-        
-        # If it's completely stopped, we might need to spawn it
-        if state["status"] == "stopped":
-            script_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "scripts", "background_enricher.py")
-            enricher_process = subprocess.Popen(["python", script_path])
-            
+        return enrichment_engine.start()
     elif action == "pause":
-        set_enricher_state({"status": "paused"})
-        
+        return enrichment_engine.pause()
+    elif action == "resume":
+        return enrichment_engine.resume()
     elif action == "stop":
-        set_enricher_state({"status": "stopped"})
-        # In a real scenario we might kill the process, but the loop checks state and exits
-        
-    return {"message": f"Action {action} applied successfully", "state": get_enricher_state()}
+        return enrichment_engine.stop()
+    else:
+        raise HTTPException(status_code=400, detail=f"Invalid action: {action}")
 
 @router.post("/inject-data")
 def inject_data(

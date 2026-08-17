@@ -612,6 +612,15 @@ def visit_stats(db: Session = Depends(get_db), current_user: User = Depends(get_
 @router.get("/enrichment-feed")
 @cached_endpoint(ttl_seconds=30)
 def get_enrichment_feed(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    feed = []
+    try:
+        from app.services.enrichment_service import enrichment_engine
+        live_events = enrichment_engine.get_live_feed()
+        if live_events:
+            feed.extend(live_events)
+    except Exception:
+        pass
+
     try:
         discovered = db.execute(text("""
             SELECT r.recruiter_name, r.title, r.created_at, 'discovery' as type,
@@ -646,7 +655,6 @@ def get_enrichment_feed(db: Session = Depends(get_db), current_user: User = Depe
                 return "Unknown Contact", raw_name
             return raw_name, existing_phone
 
-        feed = []
         for row in discovered:
             ts = row[2].isoformat() if row[2] else None
             if ts and not ts.endswith('Z') and '+' not in ts: ts += 'Z'
@@ -688,7 +696,7 @@ def get_enrichment_feed(db: Session = Depends(get_db), current_user: User = Depe
         feed.sort(key=lambda x: x["timestamp"] or "", reverse=True)
         return {"feed": feed[:50]}
     except Exception as e:
-        return {"feed": []}
+        return {"feed": feed[:50]}
 
 @router.get("/global-activity")
 @cached_endpoint(ttl_seconds=30)

@@ -1,113 +1,51 @@
+"""
+Standalone Background Enrichment Runner
+========================================
+Runs the Zero-Cost Autonomous Enrichment Engine in standalone or daemon mode.
+Can be invoked directly: python scripts/background_enricher.py
+"""
 import os
 import sys
 import time
-import random
 import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from dotenv import load_dotenv
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
+logger = logging.getLogger("background_enricher")
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
-from app.models.models import Recruiter
-from app.services.enrichment_service import jit_enrichment_service
+from app.services.enrichment_service import enrichment_engine
+from app.utils.enricher_state import get_enricher_state
 
-load_dotenv()
-remote_url = os.getenv("DATABASE_URL")
-if not remote_url:
-    remote_url = "postgresql://postgres.qpetzpxmuofuepvrqedk:h2ejQHVen5i5lQkDSR9RaCoz@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres"
-elif remote_url.startswith("postgresql+psycopg://"):
-    remote_url = remote_url.replace("postgresql+psycopg://", "postgresql://")
-
-# Use a connection pool for multithreading, and disable prepared statements for PgBouncer
-engine = create_engine(remote_url, pool_size=20, max_overflow=0, connect_args={"prepare_threshold": None})
-Session = sessionmaker(bind=engine)
-
-def process_recruiter(rec_id):
-    session = Session()
+def main():
+    print("=================================================================")
+    print("=== TALENTOPSAI ZERO-COST AUTONOMOUS ENRICHMENT ENGINE ===")
+    print("=================================================================")
+    print("Starting background worker daemon on unified Parquet/DuckDB dataset...")
+    
+    result = enrichment_engine.start()
+    print(f"Status: {result.get('message')}")
+    
     try:
-        rec = session.query(Recruiter).filter(Recruiter.recruiter_id == rec_id).first()
-        if not rec:
-            return False
-        
-        # Random sleep to avoid instant DDG bans
-        time.sleep(random.uniform(1.0, 5.0))
-        
-        enriched = jit_enrichment_service.enrich_recruiter_sync(session, rec)
-        return enriched
-    except Exception as e:
-        print(f"Error processing {rec_id}: {e}")
-        return False
-    finally:
-        session.close()
-
-from app.utils.enricher_state import get_enricher_state, set_enricher_state
-
-def run_enricher_loop():
-    print("Starting massive scale background enrichment daemon...")
-    set_enricher_state({"status": "running"})
-    attempted_ids = set()
-    while True:
-        # Check State
-        state = get_enricher_state()
-        if state["status"] == "stopped":
-            print("Received STOP command. Exiting daemon gracefully.")
-            break
-        if state["status"] == "paused":
-            print("Received PAUSE command. Pausing for 5 seconds...")
+        while True:
+            state = get_enricher_state()
+            status = state.get("status", "stopped")
+            processed = state.get("records_processed", 0)
+            success = state.get("success_count", 0)
+            phase = state.get("current_phase", "idle")
+            rate = state.get("rate_per_sec", 0)
+            
+            print(f"[{status.upper()}] Processed: {processed:,} | Enriched: {success:,} | Rate: {rate}/s | Phase: {phase}")
+            
+            if status == "stopped":
+                print("Daemon state marked as stopped. Exiting.")
+                break
+                
             time.sleep(5)
-            continue
-            
-        session = Session()
-        try:
-            print("Fetching next batch of recruiters missing data...")
-            # Fetch recruiters missing phone or location
-            # Prioritize those with a company_id
-            query = session.query(Recruiter.recruiter_id).filter(
-                Recruiter.company_id.isnot(None),
-                (Recruiter.phone.is_(None)) | (Recruiter.location.is_(None))
-            )
-            if attempted_ids:
-                # Chunk the NOT IN filter to prevent massive queries if the set gets huge
-                query = query.filter(Recruiter.recruiter_id.notin_(list(attempted_ids)[:50000]))
-                
-            recruiters = query.limit(200).all()
-            
-            if not recruiters:
-                print("No more recruiters to enrich. Sleeping for 1 hour...")
-                time.sleep(3600)
-                continue
-                
-            rec_ids = [r[0] for r in recruiters]
-            attempted_ids.update(rec_ids)
-            print(f"Found {len(rec_ids)} records. Submitting to thread pool...")
-            
-            success_count = 0
-            with ThreadPoolExecutor(max_workers=5) as executor:
-                futures = {executor.submit(process_recruiter, r_id): r_id for r_id in rec_ids}
-                for future in as_completed(futures):
-                    is_success = future.result()
-                    if is_success:
-                        success_count += 1
-                    
-                    # Update state in real-time so UI ticks up instantly
-                    state = get_enricher_state()
-                    set_enricher_state({
-                        "records_processed": state.get("records_processed", 0) + 1,
-                        "success_count": state.get("success_count", 0) + (1 if is_success else 0)
-                    })
-                    
-            print(f"Batch complete. Successfully enriched {success_count} out of {len(rec_ids)}.")
-            
-        except Exception as e:
-            print(f"Daemon Error: {e}")
-            time.sleep(10)
-        finally:
-            session.close()
+    except KeyboardInterrupt:
+        print("\nStopping enrichment daemon gracefully...")
+        enrichment_engine.stop()
+        print("Enrichment daemon stopped.")
 
 if __name__ == "__main__":
-    run_enricher_loop()
-
+    main()

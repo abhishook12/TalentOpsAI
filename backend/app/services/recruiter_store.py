@@ -512,12 +512,12 @@ class RecruiterStore:
             params.extend(hub["cities"])
 
         if company_id is not None:
-            where_clauses.append("company_id = ?")
-            params.append(company_id)
+            where_clauses.append("CAST(company_id AS VARCHAR) = ?")
+            params.append(str(company_id))
 
         if company_key:
             where_clauses.append("CAST(company_id AS VARCHAR) = ?")
-            params.append(company_key)
+            params.append(str(company_key))
 
         if specialization:
             where_clauses.append("LOWER(COALESCE(specialization, '')) LIKE ?")
@@ -671,7 +671,7 @@ class RecruiterStore:
         self._ensure_loaded()
         cur = self._conn.cursor()
         result = cur.execute(
-            "SELECT COUNT(*) FROM recruiters WHERE company_id = ?", [company_id]
+            "SELECT COUNT(*) FROM recruiters WHERE CAST(company_id AS VARCHAR) = ?", [str(company_id)]
         ).fetchone()
         return result[0] if result else 0
 

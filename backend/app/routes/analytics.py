@@ -5,6 +5,7 @@ import logging
 import time
 import asyncio
 import functools
+import re
 import pandas as pd
 
 from fastapi import APIRouter, Depends, Query, Request, Response, HTTPException

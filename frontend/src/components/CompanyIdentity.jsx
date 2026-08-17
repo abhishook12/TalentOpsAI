@@ -75,7 +75,7 @@ export function CompanyIdentity({
     height: size,
     minWidth: size,
     borderRadius: 8,
-    background: '#1D1D1D',
+    background: 'var(--bg-elevated, var(--panel-bg))',
     border: '1px solid var(--card-border)',
     color: 'var(--text-secondary)',
     display: 'flex',
@@ -106,7 +106,7 @@ export function CompanyIdentity({
             minWidth: size,
             borderRadius: 12, 
             objectFit: 'cover',
-            background: '#ffffff',
+            background: 'var(--panel-bg)',
             border: '1px solid var(--card-border)',
             flexShrink: 0
           }}
@@ -123,7 +123,7 @@ export function CompanyIdentity({
 
       {/* Typography */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 16, fontWeight: 600, color: '#ffffff', letterSpacing: '-0.01em', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {displayName}
         </div>
         

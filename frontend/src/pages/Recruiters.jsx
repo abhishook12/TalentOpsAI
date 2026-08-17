@@ -133,7 +133,7 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ fontWeight: 600, color: '#ffffff', fontSize: 14.5, letterSpacing: '-0.01em' }}>{r.recruiter_name}</div>
+                <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14.5, letterSpacing: '-0.01em' }}>{r.recruiter_name}</div>
                 {r.linkedin && (
                   <a href={r.linkedin} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title="LinkedIn Profile" style={{ color: '#0a66c2', display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
                     <i className="ti ti-brand-linkedin" style={{ fontSize: 15 }} />
@@ -223,7 +223,7 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
       </td>
       <td style={{ padding: '24px 20px', color: 'var(--text-secondary)', fontSize: 13, verticalAlign: 'middle' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <div style={{ fontWeight: 600, color: '#fff' }}>{r.state || '—'}</div>
+          <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{r.state || '—'}</div>
           {r.timezone && (
             <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }} title={`Timezone: ${r.timezone}`}>
               <i className="ti ti-clock" style={{ fontSize: 11 }} />
@@ -610,8 +610,8 @@ export default function Recruiters() {
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
             <div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>Recruiters</div>
-              <h1 style={{ fontSize: 24, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.02em', marginBottom: 4 }}>Recruiters</h1>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>Recruiters</div>
+              <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 4 }}>Recruiters</h1>
               <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Manage and explore recruiter records across the database.</p>
             </div>
             
@@ -634,7 +634,7 @@ export default function Recruiters() {
             <div style={{ position: 'relative' }}>
               <i className="ti ti-search" style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 16 }} />
               <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="Search recruiters..."
-                style={{ width: '100%', paddingLeft: 44, height: 44, borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13.5, outline: 'none', background: 'var(--main-bg)', color: '#fff' }} />
+                style={{ width: '100%', paddingLeft: 44, height: 44, borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13.5, outline: 'none', background: 'var(--panel-bg)', color: 'var(--text-primary)' }} />
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', gap: 12 }}>
@@ -701,15 +701,15 @@ export default function Recruiters() {
               </div>
             ) : recruiters.length === 0 ? (
               <div style={{ padding: '100px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+                <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--brand-bg)', border: '1px solid var(--card-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
                   <i className="ti ti-users" style={{ fontSize: 32, color: 'var(--text-muted)' }} />
                 </div>
-                <h3 style={{ fontSize: 18, fontWeight: 600, color: '#ffffff', marginBottom: 8 }}>No recruiters found</h3>
+                <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>No recruiters found</h3>
                 <p style={{ fontSize: 14, color: 'var(--text-secondary)', maxWidth: 400, margin: '0 auto 24px', lineHeight: 1.5 }}>
                   We couldn't find any recruiters matching your current filters. Try adjusting your search criteria or adding a new recruiter to the system.
                 </p>
                 <div style={{ display: 'flex', gap: 12 }}>
-                  <button onClick={clearFilters} style={{ padding: '10px 20px', border: '1px solid var(--card-border)', background: 'var(--main-bg)', color: 'var(--text-primary)', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500, transition: 'all 0.2s ease' }} onMouseEnter={e => e.target.style.background = 'rgba(255,255,255,0.05)'} onMouseLeave={e => e.target.style.background = 'var(--main-bg)'}>
+                  <button onClick={clearFilters} style={{ padding: '10px 20px', border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500, transition: 'all 0.2s ease' }} onMouseEnter={e => e.target.style.background = 'var(--hover-bg)'} onMouseLeave={e => e.target.style.background = 'var(--panel-bg)'}>
                     Clear Filters
                   </button>
                   <button onClick={() => setModal('add')} className="cc-primary-button" style={{ padding: '10px 20px', fontSize: 13, fontWeight: 500 }}>
@@ -720,7 +720,7 @@ export default function Recruiters() {
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                  <thead style={{ position: 'sticky', top: 0, background: 'rgba(15, 15, 35, 0.95)', zIndex: 10 }}>
+                  <thead style={{ position: 'sticky', top: 0, background: 'var(--table-header-bg, var(--panel-bg))', zIndex: 10 }}>
                     <tr>
                       <th style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '20px 24px', borderBottom: '1px solid var(--card-border)' }}>Recruiter</th>
                       <th style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '20px 20px', borderBottom: '1px solid var(--card-border)' }}>Company</th>

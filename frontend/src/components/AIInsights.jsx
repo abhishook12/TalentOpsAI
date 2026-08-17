@@ -72,7 +72,7 @@ export default function AIInsights() {
                   <Icon size={22} strokeWidth={2.5} />
                 </div>
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: '#ffffff', lineHeight: 1.4 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.4 }}>
                     {insight.text}
                   </div>
                 </div>

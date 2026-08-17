@@ -674,7 +674,7 @@ export default function AISearch() {
                 width: 34,
                 height: 34,
                 borderRadius: 6,
-                background: 'var(--brand)', color: '#ffffff',
+                background: 'var(--brand)', color: 'var(--text-inverse)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -767,7 +767,7 @@ export default function AISearch() {
                       width: 18,
                       height: 18,
                       borderRadius: 999,
-                      background: 'var(--brand)', color: '#ffffff',
+                      background: 'var(--brand)', color: 'var(--text-inverse)',
                       fontSize: 10,
                       display: 'flex',
                       alignItems: 'center',
@@ -859,7 +859,7 @@ export default function AISearch() {
                       padding: '9px 12px',
                       borderRadius: 6,
                       border: '1px solid var(--card-border)',
-                      background: 'var(--brand)', color: '#ffffff',
+                      background: 'var(--brand)', color: 'var(--text-inverse)',
                       fontSize: 12,
                       fontWeight: 700,
                       cursor: 'pointer',
@@ -1091,7 +1091,7 @@ export default function AISearch() {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <button onClick={() => fireSoon('Share profile')} style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--brand)', color: '#ffffff', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
+                <button onClick={() => fireSoon('Share profile')} style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--brand)', color: 'var(--text-inverse)', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
                   <i className="ti ti-share-2" style={{ marginRight: 8 }} />
                   Share profile
                 </button>

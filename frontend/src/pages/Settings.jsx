@@ -230,7 +230,7 @@ export default function Settings() {
                 <div style={{ padding: 32 }}>
                   {/* Profile Picture */}
                   <div style={{ display: 'flex', gap: 24, alignItems: 'center', marginBottom: 32 }}>
-                    <div style={{ width: 80, height: 80, borderRadius: '50%', background: '#1D1D1D', display: 'grid', placeItems: 'center', color: '#ffffff', fontSize: 32, fontWeight: 800, border: '4px solid var(--card-bg)' }}>
+                    <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--bg-elevated, var(--panel-bg))', display: 'grid', placeItems: 'center', color: 'var(--text-primary)', fontSize: 32, fontWeight: 800, border: '4px solid var(--card-bg)' }}>
                       {user?.first_name?.[0] || user?.email?.[0]?.toUpperCase() || 'A'}
                     </div>
                     <div>
@@ -334,7 +334,7 @@ export default function Settings() {
                     <h3 style={{ margin: '0 0 16px', fontSize: 15, color: 'var(--text-primary)', fontWeight: 500 }}>Active Sessions</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                       <div style={{ padding: 16, background: 'var(--bg-base)', border: '1px solid var(--card-border)', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 16 }}>
-                        <div style={{ width: 40, height: 40, borderRadius: 8, background: '#1D1D1D', color: 'var(--text-primary)', display: 'grid', placeItems: 'center' }}><Laptop size={20} /></div>
+                        <div style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--bg-elevated, var(--panel-bg))', color: 'var(--text-primary)', display: 'grid', placeItems: 'center' }}><Laptop size={20} /></div>
                         <div style={{ flex: 1 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <div style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: 14 }}>Windows / Chrome</div>

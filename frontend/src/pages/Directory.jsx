@@ -810,11 +810,11 @@ export default function Directory() {
       {selectedCount > 0 && !isComposeOpen && createPortal(
         <div style={{
           position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)',
-          backgroundColor: '#1e1e1e', border: '1px solid #333', borderRadius: '6px',
+          backgroundColor: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: '8px',
           padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '16px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.4)', zIndex: 99999,
+          boxShadow: 'var(--shadow-lg, 0 8px 32px rgba(0,0,0,0.2))', zIndex: 99999,
         }}>
-          <span style={{ color: '#e0e0e0', fontSize: '13px', fontWeight: 600 }}>
+          <span style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600 }}>
             Want to send bulk mail to {selectedCount} selected people?
           </span>
           <button 

@@ -153,15 +153,15 @@ export default function Sidebar() {
                 padding: '10px 12px',
                 borderRadius: 6,
                 textDecoration: 'none',
-                color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
-                background: active ? '#1B1B1B' : 'transparent',
+                color: active ? 'var(--sidebar-active-color, var(--text-primary))' : 'var(--text-secondary)',
+                background: active ? 'var(--sidebar-active-bg)' : 'transparent',
                 fontSize: 13,
-                fontWeight: active ? 500 : 400,
+                fontWeight: active ? 600 : 400,
                 position: 'relative'
               }}
               onMouseEnter={(event) => {
                 if (active) return
-                event.currentTarget.style.background = 'var(--hover-bg, #1D1D1D)'
+                event.currentTarget.style.background = 'var(--hover-bg)'
                 event.currentTarget.style.color = 'var(--text-primary)'
               }}
               onMouseLeave={(event) => {
@@ -210,7 +210,7 @@ export default function Sidebar() {
             {user.avatar_url ? (
               <img src={user.avatar_url} alt="User Avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
             ) : (
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#262626', display: 'grid', placeItems: 'center', color: '#F5F5F5', fontWeight: 500, fontSize: 12 }}>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--card-border)', display: 'grid', placeItems: 'center', color: 'var(--text-primary)', fontWeight: 600, fontSize: 12 }}>
                 {user.first_name?.[0]}
               </div>
             )}

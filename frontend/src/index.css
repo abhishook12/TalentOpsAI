@@ -205,10 +205,15 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     --card-bg: #161616;
     --bg-primary: #0B0B0C;
     --bg-surface: #121212;
+    --bg-elevated: #1a1a1c;
     --card-border: #262626;
-    --card-border-strong: #232323;
+    --card-border-strong: #333333;
     --sidebar-bg: #101010;
     --sidebar-border: #262626;
+    --sidebar-active-bg: #222224;
+    --sidebar-active-color: #F5F5F5;
+    --hover-bg: rgba(255, 255, 255, 0.05);
+    --table-header-bg: #141416;
     --text-primary: #F5F5F5;
     --text-secondary: #B3B3B3;
     --text-muted: #7A7A7A;
@@ -216,40 +221,46 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     --brand: #FFFFFF;
     --brand-strong: #D4D4D4;
     --brand-bg: rgba(255, 255, 255, 0.05);
-    --success: #2E7D32;
-    --warning: #B7791F;
-    --danger: #B3261E;
+    --success: #10B981;
+    --warning: #F59E0B;
+    --danger: #EF4444;
     --shadow: none;
     --shadow-lg: none;
     --modal-backdrop-bg: rgba(11, 11, 12, 0.8);
-    --glass-panel-bg: rgba(11, 11, 12, 0.85);
-    --glass-card-bg: rgba(11, 11, 12, 0.85);
+    --glass-panel-bg: rgba(18, 18, 20, 0.85);
+    --glass-card-bg: rgba(22, 22, 24, 0.85);
   }
 
-  html[data-theme='light'] {
+  html[data-theme='light'],
+  [data-theme='light'] {
     color-scheme: light;
-    --main-bg: #F9FAFB;
+    --main-bg: #F8FAFC;
     --panel-bg: #FFFFFF;
     --card-bg: #FFFFFF;
-    --bg-primary: #F3F4F6;
+    --bg-primary: #F1F5F9;
     --bg-surface: #FFFFFF;
-    --card-border: #E5E7EB;
-    --card-border-strong: #D1D5DB;
-    --sidebar-bg: #F9FAFB;
-    --sidebar-border: #E5E7EB;
-    --text-primary: #111827;
-    --text-secondary: #4B5563;
-    --text-muted: #6B7280;
+    --bg-elevated: #F1F5F9;
+    --card-border: #E2E8F0;
+    --card-border-strong: #CBD5E1;
+    --sidebar-bg: #FFFFFF;
+    --sidebar-border: #E2E8F0;
+    --sidebar-active-bg: #E2E8F0;
+    --sidebar-active-color: #0F172A;
+    --hover-bg: #F1F5F9;
+    --table-header-bg: #F8FAFC;
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #64748B;
     --text-inverse: #FFFFFF;
-    --brand: #000000;
-    --brand-strong: #1F2937;
-    --brand-bg: rgba(0, 0, 0, 0.05);
+    --brand: #0F172A;
+    --brand-strong: #1E293B;
+    --brand-bg: rgba(15, 23, 42, 0.06);
     --success: #059669;
     --warning: #D97706;
     --danger: #DC2626;
-    --shadow: 0 1px 3px rgba(0,0,0,0.1);
-    --shadow-lg: 0 4px 6px rgba(0,0,0,0.1);
-    --modal-backdrop-bg: rgba(255, 255, 255, 0.8);
+    --shadow: 0 1px 3px rgba(0,0,0,0.05);
+    --shadow-lg: 0 4px 6px -1px rgba(0,0,0,0.08);
+    --modal-backdrop-bg: rgba(15, 23, 42, 0.45);
     --glass-panel-bg: rgba(255, 255, 255, 0.85);
     --glass-card-bg: rgba(255, 255, 255, 0.85);
   }
@@ -258,17 +269,13 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
   html, body, #root {
     min-height: 100%;
     margin: 0;
-    background:
-      
-      var(--bg-primary);
+    background: var(--bg-primary);
     color: var(--text-primary);
     font-family: var(--font);
-    
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  html[data-theme='dark'] { color-scheme: dark; }
   html[data-theme='dark'] body,
   html[data-theme='dark'] #root {
     background: var(--main-bg);
@@ -281,6 +288,15 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
   html[data-theme='dark'] .cc-footer {
     background: rgba(22,22,22,0.95) !important;
     border-top-color: #313131 !important;
+  }
+
+  html[data-theme='light'] .cc-content {
+    background: var(--bg-primary) !important;
+  }
+
+  html[data-theme='light'] .cc-footer {
+    background: rgba(255,255,255,0.95) !important;
+    border-top-color: var(--card-border) !important;
   }
 
 

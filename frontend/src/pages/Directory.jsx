@@ -509,7 +509,7 @@ export default function Directory() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '340px 300px 1fr', gap: 12, flex: 1, minHeight: 0, alignItems: 'stretch' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '390px 290px 1fr', gap: 12, flex: 1, minHeight: 0, alignItems: 'stretch' }}>
         <div className="card" style={{ padding: 14, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 10 }}>1. Search Company</div>
           <input
@@ -533,7 +533,7 @@ export default function Directory() {
                   onClick={() => selectCompany(company)}
                   style={{
                     textAlign: 'left',
-                    padding: 12,
+                    padding: '10px 12px',
                     borderRadius: 6,
                     border: active ? '1px solid rgba(24,95,165,0.35)' : '1px solid var(--card-border)',
                     background: active ? 'rgba(24,95,165,0.08)' : 'var(--panel-bg)',
@@ -541,18 +541,18 @@ export default function Directory() {
                     color: 'var(--text-primary)',
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
                       <div style={{ 
-                        width: 28, 
-                        height: 28, 
+                        width: 26, 
+                        height: 26, 
                         borderRadius: 6, 
                         border: '1px solid var(--card-border)',
                         background: 'var(--bg-base)',
                         display: 'flex', 
                         alignItems: 'center', 
                         justifyContent: 'center',
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: 700,
                         color: 'var(--text-secondary)',
                         flexShrink: 0
@@ -566,11 +566,12 @@ export default function Directory() {
                           metadata={company.website || company.email_pattern || 'Domain unlisted'}
                           logo_url={company.logo_url}
                           interactive={false}
-                          size={48}
+                          size={40}
+                          logoSize={26}
                           style={{ padding: 0 }}
                         />
                       {(company.tags || company.notes || company.linkedin_url) && (
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8, paddingLeft: 44 + 16 }}>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8, paddingLeft: 40 + 12 }}>
                           {company.linkedin_url && (
                             <a 
                               href={company.linkedin_url} 
@@ -578,13 +579,13 @@ export default function Directory() {
                               rel="noopener noreferrer"
                               onClick={(e) => e.stopPropagation()}
                               title="LinkedIn Profile"
-                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, background: '#0a66c2', color: '#fff', borderRadius: 6, textDecoration: 'none', flexShrink: 0 }}
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, background: '#0a66c2', color: '#fff', borderRadius: 5, textDecoration: 'none', flexShrink: 0 }}
                             >
-                              <i className="ti ti-brand-linkedin" style={{ fontSize: 14 }} />
+                              <i className="ti ti-brand-linkedin" style={{ fontSize: 13 }} />
                             </a>
                           )}
                           {company.notes && (
-                            <div title="Has internal notes" style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px', background: 'rgba(245, 158, 11, 0.1)', color: '#fbbf24', borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+                            <div title="Has internal notes" style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 6px', background: 'rgba(245, 158, 11, 0.1)', color: '#fbbf24', borderRadius: 4, fontSize: 10, fontWeight: 600 }}>
                               <i className="ti ti-file-description" /> Notes
                             </div>
                           )}
@@ -593,7 +594,7 @@ export default function Directory() {
                               const tags = typeof company.tags === 'string' ? JSON.parse(company.tags) : company.tags;
                               if (!Array.isArray(tags)) return null;
                               return tags.slice(0, 3).map((tag, i) => (
-                                <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '2px 8px', background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, fontSize: 10, fontWeight: 500, whiteSpace: 'nowrap' }}>
                                   {tag}
                                 </div>
                               ))
@@ -604,8 +605,8 @@ export default function Directory() {
                         </div>
                       )}
                       </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                      <div style={{ fontFamily: 'var(--mono)', fontWeight: 900 }}>{company.recruiter_count || 0}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
+                      <div style={{ fontFamily: 'var(--mono)', fontWeight: 800, fontSize: 13 }}>{(company.recruiter_count || 0).toLocaleString()}</div>
                       {(() => {
                         const count = company.recruiter_count || 0;
                         if (count >= 500) {

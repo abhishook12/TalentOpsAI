@@ -188,6 +188,25 @@ class RecruiterStore:
             
             # Pre-aggregate company stats to prevent API timeouts on every search
             self._conn.execute(f"""
+                CREATE TABLE company_overall AS 
+                SELECT
+                    CAST(company_id AS VARCHAR) AS company_key,
+                    COUNT(*) AS recruiter_count,
+                    MODE(LOWER(SPLIT_PART(email, '@', 2))) FILTER (
+                        WHERE email IS NOT NULL
+                          AND email LIKE '%@%'
+                          AND LOWER(SPLIT_PART(email, '@', 2)) NOT IN ({free_domains_sql})
+                          AND LENGTH(SPLIT_PART(email, '@', 2)) > 2
+                    ) AS dominant_domain
+                FROM recruiters
+                WHERE company_id IS NOT NULL 
+                  AND TRIM(CAST(company_id AS VARCHAR)) != ''
+                  AND LOWER(TRIM(CAST(company_id AS VARCHAR))) NOT IN ('need to fill data', 'unknown', 'n/a', 'none', 'null')
+                  AND INSTR(CAST(company_id AS VARCHAR), '|') = 0
+                GROUP BY company_key
+            """)
+
+            self._conn.execute(f"""
                 CREATE TABLE company_summary AS 
                 SELECT
                     CAST(company_id AS VARCHAR) AS company_key,
@@ -280,25 +299,39 @@ class RecruiterStore:
         logo and name inference even when PostgreSQL metadata is missing.
         """
         self._ensure_loaded()
-        where = ["1=1"]
-        params = []
-        if query:
-            where.append("LOWER(company_key) LIKE ?")
-            params.append(f"%{query.strip().lower()}%")
         if state and state.upper() != "ALL":
-            where.append("state_upper = ?")
-            params.append(state.upper())
+            where = ["state_upper = ?"]
+            params = [state.upper()]
+            if query:
+                where.append("LOWER(cs.company_key) LIKE ?")
+                params.append(f"%{query.strip().lower()}%")
+            rows = self._conn.execute(f"""
+                SELECT
+                    cs.company_key,
+                    SUM(cs.recruiter_count) AS recruiter_count,
+                    COALESCE(co.dominant_domain, MAX(cs.dominant_domain)) AS dominant_domain
+                FROM company_summary cs
+                LEFT JOIN company_overall co ON cs.company_key = co.company_key
+                WHERE {' AND '.join(where)}
+                GROUP BY cs.company_key, co.dominant_domain
+                ORDER BY recruiter_count DESC, cs.company_key ASC
+            """, params).fetchall()
+        else:
+            where = ["1=1"]
+            params = []
+            if query:
+                where.append("LOWER(company_key) LIKE ?")
+                params.append(f"%{query.strip().lower()}%")
+            rows = self._conn.execute(f"""
+                SELECT
+                    company_key,
+                    recruiter_count,
+                    dominant_domain
+                FROM company_overall
+                WHERE {' AND '.join(where)}
+                ORDER BY recruiter_count DESC, company_key ASC
+            """, params).fetchall()
 
-        rows = self._conn.execute(f"""
-            SELECT
-                company_key,
-                SUM(recruiter_count) AS recruiter_count,
-                MAX(dominant_domain) AS dominant_domain
-            FROM company_summary
-            WHERE {' AND '.join(where)}
-            GROUP BY company_key
-            ORDER BY recruiter_count DESC, company_key ASC
-        """, params).fetchall()
         return [
             {
                 "company_key": str(key),

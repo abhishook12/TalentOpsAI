@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from datetime import datetime
+from sqlalchemy.exc import IntegrityError
+from datetime import datetime, timezone
 from typing import Optional
 from user_agents import parse
 from ..database import get_db
@@ -84,7 +85,10 @@ def start_session(payload: SessionStartPayload, request: Request, db: Session = 
             ip_address=ip
         ))
             
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
     return {"ok": True}
 
 class SessionEventPayload(BaseModel):

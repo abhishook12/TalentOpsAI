@@ -6,6 +6,7 @@ the existing SQLAlchemy-based queries but read from compressed Parquet.
 The site sees ONE unified dataset regardless of storage backend.
 """
 import os
+import re
 import logging
 import threading
 import time
@@ -301,7 +302,10 @@ class RecruiterStore:
         """
         self._ensure_loaded()
         clean_q = "".join(c for c in (query or "").lower() if c.isalnum())
-        tokens = [t.strip().lower() for t in (query or "").split() if t.strip()]
+        raw_tokens = [re.sub(r'[^a-zA-Z0-9]', '', t.lower()) for t in (query or "").split() if re.sub(r'[^a-zA-Z0-9]', '', t.lower())]
+        stop_words = {'llc', 'inc', 'corp', 'co', 'ltd', 'company', 'group', 'services'}
+        meaningful_tokens = [t for t in raw_tokens if t not in stop_words]
+        tokens = meaningful_tokens if meaningful_tokens else raw_tokens
 
         if state and state.upper() != "ALL":
             where = ["state_upper = ?"]
@@ -328,7 +332,7 @@ class RecruiterStore:
                         GREATEST(
                             jaro_winkler_similarity(LOWER(REPLACE(REPLACE(cs.company_key, ' ', ''), '-', '')), '{clean_q}'),
                             jaro_winkler_similarity(LOWER(REPLACE(REPLACE(COALESCE(co.dominant_domain, ''), ' ', ''), '-', '')), '{clean_q}')
-                        ) >= 0.88 DESC,
+                        ) DESC,
                         recruiter_count DESC,
                         cs.company_key ASC
                     """
@@ -338,7 +342,8 @@ class RecruiterStore:
                     params.extend(matched_keys)
                 where.append(f"({' OR '.join(sub_conds)})")
 
-            rows = self._conn.execute(f"""
+            cur = self._conn.cursor()
+            rows = cur.execute(f"""
                 SELECT
                     cs.company_key,
                     SUM(cs.recruiter_count) AS recruiter_count,
@@ -374,7 +379,7 @@ class RecruiterStore:
                         GREATEST(
                             jaro_winkler_similarity(LOWER(REPLACE(REPLACE(company_key, ' ', ''), '-', '')), '{clean_q}'),
                             jaro_winkler_similarity(LOWER(REPLACE(REPLACE(COALESCE(dominant_domain, ''), ' ', ''), '-', '')), '{clean_q}')
-                        ) >= 0.88 DESC,
+                        ) DESC,
                         recruiter_count DESC,
                         company_key ASC
                     """
@@ -384,7 +389,8 @@ class RecruiterStore:
                     params.extend(matched_keys)
                 where.append(f"({' OR '.join(sub_conds)})")
 
-            rows = self._conn.execute(f"""
+            cur = self._conn.cursor()
+            rows = cur.execute(f"""
                 SELECT
                     company_key,
                     recruiter_count,
@@ -406,7 +412,12 @@ class RecruiterStore:
     # ─── Core Query Methods ───
 
     def _df_to_dict(self, df):
-        if df.empty:
+        if df is None:
+            return []
+        try:
+            if df.empty:
+                return []
+        except Exception:
             return []
         import math
         import pandas as pd
@@ -430,10 +441,11 @@ class RecruiterStore:
     def get_by_id(self, recruiter_id: int) -> Optional[Dict[str, Any]]:
         """Get a single recruiter by ID."""
         self._ensure_loaded()
-        result = self._conn.execute(
+        cur = self._conn.cursor()
+        result = cur.execute(
             "SELECT * FROM recruiters WHERE recruiter_id = ?", [recruiter_id]
         ).fetchdf()
-        if result.empty:
+        if result is None or result.empty:
             return None
         return self._df_to_dict(result)[0]
 
@@ -555,8 +567,9 @@ class RecruiterStore:
         where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
 
         # Count
+        cur = self._conn.cursor()
         count_sql = f"SELECT COUNT(*) FROM recruiters WHERE {where_sql}"
-        total_count = self._conn.execute(count_sql, params).fetchone()[0]
+        total_count = cur.execute(count_sql, params).fetchone()[0]
 
         # Sort
         valid_sorts = {
@@ -579,7 +592,7 @@ class RecruiterStore:
         """
         params.extend([limit, offset])
 
-        df = self._conn.execute(query_sql, params).fetchdf()
+        df = cur.execute(query_sql, params).fetchdf()
         results = self._df_to_dict(df)
 
         return results, total_count
@@ -649,13 +662,15 @@ class RecruiterStore:
         score_params = [q_lower, q_lower, q_like, q_lower, q_like, q_like]
         all_params = score_params + params + [limit]
 
-        df = self._conn.execute(sql, all_params).fetchdf()
+        cur = self._conn.cursor()
+        df = cur.execute(sql, all_params).fetchdf()
         return self._df_to_dict(df)
 
     def count_by_company(self, company_id: int) -> int:
         """Count recruiters for a given company."""
         self._ensure_loaded()
-        result = self._conn.execute(
+        cur = self._conn.cursor()
+        result = cur.execute(
             "SELECT COUNT(*) FROM recruiters WHERE company_id = ?", [company_id]
         ).fetchone()
         return result[0] if result else 0
@@ -663,7 +678,8 @@ class RecruiterStore:
     def company_recruiter_counts(self) -> Dict[int, int]:
         """Get recruiter counts for all companies."""
         self._ensure_loaded()
-        df = self._conn.execute("""
+        cur = self._conn.cursor()
+        df = cur.execute("""
             SELECT company_id, COUNT(*) as cnt 
             FROM recruiters 
             WHERE company_id IS NOT NULL
@@ -682,14 +698,15 @@ class RecruiterStore:
             "parquet_exists": os.path.exists(PARQUET_FILE),
         }
         if self._loaded and self._conn:
-            stats["with_company"] = self._conn.execute(
+            cur = self._conn.cursor()
+            stats["with_company"] = cur.execute(
                 "SELECT COUNT(*) FROM recruiters WHERE company_id IS NOT NULL"
             ).fetchone()[0]
-            stats["with_phone"] = self._conn.execute(
+            stats["with_phone"] = cur.execute(
                 "SELECT COUNT(*) FROM recruiters WHERE phone IS NOT NULL AND phone != ''"
             ).fetchone()[0]
             stats["email_status_breakdown"] = dict(
-                self._conn.execute(
+                cur.execute(
                     "SELECT COALESCE(email_status, 'unknown'), COUNT(*) FROM recruiters GROUP BY email_status"
                 ).fetchall()
             )

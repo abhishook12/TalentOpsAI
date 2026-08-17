@@ -481,6 +481,15 @@ def search_recruiters(
     return formatted
 
 from sqlalchemy.orm import load_only
+from ..services.recruiter_store import METRO_HUBS
+
+@router.get("/metro-hubs")
+def get_metro_hubs(current_user: User = Depends(get_current_user_from_request)):
+    """Return available metropolitan hiring clusters."""
+    return [
+        {"id": k, "name": v["name"], "states": v["states"], "top_cities": v["cities"][:4]}
+        for k, v in METRO_HUBS.items()
+    ]
 
 @router.get("")
 @router.get("/")
@@ -496,6 +505,12 @@ def get_recruiters(
     company_id: Optional[int] = None,
     company_key: Optional[str] = None,
     title: Optional[str] = None,
+    specialization_sector: Optional[str] = None,
+    seniority_level: Optional[str] = None,
+    timezone_code: Optional[str] = None,
+    company_scale: Optional[str] = None,
+    metro_hub: Optional[str] = None,
+    is_deliverable: Optional[bool] = None,
     has_phone: Optional[bool] = None,
     missing_email: Optional[bool] = None,
     is_active: Optional[bool] = None,
@@ -512,7 +527,7 @@ def get_recruiters(
     print(f"GET /recruiters/ CALLED! needs_review={needs_review}", flush=True)
     # Cache ALL recruiter list queries aggressively
     data_version = recruiter_store.data_version
-    cache_key = f"rec_list_duckdb_{data_version}_{current_user.id}_{page}_{limit}_{search or ''}_{state or ''}_{company_id or ''}_{company_key or ''}_{sort_by}_{sort_desc}_{needs_review}_{has_phone}_{is_active}_{data_source or ''}"
+    cache_key = f"rec_list_duckdb_{data_version}_{current_user.id}_{page}_{limit}_{search or ''}_{state or ''}_{metro_hub or ''}_{company_id or ''}_{company_key or ''}_{sort_by}_{sort_desc}_{needs_review}_{has_phone}_{is_active}_{is_deliverable}_{specialization_sector or ''}_{seniority_level or ''}_{timezone_code or ''}_{company_scale or ''}_{data_source or ''}"
     cached = analytics_cache.get(cache_key)
     if cached is not None:
         return cached
@@ -523,10 +538,16 @@ def get_recruiters(
         limit=limit,
         search=search,
         state=state,
+        metro_hub=metro_hub,
         company_id=company_id,
         company_key=company_key,
         company_name=company,
         specialization=title,
+        specialization_sector=specialization_sector,
+        seniority_level=seniority_level,
+        timezone_code=timezone_code,
+        company_scale=company_scale,
+        is_deliverable=is_deliverable,
         has_phone=has_phone,
         is_active=is_active,
         needs_review=needs_review,
@@ -551,7 +572,6 @@ def get_recruiters(
             numeric_value = float(value)
             if numeric_value.is_integer():
                 val_int = int(numeric_value)
-                # Filter out values that exceed PostgreSQL 32-bit integer limits
                 if -2147483648 <= val_int <= 2147483647:
                     comp_ids.append(val_int)
         except (TypeError, ValueError):
@@ -559,10 +579,19 @@ def get_recruiters(
     companies_dict = {}
     if comp_ids:
         try:
-            companies = db.query(Company).filter(Company.company_id.in_(comp_ids)).all()
-            companies_dict = {c.company_id: c for c in companies}
+            # Only query IDs not already cached
+            uncached_ids = [cid for cid in comp_ids if not analytics_cache.get(f"comp_obj_{cid}")]
+            if uncached_ids:
+                companies = db.query(Company).filter(Company.company_id.in_(uncached_ids)).all()
+                for c in companies:
+                    analytics_cache.set(f"comp_obj_{c.company_id}", c, ttl=600)
+            
+            for cid in comp_ids:
+                cached_comp = analytics_cache.get(f"comp_obj_{cid}")
+                if cached_comp:
+                    companies_dict[cid] = cached_comp
         except Exception as e:
-            logger.warning(f"Failed to fetch PostgreSQL company details for recruiters: {e}")
+            logger.warning(f"Failed to fetch company details for recruiters: {e}")
             try:
                 db.rollback()
             except Exception:
@@ -626,12 +655,20 @@ def get_recruiters(
             "company_id": r.get("company_id"),
             "company_name": c_name,
             "company_domain": company_domain,
+            "logo_url": r.get("logo_url") or (comp.logo_url if comp else None) or (f"https://www.google.com/s2/favicons?domain={company_domain}&sz=128" if company_domain else None),
             "company": _basic_company(comp),
             "location": r.get("location") or (comp.location if comp else None),
             "state": r.get("state"),
             "normalized_city": r.get("normalized_city"),
             "completeness_score": r.get("completeness_score", 0),
             "quality_score": r.get("quality_score", 0),
+            "trust_score": r.get("trust_score", 95),
+            "seniority_level": r.get("seniority_level", "Specialist"),
+            "timezone": r.get("timezone", "America/New_York"),
+            "timezone_code": r.get("timezone_code", "ET"),
+            "company_scale": r.get("company_scale", "Boutique"),
+            "is_deliverable": bool(r.get("is_deliverable", True)),
+            "deliverability_status": r.get("deliverability_status", "valid_mx"),
             "needs_review": r.get("needs_review", False),
             "review_reason": r.get("review_reason"),
             "location_confidence": r.get("location_confidence"),

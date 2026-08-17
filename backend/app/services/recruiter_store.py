@@ -31,6 +31,49 @@ except OSError:
 
 PARQUET_FILE = os.path.join(PARQUET_DIR, "recruiters_full.parquet")
 
+METRO_HUBS = {
+    "SF_BAY_AREA": {
+        "name": "San Francisco Bay Area",
+        "states": ["CA"],
+        "cities": ["san francisco", "san jose", "oakland", "palo alto", "sunnyvale", "mountain view", "santa clara", "fremont", "berkeley", "san mateo", "redwood city", "cupertino", "menlo park", "pleasanton", "walnut creek", "san bruno", "santa cruz"]
+    },
+    "NYC_TRI_STATE": {
+        "name": "New York Tri-State Metro",
+        "states": ["NY", "NJ", "CT"],
+        "cities": ["new york", "new york city", "nyc", "brooklyn", "manhattan", "queens", "jersey city", "hoboken", "stamford", "white plains", "newark", "princeton", "morristown", "greenwich", "bronx", "staten island"]
+    },
+    "SEATTLE_METRO": {
+        "name": "Seattle–Bellevue Tech Hub",
+        "states": ["WA"],
+        "cities": ["seattle", "bellevue", "redmond", "kirkland", "renton", "bothell", "tacoma", "everett"]
+    },
+    "TEXAS_TRIANGLE": {
+        "name": "Texas Innovation Triangle",
+        "states": ["TX"],
+        "cities": ["austin", "dallas", "houston", "fort worth", "plano", "irving", "arlington", "san antonio", "frisco", "richardson", "the woodlands", "round rock"]
+    },
+    "RESEARCH_TRIANGLE": {
+        "name": "Research Triangle & Charlotte",
+        "states": ["NC"],
+        "cities": ["raleigh", "durham", "chapel hill", "cary", "charlotte", "morrisville", "greensboro", "winston-salem", "research triangle park", "wake forest"]
+    },
+    "GREATER_BOSTON": {
+        "name": "Greater Boston Biotech & Tech",
+        "states": ["MA"],
+        "cities": ["boston", "cambridge", "waltham", "somerville", "quincy", "newton", "burlington", "framingham", "worcester", "lexington"]
+    },
+    "CHICAGO_METRO": {
+        "name": "Greater Chicago Metro",
+        "states": ["IL"],
+        "cities": ["chicago", "naperville", "evanston", "schaumburg", "oak brook", "downers grove", "rosemont", "aurora", "deerfield"]
+    },
+    "DMV_CAPITAL": {
+        "name": "Washington DC Capital Metro",
+        "states": ["DC", "VA", "MD"],
+        "cities": ["washington", "arlington", "alexandria", "bethesda", "reston", "mclean", "tysons", "herndon", "silver spring", "rockville", "fairfax", "vienna", "annapolis"]
+    }
+}
+
 # Lazy import duckdb — only when needed
 _duckdb = None
 def _get_duckdb():
@@ -305,10 +348,16 @@ class RecruiterStore:
         limit: int = 50,
         search: Optional[str] = None,
         state: Optional[str] = None,
+        metro_hub: Optional[str] = None,
         company_id: Optional[int] = None,
         company_key: Optional[str] = None,
         company_name: Optional[str] = None,
         specialization: Optional[str] = None,
+        specialization_sector: Optional[str] = None,
+        seniority_level: Optional[str] = None,
+        timezone_code: Optional[str] = None,
+        company_scale: Optional[str] = None,
+        is_deliverable: Optional[bool] = None,
         has_phone: Optional[bool] = None,
         is_active: Optional[bool] = None,
         needs_review: Optional[bool] = None,
@@ -344,6 +393,17 @@ class RecruiterStore:
             where_clauses.append("UPPER(COALESCE(state, '')) = ?")
             params.append(state.upper())
 
+        if metro_hub and metro_hub.upper() in METRO_HUBS:
+            hub = METRO_HUBS[metro_hub.upper()]
+            states_ph = ",".join(["?"] * len(hub["states"]))
+            cities_ph = ",".join(["?"] * len(hub["cities"]))
+            where_clauses.append(f"""(
+                UPPER(COALESCE(state, '')) IN ({states_ph}) 
+                AND LOWER(COALESCE(normalized_city, '')) IN ({cities_ph})
+            )""")
+            params.extend(hub["states"])
+            params.extend(hub["cities"])
+
         if company_id is not None:
             where_clauses.append("company_id = ?")
             params.append(company_id)
@@ -355,6 +415,26 @@ class RecruiterStore:
         if specialization:
             where_clauses.append("LOWER(COALESCE(specialization, '')) LIKE ?")
             params.append(f"%{specialization.lower()}%")
+
+        if specialization_sector:
+            where_clauses.append("LOWER(COALESCE(specialization, '')) LIKE ?")
+            params.append(f"%{specialization_sector.lower()}%")
+
+        if seniority_level:
+            where_clauses.append("seniority_level = ?")
+            params.append(seniority_level)
+
+        if timezone_code:
+            where_clauses.append("timezone_code = ?")
+            params.append(timezone_code.upper())
+
+        if company_scale:
+            where_clauses.append("company_scale = ?")
+            params.append(company_scale)
+
+        if is_deliverable is not None:
+            where_clauses.append("is_deliverable = ?")
+            params.append(is_deliverable)
 
         if has_phone is True:
             where_clauses.append("phone IS NOT NULL AND phone != ''")

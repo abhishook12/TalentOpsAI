@@ -145,9 +145,38 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
                   </div>
                 )}
               </div>
-              {r.specialization && <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{r.specialization} Recruiter</div>}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {r.specialization && <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{r.specialization}</div>}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
                 <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{r.email?.toLowerCase()}</div>
+                {r.seniority_level && r.seniority_level !== 'Specialist' && (
+                  <div style={{ 
+                    display: 'inline-flex', alignItems: 'center', gap: 3, 
+                    padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700,
+                    background: r.seniority_level === 'Executive' ? 'rgba(168,85,247,0.15)' :
+                                r.seniority_level === 'Lead' ? 'rgba(99,102,241,0.15)' :
+                                r.seniority_level === 'Senior' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)',
+                    color: r.seniority_level === 'Executive' ? '#c084fc' :
+                           r.seniority_level === 'Lead' ? '#818cf8' :
+                           r.seniority_level === 'Senior' ? '#34d399' : '#fbbf24',
+                    border: `1px solid ${
+                      r.seniority_level === 'Executive' ? 'rgba(168,85,247,0.3)' :
+                      r.seniority_level === 'Lead' ? 'rgba(99,102,241,0.3)' :
+                      r.seniority_level === 'Senior' ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'
+                    }`
+                  }}>
+                    <i className={r.seniority_level === 'Executive' ? "ti ti-crown" : r.seniority_level === 'Lead' ? "ti ti-star" : "ti ti-badge"} style={{ fontSize: 11 }} />
+                    {r.seniority_level}
+                  </div>
+                )}
+                {r.is_deliverable !== false && (
+                  <div style={{ 
+                    display: 'inline-flex', alignItems: 'center', gap: 3, 
+                    padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700,
+                    background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.25)'
+                  }} title="DNS MX Mail Server Pre-Validated">
+                    <i className="ti ti-circle-check" style={{ fontSize: 11 }} /> MX Verified
+                  </div>
+                )}
                 {r.email_status && r.email_status !== 'unknown' && r.email_status !== '' && (
                   <div style={{ 
                     display: 'inline-flex', alignItems: 'center', gap: 4, 
@@ -183,17 +212,31 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
               <CompanyIdentity 
                 domain={fallbackDomain} 
                 name={fallbackName} 
-                logo_url={r.company ? r.company.logo_url : null}
+                logo_url={r.logo_url || (r.company ? r.company.logo_url : null)}
                 metadata={r.city ? `${r.city}, ${r.state}` : fallbackDomain}
-                subtitle={r.company_confidence ? `Confidence: ${r.company_confidence}%` : null}
+                subtitle={r.company_scale ? `${r.company_scale} Scale` : null}
                 interactive={false}
               />
             </div>
           );
         })()}
       </td>
-      <td style={{ padding: '24px 20px', color: 'var(--text-secondary)', fontSize: 14, verticalAlign: 'middle' }}>
-        {r.state || '—'}
+      <td style={{ padding: '24px 20px', color: 'var(--text-secondary)', fontSize: 13, verticalAlign: 'middle' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <div style={{ fontWeight: 600, color: '#fff' }}>{r.state || '—'}</div>
+          {r.timezone && (
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }} title={`Timezone: ${r.timezone}`}>
+              <i className="ti ti-clock" style={{ fontSize: 11 }} />
+              {(() => {
+                try {
+                  return new Date().toLocaleTimeString('en-US', { timeZone: r.timezone, hour: 'numeric', minute: '2-digit' }) + ' ' + (r.timezone_code || 'ET');
+                } catch {
+                  return r.timezone_code || 'ET';
+                }
+              })()}
+            </div>
+          )}
+        </div>
       </td>
       <td style={{ padding: '24px 20px', color: 'var(--text-secondary)', fontSize: 14, verticalAlign: 'middle' }}>
         {r.specialization || '—'}
@@ -277,7 +320,8 @@ export default function Recruiters() {
   // Advanced Filters
   const [search, setSearch] = useSessionState('recruiters_search', '')
   const [filters, setFilters] = useSessionState('recruiters_filters', {
-      state: '', city: '', company: '', title: '',
+      state: '', city: '', metro_hub: '', company: '', title: '', specialization_sector: '',
+      seniority_level: '', timezone_code: '', company_scale: '', is_deliverable: '',
       has_phone: '', missing_email: '', status: '',
       needs_review: '', state_status: '', email_inference_status: '', sort_by: 'created_at', sort_desc: 'true'
   })
@@ -398,8 +442,10 @@ export default function Recruiters() {
   const clearFilters = useCallback(() => {
       setSearch('')
       setFilters({
-          state: '', city: '', company: '', title: '',
+          state: '', city: '', metro_hub: '', company: '', title: '', specialization_sector: '',
+          seniority_level: '', timezone_code: '', company_scale: '', is_deliverable: '',
           has_phone: '', missing_email: '', status: '', needs_review: '',
+          state_status: '', email_inference_status: '',
           sort_by: 'created_at', sort_desc: 'true'
       })
       setPage(1)
@@ -418,6 +464,21 @@ export default function Recruiters() {
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Metro Hiring Hub</label>
+                      <select value={filters.metro_hub} onChange={e => updateFilter('metro_hub', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }}>
+                        <option value="">All Locations / Nationwide</option>
+                        <option value="SF_BAY_AREA">San Francisco Bay Area (CA)</option>
+                        <option value="NYC_TRI_STATE">New York Tri-State (NY/NJ/CT)</option>
+                        <option value="SEATTLE_METRO">Seattle–Bellevue Hub (WA)</option>
+                        <option value="TEXAS_TRIANGLE">Texas Tech Corridor (TX)</option>
+                        <option value="RESEARCH_TRIANGLE">Research Triangle & Charlotte (NC)</option>
+                        <option value="GREATER_BOSTON">Greater Boston Tech & Biotech (MA)</option>
+                        <option value="CHICAGO_METRO">Greater Chicago Metro (IL)</option>
+                        <option value="DMV_CAPITAL">Washington DC Capital (DC/VA/MD)</option>
+                      </select>
+                  </div>
+
+                  <div>
                       <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>State / Region</label>
                       <input value={filters.state} onChange={e => updateFilter('state', e.target.value.toUpperCase())} placeholder="e.g. NC, TX, CA..." style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }} />
                   </div>
@@ -427,6 +488,54 @@ export default function Recruiters() {
                       <input value={filters.city} onChange={e => updateFilter('city', e.target.value)} placeholder="e.g. Charlotte..." style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }} />
                   </div>
                   
+                  <div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Specialized Recruiter Sector</label>
+                      <select value={filters.specialization_sector} onChange={e => updateFilter('specialization_sector', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }}>
+                        <option value="">All Industry Sectors</option>
+                        <option value="Technical">Tech & IT Advisors (348k)</option>
+                        <option value="Corporate">Corporate Talent Acquisition (1.86M)</option>
+                        <option value="Healthcare">Healthcare & Clinical Staffing (37k)</option>
+                        <option value="Engineering">Engineering & Industrial (26k)</option>
+                        <option value="Finance">Finance & Executive Search (6.7k)</option>
+                        <option value="Legal">Legal & Compliance (4k)</option>
+                      </select>
+                  </div>
+                  
+                  <div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Seniority & Decision Level</label>
+                      <select value={filters.seniority_level} onChange={e => updateFilter('seniority_level', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }}>
+                        <option value="">All Seniority Levels</option>
+                        <option value="Executive">Executive & Leadership (VP / Head / Dir)</option>
+                        <option value="Lead">Lead & Principal Recruiter</option>
+                        <option value="Senior">Senior Recruiter / TA Lead</option>
+                        <option value="Specialist">Talent Acquisition Specialist</option>
+                        <option value="Campus">University & Campus Talent</option>
+                      </select>
+                  </div>
+
+                  <div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Recruiter Timezone</label>
+                      <select value={filters.timezone_code} onChange={e => updateFilter('timezone_code', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }}>
+                        <option value="">All US Timezones</option>
+                        <option value="ET">Eastern Time (ET - 1.44M)</option>
+                        <option value="CT">Central Time (CT - 480k)</option>
+                        <option value="MT">Mountain Time (MT - 95k)</option>
+                        <option value="PT">Pacific Time (PT - 275k)</option>
+                        <option value="AK">Alaska Time (AK)</option>
+                        <option value="HT">Hawaii Time (HT)</option>
+                      </select>
+                  </div>
+
+                  <div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Company Scale / Density</label>
+                      <select value={filters.company_scale} onChange={e => updateFilter('company_scale', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }}>
+                        <option value="">All Company Scales</option>
+                        <option value="Enterprise">Enterprise Mega-Scale (500+ Recs - 1.25M)</option>
+                        <option value="Mid-Market">Mid-Market Scaling (50–499 Recs)</option>
+                        <option value="Boutique">Boutique & Niche Staffing (1–49 Recs)</option>
+                      </select>
+                  </div>
+
                   <div>
                       <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Company</label>
                       <input value={filters.company} onChange={e => updateFilter('company', e.target.value)} placeholder="Search company..." style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }} />
@@ -442,6 +551,11 @@ export default function Recruiters() {
                   <div>
                       <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Data Quality Checks</label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <select value={filters.is_deliverable} onChange={e => updateFilter('is_deliverable', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }}>
+                            <option value="">Any MX Deliverability</option>
+                            <option value="yes">Verified MX Deliverable (98.1%)</option>
+                            <option value="no">Unverified / Flagged</option>
+                          </select>
                           <select value={filters.email_inference_status} onChange={e => updateFilter('email_inference_status', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }}>
                             <option value="">Any Email Inference Status</option>
                             <option value="inferred">Inferred (Requires Review)</option>
@@ -450,23 +564,23 @@ export default function Recruiters() {
                             <option value="placeholder">Missing Placeholder</option>
                           </select>
                           <select value={filters.state_status} onChange={e => updateFilter('state_status', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }}>
-                            <option value="">Any State Status</option>
-                            <option value="known">State Known / Inferred</option>
-                            <option value="unknown">State Unknown / Missing</option>
-                          </select>
-                          <select value={filters.needs_review} onChange={e => updateFilter('needs_review', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }}>
-                            <option value="">Any Confidence</option>
-                            <option value="yes">Needs Manual Review</option>
+                            <option value="">Any State Inference Status</option>
+                            <option value="inferred">Inferred State</option>
+                            <option value="explicit">Explicit Ground-Truth</option>
                           </select>
                           <select value={filters.has_phone} onChange={e => updateFilter('has_phone', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }}>
                             <option value="">Any Phone Status</option>
                             <option value="yes">Has Phone Number</option>
-                            <option value="no">Missing Phone Number</option>
+                            <option value="no">No Phone Number</option>
                           </select>
                           <select value={filters.missing_email} onChange={e => updateFilter('missing_email', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }}>
-                            <option value="">Any Email Status</option>
-                            <option value="yes">Missing Email</option>
-                            <option value="no">Has Email</option>
+                            <option value="">Any Email Presence</option>
+                            <option value="yes">Missing Email Only</option>
+                            <option value="no">Has Email Address</option>
+                          </select>
+                          <select value={filters.needs_review} onChange={e => updateFilter('needs_review', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }}>
+                            <option value="">Any Verification State</option>
+                            <option value="yes">Requires Manual Review</option>
                           </select>
                       </div>
                   </div>
@@ -474,8 +588,8 @@ export default function Recruiters() {
                   <div style={{ height: 1, background: 'var(--card-border)' }} />
                   
                   <div>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Sort & Order</label>
-                      <div style={{ display: 'flex', gap: 10 }}>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Sorting</label>
+                      <div style={{ display: 'flex', gap: 8 }}>
                           <select value={filters.sort_by} onChange={e => updateFilter('sort_by', e.target.value)} style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13, background: 'var(--main-bg)', outline: 'none' }}>
                             <option value="created_at">Date Added</option>
                             <option value="name">Name</option>
@@ -503,6 +617,9 @@ export default function Recruiters() {
             
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
               <span style={{ fontSize: 11, color: 'var(--text-muted)', marginRight: 8 }}>Updated: {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+              <button onClick={handleExportCSV} className="cc-ghost-button" style={{ fontSize: 13 }}>
+                  <i className="ti ti-download" /> Export CSV
+              </button>
               <button onClick={() => refetch()} className="cc-ghost-button" style={{ fontSize: 13 }}>
                   <i className="ti ti-refresh" /> Refresh Data
               </button>

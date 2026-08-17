@@ -30,8 +30,8 @@ export default function DatabaseRecipientsView({ onAddRecipients }) {
     }
   });
 
-  const recruiters = data?.items || [];
-  const totalPages = data?.pages || 1;
+  const recruiters = data?.results || data?.items || [];
+  const totalPages = data?.total_pages || data?.pages || 1;
 
   const handleToggleSelect = (recruiter) => {
     const newSet = new Set(selectedIds);
@@ -59,11 +59,17 @@ export default function DatabaseRecipientsView({ onAddRecipients }) {
         id: `db_${r.recruiter_id}`,
         email: r.email?.toLowerCase(),
         name: r.recruiter_name,
-        company: r.company?.name || '',
+        company: r.company?.name || r.company_name || '',
         role: r.specialization || '',
         location: r.location || '',
+        logo_url: r.logo_url || null,
+        seniority_level: r.seniority_level || 'Specialist',
+        timezone: r.timezone || 'America/New_York',
+        timezone_code: r.timezone_code || 'ET',
+        is_deliverable: r.is_deliverable !== false,
+        trust_score: r.trust_score || 95,
         source: 'db',
-        status: 'valid'
+        status: r.is_deliverable === false ? 'invalid_mx' : 'valid'
       }))
       .filter(r => r.email && r.email.includes('@')); // ensure valid email
 
@@ -81,7 +87,7 @@ export default function DatabaseRecipientsView({ onAddRecipients }) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={16} />
           <input 
             type="text"
-            placeholder="Search recruiters..."
+            placeholder="Search recruiters by name, email, title, company..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-3 py-2 bg-[var(--bg-page)] border border-[var(--border)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition-colors"
@@ -98,22 +104,22 @@ export default function DatabaseRecipientsView({ onAddRecipients }) {
             onChange={handleSelectAll}
             className="rounded border-[var(--border)] text-[var(--brand)] focus:ring-[var(--brand)]"
           />
-          Select All
+          <span>Select all ({recruiters.length})</span>
         </label>
         
         <button
           onClick={handleAdd}
           disabled={selectedIds.size === 0}
-          className="text-xs font-medium px-3 py-1 bg-[var(--brand)] text-[var(--text-inverse)] rounded hover:bg-[var(--brand)]/90 disabled:opacity-50 transition-colors"
+          className="px-3 py-1.5 bg-[var(--brand)] hover:bg-[var(--brand-hover)] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-medium rounded-md transition-colors"
         >
           Add {selectedIds.size} Selected
         </button>
       </div>
 
       {/* Recruiter List */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar" ref={scrollRef}>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center h-40 gap-3 text-[var(--text-muted)]">
+          <div className="flex flex-col items-center justify-center h-40 text-[var(--text-muted)] gap-2">
             <div className="w-6 h-6 border-2 border-[var(--brand)] border-t-transparent rounded-full animate-spin"></div>
             <p className="text-xs">Loading database...</p>
           </div>
@@ -133,26 +139,50 @@ export default function DatabaseRecipientsView({ onAddRecipients }) {
                 }`}
               >
                 <input 
-                  type="checkbox"
+                  type="checkbox" 
                   checked={selectedIds.has(r.recruiter_id)}
                   onChange={() => {}} // handled by parent div click
                   className="mt-1 rounded border-[var(--border)] text-[var(--brand)] focus:ring-[var(--brand)]"
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{r.recruiter_name}</p>
+                    <div className="flex items-center gap-1.5 truncate">
+                      <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{r.recruiter_name}</p>
+                      {r.seniority_level && r.seniority_level !== 'Specialist' && (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${
+                          r.seniority_level === 'Executive' ? 'bg-purple-500/10 border-purple-500/30 text-purple-400' :
+                          r.seniority_level === 'Lead' ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400' :
+                          r.seniority_level === 'Senior' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' :
+                          'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                        }`}>
+                          {r.seniority_level}
+                        </span>
+                      )}
+                    </div>
                     {r.specialization && (
-                      <span className="text-[10px] bg-[var(--bg-page)] border border-[var(--border)] text-[var(--text-muted)] px-2 py-0.5 rounded-full truncate max-w-[80px]">
+                      <span className="text-[10px] bg-[var(--bg-page)] border border-[var(--border)] text-[var(--text-muted)] px-2 py-0.5 rounded-full truncate max-w-[120px]">
                         {r.specialization}
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-[var(--text-muted)] truncate mt-0.5">{r.email}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <p className="text-xs text-[var(--text-muted)] truncate">{r.email}</p>
+                    {r.is_deliverable !== false && (
+                      <span className="text-[9px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-semibold px-1.5 py-0.2 rounded">
+                        MX Verified
+                      </span>
+                    )}
+                    {r.timezone_code && (
+                      <span className="text-[9px] bg-blue-500/10 border border-blue-500/20 text-blue-400 font-medium px-1 py-0.2 rounded">
+                        {r.timezone_code}
+                      </span>
+                    )}
+                  </div>
                   
                   <div className="flex items-center gap-3 mt-1.5 text-[11px] text-[var(--text-muted)]">
-                    {r.company?.name && (
+                    {(r.company_name || r.company?.name) && (
                       <span className="flex items-center gap-1 truncate">
-                        <Building size={10} /> {r.company.name}
+                        <Building size={10} /> {r.company_name || r.company?.name}
                       </span>
                     )}
                     {r.location && (

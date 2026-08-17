@@ -1,5 +1,6 @@
 import json
 import re
+import logging
 from app.services.sync_layer import sync_manager
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session, joinedload, contains_eager, selectinload
@@ -11,6 +12,8 @@ from ..services.auth_service import get_current_user_from_request
 from ..models.auth_models import User
 from ..services.auth_service import require_role
 from ..models.models import Recruiter, Company
+
+logger = logging.getLogger("talentops")
 
 from ..utils.state_mapper import normalize_state, extract_state_detailed
 from ..utils.state_recovery import infer_state_from_sources

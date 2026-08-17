@@ -348,7 +348,16 @@ def companies_search(
         response.headers["X-Total-Count"] = str(cached["total_count"])
         return cached["rows"]
 
-    active_companies = recruiter_store.company_directory(q, state)
+    matched_keys = []
+    if q and q.strip():
+        try:
+            pattern = f"%{q.strip()}%"
+            matching_pg = db.query(Company.company_id).filter(Company.company_name.ilike(pattern)).all()
+            matched_keys = [str(r[0]) for r in matching_pg]
+        except Exception:
+            pass
+
+    active_companies = recruiter_store.company_directory(q, state, matched_keys=matched_keys)
     if min_recruiters > 0:
         active_companies = [row for row in active_companies if row['recruiter_count'] >= min_recruiters]
 

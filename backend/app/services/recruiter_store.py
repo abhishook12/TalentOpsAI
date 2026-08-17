@@ -287,6 +287,7 @@ class RecruiterStore:
         self,
         query: Optional[str] = None,
         state: Optional[str] = None,
+        matched_keys: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
         """Return company keys, counts, and dominant email domain from the active recruiter dataset.
 
@@ -302,9 +303,18 @@ class RecruiterStore:
         if state and state.upper() != "ALL":
             where = ["state_upper = ?"]
             params = [state.upper()]
-            if query:
-                where.append("LOWER(cs.company_key) LIKE ?")
-                params.append(f"%{query.strip().lower()}%")
+            if query or matched_keys:
+                sub_conds = []
+                if query:
+                    q_str = f"%{query.strip().lower()}%"
+                    sub_conds.append("(LOWER(cs.company_key) LIKE ? OR LOWER(COALESCE(co.dominant_domain, '')) LIKE ?)")
+                    params.extend([q_str, q_str])
+                if matched_keys:
+                    placeholders = ", ".join("?" for _ in matched_keys)
+                    sub_conds.append(f"cs.company_key IN ({placeholders})")
+                    params.extend(matched_keys)
+                where.append(f"({' OR '.join(sub_conds)})")
+
             rows = self._conn.execute(f"""
                 SELECT
                     cs.company_key,
@@ -319,9 +329,18 @@ class RecruiterStore:
         else:
             where = ["1=1"]
             params = []
-            if query:
-                where.append("LOWER(company_key) LIKE ?")
-                params.append(f"%{query.strip().lower()}%")
+            if query or matched_keys:
+                sub_conds = []
+                if query:
+                    q_str = f"%{query.strip().lower()}%"
+                    sub_conds.append("(LOWER(company_key) LIKE ? OR LOWER(COALESCE(dominant_domain, '')) LIKE ?)")
+                    params.extend([q_str, q_str])
+                if matched_keys:
+                    placeholders = ", ".join("?" for _ in matched_keys)
+                    sub_conds.append(f"company_key IN ({placeholders})")
+                    params.extend(matched_keys)
+                where.append(f"({' OR '.join(sub_conds)})")
+
             rows = self._conn.execute(f"""
                 SELECT
                     company_key,

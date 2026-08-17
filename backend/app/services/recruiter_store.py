@@ -227,6 +227,13 @@ class RecruiterStore:
                 GROUP BY company_key, state_upper
             """)
 
+            # Build in-memory fast lookup for company key -> dominant domain
+            try:
+                domain_rows = self._conn.execute("SELECT company_key, dominant_domain FROM company_overall WHERE dominant_domain IS NOT NULL").fetchall()
+                self._company_domains = {str(r[0]): r[1] for r in domain_rows}
+            except Exception:
+                self._company_domains = {}
+
             elapsed = time.time() - start
             self._last_error = None
             logger.info(f"RecruiterStore loaded {self._record_count:,} recruiters from Parquet in {elapsed:.2f}s")
@@ -245,10 +252,21 @@ class RecruiterStore:
                     dominant_domain VARCHAR
                 )
             """)
+            self._company_domains = {}
             self._record_count = 0
             
         self._loaded = True
         self._last_load_time = time.time()
+
+    def get_company_domain(self, company_key: str) -> Optional[str]:
+        """Fast O(1) lookup of dominant email domain for any company key/ID."""
+        if not company_key:
+            return None
+        self._ensure_loaded()
+        domains_map = getattr(self, '_company_domains', None)
+        if domains_map:
+            return domains_map.get(str(company_key).strip())
+        return None
 
     def reload(self):
         """Force reload from Parquet (e.g. after sync)."""

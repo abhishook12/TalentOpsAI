@@ -486,21 +486,36 @@ def search_recruiters(
             if d and d not in FREE_EMAIL_PROVIDERS:
                 rec_domain = d
         
-        pg_logo = select_logo_domain(comp.website, comp.email_pattern) if comp else None
-        company_domain = rec_domain or pg_logo
+        # 1. Infer domain from email, pg, or recruiter_store company_overall
+        raw_key = str(row.get('company_id')) if row.get('company_id') is not None else None
+        store_domain = recruiter_store.get_company_domain(raw_key) if raw_key else None
+        company_domain = rec_domain or pg_logo or store_domain
         
         # 2. Resolve company name
-        raw_key = str(row.get('company_id')) if row.get('company_id') is not None else None
-        if company_domain:
+        if company_domain and company_domain in DOMAIN_DISPLAY_NAMES:
+            c_name = DOMAIN_DISPLAY_NAMES[company_domain]
+        elif company_domain:
             c_name = infer_company_from_domain(company_domain)
         elif comp and comp.company_name:
             c_name = comp.company_name
         elif raw_key and not raw_key.isdigit():
             c_name = raw_key
         else:
-            c_name = "Unknown Company" if raw_key and raw_key.isdigit() else raw_key
+            c_name = "Unknown Company" if raw_key and raw_key.isdigit() else (raw_key or "Unknown Company")
 
         logo_url = (f"https://www.google.com/s2/favicons?domain={company_domain}&sz=128" if company_domain else None)
+
+        comp_data = {
+            "company_id": comp.company_id if comp else row.get("company_id"),
+            "company_name": c_name,
+            "canonical_name": c_name,
+            "primary_domain": company_domain,
+            "logo_url": logo_url,
+            "website": comp.website if comp else (f"https://{company_domain}" if company_domain else None),
+            "email_pattern": company_domain,
+            "location": comp.location if comp else row.get("location"),
+            "state": comp.state if comp else row.get("state"),
+        }
 
         formatted.append({
             "recruiter_id": row.get("recruiter_id"),
@@ -523,17 +538,7 @@ def search_recruiters(
             "company_name": c_name,
             "company_domain": company_domain,
             "logo_url": logo_url,
-            "company": {
-                "company_id": comp.company_id if comp else None,
-                "company_name": c_name,
-                "canonical_name": c_name,
-                "primary_domain": company_domain,
-                "logo_url": logo_url,
-                "website": comp.website if comp else (f"https://{company_domain}" if company_domain else None),
-                "email_pattern": company_domain,
-                "location": comp.location if comp else row.get("location"),
-                "state": comp.state if comp else row.get("state"),
-            },
+            "company": comp_data,
             "location": row.get("location") or (comp.location if comp else None),
             "state": row.get("state"),
             "is_active": row.get("is_active", True),
@@ -696,17 +701,35 @@ def get_recruiters(
             d = email_val.split('@')[-1].lower()
             if d not in free_domains:
                 rec_domain = d
-        company_domain = rec_domain or pg_logo
-
+        
         raw_key = str(r.get('company_id')) if r.get('company_id') is not None else None
+        store_domain = recruiter_store.get_company_domain(raw_key) if raw_key else None
+        company_domain = rec_domain or pg_logo or store_domain
+
         if company_domain and company_domain in DOMAIN_DISPLAY_NAMES:
             c_name = DOMAIN_DISPLAY_NAMES[company_domain]
         elif comp and comp.company_name:
             c_name = comp.company_name
         elif company_domain:
             c_name = company_domain.split('.')[0].replace('-', ' ').title()
+        elif raw_key and not raw_key.isdigit():
+            c_name = raw_key
         else:
-            c_name = "Unknown Company" if raw_key and raw_key.isdigit() else raw_key
+            c_name = "Unknown Company" if raw_key and raw_key.isdigit() else (raw_key or "Unknown Company")
+
+        company_obj = _basic_company(comp)
+        if not company_obj and (c_name or company_domain):
+            company_obj = {
+                "company_id": r.get('company_id'),
+                "company_name": c_name,
+                "canonical_name": c_name,
+                "location": r.get('location'),
+                "state": r.get('state'),
+                "website": f"https://{company_domain}" if company_domain else None,
+                "primary_domain": company_domain,
+                "logo_url": r.get("logo_url") or (f"https://www.google.com/s2/favicons?domain={company_domain}&sz=128" if company_domain else None),
+                "email_pattern": None
+            }
 
         formatted_results.append({
             "recruiter_id": r.get("recruiter_id"),
@@ -728,7 +751,7 @@ def get_recruiters(
             "company_name": c_name,
             "company_domain": company_domain,
             "logo_url": r.get("logo_url") or (comp.logo_url if comp else None) or (f"https://www.google.com/s2/favicons?domain={company_domain}&sz=128" if company_domain else None),
-            "company": _basic_company(comp),
+            "company": company_obj,
             "location": r.get("location") or (comp.location if comp else None),
             "state": r.get("state"),
             "normalized_city": r.get("normalized_city"),

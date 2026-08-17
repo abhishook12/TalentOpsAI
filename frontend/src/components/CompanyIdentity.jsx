@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { normalizeLogoDomain } from '../utils/domain'
+import { normalizeLogoDomain, inferCompanyNameFromDomain } from '../utils/domain'
 
 const failedDomains = new Set()
 
@@ -19,12 +19,17 @@ export function CompanyIdentity({
 
   const cleanDomain = normalizeLogoDomain(domain, name)
   const formatDisplayName = (n) => {
-    if (!n) return 'Unknown Company'
-    const name = n.trim()
-    if (name === name.toLowerCase()) {
-      return name.split(/[-_]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+    if (!n || n === 'Unknown Company' || n === 'null' || /^\d+$/.test(String(n).trim())) {
+      if (cleanDomain) {
+        return inferCompanyNameFromDomain(cleanDomain) || 'Unknown Company'
+      }
+      return 'Unknown Company'
     }
-    return name
+    const raw = String(n).trim()
+    if (raw === raw.toLowerCase()) {
+      return raw.split(/[-_]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+    }
+    return raw
   }
   const displayName = formatDisplayName(name)
   

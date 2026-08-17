@@ -250,15 +250,31 @@ const SearchResultRow = React.memo(function SearchResultRow({ r, active, query, 
         </div>
         <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.phone)}</div>
         <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-          <CompanyIdentity 
-            domain={(r.company && r.company.primary_domain) || r.website || r.email_pattern} 
-            name={(r.company && r.company.canonical_name) || r.company_name} 
-            logo_url={r.company ? r.company.logo_url : null}
-            interactive={false}
-            size={36}
-            logoSize={24}
-            style={{ padding: 0 }}
-          />
+          {(() => {
+            const freeDoms = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com'];
+            const emailDom = r.email && r.email.includes('@') && !freeDoms.includes(r.email.split('@')[1].trim().toLowerCase())
+              ? r.email.split('@')[1].trim().toLowerCase()
+              : null;
+            const inferredName = emailDom
+              ? emailDom.split('.')[0].replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+              : null;
+
+            const domain = (r.company && r.company.primary_domain) || r.company_domain || r.website || r.email_pattern || emailDom;
+            const name = (r.company && (r.company.canonical_name || r.company.company_name)) || r.company_name || inferredName;
+            const logo = (r.company && r.company.logo_url) || r.logo_url;
+
+            return (
+              <CompanyIdentity 
+                domain={domain} 
+                name={name} 
+                logo_url={logo}
+                interactive={false}
+                size={36}
+                logoSize={24}
+                style={{ padding: 0 }}
+              />
+            );
+          })()}
         </div>
         <div>
           <span
@@ -1148,13 +1164,29 @@ export default function AISearch() {
                   <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Company</div>
                     <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                      <CompanyIdentity 
-                        domain={(selected.company && selected.company.primary_domain) || selected.website || selected.email_pattern} 
-                        name={(selected.company && selected.company.canonical_name) || selected.company_name} 
-                        logo_url={selected.company ? selected.company.logo_url : null}
-                        interactive={false}
-                        style={{ padding: 0 }}
-                      />
+                      {(() => {
+                        const freeDoms = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com'];
+                        const emailDom = selected.email && selected.email.includes('@') && !freeDoms.includes(selected.email.split('@')[1].trim().toLowerCase())
+                          ? selected.email.split('@')[1].trim().toLowerCase()
+                          : null;
+                        const inferredName = emailDom
+                          ? emailDom.split('.')[0].replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+                          : null;
+
+                        const domain = (selected.company && selected.company.primary_domain) || selected.company_domain || selected.website || selected.email_pattern || emailDom;
+                        const name = (selected.company && (selected.company.canonical_name || selected.company.company_name)) || selected.company_name || inferredName;
+                        const logo = (selected.company && selected.company.logo_url) || selected.logo_url;
+
+                        return (
+                          <CompanyIdentity 
+                            domain={domain} 
+                            name={name} 
+                            logo_url={logo}
+                            interactive={false}
+                            style={{ padding: 0 }}
+                          />
+                        );
+                      })()}
                     </div>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10, alignItems: 'center' }}>

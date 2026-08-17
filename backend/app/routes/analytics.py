@@ -121,7 +121,43 @@ DOMAIN_DISPLAY_NAMES = {
     'russellreynolds.com': 'Russell Reynolds',
     'stand8.io': 'Stand 8',
     'bhsg.com': 'BHSG',
+    'bluestonestaffing.com': 'Bluestone Staffing',
+    'bluestonesg.com': 'Bluestone SG',
+    'mribluestone.com': 'MRI Bluestone',
+    'bluestone-llc.com': 'Bluestone LLC',
+    'motionrecruitment.com': 'Motion Recruitment',
+    'signatureconsultants.com': 'Signature Consultants',
 }
+
+FREE_EMAIL_PROVIDERS = {
+    'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com',
+    'live.com', 'msn.com', 'comcast.net', 'att.net', 'sbcglobal.net', 'verizon.net',
+    'me.com', 'mail.com', 'protonmail.com', 'ymail.com', 'cox.net', 'charter.net',
+    'earthlink.net', 'talentops.ai'
+}
+
+def infer_company_from_domain(domain: Optional[str]) -> Optional[str]:
+    if not domain or not isinstance(domain, str):
+        return None
+    d = domain.strip().lower()
+    if not d or d in FREE_EMAIL_PROVIDERS:
+        return None
+    if d in DOMAIN_DISPLAY_NAMES:
+        return DOMAIN_DISPLAY_NAMES[d]
+    
+    # Strip common TLDs
+    base = re.sub(r"\.(com|net|org|io|co|ai|us|ca|tech|info|biz|global|llc)$", "", d)
+    # Split on hyphens, underscores, dots
+    words = re.split(r"[-_.]+", base)
+    clean_words = []
+    for w in words:
+        if not w:
+            continue
+        if w.lower() in {"sg", "it", "llc", "inc", "corp", "hr", "ai", "us", "uk", "ca"}:
+            clean_words.append(w.upper())
+        else:
+            clean_words.append(w.capitalize())
+    return " ".join(clean_words) if clean_words else None
 
 router = APIRouter()
 

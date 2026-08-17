@@ -445,9 +445,63 @@ def search_recruiters(
         limit=limit
     )
     
-    # DuckDB returns dicts. Need to handle JSON serialization properly and format like original route.
+    from .analytics import infer_company_from_domain, DOMAIN_DISPLAY_NAMES, FREE_EMAIL_PROVIDERS
+
+    # Batch fetch PostgreSQL metadata for numeric IDs
+    comp_ids = []
+    for r in results:
+        val = r.get('company_id')
+        if val is not None:
+            try:
+                num = float(val)
+                if num.is_integer() and -2147483648 <= int(num) <= 2147483647:
+                    comp_ids.append(int(num))
+            except (TypeError, ValueError):
+                pass
+    
+    companies_dict = {}
+    if comp_ids:
+        try:
+            uncached = [cid for cid in comp_ids if not analytics_cache.get(f"comp_obj_{cid}")]
+            if uncached:
+                comps = db.query(Company).filter(Company.company_id.in_(uncached)).all()
+                for c in comps:
+                    analytics_cache.set(f"comp_obj_{c.company_id}", c, ttl=600)
+            for cid in comp_ids:
+                cached_comp = analytics_cache.get(f"comp_obj_{cid}")
+                if cached_comp:
+                    companies_dict[cid] = cached_comp
+        except Exception:
+            pass
+
     formatted = []
     for row in results:
+        comp = companies_dict.get(row.get('company_id'))
+        
+        # 1. Infer domain from email or pg
+        rec_domain = None
+        email_val = row.get('email')
+        if email_val and '@' in str(email_val):
+            d = str(email_val).split('@')[-1].strip().lower()
+            if d and d not in FREE_EMAIL_PROVIDERS:
+                rec_domain = d
+        
+        pg_logo = select_logo_domain(comp.website, comp.email_pattern) if comp else None
+        company_domain = rec_domain or pg_logo
+        
+        # 2. Resolve company name
+        raw_key = str(row.get('company_id')) if row.get('company_id') is not None else None
+        if company_domain:
+            c_name = infer_company_from_domain(company_domain)
+        elif comp and comp.company_name:
+            c_name = comp.company_name
+        elif raw_key and not raw_key.isdigit():
+            c_name = raw_key
+        else:
+            c_name = "Unknown Company" if raw_key and raw_key.isdigit() else raw_key
+
+        logo_url = (f"https://www.google.com/s2/favicons?domain={company_domain}&sz=128" if company_domain else None)
+
         formatted.append({
             "recruiter_id": row.get("recruiter_id"),
             "recruiter_name": row.get("recruiter_name"),
@@ -466,8 +520,21 @@ def search_recruiters(
             "notes": row.get("notes"),
             "quality_score": row.get("quality_score"),
             "company_id": row.get("company_id"),
-            "company_name": row.get("company_name"),  # Mapped later if missing
-            "location": row.get("location"),
+            "company_name": c_name,
+            "company_domain": company_domain,
+            "logo_url": logo_url,
+            "company": {
+                "company_id": comp.company_id if comp else None,
+                "company_name": c_name,
+                "canonical_name": c_name,
+                "primary_domain": company_domain,
+                "logo_url": logo_url,
+                "website": comp.website if comp else (f"https://{company_domain}" if company_domain else None),
+                "email_pattern": company_domain,
+                "location": comp.location if comp else row.get("location"),
+                "state": comp.state if comp else row.get("state"),
+            },
+            "location": row.get("location") or (comp.location if comp else None),
             "state": row.get("state"),
             "is_active": row.get("is_active", True),
             "needs_review": row.get("needs_review", False),

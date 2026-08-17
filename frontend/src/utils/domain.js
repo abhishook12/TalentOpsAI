@@ -147,7 +147,6 @@ export function normalizeLogoDomain(domain, name) {
     .replace(/\.\.dup\.\d+$/i, '')
     .replace(/\[duplicate\]\s*/gi, '')
     // Aggressively split off any garbage text that got scraped into the DB (e.g. "url | user", "url; name", "url ... text")
-    .split(/[\s;|]+/)[0]
     .replace(/^https?:\/\//, '')
     .replace(/^www\./, '')
     .split('/')[0]
@@ -157,4 +156,40 @@ export function normalizeLogoDomain(domain, name) {
   }
 
   return cleaned
+}
+
+export const domainToDisplayName = {
+  'roberthalf.com': 'Robert Half',
+  'insightglobal.com': 'Insight Global',
+  'teksystems.com': 'TEKsystems',
+  'randstadusa.com': 'Randstad',
+  'beaconhillstaffing.com': 'Beacon Hill Staffing Group',
+  'kforce.com': 'Kforce',
+  'aerotek.com': 'Aerotek',
+  'apexsystems.com': 'Apex Systems',
+  'oxfordcorp.com': 'Oxford Global Resources',
+  'kellyservices.com': 'Kelly Services',
+  'cybercoders.com': 'CyberCoders',
+  'manpower.com': 'Manpower',
+  'manpowergroup.com': 'ManpowerGroup',
+  'bluestonestaffing.com': 'Bluestone Staffing',
+  'bluestonesg.com': 'Bluestone SG',
+  'mribluestone.com': 'MRI Bluestone',
+  'bluestone-llc.com': 'Bluestone LLC',
+  'motionrecruitment.com': 'Motion Recruitment',
+  'signatureconsultants.com': 'Signature Consultants',
+}
+
+export function inferCompanyNameFromDomain(domain) {
+  if (!domain) return null
+  const d = String(domain).trim().toLowerCase()
+  if (domainToDisplayName[d]) return domainToDisplayName[d]
+  
+  const base = d.replace(/\.(com|net|org|io|co|ai|us|ca|tech|info|biz|global|llc)$/, '')
+  const words = base.split(/[-_.]+/)
+  const result = words
+    .filter(Boolean)
+    .map(w => ['sg', 'it', 'llc', 'inc', 'corp', 'hr', 'ai', 'us', 'uk', 'ca'].includes(w.toLowerCase()) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
+  return result || null
 }

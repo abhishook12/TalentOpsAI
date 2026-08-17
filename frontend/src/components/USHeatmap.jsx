@@ -39,33 +39,39 @@ export default function USHeatmap() {
   const { data: stateData, isLoading } = useQuery({
     queryKey: ["recruiters-by-state"],
     queryFn: async () => {
-      const { data } = await api.get("/analytics/recruiters-by-state");
-      return data;
+      const res = await api.get("/analytics/recruiters-by-state");
+      return res.data;
     },
     staleTime: 60000,
   });
 
+  const stateNameToAbbr = useMemo(() => ({
+    "ALABAMA": "AL", "ALASKA": "AK", "ARIZONA": "AZ", "ARKANSAS": "AR", "CALIFORNIA": "CA",
+    "COLORADO": "CO", "CONNECTICUT": "CT", "DELAWARE": "DE", "FLORIDA": "FL", "GEORGIA": "GA",
+    "HAWAII": "HI", "IDAHO": "ID", "ILLINOIS": "IL", "INDIANA": "IN", "IOWA": "IA",
+    "KANSAS": "KS", "KENTUCKY": "KY", "LOUISIANA": "LA", "MAINE": "ME", "MARYLAND": "MD",
+    "MASSACHUSETTS": "MA", "MICHIGAN": "MI", "MINNESOTA": "MN", "MISSISSIPPI": "MS", "MISSOURI": "MO",
+    "MONTANA": "MT", "NEBRASKA": "NE", "NEVADA": "NV", "NEW HAMPSHIRE": "NH", "NEW JERSEY": "NJ",
+    "NEW MEXICO": "NM", "NEW YORK": "NY", "NORTH CAROLINA": "NC", "NORTH DAKOTA": "ND", "OHIO": "OH",
+    "OKLAHOMA": "OK", "OREGON": "OR", "PENNSYLVANIA": "PA", "RHODE ISLAND": "RI", "SOUTH CAROLINA": "SC",
+    "SOUTH DAKOTA": "SD", "TENNESSEE": "TN", "TEXAS": "TX", "UTAH": "UT", "VERMONT": "VT",
+    "VIRGINIA": "VA", "WASHINGTON": "WA", "WEST VIRGINIA": "WV", "WISCONSIN": "WI", "WYOMING": "WY",
+    "DISTRICT OF COLUMBIA": "DC"
+  }), []);
+
   const { dataMap, maxCount } = useMemo(() => {
-    if (!stateData || !Array.isArray(stateData)) return { dataMap: {}, maxCount: 0 };
-    
-    const stateNameToAbbr = {
-      "ALABAMA": "AL", "ALASKA": "AK", "ARIZONA": "AZ", "ARKANSAS": "AR", "CALIFORNIA": "CA",
-      "COLORADO": "CO", "CONNECTICUT": "CT", "DELAWARE": "DE", "FLORIDA": "FL", "GEORGIA": "GA",
-      "HAWAII": "HI", "IDAHO": "ID", "ILLINOIS": "IL", "INDIANA": "IN", "IOWA": "IA",
-      "KANSAS": "KS", "KENTUCKY": "KY", "LOUISIANA": "LA", "MAINE": "ME", "MARYLAND": "MD",
-      "MASSACHUSETTS": "MA", "MICHIGAN": "MI", "MINNESOTA": "MN", "MISSISSIPPI": "MS", "MISSOURI": "MO",
-      "MONTANA": "MT", "NEBRASKA": "NE", "NEVADA": "NV", "NEW HAMPSHIRE": "NH", "NEW JERSEY": "NJ",
-      "NEW MEXICO": "NM", "NEW YORK": "NY", "NORTH CAROLINA": "NC", "NORTH DAKOTA": "ND", "OHIO": "OH",
-      "OKLAHOMA": "OK", "OREGON": "OR", "PENNSYLVANIA": "PA", "RHODE ISLAND": "RI", "SOUTH CAROLINA": "SC",
-      "SOUTH DAKOTA": "SD", "TENNESSEE": "TN", "TEXAS": "TX", "UTAH": "UT", "VERMONT": "VT",
-      "VIRGINIA": "VA", "WASHINGTON": "WA", "WEST VIRGINIA": "WV", "WISCONSIN": "WI", "WYOMING": "WY",
-      "DISTRICT OF COLUMBIA": "DC"
-    };
+    const list = Array.isArray(stateData) 
+      ? stateData 
+      : Array.isArray(stateData?.data) 
+        ? stateData.data 
+        : Array.isArray(stateData?.states) 
+          ? stateData.states 
+          : [];
 
     const map = {};
     let max = 0;
     
-    stateData.forEach((item) => {
+    list.forEach((item) => {
       let stateStr = (item.state || "").trim().toUpperCase();
       let abbr = stateStr;
       
@@ -73,17 +79,18 @@ export default function USHeatmap() {
          abbr = stateNameToAbbr[stateStr] || stateStr;
       }
       
-      if (abbr) {
-        map[abbr] = (map[abbr] || 0) + item.count;
+      const countVal = Number(item.count || item.recruiter_count || item.recruiters || 0);
+      if (abbr && countVal > 0) {
+        map[abbr] = (map[abbr] || 0) + countVal;
         if (map[abbr] > max) max = map[abbr];
       }
     });
     return { dataMap: map, maxCount: max };
-  }, [stateData]);
+  }, [stateData, stateNameToAbbr]);
 
   // Logarithmic color scale helps show data even when heavily skewed
   const colorScale = scaleLinear()
-    .domain([0, maxCount > 0 ? maxCount * 0.1 : 1, maxCount || 1])
+    .domain([0, maxCount > 0 ? Math.max(1, maxCount * 0.08) : 1, maxCount || 1])
     .range(["#241d10", "#96731f", "#f0d78c"]);
 
   const handleMouseMove = (e) => {
@@ -93,8 +100,7 @@ export default function USHeatmap() {
     let y = e.clientY - rect.top + 15;
 
     if (tooltipRef.current) {
-      // Use fixed generous dimensions because bounding rect might be stale before text paints
-      const tooltipWidth = 140;
+      const tooltipWidth = 160;
       const tooltipHeight = 60;
 
       if (x + tooltipWidth > rect.width) {
@@ -104,7 +110,6 @@ export default function USHeatmap() {
         y = e.clientY - rect.top - tooltipHeight - 10;
       }
       
-      // Prevent going off top or left edges
       if (x < 0) x = 10;
       if (y < 0) y = 10;
 
@@ -144,9 +149,10 @@ export default function USHeatmap() {
             {({ geographies }) => (
               <>
                 {geographies.map((geo) => {
-                  const stateAbbr = fipsToState[geo.id];
-                  const count = dataMap[stateAbbr] || 0;
-                  const fill = count > 0 ? colorScale(count) : "transparent";
+                  const fipsKey = String(geo.id || "").padStart(2, "0");
+                  const stateAbbr = fipsToState[fipsKey] || fipsToState[geo.id] || (geo.properties?.name ? stateNameToAbbr[geo.properties.name.toUpperCase()] : null);
+                  const count = Number(dataMap[stateAbbr] || 0);
+                  const fill = count > 0 ? colorScale(count) : "rgba(255,255,255,0.03)";
 
                   return (
                     <Geography
@@ -157,8 +163,8 @@ export default function USHeatmap() {
                       strokeWidth={1.5}
                       onMouseEnter={() => {
                         if (tooltipRef.current && tooltipTitleRef.current && tooltipValueRef.current) {
-                          tooltipTitleRef.current.innerText = geo.properties.name;
-                          tooltipValueRef.current.innerText = `${count} recruiter${count === 1 ? '' : 's'}`;
+                          tooltipTitleRef.current.innerText = geo.properties.name || stateAbbr || 'State';
+                          tooltipValueRef.current.innerText = `${count.toLocaleString()} recruiter${count === 1 ? '' : 's'}`;
                           tooltipRef.current.style.opacity = 1;
                         }
                       }}
@@ -179,7 +185,8 @@ export default function USHeatmap() {
                 {/* Overlay State Abbreviations */}
                 {geographies.map((geo) => {
                   const centroid = geoCentroid(geo);
-                  const stateAbbr = fipsToState[geo.id];
+                  const fipsKey = String(geo.id || "").padStart(2, "0");
+                  const stateAbbr = fipsToState[fipsKey] || fipsToState[geo.id] || (geo.properties?.name ? stateNameToAbbr[geo.properties.name.toUpperCase()] : null);
                   if (!stateAbbr) return null;
 
                   return (
@@ -242,7 +249,7 @@ export default function USHeatmap() {
 
       {/* Legend */}
       <div style={{ position: "absolute", top: 56, right: 20, display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", fontSize: "12px", color: "var(--text-muted)", fontWeight: 600 }}>
-        <span>High ({maxCount})</span>
+        <span>High ({maxCount.toLocaleString()})</span>
         <div style={{ width: "8px", height: "140px", background: "linear-gradient(to bottom, #f0d78c, #241d10)", borderRadius: "8px" }} />
         <span>Low</span>
       </div>

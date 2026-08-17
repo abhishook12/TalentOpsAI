@@ -114,6 +114,7 @@ export default function Dashboard() {
         queryClient.invalidateQueries({ queryKey: ['dashboard-data-quality'] }),
         queryClient.invalidateQueries({ queryKey: ['dashboard-visits'] }),
         queryClient.invalidateQueries({ queryKey: ['dashboard-top-companies'] }),
+        queryClient.invalidateQueries({ queryKey: ['recruiters-by-state'] }),
       ])
       setLastUpdated(new Date())
     } catch (err) {

@@ -247,44 +247,56 @@ def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depen
 
 
 @router.get("/recruiters-by-state")
-@cached_endpoint(ttl_seconds=3600)
-def recruiters_by_state(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    # Use DuckDB Parquet store (2.1M full dataset) instead of PostgreSQL (128K subset)
+@cached_endpoint(ttl_seconds=300)
+def recruiters_by_state(db: Session = Depends(get_db)):
     try:
         recruiter_store._ensure_loaded()
         duck_conn = recruiter_store._conn
         if duck_conn:
             results = duck_conn.execute("""
                 SELECT
+                    state_upper AS state,
+                    SUM(recruiter_count) AS count
+                FROM company_summary
+                WHERE state_upper IS NOT NULL 
+                  AND state_upper != '' 
+                  AND state_upper != 'US' 
+                  AND state_upper != 'UNKNOWN'
+                GROUP BY state_upper
+                ORDER BY count DESC, state ASC
+            """).fetchall()
+            if results:
+                return [{"state": row[0], "count": int(row[1])} for row in results]
+            
+            # Fallback to direct view
+            results_view = duck_conn.execute("""
+                SELECT
                     state,
                     COUNT(*) AS count
                 FROM recruiters
-                WHERE state IS NOT NULL AND state != '' AND state != 'US'
+                WHERE state IS NOT NULL AND state != '' AND state != 'US' AND state != 'UNKNOWN'
                 GROUP BY state
                 ORDER BY count DESC, state ASC
             """).fetchall()
-            return [{"state": row[0], "count": int(row[1])} for row in results]
+            if results_view:
+                return [{"state": row[0], "count": int(row[1])} for row in results_view]
     except Exception as e:
         logger.warning(f"DuckDB recruiters-by-state failed, falling back to PostgreSQL: {e}")
 
     # Fallback to PostgreSQL
     computed_state_sql = EFFECTIVE_RECRUITER_STATE_SQL_R
-    is_admin = current_user.role and current_user.role.name.lower() == 'admin'
-    where_clause = "1=1"
-
     results = db.execute(text(f"""
         SELECT
             {computed_state_sql} AS state,
             COUNT(r.recruiter_id) AS count
         FROM recruiters r 
         LEFT JOIN companies c ON c.company_id = r.company_id
-        WHERE {where_clause} AND {computed_state_sql} IS NOT NULL
+        WHERE {computed_state_sql} IS NOT NULL AND {computed_state_sql} != 'US' AND {computed_state_sql} != 'UNKNOWN'
         GROUP BY {computed_state_sql}
         ORDER BY count DESC, state ASC
     """)).mappings().all()
 
-    res_list = [{"state": row["state"], "count": int(row["count"])} for row in results]
-    return res_list
+    return [{"state": row["state"], "count": int(row["count"])} for row in results]
 
 
 @router.get("/companies-count-by-state")

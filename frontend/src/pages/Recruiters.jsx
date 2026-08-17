@@ -617,7 +617,7 @@ export default function Recruiters() {
             
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
               <span style={{ fontSize: 11, color: 'var(--text-muted)', marginRight: 8 }}>Updated: {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-              <button onClick={handleExportCSV} className="cc-ghost-button" style={{ fontSize: 13 }}>
+              <button onClick={exportRecruiters} className="cc-ghost-button" style={{ fontSize: 13 }}>
                   <i className="ti ti-download" /> Export CSV
               </button>
               <button onClick={() => refetch()} className="cc-ghost-button" style={{ fontSize: 13 }}>

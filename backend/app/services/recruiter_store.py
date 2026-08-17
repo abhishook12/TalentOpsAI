@@ -476,13 +476,13 @@ class RecruiterStore:
                 LOWER(COALESCE(recruiter_name, '')) LIKE ? 
                 OR LOWER(COALESCE(email, '')) LIKE ?
                 OR LOWER(COALESCE(specialization, '')) LIKE ?
-                OR CAST(COALESCE(company_id, 0) AS VARCHAR) IN (
+                OR CAST(COALESCE(company_id, '') AS VARCHAR) IN (
                     SELECT CAST(company_id AS VARCHAR) FROM recruiters 
-                    WHERE LOWER(COALESCE(recruiter_name, '')) LIKE ? LIMIT 1
+                    WHERE LOWER(COALESCE(recruiter_name, '')) LIKE ? OR LOWER(COALESCE(email, '')) LIKE ? LIMIT 100
                 )
             )""")
             like_pat = f"%{search_lower}%"
-            params.extend([like_pat, like_pat, like_pat, like_pat])
+            params.extend([like_pat, like_pat, like_pat, like_pat, like_pat])
 
         if state:
             where_clauses.append("UPPER(COALESCE(state, '')) = ?")

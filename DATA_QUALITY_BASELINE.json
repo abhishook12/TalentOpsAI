@@ -1,0 +1,72 @@
+{
+  "generated_at": "2026-08-14T21:26:51.344345",
+  "recruiters": {
+    "total": 615309,
+    "email": {
+      "valid_syntax": 367561,
+      "valid_syntax_pct": 59.74,
+      "malformed_syntax": 8314,
+      "missing_or_placeholder": 239434,
+      "business_emails": 368177,
+      "business_emails_pct": 59.84,
+      "personal_or_freemail": 6639,
+      "unique_business_domains": 25466,
+      "unique_emails": 375780,
+      "total_duplicate_email_rows": 190,
+      "unique_duplicate_emails": 95
+    },
+    "names": {
+      "valid_names": 578322,
+      "valid_names_pct": 93.99,
+      "malformed_names": 36987,
+      "missing_names": 0
+    },
+    "company_association": {
+      "mapped_company": 381125,
+      "mapped_company_pct": 61.94,
+      "unknown_company": 18821,
+      "missing_company": 215363,
+      "distinct_company_keys": 22511,
+      "repairable_via_email_domain": 306
+    },
+    "location": {
+      "complete_city_and_state": 124499,
+      "state_only": 490773,
+      "missing_all_location": 0,
+      "valid_us_state": 613995,
+      "non_standard_state": 1277
+    },
+    "profiles": {
+      "with_phone": 143836,
+      "missing_phone": 471473,
+      "with_title": 205072,
+      "missing_title": 410237,
+      "with_specialization": 134275,
+      "missing_specialization": 481034,
+      "with_linkedin": 114155,
+      "missing_linkedin": 501154
+    },
+    "quality_tiers": {
+      "high_quality_80_plus": 373970,
+      "high_quality_pct": 60.78,
+      "medium_quality_50_79": 8459,
+      "medium_quality_pct": 1.37,
+      "low_quality_30_49": 232880,
+      "low_quality_pct": 37.85,
+      "critical_under_30": 0,
+      "critical_pct": 0.0,
+      "database_avg_score": 67.49
+    }
+  },
+  "companies_postgres": {
+    "total": 25485,
+    "with_primary_domain": 25485,
+    "missing_primary_domain": 0,
+    "with_website": 0,
+    "missing_website": 25485,
+    "with_logo": 25479,
+    "missing_logo": 6,
+    "with_state": 0,
+    "missing_state": 25485
+  }
+}

@@ -476,6 +476,11 @@ def search_recruiters(
             "state_source": row.get("state_source"),
             "created_at": str(row.get("created_at")) if row.get("created_at") else None,
             "relevance_score": int(row.get("relevance_score", 0)),
+            "seniority_level": row.get("seniority_level", "Specialist"),
+            "timezone": row.get("timezone", "America/New_York"),
+            "timezone_code": row.get("timezone_code", "ET"),
+            "company_scale": row.get("company_scale", "Enterprise"),
+            "is_deliverable": row.get("is_deliverable", True),
             "quality_tier": _search_quality_tier(row),
         })
     return formatted

@@ -210,16 +210,44 @@ const SearchResultRow = React.memo(function SearchResultRow({ r, active, query, 
             {initials(r.recruiter_name)}
           </div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.recruiter_name)}</div>
-            <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {r.specialization || 'Recruiter'}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span>{safe(r.recruiter_name)}</span>
+              {r.seniority_level && r.seniority_level !== 'Specialist' && (
+                <span style={{ 
+                  fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, 
+                  background: r.seniority_level === 'Executive' ? 'rgba(168,85,247,0.15)' :
+                              r.seniority_level === 'Lead' ? 'rgba(99,102,241,0.15)' :
+                              r.seniority_level === 'Senior' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)',
+                  color: r.seniority_level === 'Executive' ? '#c084fc' :
+                         r.seniority_level === 'Lead' ? '#818cf8' :
+                         r.seniority_level === 'Senior' ? '#34d399' : '#fbbf24',
+                  border: `1px solid ${
+                    r.seniority_level === 'Executive' ? 'rgba(168,85,247,0.3)' :
+                    r.seniority_level === 'Lead' ? 'rgba(99,102,241,0.3)' :
+                    r.seniority_level === 'Senior' ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'
+                  }`
+                }}>
+                  {r.seniority_level}
+                </span>
+              )}
+            </div>
+            <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span>{r.specialization || 'Recruiter'}</span>
+              {r.timezone_code && (
+                <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>• {r.timezone_code}</span>
+              )}
             </div>
             <div style={{ marginTop: 2, fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               Match: {labelizeMatchReason(r.match_reason)} (Score: {r.relevance_score || 0})
             </div>
           </div>
         </div>
-        <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.email)}</div>
+        <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div>{safe(r.email)}</div>
+          {r.is_deliverable !== false && (
+            <div style={{ fontSize: 9.5, color: '#10b981', fontWeight: 600, marginTop: 2 }}>✓ MX Verified</div>
+          )}
+        </div>
         <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{safe(r.phone)}</div>
         <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
           <CompanyIdentity 

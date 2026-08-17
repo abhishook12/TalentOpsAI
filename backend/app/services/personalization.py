@@ -8,6 +8,12 @@ VARIABLE_PATTERN = re.compile(
     r"{{\s*([a-zA-Z0-9_]+)(?:\s*(?:\||\|\|)\s*(?:default:\s*)?['\"]?([^}'\"]*?)['\"]?)?\s*}}"
 )
 
+from datetime import datetime
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    from backports.zoneinfo import ZoneInfo
+
 SMART_DEFAULTS = {
     "firstname": "there",
     "first_name": "there",
@@ -23,7 +29,29 @@ SMART_DEFAULTS = {
     "city": "your area",
     "state": "your region",
     "email": "",
-    "linkedin": ""
+    "linkedin": "",
+    "greeting": "Hello",
+    "greetingtime": "Hello",
+    "greeting_time": "Hello",
+    "seniorityrole": "talent partner",
+    "seniority_role": "talent partner",
+    "metrohub": "your market",
+    "metro_hub": "your market",
+    "companyscale": "enterprise",
+    "company_scale": "enterprise",
+    "timezone": "ET",
+    "timezone_code": "ET"
+}
+
+METRO_HUB_NAMES = {
+    "SF_BAY_AREA": "San Francisco Bay Area",
+    "NYC_TRI_STATE": "New York Tri-State Area",
+    "SEATTLE_METRO": "Seattle Metro Hub",
+    "TEXAS_TRIANGLE": "Texas Tech Corridor",
+    "RESEARCH_TRIANGLE": "Research Triangle & Charlotte",
+    "GREATER_BOSTON": "Greater Boston Area",
+    "CHICAGO_METRO": "Greater Chicago Metro",
+    "DMV_CAPITAL": "Washington DC Capital Region"
 }
 
 def interpolate_variables(text: str, recruiter: Any, company: Any = None, custom_vars: Dict[str, Any] = None, signature_html: Optional[str] = None) -> str:
@@ -84,6 +112,43 @@ def interpolate_variables(text: str, recruiter: Any, company: Any = None, custom
         elif var_name == "linkedin":
             val = _get_val(recruiter, "linkedin")
 
+        elif var_name in ("greeting", "greetingtime", "greeting_time"):
+            tz_str = _get_val(recruiter, "timezone") or "America/New_York"
+            try:
+                tz = ZoneInfo(tz_str)
+                local_hour = datetime.now(tz).hour
+                if 4 <= local_hour < 12:
+                    val = "Good morning"
+                elif 12 <= local_hour < 17:
+                    val = "Good afternoon"
+                else:
+                    val = "Good evening"
+            except Exception:
+                val = "Hello"
+
+        elif var_name in ("seniorityrole", "seniority_role"):
+            sen = _get_val(recruiter, "seniority_level") or "Specialist"
+            if sen == "Executive":
+                val = "talent acquisition leader"
+            elif sen == "Lead":
+                val = "lead recruitment partner"
+            elif sen == "Senior":
+                val = "senior recruiter"
+            elif sen == "Campus":
+                val = "university & campus talent lead"
+            else:
+                val = "recruiting specialist"
+
+        elif var_name in ("metrohub", "metro_hub"):
+            hub_code = _get_val(recruiter, "metro_hub")
+            val = METRO_HUB_NAMES.get(hub_code) if hub_code else None
+
+        elif var_name in ("companyscale", "company_scale"):
+            val = _get_val(recruiter, "company_scale")
+
+        elif var_name in ("timezone", "timezone_code"):
+            val = _get_val(recruiter, "timezone_code")
+
         if val and str(val).strip():
             return str(val).strip()
             
@@ -104,10 +169,15 @@ def get_available_variables():
         {"variable": "{{FirstName}}", "description": "Recipient's first name", "fallback": "there"},
         {"variable": "{{LastName}}", "description": "Recipient's last name", "fallback": ""},
         {"variable": "{{FullName}}", "description": "Recipient's full name", "fallback": ""},
+        {"variable": "{{GreetingTime}}", "description": "Local time greeting (Good morning/afternoon)", "fallback": "Hello"},
         {"variable": "{{Company}}", "description": "Recipient's company name", "fallback": ""},
         {"variable": "{{Title}}", "description": "Recipient's job title", "fallback": ""},
+        {"variable": "{{SeniorityRole}}", "description": "Decision level role phrasing", "fallback": "recruiter"},
+        {"variable": "{{MetroHub}}", "description": "Major hiring hub market name", "fallback": ""},
+        {"variable": "{{CompanyScale}}", "description": "Enterprise / Mid-Market / Boutique scale", "fallback": ""},
         {"variable": "{{Location}}", "description": "Recipient's location", "fallback": ""},
         {"variable": "{{State}}", "description": "Recipient's state", "fallback": ""},
+        {"variable": "{{Timezone}}", "description": "Local timezone code (ET, CT, PT, MT)", "fallback": ""},
         {"variable": "{{Email}}", "description": "Recipient's email address", "fallback": ""},
         {"variable": "{{LinkedIn}}", "description": "Recipient's LinkedIn URL", "fallback": ""},
     ]

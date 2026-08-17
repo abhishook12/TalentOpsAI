@@ -35,6 +35,7 @@ export function useRecruiters(page = 1, search = '', filters = {}) {
       return data
     },
     keepPreviousData: true,
+    staleTime: 60_000,
   })
 }
 

@@ -7,6 +7,7 @@ export default function DatabaseRecipientsView({ onAddRecipients }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [preset, setPreset] = useState('all');
   const [page, setPage] = useState(1);
   const scrollRef = useRef(null);
 
@@ -20,11 +21,24 @@ export default function DatabaseRecipientsView({ onAddRecipients }) {
   }, [searchQuery]);
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['recruiters_db', debouncedSearch, page],
+    queryKey: ['recruiters_db', debouncedSearch, preset, page],
     keepPreviousData: true,
+    staleTime: 60_000,
     queryFn: async () => {
       const params = new URLSearchParams({ limit: '50', page: page.toString() });
       if (debouncedSearch) params.append('search', debouncedSearch);
+      
+      if (preset === 'execs') {
+        params.append('seniority_level', 'Executive');
+      } else if (preset === 'tech_sf') {
+        params.append('metro_hub', 'SF_BAY_AREA');
+        params.append('specialization_sector', 'Technical');
+      } else if (preset === 'enterprise') {
+        params.append('company_scale', 'Enterprise');
+      } else if (preset === 'pacific') {
+        params.append('timezone_code', 'PT');
+      }
+      
       const res = await api.get(`/recruiters?${params.toString()}`);
       return res.data || { items: [], total: 0, pages: 1 };
     }
@@ -81,8 +95,8 @@ export default function DatabaseRecipientsView({ onAddRecipients }) {
 
   return (
     <div className="flex flex-col h-full bg-[var(--bg-surface)]">
-      {/* Search Bar */}
-      <div className="p-3 border-b border-[var(--border)]">
+      {/* Search Bar & Smart Presets */}
+      <div className="p-3 border-b border-[var(--border)] flex flex-col gap-2">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={16} />
           <input 
@@ -92,6 +106,53 @@ export default function DatabaseRecipientsView({ onAddRecipients }) {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-3 py-2 bg-[var(--bg-page)] border border-[var(--border)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)] transition-colors"
           />
+        </div>
+
+        {/* 1-Click Smart Audience Presets */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+          <span className="text-[11px] text-[var(--text-muted)] font-medium mr-1 flex items-center gap-1">
+            ⚡ Presets:
+          </span>
+          <button
+            onClick={() => { setPreset('all'); setPage(1); }}
+            className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap text-[11px] font-medium ${
+              preset === 'all' ? 'bg-[var(--brand)] text-white' : 'bg-[var(--bg-page)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border)]'
+            }`}
+          >
+            All Database
+          </button>
+          <button
+            onClick={() => { setPreset('execs'); setPage(1); }}
+            className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap text-[11px] font-medium ${
+              preset === 'execs' ? 'bg-purple-600 text-white' : 'bg-[var(--bg-page)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border)]'
+            }`}
+          >
+            👑 Leadership & Heads
+          </button>
+          <button
+            onClick={() => { setPreset('tech_sf'); setPage(1); }}
+            className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap text-[11px] font-medium ${
+              preset === 'tech_sf' ? 'bg-indigo-600 text-white' : 'bg-[var(--bg-page)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border)]'
+            }`}
+          >
+            💻 SF Bay Tech Recruiters
+          </button>
+          <button
+            onClick={() => { setPreset('enterprise'); setPage(1); }}
+            className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap text-[11px] font-medium ${
+              preset === 'enterprise' ? 'bg-emerald-600 text-white' : 'bg-[var(--bg-page)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border)]'
+            }`}
+          >
+            🏢 Enterprise Scale (500+)
+          </button>
+          <button
+            onClick={() => { setPreset('pacific'); setPage(1); }}
+            className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap text-[11px] font-medium ${
+              preset === 'pacific' ? 'bg-blue-600 text-white' : 'bg-[var(--bg-page)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border)]'
+            }`}
+          >
+            🌊 Pacific Time (PT)
+          </button>
         </div>
       </div>
 

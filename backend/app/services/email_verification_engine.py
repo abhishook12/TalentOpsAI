@@ -221,7 +221,7 @@ class EmailVerificationEngine:
             # Count total pending roughly by subtracting processed from 2M
             recruiter_store._ensure_loaded()
             total_count_query = "SELECT COUNT(*) FROM recruiters"
-            total_records = recruiter_store._conn.execute(total_count_query).fetchone()[0]
+            total_records = recruiter_store._conn.cursor().execute(total_count_query).fetchone()[0]
             
             with verification_state._lock:
                 verification_state.state["total_pending"] = max(0, total_records - verification_state.state["total_processed"])
@@ -261,7 +261,7 @@ class EmailVerificationEngine:
                     # parquet_writer reloads RecruiterStore after each write, so never
                     # retain a DuckDB connection across a persisted batch.
                     recruiter_store._ensure_loaded()
-                    df = recruiter_store._conn.execute(query, [domain, self.batch_size, batch_offset]).df()
+                    df = recruiter_store._conn.cursor().execute(query, [domain, self.batch_size, batch_offset]).df()
                     
                     if df.empty:
                         break # Done with this domain

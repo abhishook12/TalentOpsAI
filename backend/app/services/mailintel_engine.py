@@ -32,7 +32,7 @@ def _sync_recruiter_parquet(email: str, status: str, confidence: int) -> None:
     """Keep the Parquet-backed MailIntel dashboard consistent with events."""
     try:
         recruiter_store._ensure_loaded()
-        rows = recruiter_store._conn.execute(
+        rows = recruiter_store._conn.cursor().execute(
             "SELECT recruiter_id FROM recruiters WHERE LOWER(email) = ?", [email]
         ).fetchall()
         if rows:
@@ -57,7 +57,7 @@ def _apply_event_to_parquet(email: str, event_type: str) -> None:
     deltas = {'delivered': 5, 'replied': 30, 'hard_bounce': -50, 'soft_bounce': -5}
     try:
         recruiter_store._ensure_loaded()
-        rows = recruiter_store._conn.execute(
+        rows = recruiter_store._conn.cursor().execute(
             "SELECT recruiter_id, COALESCE(email_confidence, 0) FROM recruiters WHERE LOWER(email) = ?", [email]
         ).fetchall()
         updates = []

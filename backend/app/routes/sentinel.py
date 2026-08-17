@@ -21,7 +21,7 @@ def get_sentinel_dashboard(db: Session = Depends(get_db), current_user: User = D
     from app.services.recruiter_store import recruiter_store as _store
     
     total_recruiters = _store._record_count if _store._loaded else (db.query(func.count(Recruiter.recruiter_id)).scalar() or 0)
-    total_comps = (_store._conn.execute("SELECT COUNT(*) FROM company_summary").fetchone()[0] if _store._loaded else db.query(func.count(func.distinct(Recruiter.company_id))).scalar() or 0)
+    total_comps = (_store._conn.cursor().execute("SELECT COUNT(*) FROM company_summary").fetchone()[0] if _store._loaded else db.query(func.count(func.distinct(Recruiter.company_id))).scalar() or 0)
     
     missing_emails = db.query(func.count(Recruiter.recruiter_id)).filter((Recruiter.email == None) | (Recruiter.email == '') | (Recruiter.email.ilike('%missing.local%'))).scalar() or 0
     missing_phones = db.query(func.count(Recruiter.recruiter_id)).filter((Recruiter.phone == None) | (Recruiter.phone == '')).scalar() or 0

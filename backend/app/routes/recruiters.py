@@ -773,6 +773,139 @@ def get_recruiters(
     analytics_cache.set(cache_key, ret_data, ttl=300)
     return ret_data
 
+import csv
+from io import StringIO
+from fastapi.responses import StreamingResponse
+
+@router.get("/export")
+def export_recruiters(
+    search: Optional[str] = None,
+    state: Optional[str] = None,
+    state_status: Optional[str] = None,
+    city: Optional[str] = None,
+    company: Optional[str] = None,
+    company_id: Optional[int] = None,
+    title: Optional[str] = None,
+    has_phone: Optional[bool] = None,
+    missing_email: Optional[bool] = None,
+    is_active: Optional[bool] = None,
+    min_completeness: Optional[int] = None,
+    needs_review: Optional[bool] = None,
+    source_job_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request)
+):
+    from sqlalchemy.orm import contains_eager
+    query = db.query(Recruiter).join(Recruiter.company, isouter=True)\
+              .filter()\
+              .options(
+                  contains_eager(Recruiter.company),
+                  selectinload(Recruiter.structured_emails),
+                  selectinload(Recruiter.structured_phones),
+                  selectinload(Recruiter.structured_locations)
+              )
+    
+    from ..utils.normalizer import normalize_text
+    
+    if search:
+        clean_search = normalize_text(search)
+        query = query.filter(
+            Recruiter.normalized_recruiter_name.ilike(f"%{clean_search}%") |
+            Recruiter.email.ilike(f"%{search}%") |
+            Recruiter.specialization.ilike(f"%{search}%") |
+            Company.normalized_company_name.ilike(f"%{clean_search}%") |
+            Recruiter.location.ilike(f"%{search}%") |
+            Company.location.ilike(f"%{search}%")
+        )
+    
+    if state:
+        query = apply_state_filter(query, state)
+    if state_status:
+        from sqlalchemy import or_, and_
+        if state_status == 'known':
+            query = query.filter(
+                or_(
+                    and_(Recruiter.state != None, Recruiter.state != ''),
+                    and_(Company.state != None, Company.state != '')
+                )
+            )
+        elif state_status == 'unknown':
+            query = query.filter(
+                or_(Recruiter.state == None, Recruiter.state == ''),
+                or_(Company.state == None, Company.state == '')
+            )
+    if city:
+        query = query.filter(Recruiter.normalized_city.ilike(f"%{city}%"))
+    if company_id is not None:
+        query = query.filter(Recruiter.company_id == company_id)
+    elif company:
+        query = apply_company_filter(query, company)
+    if title:
+        query = query.filter(Recruiter.specialization.ilike(f"%{title}%"))
+    if has_phone is True:
+        query = query.filter(Recruiter.phone.isnot(None), Recruiter.phone != "")
+    elif has_phone is False:
+        query = query.filter((Recruiter.phone.is_(None)) | (Recruiter.phone == ""))
+    if missing_email is True:
+        query = query.filter((Recruiter.email.is_(None)) | (Recruiter.email == ""))
+    elif missing_email is False:
+        query = query.filter(Recruiter.email.isnot(None), Recruiter.email != "")
+    if is_active is not None:
+        query = query.filter(Recruiter.is_active == is_active)
+    if min_completeness is not None:
+        query = query.filter(Recruiter.completeness_score >= min_completeness)
+    if needs_review is not None:
+        query = query.filter(Recruiter.needs_review == needs_review)
+    if source_job_id:
+        query = query.filter(Recruiter.source_job_id == source_job_id)
+
+    # Prevent bandwidth explosion by limiting exports
+    recruiters = query.limit(10000).all()
+
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Recruiter ID", "Name", "Verified Email", "Likely Email", "Inferred Email", 
+        "Direct Phone", "Company Phone", "Location", "State", 
+        "State Source", "State Confidence", "State Reason", "Title", "Company", "Needs Review", "Review Reason", "Duplicate Match Type"
+    ])
+    
+    for r in recruiters:
+        verified_emails = [e.email for e in r.structured_emails if e.status == 'verified']
+        likely_emails = [e.email for e in r.structured_emails if e.status == 'likely']
+        inferred_emails = [e.email for e in r.structured_emails if e.status == 'inferred']
+        
+        direct_phones = [p.phone_number for p in r.structured_phones if p.belongs_to_person]
+        company_phones = [p.phone_number for p in r.structured_phones if not p.belongs_to_person]
+
+        writer.writerow([
+            r.recruiter_id,
+            r.recruiter_name or "",
+            ", ".join(verified_emails),
+            ", ".join(likely_emails),
+            ", ".join(inferred_emails),
+            ", ".join(direct_phones),
+            ", ".join(company_phones),
+            r.location or (r.company.location if r.company else ""),
+            r.state or "",
+            getattr(r, "state_source", ""),
+            getattr(r, "state_confidence", ""),
+            getattr(r, "state_reason", ""),
+            r.title or r.specialization or "",
+            r.company.company_name if r.company else "",
+            getattr(r, "needs_review", False),
+            getattr(r, "review_reason", ""),
+            getattr(r, "duplicate_match_type", "")
+        ])
+
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=recruiters_export.csv"}
+    )
+
+
 @router.get("/{recruiter_id}")
 def get_recruiter(recruiter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
@@ -917,137 +1050,7 @@ def batch_update_recruiters(payload: RecruiterBatchUpdate, db: Session = Depends
     sync_manager.request_sync()
     return {"message": "Recruiters updated", "updated_count": updated}
 
-import csv
-from io import StringIO
-from fastapi.responses import StreamingResponse
 
-@router.get("/export")
-def export_recruiters(
-    search: Optional[str] = None,
-    state: Optional[str] = None,
-    state_status: Optional[str] = None,
-    city: Optional[str] = None,
-    company: Optional[str] = None,
-    company_id: Optional[int] = None,
-    title: Optional[str] = None,
-    has_phone: Optional[bool] = None,
-    missing_email: Optional[bool] = None,
-    is_active: Optional[bool] = None,
-    min_completeness: Optional[int] = None,
-    needs_review: Optional[bool] = None,
-    source_job_id: Optional[str] = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_request)
-):
-    from sqlalchemy.orm import contains_eager
-    query = db.query(Recruiter).join(Recruiter.company, isouter=True)\
-              .filter()\
-              .options(
-                  contains_eager(Recruiter.company),
-                  selectinload(Recruiter.structured_emails),
-                  selectinload(Recruiter.structured_phones),
-                  selectinload(Recruiter.structured_locations)
-              )
-    
-    from ..utils.normalizer import normalize_text
-    
-    if search:
-        clean_search = normalize_text(search)
-        query = query.filter(
-            Recruiter.normalized_recruiter_name.ilike(f"%{clean_search}%") |
-            Recruiter.email.ilike(f"%{search}%") |
-            Recruiter.specialization.ilike(f"%{search}%") |
-            Company.normalized_company_name.ilike(f"%{clean_search}%") |
-            Recruiter.location.ilike(f"%{search}%") |
-            Company.location.ilike(f"%{search}%")
-        )
-    
-    if state:
-        query = apply_state_filter(query, state)
-    if state_status:
-        from sqlalchemy import or_, and_
-        if state_status == 'known':
-            query = query.filter(
-                or_(
-                    and_(Recruiter.state != None, Recruiter.state != ''),
-                    and_(Company.state != None, Company.state != '')
-                )
-            )
-        elif state_status == 'unknown':
-            query = query.filter(
-                or_(Recruiter.state == None, Recruiter.state == ''),
-                or_(Company.state == None, Company.state == '')
-            )
-    if city:
-        query = query.filter(Recruiter.normalized_city.ilike(f"%{city}%"))
-    if company_id is not None:
-        query = query.filter(Recruiter.company_id == company_id)
-    elif company:
-        query = apply_company_filter(query, company)
-    if title:
-        query = query.filter(Recruiter.specialization.ilike(f"%{title}%"))
-    if has_phone is True:
-        query = query.filter(Recruiter.phone.isnot(None), Recruiter.phone != "")
-    elif has_phone is False:
-        query = query.filter((Recruiter.phone.is_(None)) | (Recruiter.phone == ""))
-    if missing_email is True:
-        query = query.filter((Recruiter.email.is_(None)) | (Recruiter.email == ""))
-    elif missing_email is False:
-        query = query.filter(Recruiter.email.isnot(None), Recruiter.email != "")
-    if is_active is not None:
-        query = query.filter(Recruiter.is_active == is_active)
-    if min_completeness is not None:
-        query = query.filter(Recruiter.completeness_score >= min_completeness)
-    if needs_review is not None:
-        query = query.filter(Recruiter.needs_review == needs_review)
-    if source_job_id:
-        query = query.filter(Recruiter.source_job_id == source_job_id)
-
-    # Prevent bandwidth explosion by limiting exports
-    recruiters = query.limit(10000).all()
-
-    output = StringIO()
-    writer = csv.writer(output)
-    writer.writerow([
-        "Recruiter ID", "Name", "Verified Email", "Likely Email", "Inferred Email", 
-        "Direct Phone", "Company Phone", "Location", "State", 
-        "State Source", "State Confidence", "State Reason", "Title", "Company", "Needs Review", "Review Reason", "Duplicate Match Type"
-    ])
-    
-    for r in recruiters:
-        verified_emails = [e.email for e in r.structured_emails if e.status == 'verified']
-        likely_emails = [e.email for e in r.structured_emails if e.status == 'likely']
-        inferred_emails = [e.email for e in r.structured_emails if e.status == 'inferred']
-        
-        direct_phones = [p.phone_number for p in r.structured_phones if p.belongs_to_person]
-        company_phones = [p.phone_number for p in r.structured_phones if not p.belongs_to_person]
-
-        writer.writerow([
-            r.recruiter_id,
-            r.recruiter_name or "",
-            ", ".join(verified_emails),
-            ", ".join(likely_emails),
-            ", ".join(inferred_emails),
-            ", ".join(direct_phones),
-            ", ".join(company_phones),
-            r.location or (r.company.location if r.company else ""),
-            r.state or "",
-            getattr(r, "state_source", ""),
-            getattr(r, "state_confidence", ""),
-            getattr(r, "state_reason", ""),
-            r.title or r.specialization or "",
-            r.company.company_name if r.company else "",
-            getattr(r, "needs_review", False),
-            getattr(r, "review_reason", ""),
-            getattr(r, "duplicate_match_type", "")
-        ])
-
-    output.seek(0)
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=recruiters_export.csv"}
-    )
 
 
 @router.post("/{recruiter_id}/report")

@@ -91,7 +91,7 @@ class QualityEngine:
             # Recruiters are served from Parquet, not the legacy Postgres table.
             # Writing quality values to Postgres here made the dashboard stale.
             recruiter_store._ensure_loaded()
-            recruiter_rows = recruiter_store._conn.execute("""
+            recruiter_rows = recruiter_store._conn.cursor().execute("""
                 SELECT recruiter_id, location, linkedin, title, phone
                 FROM recruiters
                 WHERE quality_flags IS NULL OR quality_flags = ''
@@ -133,7 +133,7 @@ class QualityEngine:
         db = SessionLocal()
         try:
             recruiter_store._ensure_loaded()
-            recruiters = recruiter_store._conn.execute("""
+            recruiters = recruiter_store._conn.cursor().execute("""
                 SELECT recruiter_id, recruiter_name
                 FROM recruiters
                 WHERE recruiter_name IS NOT NULL AND recruiter_name = LOWER(recruiter_name)

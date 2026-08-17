@@ -211,7 +211,7 @@ def admin_stats(db: Session = Depends(get_db)):
         "active_recruiters": safe_count("SELECT COUNT(*) FROM recruiters WHERE is_active = 1"),
         "with_email": safe_count("SELECT COUNT(*) FROM recruiters WHERE email IS NOT NULL AND email <> '' AND email NOT LIKE '%@missing.local%'"),
         "with_phone": safe_count("SELECT COUNT(*) FROM recruiters WHERE phone IS NOT NULL AND phone <> ''"),
-        "total_companies": (_store._conn.execute("SELECT COUNT(*) FROM company_summary").fetchone()[0] if _store._loaded else safe_count("SELECT COUNT(*) FROM companies")),
+        "total_companies": (_store._conn.cursor().execute("SELECT COUNT(*) FROM company_summary").fetchone()[0] if _store._loaded else safe_count("SELECT COUNT(*) FROM companies")),
         "total_candidates": safe_count("SELECT COUNT(*) FROM candidates"),
         "total_submissions": safe_count("SELECT COUNT(*) FROM submissions"),
         "total_vendors": safe_count("SELECT COUNT(*) FROM vendors"),
@@ -1038,19 +1038,25 @@ def admin_visitor_summary(days: int = 30, db: Session = Depends(get_db)):
 
 # ── DB Migration: add new columns to page_visits if not present ───────────────
 def migrate_page_visits(db: Session):
-    existing = db.execute(text("""
-        SELECT column_name FROM information_schema.columns
-        WHERE table_name = 'page_visits'
-    """)).scalars().all()
-    adds = []
-    if "user_email"   not in existing: adds.append("ADD COLUMN user_email   VARCHAR(150)")
-    if "session_id"   not in existing: adds.append("ADD COLUMN session_id   VARCHAR(64)")
-    if "time_on_page" not in existing: adds.append("ADD COLUMN time_on_page INTEGER")
-    if "user_agent"   not in existing: adds.append("ADD COLUMN user_agent   VARCHAR(300)")
-    if "ip_address"   not in existing: adds.append("ADD COLUMN ip_address   VARCHAR(60)")
-    if adds:
-        db.execute(text(f"ALTER TABLE page_visits {', '.join(adds)}"))
+    try:
+        from sqlalchemy import inspect
+        insp = inspect(db.get_bind())
+        if not insp.has_table('page_visits'):
+            return
+        existing = {col["name"] for col in insp.get_columns('page_visits')}
+        adds = {
+            "user_email": "VARCHAR(150)",
+            "session_id": "VARCHAR(64)",
+            "time_on_page": "INTEGER",
+            "user_agent": "VARCHAR(300)",
+            "ip_address": "VARCHAR(60)"
+        }
+        for col, col_type in adds.items():
+            if col not in existing:
+                db.execute(text(f"ALTER TABLE page_visits ADD COLUMN {col} {col_type}"))
         db.commit()
+    except Exception:
+        db.rollback()
 
 
 @router.post("/cleanup")

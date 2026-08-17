@@ -25,9 +25,9 @@ from ..services.recruiter_store import recruiter_store
 def get_mailintel_stats(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     # Total emails and status breakdown from DuckDB
     recruiter_store._ensure_loaded()
-    duck = recruiter_store._conn
+    cur = recruiter_store._conn.cursor()
     
-    stats_row = duck.execute("""
+    stats_row = cur.execute("""
         SELECT 
             COUNT(*) as total,
             COUNT(*) FILTER (WHERE email_status = 'verified') as verified,

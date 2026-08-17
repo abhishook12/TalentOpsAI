@@ -45,7 +45,7 @@ class MemoryOLAPSidecar:
                 # ── Use DuckDB Parquet store for recruiter counts (unified 2.3M dataset) ──
                 from .services.recruiter_store import recruiter_store
                 recruiter_store._ensure_loaded()
-                duck_conn = recruiter_store._conn
+                duck_conn = recruiter_store._conn.cursor() if recruiter_store._conn else None
 
                 if duck_conn:
                     duck_row = duck_conn.execute("""

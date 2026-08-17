@@ -73,6 +73,24 @@ def get_companies(
         } for r in results
     ]
 
+@router.get("/search")
+def search_companies(
+    response: Response,
+    query: Optional[str] = Query(None, description="Search company name"),
+    q: Optional[str] = Query(None, description="Alternative query param"),
+    state: Optional[str] = Query(None, description="State filter"),
+    limit: int = Query(50, ge=1, le=500),
+    skip: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request)
+):
+    search_term = (query or q or "").strip()
+    active_companies = recruiter_store.company_directory(search_term, state)
+    total_count = len(active_companies)
+    response.headers["X-Total-Count"] = str(total_count)
+    return active_companies[skip:skip+limit]
+
+
 @router.get("/{company_id}")
 def get_company(company_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     c = db.query(Company).filter(Company.company_id == company_id).first()
@@ -221,7 +239,7 @@ def run_discovery_scan(company_id: int, db: Session = Depends(get_db), current_u
             recruiter_name=name,
             company_name=company.company_name,
             company_id=company.company_id,
-            source="ui_discovery"
+            data_source="ui_discovery"
         )
         db.add(r)
     

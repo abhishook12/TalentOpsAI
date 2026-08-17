@@ -5,8 +5,10 @@ from typing import Optional
 from datetime import date
 from ..database import get_db
 from ..models.models import Submission, Candidate, Recruiter, Company, Vendor
+from ..services.auth_service import get_current_user_from_request
+from ..models.auth_models import User
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user_from_request)])
 
 VALID_STATUSES = ["submitted", "interview", "offer", "rejected", "placed", "withdrawn"]
 

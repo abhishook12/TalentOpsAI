@@ -182,7 +182,7 @@ def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depen
     
     # Force reload from disk to pick up any new Parquet data from bulk imports
     recruiter_store.reload()
-    duck_conn = recruiter_store._conn
+    duck_conn = recruiter_store._conn.cursor() if recruiter_store._conn else None
     
     sql = """
         SELECT 
@@ -251,7 +251,7 @@ def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depen
 def recruiters_by_state(db: Session = Depends(get_db)):
     try:
         recruiter_store._ensure_loaded()
-        duck_conn = recruiter_store._conn
+        duck_conn = recruiter_store._conn.cursor() if recruiter_store._conn else None
         if duck_conn:
             results = duck_conn.execute("""
                 SELECT
@@ -344,7 +344,7 @@ def company_states(
 
     try:
         recruiter_store._ensure_loaded()
-        duck_conn = recruiter_store._conn
+        duck_conn = recruiter_store._conn.cursor() if recruiter_store._conn else None
         if duck_conn:
             where_clause = "WHERE CAST(company_id AS VARCHAR) = ?" if selected_key else "WHERE 1=1"
             params = [selected_key] if selected_key else []

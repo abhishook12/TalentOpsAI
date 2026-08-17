@@ -96,7 +96,7 @@ def system_health(db: Session = Depends(get_db)):
         recruiter_store._ensure_loaded()
         comp_count = 0
         if recruiter_store._conn:
-            comp_count = recruiter_store._conn.execute("SELECT COUNT(*) FROM company_summary").fetchone()[0]
+            comp_count = recruiter_store._conn.cursor().execute("SELECT COUNT(*) FROM company_summary").fetchone()[0]
         health_data["components"]["recruiter_store"] = {
             "status": "healthy" if recruiter_store._record_count > 0 else "empty",
             "records": recruiter_store._record_count,
@@ -129,7 +129,7 @@ def recruiter_store_health():
         recruiter_store._ensure_loaded()
         comp_count = 0
         if recruiter_store._conn:
-            comp_count = recruiter_store._conn.execute("SELECT COUNT(*) FROM company_summary").fetchone()[0]
+            comp_count = recruiter_store._conn.cursor().execute("SELECT COUNT(*) FROM company_summary").fetchone()[0]
         sample = recruiter_store.company_directory() if hasattr(recruiter_store, 'company_directory') else []
         return {
             "loaded": recruiter_store._loaded,

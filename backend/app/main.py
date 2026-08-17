@@ -18,7 +18,7 @@ from .config import (
     ENABLE_QUALITY_ENGINE,
     ENABLE_SENTINEL_ENGINE,
 )
-from .routes import recruiters, companies, vendors, analytics, admin, auth, actions, updates, ai, campaigns, harvester, users, visitor_analytics, notifications, bridge, accounts
+from .routes import recruiters, companies, vendors, candidates, submissions, analytics, admin, auth, actions, updates, ai, campaigns, harvester, users, visitor_analytics, notifications, bridge, accounts
 from .database import get_db, engine
 from .models import models, auth_models
 from .create_indexes import create_performance_indexes
@@ -66,19 +66,20 @@ if RUN_STARTUP_MIGRATIONS:
 
             admin.migrate_page_visits(_db)
             try:
+                from sqlalchemy import inspect
                 def _ensure_columns(table_name: str, columns: dict[str, str]) -> None:
-                    existing = set(
-                        row[0]
-                        for row in _db.execute(text("""
-                            SELECT column_name
-                            FROM information_schema.columns
-                            WHERE table_name = :table_name
-                        """), {"table_name": table_name}).all()
-                    )
-                    adds = [f"ADD COLUMN {column} {definition}" for column, definition in columns.items() if column not in existing]
-                    if adds:
-                        _db.execute(text(f"ALTER TABLE {table_name} {', '.join(adds)}"))
+                    try:
+                        insp = inspect(_db.get_bind())
+                        if not insp.has_table(table_name):
+                            return
+                        existing = {col["name"] for col in insp.get_columns(table_name)}
+                        for column, definition in columns.items():
+                            if column not in existing:
+                                _db.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column} {definition}"))
                         _db.commit()
+                    except Exception as err:
+                        _db.rollback()
+                        logger.warning("Error ensuring columns for %s: %s", table_name, err)
 
                 _ensure_columns("recruiters", {
                     "source_job_id": "VARCHAR(36)",
@@ -302,6 +303,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(recruiters.router, prefix="/recruiters", tags=["Recruiters"])
 app.include_router(companies.router, prefix="/companies", tags=["Companies"])
 app.include_router(vendors.router, prefix="/vendors", tags=["Vendors"])
+app.include_router(candidates.router, prefix="/candidates", tags=["Candidates"])
+app.include_router(submissions.router, prefix="/submissions", tags=["Submissions"])
 app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
 from .routes import admin_devices, sentinel
 app.include_router(admin_devices.router, prefix="/admin/devices", tags=["Admin Devices"])
@@ -319,10 +322,9 @@ app.include_router(harvester.router, prefix="/api", tags=["Autonomous Spider"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
 from .routes import system
 app.include_router(system.router, prefix="/system", tags=["System Controls"])
-from .routes import analytics_session, bridge, sentinel
+from .routes import analytics_session, bridge
 app.include_router(analytics_session.router, prefix="/analytics/session", tags=["Analytics Session"])
 app.include_router(bridge.router, prefix="/bridge", tags=["Outlook Bridge"])
-app.include_router(sentinel.router, prefix="/sentinel", tags=["Sentinel"])
 from .routes import mailintel
 app.include_router(mailintel.router, prefix="/mailintel", tags=["MailIntel"])
 
@@ -486,6 +488,8 @@ async def shutdown_event():
     verification_engine.stop()
     from .services.data_filler_engine import data_filler_engine
     data_filler_engine.stop()
+    from .services.enrichment_service import enrichment_engine
+    enrichment_engine.stop()
 
 from .routes import health
 app.include_router(health.router, prefix="/health", tags=["System Health"])

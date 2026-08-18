@@ -147,6 +147,51 @@ def api_campaign_preflight(
     return asdict(result)
 
 
+@router.post("/{campaign_id}/auto-heal")
+def api_campaign_auto_heal(
+    campaign_id: int,
+    payload: Optional[PreflightRequest] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request)
+):
+    """Auto-heals and repairs undeliverable/typo/blocked emails for a campaign."""
+    from ..services.email_healer import email_healer
+    from ..services.campaign_preflight import run_preflight_check
+    from dataclasses import asdict
+
+    campaign = db.query(Campaign).filter(
+        Campaign.user_id == current_user.id,
+        Campaign.campaign_id == campaign_id
+    ).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    if payload and payload.emails:
+        emails = payload.emails
+        names = payload.names if payload.names else []
+    else:
+        cr_rows = db.query(CampaignRecruiter).filter(
+            CampaignRecruiter.campaign_id == campaign_id
+        ).all()
+        emails = [cr.email for cr in cr_rows if cr.email]
+        names = [cr.recruiter_name or '' for cr in cr_rows]
+
+    # Run Healing
+    heal_result = email_healer.heal_campaign_recipients(emails, names)
+
+    # Re-compute preflight with newly healed emails
+    healed_map = {h['original_email']: h['repaired_email'] for h in heal_result.get('healed', [])}
+    final_emails = [healed_map.get(e, e) for e in emails]
+
+    updated_preflight = run_preflight_check(campaign_id, final_emails, names)
+
+    return {
+        'heal_summary': heal_result,
+        'updated_preflight': asdict(updated_preflight)
+    }
+
+
+
 @router.get("/{campaign_id}/deliverability-report")
 def api_deliverability_report(
     campaign_id: int,

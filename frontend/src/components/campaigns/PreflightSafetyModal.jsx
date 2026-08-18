@@ -2,18 +2,30 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShieldCheck, AlertTriangle, XCircle, CheckCircle2, ShieldAlert,
-  ChevronRight, Send, X, ArrowRight, RefreshCw, Mail, Check, AlertCircle
+  ChevronRight, Send, X, ArrowRight, RefreshCw, Mail, Check, AlertCircle,
+  Wand2, Sparkles, CheckCheck
 } from 'lucide-react';
+import api from '../../services/api';
+import toast from 'react-hot-toast';
 
 export default function PreflightSafetyModal({
   isOpen,
   onClose,
-  preflightData,
+  campaignId,
+  preflightData: initialPreflightData,
   onConfirmLaunch,
   isLaunching = false
 }) {
+  const [preflightData, setPreflightData] = useState(initialPreflightData);
   const [excludeRisky, setExcludeRisky] = useState(false);
   const [filterTier, setFilterTier] = useState('all'); // 'all' | 'safe' | 'review' | 'blocked'
+  const [isHealing, setIsHealing] = useState(false);
+  const [healedInfo, setHealedInfo] = useState(null);
+
+  // Sync if prop updates
+  React.useEffect(() => {
+    setPreflightData(initialPreflightData);
+  }, [initialPreflightData]);
 
   if (!isOpen || !preflightData) return null;
 
@@ -37,6 +49,32 @@ export default function PreflightSafetyModal({
   });
 
   const effectiveSendCount = excludeRisky ? safe_to_send : (safe_to_send + risky_review);
+
+  const handleAutoHeal = async () => {
+    if (!campaignId) {
+      toast.error('Campaign ID not available for auto-healing');
+      return;
+    }
+    setIsHealing(true);
+    try {
+      const res = await api.post(`/campaigns/${campaignId}/auto-heal`, {
+        emails: recipients.map(r => r.email),
+        names: recipients.map(r => r.name || '')
+      });
+      const { heal_summary, updated_preflight } = res.data;
+      setPreflightData(updated_preflight);
+      setHealedInfo(heal_summary);
+      if (heal_summary.total_healed > 0) {
+        toast.success(`Successfully healed & repaired ${heal_summary.total_healed} emails!`);
+      } else {
+        toast.info('No additional permutations or typos could be auto-repaired.');
+      }
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Auto-healing failed');
+    } finally {
+      setIsHealing(false);
+    }
+  };
 
   const getRiskBadge = () => {
     if (risk_level === 'low') {
@@ -76,10 +114,10 @@ export default function PreflightSafetyModal({
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-white tracking-tight flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-white tracking-tight flex items-center gap-2 m-0">
                   Campaign Deliverability Pre-Flight Gate
                 </h2>
-                <p className="text-xs text-[#a1a1aa] mt-0.5">
+                <p className="text-xs text-[#a1a1aa] mt-0.5 m-0">
                   Real-time DNS MX, deep mailbox ping & zero-bounce safety scan
                 </p>
               </div>
@@ -110,8 +148,52 @@ export default function PreflightSafetyModal({
               </div>
             </div>
 
+            {/* Auto-Healer Banner if blocked or risky exist */}
+            {(blocked > 0 || risky_review > 0) && (
+              <div className="p-4 rounded-xl bg-gradient-to-r from-purple-950/40 via-[#1e1b2e] to-[#18181b] border border-purple-500/30 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400 flex-shrink-0">
+                    <Wand2 className="w-4 h-4 animate-pulse" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-white flex items-center gap-1.5">
+                      Autonomous Email Healer & Permutation Engine
+                    </div>
+                    <div className="text-[11px] text-[#a1a1aa] truncate">
+                      Auto-correct domain typos, hoist alternates & synthesize valid corporate inboxes
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={handleAutoHeal}
+                  disabled={isHealing}
+                  className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold flex items-center gap-1.5 flex-shrink-0 shadow-lg shadow-purple-950/40 transition-all cursor-pointer"
+                >
+                  {isHealing ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Repairing...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5" /> Auto-Heal ({blocked + risky_review})
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* Healed Notification Badge */}
+            {healedInfo && healedInfo.total_healed > 0 && (
+              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-2.5">
+                <CheckCheck className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <div className="text-xs text-emerald-300">
+                  Repaired <strong>{healedInfo.total_healed}</strong> addresses into verified corporate mailboxes!
+                </div>
+              </div>
+            )}
+
             {/* Warning if blocked */}
-            {warning_message && (
+            {warning_message && !healedInfo && (
               <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-3">
                 <AlertCircle className="w-4 h-4 text-rose-400 mt-0.5 flex-shrink-0" />
                 <div className="text-xs text-rose-300 leading-relaxed">{warning_message}</div>

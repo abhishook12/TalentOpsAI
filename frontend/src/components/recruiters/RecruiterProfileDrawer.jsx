@@ -3,17 +3,24 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Mail, Phone, ExternalLink, Building2, MapPin, Award,
   ShieldCheck, CheckCircle2, Copy, Check, Send, Sparkles,
-  Calendar, Clock, User, ChevronRight, AlertTriangle
+  Calendar, Clock, User, ChevronRight, AlertTriangle, Wand2, RefreshCw
 } from 'lucide-react';
+import api from '../../services/api';
 import toast from 'react-hot-toast';
 
 export default function RecruiterProfileDrawer({
-  recruiter,
+  recruiter: initialRecruiter,
   isOpen,
   onClose,
   onEnrollCampaign
 }) {
+  const [recruiter, setRecruiter] = useState(initialRecruiter);
   const [copiedField, setCopiedField] = useState(null);
+  const [isFixingEmail, setIsFixingEmail] = useState(false);
+
+  React.useEffect(() => {
+    setRecruiter(initialRecruiter);
+  }, [initialRecruiter]);
 
   if (!isOpen || !recruiter) return null;
 
@@ -37,7 +44,27 @@ export default function RecruiterProfileDrawer({
   const emailStatus = recruiter.email_status || 'verified';
   const confidence = recruiter.email_confidence || (emailStatus === 'verified' ? 95 : 75);
   const completeness = recruiter.completeness_score || 85;
-  const isDeliverable = recruiter.is_deliverable !== false;
+
+  const handleAutoFixEmail = async () => {
+    if (!recruiter.recruiter_id) return;
+    setIsFixingEmail(true);
+    try {
+      const res = await api.post(`/recruiters/${recruiter.recruiter_id}/auto-fix-email`);
+      const { repaired_email, method, confidence } = res.data;
+      setRecruiter(prev => ({
+        ...prev,
+        email: repaired_email,
+        email_status: 'verified',
+        email_confidence: confidence || 95,
+        is_deliverable: true
+      }));
+      toast.success(`Repaired email to ${repaired_email} via ${method.replace(/_/g, ' ')}!`);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'No replacement email could be auto-synthesized');
+    } finally {
+      setIsFixingEmail(false);
+    }
+  };
 
   const getGradeBadge = (score) => {
     if (score >= 90) return { label: 'Grade A+', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' };
@@ -157,7 +184,26 @@ export default function RecruiterProfileDrawer({
 
               {/* Contact Channels */}
               <div className="space-y-3">
-                <h3 className="text-xs font-semibold text-[#a1a1aa] uppercase tracking-wider m-0">Contact Coordinates</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-semibold text-[#a1a1aa] uppercase tracking-wider m-0">Contact Coordinates</h3>
+                  {recruiter.recruiter_id && (
+                    <button
+                      onClick={handleAutoFixEmail}
+                      disabled={isFixingEmail}
+                      className="text-[11px] font-semibold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer bg-purple-500/10 hover:bg-purple-500/20 px-2.5 py-1 rounded-lg border border-purple-500/20 transition-colors"
+                    >
+                      {isFixingEmail ? (
+                        <>
+                          <RefreshCw className="w-3 h-3 animate-spin" /> Repairing...
+                        </>
+                      ) : (
+                        <>
+                          <Wand2 className="w-3 h-3" /> Auto-Repair Email
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
 
                 {/* Email Item */}
                 <div className="p-3 rounded-xl bg-[#18181c] border border-[#27272a] flex items-center justify-between group hover:border-[#3f3f46] transition-colors">

@@ -1295,4 +1295,33 @@ def extension_webhook(data: ChromeExtensionPayload, db: Session = Depends(get_db
     sync_manager.request_sync()
     db.refresh(new_rec)
     
+    return {
+        "status": "success",
+        "recruiter_id": new_rec.recruiter_id,
+        "message": "Candidate clipped from LinkedIn successfully"
+    }
 
+
+@router.post("/{recruiter_id}/auto-fix-email")
+def api_auto_fix_recruiter_email(
+    recruiter_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request)
+):
+    """Autonomously heals, typo-fixes, or synthesizes a valid corporate email for a recruiter."""
+    from ..services.email_healer import email_healer
+
+    result = email_healer.repair_recruiter_email(recruiter_id)
+    if not result.get('success'):
+        raise HTTPException(status_code=400, detail=result.get('message', 'Failed to heal email'))
+
+    # Update in Postgres if row exists
+    pg_rec = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
+    if pg_rec:
+        pg_rec.email = result['repaired_email']
+        pg_rec.email_status = 'verified'
+        pg_rec.email_confidence = result.get('confidence', 95)
+        pg_rec.is_deliverable = True
+        db.commit()
+
+    return result

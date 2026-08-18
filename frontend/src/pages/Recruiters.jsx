@@ -6,6 +6,7 @@ import { CompanyIdentity } from '../components/CompanyIdentity'
 import { useSessionState } from '../hooks/useSessionState'
 import { useRecruiters, usePrefetchRecruiters } from '../hooks/queries/useRecruiters'
 import CustomSelect from '../components/ui/CustomSelect'
+import RecruiterProfileDrawer from '../components/recruiters/RecruiterProfileDrawer'
 
 const emptyForm = {
   recruiter_name: '', email: '', phone: '', linkedin: '',
@@ -98,18 +99,20 @@ const getAvatarColor = (name) => {
   return colors[index]
 }
 
-const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleActive, handleDelete }) {
+const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleActive, handleDelete, onSelect }) {
   // Mock "Last Active" based on completeness to mimic the mockup's data variations
   const mockLastActive = r.completeness_score > 80 ? '2h ago' : r.completeness_score > 50 ? '3h ago' : '1d ago'
   
   const avatarStyle = getAvatarColor(r.recruiter_name)
 
   return (
-    <tr style={{ 
-      transition: 'all 0.2s ease', 
-      borderBottom: '1px solid var(--card-border)',
-      cursor: 'pointer'
-    }}
+    <tr 
+      onClick={() => onSelect && onSelect(r)}
+      style={{ 
+        transition: 'all 0.2s ease', 
+        borderBottom: '1px solid var(--card-border)',
+        cursor: 'pointer'
+      }}
     onMouseEnter={(e) => {
       e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.02)'
       e.currentTarget.style.boxShadow = 'inset 3px 0 0 0 var(--text-primary)'
@@ -342,6 +345,7 @@ export default function Recruiters() {
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [selectedDrawerRecruiter, setSelectedDrawerRecruiter] = useState(null)
 
   // React Query Data Fetching
   const { data, isLoading: loading, isFetching, refetch, isError } = useRecruiters(page, debouncedSearch, debouncedFilters)
@@ -734,7 +738,14 @@ export default function Recruiters() {
                   </thead>
                   <tbody>
                     {recruiters.map(r => (
-                      <RecruiterTableRow key={r.recruiter_id} r={r} toggleActive={toggleActive} openEdit={openEdit} handleDelete={handleDelete} />
+                      <RecruiterTableRow 
+                        key={r.recruiter_id} 
+                        r={r} 
+                        toggleActive={toggleActive} 
+                        openEdit={openEdit} 
+                        handleDelete={handleDelete}
+                        onSelect={setSelectedDrawerRecruiter}
+                      />
                     ))}
                   </tbody>
                 </table>
@@ -783,6 +794,13 @@ export default function Recruiters() {
           saving={saving}
         />
       )}
+
+      {/* Recruiter 360° Profile Slide-Out Drawer */}
+      <RecruiterProfileDrawer
+        recruiter={selectedDrawerRecruiter}
+        isOpen={!!selectedDrawerRecruiter}
+        onClose={() => setSelectedDrawerRecruiter(null)}
+      />
     </div>
   )
 }

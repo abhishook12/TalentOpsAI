@@ -16,6 +16,7 @@ class DomainCheckResult:
     is_disposable: bool
     is_free_provider: bool
     accepts_mail: bool
+    is_catchall: bool
     check_time_ms: float
 
 class DomainChecker:
@@ -115,6 +116,7 @@ class DomainChecker:
             is_disposable=is_disposable,
             is_free_provider=is_free_provider,
             accepts_mail=accepts_mail,
+            is_catchall=False,  # Determined lazily by smtp_prober.detect_catchall()
             check_time_ms=check_time_ms
         )
 

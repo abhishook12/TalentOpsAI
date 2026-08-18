@@ -185,7 +185,28 @@ class EmailVerificationEngine:
         finally:
             db.close()
             
-        # Stage 6 - Scoring
+        # Stage 6 - SMTP Mailbox Ping (only for emails with confidence >= 50)
+        # Probes the actual mailbox via RCPT TO handshake without sending email
+        smtp_probed = False
+        if confidence >= 50:
+            try:
+                from app.services.smtp_prober import smtp_prober
+                probe_result = smtp_prober.probe_mailbox(email)
+                if probe_result.smtp_code > 0:  # Got a real SMTP response
+                    confidence += probe_result.confidence_delta
+                    smtp_probed = True
+                    if probe_result.mailbox_exists and not probe_result.is_catchall:
+                        source_methods.append('SMTP-Verified')
+                    elif probe_result.is_catchall:
+                        source_methods.append('SMTP-CatchAll')
+                    elif probe_result.smtp_code in (550, 551, 552, 553):
+                        source_methods.append('SMTP-Rejected')
+                    elif probe_result.is_greylisted:
+                        source_methods.append('SMTP-Greylisted')
+            except Exception as e:
+                logger.debug(f"SMTP probe skipped for {email}: {e}")
+
+        # Stage 7 - Scoring
         confidence = max(0, min(100, confidence))
         
         if confidence >= 90:

@@ -103,6 +103,77 @@ def validate_recipients_endpoint(payload: ValidateRecipientsRequest, db: Session
     result = validate_recipients(payload.emails, db)
     return asdict(result)
 
+class PreflightRequest(BaseModel):
+    emails: list[str] = []
+    names: list[str] = []
+
+@router.post("/{campaign_id}/preflight")
+def api_campaign_preflight(
+    campaign_id: int,
+    payload: Optional[PreflightRequest] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request)
+):
+    """Run a pre-flight deliverability check for all campaign recipients.
+    
+    Scans every recipient against the DuckDB deliverability store and
+    returns a categorised breakdown: safe_to_send, risky_review, blocked.
+    """
+    from ..services.campaign_preflight import run_preflight_check
+    from dataclasses import asdict
+
+    campaign = db.query(Campaign).filter(
+        Campaign.user_id == current_user.id,
+        Campaign.campaign_id == campaign_id
+    ).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    # Collect recipient emails — from payload or from database
+    if payload and payload.emails:
+        emails = payload.emails
+        names = payload.names if payload.names else []
+    else:
+        cr_rows = db.query(CampaignRecruiter).filter(
+            CampaignRecruiter.campaign_id == campaign_id
+        ).all()
+        emails = [cr.email for cr in cr_rows if cr.email]
+        names = [cr.recruiter_name or '' for cr in cr_rows]
+
+    if not emails:
+        raise HTTPException(status_code=400, detail="No recipients to check")
+
+    result = run_preflight_check(campaign_id, emails, names)
+    return asdict(result)
+
+
+@router.get("/{campaign_id}/deliverability-report")
+def api_deliverability_report(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request)
+):
+    """Detailed per-recipient deliverability report with tier breakdown."""
+    from ..services.campaign_preflight import get_deliverability_report
+
+    campaign = db.query(Campaign).filter(
+        Campaign.user_id == current_user.id,
+        Campaign.campaign_id == campaign_id
+    ).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    cr_rows = db.query(CampaignRecruiter).filter(
+        CampaignRecruiter.campaign_id == campaign_id
+    ).all()
+    emails = [cr.email for cr in cr_rows if cr.email]
+
+    if not emails:
+        return {"campaign_id": campaign_id, "summary": {"total": 0}, "tiers": {}}
+
+    return get_deliverability_report(campaign_id, emails)
+
+
 @router.post("/{campaign_id}/start")
 async def api_start_campaign(campaign_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     from ..services.send_engine import start_campaign, _check_account_health

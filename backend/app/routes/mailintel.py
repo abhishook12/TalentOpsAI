@@ -63,6 +63,20 @@ def get_mailintel_stats(db: Session = Depends(get_db), current_user: User = Depe
         MailIntelTracking.last_bounce_at != None
     ).scalar() or 0
     
+    # Enrichment stats
+    try:
+        from ..services.contact_enrichment_worker import enrichment_worker
+        enrich_stats = enrichment_worker.get_stats()
+    except Exception:
+        enrich_stats = {}
+
+    # SMTP probe stats
+    try:
+        from ..services.smtp_prober import smtp_prober
+        smtp_stats = smtp_prober.get_stats()
+    except Exception:
+        smtp_stats = {}
+
     return {
         "total": total_records,
         "total_emails": total_emails,
@@ -84,7 +98,9 @@ def get_mailintel_stats(db: Session = Depends(get_db), current_user: User = Depe
             "tier_3_risky_catchall": risky_catchall,
             "tier_4_undeliverable": undeliverable,
             "tier_5_missing": missing_emails
-        }
+        },
+        "enrichment": enrich_stats,
+        "smtp_probe": smtp_stats
     }
 
 @router.get("/domains")
@@ -207,4 +223,62 @@ def get_verification_log(current_user: User = Depends(get_current_user_from_requ
     return {
         "errors": state.get("errors", []),
         "batch_log": state.get("batch_log", [])
+    }
+
+
+# ─── Contact Enrichment Endpoints ────────────────────────────────────────────
+
+@router.post("/enrich")
+def trigger_enrichment(current_user: User = Depends(get_current_user_from_request)):
+    """Start the contact enrichment worker (LinkedIn URLs, phone propagation, completeness scores)."""
+    if not current_user.role or current_user.role.name.lower() not in ('admin', 'superadmin'):
+        raise HTTPException(status_code=403, detail="Admin authorization required")
+    
+    from ..services.contact_enrichment_worker import enrichment_worker
+    result = enrichment_worker.run_enrichment_async()
+    return result
+
+
+@router.get("/enrichment-stats")
+def get_enrichment_stats(current_user: User = Depends(get_current_user_from_request)):
+    """Return current enrichment worker statistics."""
+    from ..services.contact_enrichment_worker import enrichment_worker
+    return enrichment_worker.get_stats()
+
+
+# ─── SMTP Probe Endpoints ────────────────────────────────────────────────────
+
+@router.get("/smtp-probe-stats")
+def get_smtp_probe_stats(current_user: User = Depends(get_current_user_from_request)):
+    """Return SMTP mailbox probe cache statistics."""
+    from ..services.smtp_prober import smtp_prober
+    return smtp_prober.get_stats()
+
+
+class SmtpProbeRequest(BaseModel):
+    emails: list[str]
+
+@router.post("/smtp-probe")
+def probe_mailboxes(
+    payload: SmtpProbeRequest,
+    current_user: User = Depends(get_current_user_from_request)
+):
+    """Probe specific mailboxes via SMTP RCPT TO handshake.
+    
+    Returns verification results for each email without sending any email.
+    Limited to 50 emails per request to prevent abuse.
+    """
+    if not current_user.role or current_user.role.name.lower() not in ('admin', 'superadmin'):
+        raise HTTPException(status_code=403, detail="Admin authorization required")
+    
+    if len(payload.emails) > 50:
+        raise HTTPException(status_code=400, detail="Maximum 50 emails per probe request")
+    
+    from ..services.smtp_prober import smtp_prober
+    from dataclasses import asdict
+    
+    results = smtp_prober.probe_batch(payload.emails)
+    return {
+        "total": len(results),
+        "results": [asdict(r) for r in results]
     }

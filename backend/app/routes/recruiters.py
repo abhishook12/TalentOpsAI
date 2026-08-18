@@ -891,37 +891,38 @@ def export_recruiters(
     output = StringIO()
     writer = csv.writer(output)
     writer.writerow([
-        "Recruiter ID", "Name", "Verified Email", "Likely Email", "Inferred Email", 
-        "Direct Phone", "Company Phone", "Location", "State", 
-        "State Source", "State Confidence", "State Reason", "Title", "Company", "Needs Review", "Review Reason", "Duplicate Match Type"
+        "Name", "Email", "Company", "Phone Number", "Designation"
     ])
     
     for r in recruiters:
-        verified_emails = [e.email for e in r.structured_emails if e.status == 'verified']
-        likely_emails = [e.email for e in r.structured_emails if e.status == 'likely']
-        inferred_emails = [e.email for e in r.structured_emails if e.status == 'inferred']
-        
-        direct_phones = [p.phone_number for p in r.structured_phones if p.belongs_to_person]
-        company_phones = [p.phone_number for p in r.structured_phones if not p.belongs_to_person]
+        # Resolve best email
+        email_val = r.email or ""
+        if not email_val and hasattr(r, 'structured_emails') and r.structured_emails:
+            for e in r.structured_emails:
+                if e.email:
+                    email_val = e.email
+                    break
+                    
+        # Resolve best phone
+        phone_val = r.phone or ""
+        if not phone_val and hasattr(r, 'structured_phones') and r.structured_phones:
+            for p in r.structured_phones:
+                if p.phone_number:
+                    phone_val = p.phone_number
+                    break
+
+        # Resolve company
+        company_val = (r.company.company_name if r.company else "") or getattr(r, 'company_name', '') or ""
+
+        # Resolve designation
+        designation_val = r.title or r.specialization or getattr(r, 'position', '') or ""
 
         writer.writerow([
-            r.recruiter_id,
             r.recruiter_name or "",
-            ", ".join(verified_emails),
-            ", ".join(likely_emails),
-            ", ".join(inferred_emails),
-            ", ".join(direct_phones),
-            ", ".join(company_phones),
-            r.location or (r.company.location if r.company else ""),
-            r.state or "",
-            getattr(r, "state_source", ""),
-            getattr(r, "state_confidence", ""),
-            getattr(r, "state_reason", ""),
-            r.title or r.specialization or "",
-            r.company.company_name if r.company else "",
-            getattr(r, "needs_review", False),
-            getattr(r, "review_reason", ""),
-            getattr(r, "duplicate_match_type", "")
+            email_val,
+            company_val,
+            phone_val,
+            designation_val
         ])
 
     output.seek(0)

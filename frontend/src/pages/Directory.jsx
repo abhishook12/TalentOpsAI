@@ -39,7 +39,23 @@ const PAGE_SIZE = 100
 const UNKNOWN_STATE = 'Unknown'
 
 function exportWorkbook(rows, sheetName = 'Recruiters') {
-  const worksheet = XLSX.utils.json_to_sheet(rows)
+  const formattedRows = rows.map((r) => ({
+    'Name': r.Name || r.recruiter_name || r.name || '',
+    'Email': r.Email || r.email || '',
+    'Company': r.Company || r.company_name || '',
+    'Phone Number': r['Phone Number'] || r.Phone || r.phone || '',
+    'Designation': r.Designation || r.designation || r.title || r.specialization || ''
+  }))
+  const worksheet = XLSX.utils.json_to_sheet(formattedRows, {
+    header: ['Name', 'Email', 'Company', 'Phone Number', 'Designation']
+  })
+  worksheet['!cols'] = [
+    { wch: 25 },
+    { wch: 32 },
+    { wch: 28 },
+    { wch: 18 },
+    { wch: 32 }
+  ]
   const workbook = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
   return workbook
@@ -398,12 +414,11 @@ export default function Directory() {
   }
 
   const exportRows = recruiters.map((recruiter) => ({
-    Name: recruiter.recruiter_name || '',
-    Email: recruiter.email || '',
-    Phone: recruiter.phone || '',
-    Company: recruiter.company_name || selectedCompanyName || '',
-    Location: recruiter.location || '',
-    State: recruiter.state || (selectedState === UNKNOWN_STATE ? '' : selectedState) || '',
+    'Name': recruiter.recruiter_name || '',
+    'Email': recruiter.email || '',
+    'Company': recruiter.company_name || selectedCompanyName || '',
+    'Phone Number': recruiter.phone || '',
+    'Designation': recruiter.title || recruiter.specialization || '',
   }))
 
   const exportCurrentPage = () => {
@@ -415,12 +430,11 @@ export default function Directory() {
     if (!selectedRecruiters.size) return showToast('No recruiters selected', 'error')
 
     const rows = Array.from(selectedRecruiters.values()).map((recruiter) => ({
-      Name: recruiter.recruiter_name || '',
-      Email: recruiter.email || '',
-      Phone: recruiter.phone || '',
-      Company: recruiter.company_name || selectedCompanyName || '',
-      Location: recruiter.location || '',
-      State: recruiter.state || (selectedState === UNKNOWN_STATE ? '' : selectedState) || '',
+      'Name': recruiter.recruiter_name || '',
+      'Email': recruiter.email || '',
+      'Company': recruiter.company_name || selectedCompanyName || '',
+      'Phone Number': recruiter.phone || '',
+      'Designation': recruiter.title || recruiter.specialization || '',
     }))
 
     XLSX.writeFile(exportWorkbook(rows), `${(selectedCompanyName || 'company').replace(/[^a-z0-9]+/gi, '_')}_selected.xlsx`)
@@ -462,12 +476,11 @@ export default function Directory() {
       }
 
       const rows = allRecruiters.map((recruiter) => ({
-        Name: recruiter.recruiter_name || '',
-        Email: recruiter.email || '',
-        Phone: recruiter.phone || '',
-        Company: recruiter.company_name || selectedCompanyName || '',
-        Location: recruiter.location || '',
-        State: recruiter.state || '',
+        'Name': recruiter.recruiter_name || '',
+        'Email': recruiter.email || '',
+        'Company': recruiter.company_name || selectedCompanyName || '',
+        'Phone Number': recruiter.phone || '',
+        'Designation': recruiter.title || recruiter.specialization || '',
       }))
 
       XLSX.writeFile(exportWorkbook(rows), `${(selectedCompanyName || 'company').replace(/[^a-z0-9]+/gi, '_')}_all.xlsx`)

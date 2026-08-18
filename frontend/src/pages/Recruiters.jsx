@@ -378,25 +378,9 @@ export default function Recruiters() {
 
 
   const exportRecruiters = useCallback(() => {
-    if (totalCount === 0) return toast.error('No recruiters to export');
-    
-    const params = new URLSearchParams()
-    if (debouncedSearch) params.append('search', debouncedSearch)
-    if (debouncedFilters.state) params.append('state', debouncedFilters.state)
-    if (debouncedFilters.city) params.append('city', debouncedFilters.city)
-    if (debouncedFilters.company) params.append('company', debouncedFilters.company)
-    if (debouncedFilters.title) params.append('title', debouncedFilters.title)
-    if (debouncedFilters.has_phone === 'yes') params.append('has_phone', 'true')
-    if (debouncedFilters.has_phone === 'no') params.append('has_phone', 'false')
-    if (debouncedFilters.missing_email === 'yes') params.append('missing_email', 'true')
-    if (debouncedFilters.missing_email === 'no') params.append('missing_email', 'false')
-    if (debouncedFilters.status === 'active') params.append('is_active', 'true')
-    if (debouncedFilters.status === 'inactive') params.append('is_active', 'false')
-    if (debouncedFilters.needs_review === 'yes') params.append('needs_review', 'true')
-    if (debouncedFilters.state_status) params.append('state_status', debouncedFilters.state_status)
-
-    window.open(`${api.defaults.baseURL}/recruiters/export?${params.toString()}`, '_blank');
-  }, [totalCount, debouncedSearch, debouncedFilters])
+    if (totalCount === 0 || !recruiters?.length) return toast.error('No recruiters to export');
+    exportToExcel(recruiters, 'recruiters_export');
+  }, [totalCount, recruiters])
 
   const openEdit = useCallback((r) => {
     setForm({
@@ -622,7 +606,7 @@ export default function Recruiters() {
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
               <span style={{ fontSize: 11, color: 'var(--text-muted)', marginRight: 8 }}>Updated: {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
               <button onClick={exportRecruiters} className="cc-ghost-button" style={{ fontSize: 13 }}>
-                  <i className="ti ti-download" /> Export CSV
+                  <i className="ti ti-download" /> Export Excel
               </button>
               <button onClick={() => refetch()} className="cc-ghost-button" style={{ fontSize: 13 }}>
                   <i className="ti ti-refresh" /> Refresh Data

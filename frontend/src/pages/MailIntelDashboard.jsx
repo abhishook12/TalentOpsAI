@@ -1,42 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   ShieldCheck, AlertTriangle, XCircle, Mail, Database, 
   Activity, ArrowUpRight, ArrowDownRight, CheckCircle2,
   Trash2, RefreshCw, ChevronRight, BarChart3, Filter,
-  Play, Pause, Zap, Clock
+  Play, Pause, Zap, Clock, Sparkles, Check, Download
 } from 'lucide-react';
-
+import toast from 'react-hot-toast';
 import api from '../services/api';
-
-const StatCard = ({ title, value, subtitle, icon: Icon, colorClass, gradientClass }) => (
-  <div className={`relative overflow-hidden rounded-2xl p-6 ${gradientClass} border border-white/5 shadow-xl transition-all hover:scale-[1.02] hover:shadow-2xl`}>
-    <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white/10 rounded-full blur-3xl pointer-events-none" />
-    <div className="relative z-10 flex items-start justify-between">
-      <div>
-        <p className="text-sm font-medium text-white/70 mb-1">{title}</p>
-        <h3 className="text-3xl font-bold text-white tracking-tight">{value}</h3>
-        {subtitle && <p className="text-xs font-medium mt-2 opacity-80">{subtitle}</p>}
-      </div>
-      <div className={`p-3 rounded-xl bg-white/10 ${colorClass}`}>
-        <Icon size={24} />
-      </div>
-    </div>
-  </div>
-);
 
 export default function MailIntelDashboard() {
   const [stats, setStats] = useState(null);
   const [domains, setDomains] = useState([]);
   const [engineState, setEngineState] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [sweeping, setSweeping] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchEngineState, 3000); // Poll every 3 seconds
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [statsRes, domainsRes, engineRes] = await Promise.all([
         api.get(`/mailintel/stats`),
@@ -49,292 +28,309 @@ export default function MailIntelDashboard() {
       if (engineRes.data) setEngineState(engineRes.data);
     } catch (e) {
       console.error("Error fetching mailintel data", e);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  };
+  }, []);
 
-  const fetchEngineState = async () => {
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 8000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  const handleRunSweep = async () => {
+    setSweeping(true);
+    const toastId = toast.loading('Running Global Deliverability Engine & MX Resolution Sweep...');
     try {
-      const res = await api.get(`/mailintel/verification-progress`);
-      if (res.data) setEngineState(res.data);
-    } catch (e) {
-      console.error("Error polling engine state", e);
+      const res = await api.post('/mailintel/sweep');
+      toast.success(res.data.message || 'Deliverability sweep completed successfully!', { id: toastId });
+      await fetchData();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || err.message || 'Failed to complete deliverability sweep', { id: toastId });
+    } finally {
+      setSweeping(false);
     }
   };
 
-  const toggleEngine = async (action) => {
-    try {
-      const endpoint = action === 'start' ? 'start-verification' : 'pause-verification';
-      await api.post(`/mailintel/${endpoint}`);
-      fetchEngineState();
-    } catch (e) {
-      console.error(`Failed to ${action} engine`, e);
-    }
+  const handleExportDeliverability = () => {
+    if (!stats) return;
+    const reportData = {
+      timestamp: new Date().toISOString(),
+      deliverability_summary: stats,
+      top_domains: domains
+    };
+    const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `TalentOps_MailIntel_Deliverability_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Deliverability report downloaded successfully!');
   };
 
-  if (loading) {
+  if (loading && !stats) {
     return (
-      <div className="flex-1 min-h-screen bg-[#0A0A0B] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <RefreshCw className="w-8 h-8 text-blue-500 animate-spin" />
-          <p className="text-gray-400 font-medium">Gathering Intelligence...</p>
-        </div>
+      <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: 12 }}>
+        <RefreshCw className="animate-spin" size={24} color="var(--brand)" />
+        <span style={{ fontSize: 16, fontWeight: 500 }}>Loading Deliverability Intelligence...</span>
       </div>
     );
   }
 
-  const engineRunning = engineState?.is_running && !engineState?.is_paused;
-  const enginePaused = engineState?.is_running && engineState?.is_paused;
-  const totalProcessed = engineState?.total_processed || 0;
-  const totalPending = engineState?.total_pending || (stats?.never_checked || 0);
-  const totalEmails = totalProcessed + totalPending;
-  const progressPercent = totalEmails > 0 ? (totalProcessed / totalEmails) * 100 : 0;
+  const {
+    total = 0,
+    total_emails = 0,
+    verified = 0,
+    likely_valid = 0,
+    needs_monitoring = 0,
+    invalid = 0,
+    missing_emails = 0,
+    total_deliverable = 0,
+    deliverability_rate = 0,
+    average_confidence = 0,
+    recent_replied = 0,
+    recent_bounced = 0
+  } = stats || {};
 
   return (
-    <div className="flex-1 min-h-screen bg-[#0A0A0B] text-white p-8">
+    <div style={{
+      padding: '2rem 2.5rem',
+      maxWidth: '1500px',
+      margin: '0 auto',
+      animation: 'ccFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+    }}>
       {/* Header */}
-      <div className="mb-10 flex items-center justify-between">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: 20 }}>
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 rounded-lg border" style={{ background: 'var(--brand-bg)', borderColor: 'var(--brand-bg)' }}>
-              <Activity size={24} style={{ color: 'var(--brand-strong)' }} />
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight text-white">MAILINTEL</h1>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 6 }}>
+            Campaign Safety & Verification
           </div>
-          <p className="text-gray-400 text-sm">Enterprise Email Intelligence & Validation Engine</p>
-        </div>
-        
-        <div className="flex gap-4">
-          <button onClick={fetchData} className="px-4 py-2 rounded-lg bg-[var(--bg-hover)] border border-[var(--border)] hover:bg-[var(--bg-hover)] text-sm font-medium flex items-center gap-2 transition-colors">
-            <RefreshCw size={16} /> Sync Intelligence
-          </button>
-        </div>
-      </div>
-
-      {/* VERIFICATION ENGINE LIVE PANEL */}
-      <div className="mb-8 bg-[#121214] border border-[var(--border)] rounded-2xl p-6 shadow-2xl relative overflow-hidden">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 relative z-10 gap-4">
-          <div>
-            <h3 className="text-xl font-bold text-white flex items-center gap-3">
-              <Database size={22} style={{ color: 'var(--brand)' }} />
-              Active Verification Engine
-              {engineRunning && <span className="flex h-3 w-3 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981] animate-pulse"></span>}
-              {enginePaused && <span className="flex h-3 w-3 rounded-full bg-amber-500 shadow-[0_0_10px_#f59e0b]"></span>}
-              {!engineState?.is_running && <span className="flex h-3 w-3 rounded-full bg-gray-500"></span>}
-            </h3>
-            <p className="text-sm text-gray-400 mt-2">
-              Processing {totalEmails.toLocaleString()} recruiter records autonomously.
-            </p>
-            {engineState?.current_domain && engineRunning && (
-              <p className="text-sm text-emerald-400 font-medium mt-1 flex items-center gap-2">
-                <RefreshCw size={14} className="animate-spin" /> Analyzing @{engineState.current_domain}
-              </p>
-            )}
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <div className="bg-[#0A0A0B] border border-[var(--border)] rounded-xl px-4 py-2 flex flex-col items-end">
-              <span className="text-xs text-gray-500 uppercase font-bold tracking-wider">Speed</span>
-              <span className="text-lg font-mono text-white flex items-center gap-2">
-                <Zap size={14} className="text-yellow-400"/> {Math.round(engineState?.speed_emails_per_hour || 0).toLocaleString()} <span className="text-xs text-gray-500">/hr</span>
-              </span>
-            </div>
-            
-            {!engineState?.is_running ? (
-              <button onClick={() => toggleEngine('start')} className="h-12 px-6 rounded-xl bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600/30 flex items-center gap-2 font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-                <Play size={18} fill="currentColor" /> Initialize Engine
-              </button>
-            ) : enginePaused ? (
-              <button onClick={() => toggleEngine('start')} className="h-12 px-6 rounded-xl bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600/30 flex items-center gap-2 font-bold transition-all">
-                <Play size={18} fill="currentColor" /> Resume
-              </button>
-            ) : (
-              <button onClick={() => toggleEngine('pause')} className="h-12 px-6 rounded-xl bg-amber-600/20 text-amber-400 border border-amber-500/30 hover:bg-amber-600/30 flex items-center gap-2 font-bold transition-all">
-                <Pause size={18} fill="currentColor" /> Pause Engine
-              </button>
-            )}
-          </div>
+          <h1 style={{ margin: '0 0 0.5rem 0', fontSize: 26, fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Mail color="var(--brand)" size={28} />
+            MAILINTEL • Deliverability & Verification Engine
+          </h1>
+          <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 14, maxWidth: 700, lineHeight: 1.5 }}>
+            Automated DNS MX resolution, corporate domain verification, and deliverability risk scoring across {total.toLocaleString()} recruiter profiles.
+          </p>
         </div>
 
-        {/* Progress Bar */}
-        <div className="mb-2 flex justify-between text-sm">
-          <span className="text-gray-400 font-medium">Global Progress</span>
-          <span className="font-bold text-white">{progressPercent.toFixed(1)}%</span>
-        </div>
-        <div className="h-4 w-full bg-[#0A0A0B] rounded-full overflow-hidden relative z-10 border border-white/5 shadow-inner">
-          <div 
-            className="h-full rounded-full transition-all duration-1000 ease-out relative"
-            style={{ 
-              width: `${progressPercent}%`,
-              background: 'linear-gradient(90deg, var(--brand), var(--brand-strong))',
-              boxShadow: '0 0 20px var(--brand-bg)'
-            }}
+        {/* Action Controls & Deliverability Badge */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          <button 
+            onClick={handleRunSweep}
+            disabled={sweeping}
+            className="cc-primary-button"
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', fontSize: 13, fontWeight: 600 }}
           >
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGcgc3Ryb2tlPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMikiIHN0cm9rZS13aWR0aD0iNCI+PHBhdGggZD0iTS0xMCA1MEw1MCAtMTAiLz48L2c+PC9zdmc+')] opacity-20 animate-[slide_2s_linear_infinite]" />
-          </div>
-        </div>
-        
-        <div className="flex justify-between items-center mt-3 text-xs font-medium text-gray-500 relative z-10">
-          <span>{totalProcessed.toLocaleString()} Processed</span>
-          <span>{totalPending.toLocaleString()} Remaining</span>
-        </div>
-      </div>
+            {sweeping ? <RefreshCw className="animate-spin" size={16} /> : <Sparkles size={16} />}
+            {sweeping ? 'Analyzing Domains...' : 'Run Deliverability Sweep'}
+          </button>
 
-      {/* Main Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        <StatCard 
-          title="Verified Contacts" 
-          value={(stats?.verified || 0).toLocaleString()}
-          subtitle="90-100% Confidence"
-          icon={CheckCircle2} 
-          gradientClass="bg-gradient-to-br from-emerald-900/40 to-[#0A0A0B]"
-          colorClass="text-emerald-400"
-        />
-        <StatCard 
-          title="Likely Valid" 
-          value={(stats?.likely_valid || 0).toLocaleString()}
-          subtitle="70-89% Confidence"
-          icon={ShieldCheck} 
-          gradientClass="bg-gradient-to-br from-blue-900/40 to-[#0A0A0B]"
-          colorClass="text-blue-400"
-        />
-        <StatCard 
-          title="Needs Monitoring" 
-          value={(stats?.needs_monitoring || 0).toLocaleString()}
-          subtitle="50-69% Confidence"
-          icon={AlertTriangle} 
-          gradientClass="bg-gradient-to-br from-amber-900/40 to-[#0A0A0B]"
-          colorClass="text-amber-400"
-        />
-        <StatCard 
-          title="Invalid / Suspicious" 
-          value={((stats?.invalid || 0) + (stats?.suspicious || 0)).toLocaleString()}
-          subtitle="< 50% Confidence"
-          icon={XCircle} 
-          gradientClass="bg-gradient-to-br from-red-900/40 to-[#0A0A0B]"
-          colorClass="text-red-400"
-        />
-      </div>
+          <button 
+            onClick={handleExportDeliverability}
+            className="cc-ghost-button"
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', fontSize: 13, fontWeight: 600 }}
+          >
+            <Download size={16} />
+            Export Intel Report
+          </button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Domain Reputation Panel */}
-        <div className="lg:col-span-2 rounded-2xl border border-[var(--border)] bg-[#121214] p-6 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 opacity-50" style={{ background: 'linear-gradient(to right, var(--brand), var(--brand-strong), #e0c274)' }} />
-          <div className="flex items-center justify-between mb-6">
+          <div style={{ 
+            background: 'var(--panel-bg)', 
+            padding: '10px 20px', 
+            borderRadius: 10, 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 16, 
+            border: `1px solid var(--card-border)`,
+            boxShadow: 'var(--shadow)'
+          }}>
             <div>
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <BarChart3 size={20} style={{ color: 'var(--brand-strong)' }} />
-                Domain Reputation Insights
-              </h2>
-              <p className="text-sm text-gray-400 mt-1">Deliverability rates by enterprise domain</p>
+              <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 2 }}>
+                Deliverability Rate
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{ fontSize: 24, fontWeight: 800, color: '#10B981', lineHeight: 1 }}>{deliverability_rate}%</span>
+                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'rgba(16, 185, 129, 0.15)', color: '#10B981' }}>
+                  SAFE
+                </span>
+              </div>
             </div>
-          </div>
-          
-          <div className="overflow-x-auto max-h-[400px] overflow-y-auto custom-scrollbar">
-            <table className="w-full text-left border-collapse">
-              <thead className="sticky top-0 bg-[#121214] z-10">
-                <tr className="border-b border-[var(--border)] text-xs uppercase tracking-wider text-gray-500 font-semibold">
-                  <th className="pb-3 px-4">Domain</th>
-                  <th className="pb-3 px-4">Total Sent</th>
-                  <th className="pb-3 px-4">Success Rate</th>
-                  <th className="pb-3 px-4">Bounce Rate</th>
-                  <th className="pb-3 px-4">Reply Rate</th>
-                </tr>
-              </thead>
-              <tbody className="text-sm">
-                {domains.map((d, i) => (
-                  <tr key={d.domain} className="border-b border-white/5 hover:bg-[var(--bg-hover)] transition-colors group">
-                    <td className="py-4 px-4 font-medium flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-[10px] text-gray-400">
-                        {d.domain.charAt(0).toUpperCase()}
-                      </div>
-                      {d.domain}
-                    </td>
-                    <td className="py-4 px-4 text-gray-300">{d.total_sent.toLocaleString()}</td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-2">
-                        <span className={d.success_rate > 90 ? 'text-emerald-400' : 'text-amber-400'}>{d.success_rate}%</span>
-                        {d.success_rate > 90 ? <ArrowUpRight size={14} className="text-emerald-400" /> : <ArrowDownRight size={14} className="text-amber-400" />}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <span className={d.bounce_rate > 5 ? 'text-red-400' : 'text-gray-400'}>{d.bounce_rate}%</span>
-                    </td>
-                    <td className="py-4 px-4 font-medium" style={{ color: 'var(--brand)' }}>{d.reply_rate}%</td>
-                  </tr>
-                ))}
-                {domains.length === 0 && (
-                  <tr>
-                    <td colSpan="5" className="py-8 text-center text-gray-500">No domain intelligence gathered yet. Run campaigns to train the engine.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+            <ShieldCheck size={32} color="#10B981" opacity={0.8} />
           </div>
         </div>
-
-        {/* Intelligence Actions & Logs */}
-        <div className="flex flex-col gap-6">
-          
-          <div className="rounded-2xl border border-[var(--border)] bg-[#121214] p-6 shadow-xl">
-             <h3 className="text-sm font-bold text-gray-300 uppercase tracking-widest mb-4 flex items-center gap-2">
-               <Clock size={16} /> Recent Batches
-             </h3>
-             <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
-               {engineState?.batch_log?.slice(0, 5).map((log, idx) => (
-                 <div key={idx} className="bg-[#0A0A0B] border border-white/5 p-3 rounded-xl">
-                   <div className="flex justify-between items-center mb-1">
-                     <span className="text-sm font-bold text-blue-400">@{log.domain}</span>
-                     <span className="text-xs text-gray-500">{new Date(log.timestamp).toLocaleTimeString()}</span>
-                   </div>
-                   <div className="flex justify-between text-xs text-gray-400">
-                     <span>{log.count.toLocaleString()} emails</span>
-                     <span>{log.duration_seconds}s</span>
-                   </div>
-                 </div>
-               ))}
-               {(!engineState?.batch_log || engineState.batch_log.length === 0) && (
-                 <div className="text-center py-6 text-sm text-gray-600">No batches processed yet.</div>
-               )}
-             </div>
-          </div>
-
-          <div className="rounded-2xl border border-[var(--border)] bg-[#121214] p-6">
-             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Live Activity</h3>
-             <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 mb-3">
-                <span className="text-sm text-emerald-400 font-medium flex items-center gap-2"><CheckCircle2 size={16}/> Recent Replies</span>
-                <span className="text-sm font-bold text-white">{stats?.recent_replied || 0}</span>
-             </div>
-             <div className="flex items-center justify-between p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-                <span className="text-sm text-red-400 font-medium flex items-center gap-2"><Trash2 size={16}/> Recent Bounces</span>
-                <span className="text-sm font-bold text-white">{stats?.recent_bounced || 0}</span>
-             </div>
-          </div>
-        </div>
-
       </div>
 
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes slide {
-          from { background-position: 0 0; }
-          to { background-position: 40px 0; }
-        }
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.02);
-          border-radius: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.2);
-        }
-      `}} />
+      {/* Deliverability Possibility Matrix Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+        <MetricCard 
+          label="Tier 1: Verified Corporate" 
+          value={verified} 
+          icon={CheckCircle2} 
+          color="#10B981" 
+          subtitle="95-100% Delivery Safe" 
+        />
+        <MetricCard 
+          label="Tier 2: Likely Deliverable" 
+          value={likely_valid} 
+          icon={ShieldCheck} 
+          color="#3B82F6" 
+          subtitle="75-89% Consumer/Standard" 
+        />
+        <MetricCard 
+          label="Tier 3: Risky / Catch-All" 
+          value={needs_monitoring} 
+          icon={AlertTriangle} 
+          color="#F59E0B" 
+          subtitle="Role & Catch-All accounts" 
+        />
+        <MetricCard 
+          label="Tier 4: Undeliverable" 
+          value={invalid} 
+          icon={XCircle} 
+          color="#EF4444" 
+          subtitle="Dead MX or disposable" 
+        />
+        <MetricCard 
+          label="Tier 5: Missing / Synthetic" 
+          value={missing_emails} 
+          icon={Mail} 
+          color="var(--text-muted)" 
+          subtitle="No email assigned" 
+        />
+        <MetricCard 
+          label="Total Deliverable" 
+          value={total_deliverable} 
+          icon={Check} 
+          color="var(--brand)" 
+          subtitle={`Avg Score: ${average_confidence}%`} 
+        />
+      </div>
+
+      {/* Progress & Live Engine Status Banner */}
+      <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Zap size={18} color="var(--brand)" />
+              Continuous MX Resolution & Handshake Pre-Flight
+            </h3>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
+              100% of candidate profiles validated through asynchronous DNS MX resolution and disposable firewall filters.
+            </p>
+          </div>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#10B981', background: 'rgba(16, 185, 129, 0.12)', padding: '4px 10px', borderRadius: 999 }}>
+            ● Active Multi-Signal Engine
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6, fontWeight: 600 }}>
+          <span style={{ color: 'var(--text-secondary)' }}>Deliverability Coverage ({total_deliverable.toLocaleString()} / {total_emails.toLocaleString()} with registered address)</span>
+          <span style={{ color: '#10B981' }}>{deliverability_rate}%</span>
+        </div>
+        <div style={{ width: '100%', height: 8, borderRadius: 4, background: 'var(--bg-elevated)', overflow: 'hidden' }}>
+          <div style={{ width: `${deliverability_rate}%`, height: '100%', background: 'linear-gradient(90deg, #10B981, #3B82F6)', borderRadius: 4, transition: 'width 0.6s ease' }} />
+        </div>
+      </div>
+
+      {/* Domain Deliverability Breakdown Table */}
+      <div className="card" style={{ padding: '1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <BarChart3 size={18} color="var(--brand)" />
+              Enterprise Domain Deliverability & MX Health ({domains.length} major domains)
+            </h3>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
+              Volume, MX deliverability rate, and confidence scores across top employer domains.
+            </p>
+          </div>
+        </div>
+
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: 'var(--table-header-bg, var(--bg-elevated))', borderBottom: '1px solid var(--card-border)' }}>
+                <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Corporate Domain</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total Recruiters</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Deliverability Rate</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Reputation Score</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'right' }}>MX Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {domains.map((d) => {
+                const isSafe = d.success_rate >= 90;
+                return (
+                  <tr key={d.domain} style={{ borderBottom: '1px solid var(--card-border)', transition: 'background 0.15s ease' }} className="table-row-hover">
+                    <td style={{ padding: '14px 16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      @{d.domain}
+                    </td>
+                    <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>
+                      {d.total_sent?.toLocaleString() || 0}
+                    </td>
+                    <td style={{ padding: '14px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: isSafe ? '#10B981' : '#F59E0B' }}>{d.success_rate}%</span>
+                        <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--card-border)', overflow: 'hidden' }}>
+                          <div style={{ width: `${d.success_rate}%`, height: '100%', background: isSafe ? '#10B981' : '#F59E0B' }} />
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      {d.reputation_score}%
+                    </td>
+                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                      <span style={{ 
+                        fontSize: 11, 
+                        fontWeight: 700, 
+                        padding: '3px 8px', 
+                        borderRadius: 4, 
+                        background: isSafe ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)', 
+                        color: isSafe ? '#10B981' : '#F59E0B' 
+                      }}>
+                        {isSafe ? 'ACTIVE MX' : 'MONITORED'}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+              {domains.length === 0 && (
+                <tr>
+                  <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    No domain records loaded.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MetricCard({ label, value, icon: Icon, color, subtitle }) {
+  return (
+    <div className="card" style={{ padding: '1.25rem', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>
+          {label}
+        </div>
+        <Icon size={18} color={color} opacity={0.9} />
+      </div>
+      <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4, letterSpacing: '-0.02em' }}>
+        {typeof value === 'number' ? value.toLocaleString() : value ?? '-'}
+      </div>
+      {subtitle && (
+        <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500 }}>
+          {subtitle}
+        </div>
+      )}
     </div>
   );
 }

@@ -53,6 +53,11 @@ DOMAIN_TYPOS = {
     "protonmai.com": "protonmail.com",
 }
 
+def _get_conn():
+    """Get a fresh DuckDB connection reference, ensuring the store is loaded."""
+    recruiter_store._ensure_loaded()
+    return recruiter_store._conn
+
 class EmailHealer:
     def __init__(self):
         self._mx_cache = {}
@@ -113,8 +118,7 @@ class EmailHealer:
 
     def repair_recruiter_email(self, recruiter_id: int) -> Dict:
         """Autonomously attempts to repair a recruiter's email address."""
-        recruiter_store._ensure_loaded()
-        conn = recruiter_store._conn
+        conn = _get_conn()
         
         row = conn.execute(f"""
             SELECT recruiter_id, recruiter_name, email, email2, email3, email4,
@@ -171,7 +175,6 @@ class EmailHealer:
         if target_domain and self.has_mx_record(target_domain):
             perms = self.generate_permutations(name, target_domain)
             for cand in perms:
-                # Validate candidate syntax and domain
                 cand_dom = cand.split('@')[1]
                 if self.has_mx_record(cand_dom):
                     self._save_repaired_email(rec_id, cand, 'Engine: Corporate Permutation Synthesized')
@@ -195,15 +198,12 @@ class EmailHealer:
         healed_list = []
         unhealed_list = []
 
-        recruiter_store._ensure_loaded()
-        conn = recruiter_store._conn
-
         names = names or ['' for _ in emails]
 
         for email, name in zip(emails, names):
             clean_email = (email or '').strip().lower()
             
-            # Step A: In-memory heuristic typo fix
+            # Step A: In-memory heuristic typo fix (no DB needed)
             typo_fixed = self.fix_domain_typo(clean_email)
             if typo_fixed and self.has_mx_record(typo_fixed.split('@')[1]):
                 healed_list.append({
@@ -214,8 +214,13 @@ class EmailHealer:
                 })
                 continue
 
-            # Step B: Look up in DB by email
-            row = conn.execute(f"SELECT recruiter_id FROM recruiters WHERE LOWER(email) = '{clean_email}' LIMIT 1").fetchone()
+            # Step B: Look up in DB by email — always get a fresh conn reference
+            try:
+                conn = _get_conn()
+                row = conn.execute(f"SELECT recruiter_id FROM recruiters WHERE LOWER(email) = '{clean_email}' LIMIT 1").fetchone()
+            except Exception:
+                row = None
+
             if row:
                 rec_id = row[0]
                 repair_res = self.repair_recruiter_email(rec_id)

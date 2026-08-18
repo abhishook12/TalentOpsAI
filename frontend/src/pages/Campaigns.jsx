@@ -19,6 +19,7 @@ import CampaignProgress from '../components/CampaignProgress';
 
 import TemplateLibraryModal from '../components/campaigns/TemplateLibraryModal';
 import ConnectionWizard from '../components/ConnectionWizard';
+import PreflightSafetyModal from '../components/campaigns/PreflightSafetyModal';
 
 import { setLastEmail, saveTemplate } from '../lib/emailTemplates';
 
@@ -91,6 +92,8 @@ export default function Campaigns() {
   // ── Readiness / Preflight State ──────────────────────────────────────────────
   const [preflightData, setPreflightData] = useState(null);
   const [preflightLoading, setPreflightLoading] = useState(false);
+  const [showSafetyModal, setShowSafetyModal] = useState(false);
+  const [safetyPreflightData, setSafetyPreflightData] = useState(null);
   const [checks, setChecks] = useState({
     sender: 'idle',
     recipients: 'idle',
@@ -399,11 +402,10 @@ export default function Campaigns() {
   }, []);
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Send campaign
+  // Send campaign & Pre-Flight Deliverability Gate
   // ─────────────────────────────────────────────────────────────────────────────
   const handleSend = useCallback(async () => {
     if (isSending) return;
-    setIsSending(true);
     setSendError(null);
     try {
       let cid = activeCampaignId;
@@ -412,11 +414,15 @@ export default function Campaigns() {
         cid = saved;
         if (!cid) { toast.error('Failed to save campaign draft'); return; }
       }
-      // Wait for any in-flight saves
       if (savePromiseRef.current) await savePromiseRef.current;
       
-      // Force a synchronous preflight to ensure recipients are enrolled before starting
       const validRecipients = validatedRecipients.recipients.filter(r => r.status === 'valid');
+      if (validRecipients.length === 0) {
+        toast.error('Please add at least one valid recipient');
+        return;
+      }
+
+      // 1. Prepare preview & enroll recipients
       await api.post(`/campaigns/${cid}/prepare-preview`, {
         name: campaignName,
         from_email: fromEmail,
@@ -426,9 +432,31 @@ export default function Campaigns() {
         recipients: validRecipients,
       });
 
+      // 2. Trigger Deliverability Pre-Flight Scan
+      const preflightRes = await api.post(`/campaigns/${cid}/preflight`, {
+        emails: validRecipients.map(r => r.email),
+        names: validRecipients.map(r => r.name || '')
+      });
+
+      setSafetyPreflightData(preflightRes.data);
+      setShowSafetyModal(true);
+    } catch (e) {
+      const errDetail = e.response?.data?.detail || 'Failed to initialize pre-flight check';
+      toast.error(errDetail);
+    }
+  }, [activeCampaignId, isSending, saveDraft, validatedRecipients, campaignName, fromEmail, signatureId, subject, body]);
+
+  const handleConfirmLaunch = useCallback(async ({ excludeRisky }) => {
+    if (isSending) return;
+    setIsSending(true);
+    try {
+      const cid = activeCampaignId;
+      if (!cid) return;
+
       await api.post(`/campaigns/${cid}/start`);
+      setShowSafetyModal(false);
       setWorkspaceMode('sending');
-      toast.success('Campaign started!');
+      toast.success('Campaign launched with deliverability protection!');
     } catch (e) {
       const errDetail = e.response?.data?.detail || 'Failed to start campaign';
       if (errDetail.includes('attention')) {
@@ -439,7 +467,7 @@ export default function Campaigns() {
     } finally {
       setIsSending(false);
     }
-  }, [activeCampaignId, isSending, saveDraft, validatedRecipients, campaignName, fromEmail, signatureId, subject, body]);
+  }, [activeCampaignId, isSending]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // List actions
@@ -978,6 +1006,13 @@ export default function Campaigns() {
       {showConnectionWizard && (
         <ConnectionWizard onClose={() => setShowConnectionWizard(false)} onSuccess={() => { setShowConnectionWizard(false); fetchAccounts(); }} />
       )}
+      <PreflightSafetyModal
+        isOpen={showSafetyModal}
+        onClose={() => setShowSafetyModal(false)}
+        preflightData={safetyPreflightData}
+        onConfirmLaunch={handleConfirmLaunch}
+        isLaunching={isSending}
+      />
       </div>
     </CampaignErrorBoundary>
   );

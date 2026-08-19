@@ -15,7 +15,7 @@ from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..services.auth_service import get_current_user_from_request
+from ..services.auth_service import get_current_user_from_request, require_admin
 from ..services.recruiter_store import recruiter_store
 from ..models.auth_models import User
 from ..models.models import Company, PageVisit, Recruiter, Vendor
@@ -948,7 +948,7 @@ def get_data_health(db: Session = Depends(get_db), current_user: User = Depends(
 
 
 @router.get("/debug-parquet")
-def debug_parquet(force_download: bool = False):
+def debug_parquet(force_download: bool = False, admin: User = Depends(require_admin)):
     import os, traceback
     from app.services.recruiter_store import PARQUET_FILE, recruiter_store
     

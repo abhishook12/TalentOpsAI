@@ -7,8 +7,10 @@ from pydantic import BaseModel
 from google import genai
 from sqlalchemy.orm import Session
 from ..database import get_db
+from ..services.auth_service import get_current_user_from_request
+from ..models.auth_models import User
 
-router = APIRouter(prefix="", tags=["AI Integration"])
+router = APIRouter(prefix="", tags=["AI Integration"], dependencies=[Depends(get_current_user_from_request)])
 logger = logging.getLogger(__name__)
 
 

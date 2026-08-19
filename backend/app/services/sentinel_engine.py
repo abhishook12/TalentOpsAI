@@ -146,6 +146,7 @@ class SentinelEngine:
         self.companies_cache[company_id] = res
         return res
 
+
     def _sync_audit(self):
         """Phase 1: Run the full audit query against Parquet"""
         logger.info("[Phase IV] Running Full Database Audit...")
@@ -170,26 +171,25 @@ class SentinelEngine:
                 FROM recruiters
             """).fetchone()
             
-            db = SessionLocal()
-            state = db.query(SentinelPhase4State).first()
-            if not state:
-                state = SentinelPhase4State()
-                db.add(state)
-            
-            state.total_recruiters = int(stats[0])
-            state.missing_emails = int(stats[1])
-            state.missing_phones = int(stats[2])
-            state.missing_linkedin = int(stats[3])
-            state.unknown_companies = int(stats[4])
-            state.total_companies = int(stats[5] or 0)
-            state.profiles_below_50 = int(stats[6])
-            state.profiles_above_90 = int(stats[7])
-            state.avg_completeness = int(stats[8] or 0)
-            state.avg_confidence = int(stats[9] or 0)
-            
-            state.status = "Auditing"
-            db.commit()
-            db.close()
+            with SessionLocal() as db:
+                state = db.query(SentinelPhase4State).first()
+                if not state:
+                    state = SentinelPhase4State()
+                    db.add(state)
+                
+                state.total_recruiters = int(stats[0])
+                state.missing_emails = int(stats[1])
+                state.missing_phones = int(stats[2])
+                state.missing_linkedin = int(stats[3])
+                state.unknown_companies = int(stats[4])
+                state.total_companies = int(stats[5] or 0)
+                state.profiles_below_50 = int(stats[6])
+                state.profiles_above_90 = int(stats[7])
+                state.avg_completeness = int(stats[8] or 0)
+                state.avg_confidence = int(stats[9] or 0)
+                
+                state.status = "Auditing"
+                db.commit()
             logger.info(f"[Phase IV] Audit Complete. Total Profiles: {stats[0]}")
         except Exception as e:
             logger.error(f"[Phase IV] Audit failed: {e}")
@@ -202,96 +202,93 @@ class SentinelEngine:
         a database session and a stale DuckDB connection for an entire dataset run.
         """
         try:
-            db = SessionLocal()
-            state = db.query(SentinelPhase4State).first()
-            if not state:
-                db.close(); return False
-                
-            if state.status == "Paused":
-                db.close(); return False
-                
-            state.status = "Running"
-            db.commit()
-            
-            recruiter_store._ensure_loaded()
-            conn = recruiter_store._conn
-            if not conn: db.close(); return False
-
-            df = conn.execute("""
-                SELECT * FROM recruiters
-                WHERE COALESCE(sentinel_status, '') != 'Completed'
-                ORDER BY recruiter_id
-                LIMIT ?
-            """, [self.batch_size]).fetchdf()
-
-            if df.empty:
-                state.status = "Idle"
+            with SessionLocal() as db:
+                state = db.query(SentinelPhase4State).first()
+                if not state:
+                    return False
+                    
+                if state.status == "Paused":
+                    return False
+                    
+                state.status = "Running"
                 db.commit()
-                db.close()
-                self._sync_audit()
-                return False
+                
+                recruiter_store._ensure_loaded()
+                conn = recruiter_store._conn
+                if not conn: return False
 
-            batch_updates = []
-            completed_company_ids = set()
-            for _, row in df.iterrows():
-                if not self.running:
-                    break
-                r_dict = row.to_dict()
-                rid = r_dict["recruiter_id"]
-                c_id = r_dict.get("company_id")
-                c_dict = self.get_company(db, c_id)
-                state.current_company_id = c_id
-                state.current_company_name = c_dict.get("company_name", f"Company #{c_id}" if c_id else "Unassigned")
-                state.current_state = r_dict.get("state") or "Unknown"
-                completed_company_ids.add(c_id)
+                df = conn.execute("""
+                    SELECT * FROM recruiters
+                    WHERE COALESCE(sentinel_status, '') != 'Completed'
+                    ORDER BY recruiter_id
+                    LIMIT ?
+                """, [self.batch_size]).fetchdf()
 
-                if r_dict.get("email"):
-                    res = normalize_email(r_dict["email"])
-                    new_val = res["value"] if res else None
-                    if new_val != r_dict["email"]:
-                        self.log_audit(db, rid, "email", r_dict["email"], new_val, "Normalized via Phase IV Engine")
-                        r_dict["email"] = new_val
+                if df.empty:
+                    state.status = "Idle"
+                    db.commit()
+                    self._sync_audit()
+                    return False
 
-                if r_dict.get("phone"):
-                    res = normalize_phone(r_dict["phone"])
-                    new_val = res["value"] if res else None
-                    if new_val != r_dict["phone"]:
-                        self.log_audit(db, rid, "phone", r_dict["phone"], new_val, "Normalized via Phase IV Engine")
-                        r_dict["phone"] = new_val
+                batch_updates = []
+                completed_company_ids = set()
+                for _, row in df.iterrows():
+                    if not self.running:
+                        break
+                    r_dict = row.to_dict()
+                    rid = r_dict["recruiter_id"]
+                    c_id = r_dict.get("company_id")
+                    c_dict = self.get_company(db, c_id)
+                    state.current_company_id = c_id
+                    state.current_company_name = c_dict.get("company_name", f"Company #{c_id}" if c_id else "Unassigned")
+                    state.current_state = r_dict.get("state") or "Unknown"
+                    completed_company_ids.add(c_id)
 
-                if r_dict.get("recruiter_name"):
-                    new_name = normalize_name(r_dict["recruiter_name"])
-                    if new_name != r_dict["recruiter_name"]:
-                        self.log_audit(db, rid, "recruiter_name", r_dict["recruiter_name"], new_name, "Capitalized")
-                        r_dict["recruiter_name"] = new_name
+                    if r_dict.get("email"):
+                        res = normalize_email(r_dict["email"])
+                        new_val = res["value"] if res else None
+                        if new_val != r_dict["email"]:
+                            self.log_audit(db, rid, "email", r_dict["email"], new_val, "Normalized via Phase IV Engine")
+                            r_dict["email"] = new_val
 
-                score, _ = calculate_completeness(r_dict, c_dict)
-                missing_dict = {
-                    "primary_email": not bool(r_dict.get("email")) or "missing.local" in str(r_dict.get("email") or ""),
-                    "primary_phone": not bool(r_dict.get("phone")), "linkedin": not bool(r_dict.get("linkedin")),
-                    "company": not bool(c_id), "location": not bool(r_dict.get("location")),
-                    "title": not bool(r_dict.get("title")), "specialization": not bool(r_dict.get("specialization"))
-                }
-                r_dict["completeness_score"] = score
-                r_dict["quality_score"] = calculate_quality(missing_dict)
-                r_dict["sentinel_status"] = "Completed"
-                r_dict["last_scan_at"] = datetime.now(timezone.utc).isoformat()
-                batch_updates.append(r_dict)
+                    if r_dict.get("phone"):
+                        res = normalize_phone(r_dict["phone"])
+                        new_val = res["value"] if res else None
+                        if new_val != r_dict["phone"]:
+                            self.log_audit(db, rid, "phone", r_dict["phone"], new_val, "Normalized via Phase IV Engine")
+                            r_dict["phone"] = new_val
 
-            if not batch_updates:
-                db.close()
-                return False
+                    if r_dict.get("recruiter_name"):
+                        new_name = normalize_name(r_dict["recruiter_name"])
+                        if new_name != r_dict["recruiter_name"]:
+                            self.log_audit(db, rid, "recruiter_name", r_dict["recruiter_name"], new_name, "Capitalized")
+                            r_dict["recruiter_name"] = new_name
 
-            # Persist Parquet first; audit and progress state are committed only if
-            # the actual recruiter changes were safely written.
-            parquet_writer.update_records(batch_updates)
-            state.recruiters_completed += len(batch_updates)
-            state.companies_completed += len(completed_company_ids - {None})
-            state.current_batch_count = len(batch_updates)
-            db.commit()
-            db.close()
-            return True
-            
+                    score, _ = calculate_completeness(r_dict, c_dict)
+                    missing_dict = {
+                        "primary_email": not bool(r_dict.get("email")) or "missing.local" in str(r_dict.get("email") or ""),
+                        "primary_phone": not bool(r_dict.get("phone")), "linkedin": not bool(r_dict.get("linkedin")),
+                        "company": not bool(c_id), "location": not bool(r_dict.get("location")),
+                        "title": not bool(r_dict.get("title")), "specialization": not bool(r_dict.get("specialization"))
+                    }
+                    r_dict["completeness_score"] = score
+                    r_dict["quality_score"] = calculate_quality(missing_dict)
+                    r_dict["sentinel_status"] = "Completed"
+                    r_dict["last_scan_at"] = datetime.now(timezone.utc).isoformat()
+                    batch_updates.append(r_dict)
+
+                if not batch_updates:
+                    return False
+
+                # Persist Parquet first; audit and progress state are committed only if
+                # the actual recruiter changes were safely written.
+                parquet_writer.update_records(batch_updates)
+                state.recruiters_completed += len(batch_updates)
+                state.companies_completed += len(completed_company_ids - {None})
+                state.current_batch_count = len(batch_updates)
+                db.commit()
+                return True
+                
         except Exception as e:
             logger.error(f"SENTINEL Phase IV Engine Error: {e}")
             import traceback

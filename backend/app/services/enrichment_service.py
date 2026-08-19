@@ -466,6 +466,7 @@ class EnrichmentEngine:
     def _run_loop(self):
         """Main background enrichment loop."""
         logger.info("EnrichmentEngine background loop active.")
+        last_recruiter_id = 0
         
         while not self._stop_event.is_set():
             # Handle Pause
@@ -478,7 +479,7 @@ class EnrichmentEngine:
                 recruiter_store._ensure_loaded()
                 cur = recruiter_store._conn.cursor()
                 
-                # Fetch candidate records missing key fields:
+                # Fetch candidate records missing key fields with cursor watermarking:
                 # 1. Missing Company with Email present
                 # 2. Missing State/Location with Phone present
                 # 3. Missing Specialization with Title present
@@ -487,15 +488,21 @@ class EnrichmentEngine:
                         recruiter_id, recruiter_name, email, phone, location, state, title, company_id, specialization
                     FROM recruiters
                     WHERE 
-                        (email IS NOT NULL AND email LIKE '%@%' AND (company_id IS NULL OR TRIM(CAST(company_id AS VARCHAR)) = '' OR LOWER(TRIM(CAST(company_id AS VARCHAR))) IN ('unknown', 'null', 'none', 'n/a', 'need to fill data')))
-                        OR (phone IS NOT NULL AND phone != '' AND (state IS NULL OR LOWER(state) IN ('unknown', 'null', 'none', 'us', '')))
-                        OR (title IS NOT NULL AND title != '' AND (specialization IS NULL OR LOWER(specialization) IN ('unknown', 'null', 'none', 'n/a', '')))
+                        recruiter_id > ?
+                        AND (
+                            (email IS NOT NULL AND email LIKE '%@%' AND (company_id IS NULL OR TRIM(CAST(company_id AS VARCHAR)) = '' OR LOWER(TRIM(CAST(company_id AS VARCHAR))) IN ('unknown', 'null', 'none', 'n/a', 'need to fill data')))
+                            OR (phone IS NOT NULL AND phone != '' AND (state IS NULL OR LOWER(state) IN ('unknown', 'null', 'none', 'us', '')))
+                            OR (title IS NOT NULL AND title != '' AND (specialization IS NULL OR LOWER(specialization) IN ('unknown', 'null', 'none', 'n/a', '')))
+                        )
+                    ORDER BY recruiter_id ASC
                     LIMIT ?
                 """
                 
-                df = cur.execute(query, [self.batch_size]).fetchdf()
+                df = cur.execute(query, [last_recruiter_id, self.batch_size]).fetchdf()
                 
                 if df is None or df.empty:
+                    # Reset watermark to start fresh on next pass
+                    last_recruiter_id = 0
                     set_enricher_state({
                         "status": "running",
                         "current_phase": "idle_waiting_new_data",
@@ -504,6 +511,11 @@ class EnrichmentEngine:
                     # Sleep when no missing records are left
                     self._stop_event.wait(self.idle_sleep_seconds)
                     continue
+                
+                # Advance watermark
+                max_id = int(df['recruiter_id'].max())
+                if max_id > last_recruiter_id:
+                    last_recruiter_id = max_id
                 
                 start_cycle = time.time()
                 updates = []

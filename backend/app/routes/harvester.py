@@ -2,12 +2,14 @@
 Autonomous Admin Web-Harvesting Spider Swarm API - TalentOpsAI
 Enables active 24/7 autonomous intelligence harvesting directly from Admin panel.
 """
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Depends
 from pydantic import BaseModel
 import urllib.request
 import re
 import logging
 import time
+from ..services.auth_service import require_admin
+from ..models.auth_models import User
 
 logger = logging.getLogger("talentops.spider")
 router = APIRouter(prefix="/admin/spider", tags=["Autonomous Spider"])
@@ -56,7 +58,7 @@ def _spider_worker(domain: str, max_pages: int):
         logger.error(f"[SPIDER] Swarm encountered error against {domain}: {e}")
 
 @router.post("/harvest", response_model=HarvestResponse)
-def launch_spider(req: HarvestRequest, bg: BackgroundTasks):
+def launch_spider(req: HarvestRequest, bg: BackgroundTasks, admin: User = Depends(require_admin)):
     clean_d = req.target_domain.strip()
     if not clean_d or '.' not in clean_d:
         raise HTTPException(status_code=400, detail="Invalid target domain format")

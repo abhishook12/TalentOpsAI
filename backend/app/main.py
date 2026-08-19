@@ -268,7 +268,7 @@ async def security_headers_middleware(request: Request, call_next):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
-    allow_origin_regex=r".*",
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|.*\.talentops\.ai|.*\.vercel\.app)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -285,9 +285,12 @@ async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
     import traceback
     err = traceback.format_exc()
     logger.error(f"Database error on {request.url.path}: {exc}\n{err}")
+    content = {"detail": f"Database error on {request.url.path}: {str(exc)}", "type": "database_error"}
+    if not IS_PRODUCTION:
+        content["trace"] = err
     return JSONResponse(
         status_code=500,
-        content={"detail": f"Database error on {request.url.path}: {str(exc)}", "type": "database_error"}
+        content=content
     )
 
 @app.exception_handler(Exception)
@@ -295,9 +298,12 @@ async def global_exception_handler(request: Request, exc: Exception):
     import traceback
     err = traceback.format_exc()
     logger.error(f"Unhandled exception on {request.url.path}: {err}")
+    content = {"detail": f"An unexpected error occurred: {str(exc)}", "type": "internal_error"}
+    if not IS_PRODUCTION:
+        content["trace"] = err
     return JSONResponse(
         status_code=500,
-        content={"detail": f"An unexpected error occurred: {str(exc)}", "type": "internal_error", "trace": err}
+        content=content
     )
 
 app.include_router(recruiters.router, prefix="/recruiters", tags=["Recruiters"])
@@ -491,6 +497,19 @@ async def shutdown_event():
     data_filler_engine.stop()
     from .services.enrichment_service import enrichment_engine
     enrichment_engine.stop()
+    
+    # Cleanly release leader advisory lock connection
+    bg_conn = getattr(app.state, "bg_task_conn", None)
+    if bg_conn:
+        try:
+            bg_conn.execute(text("SELECT pg_advisory_unlock(83726491)"))
+        except Exception:
+            pass
+        try:
+            bg_conn.close()
+            logger.info("Released leader lock connection.")
+        except Exception:
+            pass
 
 from .routes import health
 app.include_router(health.router, prefix="/health", tags=["System Health"])

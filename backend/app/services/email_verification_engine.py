@@ -83,7 +83,7 @@ class EmailVerificationEngine:
             logger.error(f"Error getting ordered domains: {e}")
             return []
 
-    def _verify_single_email(self, recruiter_row: dict) -> dict:
+    def _verify_single_email(self, recruiter_row: dict, hist_map: dict = None) -> dict:
         email = recruiter_row.get('email')
         if not email:
             return {
@@ -153,37 +153,40 @@ class EmailVerificationEngine:
             source_methods.append('Free')
             
         # Stage 5 - Historical from PostgreSQL
-        db = SessionLocal()
-        try:
-            delivered = db.query(func.count(EmailLog.log_id)).filter(
-                EmailLog.recipient_email == email,
-                EmailLog.status == 'delivered'
-            ).scalar() or 0
+        if hist_map is not None:
+            h = hist_map.get(email, {})
+            delivered = h.get('delivered', 0)
+            replied = h.get('replied', 0)
+            bounced = h.get('bounced', 0)
+        else:
+            try:
+                with SessionLocal() as db:
+                    delivered = db.query(func.count(EmailLog.log_id)).filter(
+                        EmailLog.recipient_email == email,
+                        EmailLog.status == 'delivered'
+                    ).scalar() or 0
+                    replied = db.query(func.count(EmailLog.log_id)).filter(
+                        EmailLog.recipient_email == email,
+                        EmailLog.status == 'replied'
+                    ).scalar() or 0
+                    bounced = db.query(func.count(EmailLog.log_id)).filter(
+                        EmailLog.recipient_email == email,
+                        EmailLog.status == 'bounced'
+                    ).scalar() or 0
+            except Exception as e:
+                logger.error(f"DB Error checking history for {email}: {e}")
+                delivered = replied = bounced = 0
             
-            replied = db.query(func.count(EmailLog.log_id)).filter(
-                EmailLog.recipient_email == email,
-                EmailLog.status == 'replied'
-            ).scalar() or 0
+        if replied > 0:
+            confidence += 30
+            source_methods.append('Historical-Reply')
+        elif delivered > 0:
+            confidence += 20
+            source_methods.append('Historical-Delivered')
             
-            bounced = db.query(func.count(EmailLog.log_id)).filter(
-                EmailLog.recipient_email == email,
-                EmailLog.status == 'bounced'
-            ).scalar() or 0
-            
-            if replied > 0:
-                confidence += 30
-                source_methods.append('Historical-Reply')
-            elif delivered > 0:
-                confidence += 20
-                source_methods.append('Historical-Delivered')
-                
-            if bounced > 0:
-                confidence -= 50
-                source_methods.append('Historical-Bounced')
-        except Exception as e:
-            logger.error(f"DB Error checking history for {email}: {e}")
-        finally:
-            db.close()
+        if bounced > 0:
+            confidence -= 50
+            source_methods.append('Historical-Bounced')
             
         # Stage 6 - SMTP Mailbox Ping (only for emails with confidence >= 50)
         # Probes the actual mailbox via RCPT TO handshake without sending email
@@ -218,7 +221,7 @@ class EmailVerificationEngine:
         elif confidence >= 30:
             status = 'suspicious'
         elif confidence >= 1:
-            status = 'likely_invalid'
+            status = 'undeliverable'
         else:
             status = 'invalid'
             
@@ -228,7 +231,7 @@ class EmailVerificationEngine:
             'email_confidence': confidence,
             'email_verified_at': datetime.now(timezone.utc).isoformat(),
             'email_last_checked_at': datetime.now(timezone.utc).isoformat(),
-            'email_source': f"Engine: {','.join(source_methods)}"
+            'email_source': f"Engine: {', '.join(source_methods)}" if source_methods else 'Engine'
         }
 
     def _run(self):
@@ -287,12 +290,35 @@ class EmailVerificationEngine:
                     if df.empty:
                         break # Done with this domain
                         
+                    # Pre-fetch historical deliverability for all emails in this batch with 1 SQL query
+                    emails_in_batch = [str(e).strip().lower() for e in df['email'].dropna().unique() if e and '@' in str(e)]
+                    hist_map = {}
+                    if emails_in_batch:
+                        try:
+                            with SessionLocal() as db:
+                                log_rows = db.query(
+                                    func.lower(EmailLog.recipient_email),
+                                    EmailLog.status,
+                                    func.count(EmailLog.log_id)
+                                ).filter(
+                                    func.lower(EmailLog.recipient_email).in_(emails_in_batch)
+                                ).group_by(
+                                    func.lower(EmailLog.recipient_email),
+                                    EmailLog.status
+                                ).all()
+                                for r_email, r_status, r_cnt in log_rows:
+                                    if r_email not in hist_map:
+                                        hist_map[r_email] = {}
+                                    hist_map[r_email][r_status] = r_cnt
+                        except Exception as e:
+                            logger.error(f"Error fetching batch email history: {e}")
+                    
                     updates = []
                     for _, row in df.iterrows():
                         if self._stop_event.is_set():
                             break
                         recruiter_dict = row.to_dict()
-                        update = self._verify_single_email(recruiter_dict)
+                        update = self._verify_single_email(recruiter_dict, hist_map=hist_map)
                         updates.append(update)
                         
                     if updates:

@@ -8,7 +8,7 @@ import pandas as pd
 from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, File, Depends, Form
 from pydantic import BaseModel
 from app.utils.enricher_state import get_enricher_state, set_enricher_state
-from app.services.auth_service import get_current_user_from_request
+from app.services.auth_service import get_current_user_from_request, require_admin
 from app.models.auth_models import User
 # from app.services.parquet_writer import write_to_parquet
 
@@ -22,12 +22,12 @@ class ControlRequest(BaseModel):
 enricher_process = None
 
 @router.get("/enricher/status")
-def get_status():
+def get_status(admin: User = Depends(require_admin)):
     from app.services.enrichment_service import enrichment_engine
     return enrichment_engine.get_status()
 
 @router.post("/enricher/control")
-def control_enricher(req: ControlRequest):
+def control_enricher(req: ControlRequest, admin: User = Depends(require_admin)):
     from app.services.enrichment_service import enrichment_engine
     
     action = req.action.lower()

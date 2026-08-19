@@ -6,6 +6,7 @@ import { exportToExcel } from '../services/export'
 import { CompanyIdentity } from '../components/CompanyIdentity'
 import { OutlookComposeOverlay } from '../components/OutlookComposeOverlay'
 import { useSessionState } from '../hooks/useSessionState'
+import SaveToTalentPoolModal from '../components/talent_pools/SaveToTalentPoolModal'
 
 const STATES = [
   { abbr: 'AL', name: 'Alabama' }, { abbr: 'AK', name: 'Alaska' },
@@ -145,6 +146,7 @@ export default function Directory() {
   const [selectedRecruiters, setSelectedRecruiters] = useSessionState('dir_selectedRecruiters', new Map())
 
   const [isComposeOpen, setIsComposeOpen] = useState(false)
+  const [isPoolModalOpen, setIsPoolModalOpen] = useState(false)
   const [toastMsg, setToastMsg] = useState(null)
   const toastRef = useRef(null)
 
@@ -787,28 +789,46 @@ export default function Directory() {
         </div>
       )}
 
-      {/* Floating Prompt for Bulk Mail */}
+      {/* Floating Prompt for Bulk Mail & Talent Pool */}
       {selectedCount > 0 && !isComposeOpen && createPortal(
         <div style={{
           position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)',
           backgroundColor: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: '8px',
-          padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '16px',
+          padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '12px',
           boxShadow: 'var(--shadow-lg, 0 8px 32px rgba(0,0,0,0.2))', zIndex: 99999,
         }}>
           <span style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600 }}>
-            Want to send bulk mail to {selectedCount} selected people?
+            {selectedCount} selected:
           </span>
+          <button 
+            onClick={() => setIsPoolModalOpen(true)}
+            style={{
+              backgroundColor: '#f59e0b', color: '#000', border: 'none', padding: '6px 14px',
+              borderRadius: '6px', fontSize: '12px', fontWeight: 700, cursor: 'pointer'
+            }}
+          >
+            Save to Talent Pool
+          </button>
           <button 
             onClick={() => setIsComposeOpen(true)}
             style={{
-              backgroundColor: '#0078d4', color: 'white', border: 'none', padding: '6px 16px',
-              borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer'
+              backgroundColor: '#0078d4', color: 'white', border: 'none', padding: '6px 14px',
+              borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer'
             }}
           >
-            Compose
+            Compose Mail
           </button>
         </div>,
         document.body
+      )}
+
+      {isPoolModalOpen && (
+        <SaveToTalentPoolModal
+          isOpen={isPoolModalOpen}
+          onClose={() => setIsPoolModalOpen(false)}
+          recruiterIds={Array.from(selectedRecruiters.keys())}
+          onSaved={() => showToast('Saved candidates to Talent Pool!', 'success')}
+        />
       )}
 
       {/* Outlook Compose Overlay */}

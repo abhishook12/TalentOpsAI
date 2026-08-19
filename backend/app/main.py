@@ -322,11 +322,12 @@ app.include_router(harvester.router, prefix="/api", tags=["Autonomous Spider"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
 from .routes import system
 app.include_router(system.router, prefix="/system", tags=["System Controls"])
-from .routes import analytics_session, bridge
-app.include_router(analytics_session.router, prefix="/analytics/session", tags=["Analytics Session"])
-app.include_router(bridge.router, prefix="/bridge", tags=["Outlook Bridge"])
 from .routes import mailintel
 app.include_router(mailintel.router, prefix="/mailintel", tags=["MailIntel"])
+from .routes import talent_pools
+app.include_router(talent_pools.router)
+from .routes import domain_health
+app.include_router(domain_health.router)
 
 
 @app.get("/")

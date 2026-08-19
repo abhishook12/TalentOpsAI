@@ -3,6 +3,7 @@ import { exportToExcel } from '../services/export'
 import api, { API, getErrorMessage, logAction } from '../services/api'
 import { CompanyIdentity } from '../components/CompanyIdentity'
 import { useSessionState } from '../hooks/useSessionState'
+import SaveToTalentPoolModal from '../components/talent_pools/SaveToTalentPoolModal'
 
 function initials(name) {
   const parts = (name || '').trim().split(' ').filter(Boolean)
@@ -522,6 +523,7 @@ export default function AISearch() {
   const [booleanJD, setBooleanJD] = useState('')
   const [booleanGenerating, setBooleanGenerating] = useState(false)
   const [booleanResult, setBooleanResult] = useState(null)
+  const [poolModalOpen, setPoolModalOpen] = useState(false)
 
   const handleGenerateBoolean = async () => {
     setBooleanGenerating(true)
@@ -753,6 +755,31 @@ export default function AISearch() {
           >
             <i className="ti ti-code" />
             <span style={{ fontSize: 12, fontWeight: 700 }}>AI Boolean Sourcing</span>
+          </button>
+          <button
+            onClick={() => {
+              if (searchResults.length === 0) {
+                setToast('No search results to save')
+                setTimeout(() => setToast(''), 2000)
+                return
+              }
+              setPoolModalOpen(true)
+            }}
+            style={{
+              ...iconButtonStyle(false),
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'rgba(245, 158, 11, 0.12)',
+              color: '#f59e0b',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              padding: '0 12px',
+              width: 'auto'
+            }}
+            title="Save Results to Talent Pool"
+          >
+            <i className="ti ti-folder-plus" />
+            <span style={{ fontSize: 12, fontWeight: 700 }}>Save to Pool</span>
           </button>
           <button onClick={() => { navigator.clipboard.writeText(window.location.href); setToast('Link copied to clipboard') }} style={{ ...iconButtonStyle(false), width: 38 }} title="Copy Link">
             <i className="ti ti-share" />
@@ -1639,6 +1666,15 @@ export default function AISearch() {
             )}
           </div>
         </div>
+      )}
+
+      {poolModalOpen && (
+        <SaveToTalentPoolModal
+          isOpen={poolModalOpen}
+          onClose={() => setPoolModalOpen(false)}
+          recruiterIds={searchResults.map(r => r.id)}
+          onSaved={() => setToast('Candidates saved to Talent Pool!')}
+        />
       )}
     </div>
   )

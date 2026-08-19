@@ -196,6 +196,19 @@ class SpamCheckPayload(BaseModel):
     body: str = ""
 
 
+class GenerateSequencePayload(BaseModel):
+    target_role: str = "Senior Software Engineer"
+    company_name: str = "our company"
+    industry: str = "Technology"
+    seniority: str = "Senior"
+    value_props: str = "competitive equity, flexible remote culture, rapid scale"
+    tone: str = "Professional"
+
+
+class DomainInspectPayload(BaseModel):
+    domain: str
+
+
 @router.post("/preflight-spam-check")
 def preflight_spam_check(payload: SpamCheckPayload):
     """
@@ -203,6 +216,31 @@ def preflight_spam_check(payload: SpamCheckPayload):
     """
     from ..services.spam_checker import analyze_email_content
     return analyze_email_content(payload.subject, payload.body)
+
+
+@router.post("/generate-sequence")
+def generate_sequence_endpoint(payload: GenerateSequencePayload):
+    """
+    Synthesizes an AI-driven 3-touch cold outreach sequence tailored to target role and candidate level.
+    """
+    from ..services.sequence_generator import sequence_generator
+    return sequence_generator.generate_sequence(
+        target_role=payload.target_role,
+        company_name=payload.company_name,
+        industry=payload.industry,
+        seniority=payload.seniority,
+        value_props=payload.value_props,
+        tone=payload.tone
+    )
+
+
+@router.post("/inspect-domain-health")
+def inspect_domain_health_endpoint(payload: DomainInspectPayload):
+    """
+    Audits SPF, DKIM, DMARC, and MX records for a sending domain to ensure deliverability compliance.
+    """
+    from ..services.dns_checker import domain_health_checker
+    return domain_health_checker.inspect_domain(payload.domain)
 
 
 @router.get("/{campaign_id}/deliverability-report")

@@ -20,6 +20,8 @@ import CampaignProgress from '../components/CampaignProgress';
 import TemplateLibraryModal from '../components/campaigns/TemplateLibraryModal';
 import ConnectionWizard from '../components/ConnectionWizard';
 import PreflightSafetyModal from '../components/campaigns/PreflightSafetyModal';
+import SequenceGeneratorModal from '../components/campaigns/SequenceGeneratorModal';
+import DomainHealthModal from '../components/campaigns/DomainHealthModal';
 
 import { setLastEmail, saveTemplate } from '../lib/emailTemplates';
 
@@ -160,6 +162,8 @@ export default function Campaigns() {
 
   // ── Modals ────────────────────────────────────────────────────────────────────
   const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
+  const [showSequenceGenerator, setShowSequenceGenerator] = useState(false);
+  const [showDomainHealth, setShowDomainHealth] = useState(false);
 
   // ── Autosave State ────────────────────────────────────────────────────────────
   const [lastSaved, setLastSaved] = useState(null);
@@ -613,6 +617,12 @@ export default function Campaigns() {
             <p style={{ color: 'var(--text-secondary)', marginTop: 4, fontSize: 14 }}>Outbound email campaigns & delivery monitoring.</p>
           </div>
           <div className="flex items-center gap-3">
+            <button onClick={() => setShowDomainHealth(true)} className="flex items-center gap-2 px-3 py-2 text-sm font-bold border border-[var(--border)] rounded-lg bg-[var(--bg-surface)] text-emerald-400 hover:bg-[var(--bg-hover)] transition-colors">
+              <Activity size={14} /> Domain Health
+            </button>
+            <button onClick={() => setShowSequenceGenerator(true)} className="flex items-center gap-2 px-3 py-2 text-sm font-bold border border-[var(--border)] rounded-lg bg-[var(--bg-surface)] text-cyan-400 hover:bg-[var(--bg-hover)] transition-colors">
+              <Zap size={14} /> AI Sequence
+            </button>
             <button onClick={() => setShowTemplateLibrary(true)} className="flex items-center gap-2 px-3 py-2 text-sm font-bold border border-[var(--border)] rounded-lg bg-[var(--bg-surface)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors">
               <Clock size={14} /> Templates
             </button>
@@ -782,6 +792,12 @@ export default function Campaigns() {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
+          <button onClick={() => setShowDomainHealth(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-[var(--border)] rounded-lg text-emerald-400 hover:bg-[var(--bg-hover)] transition-colors">
+            <Activity size={13} /> Domain Health
+          </button>
+          <button onClick={() => setShowSequenceGenerator(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-[var(--border)] rounded-lg text-cyan-400 hover:bg-[var(--bg-hover)] transition-colors">
+            <Zap size={13} /> AI Sequence
+          </button>
           <button onClick={() => setShowTemplateLibrary(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-[var(--border)] rounded-lg text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors">
             <FileText size={13} /> Templates
           </button>
@@ -1025,6 +1041,24 @@ export default function Campaigns() {
       {/* ── Modals ── */}
       {showTemplateLibrary && (
         <TemplateLibraryModal isOpen onClose={() => setShowTemplateLibrary(false)} onImport={(t) => { handleTemplateImport(t); setShowTemplateLibrary(false); }} />
+      )}
+      {showSequenceGenerator && (
+        <SequenceGeneratorModal
+          isOpen
+          onClose={() => setShowSequenceGenerator(false)}
+          onApplyTouch={(touch) => {
+            setSubject(touch.subject);
+            setBody(touch.body);
+            setShowSequenceGenerator(false);
+          }}
+        />
+      )}
+      {showDomainHealth && (
+        <DomainHealthModal
+          isOpen
+          onClose={() => setShowDomainHealth(false)}
+          initialDomain={fromEmail || 'talentops.ai'}
+        />
       )}
       {showConnectionWizard && (
         <ConnectionWizard onClose={() => setShowConnectionWizard(false)} onSuccess={() => { setShowConnectionWizard(false); fetchAccounts(); }} />

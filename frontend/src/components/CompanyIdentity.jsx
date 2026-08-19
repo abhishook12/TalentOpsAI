@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { normalizeLogoDomain, inferCompanyNameFromDomain } from '../utils/domain'
 
 const failedDomains = new Set()
 
-export function CompanyIdentity({ 
+export const CompanyIdentity = memo(function CompanyIdentity({ 
   domain, 
   name, 
   logo_url,
@@ -141,4 +141,4 @@ export function CompanyIdentity({
       </div>
     </div>
   )
-}
+})

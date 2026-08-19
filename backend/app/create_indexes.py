@@ -65,6 +65,14 @@ def create_performance_indexes():
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_email_logs_campaign_log ON email_logs (campaign_id, log_id)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_email_logs_bridge_pending ON email_logs (status, sent_via, sending_at)"))
 
+        # 6. Critical performance & functional lookup indexes
+        print("Creating functional email and review status indexes...")
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_recruiters_lower_email ON recruiters (LOWER(email))"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_recruiters_needs_review ON recruiters (needs_review)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_recruiters_email_status ON recruiters (email_status)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_recruiters_norm_name ON recruiters (normalized_recruiter_name)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_recruiters_source_job_id ON recruiters (source_job_id)"))
+
         print("All indexes created successfully!")
 
 if __name__ == "__main__":

@@ -59,6 +59,63 @@ class CampaignErrorBoundary extends React.Component {
   }
 }
 
+const CampaignRow = memo(function CampaignRow({
+  campaign: c,
+  isSelected,
+  onToggleSelection,
+  onLoad,
+  onToggleStatus,
+  onDuplicate,
+  onArchive,
+  onDelete
+}) {
+  const isFailed = (c.stats?.failed || 0) > 0;
+  return (
+    <tr className={`transition-colors ${isSelected ? 'bg-[var(--bg-hover)]' : 'hover:bg-white/[0.02]'}`}>
+      <td className="px-4 py-4"><input type="checkbox" checked={isSelected} onChange={() => onToggleSelection(c.campaign_id)} className="w-3.5 h-3.5 rounded" /></td>
+      <td className="px-4 py-4">
+        <div className="font-bold text-[var(--text-primary)]">{c.name}</div>
+        <div className="text-xs text-[var(--text-muted)] mt-0.5 font-mono">{String(c.campaign_id).slice(0, 8)}</div>
+        {isFailed && <span className="text-[10px] px-1.5 py-0.5 bg-red-500/20 text-red-400 font-bold rounded-full">{c.stats.failed} failed</span>}
+      </td>
+      <td className="px-4 py-4">
+        <StatusBadge status={c.status} />
+      </td>
+      <td className="px-4 py-4 text-sm font-medium text-[var(--text-primary)]">
+        {new Date(c.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+      </td>
+      <td className="px-4 py-4 w-56">
+        {c.status === 'draft' ? (
+          <span className="text-xs text-[var(--text-muted)]">Not sent</span>
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            <div className="flex justify-between text-xs font-bold">
+              <span className="text-[var(--text-primary)]">{c.stats?.sent || 0}/{c.stats?.total || 0}</span>
+              <span className={isFailed ? 'text-red-400' : 'text-[var(--text-primary)]'}>{c.stats?.progress_percent || 0}%</span>
+            </div>
+            <div className="h-1 bg-[var(--card-border)] rounded-full overflow-hidden">
+              <div className={`h-full rounded-full transition-all ${isFailed ? 'bg-red-500' : 'bg-[var(--text-primary)]'}`} style={{ width: `${c.stats?.progress_percent || 0}%` }} />
+            </div>
+          </div>
+        )}
+      </td>
+      <td className="px-4 py-4 text-right">
+        <div className="flex items-center justify-end gap-2">
+          <button onClick={() => onLoad(c.campaign_id)} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title="Open"><Eye size={15} /></button>
+          {(c.status === 'active' || c.status === 'paused') && (
+            <button onClick={() => onToggleStatus(c.campaign_id, c.status)} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+              {c.status === 'active' ? <Pause size={15} /> : <Play size={15} />}
+            </button>
+          )}
+          <button onClick={() => onDuplicate(c.campaign_id)} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title="Duplicate"><Copy size={15} /></button>
+          <button onClick={() => onArchive(c.campaign_id)} className="p-1.5 text-[var(--text-muted)] hover:text-yellow-400 transition-colors" title="Archive"><Archive size={15} /></button>
+          <button onClick={() => onDelete(c.campaign_id)} className="p-1.5 text-[var(--text-muted)] hover:text-red-400 transition-colors" title="Delete"><Trash2 size={15} /></button>
+        </div>
+      </td>
+    </tr>
+  );
+});
+
 export default function Campaigns() {
   // ── View State ──────────────────────────────────────────────────────────────
   const [view, setView] = useSessionState('camp_view', 'list');
@@ -655,53 +712,19 @@ export default function Campaigns() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {sortedCampaigns.map(c => {
-                    const isFailed = (c.stats?.failed || 0) > 0;
-                    return (
-                      <tr key={c.campaign_id} className={`transition-colors ${selectedIds.has(c.campaign_id) ? 'bg-[var(--bg-hover)]' : 'hover:bg-white/[0.02]'}`}>
-                        <td className="px-4 py-4"><input type="checkbox" checked={selectedIds.has(c.campaign_id)} onChange={() => toggleSelection(c.campaign_id)} className="w-3.5 h-3.5 rounded" /></td>
-                        <td className="px-4 py-4">
-                          <div className="font-bold text-[var(--text-primary)]">{c.name}</div>
-                          <div className="text-xs text-[var(--text-muted)] mt-0.5 font-mono">{String(c.campaign_id).slice(0, 8)}</div>
-                          {isFailed && <span className="text-[10px] px-1.5 py-0.5 bg-red-500/20 text-red-400 font-bold rounded-full">{c.stats.failed} failed</span>}
-                        </td>
-                        <td className="px-4 py-4">
-                          <StatusBadge status={c.status} />
-                        </td>
-                        <td className="px-4 py-4 text-sm font-medium text-[var(--text-primary)]">
-                          {new Date(c.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </td>
-                        <td className="px-4 py-4 w-56">
-                          {c.status === 'draft' ? (
-                            <span className="text-xs text-[var(--text-muted)]">Not sent</span>
-                          ) : (
-                            <div className="flex flex-col gap-1.5">
-                              <div className="flex justify-between text-xs font-bold">
-                                <span className="text-[var(--text-primary)]">{c.stats?.sent || 0}/{c.stats?.total || 0}</span>
-                                <span className={isFailed ? 'text-red-400' : 'text-[var(--text-primary)]'}>{c.stats?.progress_percent || 0}%</span>
-                              </div>
-                              <div className="h-1 bg-[var(--card-border)] rounded-full overflow-hidden">
-                                <div className={`h-full rounded-full transition-all ${isFailed ? 'bg-red-500' : 'bg-[var(--text-primary)]'}`} style={{ width: `${c.stats?.progress_percent || 0}%` }} />
-                              </div>
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-4 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button onClick={() => loadCampaign(c.campaign_id)} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title="Open"><Eye size={15} /></button>
-                            {(c.status === 'active' || c.status === 'paused') && (
-                              <button onClick={() => toggleCampaignStatus(c.campaign_id, c.status)} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
-                                {c.status === 'active' ? <Pause size={15} /> : <Play size={15} />}
-                              </button>
-                            )}
-                            <button onClick={() => duplicateCampaign(c.campaign_id)} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title="Duplicate"><Copy size={15} /></button>
-                            <button onClick={() => archiveCampaign(c.campaign_id)} className="p-1.5 text-[var(--text-muted)] hover:text-yellow-400 transition-colors" title="Archive"><Archive size={15} /></button>
-                            <button onClick={() => deleteCampaign(c.campaign_id)} className="p-1.5 text-[var(--text-muted)] hover:text-red-400 transition-colors" title="Delete"><Trash2 size={15} /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {sortedCampaigns.map(c => (
+                    <CampaignRow
+                      key={c.campaign_id}
+                      campaign={c}
+                      isSelected={selectedIds.has(c.campaign_id)}
+                      onToggleSelection={toggleSelection}
+                      onLoad={loadCampaign}
+                      onToggleStatus={toggleCampaignStatus}
+                      onDuplicate={duplicateCampaign}
+                      onArchive={archiveCampaign}
+                      onDelete={deleteCampaign}
+                    />
+                  ))}
                 </tbody>
               </table>
             </div>

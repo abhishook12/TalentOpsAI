@@ -183,13 +183,12 @@ Return ONLY a JSON array of the cleaned rows. No markdown code blocks.
 
 
 @router.post("/taxonomy-sync")
-def ai_taxonomy_sync():
+def ai_taxonomy_sync(db: Session = Depends(get_db)):
     """
     Finds unique un-categorized titles and categorizes them via AI, then bulk updates.
     """
     from sqlalchemy import text
     client = get_client()
-    db: Session = next(get_db())
     try:
         # 1. Fetch unique uncategorized titles
         rows = db.execute(text("SELECT DISTINCT title FROM recruiters WHERE title IS NOT NULL AND title != '' AND taxonomy_category IS NULL LIMIT 200")).fetchall()

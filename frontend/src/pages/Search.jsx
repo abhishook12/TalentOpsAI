@@ -37,6 +37,21 @@ function safe(v) {
 
 const CONTACT_SLOT_COUNT = 3
 
+const EDIT_FORM_FIELDS = [
+  ['Full name', 'recruiter_name'],
+  ['Email', 'email'],
+  ['Email 2', 'email2'],
+  ['Email 3', 'email3'],
+  ['Email 4', 'email4'],
+  ['Phone', 'phone'],
+  ['Phone 2', 'phone2'],
+  ['Phone 3', 'phone3'],
+  ['Phone 4', 'phone4'],
+  ['LinkedIn', 'linkedin'],
+  ['Location', 'location'],
+  ['Specialization', 'specialization'],
+]
+
 function contactSlots(values, fallback) {
   const list = Array.isArray(values) && values.length
     ? values
@@ -1320,20 +1335,7 @@ export default function AISearch() {
             ) : (
               <div style={{ marginTop: 14, display: 'grid', gap: 12 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  {[
-                    ['Full name', 'recruiter_name'],
-                    ['Email', 'email'],
-                    ['Email 2', 'email2'],
-                    ['Email 3', 'email3'],
-                    ['Email 4', 'email4'],
-                    ['Phone', 'phone'],
-                    ['Phone 2', 'phone2'],
-                    ['Phone 3', 'phone3'],
-                    ['Phone 4', 'phone4'],
-                    ['LinkedIn', 'linkedin'],
-                    ['Location', 'location'],
-                    ['Specialization', 'specialization'],
-                  ].map(([label, key]) => (
+                  {EDIT_FORM_FIELDS.map(([label, key]) => (
                     <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       <div style={{ fontSize: 10.5, fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{label}</div>
                       <input

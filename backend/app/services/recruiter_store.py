@@ -150,6 +150,11 @@ class RecruiterStore:
         finally:
             self._lock.release()
 
+    def _get_conn(self):
+        """Ensure store is loaded and return active DuckDB connection."""
+        self._ensure_loaded()
+        return self._conn
+
     def _load(self):
         """Load the Parquet file into DuckDB using HTTPFS for serverless environments."""
         import time
@@ -693,17 +698,53 @@ class RecruiterStore:
         ).fetchone()
         return result[0] if result else 0
 
-    def company_recruiter_counts(self) -> Dict[int, int]:
-        """Get recruiter counts for all companies."""
+    def company_recruiter_counts_by_ids(self, company_ids: List[int]) -> Dict[int, int]:
+        """Get recruiter counts for a specific set of company IDs (targeted fast query)."""
+        if not company_ids:
+            return {}
         self._ensure_loaded()
         cur = self._conn.cursor()
-        df = cur.execute("""
-            SELECT company_id, COUNT(*) as cnt 
+        str_ids = [str(cid) for cid in company_ids]
+        placeholders = ", ".join("?" for _ in str_ids)
+        rows = cur.execute(f"""
+            SELECT CAST(company_id AS VARCHAR), COUNT(*) as cnt 
+            FROM recruiters 
+            WHERE CAST(company_id AS VARCHAR) IN ({placeholders})
+            GROUP BY CAST(company_id AS VARCHAR)
+        """, str_ids).fetchall()
+        result = {}
+        for r in rows:
+            if r[0] is not None:
+                try:
+                    result[int(r[0])] = int(r[1])
+                except (ValueError, TypeError):
+                    pass
+        return result
+
+    def company_recruiter_counts(self) -> Dict[int, int]:
+        """Get recruiter counts for all companies (cached with 60s TTL)."""
+        now = time.time()
+        if hasattr(self, '_counts_cache') and self._counts_cache and (now - getattr(self, '_counts_cache_time', 0)) < 60:
+            return self._counts_cache
+
+        self._ensure_loaded()
+        cur = self._conn.cursor()
+        rows = cur.execute("""
+            SELECT CAST(company_id AS VARCHAR), COUNT(*) as cnt 
             FROM recruiters 
             WHERE company_id IS NOT NULL
-            GROUP BY company_id
-        """).fetchdf()
-        return dict(zip(df['company_id'].tolist(), df['cnt'].tolist()))
+            GROUP BY CAST(company_id AS VARCHAR)
+        """).fetchall()
+        result = {}
+        for r in rows:
+            if r[0] is not None:
+                try:
+                    result[int(r[0])] = int(r[1])
+                except (ValueError, TypeError):
+                    pass
+        self._counts_cache = result
+        self._counts_cache_time = now
+        return result
 
     def get_stats(self) -> Dict[str, Any]:
         """Get summary statistics."""

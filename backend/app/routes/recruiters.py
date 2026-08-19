@@ -492,6 +492,7 @@ def search_recruiters(
         # 1. Infer domain from email, pg, or recruiter_store company_overall
         raw_key = str(row.get('company_id')) if row.get('company_id') is not None else None
         store_domain = recruiter_store.get_company_domain(raw_key) if raw_key else None
+        pg_logo = select_logo_domain(comp.website, comp.email_pattern) if comp else None
         company_domain = rec_domain or pg_logo or store_domain
         
         # 2. Resolve company name
@@ -604,7 +605,6 @@ def get_recruiters(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_request)
 ):
-    print(f"GET /recruiters/ CALLED! needs_review={needs_review}", flush=True)
     # Cache ALL recruiter list queries aggressively
     data_version = recruiter_store.data_version
     cache_key = f"rec_list_duckdb_{data_version}_{current_user.id}_{page}_{limit}_{search or ''}_{state or ''}_{metro_hub or ''}_{company_id or ''}_{company_key or ''}_{sort_by}_{sort_desc}_{needs_review}_{has_phone}_{is_active}_{is_deliverable}_{specialization_sector or ''}_{seniority_level or ''}_{timezone_code or ''}_{company_scale or ''}_{data_source or ''}"
@@ -1015,7 +1015,7 @@ def create_recruiter(data: RecruiterCreate, db: Session = Depends(get_db), admin
 @router.put("/{recruiter_id}")
 def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Depends(get_db), admin: User = Depends(require_role(["superadmin", "admin"]))):
 
-    is_admin = current_user.role and current_user.role.name.lower() in ('admin', 'superadmin')
+    is_admin = admin.role and admin.role.name.lower() in ('admin', 'superadmin')
     if not is_admin:
         raise HTTPException(status_code=403, detail="Read-only access: Cannot modify global recruiter database")
     r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
@@ -1034,7 +1034,7 @@ def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Dep
 @router.delete("/{recruiter_id}")
 def delete_recruiter(recruiter_id: int, db: Session = Depends(get_db), admin: User = Depends(require_role(["superadmin", "admin"]))):
 
-    is_admin = current_user.role and current_user.role.name.lower() in ('admin', 'superadmin')
+    is_admin = admin.role and admin.role.name.lower() in ('admin', 'superadmin')
     if not is_admin:
         raise HTTPException(status_code=403, detail="Read-only access: Cannot modify global recruiter database")
     r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()

@@ -57,8 +57,9 @@ def get_companies(
     
     results = query.offset(skip).limit(limit).all()
     
-    # Get counts from DuckDB
-    counts_map = recruiter_store.company_recruiter_counts()
+    # Fast targeted recruiter counts from DuckDB for the returned page
+    company_ids = [r.company_id for r in results]
+    counts_map = recruiter_store.company_recruiter_counts_by_ids(company_ids)
     
     return [
         {

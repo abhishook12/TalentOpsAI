@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 from functools import wraps
 import time
+import threading
 from ..services.auth_service import require_admin
 from .admin_utils import get_status, start_worker, stop_worker, get_logs
 
@@ -124,19 +125,22 @@ def intelligence_stats(db: Session = Depends(get_db)):
 class SimpleCache:
     def __init__(self):
         self._cache = {}
+        self._lock = threading.Lock()
 
     def get(self, key):
-        value = self._cache.get(key)
-        if not value:
-            return None
-        payload, expiry = value
-        if time.time() >= expiry:
-            self._cache.pop(key, None)
-            return None
-        return payload
+        with self._lock:
+            value = self._cache.get(key)
+            if not value:
+                return None
+            payload, expiry = value
+            if time.time() >= expiry:
+                self._cache.pop(key, None)
+                return None
+            return payload
 
     def set(self, key, value, ttl=30):
-        self._cache[key] = (value, time.time() + ttl)
+        with self._lock:
+            self._cache[key] = (value, time.time() + ttl)
 
 
 admin_cache = SimpleCache()
@@ -766,7 +770,7 @@ def admin_duplicates(limit: int = 50, db: Session = Depends(get_db)):
             LOWER(TRIM(email)) AS email,
             COUNT(*) AS count,
             array_agg(recruiter_id ORDER BY recruiter_id) AS ids,
-            array_agg(name ORDER BY recruiter_id) AS names
+            array_agg(recruiter_name ORDER BY recruiter_id) AS names
         FROM recruiters
         WHERE email IS NOT NULL AND TRIM(email) <> ''
         GROUP BY LOWER(TRIM(email))

@@ -1,8 +1,8 @@
 import { toast } from 'react-hot-toast'
 import React, { useEffect, useMemo, useRef, useState, memo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import * as XLSX from 'xlsx'
 import api, { getErrorMessage } from '../services/api'
+import { exportToExcel } from '../services/export'
 import { CompanyIdentity } from '../components/CompanyIdentity'
 import { OutlookComposeOverlay } from '../components/OutlookComposeOverlay'
 import { useSessionState } from '../hooks/useSessionState'
@@ -37,29 +37,6 @@ const STATES = [
 
 const PAGE_SIZE = 100
 const UNKNOWN_STATE = 'Unknown'
-
-function exportWorkbook(rows, sheetName = 'Recruiters') {
-  const formattedRows = rows.map((r) => ({
-    'Name': r.Name || r.recruiter_name || r.name || '',
-    'Email': r.Email || r.email || '',
-    'Company': r.Company || r.company_name || '',
-    'Phone Number': r['Phone Number'] || r.Phone || r.phone || '',
-    'Designation': r.Designation || r.designation || r.title || r.specialization || ''
-  }))
-  const worksheet = XLSX.utils.json_to_sheet(formattedRows, {
-    header: ['Name', 'Email', 'Company', 'Phone Number', 'Designation']
-  })
-  worksheet['!cols'] = [
-    { wch: 25 },
-    { wch: 32 },
-    { wch: 28 },
-    { wch: 18 },
-    { wch: 32 }
-  ]
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
-  return workbook
-}
 
 function stateName(abbr) {
   if (!abbr || abbr === UNKNOWN_STATE) return 'No state mapped'
@@ -413,20 +390,20 @@ export default function Directory() {
     setSelectedState(state)
   }
 
-  const exportRows = recruiters.map((recruiter) => ({
+  const exportRows = useMemo(() => recruiters.map((recruiter) => ({
     'Name': recruiter.recruiter_name || '',
     'Email': recruiter.email || '',
     'Company': recruiter.company_name || selectedCompanyName || '',
     'Phone Number': recruiter.phone || '',
     'Designation': recruiter.title || recruiter.specialization || '',
-  }))
+  })), [recruiters, selectedCompanyName])
 
-  const exportCurrentPage = () => {
+  const exportCurrentPage = async () => {
     if (!recruiters.length) return showToast('No recruiters on this page', 'error')
-    XLSX.writeFile(exportWorkbook(exportRows), `${(selectedCompanyName || 'company').replace(/[^a-z0-9]+/gi, '_')}_page.xlsx`)
+    await exportToExcel(exportRows, `${(selectedCompanyName || 'company').replace(/[^a-z0-9]+/gi, '_')}_page.xlsx`)
   }
 
-  const exportSelected = () => {
+  const exportSelected = async () => {
     if (!selectedRecruiters.size) return showToast('No recruiters selected', 'error')
 
     const rows = Array.from(selectedRecruiters.values()).map((recruiter) => ({
@@ -437,7 +414,7 @@ export default function Directory() {
       'Designation': recruiter.title || recruiter.specialization || '',
     }))
 
-    XLSX.writeFile(exportWorkbook(rows), `${(selectedCompanyName || 'company').replace(/[^a-z0-9]+/gi, '_')}_selected.xlsx`)
+    await exportToExcel(rows, `${(selectedCompanyName || 'company').replace(/[^a-z0-9]+/gi, '_')}_selected.xlsx`)
   }
 
   const exportEntireCompany = async () => {
@@ -475,16 +452,7 @@ export default function Directory() {
         return showToast('No recruiters found for this company', 'error')
       }
 
-      const rows = allRecruiters.map((recruiter) => ({
-        'Name': recruiter.recruiter_name || '',
-        'Email': recruiter.email || '',
-        'Company': recruiter.company_name || selectedCompanyName || '',
-        'Phone Number': recruiter.phone || '',
-        'Designation': recruiter.title || recruiter.specialization || '',
-      }))
-
-      XLSX.writeFile(exportWorkbook(rows), `${(selectedCompanyName || 'company').replace(/[^a-z0-9]+/gi, '_')}_all.xlsx`)
-      showToast(`Exported ${allRecruiters.length} recruiters`, 'success')
+      await exportToExcel(allRecruiters, `${(selectedCompanyName || 'company').replace(/[^a-z0-9]+/gi, '_')}_all.xlsx`)
     } catch (err) {
       showToast('Failed to export: ' + getErrorMessage(err), 'error')
     }

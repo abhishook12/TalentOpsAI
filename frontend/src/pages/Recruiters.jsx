@@ -14,6 +14,32 @@ const emptyForm = {
   email2: '', phone2: '', email3: '', phone3: '', email4: '', phone4: '', notes: ''
 }
 
+const STATE_OPTIONS = [
+  { value: '', label: 'All States' },
+  { value: 'CA', label: 'California' },
+  { value: 'TX', label: 'Texas' },
+  { value: 'NY', label: 'New York' }
+]
+
+const TITLE_OPTIONS = [
+  { value: '', label: 'All Specialties' },
+  { value: 'Engineering', label: 'Engineering' },
+  { value: 'Product', label: 'Product' },
+  { value: 'Sales', label: 'Sales' }
+]
+
+const COMPANY_OPTIONS = [
+  { value: '', label: 'All Companies' },
+  { value: 'Apple', label: 'Apple' },
+  { value: 'Google', label: 'Google' }
+]
+
+const STATUS_OPTIONS = [
+  { value: '', label: 'All Statuses' },
+  { value: 'active', label: 'Active Only' },
+  { value: 'inactive', label: 'Inactive Only' }
+]
+
 function Modal({ title, onClose, onSave, form, setForm, saving }) {
   return (
     <div className="modal-backdrop" style={{
@@ -629,43 +655,25 @@ export default function Recruiters() {
                 <CustomSelect 
                   value={filters.state} 
                   onChange={val => updateFilter('state', val)}
-                  options={[
-                    { value: '', label: 'All States' },
-                    { value: 'CA', label: 'California' },
-                    { value: 'TX', label: 'Texas' },
-                    { value: 'NY', label: 'New York' }
-                  ]}
+                  options={STATE_OPTIONS}
                   style={{ width: 140, height: 36 }}
                 />
                 <CustomSelect 
                   value={filters.title} 
                   onChange={val => updateFilter('title', val)}
-                  options={[
-                    { value: '', label: 'All Specialties' },
-                    { value: 'Engineering', label: 'Engineering' },
-                    { value: 'Product', label: 'Product' },
-                    { value: 'Sales', label: 'Sales' }
-                  ]}
+                  options={TITLE_OPTIONS}
                   style={{ width: 150, height: 36 }}
                 />
                 <CustomSelect 
                   value={filters.company} 
                   onChange={val => updateFilter('company', val)}
-                  options={[
-                    { value: '', label: 'All Companies' },
-                    { value: 'Apple', label: 'Apple' },
-                    { value: 'Google', label: 'Google' }
-                  ]}
+                  options={COMPANY_OPTIONS}
                   style={{ width: 150, height: 36 }}
                 />
                 <CustomSelect 
                   value={filters.status} 
                   onChange={val => updateFilter('status', val)}
-                  options={[
-                    { value: '', label: 'All Statuses' },
-                    { value: 'active', label: 'Active Only' },
-                    { value: 'inactive', label: 'Inactive Only' }
-                  ]}
+                  options={STATUS_OPTIONS}
                   style={{ width: 140, height: 36 }}
                 />
               </div>

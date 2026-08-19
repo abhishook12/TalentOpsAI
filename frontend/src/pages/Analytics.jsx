@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { cloneElement, useEffect, useRef, useState } from 'react'
+import { cloneElement, useEffect, useRef, useState, useMemo, useCallback, memo } from 'react'
 import { useSessionState } from '../hooks/useSessionState'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip,
@@ -40,7 +40,7 @@ function fadeHex(hex, alpha) {
   return `${normalized}${alphaHex}`
 }
 
-function SectionCard({ title, icon, children, style, compact }) {
+const SectionCard = memo(function SectionCard({ title, icon, children, style, compact }) {
   return (
     <div style={{
       padding: compact ? '8px 10px' : 24,
@@ -58,9 +58,9 @@ function SectionCard({ title, icon, children, style, compact }) {
       <div style={{ flex: 1, minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>{children}</div>
     </div>
   )
-}
+});
 
-function KPI({ label, value, sub, color, icon, compact, inline }) {
+const KPI = memo(function KPI({ label, value, sub, color, icon, compact, inline }) {
   if (inline) {
     return (
       <div style={{
@@ -89,9 +89,9 @@ function KPI({ label, value, sub, color, icon, compact, inline }) {
       {sub && <p style={{ fontSize: 10, color: 'var(--color-on-surface-variant)', lineHeight: 1.2 }}>{sub}</p>}
     </div>
   )
-}
+});
 
-function ChartBox({ children, height = 240 }) {
+const ChartBox = memo(function ChartBox({ children, height = 240 }) {
   const containerRef = useRef(null)
   const [size, setSize] = useState({ width: 0, height })
 
@@ -118,7 +118,7 @@ function ChartBox({ children, height = 240 }) {
       {size.width > 0 ? cloneElement(children, { width: size.width, height: size.height }) : null}
     </div>
   )
-}
+});
 
 function formatDay(dateStr) {
   if (!dateStr) return ''
@@ -218,19 +218,19 @@ export default function Analytics() {
     </div>
   )
 
-  const dailyData = (visits?.daily || []).map(r => ({
+  const dailyData = useMemo(() => (visits?.daily || []).map(r => ({
     day: formatDay(r.day), visits: r.visits
-  }))
+  })), [visits?.daily])
 
-  const weeklyData = (visits?.weekly || []).map(r => ({
+  const weeklyData = useMemo(() => (visits?.weekly || []).map(r => ({
     week: formatWeek(r.week), visits: r.visits
-  }))
+  })), [visits?.weekly])
 
-  const topPages = (visits?.top_pages || [])
+  const topPages = visits?.top_pages || []
 
-  const todayChange = visits?.yesterday > 0
+  const todayChange = useMemo(() => visits?.yesterday > 0
     ? (((visits.today - visits.yesterday) / visits.yesterday) * 100).toFixed(0)
-    : null
+    : null, [visits?.today, visits?.yesterday])
 
   const isEmptyAnalytics =
     (visits?.total_visits || 0) === 0 &&
@@ -244,21 +244,22 @@ export default function Analytics() {
 
   const hasStateData = stateData.length > 0
   const hasStateSelection = selectedStates.length > 0
-  const visibleStateData = hasStateSelection
+  const visibleStateData = useMemo(() => hasStateSelection
     ? stateData.filter((entry) => selectedStates.includes(entry.state))
-    : stateData
-  const stateChartMax = visibleStateData.reduce((max, entry) => Math.max(max, entry.recruiters), 0)
+    : stateData, [hasStateSelection, stateData, selectedStates])
 
-  const toggleStateSelection = (stateCode) => {
+  const stateChartMax = useMemo(() => visibleStateData.reduce((max, entry) => Math.max(max, entry.recruiters), 0), [visibleStateData])
+
+  const toggleStateSelection = useCallback((stateCode) => {
     if (!stateCode) return
     setSelectedStates((current) => (
       current.includes(stateCode)
         ? current.filter((item) => item !== stateCode)
         : [...current, stateCode]
     ))
-  }
+  }, [setSelectedStates])
 
-  const clearStateSelection = () => setSelectedStates([])
+  const clearStateSelection = useCallback(() => setSelectedStates([]), [setSelectedStates])
 
   return (
     <div

@@ -1,5 +1,4 @@
 import { toast } from 'react-hot-toast'
-import * as XLSX from 'xlsx';
 
 /**
  * Standardizes recruiter / candidate record to the exact 5 required columns:
@@ -35,7 +34,7 @@ export function formatRecruiterForExport(item) {
  * @param {Array<Object>} data - The list of recruiter/contact objects to export.
  * @param {string} filename - The filename without extension (e.g. 'recruiters_export')
  */
-export function exportToExcel(data, filename = 'recruiters_export') {
+export async function exportToExcel(data, filename = 'recruiters_export') {
   if (!data || data.length === 0) {
     toast.error("No data available to export.");
     return;
@@ -43,6 +42,9 @@ export function exportToExcel(data, filename = 'recruiters_export') {
   
   // Format each row to strictly contain only: Name, Email, Company, Phone Number, Designation
   const standardizedData = data.map(formatRecruiterForExport);
+  
+  // Dynamically load XLSX only when needed
+  const XLSX = await import('xlsx');
   
   // Create a worksheet with specific column headers
   const worksheet = XLSX.utils.json_to_sheet(standardizedData, {

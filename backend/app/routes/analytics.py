@@ -180,9 +180,9 @@ def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depen
 
     is_admin = current_user.role and current_user.role.name.lower() in ('admin', 'superadmin')
     
-    # Force reload from disk to pick up any new Parquet data from bulk imports
-    recruiter_store.reload()
-    duck_conn = recruiter_store._conn.cursor() if recruiter_store._conn else None
+    # Ensure parquet is loaded safely
+    recruiter_store._ensure_loaded()
+    duck_conn = recruiter_store._get_conn().cursor() if hasattr(recruiter_store, '_get_conn') and recruiter_store._conn else (recruiter_store._conn.cursor() if recruiter_store._conn else None)
     
     sql = """
         SELECT 

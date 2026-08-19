@@ -13,6 +13,8 @@ export default function PreflightSafetyModal({
   onClose,
   campaignId,
   preflightData: initialPreflightData,
+  subject = '',
+  body = '',
   onConfirmLaunch,
   isLaunching = false
 }) {
@@ -21,11 +23,24 @@ export default function PreflightSafetyModal({
   const [filterTier, setFilterTier] = useState('all'); // 'all' | 'safe' | 'review' | 'blocked'
   const [isHealing, setIsHealing] = useState(false);
   const [healedInfo, setHealedInfo] = useState(null);
+  const [spamResult, setSpamResult] = useState(null);
+  const [isCheckingSpam, setIsCheckingSpam] = useState(false);
 
   // Sync if prop updates
   React.useEffect(() => {
     setPreflightData(initialPreflightData);
   }, [initialPreflightData]);
+
+  // Run spam score check when modal opens
+  React.useEffect(() => {
+    if (isOpen && (subject || body)) {
+      setIsCheckingSpam(true);
+      api.post('/campaigns/preflight-spam-check', { subject, body })
+        .then(res => setSpamResult(res.data))
+        .catch(() => setSpamResult(null))
+        .finally(() => setIsCheckingSpam(false));
+    }
+  }, [isOpen, subject, body]);
 
   if (!isOpen || !preflightData) return null;
 
@@ -282,6 +297,38 @@ export default function PreflightSafetyModal({
                   </span>
                 </div>
               </label>
+            )}
+
+            {/* Content & Spam Risk Assessment Panel */}
+            {spamResult && (
+              <div className="p-4 rounded-xl bg-[#18181b] border border-[#27272a]">
+                <div className="flex items-center justify-between mb-2.5">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className={`w-4 h-4 ${spamResult.is_safe ? 'text-emerald-400' : 'text-amber-400'}`} />
+                    <span className="text-xs font-semibold text-white">Content Deliverability & Spam Score</span>
+                  </div>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                    spamResult.risk_tier === 'low'
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                      : spamResult.risk_tier === 'medium'
+                      ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                      : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                  }`}>
+                    {spamResult.deliverability_score}/100 Safe ({spamResult.risk_tier.toUpperCase()})
+                  </span>
+                </div>
+                <div className="text-[11px] text-[#a1a1aa] mb-2">{spamResult.summary}</div>
+                {spamResult.recommendations?.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-[#27272a]/60 space-y-1">
+                    {spamResult.recommendations.map((rec, idx) => (
+                      <div key={idx} className="text-[11px] text-amber-300/90 flex items-center gap-1.5">
+                        <span className="w-1 h-1 rounded-full bg-amber-400 flex-shrink-0" />
+                        <span>{rec}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Recipient Audit List */}

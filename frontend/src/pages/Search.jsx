@@ -513,6 +513,35 @@ export default function AISearch() {
     notes: '',
   })
 
+  // ── AI Boolean Query Builder State ──
+  const [booleanModalOpen, setBooleanModalOpen] = useState(false)
+  const [booleanRole, setBooleanRole] = useState('')
+  const [booleanSkills, setBooleanSkills] = useState('')
+  const [booleanExcluded, setBooleanExcluded] = useState('')
+  const [booleanLocation, setBooleanLocation] = useState('')
+  const [booleanJD, setBooleanJD] = useState('')
+  const [booleanGenerating, setBooleanGenerating] = useState(false)
+  const [booleanResult, setBooleanResult] = useState(null)
+
+  const handleGenerateBoolean = async () => {
+    setBooleanGenerating(true)
+    try {
+      const payload = {
+        role: booleanRole.trim() || undefined,
+        required_skills: booleanSkills ? booleanSkills.split(',').map(s => s.trim()).filter(Boolean) : [],
+        excluded_keywords: booleanExcluded ? booleanExcluded.split(',').map(s => s.trim()).filter(Boolean) : [],
+        location: booleanLocation.trim() || undefined,
+        job_description: booleanJD.trim() || undefined,
+      }
+      const res = await api.post('/ai/boolean-builder', payload)
+      setBooleanResult(res.data)
+    } catch (err) {
+      setToast('Failed to generate Boolean string')
+    } finally {
+      setBooleanGenerating(false)
+    }
+  }
+
   const primeEditState = (record) => {
     setEditError('')
     setEditPin('')
@@ -707,6 +736,24 @@ export default function AISearch() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            onClick={() => setBooleanModalOpen(true)}
+            style={{
+              ...iconButtonStyle(false),
+              width: 'auto',
+              padding: '0 12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'var(--brand)',
+              color: 'var(--text-inverse)',
+              border: 'none'
+            }}
+            title="AI Boolean Query Generator"
+          >
+            <i className="ti ti-code" />
+            <span style={{ fontSize: 12, fontWeight: 700 }}>AI Boolean Sourcing</span>
+          </button>
           <button onClick={() => { navigator.clipboard.writeText(window.location.href); setToast('Link copied to clipboard') }} style={{ ...iconButtonStyle(false), width: 38 }} title="Copy Link">
             <i className="ti ti-share" />
           </button>
@@ -1402,6 +1449,191 @@ export default function AISearch() {
                   >
                     <i className="ti ti-device-floppy" /> {editSaving ? 'Saving…' : 'Save changes'}
                   </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── AI Boolean Sourcing Modal ── */}
+      {booleanModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: 16,
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setBooleanModalOpen(false) }}
+        >
+          <div
+            style={{
+              background: 'var(--panel-bg)',
+              border: '1px solid var(--card-border)',
+              borderRadius: 12,
+              width: '100%',
+              maxWidth: 680,
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+              padding: 24,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyBetween: 'space-between', borderBottom: '1px solid var(--card-border)', paddingBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--brand)', color: 'var(--text-inverse)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <i className="ti ti-code" style={{ fontSize: 16 }} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>AI Boolean Query Generator</h2>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>Synthesize cross-platform Boolean strings for LinkedIn, Google X-Ray & TalentOps</p>
+                </div>
+              </div>
+              <button onClick={() => setBooleanModalOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18 }}>
+                <i className="ti ti-x" />
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Target Role / Title</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Senior Recruiter, TA Lead"
+                  value={booleanRole}
+                  onChange={(e) => setBooleanRole(e.target.value)}
+                  style={{ width: '100%', marginTop: 4, padding: '8px 10px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--input-bg, #18181b)', color: 'var(--text-primary)', fontSize: 13 }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Location (State / City)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. CA, Texas, Austin"
+                  value={booleanLocation}
+                  onChange={(e) => setBooleanLocation(e.target.value)}
+                  style={{ width: '100%', marginTop: 4, padding: '8px 10px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--input-bg, #18181b)', color: 'var(--text-primary)', fontSize: 13 }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Must-Have Skills (comma-separated)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. React, TypeScript, GraphQL"
+                  value={booleanSkills}
+                  onChange={(e) => setBooleanSkills(e.target.value)}
+                  style={{ width: '100%', marginTop: 4, padding: '8px 10px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--input-bg, #18181b)', color: 'var(--text-primary)', fontSize: 13 }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Exclude Keywords (comma-separated)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Intern, Junior, Entry"
+                  value={booleanExcluded}
+                  onChange={(e) => setBooleanExcluded(e.target.value)}
+                  style={{ width: '100%', marginTop: 4, padding: '8px 10px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--input-bg, #18181b)', color: 'var(--text-primary)', fontSize: 13 }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Or Paste Job Description / Requisition Notes</label>
+              <textarea
+                rows={3}
+                placeholder="Paste JD to auto-extract skills and target role..."
+                value={booleanJD}
+                onChange={(e) => setBooleanJD(e.target.value)}
+                style={{ width: '100%', marginTop: 4, padding: '8px 10px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--input-bg, #18181b)', color: 'var(--text-primary)', fontSize: 12, resize: 'vertical' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button
+                onClick={handleGenerateBoolean}
+                disabled={booleanGenerating}
+                style={{
+                  padding: '10px 18px',
+                  borderRadius: 8,
+                  background: 'var(--brand)',
+                  color: 'var(--text-inverse)',
+                  border: 'none',
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6
+                }}
+              >
+                <i className={booleanGenerating ? 'ti ti-loader animate-spin' : 'ti ti-sparkles'} />
+                {booleanGenerating ? 'Generating...' : 'Generate Sourcing Strings'}
+              </button>
+            </div>
+
+            {booleanResult && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid var(--card-border)', paddingTop: 16 }}>
+                {/* TalentOps Search Card */}
+                <div style={{ padding: 12, borderRadius: 8, background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#10b981' }}>TalentOps Direct Query</span>
+                    <button
+                      onClick={() => {
+                        setQuery(booleanResult.talentops_query)
+                        setBooleanModalOpen(false)
+                      }}
+                      style={{ padding: '4px 10px', borderRadius: 6, background: '#10b981', color: '#fff', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      Run Search Now
+                    </button>
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text-primary)' }}>{booleanResult.talentops_query}</div>
+                </div>
+
+                {/* LinkedIn Boolean Card */}
+                <div style={{ padding: 12, borderRadius: 8, background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6' }}>LinkedIn Recruiter Boolean String</span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(booleanResult.linkedin_boolean)
+                        setToast('Copied LinkedIn Boolean!')
+                        setTimeout(() => setToast(''), 1400)
+                      }}
+                      style={{ padding: '4px 10px', borderRadius: 6, background: '#3b82f6', color: '#fff', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      Copy Boolean
+                    </button>
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--text-primary)', wordBreak: 'break-all' }}>{booleanResult.linkedin_boolean}</div>
+                </div>
+
+                {/* Google X-Ray Card */}
+                <div style={{ padding: 12, borderRadius: 8, background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.2)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#a855f7' }}>Google X-Ray Sourcing String</span>
+                    <a
+                      href={booleanResult.google_xray_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ padding: '4px 10px', borderRadius: 6, background: '#a855f7', color: '#fff', textDecoration: 'none', fontSize: 11, fontWeight: 700 }}
+                    >
+                      Open Google X-Ray
+                    </a>
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--text-primary)', wordBreak: 'break-all' }}>{booleanResult.google_xray_query}</div>
                 </div>
               </div>
             )}

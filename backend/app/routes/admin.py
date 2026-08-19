@@ -1266,3 +1266,60 @@ def get_audit_logs(db: Session = Depends(get_db)):
         }
         for log in logs
     ]
+
+
+# -------------------------------------------------------------
+# Deduplication & Data Cleanliness Endpoints
+# -------------------------------------------------------------
+class DedupMergeRequest(BaseModel):
+    match_strategy: str = "email"  # 'email' or 'name_company'
+    max_clusters: int = 25
+    dry_run: bool = True
+
+
+@router.get("/deduplicate/scan")
+def scan_duplicates(limit: int = 50):
+    """
+    Scans dataset for duplicate recruiter clusters.
+    """
+    from ..services.deduplication_engine import deduplication_engine
+    return deduplication_engine.scan_duplicates(limit_clusters=limit)
+
+
+@router.post("/deduplicate/merge")
+def merge_duplicates(payload: DedupMergeRequest):
+    """
+    Merges duplicate recruiter records, transferring secondary contact vectors to canonical profile.
+    """
+    from ..services.deduplication_engine import deduplication_engine
+    return deduplication_engine.merge_duplicates(
+        match_strategy=payload.match_strategy,
+        max_clusters=payload.max_clusters,
+        dry_run=payload.dry_run
+    )
+
+
+# -------------------------------------------------------------
+# Automated Parquet & Database Backup Endpoints
+# -------------------------------------------------------------
+class BackupSnapshotRequest(BaseModel):
+    reason: Optional[str] = "manual_admin_trigger"
+
+
+@router.get("/backup/snapshots")
+def list_backup_snapshots():
+    """
+    Lists all forensic immutable backups of the 367k+ recruiter Parquet database.
+    """
+    from ..services.backup_service import backup_service
+    return backup_service.list_snapshots()
+
+
+@router.post("/backup/snapshot")
+def create_backup_snapshot(payload: BackupSnapshotRequest):
+    """
+    Triggers an instant forensic snapshot of the active Parquet dataset.
+    """
+    from ..services.backup_service import backup_service
+    return backup_service.create_snapshot(reason=payload.reason or "manual_admin_trigger")
+

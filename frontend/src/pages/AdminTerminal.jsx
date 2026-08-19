@@ -345,6 +345,30 @@ export default function AdminTerminal() {
     } catch { log('✗ Failed to clear cache', 'error') }
   }
 
+  const createParquetSnapshot = async () => {
+    log('Generating forensic Parquet snapshot...', 'warn')
+    try {
+      const res = await api.post('/admin/backup/snapshot', { reason: 'Admin UI Trigger' })
+      log(`✓ Parquet snapshot created: ${res.data.filename} (${res.data.size_mb} MB)`, 'ok')
+      alert(`Forensic snapshot created: ${res.data.filename} (${res.data.size_mb} MB)`)
+    } catch (e) {
+      log('✗ Snapshot creation failed: ' + getErrorMessage(e), 'error')
+    }
+  }
+
+  const runParquetDedupMerge = async () => {
+    if (!window.confirm('Run automated deduplication and profile consolidation on the 367k+ Parquet roster?')) return
+    log('Executing Parquet deduplication & contact consolidation...', 'warn')
+    try {
+      const res = await api.post('/admin/deduplicate/merge', { match_strategy: 'email', max_clusters: 50, dry_run: false })
+      log(`✓ Consolidated ${res.data.records_consolidated} duplicate records across ${res.data.clusters_processed} clusters!`, 'ok')
+      alert(`Consolidated ${res.data.records_consolidated} duplicate records into canonical profiles!`)
+      await loadAll()
+    } catch (e) {
+      log('✗ Deduplication failed: ' + getErrorMessage(e), 'error')
+    }
+  }
+
   const loadVisitorLogs = async (days = logDays) => {
     setLoadingLogs(true)
     setLogsError(null)
@@ -914,6 +938,8 @@ export default function AdminTerminal() {
                         {[
                           { label: 'Export Problem Records', icon: 'ti-file-export', disabled: false, onClick: exportProblems },
                           { label: 'Run Cleanup', icon: 'ti-broom', disabled: false, onClick: runCleanup },
+                          { label: 'Consolidate Duplicates', icon: 'ti-copy-check', disabled: false, onClick: runParquetDedupMerge },
+                          { label: 'Parquet Forensic Snapshot', icon: 'ti-database-export', disabled: false, onClick: createParquetSnapshot },
                           { label: 'Run Duplicate Scan', icon: 'ti-scan', onClick: loadDupes, disabled: false },
                           { label: 'Refresh Analytics', icon: 'ti-refresh', onClick: clearCache, disabled: false },
                         ].map((b) => (

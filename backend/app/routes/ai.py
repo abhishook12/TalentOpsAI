@@ -26,6 +26,14 @@ class ResolveDuplicateRequest(BaseModel):
 class SmartImportRequest(BaseModel):
     rows: List[Dict[str, Any]]
 
+class BooleanBuilderRequest(BaseModel):
+    role: Optional[str] = None
+    required_skills: Optional[List[str]] = []
+    optional_skills: Optional[List[str]] = []
+    excluded_keywords: Optional[List[str]] = []
+    location: Optional[str] = None
+    job_description: Optional[str] = None
+
 from ..resource_lockdown import track_gemini_call
 
 def get_client():
@@ -245,3 +253,99 @@ Return ONLY a valid JSON dictionary where the keys are the exact job titles prov
         db.rollback()
         logger.error(f"AI Taxonomy error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/boolean-builder")
+def ai_boolean_builder(payload: BooleanBuilderRequest):
+    """
+    Generates standardized Boolean search queries for LinkedIn Recruiter,
+    Google X-Ray searches, and TalentOps platform filters.
+    """
+    import re
+    role = payload.role or ""
+    req_skills = payload.required_skills or []
+    opt_skills = payload.optional_skills or []
+    excluded = payload.excluded_keywords or []
+    location = payload.location or ""
+
+    # If raw job description provided, extract key signals
+    if payload.job_description and not role:
+        lines = [l.strip() for l in payload.job_description.split("\n") if l.strip()]
+        if lines:
+            role = lines[0][:60]
+        # Quick skill extraction from JD
+        common_skills = ["React", "Python", "Java", "AWS", "SQL", "Go", "TypeScript", "Node.js", "Kubernetes", "Docker", "DevOps", "Cybersecurity", "Salesforce", "Epic", "C#", ".NET"]
+        found = [s for s in common_skills if re.search(r'\b' + re.escape(s) + r'\b', payload.job_description, re.I)]
+        if found and not req_skills:
+            req_skills = found[:4]
+
+    # Build Title Clause
+    title_terms = [t.strip() for t in re.split(r'[,/|]+', role) if t.strip()] if role else ["Recruiter", "Talent Acquisition"]
+    title_clause = " OR ".join([f'"{t}"' if " " in t else t for t in title_terms])
+    if len(title_terms) > 1:
+        title_clause = f"({title_clause})"
+
+    # Build Required Skills Clause
+    req_clause = ""
+    if req_skills:
+        req_parts = [f'"{s}"' if " " in s else s for s in req_skills]
+        req_clause = " AND ".join(req_parts)
+
+    # Build Optional Skills Clause
+    opt_clause = ""
+    if opt_skills:
+        opt_parts = [f'"{s}"' if " " in s else s for s in opt_skills]
+        opt_clause = f"({' OR '.join(opt_parts)})"
+
+    # Build Excluded Clause
+    not_clause = ""
+    if excluded:
+        not_parts = [f'"{e}"' if " " in e else e for e in excluded]
+        not_clause = f"NOT ({' OR '.join(not_parts)})"
+
+    # Assemble LinkedIn String
+    linkedin_parts = [f"({title_clause})"]
+    if req_clause:
+        linkedin_parts.append(req_clause)
+    if opt_clause:
+        linkedin_parts.append(opt_clause)
+    if location:
+        linkedin_parts.append(f'"{location}"')
+    if not_clause:
+        linkedin_parts.append(not_clause)
+
+    linkedin_boolean = " AND ".join([p for p in linkedin_parts if not p.startswith("NOT ")])
+    if not_clause:
+        linkedin_boolean = f"{linkedin_boolean} {not_clause}"
+
+    # Assemble Google X-Ray
+    xray_parts = ["site:linkedin.com/in"]
+    if title_clause:
+        xray_parts.append(title_clause)
+    if req_skills:
+        xray_parts.extend([f'"{s}"' if " " in s else s for s in req_skills])
+    if location:
+        xray_parts.append(f'"{location}"')
+    if excluded:
+        for e in excluded:
+            xray_parts.append(f'-"{e}"')
+
+    google_xray = " ".join(xray_parts)
+
+    # TalentOps internal query
+    talentops_keywords = f"{role} {' '.join(req_skills)} {location}".strip()
+
+    return {
+        "role": role,
+        "extracted_skills": req_skills,
+        "talentops_query": talentops_keywords,
+        "linkedin_boolean": linkedin_boolean,
+        "google_xray_query": google_xray,
+        "google_xray_url": f"https://www.google.com/search?q={urllib_quote(google_xray)}"
+    }
+
+
+def urllib_quote(s: str) -> str:
+    import urllib.parse
+    return urllib.parse.quote(s)
+

@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  talentops-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: talentops_production
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=production
+      - RUN_STARTUP_MIGRATIONS=false
+      - JWT_SECRET=${JWT_SECRET:-talentops_prod_secret_key_change_me}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-Admin@12345}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    volumes:
+      - ./backend/data:/app/backend/data
+      - ./backend/data/snapshots:/app/backend/data/snapshots
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 4096M
+        reservations:
+          memory: 1024M

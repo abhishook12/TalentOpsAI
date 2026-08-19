@@ -1034,6 +1034,8 @@ export default function Campaigns() {
         onClose={() => setShowSafetyModal(false)}
         campaignId={activeCampaignId}
         preflightData={safetyPreflightData}
+        subject={subject}
+        body={body}
         onConfirmLaunch={handleConfirmLaunch}
         isLaunching={isSending}
       />

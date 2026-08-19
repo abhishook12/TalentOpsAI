@@ -191,6 +191,19 @@ def api_campaign_auto_heal(
     }
 
 
+class SpamCheckPayload(BaseModel):
+    subject: str = ""
+    body: str = ""
+
+
+@router.post("/preflight-spam-check")
+def preflight_spam_check(payload: SpamCheckPayload):
+    """
+    Analyzes an email template for deliverability risk, spam trigger words, and formatting red flags.
+    """
+    from ..services.spam_checker import analyze_email_content
+    return analyze_email_content(payload.subject, payload.body)
+
 
 @router.get("/{campaign_id}/deliverability-report")
 def api_deliverability_report(

@@ -30,8 +30,7 @@ class MemoryOLAPSidecar:
         try:
             from .database import SessionLocal
             from sqlalchemy import text
-            db = SessionLocal()
-            try:
+            with SessionLocal() as db:
                 try:
                     db.execute(text("SET statement_timeout = '60s'"))
                 except Exception:
@@ -203,9 +202,6 @@ class MemoryOLAPSidecar:
                 elapsed = round((self._last_sync_time[user_id] - t0) * 1000, 2)
                 logger.info(f"[OLAP] Sidecar sync complete in {elapsed}ms! Known State: {with_state:,}")
                 return result
-
-            finally:
-                db.close()
         except Exception as e:
             logger.error(f"[OLAP] Error syncing sidecar: {e}")
             if user_id in self._cached_data_quality:

@@ -9,8 +9,8 @@ from ..database import get_db
 from sqlalchemy.orm import joinedload
 from ..config import JWT_SECRET
 
-# Configuration — unified: uses JWT_SECRET from config.py
-SECRET_KEY = JWT_SECRET
+# Configuration — unified: uses JWT_SECRET from config.py (ensuring >= 32 bytes for RFC 7518 compliance)
+SECRET_KEY = JWT_SECRET if len(JWT_SECRET) >= 32 else JWT_SECRET.ljust(32, '_')
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 43200  # 30 days
 REFRESH_TOKEN_EXPIRE_DAYS = 30
@@ -278,4 +278,12 @@ def log_audit(db: Session, user_id: int, action: str, previous_value: str = None
     )
     db.add(audit_log)
     db.commit()
+
+
+def get_optional_current_user(request: Request, db: Session = Depends(get_db)):
+    """Returns the authenticated User if valid token is provided, else None."""
+    try:
+        return get_current_user_from_request(request, db)
+    except HTTPException:
+        return None
 

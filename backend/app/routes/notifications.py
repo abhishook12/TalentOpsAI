@@ -4,7 +4,8 @@ from sqlalchemy import desc
 from typing import List
 from ..database import get_db
 from ..models.models import Notification
-from ..services.auth_service import get_current_user_from_request as get_current_user
+from ..models.auth_models import User
+from ..services.auth_service import get_current_user_from_request as get_current_user, require_admin
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
@@ -23,7 +24,7 @@ def mark_all_read(db: Session = Depends(get_db), current_user = Depends(get_curr
     return {"status": "success"}
 
 @router.post("/test")
-def create_test_notification(db: Session = Depends(get_db)):
+def create_test_notification(db: Session = Depends(get_db), admin: User = Depends(require_admin)):
     n = Notification(
         title="Welcome to TalentOps AI",
         message="System fully updated to Enterprise Polish Sprint v1.3",

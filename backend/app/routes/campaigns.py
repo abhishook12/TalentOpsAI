@@ -210,7 +210,7 @@ class DomainInspectPayload(BaseModel):
 
 
 @router.post("/preflight-spam-check")
-def preflight_spam_check(payload: SpamCheckPayload):
+def preflight_spam_check(payload: SpamCheckPayload, current_user: User = Depends(get_current_user_from_request)):
     """
     Analyzes an email template for deliverability risk, spam trigger words, and formatting red flags.
     """
@@ -219,7 +219,7 @@ def preflight_spam_check(payload: SpamCheckPayload):
 
 
 @router.post("/generate-sequence")
-def generate_sequence_endpoint(payload: GenerateSequencePayload):
+def generate_sequence_endpoint(payload: GenerateSequencePayload, current_user: User = Depends(get_current_user_from_request)):
     """
     Synthesizes an AI-driven 3-touch cold outreach sequence tailored to target role and candidate level.
     """
@@ -235,7 +235,7 @@ def generate_sequence_endpoint(payload: GenerateSequencePayload):
 
 
 @router.post("/inspect-domain-health")
-def inspect_domain_health_endpoint(payload: DomainInspectPayload):
+def inspect_domain_health_endpoint(payload: DomainInspectPayload, current_user: User = Depends(get_current_user_from_request)):
     """
     Audits SPF, DKIM, DMARC, and MX records for a sending domain to ensure deliverability compliance.
     """
@@ -565,9 +565,7 @@ def enroll_emails(campaign_id: int, payload: EnrollEmailsRequest, db: Session = 
             CampaignRecruiter.campaign_id == campaign_id,
             CampaignRecruiter.recruiter_id.in_(all_rec_ids)
         ).all()
-        existing_cr_ids = {row[0] for row in existing_enrollments}
-        
-        # 4. Bulk Insert Missing Enrollments
+        existing_cr_ids = {row[0] for row in existing_enrollments}        # 4. Bulk Insert Missing Enrollments
         new_crs = []
         for r in rec_by_email.values():
             if r.recruiter_id not in existing_cr_ids:
@@ -591,10 +589,8 @@ def enroll_emails(campaign_id: int, payload: EnrollEmailsRequest, db: Session = 
         
     return {"enrolled_count": enrolled}
 
-@router.get("/{campaign_id}/progress")
-async def stream_campaign_progress(campaign_id: int, token: str = Query(default=None)):
-    # EventSource cannot send an Authorization header, so require a JWT query
-    # token and use it to scope the campaign before streaming any recipient data.
+@router.get("/{campaign_id}/progress-stream")
+async def stream_campaign_progress(request: Request, campaign_id: int, token: str = Query(default=None)):
     if not token:
         raise HTTPException(status_code=401, detail="Stream token is required")
     try:
@@ -603,13 +599,8 @@ async def stream_campaign_progress(campaign_id: int, token: str = Query(default=
         stream_user_id = int(claims.get("sub"))
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
-    
-    from fastapi.responses import StreamingResponse
-    import asyncio
-    import json
-    
+
     def _snapshot(last_log_id: int):
-        # Runs in a worker thread: blocking DB calls must never run on the event loop
         from ..database import SessionLocal
         from ..models.campaigns import EmailLog
         from sqlalchemy import func as sa_func
@@ -622,7 +613,6 @@ async def stream_campaign_progress(campaign_id: int, token: str = Query(default=
             if camp_status is None:
                 return None, last_log_id
 
-            # One GROUP BY replaces seven separate COUNT queries
             counts = dict(
                 s_db.query(CampaignRecruiter.status, sa_func.count())
                 .filter(CampaignRecruiter.campaign_id == campaign_id)
@@ -675,17 +665,18 @@ async def stream_campaign_progress(campaign_id: int, token: str = Query(default=
             return data, last_log_id
 
     async def event_generator():
-        # Keep track of what we've already sent to avoid redundant data
         last_log_id = 0
-        first_sent = None  # (monotonic_time, sent_count) baseline for observed rate
+        first_sent = None
         stream_start = time.monotonic()
-        SSE_MAX_LIFETIME = 30 * 60  # Fix #9: 30 minute max SSE lifetime
-        SSE_STALE_TIMEOUT = 5 * 60  # Close if no new data for 5 minutes
+        SSE_MAX_LIFETIME = 30 * 60
+        SSE_STALE_TIMEOUT = 5 * 60
         last_change_time = time.monotonic()
         prev_sent = 0
 
         while True:
-            # Fix #9: Enforce SSE max lifetime
+            if await request.is_disconnected():
+                break
+
             elapsed = time.monotonic() - stream_start
             if elapsed > SSE_MAX_LIFETIME:
                 yield f"data: {{\"status\": \"timeout\", \"message\": \"Stream expired after 30 minutes\"}}\n\n"
@@ -695,7 +686,6 @@ async def stream_campaign_progress(campaign_id: int, token: str = Query(default=
             if data is None:
                 break
             
-            # Stale data check
             if data["sent"] != prev_sent:
                 last_change_time = time.monotonic()
                 prev_sent = data["sent"]
@@ -705,7 +695,6 @@ async def stream_campaign_progress(campaign_id: int, token: str = Query(default=
             if data is None:
                 break
 
-            # Observed throughput → ETA (replaces the hardcoded estimate the UI expects)
             now = time.monotonic()
             if first_sent is None or data["sent"] < first_sent[1]:
                 first_sent = (now, data["sent"])
@@ -719,12 +708,19 @@ async def stream_campaign_progress(campaign_id: int, token: str = Query(default=
             yield f"data: {json.dumps(data)}\n\n"
 
             if data["status"] in ['completed', 'failed', 'cancelled']:
-                # One final status, then close
                 break
 
             await asyncio.sleep(0.5)
             
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
 
 @router.get("/{campaign_id}/status")
 def api_get_campaign_status(
@@ -742,16 +738,7 @@ def api_get_campaign_status(
     return {
         "status": campaign.status,
         **eta_data
-    }
-
-@router.get("/{campaign_id}/delivery-logs")
-def get_campaign_delivery_logs(campaign_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    """Fetch detailed delivery logs for the campaign."""
-    from ..models.campaigns import EmailLog, CampaignRecruiter
-    from sqlalchemy.orm import joinedload
-    
-    logs = (
-        db.query(EmailLog)
+    }  ).scalar()
         .filter(EmailLog.campaign_id == campaign_id)
         .order_by(EmailLog.log_id.desc())
         .options(joinedload(EmailLog.campaign_recruiter))

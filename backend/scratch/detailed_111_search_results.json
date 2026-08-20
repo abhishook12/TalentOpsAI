@@ -1,0 +1,4726 @@
+[
+  {
+    "index": 1,
+    "query_company": "Rabun Enterprise Solutions",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Rabunenterprisesolutions",
+      "Rabunenterprise"
+    ],
+    "primary_domains": [
+      "rabunenterprisesolutions.com",
+      "rabunenterprise.com",
+      "rabunenterprisesolutions.com\n"
+    ],
+    "websites": [],
+    "recruiter_count": 51,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Thomas Marshall",
+        "email": "thomas.marshall@rabunenterprisesolutions.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "T Homasmarshall",
+        "email": "thomasmarshall@rabunenterprisesolutions.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Thomas Marshall",
+        "email": "thomas.marshall@rabunenterprisesolutions.com",
+        "title": "Talent Acquisition Specialist"
+      },
+      {
+        "recruiter_name": "Unknown",
+        "email": NaN,
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 1
+  },
+  {
+    "index": 2,
+    "query_company": "ACS Professional Staffing",
+    "status": "FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 1,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Unknown",
+        "email": NaN,
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 1
+  },
+  {
+    "index": 3,
+    "query_company": "Adastra",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Adastraresourcegroup",
+      "Adastracorp",
+      "Adastrarec"
+    ],
+    "primary_domains": [
+      "adastraresourcegroup.com",
+      "adastracorp.com",
+      "adastrarec.com"
+    ],
+    "websites": [],
+    "recruiter_count": 47,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Nikhil Lobo",
+        "email": "nikhil.lobo@adastracorp.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Matthew Johnson",
+        "email": "matthew.johnson@adastracorp.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "James Furness",
+        "email": "james.furness@adastracorp.com",
+        "title": null
+      }
+    ],
+    "local_import_matches": 0
+  },
+  {
+    "index": 4,
+    "query_company": "Global Path Resources, Inc.",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Stratopath",
+      "Epathusa",
+      "Softpath",
+      "Pathccm",
+      "Softpathtech",
+      "Uipathtek",
+      "Whitakerpathways",
+      "Axiompath",
+      "Myhuntpath",
+      "Rajboopathy",
+      "Leadingpath",
+      "Waypathconsulting",
+      "Careerpathgroup",
+      "Hybridpathways",
+      "Searchpath",
+      "Nextpathway",
+      "Workpathpartners",
+      "Pathway Group",
+      "Pathwayspersonnel",
+      "Procertifycareerpath",
+      "Globalpathresources",
+      "Pathfindersinc",
+      "Certipath",
+      "Pivotpathsolutions",
+      "Nextpathcp",
+      "Theleadingpath",
+      "Onwardpath",
+      "Pathfinders1995",
+      "Broad Path",
+      "Pathtechnologies",
+      "Netpaths"
+    ],
+    "primary_domains": [
+      "stratopath.com",
+      "epathusa.net",
+      "softpath.net",
+      "pathccm.com",
+      "softpathtech.com",
+      "uipathtek.com",
+      "whitakerpathways.com",
+      "axiompath.com; maebelvargas.work",
+      "myhuntpath.com",
+      "rajboopathy.com",
+      "axiompath.com",
+      "leadingpath.com",
+      "waypathconsulting.com",
+      "careerpathgroup.com",
+      "hybridpathways.com",
+      "searchpath.com",
+      "nextpathway.com",
+      "axiompath.com; leonardespejo1228",
+      "axiompath.com; romulus.maraviles",
+      "workpathpartners.com",
+      "pathway-group.co",
+      "pathwayspersonnel.com",
+      "procertifycareerpath.com",
+      "globalpathresources.com",
+      "pathfindersinc.net",
+      "axiompath.com,maebelvargas.work",
+      "certipath.com",
+      "pivotpathsolutions.com",
+      "nextpathcp.com",
+      "theleadingpath.com",
+      "onwardpath.com",
+      "pathfinders1995.com",
+      "broad-path.com",
+      "pathtechnologies.com",
+      "netpaths.net"
+    ],
+    "websites": [],
+    "recruiter_count": 70,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Vivek",
+        "email": "vivek.hodar@nextpathway.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Benjamin",
+        "email": "benjamin.eze@nextpathway.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Inder",
+        "email": "inder.dhillon@nextpathway.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Unknown",
+        "email": NaN,
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Andy Williams",
+        "email": "andy@epathusa.net",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "RED Global",
+        "email": "rtripathi@redglobal.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 20
+  },
+  {
+    "index": 5,
+    "query_company": "The Bolton Group",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Boltongroup"
+    ],
+    "primary_domains": [
+      "boltongroup.com"
+    ],
+    "websites": [],
+    "recruiter_count": 51,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Caitlin",
+        "email": "cdown@boltongroup.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Zaheer",
+        "email": "zjiwani@boltongroup.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Lauren",
+        "email": "lbolender@boltongroup.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Sean McCoy",
+        "email": "smccoy@boltongroup.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 1
+  },
+  {
+    "index": 6,
+    "query_company": "SilverSearch, Inc",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Silversearch"
+    ],
+    "primary_domains": [
+      "silversearch.com.au"
+    ],
+    "websites": [],
+    "recruiter_count": 25,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Mandy",
+        "email": "mandy@silversearch.com.au",
+        "title": null
+      },
+      {
+        "recruiter_name": "Mandy",
+        "email": "mandy@silversearch.com.au",
+        "title": null
+      },
+      {
+        "recruiter_name": "Mandy",
+        "email": "mandy@silversearch.com.au",
+        "title": null
+      },
+      {
+        "recruiter_name": "Marge Meyer",
+        "email": "marge@silversearchinc.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Andrea Hirsch",
+        "email": "andrea@silversearchinc.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Amy Denen",
+        "email": "adenenberg@silversearchinc.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 20
+  },
+  {
+    "index": 7,
+    "query_company": "Bull City Talent Group",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Bullcitytalent"
+    ],
+    "primary_domains": [
+      "bullcitytalent.com"
+    ],
+    "websites": [],
+    "recruiter_count": 56,
+    "sample_recruiters": [
+      {
+        "recruiter_name": NaN,
+        "email": "simonm@bullcitytalent.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": NaN,
+        "email": "nicholasb@bullcitytalent.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": NaN,
+        "email": "paulg@bullcitytalent.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Brett Roberson",
+        "email": "brettr@bullcitytalent.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Chris Karaces",
+        "email": "chrisk@bullcitytalent.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Nicole Restivo",
+        "email": "nicoler@bullcitytalent.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 6
+  },
+  {
+    "index": 8,
+    "query_company": "The Doyle Group",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Doylegroup It",
+      "Thedoylegroup"
+    ],
+    "primary_domains": [
+      "doylegroup-it.com",
+      "thedoylegroup.com"
+    ],
+    "websites": [],
+    "recruiter_count": 54,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Kate",
+        "email": "kate@doylegroup-it.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Lisa",
+        "email": "lisa@doylegroup-it.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Andrew",
+        "email": "andrew@doylegroup-it.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Gene Dvoretsky",
+        "email": "gene@doylegroup-it.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Lisa Anderson",
+        "email": "lisa@doylegroup-it.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Brook King",
+        "email": "brook@doylegroup-it.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 4
+  },
+  {
+    "index": 9,
+    "query_company": "Incendia Partners",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Incendia"
+    ],
+    "primary_domains": [
+      "incendia.com",
+      "incendia.com;hemison",
+      "incendia.co"
+    ],
+    "websites": [],
+    "recruiter_count": 63,
+    "sample_recruiters": [
+      {
+        "recruiter_name": NaN,
+        "email": "hemison@incendia.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": NaN,
+        "email": "kanderson@incendia.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": NaN,
+        "email": "ndailey@incendia.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Bitahi",
+        "email": "mbitahi@incendia.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "David Lavielle",
+        "email": "dlavielle@incendia.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Taanisha Kashyap",
+        "email": "tkashyap@incendia.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 13
+  },
+  {
+    "index": 10,
+    "query_company": "Talution Group",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Talution"
+    ],
+    "primary_domains": [
+      "talution.com; kevszat",
+      "talution.com"
+    ],
+    "websites": [],
+    "recruiter_count": 58,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Kevin",
+        "email": "kkrumm@talution.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Eddie",
+        "email": "egreen@talution.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Kevin",
+        "email": "kkluge@talution.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Jason",
+        "email": "jstarck@talution.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "will redmond",
+        "email": "wredmond@oprecruiting.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Rich Drennen",
+        "email": "rdrennen@talution.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 8
+  },
+  {
+    "index": 11,
+    "query_company": "Albano Systems, Inc.",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Albanosystems"
+    ],
+    "primary_domains": [
+      "albanosystems.com",
+      "albanosystems.com; agebhart"
+    ],
+    "websites": [],
+    "recruiter_count": 51,
+    "sample_recruiters": [
+      {
+        "recruiter_name": NaN,
+        "email": "sprattson@albanosystems.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": NaN,
+        "email": "bmorgan@albanosystems.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": NaN,
+        "email": "sprattson@albanosystems.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Stephanie Prattson",
+        "email": "sprattson@albanosystems.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 1
+  },
+  {
+    "index": 12,
+    "query_company": "Geeks on Site",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 13,
+    "query_company": "Marchon Partners",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Marchonpartners"
+    ],
+    "primary_domains": [
+      "marchonpartners.com; sspezzano",
+      "marchonpartners.com; abelhumeur",
+      "marchonpartners.com | spezzanostacey",
+      "marchonpartners.com",
+      "marchonpartners.com\t617-720-4444.",
+      "marchonpartners.com|spezzanostacey",
+      "marchonpartners.com>",
+      "marchonpartners.com;kgiorgio"
+    ],
+    "websites": [],
+    "recruiter_count": 61,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Kris Giorgio",
+        "email": "kgiorgio@marchonpartners.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Garrett Saparnis",
+        "email": "gsaparnis@marchonpartners.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Kaitlin Gearin",
+        "email": "kgearin@marchonpartners.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Cody Verge",
+        "email": "cverge@marchonpartners.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Garrett Saparnis",
+        "email": "garrett@claritystaffing.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Gigi Issa",
+        "email": "gissa@marchonpartners.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 11
+  },
+  {
+    "index": 14,
+    "query_company": "Valiant Harbor International, LLC",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Valiantharbor"
+    ],
+    "primary_domains": [
+      "valiantharbor.com"
+    ],
+    "websites": [],
+    "recruiter_count": 4,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Thomas Walsh",
+        "email": "tfwalsh3@valiantharbor.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Thomas Walsh",
+        "email": "tfwalsh3@valiantharbor.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Thomas Walsh",
+        "email": "tfwalsh3@valiantharbor.com",
+        "title": null
+      }
+    ],
+    "local_import_matches": 0
+  },
+  {
+    "index": 15,
+    "query_company": "BravoTECH",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Bravotech"
+    ],
+    "primary_domains": [
+      "bravotech.com",
+      "bravotech.com;bjones",
+      "bravotech.com; dvieregge",
+      "bravotech.com; lridgley"
+    ],
+    "websites": [],
+    "recruiter_count": 98,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Jay Freeman",
+        "email": "jfreeman@bravotech.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Kimie Kirkland",
+        "email": "kkirkland@bravotech.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Logan Ridgley",
+        "email": "lridgley@bravotech.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Angela Hardemon",
+        "email": "ahardemon@bravotech.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Eric Scrivner",
+        "email": "escrivner@bravotech.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Hailey Pacha",
+        "email": "hpacha@bravotech.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 48
+  },
+  {
+    "index": 16,
+    "query_company": "ETHOS - Talent & Advisory",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 17,
+    "query_company": "Reperio Human Capital",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Reperiohumancapital"
+    ],
+    "primary_domains": [
+      "reperiohumancapital.com"
+    ],
+    "websites": [],
+    "recruiter_count": 3,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Alston Santana",
+        "email": "alston@reperiohumancapital.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Daniel Brown",
+        "email": "d.brown@reperiohc.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Gerard McGirr",
+        "email": "g.mcgirr@reperiohc.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 2
+  },
+  {
+    "index": 18,
+    "query_company": "Resourceful",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Resourcefulinc",
+      "Resourcefultalentgroup"
+    ],
+    "primary_domains": [
+      "resourcefulinc.com",
+      "resourcefultalentgroup.com",
+      "resourcefulinc.com; rdrennen"
+    ],
+    "websites": [],
+    "recruiter_count": 50,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Dan",
+        "email": "dan@resourcefulinc.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Kim",
+        "email": "kim.hutton@resourcefulinc.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Genie",
+        "email": "genie.tower@resourcefulinc.com",
+        "title": null
+      }
+    ],
+    "local_import_matches": 0
+  },
+  {
+    "index": 19,
+    "query_company": "Catapult Federal Services",
+    "status": "FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 1,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Unknown",
+        "email": NaN,
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 1
+  },
+  {
+    "index": 20,
+    "query_company": "IT Staffing, Inc",
+    "status": "FOUND",
+    "matched_company_names": [
+      "It Staffing"
+    ],
+    "primary_domains": [
+      "it-staffing.com"
+    ],
+    "websites": [],
+    "recruiter_count": 10,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Ray",
+        "email": "ray_beiersdorf@it-staffing.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Ray",
+        "email": "ray_beiersdorf@it-staffing.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Ray",
+        "email": "ray_beiersdorf@it-staffing.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Sheetal",
+        "email": "schaoji@itassociatesinc.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Robert",
+        "email": "rcarpenter@it-rs.net",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Matt Rose",
+        "email": "mrose@itresourcescorp.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 5
+  },
+  {
+    "index": 21,
+    "query_company": "Alleare Consulting, LLC",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Alleareconsulting"
+    ],
+    "primary_domains": [
+      "alleareconsulting.com",
+      "alleareconsulting.com; mdalton"
+    ],
+    "websites": [],
+    "recruiter_count": 57,
+    "sample_recruiters": [
+      {
+        "recruiter_name": NaN,
+        "email": "larnold@alleareconsulting.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Audrey Buchanan",
+        "email": "audrey.buchanan@alleareconsulting.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": NaN,
+        "email": "larnold@alleareconsulting.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Brock Cooper",
+        "email": "mholcomb@alleareconsulting.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Isabella Conroy",
+        "email": "larnold@alleareconsulting.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Callan Wichowsky",
+        "email": "abuchanan@alleareconsulting.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 7
+  },
+  {
+    "index": 22,
+    "query_company": "The Structures Company, LLC",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Thestructurescompany"
+    ],
+    "primary_domains": [
+      "thestructurescompany.com; tara.stull",
+      "thestructurescompany.com"
+    ],
+    "websites": [],
+    "recruiter_count": 51,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Ariyana",
+        "email": "ariyana.obryan@thestructurescompany.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Mini",
+        "email": "mini.shree@thestructurescompany.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Garrett",
+        "email": "garrett.smart@thestructurescompany.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Kimra Stone",
+        "email": "kimra.stone@thestructurescompany.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 1
+  },
+  {
+    "index": 23,
+    "query_company": "Hire Hangar Global",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Hirehangar"
+    ],
+    "primary_domains": [
+      "hirehangar.com"
+    ],
+    "websites": [],
+    "recruiter_count": 3,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Nick Dowdle",
+        "email": "nick@hirehangar.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Nick Dowdle",
+        "email": "nick@hirehangar.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Nick Dowdle",
+        "email": "nick@hirehangar.com",
+        "title": null
+      }
+    ],
+    "local_import_matches": 0
+  },
+  {
+    "index": 24,
+    "query_company": "Blue Star Partners",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Bluestarsearch",
+      "Bluestarpartners"
+    ],
+    "primary_domains": [
+      "bluestarsearch.com",
+      "bluestarpartners.com"
+    ],
+    "websites": [],
+    "recruiter_count": 45,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Jon",
+        "email": "jon@bluestarsearch.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Bob Matoesian",
+        "email": "bmatoesian@bluestarpartners.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Christopher House",
+        "email": "chouse@bluestarpartners.com",
+        "title": null
+      }
+    ],
+    "local_import_matches": 0
+  },
+  {
+    "index": 25,
+    "query_company": "ContractStaffingRecruiters.com",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 26,
+    "query_company": "Crossfire Consulting",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Crossfireconsulting",
+      "Crossfirerecruiting"
+    ],
+    "primary_domains": [
+      "crossfireconsulting.com",
+      "crossfireconsulting.com'",
+      "crossfirerecruiting.com",
+      "crossfireconsulting.com; erika",
+      "crossfirerecruiting.com; andreasen"
+    ],
+    "websites": [],
+    "recruiter_count": 56,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Lumen Resources",
+        "email": "aandreasen@crossfireconsulting.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Crossfire Consulting Corp",
+        "email": "nick@crossfireconsulting.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Luna Data Solutions",
+        "email": "sgencarelli@crossfireconsulting.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Bruce Makowsky",
+        "email": "bruce@crossfireconsulting.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Ashley Andreasen",
+        "email": "andreasen@crossfireconsulting.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Cheryl DeSomma",
+        "email": NaN,
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 6
+  },
+  {
+    "index": 27,
+    "query_company": "Premier Resources Group (PRG)",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Premiereonboard",
+      "Premierexe",
+      "Premieragencyaz",
+      "Premiersystemsinc",
+      "Premierstaffingsource",
+      "Premierengineeringuk",
+      "Premieremployees",
+      "Premierstaffservices",
+      "Premiergroup",
+      "Premierlifesciences",
+      "Premierconcrete",
+      "Thepremiergroupus",
+      "Premiernursing",
+      "Premierstaffingsolution",
+      "Agilepremier",
+      "Premiertalentpartners",
+      "Premieranesthesia",
+      "Thepremierpride",
+      "Premierscgroup",
+      "Premierstaffingpartners",
+      "Premierinc",
+      "Premierlogic",
+      "Premierlakeharvesting",
+      "Premier One",
+      "Jkpremiermarketing"
+    ],
+    "primary_domains": [
+      "premiereonboard.com",
+      "premierexe.com",
+      "premieragencyaz.com",
+      "premiersystemsinc.com",
+      "premierstaffingsource.com",
+      "premierengineeringuk.com",
+      "premieremployees.com",
+      "premierstaffservices.net",
+      "premiergroup.us.com",
+      "premierlifesciences.com",
+      "premierconcrete.biz",
+      "thepremiergroupus.com",
+      "premiernursing.com",
+      "premierstaffingsolution.com",
+      "agilepremier.com",
+      "agilepremier.com; kryzna",
+      "premiertalentpartners.com",
+      "premieranesthesia.com",
+      "thepremierpride.com",
+      "premierscgroup.com",
+      "premierstaffingpartners.com",
+      "premierstaffingpartners.com; suzannealleman",
+      "premierinc.com",
+      "premierlogic..com",
+      "premierlakeharvesting.com",
+      "premier-one.com",
+      "jkpremiermarketing.com"
+    ],
+    "websites": [],
+    "recruiter_count": 51,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Katie",
+        "email": "km@thepremierpride.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Jennifer",
+        "email": "jfredrick@thepremierpride.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Pam",
+        "email": "pperkins@thepremierpride.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Sarah Higgins",
+        "email": "sarahhiggins@premierstaffingpartners.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 1
+  },
+  {
+    "index": 28,
+    "query_company": "BTerminal Systems",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 29,
+    "query_company": "EDGE Services, Inc",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Edgelink",
+      "Ledgenttech",
+      "Esharpedge",
+      "Edgesoftcorp",
+      "Brightedge",
+      "Globaledgegroup",
+      "Dataedgeusa",
+      "Edgerockstaffing",
+      "Theglobaledgeconsultant",
+      "Sourcedge",
+      "Edgewood",
+      "Jobot",
+      "Brightledge",
+      "Edgeservices",
+      "Executiveedge",
+      "Collaboredge",
+      "Forwardedge Ai",
+      "Insukedge",
+      "Inguredge",
+      "Indanedge",
+      "Functionedge",
+      "Intrv",
+      "Edgetg",
+      "Knowledgeservices",
+      "Knowledgemanagement",
+      "Medicaledgerecruitment",
+      "Humanedge",
+      "Insmredge",
+      "Intededge",
+      "Inkaredge",
+      "Inkriedge",
+      "Inbreedge",
+      "Ledgent",
+      "Theglobaledgeconsultants",
+      "Intravantika",
+      "Zebraedge",
+      "Intrp",
+      "Inpriedge",
+      "Insanedge",
+      "Insonedge",
+      "Inrajedge",
+      "Inkavedge",
+      "Inlinedge",
+      "Theedgewins",
+      "Intrkedge",
+      "Edgeconnection",
+      "Corp",
+      "Ledgestone Tech",
+      "Talentedgestaffing",
+      "Globaledgeconsultants",
+      "Medgeo",
+      "Corporatedge",
+      "Inshiedge",
+      "Inpraedge",
+      "Innikedge",
+      "Innicedge",
+      "Injagedge",
+      "Invisedge",
+      "Recruiters Edge",
+      "Sledgehammergames",
+      "Velocityledger",
+      "Edgestaffing",
+      "Efficientedgestrategies",
+      "Insreedge",
+      "Inanuedge",
+      "Inbriedge",
+      "Systemedge",
+      "Knowledgebuilders",
+      "Edgets",
+      "Knowledgesol",
+      "Buyersedgeplatform",
+      "Edgelinkz",
+      "Knowledge Architectsllc",
+      "Theknowledgeacademy",
+      "Pivotandedge",
+      "Inashedge",
+      "Inmanedge",
+      "Insuredge",
+      "Insidedge",
+      "Inbabedge",
+      "Ingeeedge",
+      "Decisivedge",
+      "Connectedge",
+      "Smsedge",
+      "Caddedge",
+      "Intrk",
+      "Knowledge",
+      "Inayeedge",
+      "Inharedge",
+      "Inhimedge",
+      "Invanedge",
+      "Indivedge",
+      "Indavedge",
+      "Inavaedge",
+      "Inpooedge",
+      "Prescientedge",
+      "Theehredge",
+      "Edgestaffingpartners",
+      "Edgegroup",
+      "Intraedge",
+      "Edgewaterit",
+      "Fluidedgeconsulting",
+      "Edgerock",
+      "Edgedrillservices",
+      "Topedgetechnology",
+      "Edgewatertech",
+      "Inkumedge",
+      "Intamedge",
+      "Injyoedge",
+      "Inswaedge",
+      "Intiaedge",
+      "Leadingedgepersonnel",
+      "Oscedge",
+      "Intrdedge",
+      "Intrn",
+      "Edgeserviced"
+    ],
+    "primary_domains": [
+      "edgelink.com",
+      "ledgenttech.com",
+      "esharpedge.com",
+      "edgesoftcorp.com",
+      "brightedge.com; renderyan",
+      "globaledgegroup.com; mickey",
+      "dataedgeusa.com",
+      "edgerockstaffing.com",
+      "theglobaledgeconsultant.com",
+      "sourcedge.com",
+      "edgewood.edu",
+      "jobot.com; heididgolledge",
+      "brightledge.com; cameronroussel24",
+      "edgeservices.jam",
+      "executiveedge.ie",
+      "collaboredge.com",
+      "forwardedge-ai.com",
+      "insukedge.com",
+      "inguredge.com",
+      "indanedge.com",
+      "functionedge.com",
+      "intrv.edge.com",
+      "edgetg.com",
+      "edgeservices.kim",
+      "edgeservices.anm",
+      "knowledgeservices.com.",
+      "knowledgemanagement.net",
+      "medicaledgerecruitment.com",
+      "humanedge.com",
+      "insmredge.com",
+      "intededge.com",
+      "inkaredge.com",
+      "inkriedge.com",
+      "inbreedge.com",
+      "ledgent.com1",
+      "theglobaledgeconsultants.com;melissa.duarte",
+      "intravantika.edge.com",
+      "zebraedge.com",
+      "intrp.edge.com",
+      "inpriedge.com",
+      "insanedge.com",
+      "insonedge.com",
+      "inrajedge.com",
+      "inkavedge.com",
+      "inlinedge.com",
+      "theedgewins.com",
+      "intrkedge.com",
+      "edgeconnection.net",
+      "corp.knowledgenet.ai",
+      "knowledgeservices.com",
+      "ledgestone-tech.com",
+      "talentedgestaffing.com",
+      "edgeservices.jom",
+      "globaledgeconsultants.onmicrosoft.com",
+      "medgeo.com",
+      "corporatedge.com",
+      "inshiedge.com",
+      "inpraedge.com",
+      "innikedge.com",
+      "innicedge.com",
+      "injagedge.com",
+      "invisedge.com",
+      "globaledgegroup.com",
+      "edgeservices.dem",
+      "recruiters-edge.com",
+      "sledgehammergames.com",
+      "velocityledger.com",
+      "edgestaffing.com",
+      "theglobaledgeconsultants.com",
+      "ledgent.com; john.blau",
+      "ledgent.com; mrieg",
+      "ledgent.com; jenniled",
+      "efficientedgestrategies.com",
+      "insreedge.com",
+      "inanuedge.com",
+      "inbriedge.com",
+      "systemedge.com",
+      "ledgent.com",
+      "knowledgebuilders.com",
+      "edgets.com",
+      "knowledgesol.com",
+      "buyersedgeplatform.com",
+      "edgelinkz.com",
+      "knowledge-architectsllc.com",
+      "theknowledgeacademy.net",
+      "pivotandedge.com",
+      "inashedge.com",
+      "inmanedge.com",
+      "insuredge.com",
+      "insidedge.com",
+      "inbabedge.com",
+      "ingeeedge.com",
+      "decisivedge.com",
+      "connectedge.in",
+      "smsedge.com",
+      "caddedge.com",
+      "intrk.edge.com",
+      "knowledge.eventij.com",
+      "inayeedge.com",
+      "inharedge.com",
+      "inhimedge.com",
+      "invanedge.com",
+      "indivedge.com",
+      "indavedge.com",
+      "inavaedge.com",
+      "inpooedge.com",
+      "prescientedge.com",
+      "theehredge.com",
+      "edgeservices.co.uk",
+      "edgestaffingpartners.comphone",
+      "edgegroup.cc",
+      "intraedge.com",
+      "edgewaterit.com",
+      "fluidedgeconsulting.com",
+      "edgerock.com",
+      "edgeservices.com",
+      "brightedge.com",
+      "edgedrillservices.com",
+      "topedgetechnology.com",
+      "edgewatertech.net",
+      "knowledgemanagement.com",
+      "inkumedge.com",
+      "intamedge.com",
+      "injyoedge.com",
+      "inswaedge.com",
+      "intiaedge.com",
+      "leadingedgepersonnel.com",
+      "oscedge.com",
+      "intrdedge.com",
+      "intrn.edge.com",
+      "brightledge.com",
+      "prescientedge.us",
+      "edgeserviced.com"
+    ],
+    "websites": [],
+    "recruiter_count": 51,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "David Wolverton",
+        "email": "juwilliams@ledgent.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Anna London",
+        "email": "tking@ledgent.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Jada Spellman",
+        "email": "ahakim@ledgent.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Antony Paul",
+        "email": "antony.paul@edgeservices.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 1
+  },
+  {
+    "index": 30,
+    "query_company": "Marathon TS",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Marathonts"
+    ],
+    "primary_domains": [
+      "marathonts.com",
+      "marathonts.com; elgutier",
+      "marathonts.com; jlewis",
+      "marathonts.com; fjd73"
+    ],
+    "websites": [],
+    "recruiter_count": 82,
+    "sample_recruiters": [
+      {
+        "recruiter_name": NaN,
+        "email": "igriggs@marathonts.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": NaN,
+        "email": "jhoward@marathonts.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": NaN,
+        "email": "kdavis@marathonts.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Andrew Tessier",
+        "email": "atessier@marathonts.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Andrew Greenawalt",
+        "email": "agreenawalt@marathonts.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Unknown",
+        "email": "ahellinger@marathonts.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 32
+  },
+  {
+    "index": 31,
+    "query_company": "Applied Resource Group",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Appliedresourcegroupservices"
+    ],
+    "primary_domains": [
+      "appliedresourcegroupservices.com"
+    ],
+    "websites": [],
+    "recruiter_count": 41,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Jordyn",
+        "email": "jherron@appliedresourcegroupservices.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Sydney",
+        "email": "svelde@appliedresourcegroupservices.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Matthew",
+        "email": "mlindgren@appliedresourcegroupservices.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Michael",
+        "email": "michael.matejick@appliedrg.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 1
+  },
+  {
+    "index": 32,
+    "query_company": "Marketeq Talent",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Marketeqdigital"
+    ],
+    "primary_domains": [
+      "marketeqdigital.com"
+    ],
+    "websites": [],
+    "recruiter_count": 1,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Karissa Klarman",
+        "email": "karissa@marketeqdigital.com",
+        "title": null
+      }
+    ],
+    "local_import_matches": 0
+  },
+  {
+    "index": 33,
+    "query_company": "CorSource",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Corsource"
+    ],
+    "primary_domains": [
+      "corsource.com"
+    ],
+    "websites": [],
+    "recruiter_count": 52,
+    "sample_recruiters": [
+      {
+        "recruiter_name": NaN,
+        "email": "rpasco@corsource.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "E. Halladay",
+        "email": "ehalladay@corsource.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "W. Dye",
+        "email": "wdye@corsource.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Unknown",
+        "email": "rpasco@corsource.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Lenmar Consulting Inc",
+        "email": "cgarduque@corsource.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 2
+  },
+  {
+    "index": 34,
+    "query_company": "The Brixton Group",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Brixton"
+    ],
+    "primary_domains": [
+      "brixton.net"
+    ],
+    "websites": [],
+    "recruiter_count": 61,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Andrew",
+        "email": "asobel@brixton.net",
+        "title": null
+      },
+      {
+        "recruiter_name": "Brooke",
+        "email": "brooke.yates@brixton.net",
+        "title": null
+      },
+      {
+        "recruiter_name": "Matt",
+        "email": "matt@brixton.net",
+        "title": null
+      },
+      {
+        "recruiter_name": "Nagesh",
+        "email": "nagesh@brixton.net",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Allison Cox",
+        "email": "allison.cox@brixton.net",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Maranada",
+        "email": "maranda@brixton.net",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 11
+  },
+  {
+    "index": 35,
+    "query_company": "SoloPoint Solutions",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Solopointsolutions"
+    ],
+    "primary_domains": [
+      "solopointsolutions.com"
+    ],
+    "websites": [],
+    "recruiter_count": 62,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Enrique",
+        "email": "enriquec@solopointsolutions.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Adam",
+        "email": "adams@solopointsolutions.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Sara",
+        "email": "saraa@solopointsolutions.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Taylor Crispi Bond",
+        "email": "aprils@solopointsolutions.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Trevor Howell",
+        "email": "job@solopointsolutions.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Nathan Baker",
+        "email": "enriquec@solopointsolutions.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 12
+  },
+  {
+    "index": 36,
+    "query_company": "C&G Consulting Services, Inc",
+    "status": "FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 8,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Chris Cattano",
+        "email": "ccattano@cgcsinc.net",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Jon McKeever",
+        "email": "jon@cgcsinc.net",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Michael Prainito",
+        "email": "mikep@cgcsinc.net",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 8
+  },
+  {
+    "index": 37,
+    "query_company": "ERP Recruiting, LLC",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Erprecruiting"
+    ],
+    "primary_domains": [
+      "erprecruiting.com"
+    ],
+    "websites": [],
+    "recruiter_count": 17,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Robert Half",
+        "email": "rob.harris@erprecruiting.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Robert Half",
+        "email": "rob.harris@erprecruiting.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Rob Harris",
+        "email": "rob.harris@erprecruiting.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Rob",
+        "email": "rob.harris@erprecruiting.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 1
+  },
+  {
+    "index": 38,
+    "query_company": "Entegee",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Entegee"
+    ],
+    "primary_domains": [
+      "entegee.com",
+      "entegee.com; blakejones91792",
+      "entegee.com; joebonfiglio",
+      "entegee.com; kyle.tavares"
+    ],
+    "websites": [],
+    "recruiter_count": 168,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Andrew Becker",
+        "email": "andrew.becker@entegee.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Chase L.",
+        "email": "chase.l.@entegee.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Joseph Dwinell",
+        "email": "joseph.dwinell@entegee.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "David Baio",
+        "email": "david.baio@entegee.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Phillip Vaillancourt",
+        "email": "phillip.vaillancourt@nerjobs.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Shaun Needle",
+        "email": "shaun.needle@entegee.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 118
+  },
+  {
+    "index": 39,
+    "query_company": "Gruntwork",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Gruntwork"
+    ],
+    "primary_domains": [
+      "gruntwork.io"
+    ],
+    "websites": [],
+    "recruiter_count": 3,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Tin",
+        "email": "tin@gruntwork.io",
+        "title": null
+      },
+      {
+        "recruiter_name": "Zach Goldberg",
+        "email": "zach@gruntwork.io",
+        "title": null
+      },
+      {
+        "recruiter_name": "Monica Chun",
+        "email": "monica@gruntwork.io",
+        "title": null
+      }
+    ],
+    "local_import_matches": 0
+  },
+  {
+    "index": 40,
+    "query_company": "EVONA",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Evona"
+    ],
+    "primary_domains": [
+      "evona.com"
+    ],
+    "websites": [],
+    "recruiter_count": 52,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Anthony",
+        "email": "a.liu@evona.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Jack",
+        "email": "j.madley@evona.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Ryan",
+        "email": "r.hill@evona.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Unknown",
+        "email": NaN,
+        "title": NaN
+      },
+      {
+        "recruiter_name": "dapel@alinestaffing.com",
+        "email": "a-line staffing",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 2
+  },
+  {
+    "index": 41,
+    "query_company": "Lunova Group",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Lunovagroup"
+    ],
+    "primary_domains": [
+      "lunovagroup.com"
+    ],
+    "websites": [],
+    "recruiter_count": 8,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Christine Barber",
+        "email": "christine.barber@lunovagroup.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Christine Barber",
+        "email": "christine.barber@lunovagroup.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Christine Barber",
+        "email": "christine.barber@lunovagroup.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Christine Barber",
+        "email": "christine.barber@lunovagroup.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 1
+  },
+  {
+    "index": 42,
+    "query_company": "FuseGlobal",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Fuseglobal"
+    ],
+    "primary_domains": [
+      "fuseglobal.com; jameshatheway",
+      "fuseglobal.com",
+      "fuseglobal.com; krismin4"
+    ],
+    "websites": [],
+    "recruiter_count": 50,
+    "sample_recruiters": [
+      {
+        "recruiter_name": NaN,
+        "email": "james@fuseglobal.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "J. Ames",
+        "email": "james@fuseglobal.com",
+        "title": "Talent Acquisition Specialist"
+      },
+      {
+        "recruiter_name": "James Hatheway",
+        "email": "james@fuseglobal.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 0
+  },
+  {
+    "index": 43,
+    "query_company": "Linksap Europe Ltd",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 44,
+    "query_company": "Acceler8 Talent",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Acceler8Talent"
+    ],
+    "primary_domains": [
+      "acceler8talent.com"
+    ],
+    "websites": [],
+    "recruiter_count": 50,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Zoey Abramson",
+        "email": "zabramson@acceler8talent.com",
+        "title": "Talent Acquisition Specialist"
+      },
+      {
+        "recruiter_name": "James",
+        "email": "jhunt@acceler8talent.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Brad",
+        "email": "bhowell@acceler8talent.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 0
+  },
+  {
+    "index": 45,
+    "query_company": "Apogee Global RMS",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 46,
+    "query_company": "WorkGenius Group",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Workgenius"
+    ],
+    "primary_domains": [
+      "workgenius.com)",
+      "workgenius.com; dawn",
+      "workgenius.com"
+    ],
+    "websites": [],
+    "recruiter_count": 50,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Erica",
+        "email": "ezucker@workgenius.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Lindsay",
+        "email": "lcain@workgenius.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Daniel",
+        "email": "dbarke@workgenius.com",
+        "title": null
+      }
+    ],
+    "local_import_matches": 0
+  },
+  {
+    "index": 47,
+    "query_company": "DCI Resources, LLC - Pending 8(a) Certified Company",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 48,
+    "query_company": "Mainz Brady Group",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Mainzbradygroup"
+    ],
+    "primary_domains": [
+      "mainzbradygroup.com"
+    ],
+    "websites": [],
+    "recruiter_count": 53,
+    "sample_recruiters": [
+      {
+        "recruiter_name": NaN,
+        "email": "nicole@mainzbradygroup.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Jazmin",
+        "email": "jestrada@mainzbradygroup.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Graym",
+        "email": "gs@mainzbradygroup.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Edgar Sotelo",
+        "email": "edgar@mbg.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Tony Chu",
+        "email": "tchu@mbg.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Alex Stokes",
+        "email": "astokes@mbg.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 3
+  },
+  {
+    "index": 49,
+    "query_company": "e&e IT Consulting Services, Inc.",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Oaktreeit"
+    ],
+    "primary_domains": [
+      "oaktreeit.com"
+    ],
+    "websites": [],
+    "recruiter_count": 7,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "John",
+        "email": "john.ogorzalek@oaktreeit.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "John",
+        "email": "john.ogorzalek@oaktreeit.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "John",
+        "email": "john.ogorzalek@oaktreeit.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Michael Lane",
+        "email": "mlane@ene-it-consulting.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Salim Powell",
+        "email": "spowell@ene-it-consulting.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 2
+  },
+  {
+    "index": 50,
+    "query_company": "PM Solutions / PM College",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 51,
+    "query_company": "Turnberry Solutions",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Turnberry Solutions"
+    ],
+    "primary_domains": [
+      "turnberry solutions.com"
+    ],
+    "websites": [],
+    "recruiter_count": 90,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Rick",
+        "email": null,
+        "title": null
+      },
+      {
+        "recruiter_name": "Amy",
+        "email": null,
+        "title": null
+      },
+      {
+        "recruiter_name": "Heather",
+        "email": null,
+        "title": null
+      },
+      {
+        "recruiter_name": "Dan Price",
+        "email": "dprice@turnberrysolutions.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Regina Bari",
+        "email": "rbari@turnberrysolutions.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Brandon Becker",
+        "email": "brandon.becker@turnberrysolutions.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 40
+  },
+  {
+    "index": 52,
+    "query_company": "DBI Staffing",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 53,
+    "query_company": "Rylex",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 54,
+    "query_company": "ConsultUSA",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Consultusa"
+    ],
+    "primary_domains": [
+      "consultusa.com"
+    ],
+    "websites": [],
+    "recruiter_count": 63,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Marissa Ray",
+        "email": "marissa.ray@consultusa.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Adam Bechtel",
+        "email": "adam.bechtel@consultusa.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Amanda Steve",
+        "email": "amanda.steve@consultusa.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Neika Powell",
+        "email": "bhparser@consultusa.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Marissa Ray",
+        "email": "marissa.ray@consultusa.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "David Fossick",
+        "email": "david.fossick@consultusa.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 13
+  },
+  {
+    "index": 55,
+    "query_company": "Patriot Technical Consulting",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Patriot Consulting",
+      "Patriot"
+    ],
+    "primary_domains": [
+      "patriot-consulting.com",
+      "patriot.dev"
+    ],
+    "websites": [],
+    "recruiter_count": 30,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Nicole Piscopo",
+        "email": "nicole.piscopo@patriot-consulting.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Patrick Bagnell",
+        "email": "patrick.bagnell@patriot-consulting.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Nicole Piscopo",
+        "email": "nicole.piscopo@patriot-consulting.com",
+        "title": "Talent Acquisition Specialist"
+      },
+      {
+        "recruiter_name": "Amy Lovelace",
+        "email": "alovelace@patriottalent.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Sarah Narramore",
+        "email": "snarramore@patriottalent.com",
+        "title": "Recruiting Manager"
+      },
+      {
+        "recruiter_name": "Patriot Consulting",
+        "email": "patrick.bagnell@patriot-consulting.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 3
+  },
+  {
+    "index": 56,
+    "query_company": "Red Oak Technologies",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Red Oak Technologies"
+    ],
+    "primary_domains": [
+      "red oak technologies.com"
+    ],
+    "websites": [],
+    "recruiter_count": 62,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Thomas",
+        "email": null,
+        "title": null
+      },
+      {
+        "recruiter_name": "Corey",
+        "email": null,
+        "title": null
+      },
+      {
+        "recruiter_name": "Gina",
+        "email": null,
+        "title": null
+      },
+      {
+        "recruiter_name": "Raj Subbaram",
+        "email": "raj.subbaram@redoaktech.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Andrew Nguyen",
+        "email": "andrew.nguyen@redoaktech.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Bahir eley",
+        "email": "bahir.eley@redoaktech.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 12
+  },
+  {
+    "index": 57,
+    "query_company": "Blackstone Talent Group",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Blackstone Consulting"
+    ],
+    "primary_domains": [
+      "blackstone-consulting.com"
+    ],
+    "websites": [],
+    "recruiter_count": 6,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Michelle Gonzalez",
+        "email": "michelle.gonzalez@blackstone-consulting.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Michelle Gonzalez",
+        "email": "michelle.gonzalez@blackstone-consulting.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Michelle",
+        "email": "michelle.gonzalez@blackstone-consulting.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Jorge Lopez",
+        "email": "jorge.lopez@bstonetech.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Jorge Lopez",
+        "email": "jlopz@bstonetech.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Maximillian Bukovich",
+        "email": "mbukovich@bstonetech.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 3
+  },
+  {
+    "index": 58,
+    "query_company": "Adaptive Solutions Group",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Adaptivestack",
+      "Weareadaptive",
+      "Adaptivesg",
+      "Adaptivevets",
+      "Adaptiverpo",
+      "Adaptive Digital",
+      "Adaptiveteams",
+      "Adaptivesolutions",
+      "Adaptivesag"
+    ],
+    "primary_domains": [
+      "adaptivestack.com",
+      "weareadaptive.zsm",
+      "adaptivesg.com; lduncan",
+      "adaptivevets.com",
+      "adaptiverpo.com",
+      "adaptivesg.com; bonstellanita",
+      "weareadaptive.esm",
+      "weareadaptive.dim",
+      "weareadaptive.com",
+      "weareadaptive.nam",
+      "adaptivesg.com",
+      "adaptive-digital.com",
+      "weareadaptive.mam",
+      "adaptiveteams.co",
+      "adaptivesolutions.com",
+      "adaptivesag.com"
+    ],
+    "websites": [],
+    "recruiter_count": 73,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Zannie",
+        "email": "zannier@adaptivesg.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Melanie",
+        "email": "melanier@adaptivesg.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Ben",
+        "email": "be@adaptivesg.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Unknown",
+        "email": NaN,
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Unknown",
+        "email": "sjackson@adaptivesg.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Unknown",
+        "email": "tvaughn@adaptivesg.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 23
+  },
+  {
+    "index": 59,
+    "query_company": "OCT Consulting LLC",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 60,
+    "query_company": "Tech 20 Solutions, Inc",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 61,
+    "query_company": "Covenant HR",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 62,
+    "query_company": "Stockell Consulting",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Stockell"
+    ],
+    "primary_domains": [
+      "stockell.com",
+      "stockell.com;cbarker"
+    ],
+    "websites": [],
+    "recruiter_count": 63,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Kevin",
+        "email": "kdemartino@stockell.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Paul",
+        "email": "pwendell@stockell.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Kevin",
+        "email": "kgregory@stockell.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Shirley Rice",
+        "email": "srice@stockell.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Tom McManus",
+        "email": "tmcmanus@stockell.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Caitlin Barker",
+        "email": "cbarker@stockell.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 13
+  },
+  {
+    "index": 63,
+    "query_company": "cloudteam.com",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 64,
+    "query_company": "Cleartech Recruiting",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 65,
+    "query_company": "The Norland Group",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Norlandgroup"
+    ],
+    "primary_domains": [
+      "norlandgroup.com"
+    ],
+    "websites": [],
+    "recruiter_count": 50,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Lisa Kim",
+        "email": "lisa@norlandgroup.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Jennifer Downie",
+        "email": "jennifer@norlandgroup.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Roli Saxena",
+        "email": "roli@norlandgroup.com",
+        "title": null
+      }
+    ],
+    "local_import_matches": 0
+  },
+  {
+    "index": 66,
+    "query_company": "E Quality Corporation",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 67,
+    "query_company": "Staff Perm",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Staffperm"
+    ],
+    "primary_domains": [
+      "staffperm.com",
+      "staffperm.com; a.anderson"
+    ],
+    "websites": [],
+    "recruiter_count": 37,
+    "sample_recruiters": [
+      {
+        "recruiter_name": NaN,
+        "email": "jose@staffperm.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Jose Jaramillo",
+        "email": "jose@staffperm.com",
+        "title": "Talent Acquisition Specialist"
+      },
+      {
+        "recruiter_name": "Jose Jaramillo",
+        "email": "jose@staffperm.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 0
+  },
+  {
+    "index": 68,
+    "query_company": "SAFTech Software Solutions",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 69,
+    "query_company": "PSR Associates, Inc.",
+    "status": "FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 3,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "John Huenecke",
+        "email": "jhuenecke@psrassociates.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Carlos Rivera",
+        "email": "crivera@psrassociates.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Chris Randall",
+        "email": "crandall@psrassociates.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 3
+  },
+  {
+    "index": 70,
+    "query_company": "Harvest Technical Services, Inc.",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Gemharvest",
+      "Premierlakeharvesting"
+    ],
+    "primary_domains": [
+      "gemharvest.com",
+      "premierlakeharvesting.com"
+    ],
+    "websites": [],
+    "recruiter_count": 21,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Chaim",
+        "email": "chaim@gemharvest.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Shani",
+        "email": "shani@gemharvest.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Jacques",
+        "email": "jacques@gemharvest.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Sheila Perry",
+        "email": "sheila@harvtech.com",
+        "title": "Technical Recruiter"
+      }
+    ],
+    "local_import_matches": 1
+  },
+  {
+    "index": 71,
+    "query_company": "Access Data Consulting Corporation",
+    "status": "FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 3,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Jamie Olberding",
+        "email": "jolberding@adcc.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Ashley Burt",
+        "email": "aburt@adcc.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Kerry Palmer",
+        "email": "kpalmer@adcc.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 3
+  },
+  {
+    "index": 72,
+    "query_company": "Makai Labs",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 73,
+    "query_company": "Prominent",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Goprominent"
+    ],
+    "primary_domains": [
+      "goprominent.com; robertgentile86",
+      "goprominent.com; msue64",
+      "goprominent.com",
+      "goprominent.com (corporate); robertgentile86",
+      "goprominent.com(corporate)"
+    ],
+    "websites": [],
+    "recruiter_count": 26,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Robert Gentile",
+        "email": NaN,
+        "title": null
+      },
+      {
+        "recruiter_name": "Molly Morrissey",
+        "email": NaN,
+        "title": null
+      },
+      {
+        "recruiter_name": NaN,
+        "email": NaN,
+        "title": null
+      },
+      {
+        "recruiter_name": "Robert Gentile",
+        "email": "robert.gentile@goprominent.com (corporate); robertgentile86@yahoo.com; resavoir8@hotmail.com (personal)",
+        "title": "Recruiting Talent Manager | People Connector | Candidate Experience Advocate | Workforce Development Specialist"
+      }
+    ],
+    "local_import_matches": 1
+  },
+  {
+    "index": 74,
+    "query_company": "iSphere",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Isphere"
+    ],
+    "primary_domains": [
+      "isphere.net"
+    ],
+    "websites": [],
+    "recruiter_count": 58,
+    "sample_recruiters": [
+      {
+        "recruiter_name": NaN,
+        "email": "jtelisky@isphere.net",
+        "title": NaN
+      },
+      {
+        "recruiter_name": NaN,
+        "email": "jtelisky@isphere.net",
+        "title": NaN
+      },
+      {
+        "recruiter_name": NaN,
+        "email": "jwesthoff@isphere.net",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Fernando",
+        "email": "fd@isphere.net",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Jill",
+        "email": "jtelisky@isphere.net",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Julie Westhoff",
+        "email": "jwesthoff@isphere.net",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 8
+  },
+  {
+    "index": 75,
+    "query_company": "hackajob",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Hackajob"
+    ],
+    "primary_domains": [
+      "hackajob.co",
+      "hackajob.com"
+    ],
+    "websites": [],
+    "recruiter_count": 50,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Jordan Jackson",
+        "email": "nath@hackajob.co",
+        "title": null
+      },
+      {
+        "recruiter_name": "Kevin Remmert",
+        "email": "nicoleta@hackajob.co",
+        "title": null
+      },
+      {
+        "recruiter_name": "Anass Couqua",
+        "email": "anass.couqua@hackajob.co",
+        "title": null
+      }
+    ],
+    "local_import_matches": 0
+  },
+  {
+    "index": 76,
+    "query_company": "IFIT Solutions",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Ifit Solutions"
+    ],
+    "primary_domains": [
+      "ifit-solutions.com"
+    ],
+    "websites": [],
+    "recruiter_count": 52,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Joshua Aguero",
+        "email": "joshua.aguero@ifit-solutions.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Yohanna",
+        "email": "yohanna.j.@ifit-solutions.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Joshua Quiros",
+        "email": "joshua.quiros@ifit-solutions.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Alexandra Barrientos Segura",
+        "email": "alexandra.barrientos@ifit-solution.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Joshua Aguero",
+        "email": "joshua.aguero@ifit-solutions.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 2
+  },
+  {
+    "index": 77,
+    "query_company": "Delphi-US, LLC",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Delphi Us"
+    ],
+    "primary_domains": [
+      "delphi-us.com",
+      "delphi-us.co",
+      "delphi-us.com; fin.perkins",
+      "delphi-us.com; sandrea6881"
+    ],
+    "websites": [],
+    "recruiter_count": 68,
+    "sample_recruiters": [
+      {
+        "recruiter_name": NaN,
+        "email": "alanieri@delphi-us.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": NaN,
+        "email": "gfotopoulos@delphi-us.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": NaN,
+        "email": "mfurtado@delphi-us.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Ana Bartlett",
+        "email": "abartlett@delphi-us.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Jon Samolis",
+        "email": "jsamolis@delphi-us.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Megan",
+        "email": "mklein@delphi-us.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 18
+  },
+  {
+    "index": 78,
+    "query_company": "IntePros",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Intepros"
+    ],
+    "primary_domains": [
+      "intepros.com; ainelavin01",
+      "intepros.com"
+    ],
+    "websites": [],
+    "recruiter_count": 123,
+    "sample_recruiters": [
+      {
+        "recruiter_name": NaN,
+        "email": "bvolek@intepros.com",
+        "title": null
+      },
+      {
+        "recruiter_name": NaN,
+        "email": "bvolek@intepros.com",
+        "title": null
+      },
+      {
+        "recruiter_name": NaN,
+        "email": "vangelone@intepros.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Daniel stokes",
+        "email": "dstokes@intepros.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Elizabeth Smith",
+        "email": "esmith@intepros.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "John",
+        "email": "jwehner@intepros.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 73
+  },
+  {
+    "index": 79,
+    "query_company": "Smith Arnold Partners",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Smitharnold"
+    ],
+    "primary_domains": [
+      "smitharnold.com"
+    ],
+    "websites": [],
+    "recruiter_count": 52,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Mason",
+        "email": "mrosenberg@smitharnold.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Jason",
+        "email": "jyoung@smitharnold.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Rich",
+        "email": "rgold@smitharnold.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Unknown",
+        "email": "acapacho@smitharnold.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Smith Arnold Partners",
+        "email": "marnold@smitharnold.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 2
+  },
+  {
+    "index": 80,
+    "query_company": "Prospectus IT Recruitment",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 81,
+    "query_company": "Outlier Mentors",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 82,
+    "query_company": "Swoon",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Swoonstaffing",
+      "Swoontech",
+      "Swoonsreffing",
+      "Swoonsseffing",
+      "Swoonssrffing",
+      "Swoonaustralia",
+      "Swoonsneffing",
+      "Swoonsbuffing",
+      "Swoonsdiffing"
+    ],
+    "primary_domains": [
+      "swoonstaffing.com; emmacropp24",
+      "swoontech.com",
+      "swoonsreffing.com",
+      "swoonsseffing.com",
+      "swoonssrffing.com",
+      "swoonaustralia.com.au",
+      "swoonsneffing.com",
+      "swoonstaffing.com; jack.crawford",
+      "swoonsbuffing.com",
+      "swoonstaffing.com",
+      "swoonstaffing.com; andrewbf428",
+      "swoonstaffing.com'",
+      "swoonsdiffing.com"
+    ],
+    "websites": [],
+    "recruiter_count": 79,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Anisha",
+        "email": "anisha.patel@swoonstaffing.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Jack",
+        "email": "jack.sawyer@swoonstaffing.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Peter",
+        "email": "peter.butterfield@swoonstaffing.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Angela Vincent",
+        "email": "angela.vincent@swoonstaffing.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Ashley Park",
+        "email": "ashley.park@swoonstaffing.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Nathan",
+        "email": "nathan.crooks@swoonstaffing.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 29
+  },
+  {
+    "index": 83,
+    "query_company": "Career Developers, Inc.",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Careerdevelopers"
+    ],
+    "primary_domains": [
+      "careerdevelopers.com",
+      "careerdevelopers.co"
+    ],
+    "websites": [],
+    "recruiter_count": 66,
+    "sample_recruiters": [
+      {
+        "recruiter_name": NaN,
+        "email": "vpichardo@careerdevelopers.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": NaN,
+        "email": "vpichardo@careerdevelopers.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": NaN,
+        "email": "joe@careerdevelopers.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Courtney Martin",
+        "email": "cmartin@careerdevelopers.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Joe Destro",
+        "email": "joe@careerdevelopers.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Tony Yosco",
+        "email": "tony@careerdevelopers.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 16
+  },
+  {
+    "index": 84,
+    "query_company": "SOLTECHPR",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 85,
+    "query_company": "Technical-Link N. America",
+    "status": "FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 2,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Adam",
+        "email": "ajustus@technical-link.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Lekenzey",
+        "email": "lekenzey@technical-link.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 2
+  },
+  {
+    "index": 86,
+    "query_company": "Alderson Loop",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Aldersonloop"
+    ],
+    "primary_domains": [
+      "aldersonloop.com"
+    ],
+    "websites": [],
+    "recruiter_count": 80,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Alex Barone",
+        "email": "alex.barone@aldersonloop.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Dan Policelli",
+        "email": "dan.policelli@aldersonloop.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Connor Lulay",
+        "email": "connor.lulay@aldersonloop.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "James Hoffman",
+        "email": "james.hoffman@aldersonloop.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Beacon Hill Staffing",
+        "email": "keith.jackson@aldersonloop.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Alderson Loop",
+        "email": "sarah.alaoui@aldersonloop.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 30
+  },
+  {
+    "index": 87,
+    "query_company": "TJ Consulting Group",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Tj"
+    ],
+    "primary_domains": [
+      "tj.dntbridge.com"
+    ],
+    "websites": [],
+    "recruiter_count": 5,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "J.D.",
+        "email": "jhayes@tj.dntbridge.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "J.d.",
+        "email": "jhayes@tj.dntbridge.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "J.D.",
+        "email": "jhayes@tj.dntbridge.com",
+        "title": null
+      }
+    ],
+    "local_import_matches": 0
+  },
+  {
+    "index": 88,
+    "query_company": "IDR, Inc.",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Idr Inc",
+      "Idr"
+    ],
+    "primary_domains": [
+      "idr-inc.com'",
+      "idr-inc.com;ccarter",
+      "idr-inc.com;hmelkerson",
+      "idr-inc.co",
+      "idr",
+      "idr-inc.com",
+      "idr-inc.com;alexandra.morrissey"
+    ],
+    "websites": [],
+    "recruiter_count": 294,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Terae",
+        "email": "terae@idr-inc.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Kristin",
+        "email": "kristin@idr-inc.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Alex",
+        "email": "alex@idr-inc.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Ben Gillitzer",
+        "email": "bgillitzer@idr-inc.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Blair",
+        "email": "brobinson@idr-inc.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Chelsea Johnson",
+        "email": "cjohnson@idr-inc.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 244
+  },
+  {
+    "index": 89,
+    "query_company": "The Hiring Group",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Experthiring",
+      "Kindhiringhr",
+      "Hiringevents",
+      "Smoothhiring",
+      "Hiringsolved",
+      "Venushiring",
+      "Risehiring",
+      "Thehiringgroup",
+      "Frontendmentor Hiring",
+      "Patternshiring",
+      "Innovativehiringsolutions",
+      "Whyhiring"
+    ],
+    "primary_domains": [
+      "experthiring.com",
+      "kindhiringhr.com",
+      "hiringevents.career.io",
+      "smoothhiring.com",
+      "hiringsolved.com",
+      "venushiring.com",
+      "risehiring.com",
+      "thehiringgroup.com",
+      "frontendmentor-hiring.net",
+      "patternshiring.com",
+      "innovativehiringsolutions.com",
+      "whyhiring.com"
+    ],
+    "websites": [],
+    "recruiter_count": 51,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "The Hiring Group",
+        "email": "bisrael@thehiringgroup.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Holly Machi",
+        "email": "holly@experthiring.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Tony Do",
+        "email": "michael@kindhiringhr.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Brooks Israel",
+        "email": "bisrael@thehiringgroup.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 1
+  },
+  {
+    "index": 90,
+    "query_company": "TrustNet Technologies",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Trustnettech"
+    ],
+    "primary_domains": [
+      "trustnettech.com"
+    ],
+    "websites": [],
+    "recruiter_count": 25,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Daphne",
+        "email": "dpasos@trustnettech.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Daphne",
+        "email": "dpasos@trustnettech.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Daphne",
+        "email": "dpasos@trustnettech.com",
+        "title": null
+      }
+    ],
+    "local_import_matches": 0
+  },
+  {
+    "index": 91,
+    "query_company": "Workforce Connections",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Workforce Connections"
+    ],
+    "primary_domains": [
+      "workforce-connections.com",
+      "workforce-connections.com; leaton"
+    ],
+    "websites": [],
+    "recruiter_count": 51,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Rachelle",
+        "email": "rbauer@workforce-connections.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Julie",
+        "email": "jrives@workforce-connections.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Jennifer",
+        "email": "jbalenti@workforce-connections.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Julie Rives",
+        "email": "jrives@workforce-connections.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 1
+  },
+  {
+    "index": 92,
+    "query_company": "Innovatus Technology Consulting",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 93,
+    "query_company": "Magee Resource Group",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Mageeresource"
+    ],
+    "primary_domains": [
+      "mageeresource.com"
+    ],
+    "websites": [],
+    "recruiter_count": 62,
+    "sample_recruiters": [
+      {
+        "recruiter_name": NaN,
+        "email": "jmaxwell@mageeresource.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": NaN,
+        "email": "csimmons@mageeresource.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": NaN,
+        "email": "twoods@mageeresource.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Unknown",
+        "email": "ageresola@mageeresource.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Unknown",
+        "email": "cculpepper@mageeresource.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Unknown",
+        "email": "cestes@mageeresource.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 12
+  },
+  {
+    "index": 94,
+    "query_company": "The E Group.",
+    "status": "FOUND",
+    "matched_company_names": [
+      "E"
+    ],
+    "primary_domains": [
+      "e.infosecinstitute.com",
+      "e.bgsf.com",
+      "e.aquent.com",
+      "e.linkedin.com"
+    ],
+    "websites": [],
+    "recruiter_count": 18,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Chris Kolmorgen",
+        "email": "chris.kolmorgen@e.infosecinstitute.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Kathryn Fitzsimmons",
+        "email": "chris.kolmorgen@e.infosecinstitute.com",
+        "title": "Talent Acquisition Specialist"
+      },
+      {
+        "recruiter_name": "bjoell",
+        "email": "bjoell@e.aquent.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Allison Hicklen",
+        "email": "allison@goegroup.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Evelyn Griffin Collins",
+        "email": "evelyn@goegroup.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 2
+  },
+  {
+    "index": 95,
+    "query_company": "Motivf",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Motivf"
+    ],
+    "primary_domains": [
+      "motivf.com"
+    ],
+    "websites": [],
+    "recruiter_count": 1,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Motivf",
+        "email": "julie@motivf.com",
+        "title": null
+      }
+    ],
+    "local_import_matches": 0
+  },
+  {
+    "index": 96,
+    "query_company": "ProspHire",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 97,
+    "query_company": "MeeBoss",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Meeboss"
+    ],
+    "primary_domains": [
+      "meeboss.com"
+    ],
+    "websites": [],
+    "recruiter_count": 2,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Tristen Resnick",
+        "email": "tristen@meeboss.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Tristen Resnick",
+        "email": "tristen@meeboss.com",
+        "title": null
+      }
+    ],
+    "local_import_matches": 0
+  },
+  {
+    "index": 98,
+    "query_company": "People4Net Inc",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 99,
+    "query_company": "Interactive Resources - iR",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 100,
+    "query_company": "ASAP Talent Services, a VMG Company",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 101,
+    "query_company": "Technical Source",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Resource1",
+      "Resourcefulinc",
+      "Rightchoiceresources",
+      "Right Resources",
+      "Sourcegroupinternational",
+      "Sourcelabsearch",
+      "Stafford Resources",
+      "Technisource",
+      "Thetalentsource",
+      "Totalresourcestaffing",
+      "Visiumresources",
+      "Medasource",
+      "Clientresourcesinc",
+      "Jblresources",
+      "Comresource",
+      "Nisource",
+      "Mindsource",
+      "Brokksource",
+      "Greeneresources",
+      "Lumenresources",
+      "Millerresource",
+      "Misource",
+      "Professionalresourcepartners",
+      "Eresourcepoint",
+      "Precisionresourcegroup",
+      "Jwhumanresources",
+      "Matrixresources",
+      "Kingdomstaffingresources",
+      "Driversource",
+      "Insourcetechnical",
+      "Randstadsourceright",
+      "Tekcomresources",
+      "1Sourcestaffing",
+      "Soniresources",
+      "Globalsourcecollective",
+      "Adastraresourcegroup",
+      "Cosourcesolutions",
+      "Jwresourcesjobs",
+      "Lutefatesources",
+      "Gdresourcesllc",
+      "Recruitingresources",
+      "Resourcesolutions",
+      "Resourcepoint",
+      "Sourceot",
+      "Sourceowls",
+      "Staffsource",
+      "Tech2Resources",
+      "Dayfoxxresources",
+      "Tsourceit",
+      "Whitehallresources",
+      "Xsellresources",
+      "Alliedonesource",
+      "Convergeresources",
+      "Adeptsource",
+      "Strategysourcellc",
+      "Premierstaffingsource",
+      "Sourcedge",
+      "Xcellresources",
+      "Candidsource",
+      "Professionalresourcegroup",
+      "Velocityresourcegroup",
+      "Allianceresourcegroup",
+      "Coregroupresources",
+      "Technicalsource",
+      "Prometsource",
+      "Insourcenow",
+      "Insourceservices",
+      "Metaresourcesgroup",
+      "Alliedresourcesstaffing",
+      "Prosource",
+      "Skybridqeresources",
+      "Griffin Resources",
+      "Lutejosesources",
+      "Ghresources",
+      "Hamdanresources",
+      "Prresources",
+      "Episource",
+      "Chasesource",
+      "Genesisresources",
+      "Brooksource",
+      "Accountabilityresources",
+      "Ambassadorresources",
+      "Cloud Source",
+      "Sourceconsult",
+      "Americansoftwareresources",
+      "Sourcemantra",
+      "Apsresources",
+      "Integrityresources",
+      "Dlresourcegroup",
+      "Resourceintegrators",
+      "Quallitresources",
+      "Mepresources",
+      "Resourcemfg",
+      "Selecsource",
+      "Agreatersource",
+      "Localresourcefoundry",
+      "Sourcemaster",
+      "Techsource Inc",
+      "Theglovesource",
+      "Trwresources",
+      "Vectorresources",
+      "Verticalresources",
+      "Aglobalresources",
+      "Leedsresources",
+      "Nextwaveresources",
+      "Cssvsource",
+      "Netsourcesolutionsinc",
+      "Medsourcetravelers",
+      "Beneficialtalentsource",
+      "Itresourcescorp",
+      "Mjdpresources",
+      "Sourcewaves",
+      "Globalitresources",
+      "Greenfieldsource",
+      "Ag1Source",
+      "Medsource",
+      "Sourcematch",
+      "Starsourcestaffing",
+      "Ic Resources",
+      "Culbertsonresources",
+      "Gravityitresources",
+      "Golden Resources",
+      "Mediasource",
+      "Gravityresources",
+      "Qualstaffresources",
+      "Execusource",
+      "4 Corner Resources",
+      "Anchorpointtechnologyresourcesservices",
+      "Chartersource",
+      "Frontlinesourcegroup",
+      "Partssource",
+      "Netsourcesecure",
+      "Ascendoresources",
+      "Olsaresources",
+      "Powermarkresources",
+      "Conectasource",
+      "Intellectresources",
+      "Arcsourcegroup",
+      "Volksresources",
+      "Insourcemg",
+      "Caresource",
+      "Insource Inc",
+      "Realsourceitsolutions",
+      "Multisourcemfg",
+      "Resourcesys",
+      "Marketsource",
+      "Hireelevationresources",
+      "Roresource",
+      "Brookesource",
+      "Chitechresources",
+      "Integrityresourcemanagement",
+      "R4Resources",
+      "Bluestackresources",
+      "Outsource",
+      "Smartsource Inc",
+      "Msbresources",
+      "Scansource",
+      "Select Resources",
+      "Sourcegroupint",
+      "Smartsource Usa",
+      "Softwareresources",
+      "Techresourceservices",
+      "Insourcegroup",
+      "Trisourceusa",
+      "Sigma Resources",
+      "Partnershipresources",
+      "Huntsource",
+      "Bridgesourcesolutions",
+      "Resourcespectrum",
+      "Murrayresources",
+      "Maferesources",
+      "Eastendresources",
+      "Flextekresources",
+      "Olsonresources",
+      "Precisionresources",
+      "Selectresources",
+      "Talentsource",
+      "Topsource",
+      "Projectresource",
+      "Netsourceweb",
+      "Plansource",
+      "Velocityresourcesolutions",
+      "Coreresourcegroup",
+      "Hyrglobalsource",
+      "Elitesourcesolutions",
+      "Altaresources",
+      "Logicsource",
+      "Mitresource",
+      "Luteinnesources",
+      "Redzoneresources",
+      "Resourcesoft",
+      "Resource Tek",
+      "Stoneresource",
+      "Winstonresources",
+      "Newresources",
+      "4Cornerresources",
+      "Datasourceconsulting",
+      "Arcsourced",
+      "Healthtech Resources",
+      "Resourceemploy",
+      "Questresourcesolutions",
+      "Corsource",
+      "Cosourcerec",
+      "Imagesourceinc",
+      "Stonehengeresources",
+      "Globalsourceit",
+      "Mypeersource",
+      "Lutechresources",
+      "Amerisourcebpo",
+      "Resourcexperts",
+      "Smartsourcetec",
+      "Sourcetech",
+      "Tfiresources",
+      "Sourceselectgroup",
+      "Thorjobsresource",
+      "W6Resources",
+      "Matechresources",
+      "Nescoresource",
+      "Vividresources",
+      "Itresources",
+      "Crossresourcegroup",
+      "Cmkresourcesinc",
+      "Milldaresource",
+      "Butleritresources",
+      "Spartanresources",
+      "Globalserviceresources",
+      "Recruiting Source",
+      "Corpresources",
+      "Imuasource",
+      "Emeraldresourcegroup",
+      "Nusources",
+      "Boltsource",
+      "Resourcefultalentgroup",
+      "Archonresourcesservices",
+      "Resource 1 ",
+      "Luteghaesources",
+      "Luteoliesources",
+      "Sourcecodetecno",
+      "Ivorsource",
+      "Resource Logistics",
+      "Roverresources",
+      "Smartsourcesolutions",
+      "Sourcecoders",
+      "Technicalstaffingresources",
+      "Theprosourcegroup",
+      "True Source",
+      "Vector Resources",
+      "Altasourcegroup",
+      "Prosource360",
+      "Net2Source",
+      "Haaresources",
+      "Healthtechresourcesinc",
+      "Intelli Source",
+      "Sourcetek",
+      "Nextsource",
+      "Addsource",
+      "Aptiveresources",
+      "Gloresources",
+      "Level Resources",
+      "Novus Resources",
+      "Dataresourcegroup",
+      "Vitalsourceit",
+      "Advancedresources",
+      "Cloudresources",
+      "Cybersource",
+      "Educationresources Llc",
+      "Eversource",
+      "Mindsourcecenter",
+      "Echelleresources",
+      "Lutekasesources",
+      "Lutedyoesources",
+      "Healthsourcegroup",
+      "Techsourcer",
+      "Abcresources",
+      "Careersourceow",
+      "Theresource",
+      "Eogresources",
+      "Onesourcestaffing",
+      "Dscresources",
+      "Selectsourceintl",
+      "Prosourceitnet",
+      "Perennialresources",
+      "Globalresources",
+      "Geeksources",
+      "Sourceallies",
+      "Itresourcesco;Erose",
+      "Sourcepass",
+      "Globalpathresources",
+      "Askprosource",
+      "Peersource",
+      "Amlrightsource",
+      "Certifiedsource",
+      "Familyresourcehomecare",
+      "Nutritionalresourcesinc",
+      "Precisionresource",
+      "Milljeresource",
+      "Liniumresources",
+      "Appliedresourcegroupservices",
+      "Technologyresourceservices",
+      "Integrisource",
+      "Thinksource",
+      "Sourceinfotech",
+      "Globaldigitalresources",
+      "Prosourcepeople",
+      "Amerisourcebergen",
+      "Impactfulresources",
+      "Vitalsourcestaffing",
+      "Fidelitytalentsource",
+      "Insourcess",
+      "Cameron Resources",
+      "Employersresource",
+      "Booksource",
+      "Rmresourcegroup",
+      "Sourceinfotecs",
+      "Yohoresources",
+      "Dciresourcesllc",
+      "Source Technology",
+      "Skybridgeresources",
+      "Sdertsource Inc",
+      "Source1Tek",
+      "Sourcefly",
+      "Squareoneresources",
+      "Stoneresources",
+      "Prosourceit",
+      "Primeskillresources",
+      "Archonresources",
+      "Herculesresources",
+      "Mwresource",
+      "Grovetechnicalresources",
+      "Ctrtechresources",
+      "Mageeresource",
+      "Mattsonresources",
+      "Qualitresources",
+      "Precisesource",
+      "Asbresources",
+      "Firstsourceteam",
+      "Gallopresources",
+      "Pinpointresources",
+      "Resourceemployment",
+      "Sourced",
+      "Brooksources",
+      "Itresourcesco; Erose",
+      "Cordiaresources",
+      "Hireresourcesllc",
+      "Kcoresource",
+      "Elitetechsources",
+      "Brickhouseresources",
+      "Eliteresources",
+      "Luteandesources",
+      "Lutephiesources",
+      "Lutelilesources",
+      "Sourcecloudinc",
+      "Pragmaticresource",
+      "Claddaghresources",
+      "Hireresourcestaffing",
+      "Anothersource",
+      "Beaconengineeringresources",
+      "Novastaffingresources",
+      "Soapcreekresources",
+      "Mail",
+      "Wesourcewellness",
+      "Sourceology"
+    ],
+    "primary_domains": [
+      "resource1.net",
+      "resourcefulinc.com",
+      "rightchoiceresources.com",
+      "right-resources.com",
+      "sourcegroupinternational.com",
+      "sourcelabsearch.com",
+      "stafford-resources.com",
+      "technisource.com",
+      "thetalentsource.com",
+      "totalresourcestaffing.com",
+      "visiumresources.com",
+      "medasource.com",
+      "clientresourcesinc.com",
+      "jblresources.com",
+      "comresource.com",
+      "nisource.com",
+      "mindsource.com",
+      "brokksource.com",
+      "greeneresources.com",
+      "lumenresources.com",
+      "millerresource.com",
+      "misource.net",
+      "professionalresourcepartners.com",
+      "eresourcepoint.com",
+      "precisionresourcegroup.co.uk",
+      "jwhumanresources.com",
+      "matrixresources.com",
+      "kingdomstaffingresources.com",
+      "driversource.net",
+      "insourcetechnical.com",
+      "randstadsourceright.ca",
+      "tekcomresources.com",
+      "1sourcestaffing.com",
+      "soniresources.com; mhflan",
+      "sourcegroupinternational.com; mark.gyles",
+      "globalsourcecollective.com; andvs",
+      "adastraresourcegroup.com",
+      "cosourcesolutions.com",
+      "jwresourcesjobs.com",
+      "lutefatesources.com",
+      "gdresourcesllc.com",
+      "recruitingresources.cc",
+      "resourcesolutions.com",
+      "resourcepoint.net",
+      "sourceot.com",
+      "sourceowls.com",
+      "staffsource.com",
+      "tech2resources.com",
+      "dayfoxxresources.com",
+      "tsourceit.com",
+      "whitehallresources.co.uk",
+      "xsellresources.com",
+      "alliedonesource.com",
+      "convergeresources.com",
+      "adeptsource.com",
+      "strategysourcellc.com",
+      "premierstaffingsource.com",
+      "sourcedge.com",
+      "xcellresources.com",
+      "globalsourcecollective.com",
+      "candidsource.com",
+      "professionalresourcegroup.com",
+      "velocityresourcegroup.com",
+      "allianceresourcegroup.com",
+      "coregroupresources.com; lauriehayward",
+      "technicalsource.com; jordancalton704",
+      "prometsource.com",
+      "insourcenow.com; lisaspringer",
+      "insourceservices.com",
+      "metaresourcesgroup.com",
+      "alliedresourcesstaffing.com.",
+      "prosource.it",
+      "skybridqeresources.com",
+      "griffin-resources.com",
+      "lutejosesources.com",
+      "ghresources.com",
+      "hamdanresources.com",
+      "prresources.net",
+      "episource.com",
+      "chasesource.com",
+      "genesisresources.com",
+      "brooksource.com;mabbattista",
+      "accountabilityresources.com",
+      "ambassadorresources.com",
+      "cloud-source.us",
+      "sourceconsult.net",
+      "americansoftwareresources.com",
+      "sourcemantra.com",
+      "apsresources.com",
+      "integrityresources.net",
+      "dlresourcegroup.com",
+      "resourceintegrators.com",
+      "quallitresources.com",
+      "mepresources.com",
+      "resourcemfg.com",
+      "selecsource.com",
+      "agreatersource.com",
+      "localresourcefoundry.com",
+      "sourcemaster.com",
+      "techsource-inc.com",
+      "theglovesource.com",
+      "trwresources.com",
+      "vectorresources.com.au",
+      "verticalresources.com",
+      "aglobalresources.com",
+      "leedsresources.com",
+      "nextwaveresources.net",
+      "cssvsource.com",
+      "netsourcesolutionsinc.com",
+      "medsourcetravelers.com",
+      "beneficialtalentsource.com",
+      "itresourcescorp.co",
+      "mjdpresources.com",
+      "sourcewaves.com",
+      "globalitresources.com",
+      "greenfieldsource.com",
+      "ag1source.com",
+      "medsource.com",
+      "sourcematch.team",
+      "starsourcestaffing.com",
+      "ic-resources.com",
+      "brooksource.com; maggie.becker",
+      "culbertsonresources.com",
+      "gravityitresources.com; alexa.pautrat",
+      "brooksource.com; sydneymcconn2",
+      "golden-resources.com; jzayasrivera",
+      "mediasource.com; johanna.t",
+      "gravityresources.com; lila.seirsdale",
+      "qualstaffresources.com; lgaunce823",
+      "execusource.com; elizabethmcc9",
+      "4 corner resources.com",
+      "anchorpointtechnologyresourcesservices.com",
+      "brooksource.com.",
+      "chartersource.org",
+      "frontlinesourcegroup.com",
+      "gravityresources.com.au",
+      "partssource.com",
+      "netsourcesecure.com",
+      "ascendoresources.com",
+      "olsaresources.com",
+      "powermarkresources.com",
+      "conectasource.com",
+      "intellectresources.com",
+      "brooksource.com)",
+      "brooksource.com;jmcbride",
+      "arcsourcegroup.com",
+      "volksresources.com",
+      "insourcemg.com",
+      "caresource.com",
+      "insource-inc.com",
+      "realsourceitsolutions.com",
+      "multisourcemfg.com",
+      "resourcesys.com",
+      "marketsource.com",
+      "hireelevationresources.com",
+      "roresource.com",
+      "brookesource.com",
+      "chitechresources.com",
+      "golden-resources.com",
+      "integrityresourcemanagement.com",
+      "r4resources.com",
+      "bluestackresources.com",
+      "brooksource.com;erotundo",
+      "outsource.net",
+      "brooksource.com;amartin",
+      "smartsource-inc..com",
+      "msbresources.com",
+      "greeneresources..com",
+      "scansource.com",
+      "select-resources.com",
+      "sourcegroupint.com",
+      "smartsource-usa.com",
+      "softwareresources.com",
+      "techresourceservices.com",
+      "insourcegroup.com",
+      "trisourceusa.com",
+      "sigma-resources.com",
+      "partnershipresources.org",
+      "huntsource.io",
+      "bridgesourcesolutions.com",
+      "resourcespectrum.com",
+      "murrayresources.com",
+      "maferesources.com",
+      "eastendresources.com",
+      "flextekresources.com",
+      "itresourcescorp.com",
+      "olsonresources.com",
+      "precisionresources.org",
+      "selectresources.net",
+      "talentsource.com",
+      "topsource.com",
+      "projectresource.us",
+      "brooksource.co",
+      "netsourceweb.com",
+      "plansource.com",
+      "velocityresourcesolutions.com",
+      "coreresourcegroup.com",
+      "hyrglobalsource.com",
+      "qualstaffresources.com",
+      "randstadsourceright.com",
+      "elitesourcesolutions.com",
+      "brooksource.com; christian.day",
+      "altaresources.com",
+      "logicsource.com",
+      "mitresource.com",
+      "medasource.com,",
+      "luteinnesources.com",
+      "redzoneresources.com",
+      "resourcesoft.com",
+      "resource-tek.com",
+      "soniresources.com",
+      "stoneresource.net",
+      "winstonresources.com",
+      "newresources.com",
+      "4cornerresources.com",
+      "datasourceconsulting.com",
+      "topsource.net",
+      "arcsourced.com",
+      "medasource.com;kmarvel",
+      "healthtech-resources.com",
+      "resourceemploy.com",
+      "questresourcesolutions.com",
+      "corsource.com",
+      "cosourcerec.com",
+      "imagesourceinc.com",
+      "stonehengeresources.com",
+      "globalsourceit.com; t4roznowski",
+      "millerresource.com; kaciechitwood",
+      "mypeersource.com; trevorkrichards",
+      "mepresources.com; acolonna",
+      "globalitresources.com; agibbs",
+      "technicalsource.com; aldenpblake",
+      "convergeresources.com; sahrendt9",
+      "4 corner resources.om",
+      "alliedonesource.com'",
+      "lutechresources.com",
+      "amerisourcebpo.us",
+      "resource1.com",
+      "resourcexperts.com",
+      "smartsourcetec.com",
+      "sourcetech.com",
+      "technicalsource.com",
+      "tfiresources.com",
+      "sourceselectgroup.com",
+      "thorjobsresource.com",
+      "w6resources.com",
+      "mypeersource.com",
+      "matechresources.com",
+      "nescoresource.com",
+      "vividresources.com",
+      "itresources.com",
+      "crossresourcegroup.com",
+      "cmkresourcesinc.com",
+      "execusource.com",
+      "milldaresource.com",
+      "butleritresources.com",
+      "spartanresources.net)",
+      "globalserviceresources.com",
+      "recruiting-source.com",
+      "corpresources.com",
+      "imuasource.com",
+      "misource.com",
+      "emeraldresourcegroup.com",
+      "nusources.com",
+      "boltsource.io",
+      "globalsourceit.com; interlobate",
+      "jblresources.com; hill.michelle",
+      "comresource.com; kellen.creagh",
+      "coregroupresources.com",
+      "brooksource.com; jdougherty",
+      "gravityresources.com",
+      "resourcefultalentgroup.com",
+      "archonresourcesservices.com",
+      "resource 1 .com",
+      "luteghaesources.com",
+      "luteoliesources.com",
+      "sourcecodetecno.com",
+      "ivorsource.com",
+      "resource-logistics.com",
+      "roverresources.com",
+      "smartsourcesolutions.org",
+      "sourcecoders.io",
+      "technicalstaffingresources.com",
+      "theprosourcegroup.com",
+      "true-source.com",
+      "vector-resources.com",
+      "insourcenow.com",
+      "globalsourceit.com",
+      "altasourcegroup.com",
+      "prosource360.com",
+      "net2source.com",
+      "haaresources.com",
+      "healthtechresourcesinc.com",
+      "intelli-source.net",
+      "sourcetek.com",
+      "alliedresourcesstaffing.com",
+      "nextsource.com",
+      "addsource.com",
+      "aptiveresources.com",
+      "gloresources.com",
+      "level-resources.com",
+      "novus-resources.com",
+      "dataresourcegroup.com",
+      "vitalsourceit.com",
+      "advancedresources.com",
+      "coregroupresources.com; askaggs",
+      "resourcefulinc.com; rdrennen",
+      "mediasource.com",
+      "cloudresources.net",
+      "cybersource.com",
+      "educationresources-llc.com",
+      "eversource.com",
+      "medasource.com.",
+      "mindsourcecenter.com",
+      "echelleresources.com",
+      "lutekasesources.com",
+      "lutedyoesources.com",
+      "healthsourcegroup.com",
+      "techsourcer.net",
+      "brooksource.com;krhinesmith",
+      "brooksource.com;sely",
+      "abcresources.biz",
+      "careersourceow.com",
+      "theresource.com",
+      "eogresources.com",
+      "onesourcestaffing.net",
+      "dscresources.com",
+      "selectsourceintl.com",
+      "prosourceitnet.onmicrosoft.com",
+      "perennialresources.com",
+      "globalresources.com",
+      "geeksources.com",
+      "sourceallies.com",
+      "globalsourceit.com (corporate); interlobate",
+      "itresourcesco;erose",
+      "sourcepass.com",
+      "globalpathresources.com",
+      "askprosource.com",
+      "peersource.com",
+      "globalsourceit.com(corporate)",
+      "gravityitresources.co",
+      "amlrightsource.com",
+      "certifiedsource.com",
+      "familyresourcehomecare.com",
+      "nutritionalresourcesinc.com",
+      "precisionresource.com",
+      "milljeresource.com",
+      "liniumresources.com",
+      "brooksource.com;mmasini",
+      "appliedresourcegroupservices.com",
+      "4cornerresources.om",
+      "technologyresourceservices.com",
+      "integrisource.com",
+      "thinksource.ai",
+      "sourceinfotech.com",
+      "globaldigitalresources.com",
+      "prosourcepeople.com",
+      "amerisourcebergen.com",
+      "impactfulresources.com",
+      "vitalsourcestaffing.com",
+      "brooksource.com;mgoldsword",
+      "brooksource.com;rknight",
+      "fidelitytalentsource.com;joshua.swan",
+      "insourcess.com",
+      "cameron-resources.com",
+      "employersresource.com",
+      "booksource.com",
+      "rmresourcegroup.com",
+      "sourceinfotecs.com",
+      "yohoresources.ca",
+      "dciresourcesllc.com",
+      "source-technology.com",
+      "skybridgeresources.com",
+      "smartsource-inc.com",
+      "sdertsource-inc.com",
+      "source1tek.com",
+      "sourcefly.com",
+      "squareoneresources.com",
+      "stoneresources.net",
+      "whitehallresources.com",
+      "brooksource.com",
+      "prosourceit.net",
+      "primeskillresources.com",
+      "archonresources.com",
+      "gravityitresources.com",
+      "archonresources.com.",
+      "herculesresources.com",
+      "mwresource.com",
+      "fidelitytalentsource.com",
+      "grovetechnicalresources.com",
+      "ctrtechresources.com",
+      "mageeresource.com",
+      "spartanresources.net",
+      "mattsonresources.com",
+      "integrisource.net",
+      "qualitresources.com",
+      "precisesource.com",
+      "asbresources.com",
+      "firstsourceteam.com",
+      "gallopresources.com",
+      "pinpointresources.com",
+      "strategysourcellc.com; adriannawurtz",
+      "resourceemployment.com",
+      "sourced.com",
+      "brooksource.com; kendall.carr",
+      "gravityresources.com; sarah.weigel",
+      "nescoresource.com; jessiew",
+      "technicalsource.com; a.richdunbar",
+      "brooksources.com; owendel",
+      "itresourcesco; erose",
+      "cordiaresources.com",
+      "hireresourcesllc.com",
+      "kcoresource.com",
+      "elitetechsources.com",
+      "brickhouseresources.com",
+      "eliteresources.net",
+      "luteandesources.com",
+      "lutephiesources.com",
+      "lutelilesources.com",
+      "sourcecloudinc.com",
+      "pragmaticresource.com",
+      "claddaghresources.com",
+      "hireresourcestaffing.com",
+      "anothersource.com",
+      "brooksource.comq",
+      "claddaghresources.net",
+      "beaconengineeringresources.com",
+      "novastaffingresources.com",
+      "soapcreekresources.com",
+      "integrisource.ne",
+      "mail.launchsource.com",
+      "itresources.com.au",
+      "wesourcewellness.com",
+      "sourceology.com",
+      "brooksources.com"
+    ],
+    "websites": [],
+    "recruiter_count": 63,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Katarina",
+        "email": "kknudsen@medasource.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "TJ",
+        "email": "tjcarneydebord@medasource.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Joseph",
+        "email": "jhenriques@medasource.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Jordan Clement",
+        "email": "jordan@agreatersource.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Shakara Rose",
+        "email": "shakara@source-technology.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Carter Sibley",
+        "email": "csibley@technicalsource.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 13
+  },
+  {
+    "index": 102,
+    "query_company": "UpRecruit",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Uprecruit"
+    ],
+    "primary_domains": [
+      "uprecruit.com"
+    ],
+    "websites": [],
+    "recruiter_count": 50,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Maria",
+        "email": "maria@uprecruit.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Kierra",
+        "email": "kierra@uprecruit.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Marcus",
+        "email": "marcus@uprecruit.com",
+        "title": null
+      }
+    ],
+    "local_import_matches": 0
+  },
+  {
+    "index": 103,
+    "query_company": "Object Data Inc",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 104,
+    "query_company": "ClearBridge Technology Group",
+    "status": "FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 16,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Aaron Lawrence",
+        "email": "alawrence@clearbridgetech.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Adam",
+        "email": "aobrien@clearbridgetech.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Adyant",
+        "email": "amishra@clearbridgetech.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 16
+  },
+  {
+    "index": 105,
+    "query_company": "Full Cycle Services",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 106,
+    "query_company": "Apera",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Apera"
+    ],
+    "primary_domains": [
+      "apera.co"
+    ],
+    "websites": [],
+    "recruiter_count": 1,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Casey Ryan",
+        "email": "c.ryan@apera.co",
+        "title": null
+      }
+    ],
+    "local_import_matches": 0
+  },
+  {
+    "index": 107,
+    "query_company": "Iceberg",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Iceberggroup",
+      "Icebergops"
+    ],
+    "primary_domains": [
+      "iceberggroup.org",
+      "icebergops.com"
+    ],
+    "websites": [],
+    "recruiter_count": 50,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Kent Hamre",
+        "email": "kent.hamre@iceberggroup.org",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Kent Hamre",
+        "email": "kent.hamre@iceberggroup.org",
+        "title": "Talent Acquisition Specialist"
+      },
+      {
+        "recruiter_name": "Judy",
+        "email": "jcornett@icebergops.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 0
+  },
+  {
+    "index": 108,
+    "query_company": "Hollstadt Consulting",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Hollstadt"
+    ],
+    "primary_domains": [
+      "hollstadt.com; nlock",
+      "hollstadt.com",
+      "hollstadt.com(given)",
+      "hollstadt.com (given)",
+      "hollstadt.com; cetta"
+    ],
+    "websites": [],
+    "recruiter_count": 65,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Adolph",
+        "email": "arabe@hollstadt.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Margaret",
+        "email": "mcarlson@hollstadt.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "Larry",
+        "email": "lsakkinen@hollstadt.com",
+        "title": null
+      },
+      {
+        "recruiter_name": "elisa",
+        "email": "ecoequyt@hollstadt.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Gogo Nyadze Ndara",
+        "email": "gndara@hollstadt.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Unknown",
+        "email": "taljets@hollstadt.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 15
+  },
+  {
+    "index": 109,
+    "query_company": "XMS Solutions, Inc.",
+    "status": "NOT FOUND",
+    "matched_company_names": [],
+    "primary_domains": [],
+    "websites": [],
+    "recruiter_count": 0,
+    "sample_recruiters": [],
+    "local_import_matches": 0
+  },
+  {
+    "index": 110,
+    "query_company": "Spyglass Partners, LLC",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Spyglass"
+    ],
+    "primary_domains": [
+      "spyglass.net"
+    ],
+    "websites": [],
+    "recruiter_count": 64,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Keegan",
+        "email": "kvogley@spyglass.net",
+        "title": null
+      },
+      {
+        "recruiter_name": "Chris",
+        "email": "cbox@spyglass.net",
+        "title": null
+      },
+      {
+        "recruiter_name": "Samuel",
+        "email": "ssummers@spyglass.net",
+        "title": null
+      },
+      {
+        "recruiter_name": "Scott Andersen",
+        "email": "sandersen@spyglasscorp.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Holly Peterson",
+        "email": "hpeterson@spyglasspartners.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Warren Markowsky",
+        "email": "wmarkowsky@spyglasspartners.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 14
+  },
+  {
+    "index": 111,
+    "query_company": "Patriot Talent Solutions",
+    "status": "FOUND",
+    "matched_company_names": [
+      "Patriot Consulting",
+      "Patriot"
+    ],
+    "primary_domains": [
+      "patriot-consulting.com",
+      "patriot.dev"
+    ],
+    "websites": [],
+    "recruiter_count": 30,
+    "sample_recruiters": [
+      {
+        "recruiter_name": "Nicole Piscopo",
+        "email": "nicole.piscopo@patriot-consulting.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Patrick Bagnell",
+        "email": "patrick.bagnell@patriot-consulting.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Nicole Piscopo",
+        "email": "nicole.piscopo@patriot-consulting.com",
+        "title": "Talent Acquisition Specialist"
+      },
+      {
+        "recruiter_name": "Amy Lovelace",
+        "email": "alovelace@patriottalent.com",
+        "title": NaN
+      },
+      {
+        "recruiter_name": "Sarah Narramore",
+        "email": "snarramore@patriottalent.com",
+        "title": "Recruiting Manager"
+      },
+      {
+        "recruiter_name": "Patriot Consulting",
+        "email": "patrick.bagnell@patriot-consulting.com",
+        "title": NaN
+      }
+    ],
+    "local_import_matches": 3
+  }
+]

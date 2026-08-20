@@ -7,7 +7,8 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..config import ENV as APP_ENV
-from ..services.auth_service import get_current_user_from_request
+from ..services.auth_service import get_current_user_from_request, require_admin
+from ..models.auth_models import User
 
 router = APIRouter()
 logger = logging.getLogger("talentops.health")
@@ -49,7 +50,6 @@ def check_outlook_bridge(db: Session, current_user_id: int):
 
 @router.get("/outlook")
 def health_outlook(db: Session = Depends(get_db), current_user = Depends(get_current_user_from_request)):
-    from ..models.auth_models import User
     return check_outlook_bridge(db, current_user.id)
 
 @router.get("/")
@@ -63,9 +63,9 @@ def storage_health(db: Session = Depends(get_db)):
     from ..services.storage_limit_service import get_storage_health
     return get_storage_health(db)
 
-@router.get("/unlock-admin")
-def unlock_admin(db: Session = Depends(get_db)):
-    from ..models.auth_models import LoginHistory, User
+@router.post("/unlock-admin")
+def unlock_admin(db: Session = Depends(get_db), admin: User = Depends(require_admin)):
+    from ..models.auth_models import LoginHistory
     user = db.query(User).filter(User.email == "admin@talentops.com").first()
     if user:
         db.query(LoginHistory).filter(LoginHistory.user_id == user.id).delete()

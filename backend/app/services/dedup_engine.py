@@ -1,346 +1,177 @@
 """
-Deduplication & Enrichment Engine for Recruiter Data ETL.
-
-Pure-Python module — NO database, SQLAlchemy, or app.* imports.
-
-Dedup Rules
------------
-1. Same normalized email → DEFINITE duplicate → merge into one profile.
-   - Fill up to 4 email slots and 4 phone slots.
-   - Any overflow goes into metadata_json.extra_emails / extra_phones.
-
-2. Same name + same company
-   - If `source_format` == 'VERTICAL_MULTI_VALUE' (or similar single-file grouping), 
-     merge them into one profile if they don't conflict fatally.
-   - Otherwise, mark as POSSIBLE duplicate / Needs Review.
+Deduplication Engine: Multi-key entity resolution and non-destructive record merging.
 """
-
-from __future__ import annotations
-
-import copy
 import re
-from typing import Any
+import logging
+from typing import Dict, List, Any, Optional, Tuple
 
-from ..utils.phone_normalizer import phone_compare_key
-
-# ---------------------------------------------------------------------------
-# Normalization helpers
-# ---------------------------------------------------------------------------
-
-_COMPANY_SUFFIXES = re.compile(
-    r",?\s*\b(inc\.?|llc\.?|corp\.?|corporation|incorporated|limited|ltd\.?|co\.?|company)\s*$",
-    re.IGNORECASE,
-)
+logger = logging.getLogger("dedup_engine")
 
 
-def normalize_email(email: str | None) -> str:
-    """Lowercase, strip whitespace. Returns '' for falsy input."""
-    if not email:
-        return ""
-    return email.strip().lower()
+def extract_linkedin_handle(url: str) -> Optional[str]:
+    """Extracts normalized handle from linkedin URL."""
+    if not url:
+        return None
+    url_clean = str(url).strip().lower()
+    match = re.search(r"linkedin\.com/in/([a-zA-Z0-9_-]+)", url_clean)
+    if match:
+        return match.group(1)
+    return None
 
 
-def normalize_name(name: str | None) -> str:
-    """Lowercase, strip, collapse inner whitespace."""
-    if not name:
-        return ""
-    return re.sub(r"\s+", " ", name.strip().lower())
+class DeduplicationEngine:
+    """Multi-tier deduplicator that merges candidate and recruiter records."""
 
+    def __init__(self):
+        self.by_email: Dict[str, Dict[str, Any]] = {}
+        self.by_linkedin: Dict[str, Dict[str, Any]] = {}
+        self.by_name_comp_state: Dict[str, Dict[str, Any]] = {}
+        self.by_phone: Dict[str, Dict[str, Any]] = {}
+        self.merged_records: List[Dict[str, Any]] = []
 
-def normalize_company(company: str | None) -> str:
-    """Lowercase, strip, remove common corporate suffixes."""
-    if not company:
-        return ""
-    text = company.strip().lower()
-    text = _COMPANY_SUFFIXES.sub("", text).strip()
-    text = text.rstrip(".,").strip()
-    return text
+        self.stats = {
+            "total_processed": 0,
+            "merged_email": 0,
+            "merged_linkedin": 0,
+            "merged_name_company": 0,
+            "merged_phone": 0,
+            "unique_records": 0
+        }
 
-
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
-_MERGE_FIELDS = (
-    "name",
-    "company",
-    "state",
-    "location",
-    "title",
-    "specialization",
-    "notes",
-    "linkedin",
-)
-
-
-def _back_fill(primary: dict[str, Any], donor: dict[str, Any]) -> None:
-    """Fill empty/None fields in *primary* from *donor* (excluding emails/phones)."""
-    for field in _MERGE_FIELDS:
-        current = primary.get(field)
-        if not current or (isinstance(current, str) and not current.strip()):
-            donor_val = donor.get(field)
-            if donor_val and (not isinstance(donor_val, str) or donor_val.strip()):
-                primary[field] = donor_val
-
-def _merge_contacts(primary: dict[str, Any], donor: dict[str, Any]) -> None:
-    """Merge emails and phones from donor into primary up to 4 slots."""
-    meta = primary.setdefault("metadata_json", {})
-    all_emails = meta.setdefault("all_emails", [])
-    extra_emails = meta.setdefault("extra_emails", [])
-    all_phones = meta.setdefault("all_phones", [])
-    extra_phones = meta.setdefault("extra_phones", [])
-
-    # Process Emails
-    donor_emails = [donor.get(k) for k in ("email", "email2", "email3", "email4") if donor.get(k)]
-    for e in donor_emails:
-        e = str(e).strip()
-        if not e: continue
-        norm_e = normalize_email(e)
-        existing_norms = [normalize_email(primary.get(k)) for k in ("email", "email2", "email3", "email4") if primary.get(k)]
+    def process_records(self, records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Processes a stream or batch of normalized records and returns deduplicated master list."""
+        for r in records:
+            self.add_or_merge(r)
         
-        if norm_e not in existing_norms:
-            if not primary.get("email"): primary["email"] = e
-            elif not primary.get("email2"): primary["email2"] = e
-            elif not primary.get("email3"): primary["email3"] = e
-            elif not primary.get("email4"): primary["email4"] = e
-            else:
-                if e not in extra_emails:
-                    extra_emails.append(e)
-        
-        # Add to all_emails keeping original case if not present
-        if not any(existing.lower() == e.lower() for existing in all_emails):
-            all_emails.append(e)
+        self.stats["unique_records"] = len(self.merged_records)
+        logger.info(
+            f"Deduplication complete: {self.stats['total_processed']:,} incoming -> "
+            f"{self.stats['unique_records']:,} unique (Email merges: {self.stats['merged_email']:,}, "
+            f"LinkedIn merges: {self.stats['merged_linkedin']:,}, "
+            f"Name+Company merges: {self.stats['merged_name_company']:,})"
+        )
+        return self.merged_records
 
-    # Process Phones
-    donor_phones = [donor.get(k) for k in ("phone", "phone2", "phone3", "phone4") if donor.get(k)]
-    for p in donor_phones:
-        p = str(p).strip()
-        if not p: continue
-        
-        # Normalize phone just for comparison (remove spaces/dashes)
-        def norm_p(phone_str): return phone_compare_key(phone_str)
-        np = norm_p(p)
-        
-        existing_norms = [norm_p(primary.get(k) or "") for k in ("phone", "phone2", "phone3", "phone4") if primary.get(k)]
-        
-        if np not in existing_norms:
-            if not primary.get("phone"): primary["phone"] = p
-            elif not primary.get("phone2"): primary["phone2"] = p
-            elif not primary.get("phone3"): primary["phone3"] = p
-            elif not primary.get("phone4"): primary["phone4"] = p
-            else:
-                if p not in extra_phones:
-                    extra_phones.append(p)
-                    
-        if p not in all_phones:
-            all_phones.append(p)
+    def add_or_merge(self, record: Dict[str, Any]) -> Dict[str, Any]:
+        """Checks existing indices for duplicate candidates and performs non-destructive merge."""
+        self.stats["total_processed"] += 1
+        existing = None
+        match_type = None
 
-def _collect_alternate_values(
-    primary: dict[str, Any], donor: dict[str, Any]
-) -> dict[str, Any]:
-    """Build a slim dict of every donor field that differs from primary."""
-    alt: dict[str, Any] = {}
-    for field in _MERGE_FIELDS + ("email", "email2", "email3", "email4", "phone", "phone2", "phone3", "phone4"):
-        p_val = (primary.get(field) or "")
-        d_val = (donor.get(field) or "")
-        if isinstance(p_val, str): p_val = p_val.strip()
-        if isinstance(d_val, str): d_val = d_val.strip()
-        if d_val and d_val != p_val:
-            alt[field] = donor.get(field)
-    
-    for key in ("source_sheet", "source_file", "row_index", "raw_data"):
-        if key in donor:
-            alt[key] = donor[key]
-    return alt
+        email = (record.get("email") or "").strip().lower()
+        linkedin = record.get("linkedin") or ""
+        li_handle = extract_linkedin_handle(linkedin)
+        norm_name = record.get("normalized_recruiter_name") or ""
+        comp = (record.get("canonical_company_id") or record.get("company_id") or "").lower().strip()
+        state = (record.get("state") or "").upper().strip()
+        phone = record.get("phone") or ""
+        clean_phone_digits = re.sub(r"\D+", "", phone) if len(phone) >= 7 else ""
 
+        # 1. Tier 1 Match: Email
+        if email and email in self.by_email:
+            existing = self.by_email[email]
+            match_type = "email"
+            self.stats["merged_email"] += 1
 
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
+        # 2. Tier 2 Match: LinkedIn
+        elif li_handle and li_handle in self.by_linkedin:
+            existing = self.by_linkedin[li_handle]
+            match_type = "linkedin"
+            self.stats["merged_linkedin"] += 1
 
-def deduplicate_and_enrich(
-    rows: list[dict[str, Any]],
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Deduplicate and enrich a list of parsed recruiter row dicts."""
-    
-    merged: list[dict[str, Any]] = []
-    email_index: dict[str, int] = {}
-    duplicate_report: list[dict[str, Any]] = []
+        # 3. Tier 3 Match: Name + Company + State
+        elif norm_name and comp and state and len(norm_name) > 3 and len(comp) > 2 and state != "US":
+            ncs_key = f"{norm_name}::{comp}::{state}"
+            if ncs_key in self.by_name_comp_state:
+                existing = self.by_name_comp_state[ncs_key]
+                match_type = "name_company"
+                self.stats["merged_name_company"] += 1
 
-    # --- Phase 1: Email-based merging (DEFINITE duplicates) ----------------
-    for row in rows:
-        row = copy.deepcopy(row)
-        
-        # We check all 4 emails of the row to see if it matches any known primary
-        row_emails = [normalize_email(row.get(k)) for k in ("email", "email2", "email3", "email4")]
-        row_emails = [e for e in row_emails if e]
-        
-        match_idx = None
-        for e in row_emails:
-            if e in email_index:
-                match_idx = email_index[e]
-                break
-                
-        if match_idx is not None:
-            primary = merged[match_idx]
-            
-            p_name = normalize_name(primary.get("name"))
-            r_name = normalize_name(row.get("name"))
-            safe_merge = True
-            
-            # Conflict if both names exist and neither is a substring of the other
-            if p_name and r_name and p_name != r_name:
-                if p_name not in r_name and r_name not in p_name:
-                    safe_merge = False
+        # 4. Tier 4 Match: Phone (only if 10 distinct digits and not common toll-free)
+        elif len(clean_phone_digits) == 10 and not clean_phone_digits.startswith(("800", "888", "877", "866", "855")):
+            if clean_phone_digits in self.by_phone:
+                existing = self.by_phone[clean_phone_digits]
+                match_type = "phone"
+                self.stats["merged_phone"] += 1
 
-            if safe_merge:
-                meta = primary.setdefault("metadata_json", {})
-                alternates = meta.setdefault("alternate_entries", [])
-
-                _back_fill(primary, row)
-                _merge_contacts(primary, row)
-
-                # Update email index with any new emails that were added
-                for k in ("email", "email2", "email3", "email4"):
-                    ne = normalize_email(primary.get(k))
-                    if ne and ne not in email_index:
-                        email_index[ne] = match_idx
-
-                alt = _collect_alternate_values(primary, row)
-                alternates.append(alt)
-
-                duplicate_report.append({
-                    "action": "merged",
-                    "type": "definite_email_match",
-                    "primary_email": primary.get("email"),
-                    "merged_from": {"source_sheet": row.get("source_sheet"), "row_index": row.get("row_index"), "name": row.get("name")},
-                })
-            else:
-                # Same email but different names -> unsafe merge
-                primary["needs_review"] = True
-                primary["possible_duplicate"] = True
-                primary["duplicate_match_type"] = "shared_email_conflict"
-                
-                row["needs_review"] = True
-                row["possible_duplicate"] = True
-                row["duplicate_match_type"] = "shared_email_conflict"
-                
-                # Treat as new profile
-                meta = row.setdefault("metadata_json", {})
-                meta.setdefault("all_emails", [])
-                meta.setdefault("all_phones", [])
-                meta.setdefault("extra_emails", [])
-                meta.setdefault("extra_phones", [])
-                meta.setdefault("alternate_entries", [])
-                
-                # Init contacts properly
-                temp_row = copy.deepcopy(row)
-                for k in ("email", "email2", "email3", "email4", "phone", "phone2", "phone3", "phone4"):
-                    row[k] = None
-                _merge_contacts(row, temp_row)
-
-                merged.append(row)
-                new_idx = len(merged) - 1
-                # Do NOT update the email index to point to this new one, 
-                # keep the primary one as the index owner so further conflicts hit the same block.
+        if existing:
+            # Perform non-destructive enrichment
+            self._merge_into(existing, record)
+            return existing
         else:
-            # New profile
-            meta = row.setdefault("metadata_json", {})
-            meta.setdefault("all_emails", [])
-            meta.setdefault("all_phones", [])
-            meta.setdefault("extra_emails", [])
-            meta.setdefault("extra_phones", [])
-            meta.setdefault("alternate_entries", [])
-            
-            # Init contacts properly
-            temp_row = copy.deepcopy(row)
-            for k in ("email", "email2", "email3", "email4", "phone", "phone2", "phone3", "phone4"):
-                row[k] = None
-            _merge_contacts(row, temp_row)
+            # New unique record
+            self.merged_records.append(record)
+            self._index_record(record)
+            return record
 
-            merged.append(row)
-            new_idx = len(merged) - 1
-            for e in row_emails:
-                email_index[e] = new_idx
+    def _index_record(self, record: Dict[str, Any]):
+        """Adds record to fast lookup indices."""
+        email = (record.get("email") or "").strip().lower()
+        if email:
+            self.by_email[email] = record
 
+        li_handle = extract_linkedin_handle(record.get("linkedin") or "")
+        if li_handle:
+            self.by_linkedin[li_handle] = record
 
-    # --- Phase 2: Name + Company (Vertical Merge or Flag) ------------
-    name_company_groups: dict[tuple[str, str], list[int]] = {}
+        norm_name = record.get("normalized_recruiter_name") or ""
+        comp = (record.get("canonical_company_id") or record.get("company_id") or "").lower().strip()
+        state = (record.get("state") or "").upper().strip()
+        if norm_name and comp and state and len(norm_name) > 3 and len(comp) > 2 and state != "US":
+            self.by_name_comp_state[f"{norm_name}::{comp}::{state}"] = record
 
-    for idx, profile in enumerate(merged):
-        norm_name = normalize_name(profile.get("name"))
-        norm_company = normalize_company(profile.get("company"))
-        if norm_name and norm_company:
-            key = (norm_name, norm_company)
-            name_company_groups.setdefault(key, []).append(idx)
+        phone = record.get("phone") or ""
+        clean_phone_digits = re.sub(r"\D+", "", phone) if len(phone) >= 7 else ""
+        if len(clean_phone_digits) == 10 and not clean_phone_digits.startswith(("800", "888", "877", "866", "855")):
+            self.by_phone[clean_phone_digits] = record
 
-    # We will build a new merged list out of Phase 2
-    final_merged = []
-    skip_indices = set()
+    def _merge_into(self, target: Dict[str, Any], incoming: Dict[str, Any]):
+        """Merges incoming record into target record without overwriting verified values."""
+        # 1. Fill missing core fields
+        for field in ["recruiter_name", "normalized_recruiter_name", "title", "company_id", "canonical_company_id", "specialization", "logo_url"]:
+            if not target.get(field) and incoming.get(field):
+                target[field] = incoming[field]
 
-    for (norm_name, norm_company), indices in name_company_groups.items():
-        if len(indices) < 2:
-            continue
-            
-        # Check if we should auto-merge them (Vertical Multi-Value logic)
-        # If the format is explicitly vertical or if they simply don't have conflicting emails (e.g. one has email, other only has phone)
-        # We can merge them if they are from the same file/sheet and there are no direct slot conflicts, OR if it's vertical format.
-        
-        # We'll just take the first as primary, and try to merge others into it.
-        primary_idx = indices[0]
-        primary = merged[primary_idx]
-        is_vertical = primary.get("metadata_json", {}).get("source_format") == "VERTICAL_MULTI_VALUE"
-        
-        # If we explicitly want to merge them into one (User requested Vertical format merging)
-        # We'll merge them all into the primary.
-        for idx in indices[1:]:
-            donor = merged[idx]
-            
-            # Always merge if vertical format, OR if it's the same name+company in the same import file 
-            # and we still have empty slots. The user rule: "Final profile should be one recruiter" 
-            # But user also said "Same name + same company + different email: mark Possible Duplicate / Needs Review"
-            # So if it's NOT vertical format, we should probably flag it unless one is purely phone and the other is purely email.
-            
-            # Let's count emails in primary and donor
-            p_emails = [primary.get(k) for k in ("email", "email2", "email3", "email4") if primary.get(k)]
-            d_emails = [donor.get(k) for k in ("email", "email2", "email3", "email4") if donor.get(k)]
-            
-            conflict = False
-            
-            if p_emails and d_emails:
-                p_email_set = {normalize_email(e) for e in p_emails}
-                d_email_set = {normalize_email(e) for e in d_emails}
-                # If not vertical format and emails are entirely disjoint -> flag it instead of auto-merging
-                if not is_vertical and not p_email_set.intersection(d_email_set):
-                    conflict = True
-                
-            if conflict:
-                # Flag as possible duplicate
-                donor["possible_duplicate"] = True
-                donor["duplicate_match_type"] = "name_company"
-                donor["needs_review"] = True
-                
-                primary["possible_duplicate"] = True
-                primary["duplicate_match_type"] = "name_company"
-                primary["needs_review"] = True
-            else:
-                # Merge them
-                _back_fill(primary, donor)
-                _merge_contacts(primary, donor)
-                
-                alt = _collect_alternate_values(primary, donor)
-                primary["metadata_json"]["alternate_entries"].append(alt)
-                
-                duplicate_report.append({
-                    "action": "merged",
-                    "type": "vertical_name_company_match",
-                    "normalized_name": norm_name,
-                    "merged_from": {"row_index": donor.get("row_index")},
-                })
-                skip_indices.add(idx)
+        # 2. Upgrade LinkedIn
+        if not target.get("linkedin") and incoming.get("linkedin"):
+            target["linkedin"] = incoming["linkedin"]
+            li_h = extract_linkedin_handle(incoming["linkedin"])
+            if li_h:
+                self.by_linkedin[li_h] = target
 
-    for idx, profile in enumerate(merged):
-        if idx not in skip_indices:
-            final_merged.append(profile)
+        # 3. Upgrade location if target is generic
+        if target.get("state") in ["US", "", None] and incoming.get("state") not in ["US", "", None]:
+            target["state"] = incoming["state"]
+            target["location"] = incoming["location"]
+            target["normalized_city"] = incoming["normalized_city"]
 
-    return final_merged, duplicate_report
+        # 4. Multi-phone slotting
+        incoming_phone = incoming.get("phone")
+        if incoming_phone and incoming_phone != target.get("phone"):
+            # Check if already in phone2, phone3, phone4
+            existing_phones = {target.get("phone"), target.get("phone2"), target.get("phone3"), target.get("phone4")}
+            if incoming_phone not in existing_phones:
+                if not target.get("phone2"):
+                    target["phone2"] = incoming_phone
+                elif not target.get("phone3"):
+                    target["phone3"] = incoming_phone
+                elif not target.get("phone4"):
+                    target["phone4"] = incoming_phone
+                target["alternate_phones"] = float(len([p for p in [target.get("phone2"), target.get("phone3"), target.get("phone4")] if p]))
+
+        # 5. Multi-email slotting
+        incoming_email = incoming.get("email")
+        if incoming_email and incoming_email != target.get("email"):
+            existing_emails = {target.get("email"), target.get("email2"), target.get("email3"), target.get("email4")}
+            if incoming_email not in existing_emails:
+                if not target.get("email2"):
+                    target["email2"] = incoming_email
+                elif not target.get("email3"):
+                    target["email3"] = incoming_email
+                elif not target.get("email4"):
+                    target["email4"] = incoming_email
+                target["alternate_emails"] = float(len([e for e in [target.get("email2"), target.get("email3"), target.get("email4")] if e]))
+
+        # 6. Recompute scores to reflect enriched data
+        from .data_normalizer import calculate_scores
+        target.update(calculate_scores(target))

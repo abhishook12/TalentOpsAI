@@ -420,6 +420,14 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                     if not recipient or recipient.status == CampaignRecruiterStatus.cancelled.value:
                         return False
                     
+                    # Idempotency guard: If an active sending log already exists, reuse it rather than duplicating
+                    existing_active_log = db.query(EmailLog).filter(
+                        EmailLog.campaign_recruiter_id == recipient_id,
+                        EmailLog.status == EmailLogStatus.sending.value
+                    ).first()
+                    if existing_active_log:
+                        return existing_active_log.recipient_email, existing_active_log.subject, existing_active_log.body_html, existing_active_log.log_id
+
                     # Mark sending
                     recipient.status = CampaignRecruiterStatus.sending.value
                     recruiter = recipient.recruiter

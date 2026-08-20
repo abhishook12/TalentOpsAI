@@ -15,7 +15,7 @@ def get_enricher_state():
     try:
         with open(STATE_FILE, "r") as f:
             return json.load(f)
-    except:
+    except Exception:
         return {
             "status": "stopped",
             "records_processed": 0,

@@ -418,17 +418,17 @@ export default function Campaigns() {
   // ─────────────────────────────────────────────────────────────────────────────
   // Workspace open/close helpers
   // ─────────────────────────────────────────────────────────────────────────────
-  const startNewCampaign = useCallback(() => {
+  const startNewCampaign = useCallback((initialTemplate = null) => {
     setActiveCampaignId(null);
-    setCampaignName('New Campaign');
-    setSubject('');
-    setBody('');
+    setCampaignName(initialTemplate?.name || 'New Campaign');
+    setSubject(initialTemplate?.subject || '');
+    setBody(initialTemplate?.html_body || initialTemplate?.text_body || initialTemplate?.body || '');
     setSignatureId(null);
     setSenderAccountId(null);
     setFromEmail('');
     setValidatedRecipients({ recipients: [], valid_count: 0 });
     setPreflightData(null);
-    setChecks({ sender: 'idle', recipients: 'idle', template: 'idle', bridge: 'idle' });
+    setChecks({ sender: 'idle', recipients: 'idle', template: (initialTemplate?.subject || initialTemplate?.body) ? 'ok' : 'idle', bridge: 'idle' });
     setWorkspaceMode('compose');
     setLastSaved(null);
     setView('workspace');
@@ -752,7 +752,7 @@ export default function Campaigns() {
 
         {/* Modals */}
         {showTemplateLibrary && (
-          <TemplateLibraryModal isOpen onClose={() => setShowTemplateLibrary(false)} onImport={(t) => { handleTemplateImport(t); setShowTemplateLibrary(false); startNewCampaign(); }} />
+          <TemplateLibraryModal isOpen onClose={() => setShowTemplateLibrary(false)} onImport={(t) => { startNewCampaign(t); setShowTemplateLibrary(false); }} />
         )}
       </div>
     );

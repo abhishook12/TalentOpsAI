@@ -16,6 +16,7 @@ const createClient = (baseURL) => {
       baseURL,
       withCredentials: true,
       headers: { 'Content-Type': 'application/json' },
+      timeout: 30000,
     }))
   }
   return clientCache.get(baseURL)
@@ -53,6 +54,41 @@ const isRetryableError = (error) => {
     || status === 504
 }
 
+let isRefreshing = false
+let refreshSubscribers = []
+
+function subscribeTokenRefresh(cb) {
+  refreshSubscribers.push(cb)
+}
+
+function onRefreshed(error) {
+  refreshSubscribers.forEach(cb => cb(error))
+  refreshSubscribers = []
+}
+
+async function trySilentRefresh() {
+  if (isRefreshing) {
+    return new Promise((resolve, reject) => {
+      subscribeTokenRefresh((err) => {
+        if (err) reject(err)
+        else resolve()
+      })
+    })
+  }
+
+  isRefreshing = true
+  const client = createClient(API)
+  try {
+    await client.post('/auth/refresh')
+    isRefreshing = false
+    onRefreshed(null)
+  } catch (err) {
+    isRefreshing = false
+    onRefreshed(err)
+    throw err
+  }
+}
+
 async function smartRequest(method, url, data, config = {}) {
   const retryable = config.retryable ?? ['get', 'delete', 'head'].includes(method)
   const retryDelayMs = config.retryDelayMs ?? 1200
@@ -60,6 +96,7 @@ async function smartRequest(method, url, data, config = {}) {
   const authToken = getStoredToken()
   let lastError = null
   const client = createClient(API)
+
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
       const requestConfig = { ...config }
@@ -85,7 +122,6 @@ async function smartRequest(method, url, data, config = {}) {
       return await client[method](url, data, requestConfig)
     } catch (error) {
       lastError = error
-      // Don't retry if the request was cancelled
       if (axios.isCancel(error)) {
         throw error
       }
@@ -97,8 +133,18 @@ async function smartRequest(method, url, data, config = {}) {
       if (error.response) {
         const isUnauthorized = error.response.status === 401;
         const isDeviceRevoked = error.response.status === 403 && error.response.data?.detail?.includes('Access Restricted');
-        
-        if (isUnauthorized || isDeviceRevoked) {
+        const isAuthRoute = url.includes('/auth/login') || url.includes('/auth/refresh') || url.includes('/auth/logout') || url.includes('/auth/register');
+
+        if (isUnauthorized && !isAuthRoute && !config._isRetry) {
+          try {
+            await trySilentRefresh()
+            return await smartRequest(method, url, data, { ...config, _isRetry: true })
+          } catch (refreshErr) {
+            if (onUnauthorizedCallback) {
+              onUnauthorizedCallback(error.response.data?.detail);
+            }
+          }
+        } else if (isUnauthorized || isDeviceRevoked) {
           if (onUnauthorizedCallback && !url.includes('/auth/login')) {
             onUnauthorizedCallback(error.response.data?.detail);
           }

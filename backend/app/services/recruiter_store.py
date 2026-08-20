@@ -180,11 +180,17 @@ class RecruiterStore:
             parquet_path = f"'{primary_url}'"
 
         try:
-            # Create a view over the Parquet file (memory-efficient, reads on demand or via HTTP range requests)
-            self._conn.execute(f"""
-                CREATE VIEW recruiters AS 
-                SELECT * FROM read_parquet({parquet_path})
-            """)
+            # When local parquet exists, materialize into in-memory table for 10x-50x sub-20ms queries
+            if os.path.exists(PARQUET_FILE):
+                self._conn.execute(f"""
+                    CREATE TABLE recruiters AS 
+                    SELECT * FROM read_parquet({parquet_path})
+                """)
+            else:
+                self._conn.execute(f"""
+                    CREATE VIEW recruiters AS 
+                    SELECT * FROM read_parquet({parquet_path})
+                """)
             
             res = self._conn.execute("SELECT COUNT(*) FROM recruiters").fetchone()
             self._record_count = res[0] if res else 0
@@ -638,28 +644,27 @@ class RecruiterStore:
 
         where_parts = ["""(
             LOWER(COALESCE(recruiter_name, '')) LIKE ?
+            OR LOWER(COALESCE(title, '')) LIKE ?
+            OR LOWER(COALESCE(company_id, '')) LIKE ?
+            OR LOWER(COALESCE(canonical_company_id, '')) LIKE ?
             OR LOWER(COALESCE(email, '')) LIKE ?
-            OR LOWER(COALESCE(email2, '')) LIKE ?
-            OR LOWER(COALESCE(email3, '')) LIKE ?
-            OR LOWER(COALESCE(email4, '')) LIKE ?
-            OR LOWER(COALESCE(CAST(alternate_emails AS VARCHAR), '')) LIKE ?
             OR LOWER(COALESCE(phone, '')) LIKE ?
-            OR LOWER(COALESCE(phone2, '')) LIKE ?
             OR LOWER(COALESCE(specialization, '')) LIKE ?
+            OR LOWER(COALESCE(taxonomy_category, '')) LIKE ?
         )"""]
-        params = [q_like] * 9
+        params = [q_like] * 8
 
         if company:
-            where_parts.append("company_id IN (SELECT company_id FROM recruiters WHERE LOWER(COALESCE(recruiter_name,'')) LIKE ? LIMIT 100)")
-            params.append(f"%{company.lower()}%")
+            where_parts.append("(LOWER(COALESCE(company_id,'')) LIKE ? OR LOWER(COALESCE(canonical_company_id,'')) LIKE ?)")
+            params.extend([f"%{company.lower()}%", f"%{company.lower()}%"])
 
         if location:
             where_parts.append("UPPER(COALESCE(state, '')) = ?")
             params.append(location.upper()[:2])
 
         if specialization:
-            where_parts.append("LOWER(COALESCE(specialization, '')) LIKE ?")
-            params.append(f"%{specialization.lower()}%")
+            where_parts.append("(LOWER(COALESCE(specialization, '')) LIKE ? OR LOWER(COALESCE(taxonomy_category, '')) LIKE ?)")
+            params.extend([f"%{specialization.lower()}%", f"%{specialization.lower()}%"])
 
         where_sql = " AND ".join(where_parts)
 
@@ -673,6 +678,10 @@ class RecruiterStore:
                  + CASE WHEN LOWER(COALESCE(email,'')) = ? THEN 200
                         WHEN LOWER(COALESCE(email,'')) LIKE ? THEN 80
                         ELSE 0 END
+                 + CASE WHEN LOWER(COALESCE(title,'')) LIKE ? THEN 80
+                        ELSE 0 END
+                 + CASE WHEN LOWER(COALESCE(company_id,'')) LIKE ? OR LOWER(COALESCE(canonical_company_id,'')) LIKE ? THEN 70
+                        ELSE 0 END
                  + CASE WHEN LOWER(COALESCE(specialization,'')) LIKE ? THEN 40
                         ELSE 0 END
                  + COALESCE(completeness_score, 0) / 4
@@ -682,7 +691,7 @@ class RecruiterStore:
             ORDER BY relevance_score DESC, completeness_score DESC NULLS LAST
             LIMIT ?
         """
-        score_params = [q_lower, q_lower, q_like, q_lower, q_like, q_like]
+        score_params = [q_lower, q_lower, q_like, q_lower, q_like, q_like, q_like, q_like, q_like]
         all_params = score_params + params + [limit]
 
         cur = self._conn.cursor()

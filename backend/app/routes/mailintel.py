@@ -113,7 +113,7 @@ def get_domain_reputation(
     con = recruiter_store._conn
     
     # Query top corporate domains directly from DuckDB Parquet
-    top_domains = con.execute(f"""
+    top_domains = con.execute("""
         SELECT 
             LOWER(SPLIT_PART(email, '@', 2)) as domain,
             COUNT(*) as total_emails,
@@ -124,8 +124,8 @@ def get_domain_reputation(
         WHERE email IS NOT NULL AND email LIKE '%@%' AND email NOT LIKE '%@missing.local%'
         GROUP BY 1
         ORDER BY total_emails DESC
-        LIMIT {limit}
-    """).fetchall()
+        LIMIT ?
+    """, [limit]).fetchall()
     
     results = []
     for d in top_domains:

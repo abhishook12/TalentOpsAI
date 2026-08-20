@@ -6,6 +6,7 @@ import json
 
 from ..database import get_db
 from ..models.models import ActionLog
+from ..services.auth_service import get_optional_current_user
 
 router = APIRouter()
 
@@ -17,14 +18,14 @@ class ActionLogPayload(BaseModel):
 
 
 @router.post("/log")
-def log_action(payload: ActionLogPayload, request: Request, db: Session = Depends(get_db)):
+def log_action(payload: ActionLogPayload, request: Request, db: Session = Depends(get_db), current_user = Depends(get_optional_current_user)):
     action_type = (payload.action_type or "").strip()
     if not action_type or len(action_type) > 100:
         raise HTTPException(status_code=400, detail="Invalid action_type")
     if payload.status not in ("success", "failed", "warning"):
         raise HTTPException(status_code=400, detail="Invalid status")
 
-    user_email = request.headers.get("X-User-Email", "Anonymous")
+    user_email = current_user.email if current_user else request.headers.get("X-User-Email", "Anonymous")
     session_id = request.headers.get("X-Session-ID")
     ip_address = request.client.host if request.client else None
 

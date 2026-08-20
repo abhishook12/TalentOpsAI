@@ -1,0 +1,3127 @@
+[
+  {
+    "index": 1,
+    "company": "Rabun Enterprise Solutions",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 2,
+    "company": "ACS Professional Staffing",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 6,
+    "samples": [
+      {
+        "recruiter_name": "Carl Pache",
+        "email": "carl@professional-insight.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Karen Roberson",
+        "email": "karen@professional-insight.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Andreas Economopoulos",
+        "email": "andreas@professional-insight.com",
+        "title": "",
+        "location": ""
+      }
+    ]
+  },
+  {
+    "index": 3,
+    "company": "Adastra",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 4,
+    "company": "Global Path Resources, Inc.",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 5,
+    "company": "The Bolton Group",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 1,
+    "samples": [
+      {
+        "recruiter_name": "Sean McCoy",
+        "email": "smccoy@boltongroup.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 6,
+    "company": "SilverSearch, Inc",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Silversearch"
+    ],
+    "domains": [
+      "silversearch.com.au"
+    ],
+    "recruiter_count": 25,
+    "samples": [
+      {
+        "recruiter_name": "Mandy",
+        "email": "mandy@silversearch.com.au",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Mandy",
+        "email": "mandy@silversearch.com.au",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Mandy",
+        "email": "mandy@silversearch.com.au",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Marge Meyer",
+        "email": "marge@silversearchinc.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Andrea Hirsch",
+        "email": "andrea@silversearchinc.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Amy Denen",
+        "email": "adenenberg@silversearchinc.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 7,
+    "company": "Bull City Talent Group",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Bullcitytalent"
+    ],
+    "domains": [
+      "bullcitytalent.com"
+    ],
+    "recruiter_count": 56,
+    "samples": [
+      {
+        "recruiter_name": "",
+        "email": "simonm@bullcitytalent.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "",
+        "email": "nicholasb@bullcitytalent.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "",
+        "email": "paulg@bullcitytalent.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Brett Roberson",
+        "email": "brettr@bullcitytalent.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Chris Karaces",
+        "email": "chrisk@bullcitytalent.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Nicole Restivo",
+        "email": "nicoler@bullcitytalent.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 8,
+    "company": "The Doyle Group",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 4,
+    "samples": [
+      {
+        "recruiter_name": "Gene Dvoretsky",
+        "email": "gene@doylegroup-it.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Lisa Anderson",
+        "email": "lisa@doylegroup-it.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Brook King",
+        "email": "brook@doylegroup-it.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 9,
+    "company": "Incendia Partners",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Incendia"
+    ],
+    "domains": [
+      "incendia.com",
+      "incendia.com;hemison",
+      "incendia.co"
+    ],
+    "recruiter_count": 63,
+    "samples": [
+      {
+        "recruiter_name": "",
+        "email": "hemison@incendia.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "",
+        "email": "kanderson@incendia.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "",
+        "email": "ndailey@incendia.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Bitahi",
+        "email": "mbitahi@incendia.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "David Lavielle",
+        "email": "dlavielle@incendia.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Taanisha Kashyap",
+        "email": "tkashyap@incendia.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 10,
+    "company": "Talution Group",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Talution"
+    ],
+    "domains": [
+      "talution.com; kevszat",
+      "talution.com"
+    ],
+    "recruiter_count": 58,
+    "samples": [
+      {
+        "recruiter_name": "Kevin",
+        "email": "kkrumm@talution.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Eddie",
+        "email": "egreen@talution.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Kevin",
+        "email": "kkluge@talution.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Jason",
+        "email": "jstarck@talution.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "will redmond",
+        "email": "wredmond@oprecruiting.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Rich Drennen",
+        "email": "rdrennen@talution.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 11,
+    "company": "Albano Systems, Inc.",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 1,
+    "samples": [
+      {
+        "recruiter_name": "Stephanie Prattson",
+        "email": "sprattson@albanosystems.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 12,
+    "company": "Geeks on Site",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 13,
+    "company": "Marchon Partners",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 11,
+    "samples": [
+      {
+        "recruiter_name": "Cody Verge",
+        "email": "cverge@marchonpartners.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Garrett Saparnis",
+        "email": "garrett@claritystaffing.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Gigi Issa",
+        "email": "gissa@marchonpartners.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 14,
+    "company": "Valiant Harbor International, LLC",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Valiantharbor"
+    ],
+    "domains": [
+      "valiantharbor.com"
+    ],
+    "recruiter_count": 4,
+    "samples": [
+      {
+        "recruiter_name": "Thomas Walsh",
+        "email": "tfwalsh3@valiantharbor.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Thomas Walsh",
+        "email": "tfwalsh3@valiantharbor.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Thomas Walsh",
+        "email": "tfwalsh3@valiantharbor.com",
+        "title": "",
+        "location": ""
+      }
+    ]
+  },
+  {
+    "index": 15,
+    "company": "BravoTECH",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Bravotech"
+    ],
+    "domains": [
+      "bravotech.com",
+      "bravotech.com;bjones",
+      "bravotech.com; dvieregge"
+    ],
+    "recruiter_count": 98,
+    "samples": [
+      {
+        "recruiter_name": "Jay Freeman",
+        "email": "jfreeman@bravotech.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Kimie Kirkland",
+        "email": "kkirkland@bravotech.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Logan Ridgley",
+        "email": "lridgley@bravotech.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Angela Hardemon",
+        "email": "ahardemon@bravotech.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Eric Scrivner",
+        "email": "escrivner@bravotech.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Hailey Pacha",
+        "email": "hpacha@bravotech.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 16,
+    "company": "ETHOS - Talent & Advisory",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 17,
+    "company": "Reperio Human Capital",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Reperiohumancapital"
+    ],
+    "domains": [
+      "reperiohumancapital.com"
+    ],
+    "recruiter_count": 3,
+    "samples": [
+      {
+        "recruiter_name": "Alston Santana",
+        "email": "alston@reperiohumancapital.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Daniel Brown",
+        "email": "d.brown@reperiohc.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Gerard McGirr",
+        "email": "g.mcgirr@reperiohc.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 18,
+    "company": "Resourceful",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 19,
+    "company": "Catapult Federal Services",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 20,
+    "company": "IT Staffing, Inc",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 5,
+    "samples": [
+      {
+        "recruiter_name": "Sheetal",
+        "email": "schaoji@itassociatesinc.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Robert",
+        "email": "rcarpenter@it-rs.net",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Matt Rose",
+        "email": "mrose@itresourcescorp.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 21,
+    "company": "Alleare Consulting, LLC",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 22,
+    "company": "The Structures Company, LLC",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 1,
+    "samples": [
+      {
+        "recruiter_name": "Kimra Stone",
+        "email": "kimra.stone@thestructurescompany.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 23,
+    "company": "Hire Hangar Global",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Hirehangar"
+    ],
+    "domains": [
+      "hirehangar.com"
+    ],
+    "recruiter_count": 3,
+    "samples": [
+      {
+        "recruiter_name": "Nick Dowdle",
+        "email": "nick@hirehangar.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Nick Dowdle",
+        "email": "nick@hirehangar.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Nick Dowdle",
+        "email": "nick@hirehangar.com",
+        "title": "",
+        "location": ""
+      }
+    ]
+  },
+  {
+    "index": 24,
+    "company": "Blue Star Partners",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Bluestarsearch",
+      "Bluestarpartners"
+    ],
+    "domains": [
+      "bluestarsearch.com",
+      "bluestarpartners.com"
+    ],
+    "recruiter_count": 45,
+    "samples": [
+      {
+        "recruiter_name": "Jon",
+        "email": "jon@bluestarsearch.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Bob Matoesian",
+        "email": "bmatoesian@bluestarpartners.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Christopher House",
+        "email": "chouse@bluestarpartners.com",
+        "title": "",
+        "location": ""
+      }
+    ]
+  },
+  {
+    "index": 25,
+    "company": "ContractStaffingRecruiters.com",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Contractstaffingrecruiters"
+    ],
+    "domains": [
+      "contractstaffingrecruiters.com",
+      "contractstaffingrecruiters.com; mtoohey"
+    ],
+    "recruiter_count": 19,
+    "samples": [
+      {
+        "recruiter_name": "M. Toohey",
+        "email": "mtoohey@contractstaffingrecruiters.com",
+        "title": "Talent Acquisition Specialist",
+        "location": "Bridgeport, CT"
+      },
+      {
+        "recruiter_name": "Mike Toohey",
+        "email": "mtoohey@contractstaffingrecruiters.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Mike Toohey",
+        "email": "mtoohey@contractstaffingrecruiters.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Mike Toohey",
+        "email": "mtoohey@contractstaffingrecruiters.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 26,
+    "company": "Crossfire Consulting",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 6,
+    "samples": [
+      {
+        "recruiter_name": "Bruce Makowsky",
+        "email": "bruce@crossfireconsulting.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Ashley Andreasen",
+        "email": "andreasen@crossfireconsulting.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Cheryl DeSomma",
+        "email": NaN,
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 27,
+    "company": "Premier Resources Group (PRG)",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 30,
+    "samples": [
+      {
+        "recruiter_name": "Kristin",
+        "email": "kristiny@premier-one.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Kory",
+        "email": "koryk@premier-one.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Julie",
+        "email": "julief@premier-one.com",
+        "title": "",
+        "location": ""
+      }
+    ]
+  },
+  {
+    "index": 28,
+    "company": "BTerminal Systems",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 29,
+    "company": "EDGE Services, Inc",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 1,
+    "samples": [
+      {
+        "recruiter_name": "Antony Paul",
+        "email": "antony.paul@edgeservices.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 30,
+    "company": "Marathon TS",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Marathonts"
+    ],
+    "domains": [
+      "marathonts.com",
+      "marathonts.com; elgutier",
+      "marathonts.com; jlewis"
+    ],
+    "recruiter_count": 82,
+    "samples": [
+      {
+        "recruiter_name": "",
+        "email": "igriggs@marathonts.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "",
+        "email": "jhoward@marathonts.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "",
+        "email": "kdavis@marathonts.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Andrew Tessier",
+        "email": "atessier@marathonts.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Andrew Greenawalt",
+        "email": "agreenawalt@marathonts.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Unknown",
+        "email": "ahellinger@marathonts.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 31,
+    "company": "Applied Resource Group",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Appliedresourcegroupservices"
+    ],
+    "domains": [
+      "appliedresourcegroupservices.com"
+    ],
+    "recruiter_count": 41,
+    "samples": [
+      {
+        "recruiter_name": "Jordyn",
+        "email": "jherron@appliedresourcegroupservices.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Sydney",
+        "email": "svelde@appliedresourcegroupservices.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Matthew",
+        "email": "mlindgren@appliedresourcegroupservices.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Michael",
+        "email": "michael.matejick@appliedrg.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 32,
+    "company": "Marketeq Talent",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 33,
+    "company": "CorSource",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Corsource"
+    ],
+    "domains": [
+      "corsource.com"
+    ],
+    "recruiter_count": 52,
+    "samples": [
+      {
+        "recruiter_name": "",
+        "email": "rpasco@corsource.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "E. Halladay",
+        "email": "ehalladay@corsource.com",
+        "title": "",
+        "location": "United States"
+      },
+      {
+        "recruiter_name": "W. Dye",
+        "email": "wdye@corsource.com",
+        "title": "",
+        "location": "United States"
+      },
+      {
+        "recruiter_name": "Unknown",
+        "email": "rpasco@corsource.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Lenmar Consulting Inc",
+        "email": "cgarduque@corsource.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 34,
+    "company": "The Brixton Group",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Brixton"
+    ],
+    "domains": [
+      "brixton.net"
+    ],
+    "recruiter_count": 61,
+    "samples": [
+      {
+        "recruiter_name": "Andrew",
+        "email": "asobel@brixton.net",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Brooke",
+        "email": "brooke.yates@brixton.net",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Matt",
+        "email": "matt@brixton.net",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Nagesh",
+        "email": "nagesh@brixton.net",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Allison Cox",
+        "email": "allison.cox@brixton.net",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Maranada",
+        "email": "maranda@brixton.net",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 35,
+    "company": "SoloPoint Solutions",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 36,
+    "company": "C&G Consulting Services, Inc",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Randstadtechnology",
+      "Ravenridgegroup",
+      "Redglobal"
+    ],
+    "domains": [
+      "randstadtechnology.com",
+      "ravenridgegroup.com",
+      "redglobal.com"
+    ],
+    "recruiter_count": 58,
+    "samples": [
+      {
+        "recruiter_name": "Brock",
+        "email": "brock.d@randstadtechnology.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Karina",
+        "email": "karina.charland@randstadtechnology.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Nick",
+        "email": "nick.dye@randstadtechnology.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Chris Cattano",
+        "email": "ccattano@cgcsinc.net",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Jon McKeever",
+        "email": "jon@cgcsinc.net",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Michael Prainito",
+        "email": "mikep@cgcsinc.net",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 37,
+    "company": "ERP Recruiting, LLC",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Erprecruiting"
+    ],
+    "domains": [
+      "erprecruiting.com"
+    ],
+    "recruiter_count": 17,
+    "samples": [
+      {
+        "recruiter_name": "Robert Half",
+        "email": "rob.harris@erprecruiting.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Robert Half",
+        "email": "rob.harris@erprecruiting.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Rob Harris",
+        "email": "rob.harris@erprecruiting.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Rob",
+        "email": "rob.harris@erprecruiting.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 38,
+    "company": "Entegee",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Entegee"
+    ],
+    "domains": [
+      "entegee.com",
+      "entegee.com; blakejones91792",
+      "entegee.com; joebonfiglio"
+    ],
+    "recruiter_count": 168,
+    "samples": [
+      {
+        "recruiter_name": "Andrew Becker",
+        "email": "andrew.becker@entegee.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Chase L.",
+        "email": "chase.l.@entegee.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Joseph Dwinell",
+        "email": "joseph.dwinell@entegee.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "David Baio",
+        "email": "david.baio@entegee.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Phillip Vaillancourt",
+        "email": "phillip.vaillancourt@nerjobs.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Shaun Needle",
+        "email": "shaun.needle@entegee.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 39,
+    "company": "Gruntwork",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Gruntwork"
+    ],
+    "domains": [
+      "gruntwork.io"
+    ],
+    "recruiter_count": 3,
+    "samples": [
+      {
+        "recruiter_name": "Tin",
+        "email": "tin@gruntwork.io",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Zach Goldberg",
+        "email": "zach@gruntwork.io",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Monica Chun",
+        "email": "monica@gruntwork.io",
+        "title": "",
+        "location": ""
+      }
+    ]
+  },
+  {
+    "index": 40,
+    "company": "EVONA",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Evona"
+    ],
+    "domains": [
+      "evona.com"
+    ],
+    "recruiter_count": 50,
+    "samples": [
+      {
+        "recruiter_name": "Anthony",
+        "email": "a.liu@evona.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Jack",
+        "email": "j.madley@evona.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Ryan",
+        "email": "r.hill@evona.com",
+        "title": "",
+        "location": ""
+      }
+    ]
+  },
+  {
+    "index": 41,
+    "company": "Lunova Group",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 42,
+    "company": "FuseGlobal",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Fuseglobal"
+    ],
+    "domains": [
+      "fuseglobal.com; jameshatheway",
+      "fuseglobal.com",
+      "fuseglobal.com; krismin4"
+    ],
+    "recruiter_count": 50,
+    "samples": [
+      {
+        "recruiter_name": "",
+        "email": "james@fuseglobal.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "J. Ames",
+        "email": "james@fuseglobal.com",
+        "title": "Talent Acquisition Specialist",
+        "location": "Austin, TX"
+      },
+      {
+        "recruiter_name": "James Hatheway",
+        "email": "james@fuseglobal.com",
+        "title": "",
+        "location": ""
+      }
+    ]
+  },
+  {
+    "index": 43,
+    "company": "Linksap Europe Ltd",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 44,
+    "company": "Acceler8 Talent",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 45,
+    "company": "Apogee Global RMS",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Apogeeglobalrms"
+    ],
+    "domains": [
+      "apogeeglobalrms.io",
+      "apogeeglobalrms.com"
+    ],
+    "recruiter_count": 41,
+    "samples": [
+      {
+        "recruiter_name": "Felicia",
+        "email": "felicia@apogeeglobalrms.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Cynthia",
+        "email": "cynthia@apogeeglobalrms.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "M.",
+        "email": "m@apogeeglobalrms.com",
+        "title": "",
+        "location": ""
+      }
+    ]
+  },
+  {
+    "index": 46,
+    "company": "WorkGenius Group",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Workgenius"
+    ],
+    "domains": [
+      "workgenius.com)",
+      "workgenius.com; dawn",
+      "workgenius.com"
+    ],
+    "recruiter_count": 50,
+    "samples": [
+      {
+        "recruiter_name": "Erica",
+        "email": "ezucker@workgenius.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Lindsay",
+        "email": "lcain@workgenius.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Daniel",
+        "email": "dbarke@workgenius.com",
+        "title": "",
+        "location": ""
+      }
+    ]
+  },
+  {
+    "index": 47,
+    "company": "DCI Resources, LLC - Pending 8(a) Certified Company",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 48,
+    "company": "Mainz Brady Group",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Mainzbradygroup"
+    ],
+    "domains": [
+      "mainzbradygroup.com"
+    ],
+    "recruiter_count": 53,
+    "samples": [
+      {
+        "recruiter_name": "",
+        "email": "nicole@mainzbradygroup.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Jazmin",
+        "email": "jestrada@mainzbradygroup.com",
+        "title": "",
+        "location": "Oakland, CA"
+      },
+      {
+        "recruiter_name": "Graym",
+        "email": "gs@mainzbradygroup.com",
+        "title": "",
+        "location": "Oakland, CA"
+      },
+      {
+        "recruiter_name": "Edgar Sotelo",
+        "email": "edgar@mbg.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Tony Chu",
+        "email": "tchu@mbg.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Alex Stokes",
+        "email": "astokes@mbg.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 49,
+    "company": "e&e IT Consulting Services, Inc.",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Ransecurity",
+      "Recru It",
+      "Recruiter"
+    ],
+    "domains": [
+      "ransecurity.com",
+      "recru-it.co.za",
+      "recruiter.com"
+    ],
+    "recruiter_count": 52,
+    "samples": [
+      {
+        "recruiter_name": "Recruiters Plus",
+        "email": "nikki@recruitersplus.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Zami Lam",
+        "email": "zami.lam@riseits.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "",
+        "email": "sharmila@riseits.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Michael Lane",
+        "email": "mlane@ene-it-consulting.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Salim Powell",
+        "email": "spowell@ene-it-consulting.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 50,
+    "company": "PM Solutions / PM College",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 51,
+    "company": "Turnberry Solutions",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Turnberry Solutions"
+    ],
+    "domains": [
+      "turnberry solutions.com"
+    ],
+    "recruiter_count": 90,
+    "samples": [
+      {
+        "recruiter_name": "Rick",
+        "email": "",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Amy",
+        "email": "",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Heather",
+        "email": "",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Dan Price",
+        "email": "dprice@turnberrysolutions.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Regina Bari",
+        "email": "rbari@turnberrysolutions.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Brandon Becker",
+        "email": "brandon.becker@turnberrysolutions.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 52,
+    "company": "DBI Staffing",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 53,
+    "company": "Rylex",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 54,
+    "company": "ConsultUSA",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Consultusa"
+    ],
+    "domains": [
+      "consultusa.com"
+    ],
+    "recruiter_count": 63,
+    "samples": [
+      {
+        "recruiter_name": "Marissa Ray",
+        "email": "marissa.ray@consultusa.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Adam Bechtel",
+        "email": "adam.bechtel@consultusa.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Amanda Steve",
+        "email": "amanda.steve@consultusa.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Neika Powell",
+        "email": "bhparser@consultusa.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Marissa Ray",
+        "email": "marissa.ray@consultusa.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "David Fossick",
+        "email": "david.fossick@consultusa.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 55,
+    "company": "Patriot Technical Consulting",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Patriot Consulting",
+      "Patriot"
+    ],
+    "domains": [
+      "patriot-consulting.com",
+      "patriot.dev"
+    ],
+    "recruiter_count": 30,
+    "samples": [
+      {
+        "recruiter_name": "Nicole Piscopo",
+        "email": "nicole.piscopo@patriot-consulting.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Patrick Bagnell",
+        "email": "patrick.bagnell@patriot-consulting.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Nicole Piscopo",
+        "email": "nicole.piscopo@patriot-consulting.com",
+        "title": "Talent Acquisition Specialist",
+        "location": "Camden, NJ"
+      },
+      {
+        "recruiter_name": "Amy Lovelace",
+        "email": "alovelace@patriottalent.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Sarah Narramore",
+        "email": "snarramore@patriottalent.com",
+        "title": "Recruiting Manager",
+        "location": "Kingston, Tennessee, United States"
+      },
+      {
+        "recruiter_name": "Patriot Consulting",
+        "email": "patrick.bagnell@patriot-consulting.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 56,
+    "company": "Red Oak Technologies",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Red Oak Technologies"
+    ],
+    "domains": [
+      "red oak technologies.com"
+    ],
+    "recruiter_count": 62,
+    "samples": [
+      {
+        "recruiter_name": "Thomas",
+        "email": "",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Corey",
+        "email": "",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Gina",
+        "email": "",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Raj Subbaram",
+        "email": "raj.subbaram@redoaktech.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Andrew Nguyen",
+        "email": "andrew.nguyen@redoaktech.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Bahir eley",
+        "email": "bahir.eley@redoaktech.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 57,
+    "company": "Blackstone Talent Group",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Blackstone Consulting"
+    ],
+    "domains": [
+      "blackstone-consulting.com"
+    ],
+    "recruiter_count": 6,
+    "samples": [
+      {
+        "recruiter_name": "Michelle Gonzalez",
+        "email": "michelle.gonzalez@blackstone-consulting.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Michelle Gonzalez",
+        "email": "michelle.gonzalez@blackstone-consulting.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Michelle",
+        "email": "michelle.gonzalez@blackstone-consulting.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Jorge Lopez",
+        "email": "jorge.lopez@bstonetech.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Jorge Lopez",
+        "email": "jlopz@bstonetech.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Maximillian Bukovich",
+        "email": "mbukovich@bstonetech.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 58,
+    "company": "Adaptive Solutions Group",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 10,
+    "samples": [
+      {
+        "recruiter_name": "Paige Schnoebelen",
+        "email": "paige.schnoebelen@adaptive-digital.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Paige Schnoebelen",
+        "email": "paige.schnoebelen@adaptive-digital.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Paige Schnoebelen",
+        "email": "paige.schnoebelen@adaptive-digital.com",
+        "title": "",
+        "location": ""
+      }
+    ]
+  },
+  {
+    "index": 59,
+    "company": "OCT Consulting LLC",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 60,
+    "company": "Tech 20 Solutions, Inc",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 61,
+    "company": "Covenant HR",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 50,
+    "samples": [
+      {
+        "recruiter_name": "Noah",
+        "email": "noah.meyer@covenant-consulting.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Nate",
+        "email": "nate.meyer@covenant-consulting.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Shannon",
+        "email": "nmcinnis@covenant-consulting.com",
+        "title": "",
+        "location": ""
+      }
+    ]
+  },
+  {
+    "index": 62,
+    "company": "Stockell Consulting",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Stockell"
+    ],
+    "domains": [
+      "stockell.com",
+      "stockell.com;cbarker"
+    ],
+    "recruiter_count": 63,
+    "samples": [
+      {
+        "recruiter_name": "Kevin",
+        "email": "kdemartino@stockell.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Paul",
+        "email": "pwendell@stockell.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Kevin",
+        "email": "kgregory@stockell.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Shirley Rice",
+        "email": "srice@stockell.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Tom McManus",
+        "email": "tmcmanus@stockell.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Caitlin Barker",
+        "email": "cbarker@stockell.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 63,
+    "company": "cloudteam.com",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Cloudteam"
+    ],
+    "domains": [
+      "cloudteam.com"
+    ],
+    "recruiter_count": 31,
+    "samples": [
+      {
+        "recruiter_name": "Innovim Technology Solutions",
+        "email": "anthony@cloudteam.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Innovim Technology Solutions",
+        "email": "anthony@cloudteam.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Joe",
+        "email": "joe@cloudteam.com",
+        "title": "",
+        "location": "CA"
+      },
+      {
+        "recruiter_name": "Innovim Technology Solutions",
+        "email": "anthony@cloudteam.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 64,
+    "company": "Cleartech Recruiting",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 65,
+    "company": "The Norland Group",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 66,
+    "company": "E Quality Corporation",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Qualitytrainingsystems",
+      "Qualitypersonnel",
+      "Qualitystaffingamerica"
+    ],
+    "domains": [
+      "qualitytrainingsystems.com",
+      "qualitypersonnel.org",
+      "qualitystaffingamerica.com"
+    ],
+    "recruiter_count": 11,
+    "samples": [
+      {
+        "recruiter_name": "Christy",
+        "email": "christy@qualitytrainingsystems.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Carolyn",
+        "email": "carolyn@qualitypersonnel.org",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Qualitystaffingamerica",
+        "email": "ken.hakeem@qualitystaffingamerica.com",
+        "title": "",
+        "location": ""
+      }
+    ]
+  },
+  {
+    "index": 67,
+    "company": "Staff Perm",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Staffperm"
+    ],
+    "domains": [
+      "staffperm.com",
+      "staffperm.com; a.anderson"
+    ],
+    "recruiter_count": 37,
+    "samples": [
+      {
+        "recruiter_name": "",
+        "email": "jose@staffperm.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Jose Jaramillo",
+        "email": "jose@staffperm.com",
+        "title": "Talent Acquisition Specialist",
+        "location": "Dallas, TX"
+      },
+      {
+        "recruiter_name": "Jose Jaramillo",
+        "email": "jose@staffperm.com",
+        "title": "",
+        "location": ""
+      }
+    ]
+  },
+  {
+    "index": 68,
+    "company": "SAFTech Software Solutions",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 69,
+    "company": "PSR Associates, Inc.",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 3,
+    "samples": [
+      {
+        "recruiter_name": "John Huenecke",
+        "email": "jhuenecke@psrassociates.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Carlos Rivera",
+        "email": "crivera@psrassociates.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Chris Randall",
+        "email": "crandall@psrassociates.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 70,
+    "company": "Harvest Technical Services, Inc.",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 1,
+    "samples": [
+      {
+        "recruiter_name": "Sheila Perry",
+        "email": "sheila@harvtech.com",
+        "title": "Technical Recruiter",
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 71,
+    "company": "Access Data Consulting Corporation",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 3,
+    "samples": [
+      {
+        "recruiter_name": "Jamie Olberding",
+        "email": "jolberding@adcc.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Ashley Burt",
+        "email": "aburt@adcc.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Kerry Palmer",
+        "email": "kpalmer@adcc.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 72,
+    "company": "Makai Labs",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 73,
+    "company": "Prominent",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 1,
+    "samples": [
+      {
+        "recruiter_name": "Robert Gentile",
+        "email": "robert.gentile@goprominent.com (corporate); robertgentile86@yahoo.com; resavoir8@hotmail.com (personal)",
+        "title": "Recruiting Talent Manager | People Connector | Candidate Experience Advocate | Workforce Development Specialist",
+        "location": "St. Petersburg, Florida, United States"
+      }
+    ]
+  },
+  {
+    "index": 74,
+    "company": "iSphere",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Isphere"
+    ],
+    "domains": [
+      "isphere.net"
+    ],
+    "recruiter_count": 58,
+    "samples": [
+      {
+        "recruiter_name": "",
+        "email": "jtelisky@isphere.net",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "",
+        "email": "jtelisky@isphere.net",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "",
+        "email": "jwesthoff@isphere.net",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Fernando",
+        "email": "fd@isphere.net",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Jill",
+        "email": "jtelisky@isphere.net",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Julie Westhoff",
+        "email": "jwesthoff@isphere.net",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 75,
+    "company": "hackajob",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Hackajob"
+    ],
+    "domains": [
+      "hackajob.co",
+      "hackajob.com"
+    ],
+    "recruiter_count": 50,
+    "samples": [
+      {
+        "recruiter_name": "Jordan Jackson",
+        "email": "nath@hackajob.co",
+        "title": "",
+        "location": "New York, NY"
+      },
+      {
+        "recruiter_name": "Kevin Remmert",
+        "email": "nicoleta@hackajob.co",
+        "title": "",
+        "location": "New York, NY"
+      },
+      {
+        "recruiter_name": "Anass Couqua",
+        "email": "anass.couqua@hackajob.co",
+        "title": "",
+        "location": "New York, NY"
+      }
+    ]
+  },
+  {
+    "index": 76,
+    "company": "IFIT Solutions",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Ifit Solutions"
+    ],
+    "domains": [
+      "ifit-solutions.com"
+    ],
+    "recruiter_count": 50,
+    "samples": [
+      {
+        "recruiter_name": "Joshua Aguero",
+        "email": "joshua.aguero@ifit-solutions.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Yohanna",
+        "email": "yohanna.j.@ifit-solutions.com",
+        "title": "",
+        "location": "London, United Kingdom"
+      },
+      {
+        "recruiter_name": "Joshua Quiros",
+        "email": "joshua.quiros@ifit-solutions.com",
+        "title": "",
+        "location": "London, United Kingdom"
+      }
+    ]
+  },
+  {
+    "index": 77,
+    "company": "Delphi-US, LLC",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Delphi Us"
+    ],
+    "domains": [
+      "delphi-us.com",
+      "delphi-us.co",
+      "delphi-us.com; fin.perkins"
+    ],
+    "recruiter_count": 68,
+    "samples": [
+      {
+        "recruiter_name": "",
+        "email": "alanieri@delphi-us.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "",
+        "email": "gfotopoulos@delphi-us.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "",
+        "email": "mfurtado@delphi-us.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Ana Bartlett",
+        "email": "abartlett@delphi-us.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Jon Samolis",
+        "email": "jsamolis@delphi-us.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Megan",
+        "email": "mklein@delphi-us.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 78,
+    "company": "IntePros",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Intepros"
+    ],
+    "domains": [
+      "intepros.com; ainelavin01",
+      "intepros.com"
+    ],
+    "recruiter_count": 123,
+    "samples": [
+      {
+        "recruiter_name": "",
+        "email": "bvolek@intepros.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "",
+        "email": "bvolek@intepros.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "",
+        "email": "vangelone@intepros.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Daniel stokes",
+        "email": "dstokes@intepros.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Elizabeth Smith",
+        "email": "esmith@intepros.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "John",
+        "email": "jwehner@intepros.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 79,
+    "company": "Smith Arnold Partners",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Smitharnold"
+    ],
+    "domains": [
+      "smitharnold.com"
+    ],
+    "recruiter_count": 52,
+    "samples": [
+      {
+        "recruiter_name": "Mason",
+        "email": "mrosenberg@smitharnold.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Jason",
+        "email": "jyoung@smitharnold.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Rich",
+        "email": "rgold@smitharnold.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Unknown",
+        "email": "acapacho@smitharnold.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Smith Arnold Partners",
+        "email": "marnold@smitharnold.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 80,
+    "company": "Prospectus IT Recruitment",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 81,
+    "company": "Outlier Mentors",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 82,
+    "company": "Swoon",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 29,
+    "samples": [
+      {
+        "recruiter_name": "Angela Vincent",
+        "email": "angela.vincent@swoonstaffing.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Ashley Park",
+        "email": "ashley.park@swoonstaffing.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Nathan",
+        "email": "nathan.crooks@swoonstaffing.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 83,
+    "company": "Career Developers, Inc.",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Careerdevelopers"
+    ],
+    "domains": [
+      "careerdevelopers.com",
+      "careerdevelopers.co"
+    ],
+    "recruiter_count": 66,
+    "samples": [
+      {
+        "recruiter_name": "",
+        "email": "vpichardo@careerdevelopers.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "",
+        "email": "vpichardo@careerdevelopers.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "",
+        "email": "joe@careerdevelopers.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Courtney Martin",
+        "email": "cmartin@careerdevelopers.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Joe Destro",
+        "email": "joe@careerdevelopers.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Tony Yosco",
+        "email": "tony@careerdevelopers.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 84,
+    "company": "SOLTECHPR",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 85,
+    "company": "Technical-Link N. America",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 2,
+    "samples": [
+      {
+        "recruiter_name": "Adam",
+        "email": "ajustus@technical-link.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Lekenzey",
+        "email": "lekenzey@technical-link.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 86,
+    "company": "Alderson Loop",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Aldersonloop"
+    ],
+    "domains": [
+      "aldersonloop.com"
+    ],
+    "recruiter_count": 80,
+    "samples": [
+      {
+        "recruiter_name": "Alex Barone",
+        "email": "alex.barone@aldersonloop.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Dan Policelli",
+        "email": "dan.policelli@aldersonloop.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Connor Lulay",
+        "email": "connor.lulay@aldersonloop.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "James Hoffman",
+        "email": "james.hoffman@aldersonloop.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Beacon Hill Staffing",
+        "email": "keith.jackson@aldersonloop.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Alderson Loop",
+        "email": "sarah.alaoui@aldersonloop.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 87,
+    "company": "TJ Consulting Group",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 88,
+    "company": "IDR, Inc.",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Idr Inc",
+      "Idr"
+    ],
+    "domains": [
+      "idr-inc.com'",
+      "idr-inc.com;ccarter",
+      "idr-inc.com;hmelkerson"
+    ],
+    "recruiter_count": 294,
+    "samples": [
+      {
+        "recruiter_name": "Terae",
+        "email": "terae@idr-inc.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Kristin",
+        "email": "kristin@idr-inc.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Alex",
+        "email": "alex@idr-inc.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Ben Gillitzer",
+        "email": "bgillitzer@idr-inc.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Blair",
+        "email": "brobinson@idr-inc.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Chelsea Johnson",
+        "email": "cjohnson@idr-inc.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 89,
+    "company": "The Hiring Group",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 1,
+    "samples": [
+      {
+        "recruiter_name": "Brooks Israel",
+        "email": "bisrael@thehiringgroup.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 90,
+    "company": "TrustNet Technologies",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 91,
+    "company": "Workforce Connections",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Workforce Connections"
+    ],
+    "domains": [
+      "workforce-connections.com",
+      "workforce-connections.com; leaton"
+    ],
+    "recruiter_count": 51,
+    "samples": [
+      {
+        "recruiter_name": "Rachelle",
+        "email": "rbauer@workforce-connections.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Julie",
+        "email": "jrives@workforce-connections.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Jennifer",
+        "email": "jbalenti@workforce-connections.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Julie Rives",
+        "email": "jrives@workforce-connections.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 92,
+    "company": "Innovatus Technology Consulting",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 1,
+    "samples": [
+      {
+        "recruiter_name": "Innovatus-Tech",
+        "email": "josh.lumley@innovatus-tech.com",
+        "title": "",
+        "location": ""
+      }
+    ]
+  },
+  {
+    "index": 93,
+    "company": "Magee Resource Group",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Mageeresource"
+    ],
+    "domains": [
+      "mageeresource.com"
+    ],
+    "recruiter_count": 62,
+    "samples": [
+      {
+        "recruiter_name": "",
+        "email": "jmaxwell@mageeresource.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "",
+        "email": "csimmons@mageeresource.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "",
+        "email": "twoods@mageeresource.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Unknown",
+        "email": "ageresola@mageeresource.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Unknown",
+        "email": "cculpepper@mageeresource.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Unknown",
+        "email": "cestes@mageeresource.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 94,
+    "company": "The E Group.",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 2,
+    "samples": [
+      {
+        "recruiter_name": "Allison Hicklen",
+        "email": "allison@goegroup.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Evelyn Griffin Collins",
+        "email": "evelyn@goegroup.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 95,
+    "company": "Motivf",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Motivf"
+    ],
+    "domains": [
+      "motivf.com"
+    ],
+    "recruiter_count": 1,
+    "samples": [
+      {
+        "recruiter_name": "Motivf",
+        "email": "julie@motivf.com",
+        "title": "",
+        "location": ""
+      }
+    ]
+  },
+  {
+    "index": 96,
+    "company": "ProspHire",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 97,
+    "company": "MeeBoss",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Meeboss"
+    ],
+    "domains": [
+      "meeboss.com"
+    ],
+    "recruiter_count": 2,
+    "samples": [
+      {
+        "recruiter_name": "Tristen Resnick",
+        "email": "tristen@meeboss.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Tristen Resnick",
+        "email": "tristen@meeboss.com",
+        "title": "",
+        "location": ""
+      }
+    ]
+  },
+  {
+    "index": 98,
+    "company": "People4Net Inc",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 99,
+    "company": "Interactive Resources - iR",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 100,
+    "company": "ASAP Talent Services, a VMG Company",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Asap"
+    ],
+    "domains": [
+      "asap.us.com; joshua.underwood",
+      "asap.us.com"
+    ],
+    "recruiter_count": 51,
+    "samples": [
+      {
+        "recruiter_name": "Joshua Underwood",
+        "email": "joshuaunderwood@asap.us.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Joshua Underwood",
+        "email": "",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Frederick",
+        "email": "frederickhasben@asap.us.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Carrie Gunn",
+        "email": "cgunn@myasap.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 101,
+    "company": "Technical Source",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Source Technology"
+    ],
+    "domains": [
+      "source-technology.com"
+    ],
+    "recruiter_count": 69,
+    "samples": [
+      {
+        "recruiter_name": "Jordan",
+        "email": "jordan@source-technology.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Tara",
+        "email": "tara@source-technology.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Chinelle",
+        "email": "chinelle@source-technology.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Jordan Clement",
+        "email": "jordan@agreatersource.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Shakara Rose",
+        "email": "shakara@source-technology.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Jasmine Johnson",
+        "email": "jasmine.johnson@source-technology.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 102,
+    "company": "UpRecruit",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Uprecruit"
+    ],
+    "domains": [
+      "uprecruit.com"
+    ],
+    "recruiter_count": 50,
+    "samples": [
+      {
+        "recruiter_name": "Maria",
+        "email": "maria@uprecruit.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Kierra",
+        "email": "kierra@uprecruit.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Marcus",
+        "email": "marcus@uprecruit.com",
+        "title": "",
+        "location": ""
+      }
+    ]
+  },
+  {
+    "index": 103,
+    "company": "Object Data Inc",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 104,
+    "company": "ClearBridge Technology Group",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Clearbridge"
+    ],
+    "domains": [
+      "clearbridge.com"
+    ],
+    "recruiter_count": 46,
+    "samples": [
+      {
+        "recruiter_name": "Tim",
+        "email": "timmcgeown@clearbridge.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Lisa",
+        "email": "lisarecupero@clearbridge.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Brett",
+        "email": "bretttrepsas@clearbridge.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Aaron Lawrence",
+        "email": "alawrence@clearbridgetech.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Adam",
+        "email": "aobrien@clearbridgetech.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Adyant",
+        "email": "amishra@clearbridgetech.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 105,
+    "company": "Full Cycle Services",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 106,
+    "company": "Apera",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Apera"
+    ],
+    "domains": [
+      "apera.co"
+    ],
+    "recruiter_count": 1,
+    "samples": [
+      {
+        "recruiter_name": "Casey Ryan",
+        "email": "c.ryan@apera.co",
+        "title": "",
+        "location": ""
+      }
+    ]
+  },
+  {
+    "index": 107,
+    "company": "Iceberg",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 108,
+    "company": "Hollstadt Consulting",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Hollstadt"
+    ],
+    "domains": [
+      "hollstadt.com; nlock",
+      "hollstadt.com",
+      "hollstadt.com(given)"
+    ],
+    "recruiter_count": 65,
+    "samples": [
+      {
+        "recruiter_name": "Adolph",
+        "email": "arabe@hollstadt.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Margaret",
+        "email": "mcarlson@hollstadt.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Larry",
+        "email": "lsakkinen@hollstadt.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "elisa",
+        "email": "ecoequyt@hollstadt.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Gogo Nyadze Ndara",
+        "email": "gndara@hollstadt.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Unknown",
+        "email": "taljets@hollstadt.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 109,
+    "company": "XMS Solutions, Inc.",
+    "status": "NOT_FOUND",
+    "matched_names": [],
+    "domains": [],
+    "recruiter_count": 0,
+    "samples": []
+  },
+  {
+    "index": 110,
+    "company": "Spyglass Partners, LLC",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Spyglass"
+    ],
+    "domains": [
+      "spyglass.net"
+    ],
+    "recruiter_count": 64,
+    "samples": [
+      {
+        "recruiter_name": "Keegan",
+        "email": "kvogley@spyglass.net",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Chris",
+        "email": "cbox@spyglass.net",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Samuel",
+        "email": "ssummers@spyglass.net",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Scott Andersen",
+        "email": "sandersen@spyglasscorp.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Holly Peterson",
+        "email": "hpeterson@spyglasspartners.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Warren Markowsky",
+        "email": "wmarkowsky@spyglasspartners.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  },
+  {
+    "index": 111,
+    "company": "Patriot Talent Solutions",
+    "status": "ALREADY_EXISTS",
+    "matched_names": [
+      "Patriot Consulting",
+      "Patriot"
+    ],
+    "domains": [
+      "patriot-consulting.com",
+      "patriot.dev"
+    ],
+    "recruiter_count": 30,
+    "samples": [
+      {
+        "recruiter_name": "Nicole Piscopo",
+        "email": "nicole.piscopo@patriot-consulting.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Patrick Bagnell",
+        "email": "patrick.bagnell@patriot-consulting.com",
+        "title": "",
+        "location": ""
+      },
+      {
+        "recruiter_name": "Nicole Piscopo",
+        "email": "nicole.piscopo@patriot-consulting.com",
+        "title": "Talent Acquisition Specialist",
+        "location": "Camden, NJ"
+      },
+      {
+        "recruiter_name": "Amy Lovelace",
+        "email": "alovelace@patriottalent.com",
+        "title": NaN,
+        "location": NaN
+      },
+      {
+        "recruiter_name": "Sarah Narramore",
+        "email": "snarramore@patriottalent.com",
+        "title": "Recruiting Manager",
+        "location": "Kingston, Tennessee, United States"
+      },
+      {
+        "recruiter_name": "Patriot Consulting",
+        "email": "patrick.bagnell@patriot-consulting.com",
+        "title": NaN,
+        "location": NaN
+      }
+    ]
+  }
+]

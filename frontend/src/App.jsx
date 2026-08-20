@@ -176,7 +176,7 @@ function AppShell() {
             </div>
             <div className="cc-top-actions">
               <div id="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 10 }} />
-              <button className="cc-icon-button" title="Settings" aria-label="Settings" style={{ padding: '8px' }}>
+              <button className="cc-icon-button" title="Settings" aria-label="Settings" style={{ padding: '8px' }} onClick={() => navigate({ to: '/settings' })}>
                 <i className="ti ti-settings" style={{ fontSize: '20px' }} />
               </button>
               <button className="cc-icon-button" title="Notifications" aria-label="Notifications" style={{ position: 'relative', padding: '8px' }} onClick={() => window.dispatchEvent(new Event('toggle-update-center'))}>

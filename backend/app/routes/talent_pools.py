@@ -14,8 +14,9 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 
 from ..services.recruiter_store import recruiter_store
+from ..services.auth_service import get_current_user_from_request
 
-router = APIRouter(prefix="/talent-pools", tags=["Talent Pools"])
+router = APIRouter(prefix="/talent-pools", tags=["Talent Pools"], dependencies=[Depends(get_current_user_from_request)])
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
 POOLS_FILE = os.path.join(DATA_DIR, "talent_pools_store.json")

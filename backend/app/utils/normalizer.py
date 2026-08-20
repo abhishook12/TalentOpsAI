@@ -69,5 +69,5 @@ def extract_domain(url: str) -> str:
             elif parts[-1] in ('com', 'org', 'net', 'io', 'co', 'us', 'ca', 'ai', 'biz', 'info', 'me'):
                 domain = '.'.join(parts[-2:])
         return domain
-    except:
+    except Exception:
         return ""

@@ -166,7 +166,7 @@ class VerificationState:
             if os.path.exists(STATE_FILE):
                 try:
                     os.remove(STATE_FILE)
-                except:
+                except Exception:
                     pass
 
 verification_state = VerificationState()

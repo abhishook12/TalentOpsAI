@@ -119,13 +119,12 @@ class EmailHealer:
     def repair_recruiter_email(self, recruiter_id: int) -> Dict:
         """Autonomously attempts to repair a recruiter's email address."""
         conn = _get_conn()
-        
-        row = conn.execute(f"""
+        row = conn.execute("""
             SELECT recruiter_id, recruiter_name, email, email2, email3, email4,
                    title, company_id, logo_url, email_status, email_confidence
             FROM recruiters
-            WHERE recruiter_id = {recruiter_id}
-        """).fetchone()
+            WHERE recruiter_id = ?
+        """, [recruiter_id]).fetchone()
         
         if not row:
             return {'success': False, 'message': 'Recruiter not found'}
@@ -217,7 +216,7 @@ class EmailHealer:
             # Step B: Look up in DB by email — always get a fresh conn reference
             try:
                 conn = _get_conn()
-                row = conn.execute(f"SELECT recruiter_id FROM recruiters WHERE LOWER(email) = '{clean_email}' LIMIT 1").fetchone()
+                row = conn.execute("SELECT recruiter_id FROM recruiters WHERE LOWER(email) = ? LIMIT 1", [clean_email]).fetchone()
             except Exception:
                 row = None
 

@@ -440,12 +440,18 @@ def _do_sweep():
 
 async def timeout_stuck_emails_sweep():
     while True:
-        await asyncio.sleep(15)
-        restart_ids = await asyncio.to_thread(_do_sweep)
-        if restart_ids:
-            from .services.send_engine import start_campaign
-            for campaign_id in restart_ids:
-                asyncio.create_task(start_campaign(campaign_id))
+        try:
+            await asyncio.sleep(15)
+            restart_ids = await asyncio.to_thread(_do_sweep)
+            if restart_ids:
+                from .services.send_engine import start_campaign
+                for campaign_id in restart_ids:
+                    asyncio.create_task(start_campaign(campaign_id))
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error(f"Error in timeout stuck emails sweep task: {e}")
+            await asyncio.sleep(5)
 
 @app.on_event("startup")
 async def startup_event():
@@ -460,13 +466,21 @@ async def startup_event():
     from .database import engine
     from sqlalchemy import text
     
-    conn = engine.connect()
+    conn = None
+    lock_acquired = True
     try:
-        lock_acquired = conn.execute(text("SELECT pg_try_advisory_lock(83726491)")).scalar()
-    except Exception:
+        conn = engine.connect()
+        try:
+            lock_acquired = conn.execute(text("SELECT pg_try_advisory_lock(83726491)")).scalar()
+        except Exception:
+            lock_acquired = True
+    except Exception as e:
+        logger.warning(f"Startup leader lock connection check: {e}")
         lock_acquired = True
+
     if lock_acquired:
-        app.state.bg_task_conn = conn  # Keep connection open to hold the lock
+        if conn:
+            app.state.bg_task_conn = conn  # Keep connection open to hold the lock
         asyncio.create_task(timeout_stuck_emails_sweep())
         asyncio.create_task(sync_engine_loop())
         restart_active_campaigns()
@@ -480,7 +494,8 @@ async def startup_event():
             data_filler_engine.start()
         logger.info("Acquired leader lock; started background tasks.")
     else:
-        conn.close()
+        if conn:
+            conn.close()
         logger.info("Another worker is leader; skipping background tasks.")
 
 @app.on_event("shutdown")

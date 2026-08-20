@@ -12,7 +12,7 @@ IS_RENDER = bool(os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID") or os.get
 IS_STAGING = ENV == "staging"
 IS_PRODUCTION = (ENV in ("production", "prod") or IS_RENDER) and not IS_STAGING
 
-JWT_SECRET = os.getenv("JWT_SECRET", "super-secret-jwt-key-talentops")
+JWT_SECRET = os.getenv("JWT_SECRET", "super-secret-jwt-key-talentops-prod-enterprise-32bytes-secure-2026")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "1012")
 APP_PASSWORD = os.getenv("APP_PASSWORD") or ADMIN_PASSWORD
 DEV_AUTO_VERIFY = os.getenv("DEV_AUTO_VERIFY", "true").lower() in ("1", "true", "yes", "on") and not IS_PRODUCTION

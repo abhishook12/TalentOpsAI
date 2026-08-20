@@ -19,10 +19,11 @@ connect_args = {}
 if DATABASE_URL.startswith("postgresql"):
     connect_args = {
         "connect_timeout": 10,
-        "prepare_threshold": None
+        "prepare_threshold": None,
+        "options": "-c statement_timeout=30000"
     }
 else:
-    connect_args = {"check_same_thread": False}
+    connect_args = {"check_same_thread": False, "timeout": 30}
 
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
@@ -31,11 +32,20 @@ import re
 @event.listens_for(Engine, "connect")
 def set_sqlite_functions(dbapi_connection, connection_record):
     if DATABASE_URL.startswith("sqlite"):
+        try:
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL;")
+            cursor.execute("PRAGMA synchronous=NORMAL;")
+            cursor.execute("PRAGMA busy_timeout=15000;")
+            cursor.close()
+        except Exception:
+            pass
+
         def regexp_replace(text, pattern, repl, flags=''):
             if text is None: return None
             try:
                 return re.sub(pattern, repl, text)
-            except:
+            except Exception:
                 return text
         def similarity(a, b):
             if not a or not b: return 0.0
@@ -50,9 +60,9 @@ def set_sqlite_functions(dbapi_connection, connection_record):
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
-    pool_recycle=300,
-    pool_size=10,
-    max_overflow=5,
+    pool_recycle=1800 if DATABASE_URL.startswith("postgresql") else 300,
+    pool_size=25,
+    max_overflow=20,
     pool_timeout=30,
     pool_use_lifo=True,
     connect_args=connect_args

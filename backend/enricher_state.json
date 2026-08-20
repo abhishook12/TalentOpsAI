@@ -1,7 +1,7 @@
 {
     "status": "stopped",
     "records_processed": 2,
-    "last_active": 1786987172.709569,
+    "last_active": 1787155946.6871033,
     "success_count": 1,
-    "current_phase": "active_batch_processing"
+    "current_phase": "stopped"
 }

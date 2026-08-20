@@ -16,19 +16,20 @@ engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def override_get_db():
+    db = TestingSessionLocal()
     try:
-        db = TestingSessionLocal()
         yield db
     finally:
         db.close()
 
-app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def setup_database():
     Base.metadata.create_all(bind=engine)
+    app.dependency_overrides[get_db] = override_get_db
     yield
+    app.dependency_overrides.pop(get_db, None)
     Base.metadata.drop_all(bind=engine)
     engine.dispose()
     if os.path.exists("./test_bridge_v2.db"):
@@ -65,7 +66,7 @@ def auth_headers(test_user):
 
 def test_oauth_login_redirect(auth_headers):
     # Test 1: Connect Outlook with Microsoft OAuth initiates
-    res = client.get("/bridge/oauth/login?redirect_uri=/test", headers=auth_headers, follow_redirects=False)
+    res = client.get("/api/bridge/oauth/login?redirect_uri=/test", headers=auth_headers, follow_redirects=False)
     assert res.status_code == 307
     assert "oauth/callback" in res.headers["location"] or "login.microsoftonline.com" in res.headers["location"]
 
@@ -82,7 +83,7 @@ def test_oauth_callback(auth_headers, test_user, db_session):
         state = state.decode('utf-8')
     
     # Test 2: OAuth Callback creates ConnectedEmailAccount
-    res = client.get(f"/bridge/oauth/callback?code=mock123&state={state}", headers=auth_headers, follow_redirects=False)
+    res = client.get(f"/api/bridge/oauth/callback?code=mock123&state={state}", headers=auth_headers, follow_redirects=False)
     if res.status_code != 307:
         print("CALLBACK ERROR TEXT:", res.text)
     assert res.status_code == 307  # Redirects back to app
@@ -94,7 +95,7 @@ def test_oauth_callback(auth_headers, test_user, db_session):
     
 def test_bridge_tasks_unauthorized(test_user):
     # No auth
-    res = client.get("/bridge/tasks")
+    res = client.get("/api/bridge/tasks")
     assert res.status_code == 401
 
 def test_bridge_tasks_and_results_flow(auth_headers, test_user, db_session):
@@ -108,7 +109,7 @@ def test_bridge_tasks_and_results_flow(auth_headers, test_user, db_session):
     db_session.commit()
     
     # 2. Bridge connects and pulls tasks (Offline Recovery)
-    res = client.get("/bridge/tasks", headers=auth_headers)
+    res = client.get("/api/bridge/tasks", headers=auth_headers)
     assert res.status_code == 200
     tasks = res.json().get("tasks")
     assert len(tasks) == 1
@@ -117,7 +118,7 @@ def test_bridge_tasks_and_results_flow(auth_headers, test_user, db_session):
     # 3. Bridge posts success result (Single Email Send / Delivery Confirmation)
     log_id = tasks[0]["log_id"]
     payload = {"results": [{"log_id": log_id, "success": True}]}
-    res = client.post("/bridge/results", json=payload, headers=auth_headers)
+    res = client.post("/api/bridge/results", json=payload, headers=auth_headers)
     assert res.status_code == 200
     
     # Check DB
@@ -126,10 +127,17 @@ def test_bridge_tasks_and_results_flow(auth_headers, test_user, db_session):
     assert log.outlook_accepted is True
 
 def test_bridge_disconnect(auth_headers, test_user, db_session):
+    # Ensure account exists
+    account = db_session.query(ConnectedEmailAccount).filter_by(user_id=test_user.id).first()
+    if not account:
+        account = ConnectedEmailAccount(user_id=test_user.id, email_address=test_user.email, status="connected", access_token="mock_tok")
+        db_session.add(account)
+        db_session.commit()
+    
     # Test Disconnect Outlook
-    res = client.post("/bridge/disconnect", headers=auth_headers)
+    res = client.post("/api/bridge/disconnect", headers=auth_headers)
     assert res.status_code == 200
     
-    account = db_session.query(ConnectedEmailAccount).filter_by(user_id=test_user.id).first()
+    db_session.refresh(account)
     assert account.status == "disconnected"
     assert account.access_token is None

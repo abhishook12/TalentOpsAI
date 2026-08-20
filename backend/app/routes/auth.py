@@ -985,7 +985,7 @@ def get_my_sessions(request: Request, db: Session = Depends(get_db)):
             from ..services.auth_service import SECRET_KEY, ALGORITHM
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
             current_session_id = payload.get("session_id")
-        except:
+        except Exception:
             pass
 
     return {
@@ -1043,24 +1043,37 @@ async def get_device_status_stream(device_id: int, request: Request):
                     db.close()
                 return status
 
-            from fastapi.concurrency import run_in_threadpool
-            status = await run_in_threadpool(_check_db)
-                
-            if status == "error":
-                yield f"data: {{\"status\": \"error\", \"message\": \"Device not found\"}}\n\n"
+            try:
+                from fastapi.concurrency import run_in_threadpool
+                status = await run_in_threadpool(_check_db)
+                    
+                if status == "error":
+                    yield f"data: {{\"status\": \"error\", \"message\": \"Device not found\"}}\n\n"
+                    break
+                elif status == "approved":
+                    yield f"data: {{\"status\": \"approved\"}}\n\n"
+                    break
+                elif status == "rejected":
+                    yield f"data: {{\"status\": \"rejected\"}}\n\n"
+                    break
+                    
+                yield f"data: {{\"status\": \"pending\"}}\n\n"
+                    
+                await asyncio.sleep(3)
+            except (asyncio.CancelledError, GeneratorExit):
                 break
-            elif status == "approved":
-                yield f"data: {{\"status\": \"approved\"}}\n\n"
-                break
-            elif status == "rejected":
-                yield f"data: {{\"status\": \"rejected\"}}\n\n"
-                break
-                
-            yield f"data: {{\"status\": \"pending\"}}\n\n"
-                
-            await asyncio.sleep(3)
+            except Exception:
+                await asyncio.sleep(3)
             
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
 
 # -------- Outlook Integration Routes --------
 class OutlookConnectPayload(BaseModel):

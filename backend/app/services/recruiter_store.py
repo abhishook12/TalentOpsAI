@@ -225,31 +225,31 @@ class RecruiterStore:
         self._conn = duckdb.connect(":memory:")
         
         try:
+            self._conn.execute("PRAGMA max_memory='256MB';")
+            self._conn.execute("PRAGMA threads=4;")
+        except Exception:
+            pass
+
+        try:
             self._conn.execute("INSTALL httpfs;")
             self._conn.execute("LOAD httpfs;")
         except Exception as e:
             logger.warning(f"Could not load httpfs extension: {e}")
 
-        # In local environments where we have the file, use it. In production serverless, stream it directly.
-        if os.path.exists(PARQUET_FILE):
-            logger.info(f"Using local Parquet file: {PARQUET_FILE}")
-            parquet_path = f"'{PARQUET_FILE.replace(os.sep, '/')}'"
+        active_file = _find_parquet_file()
+        if os.path.exists(active_file):
+            logger.info(f"Using local Parquet file: {active_file}")
+            parquet_path = f"'{active_file.replace(os.sep, '/')}'"
         else:
             logger.info(f"Parquet file not found locally. Streaming directly via HTTPFS from {primary_url}")
             parquet_path = f"'{primary_url}'"
 
         try:
-            # When local parquet exists, materialize into in-memory table for 10x-50x sub-20ms queries
-            if os.path.exists(PARQUET_FILE):
-                self._conn.execute(f"""
-                    CREATE TABLE recruiters AS 
-                    SELECT * FROM read_parquet({parquet_path})
-                """)
-            else:
-                self._conn.execute(f"""
-                    CREATE VIEW recruiters AS 
-                    SELECT * FROM read_parquet({parquet_path})
-                """)
+            # Use zero-copy VIEW to keep memory usage under 45MB and prevent Linux OOM exit 137
+            self._conn.execute(f"""
+                CREATE VIEW recruiters AS 
+                SELECT * FROM read_parquet({parquet_path})
+            """)
             
             res = self._conn.execute("SELECT COUNT(*) FROM recruiters").fetchone()
             self._record_count = res[0] if res else 0

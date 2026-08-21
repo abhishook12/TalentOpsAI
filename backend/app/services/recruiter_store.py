@@ -272,7 +272,8 @@ class RecruiterStore:
                 FROM recruiters
                 WHERE company_id IS NOT NULL 
                   AND TRIM(CAST(company_id AS VARCHAR)) != ''
-                  AND LOWER(TRIM(CAST(company_id AS VARCHAR))) NOT IN ('need to fill data', 'unknown', 'n/a', 'none', 'null')
+                  AND LOWER(TRIM(CAST(company_id AS VARCHAR))) NOT IN ('need to fill data', 'unknown', 'n/a', 'na', 'none', 'null', 'missing', 'missing.local', 'independent staffing')
+                  AND LOWER(TRIM(CAST(company_id AS VARCHAR))) NOT LIKE '%is becoming%'
                   AND INSTR(CAST(company_id AS VARCHAR), '|') = 0
                 GROUP BY company_key
             """)
@@ -292,7 +293,8 @@ class RecruiterStore:
                 FROM recruiters
                 WHERE company_id IS NOT NULL 
                   AND TRIM(CAST(company_id AS VARCHAR)) != ''
-                  AND LOWER(TRIM(CAST(company_id AS VARCHAR))) NOT IN ('need to fill data', 'unknown', 'n/a', 'none', 'null')
+                  AND LOWER(TRIM(CAST(company_id AS VARCHAR))) NOT IN ('need to fill data', 'unknown', 'n/a', 'na', 'none', 'null', 'missing', 'missing.local', 'independent staffing')
+                  AND LOWER(TRIM(CAST(company_id AS VARCHAR))) NOT LIKE '%is becoming%'
                   AND INSTR(CAST(company_id AS VARCHAR), '|') = 0
                 GROUP BY company_key, state_upper
             """)

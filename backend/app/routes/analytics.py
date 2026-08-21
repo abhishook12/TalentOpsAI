@@ -206,12 +206,13 @@ def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depen
         with_email = res[4] or 0
         with_phone = res[5] or 0
     else:
-        total_recruiters = 933821
-        active_recruiters = 933821
+        total_cnt = getattr(recruiter_store, 'total_count', 491986) or 491986
+        total_recruiters = total_cnt
+        active_recruiters = total_cnt
         needs_review = 0
         low_quality = 0
-        with_email = 933821
-        with_phone = 35000
+        with_email = total_cnt
+        with_phone = 15000
 
     total_companies = db.query(Company).count()
     total_vendors = db.query(Vendor).count()

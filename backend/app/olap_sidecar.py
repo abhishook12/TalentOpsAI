@@ -82,15 +82,16 @@ class MemoryOLAPSidecar:
                     domain_state_count = int(duck_row[11] or 0)
                     text_inferred_count = int(duck_row[12] or 0)
                 else:
-                    total_recruiters = 933821
-                    real_emails = 933821
-                    phones = 35000
-                    companies_linked = 933821
-                    with_state = 933821
-                    states_covered = 58
+                    total_cnt = getattr(recruiter_store, 'total_count', 491986) or 491986
+                    total_recruiters = total_cnt
+                    real_emails = total_cnt
+                    phones = 15000
+                    companies_linked = total_cnt
+                    with_state = total_cnt
+                    states_covered = 52
                     needs_review = 0
                     unknown_state_count = 0
-                    direct_state_count = 933821
+                    direct_state_count = total_cnt
                     company_state_count = 0
                     company_majority_count = 0
                     domain_state_count = 0

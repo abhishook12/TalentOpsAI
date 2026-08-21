@@ -235,7 +235,7 @@ export default function UserManagement() {
 
       <div style={{ display: 'flex', gap: 24 }}>
         {/* Main Table */}
-        <div style={{ flex: 1, background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.1)' }}>
+        <div className="custom-scrollbar" style={{ flex: 1, background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100vh - 300px)', boxShadow: '0 8px 32px rgba(0,0,0,0.1)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
             <thead style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--card-border)' }}>
               <tr>

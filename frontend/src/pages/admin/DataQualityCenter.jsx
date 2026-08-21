@@ -357,7 +357,7 @@ export default function DataQualityCenter() {
             <p style={{ fontSize: 13, margin: 0 }}>All records in this category pass quality threshold validation.</p>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div className="custom-scrollbar" style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '550px' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: 'var(--table-header-bg, var(--bg-elevated))', borderBottom: '1px solid var(--card-border)' }}>

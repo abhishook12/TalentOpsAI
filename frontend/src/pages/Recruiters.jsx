@@ -714,7 +714,7 @@ export default function Recruiters() {
                 </div>
               </div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
+              <div className="custom-scrollbar" style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100vh - 280px)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                   <thead style={{ position: 'sticky', top: 0, background: 'var(--table-header-bg, var(--panel-bg))', zIndex: 10 }}>
                     <tr>

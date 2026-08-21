@@ -204,20 +204,6 @@ export default function Analytics() {
   const stateData = analyticsData?.stateData || []
   const dq = analyticsData?.dq
 
-  if (loading) return (
-    <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-      <i className="ti ti-chart-bar" style={{ fontSize: 28, display: 'block', marginBottom: 10 }} />
-      Loading analytics...
-    </div>
-  )
-
-  if (isAnalyticsError) return (
-    <div style={{ padding: '16px 20px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#ef4444', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0' }}>
-      <span>Failed to load data. Please try again.</span>
-      <button onClick={() => refetchAnalytics()} style={{ marginLeft: 'auto', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>Retry</button>
-    </div>
-  )
-
   const dailyData = useMemo(() => (visits?.daily || []).map(r => ({
     day: formatDay(r.day), visits: r.visits
   })), [visits?.daily])
@@ -260,6 +246,20 @@ export default function Analytics() {
   }, [setSelectedStates])
 
   const clearStateSelection = useCallback(() => setSelectedStates([]), [setSelectedStates])
+
+  if (loading) return (
+    <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+      <i className="ti ti-chart-bar" style={{ fontSize: 28, display: 'block', marginBottom: 10 }} />
+      Loading analytics...
+    </div>
+  )
+
+  if (isAnalyticsError) return (
+    <div style={{ padding: '16px 20px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#ef4444', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0' }}>
+      <span>Failed to load data. Please try again.</span>
+      <button onClick={() => refetchAnalytics()} style={{ marginLeft: 'auto', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>Retry</button>
+    </div>
+  )
 
   return (
     <div

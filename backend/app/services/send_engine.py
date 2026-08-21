@@ -294,6 +294,16 @@ async def _send_email_via_provider(sender_account_id: int, user_id: int, payload
                     msg['From'] = f"{sender_name} <{final_sender_email}>"
                     msg['To'] = payload.get("to_email")
                     msg['Subject'] = payload.get("subject", "")
+                    
+                    # RFC-8058 deliverability headers
+                    from .deliverability_guard import deliverability_guard
+                    unsub_headers = deliverability_guard.generate_unsubscribe_headers(
+                        payload.get("campaign_id", 0), 
+                        payload.get("to_email", "")
+                    )
+                    for hk, hv in unsub_headers.items():
+                        msg[hk] = hv
+                        
                     msg.attach(MIMEText(payload.get("html_body", ""), 'html'))
                     
                     if account.provider == "google" and account.access_token:

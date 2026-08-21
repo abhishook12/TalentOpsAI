@@ -5,7 +5,7 @@ import {
   Send, ArrowLeft, Plus, Mail, Activity, AlertCircle, FileText,
   CheckCircle2, Loader2, ChevronRight, Play, Eye, Download, Search,
   Pause, MoreHorizontal, Copy, Trash2, Archive, Save, Clock, RefreshCw, X,
-  ChevronDown, ChevronUp, Zap
+  ChevronDown, ChevronUp, Zap, ShieldCheck
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -180,9 +180,26 @@ export default function Campaigns() {
   const preflightTimerRef = useRef(null);
   const validationTimerRef = useRef(null);
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Derived: detected variables from subject + body
-  // ─────────────────────────────────────────────────────────────────────────────
+  const [deliverability, setDeliverability] = useState({ deliverability_score: 100, spam_score: 0, rating: 'Optimal', badge_color: 'green', suggestions: [] });
+
+  useEffect(() => {
+    if (!subject?.trim() && !body?.trim()) {
+      setDeliverability({ deliverability_score: 100, spam_score: 0, rating: 'Optimal', badge_color: 'green', suggestions: [] });
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.post('/campaigns/check-deliverability', { subject, body });
+        if (res?.data) {
+          setDeliverability(res.data);
+        }
+      } catch {
+        // Non-blocking
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [subject, body]);
+
   const detectedVariables = useMemo(() => {
     const pattern = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g;
     const found = new Set();
@@ -885,6 +902,38 @@ export default function Campaigns() {
                       ))}
                     </div>
                     <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, fontStyle: 'italic' }}>These will be filled with real recipient data when sent.</p>
+                  </div>
+                )}
+
+                {/* DELIVERABILITY & SPAM GUARD */}
+                {(subject.trim().length > 0 || body.trim().length > 0) && (
+                  <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, padding: '10px 14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: deliverability.suggestions?.length > 0 ? 6 : 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <ShieldCheck size={14} color={deliverability.badge_color === 'green' ? '#10b981' : deliverability.badge_color === 'yellow' ? '#f59e0b' : '#ef4444'} />
+                        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>Deliverability & Spam Guard</span>
+                      </div>
+                      <span style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        background: deliverability.badge_color === 'green' ? 'rgba(16,185,129,0.12)' : deliverability.badge_color === 'yellow' ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)',
+                        color: deliverability.badge_color === 'green' ? '#10b981' : deliverability.badge_color === 'yellow' ? '#f59e0b' : '#ef4444'
+                      }}>
+                        {deliverability.rating} ({deliverability.deliverability_score}/100)
+                      </span>
+                    </div>
+                    {deliverability.suggestions?.length > 0 && (
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: 3, marginTop: 4 }}>
+                        {deliverability.suggestions.map((s, idx) => (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#f59e0b' }}>
+                            <span>•</span>
+                            <span>{s}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 

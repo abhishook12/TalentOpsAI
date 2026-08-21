@@ -738,7 +738,19 @@ def api_get_campaign_status(
     return {
         "status": campaign.status,
         **eta_data
-    }  ).scalar()
+    }
+
+@router.get("/{campaign_id}/delivery-logs")
+def get_campaign_delivery_logs(
+    campaign_id: int, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user_from_request)
+):
+    from ..models.campaigns import EmailLog, CampaignRecruiter
+    from sqlalchemy.orm import joinedload
+    
+    logs = (
+        db.query(EmailLog)
         .filter(EmailLog.campaign_id == campaign_id)
         .order_by(EmailLog.log_id.desc())
         .options(joinedload(EmailLog.campaign_recruiter))
@@ -758,8 +770,16 @@ def api_get_campaign_status(
         })
     return {"items": res}
 
-VARIABLE_PATTERN = re.compile(r"{{\s*([a-zA-Z0-9_]+)\s*}}")
+class DeliverabilityCheckRequest(BaseModel):
+    subject: Optional[str] = ""
+    body: Optional[str] = ""
 
+@router.post("/check-deliverability")
+def check_deliverability(req: DeliverabilityCheckRequest):
+    from ..services.deliverability_guard import deliverability_guard
+    return deliverability_guard.analyze_content(req.subject or "", req.body or "")
+
+VARIABLE_PATTERN = re.compile(r"{{\s*([a-zA-Z0-9_]+)\s*}}")
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)

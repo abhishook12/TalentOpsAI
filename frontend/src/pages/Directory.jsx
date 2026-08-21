@@ -501,7 +501,7 @@ export default function Directory() {
             placeholder="Search company..."
             style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', caretColor: 'var(--text-primary)' }}
           />
-          <div style={{ marginTop: 10, flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="custom-scrollbar" style={{ marginTop: 10, flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
             {companiesLoading ? <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Loading companies...</div> : null}
             {!companiesLoading && companyRows.length === 0 ? (
               <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No companies match this search.</div>
@@ -646,7 +646,7 @@ export default function Directory() {
                 <span><strong>All states</strong></span>
                 <span style={{ fontFamily: 'var(--mono)', fontWeight: 900 }}>{allStatesCount}</span>
               </button>
-              <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div className="custom-scrollbar" style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {statesLoading ? <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Loading states...</div> : null}
                 {!statesLoading && filteredStateRows.length === 0 ? (
                   <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>
@@ -711,7 +711,18 @@ export default function Directory() {
             style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-primary)', caretColor: 'var(--text-primary)' }}
           />
 
-          <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--panel-bg)' }}>
+          <div 
+            className="custom-scrollbar"
+            style={{ 
+              flex: 1, 
+              minHeight: 0, 
+              overflowY: 'auto', 
+              overflowX: 'auto', 
+              borderRadius: 6, 
+              border: '1px solid var(--card-border)', 
+              background: 'var(--panel-bg)' 
+            }}
+          >
             {!selectedCompany ? (
               <div style={{ padding: 16, color: 'var(--text-muted)', fontSize: 12 }}>Pick a company to see recruiters.</div>
             ) : recruitersLoading ? (
@@ -726,19 +737,19 @@ export default function Directory() {
               </div>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
-                <thead>
+                <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-hover)' }}>
                   <tr style={{ background: 'var(--bg-hover)' }}>
-                    <th style={{ width: 36, padding: '10px 12px', borderBottom: '1px solid var(--card-border)' }}>
+                    <th style={{ width: 36, padding: '10px 12px', borderBottom: '1px solid var(--card-border)', textAlign: 'left' }}>
                       <input
                         type="checkbox"
                         checked={allOnPageSelected}
                         onChange={(event) => toggleSelectAllOnPage(event.target.checked)}
                       />
                     </th>
-                    <th style={{ padding: '10px 12px', borderBottom: '1px solid var(--card-border)' }}>Name</th>
-                    <th style={{ padding: '10px 12px', borderBottom: '1px solid var(--card-border)' }}>Email</th>
-                    <th style={{ padding: '10px 12px', borderBottom: '1px solid var(--card-border)' }}>Location</th>
-                    <th style={{ padding: '10px 12px', borderBottom: '1px solid var(--card-border)' }}>Phone</th>
+                    <th style={{ padding: '10px 12px', borderBottom: '1px solid var(--card-border)', textAlign: 'left' }}>Name</th>
+                    <th style={{ padding: '10px 12px', borderBottom: '1px solid var(--card-border)', textAlign: 'left' }}>Email</th>
+                    <th style={{ padding: '10px 12px', borderBottom: '1px solid var(--card-border)', textAlign: 'left' }}>Location</th>
+                    <th style={{ padding: '10px 12px', borderBottom: '1px solid var(--card-border)', textAlign: 'left' }}>Phone</th>
                   </tr>
                 </thead>
                 <tbody>

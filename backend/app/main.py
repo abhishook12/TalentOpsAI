@@ -31,10 +31,11 @@ RUN_STARTUP_MIGRATIONS = os.getenv("RUN_STARTUP_MIGRATIONS", "true").lower() in 
 if RUN_STARTUP_MIGRATIONS:
     try:
         models.Base.metadata.create_all(bind=engine)
-        try:
-            create_performance_indexes()
-        except Exception as e:
-            logger.warning("Error creating indexes at startup: %s", e)
+        if os.getenv("CREATE_INDEXES_AT_STARTUP", "false").lower() in ("1", "true", "yes"):
+            try:
+                create_performance_indexes()
+            except Exception as e:
+                logger.warning("Error creating indexes at startup: %s", e)
     except Exception as e:
         logger.warning("Startup migrations skipped due to database error: %s", e)
 else:

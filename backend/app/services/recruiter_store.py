@@ -25,12 +25,29 @@ try:
     test_file = os.path.join(PARQUET_DIR, '.test_write')
     with open(test_file, 'w') as f:
         f.write('1')
-    os.remove(test_file)
 except OSError:
     PARQUET_DIR = "/tmp/talentops_data"
     os.makedirs(PARQUET_DIR, exist_ok=True)
 
-PARQUET_FILE = os.path.join(PARQUET_DIR, "recruiters_full.parquet")
+def _find_parquet_file() -> str:
+    candidates = [
+        os.environ.get("PARQUET_PATH", ""),
+        os.path.join(PARQUET_DIR, "recruiters_full.parquet"),
+        os.path.join(BASE_DIR, "data", "recruiters_full.parquet"),
+        os.path.join(BASE_DIR, "backend", "data", "recruiters_full.parquet"),
+        os.path.join(os.getcwd(), "data", "recruiters_full.parquet"),
+        os.path.join(os.getcwd(), "backend", "data", "recruiters_full.parquet"),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "recruiters_full.parquet")),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "backend", "data", "recruiters_full.parquet")),
+        "data/recruiters_full.parquet",
+        "backend/data/recruiters_full.parquet",
+    ]
+    for c in candidates:
+        if c and os.path.exists(c):
+            return os.path.abspath(c)
+    return os.path.join(PARQUET_DIR, "recruiters_full.parquet")
+
+PARQUET_FILE = _find_parquet_file()
 
 METRO_HUBS = {
     "SF_BAY_AREA": {

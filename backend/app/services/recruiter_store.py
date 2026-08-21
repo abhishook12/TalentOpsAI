@@ -85,6 +85,48 @@ def _get_duckdb():
     return _duckdb
 
 
+def _parse_boolean_search(query: str, fields: Optional[List[str]] = None) -> Tuple[str, List[Any]]:
+    """Parse boolean search expressions with AND, OR, NOT, parentheses, and quoted strings into DuckDB SQL."""
+    if fields is None:
+        fields = ['recruiter_name', 'email', 'specialization', 'normalized_city', 'company_id']
+    
+    raw_tokens = re.findall(r'(\bAND\b|\bOR\b|\bNOT\b|[()]|\"[^\"]+\"|[^\s()]+)', query.strip())
+    if not raw_tokens:
+        return "", []
+
+    params = []
+    sql_parts = []
+    prev_was_term = False
+
+    def term_to_sql(term):
+        clean = term.strip('"').strip("'").lower()
+        sub = " OR ".join([f"LOWER(COALESCE(CAST({f} AS VARCHAR), '')) LIKE ?" for f in fields])
+        return f"({sub})", [f"%{clean}%" for _ in fields]
+
+    for t in raw_tokens:
+        upper_t = t.upper()
+        if upper_t in ('AND', 'OR', 'NOT'):
+            sql_parts.append(upper_t)
+            prev_was_term = False
+        elif t == '(':
+            if prev_was_term:
+                sql_parts.append('AND')
+            sql_parts.append('(')
+            prev_was_term = False
+        elif t == ')':
+            sql_parts.append(')')
+            prev_was_term = True
+        else:
+            if prev_was_term:
+                sql_parts.append('AND')
+            sub_sql, sub_params = term_to_sql(t)
+            sql_parts.append(sub_sql)
+            params.extend(sub_params)
+            prev_was_term = True
+
+    return " ".join(sql_parts), params
+
+
 class RecruiterStore:
     """
     In-memory DuckDB-backed query engine for recruiter data stored in Parquet.
@@ -512,18 +554,23 @@ class RecruiterStore:
         params = []
 
         if search:
-            search_lower = search.lower()
-            where_clauses.append("""(
-                LOWER(COALESCE(recruiter_name, '')) LIKE ? 
-                OR LOWER(COALESCE(email, '')) LIKE ?
-                OR LOWER(COALESCE(specialization, '')) LIKE ?
-                OR CAST(COALESCE(company_id, '') AS VARCHAR) IN (
-                    SELECT CAST(company_id AS VARCHAR) FROM recruiters 
-                    WHERE LOWER(COALESCE(recruiter_name, '')) LIKE ? OR LOWER(COALESCE(email, '')) LIKE ? LIMIT 100
-                )
-            )""")
-            like_pat = f"%{search_lower}%"
-            params.extend([like_pat, like_pat, like_pat, like_pat, like_pat])
+            search_str = search.strip()
+            if any(k in search_str for k in (' AND ', ' OR ', ' NOT ', '"', '(', ')')) or search_str.startswith('NOT '):
+                bool_sql, bool_params = _parse_boolean_search(search_str)
+                if bool_sql:
+                    where_clauses.append(f"({bool_sql})")
+                    params.extend(bool_params)
+            else:
+                search_lower = search_str.lower()
+                where_clauses.append("""(
+                    LOWER(COALESCE(CAST(recruiter_name AS VARCHAR), '')) LIKE ? 
+                    OR LOWER(COALESCE(CAST(email AS VARCHAR), '')) LIKE ?
+                    OR LOWER(COALESCE(CAST(specialization AS VARCHAR), '')) LIKE ?
+                    OR LOWER(COALESCE(CAST(normalized_city AS VARCHAR), '')) LIKE ?
+                    OR LOWER(COALESCE(CAST(company_id AS VARCHAR), '')) LIKE ?
+                )""")
+                like_pat = f"%{search_lower}%"
+                params.extend([like_pat, like_pat, like_pat, like_pat, like_pat])
 
         if state:
             where_clauses.append("UPPER(COALESCE(state, '')) = ?")

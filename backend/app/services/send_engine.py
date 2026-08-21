@@ -583,11 +583,24 @@ async def process_campaign_queue(campaign_id: int):
     # Fix #16: Shared failure counter for circuit breaker
     failure_counter = {'consecutive': 0}
     
-    # Start workers once
+    # Sender Account Pool & Round-Robin Rotation
+    account_pool_ids = []
+    with SessionLocal() as db:
+        if sender_account_id:
+            account_pool_ids = [sender_account_id]
+        else:
+            active_accounts = db.query(SenderAccount).filter(
+                SenderAccount.user_id == user_id,
+                SenderAccount.is_active == True
+            ).all()
+            account_pool_ids = [a.id for a in active_accounts]
+
+    # Start workers with round-robin sender assignment
     workers = []
     for i in range(min(WORKER_COUNT, len(all_recipient_ids))):
+        assigned_account = account_pool_ids[i % len(account_pool_ids)] if account_pool_ids else sender_account_id
         task = asyncio.create_task(_worker_task(
-            i, campaign_id, queue, signature_html, template, from_email, user_id, sender_account_id,
+            i, campaign_id, queue, signature_html, template, from_email, user_id, assigned_account,
             cancel_event=cancel_event, failure_counter=failure_counter
         ))
         workers.append(task)

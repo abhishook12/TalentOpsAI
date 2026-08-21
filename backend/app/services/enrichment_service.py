@@ -1,13 +1,14 @@
 """
-TalentOpsAI Zero-Cost Autonomous Enrichment Engine
-====================================================
-High-throughput, deterministic, zero-egress data enrichment service.
-Enriches recruiter records across 5 core vectors:
-  1. Company & Domain Resolution (derives company names & domains from corporate emails)
+TalentOpsAI High-Throughput Autonomous Enrichment Engine
+=========================================================
+Deterministic, zero-egress, high-throughput autonomous data enrichment service.
+Enriches recruiter records across 6 core vectors:
+  1. Single Recruiter Name -> Full First + Last Name Reconstruction (from structured email)
   2. Area Code Geo-Inference (derives state and metro city from phone area codes)
-  3. Company HQ Location Propagation (inherits known state/location from parent company)
+  3. Company & Domain Resolution (derives company names & domains from corporate emails)
   4. Specialization & Vertical Classification (classifies staffing vertical from job title)
-  5. Email Permutation & MX Deliverability Pre-Validation (synthesizes verified emails)
+  5. LinkedIn Profile URL Synthesis (synthesizes verified slug from full name)
+  6. Dynamic Quality & Trust Score Recalculation (updates quality_score, trust_score, needs_review)
 
 Operates in-memory and against Parquet + DuckDB with zero third-party API costs or cloud egress.
 """
@@ -21,6 +22,7 @@ import threading
 from collections import deque
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional, Tuple
+from unicodedata import normalize
 
 from app.services.recruiter_store import recruiter_store, PARQUET_FILE
 from app.services.parquet_writer import parquet_writer
@@ -30,7 +32,6 @@ logger = logging.getLogger("enrichment_service")
 
 # ─── Reference Data & Lookups ───────────────────────────────────────────────
 
-# Public / generic email providers (cannot be used to infer company name)
 GENERIC_EMAIL_DOMAINS = {
     'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com',
     'aol.com', 'protonmail.com', 'proton.me', 'zoho.com', 'mail.com',
@@ -39,7 +40,23 @@ GENERIC_EMAIL_DOMAINS = {
     'missing.local', 'invalid.local', 'example.com', 'test.com'
 }
 
-# Comprehensive US & North American Area Code -> (State, City) Mapping
+BUSINESS_WORDS = {
+    'inc', 'llc', 'corp', 'ltd', 'group', 'technologies', 'technology',
+    'solutions', 'staffing', 'consulting', 'services', 'partners', 'associates',
+    'systems', 'software', 'resources', 'network', 'advisors', 'enterprises',
+    'holdings', 'specialists', 'international', 'digital', 'co', 'team', 'sales',
+    'financial', 'information', 'provides', 'source', 'elite', 'philly', 'snelling',
+    'harvard', 'appleby', 'cariere', 'thinktek'
+}
+
+US_STATES = [
+    'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN',
+    'IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV',
+    'NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN',
+    'TX','UT','VT','VA','WA','WV','WI','WY','DC'
+]
+
+# Comprehensive US Area Code -> (State, City) Mapping
 AREA_CODE_MAP = {
     '201': ('NJ', 'Jersey City, NJ'), '202': ('DC', 'Washington, DC'), '203': ('CT', 'Bridgeport, CT'),
     '205': ('AL', 'Birmingham, AL'), '206': ('WA', 'Seattle, WA'), '207': ('ME', 'Portland, ME'),
@@ -96,7 +113,7 @@ AREA_CODE_MAP = {
     '616': ('MI', 'Grand Rapids, MI'), '617': ('MA', 'Boston, MA'), '618': ('IL', 'Belleville, IL'),
     '619': ('CA', 'San Diego, CA'), '620': ('KS', 'Hutchinson, KS'), '623': ('AZ', 'Glendale, AZ'),
     '626': ('CA', 'Pasadena, CA'), '630': ('IL', 'Naperville, IL'), '631': ('NY', 'Brentwood, NY'),
-    '636': ('MO', 'O\'Fallon, MO'), '641': ('IA', 'Mason City, IA'), '646': ('NY', 'New York, NY'),
+    '636': ('MO', "O'Fallon, MO"), '641': ('IA', 'Mason City, IA'), '646': ('NY', 'New York, NY'),
     '650': ('CA', 'San Mateo, CA'), '651': ('MN', 'St. Paul, MN'), '660': ('MO', 'Sedalia, MO'),
     '661': ('CA', 'Bakersfield, CA'), '662': ('MS', 'Tupelo, MS'), '667': ('MD', 'Baltimore, MD'),
     '669': ('CA', 'San Jose, CA'), '678': ('GA', 'Atlanta, GA'), '681': ('WV', 'Huntington, WV'),
@@ -158,44 +175,22 @@ SPECIALIZATION_TAXONOMY = [
     ('General Staffing', [])
 ]
 
-# Known Top Domain to Company Clean Name Overrides
 DOMAIN_BRAND_OVERRIDES = {
-    'aerotek.com': 'Aerotek',
-    'teksystems.com': 'TEKsystems',
-    'insightglobal.com': 'Insight Global',
-    'apexsystems.com': 'Apex Systems',
-    'roberthalf.com': 'Robert Half',
-    'randstadusa.com': 'Randstad',
-    'randstad.com': 'Randstad',
-    'adeccousa.com': 'Adecco',
-    'adecco.com': 'Adecco',
-    'allegisgroup.com': 'Allegis Group',
-    'manpower.com': 'Manpower',
-    'kellyservices.com': 'Kelly Services',
-    'hays.com': 'Hays',
-    'cybercoders.com': 'CyberCoders',
-    'bridgecrossllc.com': 'BridgeCross LLC',
-    'beaconhillstaffing.com': 'Beacon Hill Staffing Group',
-    'kforce.com': 'Kforce',
-    'lucasgroup.com': 'Lucas Group',
-    'addisongroup.com': 'Addison Group',
-    'mondo.com': 'Mondo',
-    'motionrecruitment.com': 'Motion Recruitment',
-    'prolinkstaff.com': 'Prolink',
-    'prolinkstaffing.com': 'Prolink Staffing',
-    'hirevelocity.com': 'Hire Velocity',
-    'vaco.com': 'Vaco',
-    'kornferry.com': 'Korn Ferry',
-    'heidrick.com': 'Heidrick & Struggles',
-    'spencerstuart.com': 'Spencer Stuart',
-    'russellreynolds.com': 'Russell Reynolds Associates',
+    'aerotek.com': 'Aerotek', 'teksystems.com': 'TEKsystems', 'insightglobal.com': 'Insight Global',
+    'apexsystems.com': 'Apex Systems', 'roberthalf.com': 'Robert Half', 'randstadusa.com': 'Randstad',
+    'randstad.com': 'Randstad', 'adeccousa.com': 'Adecco', 'adecco.com': 'Adecco',
+    'allegisgroup.com': 'Allegis Group', 'manpower.com': 'Manpower', 'kellyservices.com': 'Kelly Services',
+    'hays.com': 'Hays', 'cybercoders.com': 'CyberCoders', 'bridgecrossllc.com': 'BridgeCross LLC',
+    'beaconhillstaffing.com': 'Beacon Hill Staffing Group', 'kforce.com': 'Kforce', 'lucasgroup.com': 'Lucas Group',
+    'addisongroup.com': 'Addison Group', 'mondo.com': 'Mondo', 'motionrecruitment.com': 'Motion Recruitment',
+    'prolinkstaff.com': 'Prolink', 'prolinkstaffing.com': 'Prolink Staffing', 'hirevelocity.com': 'Hire Velocity',
+    'vaco.com': 'Vaco', 'kornferry.com': 'Korn Ferry', 'heidrick.com': 'Heidrick & Struggles',
+    'spencerstuart.com': 'Spencer Stuart', 'russellreynolds.com': 'Russell Reynolds Associates',
 }
-
 
 # ─── Helper Functions ────────────────────────────────────────────────────────
 
 def clean_domain_from_email(email: str) -> Optional[str]:
-    """Extract and validate clean domain from an email address."""
     if not email or '@' not in email:
         return None
     domain = email.split('@')[-1].lower().strip()
@@ -205,27 +200,15 @@ def clean_domain_from_email(email: str) -> Optional[str]:
     return domain
 
 def derive_company_name_from_domain(domain: str) -> Optional[str]:
-    """
-    Derive a clean, human-readable Company Name from a corporate domain.
-    E.g. 'bridgecrossllc.com' -> 'BridgeCross LLC'
-         'insightglobal.com' -> 'Insight Global'
-         'apex-systems.com' -> 'Apex Systems'
-    """
     if not domain or domain in GENERIC_EMAIL_DOMAINS:
         return None
-    
     clean_d = domain.lower().strip()
     if clean_d in DOMAIN_BRAND_OVERRIDES:
         return DOMAIN_BRAND_OVERRIDES[clean_d]
-        
-    # Strip TLD
     name_part = clean_d.split('.')[0]
     if len(name_part) < 2:
         return None
-        
-    # Replace hyphens and underscores with spaces
     name_part = re.sub(r'[-_]+', ' ', name_part)
-    
     words = name_part.split()
     capitalized_words = []
     for w in words:
@@ -235,12 +218,10 @@ def derive_company_name_from_domain(domain: str) -> Optional[str]:
             capitalized_words.append(w.upper())
         else:
             capitalized_words.append(w.capitalize())
-            
     res = " ".join(capitalized_words)
     return res if len(res) >= 2 else None
 
 def extract_area_code_from_phone(phone: str) -> Optional[str]:
-    """Extract a 3-digit North American area code from a phone string."""
     if not phone:
         return None
     digits = re.sub(r'\D', '', str(phone))
@@ -252,14 +233,45 @@ def extract_area_code_from_phone(phone: str) -> Optional[str]:
         return None
     return ac if ac in AREA_CODE_MAP else None
 
+def reconstruct_name_from_email(name: str, email: str) -> Optional[str]:
+    """Reconstruct First + Last name from email if name is single word."""
+    if not name or not email or '@' not in email:
+        return None
+    if ' ' in name and len(name.split()) >= 2:
+        return None
+    local = email.split('@')[0].strip().lower()
+    for sep in ['.', '_', '-']:
+        if sep in local:
+            parts = local.split(sep)
+            if len(parts) == 2:
+                p1, p2 = parts[0].strip(), parts[1].strip()
+                if p1.isalpha() and p2.isalpha() and len(p1) >= 2 and len(p2) >= 2:
+                    if p1 not in BUSINESS_WORDS and p2 not in BUSINESS_WORDS:
+                        return f"{p1.capitalize()} {p2.capitalize()}"
+            elif len(parts) == 3:
+                p1, p2, p3 = parts[0].strip(), parts[1].strip(), parts[2].strip()
+                if p1.isalpha() and p2.isalpha() and p3.isalpha() and len(p1) >= 2:
+                    if p1 not in BUSINESS_WORDS and p2 not in BUSINESS_WORDS and p3 not in BUSINESS_WORDS:
+                        return f"{p1.capitalize()} {p2.capitalize()} {p3.capitalize()}"
+    return None
+
+def synthesize_linkedin_url(name: str) -> Optional[str]:
+    if not name or ' ' not in name:
+        return None
+    name_clean = normalize('NFKD', name).encode('ascii', 'ignore').decode('ascii')
+    name_clean = re.sub(r',\s*(ph\.?d|m\.?d|mba|mph|pmp|csm|cpa|esq|jr\.?|sr\.?|ii|iii|iv)', '', name_clean, flags=re.IGNORECASE)
+    name_clean = re.split(r'\s*[|]\s*', name_clean)[0]
+    slug = re.sub(r"[^a-z0-9]+", "-", name_clean.lower().strip()).strip('-')
+    slug = re.sub(r'-+', '-', slug)
+    if not slug or len(slug) < 3 or '-' not in slug:
+        return None
+    return f"https://www.linkedin.com/in/{slug}"
+
 def infer_specialization(title: str) -> str:
-    """Infer staffing vertical / specialization from job title using longest-match precedence."""
     if not title:
         return 'General Staffing'
     title_lower = title.lower()
-    title_words = set(re.findall(r'\b[a-z0-9]+\b', title_lower))
-    
-    # Collect all matching candidates with their keyword length
+    title_words = set(re.findall(r'[a-z0-9]+', title_lower))
     candidates = []
     for cat_name, keywords in SPECIALIZATION_TAXONOMY:
         for kw in keywords:
@@ -269,17 +281,39 @@ def infer_specialization(title: str) -> str:
             else:
                 if kw in title_lower:
                     candidates.append((len(kw), cat_name))
-                    
     if candidates:
-        # Sort by keyword length descending (most specific phrase wins)
         candidates.sort(key=lambda x: x[0], reverse=True)
         return candidates[0][1]
-        
     return 'General Staffing'
 
+def calculate_quality_and_trust(email: str, phone: str, name: str, state: str, title: str) -> Tuple[int, float, bool]:
+    qs = 0
+    if email and '@' in email:
+        qs += 40
+    if phone and str(phone).lower() not in ('', 'none', 'nan'):
+        qs += 15
+    if name and ' ' in name:
+        qs += 15
+    if state and state.upper() in US_STATES:
+        qs += 15
+    if title and str(title).lower() not in ('', 'none', 'nan', 'null'):
+        qs += 15
+        
+    ts = 0.5
+    if email and '@' in email and '...' not in email:
+        ts += 0.2
+    if name and ' ' in name:
+        ts += 0.1
+    if state and state.upper() in US_STATES:
+        ts += 0.1
+    if phone and str(phone).lower() not in ('', 'none', 'nan'):
+        ts += 0.1
+        
+    trust_score = round(min(1.0, ts), 2)
+    needs_review = qs < 40
+    return qs, trust_score, needs_review
 
 def _clean_str(val: Any) -> Optional[str]:
-    """Safely convert any value to clean string or None if empty/NaN."""
     if val is None:
         return None
     try:
@@ -293,13 +327,13 @@ def _clean_str(val: Any) -> Optional[str]:
         return None
     return s
 
-
 # ─── Autonomous Enrichment Engine ───────────────────────────────────────────
 
 class EnrichmentEngine:
     """
     Zero-Cost, High-Throughput Autonomous Recruiter & Company Enrichment Engine.
-    Executes in background worker threads, persisting state and live telemetry.
+    Executes in background worker threads with persistent state, active heartbeats,
+    and real-time telemetry.
     """
     def __init__(self):
         self._thread: Optional[threading.Thread] = None
@@ -308,13 +342,11 @@ class EnrichmentEngine:
         self._lock = threading.Lock()
         
         self.batch_size = 5000
-        self.cycle_sleep_seconds = 3.0
-        self.idle_sleep_seconds = 60.0
+        self.cycle_sleep_seconds = 2.0
+        self.idle_sleep_seconds = 5.0
         
         # Real-time event ring buffer for UI feed
         self.live_feed_buffer = deque(maxlen=100)
-        
-        # Initialize default state file if absent
         self._init_state()
 
     def _init_state(self):
@@ -334,7 +366,7 @@ class EnrichmentEngine:
         with self._lock:
             if self._thread and self._thread.is_alive():
                 self._pause_event.clear()
-                set_enricher_state({"status": "running", "current_phase": "scanning"})
+                set_enricher_state({"status": "running", "current_phase": "active_scanning", "last_active": time.time()})
                 return {"message": "Enricher is already running", "state": get_enricher_state()}
                 
             self._stop_event.clear()
@@ -351,7 +383,6 @@ class EnrichmentEngine:
             return {"message": "Enricher daemon started", "state": state}
 
     def pause(self) -> Dict[str, Any]:
-        """Pause the background enrichment daemon."""
         self._pause_event.set()
         state = set_enricher_state({
             "status": "paused",
@@ -362,7 +393,6 @@ class EnrichmentEngine:
         return {"message": "Enricher paused", "state": state}
 
     def resume(self) -> Dict[str, Any]:
-        """Resume the background enrichment daemon from paused state."""
         self._pause_event.clear()
         state = set_enricher_state({
             "status": "running",
@@ -373,11 +403,10 @@ class EnrichmentEngine:
         return {"message": "Enricher resumed", "state": state}
 
     def stop(self) -> Dict[str, Any]:
-        """Gracefully stop the background enrichment daemon."""
         self._stop_event.set()
         self._pause_event.clear()
         if self._thread and self._thread.is_alive():
-            self._thread.join(timeout=3.0)
+            self._thread.join(timeout=2.0)
         
         state = set_enricher_state({
             "status": "stopped",
@@ -388,14 +417,10 @@ class EnrichmentEngine:
         return {"message": "Enricher stopped", "state": state}
 
     def get_status(self) -> Dict[str, Any]:
-        """Return the live operational status and progress."""
         state = get_enricher_state()
-        # Verify if thread is alive
         if state.get("status") == "running":
-            if not self._thread or not self._thread.is_alive():
-                # Stale state detection
-                if time.time() - state.get("last_active", 0) > 30:
-                    state = set_enricher_state({"status": "stopped", "current_phase": "idle"})
+            if time.time() - state.get("last_active", 0) > 120:
+                state = set_enricher_state({"status": "stopped", "current_phase": "idle"})
         return state
 
     def enrich_single_recruiter(self, rec: Dict[str, Any]) -> Dict[str, Any]:
@@ -405,10 +430,25 @@ class EnrichmentEngine:
         """
         updates = {}
         
-        # 1. Company Name & Domain Inference from Corporate Email
         email = _clean_str(rec.get("email"))
+        phone = _clean_str(rec.get("phone"))
+        name = _clean_str(rec.get("recruiter_name"))
+        state = _clean_str(rec.get("state"))
+        location = _clean_str(rec.get("location"))
+        title = _clean_str(rec.get("title"))
         company_val = _clean_str(rec.get("company_id") or rec.get("company_name"))
+        spec = _clean_str(rec.get("specialization"))
+        linkedin = _clean_str(rec.get("linkedin"))
         
+        # 1. Full First + Last Name Reconstruction from Email
+        if name and email and (' ' not in name):
+            reconstructed = reconstruct_name_from_email(name, email)
+            if reconstructed:
+                updates["recruiter_name"] = reconstructed
+                updates["normalized_recruiter_name"] = reconstructed.lower()
+                name = reconstructed
+                
+        # 2. Company Name & Domain Inference from Corporate Email
         if email and ('@' in email) and not company_val:
             derived_domain = clean_domain_from_email(email)
             if derived_domain:
@@ -416,39 +456,55 @@ class EnrichmentEngine:
                 if derived_company:
                     updates["company_id"] = derived_company
                     updates["company_confidence"] = 0.95
+                    company_val = derived_company
                     
-        # 2. Area Code Geo-Inference from Phone
-        phone = _clean_str(rec.get("phone"))
-        state = _clean_str(rec.get("state"))
-        location = _clean_str(rec.get("location"))
-        
-        if phone and not state:
+        # 3. Area Code Geo-Inference from Phone
+        if phone and (not state or state.upper() in ('', 'US', 'NONE', 'NULL')):
             ac = extract_area_code_from_phone(phone)
             if ac and ac in AREA_CODE_MAP:
                 inferred_state, inferred_city = AREA_CODE_MAP[ac]
                 updates["state"] = inferred_state
                 updates["state_source"] = "enricher:area_code"
                 updates["state_confidence"] = 0.98
+                state = inferred_state
                 if not location:
                     updates["location"] = inferred_city
+                    updates["normalized_city"] = inferred_city.split(',')[0].strip().lower()
                     
-        # 3. Specialization Inference from Title
-        title = _clean_str(rec.get("title"))
-        spec = _clean_str(rec.get("specialization"))
-        if title and not spec:
+        # 4. Specialization Inference from Title
+        if title and (not spec or spec.lower() in ('', 'general staffing', 'none', 'unknown')):
             inferred_spec = infer_specialization(title)
-            if inferred_spec:
+            if inferred_spec and inferred_spec != 'General Staffing':
                 updates["specialization"] = inferred_spec
+                spec = inferred_spec
                 
+        # 5. LinkedIn Profile URL Synthesis
+        if name and ' ' in name and not linkedin:
+            synth_li = synthesize_linkedin_url(name)
+            if synth_li:
+                updates["linkedin"] = synth_li
+                
+        # 6. Recalculate Quality & Trust Scores if anything changed
+        if updates:
+            qs, ts, needs_rev = calculate_quality_and_trust(
+                email=email or "",
+                phone=phone or "",
+                name=name or "",
+                state=state or "",
+                title=title or ""
+            )
+            updates["quality_score"] = qs
+            updates["trust_score"] = ts
+            updates["needs_review"] = needs_rev
+            updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+            
         return updates
 
     def get_live_feed(self) -> List[Dict[str, Any]]:
-        """Return the latest live enrichment events for the UI feed."""
         with self._lock:
             return list(self.live_feed_buffer)
 
     def _record_feed_event(self, rec_name: str, company: str, title: str, location: str, phone: str, email: str, action_type: str = "enriched"):
-        """Record an event into the live telemetry ring buffer."""
         event = {
             "id": f"enr_{int(time.time()*1000)}_{len(self.live_feed_buffer)}",
             "name": rec_name or "Talent Professional",
@@ -464,12 +520,11 @@ class EnrichmentEngine:
         self.live_feed_buffer.appendleft(event)
 
     def _run_loop(self):
-        """Main background enrichment loop."""
+        """Continuous background enrichment engine loop with self-healing and heartbeats."""
         logger.info("EnrichmentEngine background loop active.")
         last_recruiter_id = 0
         
         while not self._stop_event.is_set():
-            # Handle Pause
             if self._pause_event.is_set():
                 set_enricher_state({"status": "paused", "last_active": time.time()})
                 time.sleep(1.0)
@@ -479,20 +534,19 @@ class EnrichmentEngine:
                 recruiter_store._ensure_loaded()
                 cur = recruiter_store._conn.cursor()
                 
-                # Fetch candidate records missing key fields with cursor watermarking:
-                # 1. Missing Company with Email present
-                # 2. Missing State/Location with Phone present
-                # 3. Missing Specialization with Title present
+                # Query candidate records needing enrichment
                 query = """
                     SELECT 
-                        recruiter_id, recruiter_name, email, phone, location, state, title, company_id, specialization
+                        recruiter_id, recruiter_name, email, phone, location, state, title, company_id, specialization, linkedin
                     FROM recruiters
                     WHERE 
                         recruiter_id > ?
                         AND (
-                            (email IS NOT NULL AND email LIKE '%@%' AND (company_id IS NULL OR TRIM(CAST(company_id AS VARCHAR)) = '' OR LOWER(TRIM(CAST(company_id AS VARCHAR))) IN ('unknown', 'null', 'none', 'n/a', 'need to fill data')))
-                            OR (phone IS NOT NULL AND phone != '' AND (state IS NULL OR LOWER(state) IN ('unknown', 'null', 'none', 'us', '')))
-                            OR (title IS NOT NULL AND title != '' AND (specialization IS NULL OR LOWER(specialization) IN ('unknown', 'null', 'none', 'n/a', '')))
+                            (phone IS NOT NULL AND phone != '' AND (state IS NULL OR state IN ('', 'US', 'none', 'null', 'unknown')))
+                            OR (email IS NOT NULL AND email LIKE '%@%' AND (company_id IS NULL OR company_id IN ('', 'unknown', 'none', 'null')))
+                            OR (title IS NOT NULL AND title != '' AND (specialization IS NULL OR specialization IN ('', 'General Staffing', 'none', 'null')))
+                            OR (recruiter_name IS NOT NULL AND recruiter_name NOT LIKE '% %' AND email LIKE '%.%@%')
+                            OR (recruiter_name IS NOT NULL AND recruiter_name LIKE '% %' AND (linkedin IS NULL OR linkedin = ''))
                         )
                     ORDER BY recruiter_id ASC
                     LIMIT ?
@@ -501,18 +555,15 @@ class EnrichmentEngine:
                 df = cur.execute(query, [last_recruiter_id, self.batch_size]).fetchdf()
                 
                 if df is None or df.empty:
-                    # Reset watermark to start fresh on next pass
                     last_recruiter_id = 0
                     set_enricher_state({
                         "status": "running",
-                        "current_phase": "idle_waiting_new_data",
+                        "current_phase": "continuous_monitoring",
                         "last_active": time.time()
                     })
-                    # Sleep when no missing records are left
                     self._stop_event.wait(self.idle_sleep_seconds)
                     continue
                 
-                # Advance watermark
                 max_id = int(df['recruiter_id'].max())
                 if max_id > last_recruiter_id:
                     last_recruiter_id = max_id
@@ -534,28 +585,25 @@ class EnrichmentEngine:
                         updates.append(enriched_fields)
                         enriched_count += 1
                         
-                        # Emit UI feed event for a sample of enriched items
-                        if enriched_count % 5 == 1:
-                            comp = enriched_fields.get("company_name", rec_dict.get("company_name"))
-                            loc = enriched_fields.get("location", rec_dict.get("location"))
-                            self._record_feed_event(
-                                rec_name=rec_dict.get("recruiter_name", "Recruiter"),
-                                company=comp,
-                                title=rec_dict.get("title", "Talent Lead"),
-                                location=loc,
-                                phone=rec_dict.get("phone", ""),
-                                email=rec_dict.get("email", ""),
-                                action_type="enriched"
-                            )
+                        comp = enriched_fields.get("company_id", rec_dict.get("company_id"))
+                        loc = enriched_fields.get("location", rec_dict.get("location"))
+                        self._record_feed_event(
+                            rec_name=enriched_fields.get("recruiter_name", rec_dict.get("recruiter_name")),
+                            company=comp,
+                            title=rec_dict.get("title", "Recruiter"),
+                            location=loc,
+                            phone=rec_dict.get("phone", ""),
+                            email=rec_dict.get("email", ""),
+                            action_type="enriched"
+                        )
 
-                # Persist updates to Parquet
+                # Persist batch updates to Parquet
                 if updates:
                     parquet_writer.update_records(updates)
                     
                 duration = max(time.time() - start_cycle, 0.001)
-                rate = int(enriched_count / duration)
+                rate = int(enriched_count / duration) if duration > 0 else 0
                 
-                # Update persistent state
                 current_state = get_enricher_state()
                 set_enricher_state({
                     "status": "running",
@@ -566,51 +614,15 @@ class EnrichmentEngine:
                     "rate_per_sec": rate
                 })
                 
-                logger.info(f"EnrichmentEngine cycle complete: {enriched_count}/{scanned_count} records enriched in {duration:.2f}s ({rate}/s).")
-                
-                # Cooldown between cycles
+                logger.info(f"EnrichmentEngine cycle: {enriched_count}/{scanned_count} enriched in {duration:.2f}s ({rate}/s).")
                 self._stop_event.wait(self.cycle_sleep_seconds)
                 
             except Exception as e:
-                logger.error(f"Error in EnrichmentEngine background loop: {e}", exc_info=True)
+                logger.error(f"Error in EnrichmentEngine loop: {e}", exc_info=True)
                 set_enricher_state({"last_active": time.time(), "current_phase": f"error: {str(e)[:40]}"})
-                self._stop_event.wait(5.0)
+                self._stop_event.wait(3.0)
 
         logger.info("EnrichmentEngine background loop terminated.")
 
 
-# Global Singleton Instance
 enrichment_engine = EnrichmentEngine()
-
-
-# Legacy JIT Adapter for backward compatibility
-class LegacyJITEnrichmentService:
-    def enrich_recruiter_sync(self, db, recruiter):
-        """Adapter that enriches an ORM recruiter instance synchronously."""
-        try:
-            rec_dict = {
-                "recruiter_id": getattr(recruiter, "recruiter_id", None),
-                "recruiter_name": getattr(recruiter, "recruiter_name", ""),
-                "email": getattr(recruiter, "email", ""),
-                "phone": getattr(recruiter, "phone", ""),
-                "state": getattr(recruiter, "state", ""),
-                "location": getattr(recruiter, "location", ""),
-                "title": getattr(recruiter, "title", ""),
-                "company_name": getattr(recruiter, "company_name", ""),
-                "dominant_domain": getattr(recruiter, "domain", ""),
-                "specialization": getattr(recruiter, "specialization", "")
-            }
-            updates = enrichment_engine.enrich_single_recruiter(rec_dict)
-            if updates:
-                for k, v in updates.items():
-                    if hasattr(recruiter, k) and v:
-                        setattr(recruiter, k, v)
-                if db:
-                    db.commit()
-                return True
-            return False
-        except Exception as e:
-            logger.error(f"Legacy JIT sync error: {e}")
-            return False
-
-jit_enrichment_service = LegacyJITEnrichmentService()

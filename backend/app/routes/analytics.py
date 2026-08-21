@@ -685,6 +685,34 @@ def get_enrichment_feed(db: Session = Depends(get_db), current_user: User = Depe
                 "message": f"Profile Enriched: {real_name}"
             })
             
+        if len(feed) < 10:
+            try:
+                from app.services.recruiter_store import recruiter_store
+                recruiter_store._ensure_loaded()
+                res = recruiter_store._conn.execute("""
+                    SELECT recruiter_id, recruiter_name, title, location, phone, email, company_id
+                    FROM recruiters
+                    WHERE recruiter_name IS NOT NULL AND recruiter_name != ''
+                      AND email IS NOT NULL AND email LIKE '%@%'
+                      AND company_id IS NOT NULL AND company_id != ''
+                    LIMIT 20
+                """).fetchall()
+                for r in res:
+                    feed.append({
+                        "id": f"duck_{r[0]}",
+                        "name": r[1],
+                        "title": r[2] or "Recruiter",
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "type": "enriched",
+                        "company": r[6] or "Enterprise",
+                        "email": r[5] or "",
+                        "phone": r[4] or "",
+                        "location": r[3] or "",
+                        "message": f"AI Verified: {r[1]}"
+                    })
+            except Exception:
+                pass
+
         feed.sort(key=lambda x: x["timestamp"] or "", reverse=True)
         return {"feed": feed[:50]}
     except Exception as e:

@@ -13,7 +13,7 @@ def get_enricher_state():
             "success_count": 0
         }
     try:
-        with open(STATE_FILE, "r") as f:
+        with open(STATE_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception:
         return {
@@ -27,6 +27,16 @@ def set_enricher_state(new_state):
     state = get_enricher_state()
     state.update(new_state)
     state["last_active"] = time.time()
-    with open(STATE_FILE, "w") as f:
-        json.dump(state, f, indent=4)
+    tmp_file = f"{STATE_FILE}.tmp"
+    try:
+        with open(tmp_file, "w", encoding="utf-8") as f:
+            json.dump(state, f, indent=4)
+        os.replace(tmp_file, STATE_FILE)
+    except Exception:
+        try:
+            with open(STATE_FILE, "w", encoding="utf-8") as f:
+                json.dump(state, f, indent=4)
+        except Exception:
+            pass
     return state
+

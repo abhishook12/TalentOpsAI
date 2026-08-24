@@ -5,43 +5,7 @@ import UpdateCenter from './components/UpdateCenter'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Maintenance from './pages/Maintenance'
 import api from './services/api'
-class GlobalErrorBoundary extends Component {
-  constructor(props) {
-    super(props)
-    this.state = { hasError: false }
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error }
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error('Caught by GlobalErrorBoundary:', error, errorInfo)
-    if (error?.name === 'ChunkLoadError' || String(error?.message || '').includes('dynamically imported module')) {
-      window.location.reload()
-    }
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="cc-error-shell">
-          <i className="ti ti-alert-triangle cc-error-icon" />
-          <h2>Component crashed</h2>
-          <p>The app caught a render error before it could take down the whole session.</p>
-          <pre style={{color: 'red', textAlign: 'left', padding: 20, maxWidth: 800, overflow: 'auto'}}>{String(this.state.error?.stack || this.state.error)}</pre>
-          <div className="cc-error-actions">
-            <button onClick={() => { window.location.href = '/' }} className="cc-ghost-button">Return to dashboard</button>
-            <button onClick={() => window.location.reload()} className="cc-primary-button">Reload page</button>
-          </div>
-        </div>
-      )
-    }
-    return this.props.children
-  }
-}
-
-
+import BombproofErrorBoundary from './components/ui/BombproofErrorBoundary'
 import { AnalyticsProvider } from './context/AnalyticsProvider'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
 import { Toaster } from 'react-hot-toast'
@@ -155,9 +119,9 @@ function AppShell() {
   if (isAuthPage) {
     return (
       <>
-        <GlobalErrorBoundary>
+        <BombproofErrorBoundary componentName="Authentication Portal">
           <Outlet />
-        </GlobalErrorBoundary>
+        </BombproofErrorBoundary>
       </>
     )
   }
@@ -196,9 +160,9 @@ function AppShell() {
 
           <div className="cc-content">
             <main className="cc-page-body">
-              <GlobalErrorBoundary>
+              <BombproofErrorBoundary componentName={pageName || "Application Body"}>
                 <Outlet />
-              </GlobalErrorBoundary>
+              </BombproofErrorBoundary>
             </main>
 
             <footer className="cc-footer">

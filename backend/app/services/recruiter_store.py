@@ -970,36 +970,13 @@ class RecruiterStore:
         recruiter_ids: Optional[List[int]] = None,
         limit: int = 10000
     ) -> str:
-        """Stream matching recruiters directly from DuckDB into RFC 4180 CSV."""
+        """Stream matching recruiters directly from DuckDB into RFC 4180 CSV with safe memory limits."""
         self._ensure_loaded()
         import io
         import csv
-        
-        if recruiter_ids:
-            cur = self._conn.cursor()
-            placeholders = ",".join(["?"] * len(recruiter_ids))
-            query = f"""
-                SELECT recruiter_id, recruiter_name, title, company_id, email, phone, location, state, specialization, linkedin, quality_score
-                FROM recruiters
-                WHERE recruiter_id IN ({placeholders})
-                ORDER BY quality_score DESC, recruiter_id ASC
-                LIMIT ?
-            """
-            params = list(recruiter_ids) + [limit]
-            df = cur.execute(query, params).fetchdf()
-            results = self._df_to_dict(df)
-        else:
-            results, _ = self.list_recruiters(
-                page=1,
-                limit=limit,
-                search=search,
-                state=state,
-                company_id=company_id,
-                company_key=company_key,
-                specialization=specialization,
-                has_phone=has_phone
-            )
-            
+
+        # Bombproof limit boundary: Never exceed 50,000 in a single export
+        safe_limit = max(1, min(int(limit or 10000), 50000))
         output = io.StringIO()
         writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
         writer.writerow([
@@ -1007,20 +984,51 @@ class RecruiterStore:
             "Phone", "Location", "State", "Specialization", "LinkedIn", "Quality Score"
         ])
         
-        for r in results:
-            writer.writerow([
-                r.get("recruiter_id", ""),
-                r.get("recruiter_name", ""),
-                r.get("title", ""),
-                r.get("company_id", ""),
-                r.get("email", ""),
-                r.get("phone", ""),
-                r.get("location", ""),
-                r.get("state", ""),
-                r.get("specialization", ""),
-                r.get("linkedin", ""),
-                r.get("quality_score", "")
-            ])
+        try:
+            if recruiter_ids:
+                safe_ids = [int(i) for i in recruiter_ids[:safe_limit] if str(i).isdigit()]
+                if not safe_ids:
+                    return output.getvalue()
+                cur = self._conn.cursor()
+                placeholders = ",".join(["?"] * len(safe_ids))
+                query = f"""
+                    SELECT recruiter_id, recruiter_name, title, company_id, email, phone, location, state, specialization, linkedin, quality_score
+                    FROM recruiters
+                    WHERE recruiter_id IN ({placeholders})
+                    ORDER BY quality_score DESC, recruiter_id ASC
+                    LIMIT ?
+                """
+                params = list(safe_ids) + [safe_limit]
+                df = cur.execute(query, params).fetchdf()
+                results = self._df_to_dict(df)
+            else:
+                results, _ = self.list_recruiters(
+                    page=1,
+                    limit=safe_limit,
+                    search=search,
+                    state=state,
+                    company_id=company_id,
+                    company_key=company_key,
+                    specialization=specialization,
+                    has_phone=has_phone
+                )
+            
+            for r in results:
+                writer.writerow([
+                    r.get("recruiter_id", ""),
+                    r.get("recruiter_name", ""),
+                    r.get("title", ""),
+                    r.get("company_id", ""),
+                    r.get("email", ""),
+                    r.get("phone", ""),
+                    r.get("location", ""),
+                    r.get("state", ""),
+                    r.get("specialization", ""),
+                    r.get("linkedin", ""),
+                    r.get("quality_score", "")
+                ])
+        except Exception as e:
+            logger.error(f"Error during CSV export: {e}")
             
         return output.getvalue()
 

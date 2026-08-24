@@ -704,11 +704,41 @@ export default function Recruiters() {
           </div>
     
           {/* Main Top Filters */}
-          <div className="card" style={{ padding: 16, marginBottom: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="card" style={{ padding: 16, marginBottom: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ position: 'relative' }}>
               <i className="ti ti-search" style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 16 }} />
               <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="Search recruiters or type smart query (e.g. 'Tech recruiters in Texas with phone')..."
                 style={{ width: '100%', paddingLeft: 44, height: 44, borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13.5, outline: 'none', background: 'var(--panel-bg)', color: 'var(--text-primary)' }} />
+            </div>
+
+            {/* Smart Search Prompt Chips */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 11 }}>
+              <span style={{ color: 'var(--text-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <i className="ti ti-sparkles" style={{ color: '#fbbf24' }} /> Smart Queries:
+              </span>
+              {[
+                "Tech recruiters in Texas with phone",
+                "Healthcare in California with phone",
+                "Senior recruiters in New York",
+                "Executive Directors at Insight Global"
+              ].map((example, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => { setSearch(example); setPage(1); }}
+                  style={{
+                    background: search === example ? 'rgba(59,130,246,0.18)' : 'rgba(255,255,255,0.04)',
+                    border: search === example ? '1px solid rgba(59,130,246,0.4)' : '1px solid var(--card-border)',
+                    color: search === example ? '#60a5fa' : 'var(--text-secondary)',
+                    padding: '3px 8px',
+                    borderRadius: 6,
+                    fontSize: 11,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  "{example}"
+                </button>
+              ))}
             </div>
             
             {/* Presets & Filter Row */}

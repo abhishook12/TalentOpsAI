@@ -181,6 +181,29 @@ export default function Campaigns() {
   const validationTimerRef = useRef(null);
 
   const [deliverability, setDeliverability] = useState({ deliverability_score: 100, spam_score: 0, rating: 'Optimal', badge_color: 'green', suggestions: [] });
+  
+  // ── Powerhouse Outreach State: A/B Testing & Smart Timezone ──────────────────
+  const [isABTest, setIsABTest] = useState(false);
+  const [subjectB, setSubjectB] = useState('');
+  const [smartTimezone, setSmartTimezone] = useState(true);
+
+  const timezoneStats = useMemo(() => {
+    const counts = { ET: 0, CT: 0, MT: 0, PT: 0, other: 0 };
+    const ET_STATES = new Set(['CT','DE','FL','GA','ME','MD','MA','NH','NJ','NY','NC','OH','PA','RI','SC','VT','VA','WV','DC']);
+    const CT_STATES = new Set(['AL','AR','IL','IA','KS','KY','LA','MN','MS','MO','NE','ND','OK','SD','TN','TX','WI']);
+    const MT_STATES = new Set(['AZ','CO','ID','MT','NM','UT','WY']);
+    const PT_STATES = new Set(['CA','NV','OR','WA']);
+
+    (validatedRecipients.recipients || []).forEach(r => {
+      const st = (r.state || '').toUpperCase();
+      if (ET_STATES.has(st)) counts.ET++;
+      else if (CT_STATES.has(st)) counts.CT++;
+      else if (MT_STATES.has(st)) counts.MT++;
+      else if (PT_STATES.has(st)) counts.PT++;
+      else counts.other++;
+    });
+    return counts;
+  }, [validatedRecipients.recipients]);
 
   useEffect(() => {
     if (!subject?.trim() && !body?.trim()) {
@@ -203,11 +226,12 @@ export default function Campaigns() {
   const detectedVariables = useMemo(() => {
     const pattern = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g;
     const found = new Set();
-    for (const match of (subject + ' ' + body).matchAll(pattern)) {
+    const allText = subject + ' ' + (isABTest ? subjectB : '') + ' ' + body;
+    for (const match of allText.matchAll(pattern)) {
       found.add(match[1]);
     }
     return Array.from(found);
-  }, [subject, body]);
+  }, [subject, subjectB, isABTest, body]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // List query
@@ -510,7 +534,32 @@ export default function Campaigns() {
         recipients: validRecipients,
       });
 
-      // 2. Trigger Deliverability Pre-Flight Scan
+      // 2. Configure A/B testing if active
+      if (isABTest && subjectB.trim()) {
+        try {
+          await api.post(`/campaigns/${cid}/ab-test`, {
+            enabled: true,
+            variant_a_subject: subject,
+            variant_a_body: body,
+            variant_b_subject: subjectB,
+            variant_b_body: body,
+            test_sample_percent: 20
+          });
+        } catch {
+          // Non-blocking
+        }
+      }
+
+      // 3. Schedule smart timezone dispatch if active
+      if (smartTimezone) {
+        try {
+          await api.post(`/campaigns/${cid}/smart-schedule`);
+        } catch {
+          // Non-blocking
+        }
+      }
+
+      // 4. Trigger Deliverability Pre-Flight Scan
       const preflightRes = await api.post(`/campaigns/${cid}/preflight`, {
         emails: validRecipients.map(r => r.email),
         names: validRecipients.map(r => r.name || '')
@@ -522,7 +571,7 @@ export default function Campaigns() {
       const errDetail = e.response?.data?.detail || 'Failed to initialize pre-flight check';
       toast.error(errDetail);
     }
-  }, [activeCampaignId, isSending, saveDraft, validatedRecipients, campaignName, fromEmail, signatureId, subject, body]);
+  }, [activeCampaignId, isSending, saveDraft, validatedRecipients, campaignName, fromEmail, signatureId, subject, subjectB, isABTest, smartTimezone, body]);
 
   const handleConfirmLaunch = useCallback(async ({ excludeRisky }) => {
     if (isSending) return;
@@ -869,17 +918,86 @@ export default function Campaigns() {
                   </div>
                 </div>
 
-                {/* SUBJECT */}
+                {/* SUBJECT & A/B TEST SWITCHER */}
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Subject</label>
-                  <input
-                    type="text"
-                    value={subject}
-                    onChange={e => setSubject(e.target.value.slice(0, 255))}
-                    placeholder="Your subject line (use {{ variables }})"
-                    maxLength={255}
-                    style={{ width: '100%', background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, padding: '8px 12px', fontSize: 14, color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box' }}
-                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
+                      {isABTest ? 'Subject Line Matrix (A/B Testing)' : 'Subject Line'}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsABTest(!isABTest)}
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        background: isABTest ? 'rgba(99, 102, 241, 0.15)' : 'var(--bg-hover)',
+                        color: isABTest ? '#818cf8' : 'var(--text-muted)',
+                        border: isABTest ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid var(--border)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      🧪 {isABTest ? 'Disable A/B Test' : '+ Enable A/B Split Test'}
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ position: 'relative' }}>
+                      {isABTest && (
+                        <span style={{ position: 'absolute', left: 8, top: 9, fontSize: 10, fontWeight: 800, padding: '1px 5px', borderRadius: 3, background: 'rgba(99, 102, 241, 0.2)', color: '#a5b4fc' }}>
+                          A
+                        </span>
+                      )}
+                      <input
+                        type="text"
+                        value={subject}
+                        onChange={e => setSubject(e.target.value.slice(0, 255))}
+                        placeholder={isABTest ? "Variant A: Primary subject line (use {{ variables }})" : "Your subject line (use {{ variables }})"}
+                        maxLength={255}
+                        style={{
+                          width: '100%',
+                          background: 'var(--bg-surface)',
+                          border: '1px solid var(--card-border)',
+                          borderRadius: 6,
+                          padding: isABTest ? '8px 12px 8px 32px' : '8px 12px',
+                          fontSize: 14,
+                          color: 'var(--text-primary)',
+                          outline: 'none',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+
+                    {isABTest && (
+                      <div style={{ position: 'relative' }}>
+                        <span style={{ position: 'absolute', left: 8, top: 9, fontSize: 10, fontWeight: 800, padding: '1px 5px', borderRadius: 3, background: 'rgba(236, 72, 153, 0.2)', color: '#f472b6' }}>
+                          B
+                        </span>
+                        <input
+                          type="text"
+                          value={subjectB}
+                          onChange={e => setSubjectB(e.target.value.slice(0, 255))}
+                          placeholder="Variant B: Alternative subject line (use {{ variables }})"
+                          maxLength={255}
+                          style={{
+                            width: '100%',
+                            background: 'var(--bg-surface)',
+                            border: '1px solid var(--card-border)',
+                            borderRadius: 6,
+                            padding: '8px 12px 8px 32px',
+                            fontSize: 14,
+                            color: 'var(--text-primary)',
+                            outline: 'none',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* BODY */}
@@ -936,6 +1054,50 @@ export default function Campaigns() {
                     )}
                   </div>
                 )}
+
+                {/* SMART OUTREACH POWERHOUSE (TIMEZONE & REPUTATION SHIELD) */}
+                <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 8, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Clock size={15} style={{ color: '#818cf8' }} />
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>Prime-Time Timezone Dispatcher</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Target 8:45 AM local recipient morning window</div>
+                      </div>
+                    </div>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600, color: smartTimezone ? '#818cf8' : 'var(--text-muted)' }}>
+                      <input
+                        type="checkbox"
+                        checked={smartTimezone}
+                        onChange={e => setSmartTimezone(e.target.checked)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                      {smartTimezone ? 'Active' : 'Disabled'}
+                    </label>
+                  </div>
+
+                  {smartTimezone && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingTop: 4, borderTop: '1px solid var(--border)' }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'rgba(99, 102, 241, 0.12)', color: '#818cf8' }}>
+                        🇺🇸 ET: {timezoneStats.ET} leads
+                      </span>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'rgba(16, 185, 129, 0.12)', color: '#34d399' }}>
+                        🇺🇸 CT: {timezoneStats.CT} leads
+                      </span>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'rgba(245, 158, 11, 0.12)', color: '#fbbf24' }}>
+                        🇺🇸 MT: {timezoneStats.MT} leads
+                      </span>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'rgba(236, 72, 153, 0.12)', color: '#f472b6' }}>
+                        🇺🇸 PT: {timezoneStats.PT} leads
+                      </span>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingTop: 6, borderTop: '1px solid var(--border)', fontSize: 11, color: '#34d399' }}>
+                    <ShieldCheck size={13} />
+                    <span><strong>Reputation Shield Armed:</strong> 2.0% bounce circuit breaker & automatic warm-up rate limits.</span>
+                  </div>
+                </div>
 
                 {/* SIGNATURE */}
                 <div>

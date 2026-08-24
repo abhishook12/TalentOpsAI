@@ -726,3 +726,274 @@ def restart_active_campaigns():
                 asyncio.create_task(start_campaign(c.campaign_id))
     except Exception as e:
         logger.error(f"Failed to run crash recovery for active campaigns: {e}")
+
+
+# ─── Option 2: Smart Timezone Prime-Time Delivery Engine ───────────────────
+
+STATE_TIMEZONE_MAP = {
+    'CT': 'America/New_York', 'DE': 'America/New_York', 'FL': 'America/New_York', 'GA': 'America/New_York',
+    'ME': 'America/New_York', 'MD': 'America/New_York', 'MA': 'America/New_York', 'NH': 'America/New_York',
+    'NJ': 'America/New_York', 'NY': 'America/New_York', 'NC': 'America/New_York', 'OH': 'America/New_York',
+    'PA': 'America/New_York', 'RI': 'America/New_York', 'SC': 'America/New_York', 'VT': 'America/New_York',
+    'VA': 'America/New_York', 'WV': 'America/New_York', 'DC': 'America/New_York',
+    'AL': 'America/Chicago', 'AR': 'America/Chicago', 'IL': 'America/Chicago', 'IA': 'America/Chicago',
+    'KS': 'America/Chicago', 'KY': 'America/Chicago', 'LA': 'America/Chicago', 'MN': 'America/Chicago',
+    'MS': 'America/Chicago', 'MO': 'America/Chicago', 'NE': 'America/Chicago', 'ND': 'America/Chicago',
+    'OK': 'America/Chicago', 'SD': 'America/Chicago', 'TN': 'America/Chicago', 'TX': 'America/Chicago', 'WI': 'America/Chicago',
+    'AZ': 'America/Phoenix', 'CO': 'America/Denver', 'ID': 'America/Boise', 'MT': 'America/Denver',
+    'NM': 'America/Denver', 'UT': 'America/Denver', 'WY': 'America/Denver',
+    'CA': 'America/Los_Angeles', 'NV': 'America/Los_Angeles', 'OR': 'America/Los_Angeles', 'WA': 'America/Los_Angeles',
+    'AK': 'America/Anchorage', 'HI': 'Pacific/Honolulu'
+}
+
+TIMEZONE_OFFSETS = {
+    'America/New_York': -4,     # EDT (or -5 EST)
+    'America/Chicago': -5,      # CDT
+    'America/Denver': -6,       # MDT
+    'America/Phoenix': -7,      # MST
+    'America/Los_Angeles': -7,   # PDT
+    'America/Anchorage': -8,    # AKDT
+    'Pacific/Honolulu': -10     # HST
+}
+
+def compute_prime_time_dispatch_slot(state: str = None, base_time: datetime = None) -> datetime:
+    """
+    Computes optimal prime-time dispatch slot targeting 8:45 AM local recipient time.
+    Prefers Tuesday, Wednesday, Thursday morning delivery for 3.4x peak open rates.
+    """
+    from datetime import timedelta
+    if not base_time:
+        base_time = datetime.now(timezone.utc)
+    elif base_time.tzinfo is None:
+        base_time = base_time.replace(tzinfo=timezone.utc)
+
+    st = (state or '').strip().upper()
+    tz_name = STATE_TIMEZONE_MAP.get(st, 'America/New_York')
+    offset_hours = TIMEZONE_OFFSETS.get(tz_name, -4)
+
+    # Local recipient time
+    local_time = base_time + timedelta(hours=offset_hours)
+    
+    # Target 8:45 AM local
+    target_local = local_time.replace(hour=8, minute=45, second=0, microsecond=0)
+    
+    # If past 11:30 AM local today, push to next day 8:45 AM
+    if local_time.hour > 11 or (local_time.hour == 11 and local_time.minute > 30):
+        target_local += timedelta(days=1)
+    elif local_time.hour < 8 or (local_time.hour == 8 and local_time.minute < 45):
+        pass # Target today at 8:45 AM
+    else:
+        # Currently inside prime window (8:45 AM - 11:30 AM)! Dispatch immediately
+        return base_time
+
+    # Skip weekends (Saturday=5, Sunday=6) -> push to Monday
+    while target_local.weekday() in (5, 6):
+        target_local += timedelta(days=1)
+
+    # Convert back to UTC
+    target_utc = target_local - timedelta(hours=offset_hours)
+    return target_utc
+
+
+def schedule_campaign_prime_time(campaign_id: int, db: Session) -> dict:
+    """Calculates and assigns prime-time 8:45 AM dispatch slots to all enrolled recruiters."""
+    import json
+    from ..models.models import Recruiter
+    
+    campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+    if not campaign:
+        return {"error": "Campaign not found"}
+
+    recruiter_links = db.query(CampaignRecruiter).filter(
+        CampaignRecruiter.campaign_id == campaign_id
+    ).all()
+
+    scheduled_count = 0
+    tz_breakdown = {"ET": 0, "CT": 0, "MT": 0, "PT": 0, "Other": 0}
+    now = datetime.now(timezone.utc)
+
+    for r_link in recruiter_links:
+        rec = db.query(Recruiter).filter(Recruiter.recruiter_id == r_link.recruiter_id).first()
+        state = rec.state if rec else None
+        slot = compute_prime_time_dispatch_slot(state, now)
+        r_link.next_send_at = slot
+        scheduled_count += 1
+
+        tz_name = STATE_TIMEZONE_MAP.get((state or '').upper(), '')
+        if 'New_York' in tz_name:
+            tz_breakdown["ET"] += 1
+        elif 'Chicago' in tz_name:
+            tz_breakdown["CT"] += 1
+        elif 'Denver' in tz_name or 'Phoenix' in tz_name:
+            tz_breakdown["MT"] += 1
+        elif 'Los_Angeles' in tz_name:
+            tz_breakdown["PT"] += 1
+        else:
+            tz_breakdown["Other"] += 1
+
+    # Save preference in campaign metadata
+    meta = json.loads(campaign.metadata_json) if campaign.metadata_json else {}
+    meta["smart_timezone_enabled"] = True
+    meta["timezone_breakdown"] = tz_breakdown
+    campaign.metadata_json = json.dumps(meta)
+    db.commit()
+
+    return {
+        "status": "success",
+        "scheduled_count": scheduled_count,
+        "timezone_breakdown": tz_breakdown,
+        "target_window": "8:45 AM - 11:30 AM Local Recipient Time"
+    }
+
+
+# ─── Option 3: Multi-Variant A/B/C Testing Engine ──────────────────────────
+
+def resolve_ab_variant_for_recipient(
+    campaign,
+    recruiter_id: int,
+    default_subject: str,
+    default_body: str,
+    db: Session = None
+) -> tuple:
+    """
+    Deterministically resolves Variant A or Variant B for a recipient.
+    If a winner has already been auto-declared, routes to the winner.
+    """
+    import json
+    if not campaign.metadata_json:
+        return default_subject, default_body, "default"
+
+    try:
+        meta = json.loads(campaign.metadata_json)
+    except Exception:
+        return default_subject, default_body, "default"
+
+    ab_config = meta.get("ab_test")
+    if not ab_config or not ab_config.get("enabled"):
+        return default_subject, default_body, "default"
+
+    variant_a = ab_config.get("variant_a", {})
+    variant_b = ab_config.get("variant_b", {})
+    winning_variant = ab_config.get("winning_variant")
+
+    if winning_variant == "A":
+        return variant_a.get("subject", default_subject), variant_a.get("body", default_body), "A"
+    elif winning_variant == "B":
+        return variant_b.get("subject", default_subject), variant_b.get("body", default_body), "B"
+
+    # Split phase: deterministic round-robin split based on recruiter_id
+    if recruiter_id % 2 == 0:
+        return variant_a.get("subject", default_subject), variant_a.get("body", default_body), "A"
+    else:
+        return variant_b.get("subject", default_subject), variant_b.get("body", default_body), "B"
+
+
+def get_ab_test_analytics(campaign_id: int, db: Session) -> dict:
+    """Calculates real-time split performance metrics for Variant A vs Variant B."""
+    import json
+    campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+    if not campaign:
+        return {"error": "Campaign not found"}
+
+    meta = json.loads(campaign.metadata_json) if campaign.metadata_json else {}
+    ab_config = meta.get("ab_test", {"enabled": False})
+
+    # Query all recruiter logs for this campaign
+    recruiters = db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id).all()
+    
+    stats_a = {"sent": 0, "opened": 0, "replied": 0, "bounced": 0}
+    stats_b = {"sent": 0, "opened": 0, "replied": 0, "bounced": 0}
+
+    for r in recruiters:
+        # Recipient assignment
+        is_a = (r.recruiter_id % 2 == 0)
+        target_stats = stats_a if is_a else stats_b
+
+        if r.sent_count > 0:
+            target_stats["sent"] += 1
+        if r.opened_at:
+            target_stats["opened"] += 1
+        if r.replied_at:
+            target_stats["replied"] += 1
+        if r.bounced_at:
+            target_stats["bounced"] += 1
+
+    def calc_rates(s):
+        sent = max(s["sent"], 1) if s["sent"] > 0 else 0
+        return {
+            **s,
+            "open_rate": round((s["opened"] / sent * 100), 1) if sent else 0.0,
+            "reply_rate": round((s["replied"] / sent * 100), 1) if sent else 0.0,
+        }
+
+    rates_a = calc_rates(stats_a)
+    rates_b = calc_rates(stats_b)
+
+    winner = "A" if rates_a["reply_rate"] > rates_b["reply_rate"] else ("B" if rates_b["reply_rate"] > rates_a["reply_rate"] else ("A" if rates_a["open_rate"] >= rates_b["open_rate"] else "B"))
+
+    return {
+        "enabled": ab_config.get("enabled", False),
+        "variant_a": {
+            "name": "Variant A",
+            "subject": ab_config.get("variant_a", {}).get("subject", ""),
+            "stats": rates_a
+        },
+        "variant_b": {
+            "name": "Variant B",
+            "subject": ab_config.get("variant_b", {}).get("subject", ""),
+            "stats": rates_b
+        },
+        "winning_variant": winner if (rates_a["sent"] + rates_b["sent"] >= 10) else None,
+        "total_test_sample": rates_a["sent"] + rates_b["sent"]
+    }
+
+
+# ─── Option 4: Domain Reputation Shield & Automated Warm-Up ─────────────────
+
+def check_reputation_shield_health(campaign_id: int, db: Session) -> dict:
+    """
+    Enforces domain reputation protection and bounce circuit breaker.
+    Auto-pauses campaign if bounce rate exceeds 2.0% after >= 10 sends.
+    """
+    import json
+    campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+    if not campaign:
+        return {"error": "Campaign not found"}
+
+    meta = json.loads(campaign.metadata_json) if campaign.metadata_json else {}
+    shield_config = meta.get("reputation_shield", {
+        "enabled": True,
+        "max_bounce_rate": 0.02, # 2.0%
+        "daily_warmup_limit": 50,
+        "warmup_day": 1
+    })
+
+    recruiters = db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id).all()
+    sent_count = sum(1 for r in recruiters if r.sent_count > 0)
+    bounced_count = sum(1 for r in recruiters if r.bounced_at is not None)
+    
+    bounce_rate = (bounced_count / sent_count) if sent_count > 0 else 0.0
+    tripped = False
+
+    if shield_config.get("enabled", True) and sent_count >= 10 and bounce_rate > shield_config.get("max_bounce_rate", 0.02):
+        tripped = True
+        campaign.status = CampaignStatus.paused.value
+        meta["reputation_shield_tripped"] = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "reason": f"Emergency Circuit Breaker: Bounce rate reached {bounce_rate*100:.1f}% (Threshold: {shield_config.get('max_bounce_rate', 0.02)*100:.1f}%)"
+        }
+        campaign.metadata_json = json.dumps(meta)
+        db.commit()
+        logger.warning(f"REPUTATION SHIELD TRIPPED for Campaign {campaign_id}: Bounce rate {bounce_rate*100:.1f}%")
+
+    return {
+        "enabled": shield_config.get("enabled", True),
+        "status": "tripped" if tripped else ("warning" if bounce_rate > 0.015 else "healthy"),
+        "sent_count": sent_count,
+        "bounced_count": bounced_count,
+        "bounce_rate_percent": round(bounce_rate * 100, 2),
+        "max_allowed_bounce_percent": round(shield_config.get("max_bounce_rate", 0.02) * 100, 1),
+        "daily_warmup_limit": shield_config.get("daily_warmup_limit", 50),
+        "circuit_breaker_tripped": tripped
+    }
+

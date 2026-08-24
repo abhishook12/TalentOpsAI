@@ -1601,3 +1601,79 @@ async def retry_failed_campaign_emails(campaign_id: int, db: Session = Depends(g
     asyncio.create_task(resume_campaign(campaign_id))
     
     return {"message": f"Queued {len(failed_recipients)} failed emails for retry"}
+
+
+# ─── Powerhouse Outreach Endpoints (Timezone, AB Testing, Reputation Shield) ───
+
+class ABTestConfigRequest(BaseModel):
+    enabled: bool = True
+    variant_a_subject: str = Field(min_length=1, max_length=255)
+    variant_a_body: Optional[str] = None
+    variant_b_subject: str = Field(min_length=1, max_length=255)
+    variant_b_body: Optional[str] = None
+    test_sample_percent: int = Field(default=20, ge=10, le=100)
+
+
+@router.post("/{campaign_id}/smart-schedule")
+def schedule_smart_timezone(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request)
+):
+    """Calculates and assigns prime-time 8:45 AM local recipient dispatch slots."""
+    from ..services.send_engine import schedule_campaign_prime_time
+    campaign = get_campaign_or_404(db, campaign_id, current_user)
+    result = schedule_campaign_prime_time(campaign.campaign_id, db)
+    return result
+
+
+@router.post("/{campaign_id}/ab-test")
+def configure_ab_test(
+    campaign_id: int,
+    payload: ABTestConfigRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request)
+):
+    """Configures Subject Line and Body A/B test variants."""
+    import json
+    campaign = get_campaign_or_404(db, campaign_id, current_user)
+    meta = json.loads(campaign.metadata_json) if campaign.metadata_json else {}
+    meta["ab_test"] = {
+        "enabled": payload.enabled,
+        "variant_a": {
+            "subject": payload.variant_a_subject,
+            "body": payload.variant_a_body
+        },
+        "variant_b": {
+            "subject": payload.variant_b_subject,
+            "body": payload.variant_b_body
+        },
+        "test_sample_percent": payload.test_sample_percent
+    }
+    campaign.metadata_json = json.dumps(meta)
+    db.commit()
+    return {"message": "A/B test configured successfully", "ab_test": meta["ab_test"]}
+
+
+@router.get("/{campaign_id}/ab-test")
+def get_campaign_ab_analytics(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request)
+):
+    """Returns real-time variant split metrics and winning variant."""
+    from ..services.send_engine import get_ab_test_analytics
+    campaign = get_campaign_or_404(db, campaign_id, current_user)
+    return get_ab_test_analytics(campaign.campaign_id, db)
+
+
+@router.get("/{campaign_id}/reputation-shield")
+def get_campaign_reputation_shield(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request)
+):
+    """Returns domain reputation shield health, bounce tripwire stats, and warm-up quotas."""
+    from ..services.send_engine import check_reputation_shield_health
+    campaign = get_campaign_or_404(db, campaign_id, current_user)
+    return check_reputation_shield_health(campaign.campaign_id, db)

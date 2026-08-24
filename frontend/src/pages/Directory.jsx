@@ -812,6 +812,31 @@ export default function Directory() {
             {selectedCount} selected:
           </span>
           <button 
+            onClick={async () => {
+              const toastId = toast.loading('Exporting selected recruiters to CSV...')
+              try {
+                const ids = Array.from(selectedRecruiters.keys())
+                const res = await api.post('/recruiters/export', { recruiter_ids: ids }, { responseType: 'blob' })
+                const url = window.URL.createObjectURL(new Blob([res.data]))
+                const link = document.createElement('a')
+                link.href = url
+                link.setAttribute('download', `selected_recruiters_${ids.length}.csv`)
+                document.body.appendChild(link)
+                link.click()
+                link.remove()
+                toast.success(`Exported ${ids.length} recruiters to CSV!`, { id: toastId })
+              } catch (e) {
+                toast.error('Failed to export CSV', { id: toastId })
+              }
+            }}
+            style={{
+              backgroundColor: 'rgba(255,255,255,0.08)', color: 'var(--text-primary)', border: '1px solid var(--card-border)', padding: '6px 14px',
+              borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
+            }}
+          >
+            <i className="ti ti-download" /> Export CSV
+          </button>
+          <button 
             onClick={() => setIsPoolModalOpen(true)}
             style={{
               backgroundColor: '#f59e0b', color: '#000', border: 'none', padding: '6px 14px',

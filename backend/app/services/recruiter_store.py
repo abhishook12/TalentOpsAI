@@ -143,6 +143,105 @@ def _parse_boolean_search(query: str, fields: Optional[List[str]] = None) -> Tup
 
     return " ".join(sql_parts), params
 
+STATE_NAME_TO_CODE = {
+    'alabama': 'AL', 'alaska': 'AK', 'arizona': 'AZ', 'arkansas': 'AR', 'california': 'CA',
+    'colorado': 'CO', 'connecticut': 'CT', 'delaware': 'DE', 'florida': 'FL', 'georgia': 'GA',
+    'hawaii': 'HI', 'idaho': 'ID', 'illinois': 'IL', 'indiana': 'IN', 'iowa': 'IA',
+    'kansas': 'KS', 'kentucky': 'KY', 'louisiana': 'LA', 'maine': 'ME', 'maryland': 'MD',
+    'massachusetts': 'MA', 'michigan': 'MI', 'minnesota': 'MN', 'mississippi': 'MS', 'missouri': 'MO',
+    'montana': 'MT', 'nebraska': 'NE', 'nevada': 'NV', 'new hampshire': 'NH', 'new jersey': 'NJ',
+    'new mexico': 'NM', 'new york': 'NY', 'north carolina': 'NC', 'north dakota': 'ND', 'ohio': 'OH',
+    'oklahoma': 'OK', 'oregon': 'OR', 'pennsylvania': 'PA', 'rhode island': 'RI', 'south carolina': 'SC',
+    'south dakota': 'SD', 'tennessee': 'TN', 'texas': 'TX', 'utah': 'UT', 'vermont': 'VT',
+    'virginia': 'VA', 'washington': 'WA', 'west virginia': 'WV', 'wisconsin': 'WI', 'wyoming': 'WY',
+    'dc': 'DC', 'district of columbia': 'DC'
+}
+
+SPECIALIZATION_KEYWORDS = {
+    'tech': 'Information Technology', 'technology': 'Information Technology', 'software': 'Information Technology',
+    'it': 'Information Technology', 'cloud': 'Information Technology', 'devops': 'Information Technology',
+    'healthcare': 'Healthcare & Nursing', 'nursing': 'Healthcare & Nursing', 'nurse': 'Healthcare & Nursing',
+    'medical': 'Healthcare & Nursing', 'pharma': 'Healthcare & Nursing', 'biotech': 'Healthcare & Nursing',
+    'finance': 'Finance & Accounting', 'accounting': 'Finance & Accounting', 'accountant': 'Finance & Accounting',
+    'cpa': 'Finance & Accounting', 'banking': 'Finance & Accounting',
+    'engineering': 'Engineering & Manufacturing', 'manufacturing': 'Engineering & Manufacturing', 'mechanical': 'Engineering & Manufacturing',
+    'sales': 'Sales & Marketing', 'marketing': 'Sales & Marketing',
+    'hr': 'Human Resources', 'human resources': 'Human Resources',
+    'legal': 'Legal & Compliance', 'operations': 'Operations & Supply Chain', 'logistics': 'Operations & Supply Chain'
+}
+
+def parse_smart_natural_query(query: str) -> Dict[str, Any]:
+    """
+    Parses natural language intent from search strings.
+    E.g. 'Senior tech recruiters in Texas with verified phones' ->
+         {
+             'state': 'TX',
+             'has_phone': True,
+             'seniority_level': 'Senior',
+             'specialization': 'Information Technology',
+             'remaining_search': 'recruiters'
+         }
+    """
+    if not query:
+        return {}
+        
+    extracted = {
+        "state": None,
+        "has_phone": None,
+        "seniority_level": None,
+        "specialization": None,
+        "remaining_search": query
+    }
+    
+    working_q = query.strip()
+    
+    # 1. Phone requirement
+    phone_pattern = r'\b(?:with|having|has)\s+(?:verified\s+)?phone(?:s)?\b|\bphone\s+verified\b|\bwith\s+phone\b'
+    if re.search(phone_pattern, working_q, re.IGNORECASE):
+        extracted["has_phone"] = True
+        working_q = re.sub(phone_pattern, '', working_q, flags=re.IGNORECASE)
+        
+    # 2. State mentions
+    st_code_match = re.search(r'\b(?:in|from|based in)\s+([A-Za-z]{2})\b', working_q, re.IGNORECASE)
+    if st_code_match and st_code_match.group(1).upper() in STATE_NAME_TO_CODE.values():
+        extracted["state"] = st_code_match.group(1).upper()
+        working_q = working_q[:st_code_match.start()] + ' ' + working_q[st_code_match.end():]
+    else:
+        for full_name, code in STATE_NAME_TO_CODE.items():
+            st_name_pat = rf'\b(?:in|from|based in)\s+{full_name}\b|\b{full_name}\b'
+            if re.search(st_name_pat, working_q, re.IGNORECASE):
+                extracted["state"] = code
+                working_q = re.sub(st_name_pat, '', working_q, flags=re.IGNORECASE)
+                break
+                
+    # 3. Seniority
+    seniority_map = {
+        'senior': 'Senior', 'lead': 'Lead', 'principal': 'Principal',
+        'director': 'Director', 'executive': 'Executive', 'vp': 'VP',
+        'head': 'Head', 'manager': 'Manager'
+    }
+    for kw, val in seniority_map.items():
+        sen_pat = rf'\b{kw}\b'
+        if re.search(sen_pat, working_q, re.IGNORECASE):
+            extracted["seniority_level"] = val
+            working_q = re.sub(sen_pat, '', working_q, flags=re.IGNORECASE)
+            break
+            
+    # 4. Specialization keywords
+    for kw, spec_val in SPECIALIZATION_KEYWORDS.items():
+        spec_pat = rf'\b{kw}\b'
+        if re.search(spec_pat, working_q, re.IGNORECASE):
+            extracted["specialization"] = spec_val
+            working_q = re.sub(spec_pat, '', working_q, flags=re.IGNORECASE)
+            break
+            
+    working_q = re.sub(r'\s+', ' ', working_q).strip()
+    working_q = re.sub(r'^(?:recruiters|recruiter|contacts|leads|people|sourcers)\s*', '', working_q, flags=re.IGNORECASE).strip()
+    extracted["remaining_search"] = working_q if working_q else None
+    
+    return extracted
+
+
 
 class RecruiterStore:
     """
@@ -572,6 +671,19 @@ class RecruiterStore:
         where_clauses = []
         params = []
 
+        if search and (' in ' in search.lower() or ' with ' in search.lower() or 'has phone' in search.lower()):
+            smart = parse_smart_natural_query(search)
+            if smart.get("state") and not state:
+                state = smart["state"]
+            if smart.get("has_phone") is not None and has_phone is None:
+                has_phone = smart["has_phone"]
+            if smart.get("seniority_level") and not seniority_level:
+                seniority_level = smart["seniority_level"]
+            if smart.get("specialization") and not specialization:
+                specialization = smart["specialization"]
+            if smart.get("remaining_search") != search:
+                search = smart.get("remaining_search")
+
         if search:
             search_str = search.strip()
             if any(k in search_str for k in (' AND ', ' OR ', ' NOT ', '"', '(', ')')) or search_str.startswith('NOT '):
@@ -847,5 +959,72 @@ class RecruiterStore:
         return stats
 
 
+    def export_recruiters_csv(
+        self,
+        search: Optional[str] = None,
+        state: Optional[str] = None,
+        company_id: Optional[int] = None,
+        company_key: Optional[str] = None,
+        specialization: Optional[str] = None,
+        has_phone: Optional[bool] = None,
+        recruiter_ids: Optional[List[int]] = None,
+        limit: int = 10000
+    ) -> str:
+        """Stream matching recruiters directly from DuckDB into RFC 4180 CSV."""
+        self._ensure_loaded()
+        import io
+        import csv
+        
+        if recruiter_ids:
+            cur = self._conn.cursor()
+            placeholders = ",".join(["?"] * len(recruiter_ids))
+            query = f"""
+                SELECT recruiter_id, recruiter_name, title, company_id, email, phone, location, state, specialization, linkedin, quality_score
+                FROM recruiters
+                WHERE recruiter_id IN ({placeholders})
+                ORDER BY quality_score DESC, recruiter_id ASC
+                LIMIT ?
+            """
+            params = list(recruiter_ids) + [limit]
+            df = cur.execute(query, params).fetchdf()
+            results = self._df_to_dict(df)
+        else:
+            results, _ = self.list_recruiters(
+                page=1,
+                limit=limit,
+                search=search,
+                state=state,
+                company_id=company_id,
+                company_key=company_key,
+                specialization=specialization,
+                has_phone=has_phone
+            )
+            
+        output = io.StringIO()
+        writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
+        writer.writerow([
+            "Recruiter ID", "Full Name", "Title", "Company", "Email",
+            "Phone", "Location", "State", "Specialization", "LinkedIn", "Quality Score"
+        ])
+        
+        for r in results:
+            writer.writerow([
+                r.get("recruiter_id", ""),
+                r.get("recruiter_name", ""),
+                r.get("title", ""),
+                r.get("company_id", ""),
+                r.get("email", ""),
+                r.get("phone", ""),
+                r.get("location", ""),
+                r.get("state", ""),
+                r.get("specialization", ""),
+                r.get("linkedin", ""),
+                r.get("quality_score", "")
+            ])
+            
+        return output.getvalue()
+
+
 # Singleton instance
 recruiter_store = RecruiterStore()
+

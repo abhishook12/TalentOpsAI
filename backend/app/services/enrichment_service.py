@@ -626,3 +626,118 @@ class EnrichmentEngine:
 
 
 enrichment_engine = EnrichmentEngine()
+
+
+def get_company_colleagues(company_key: str, exclude_id: Optional[int] = None, limit: int = 15) -> List[Dict[str, Any]]:
+    """Retrieve peer recruiters from the same company for Colleague Graph."""
+    if not company_key:
+        return []
+    try:
+        recruiter_store._ensure_loaded()
+        cur = recruiter_store._conn.cursor()
+        query = """
+            SELECT 
+                recruiter_id, recruiter_name, email, phone, location, state, title, specialization, linkedin, quality_score, trust_score
+            FROM recruiters
+            WHERE 
+                CAST(company_id AS VARCHAR) = ?
+                AND (? IS NULL OR recruiter_id != ?)
+            ORDER BY quality_score DESC, recruiter_id ASC
+            LIMIT ?
+        """
+        df = cur.execute(query, [str(company_key).strip(), exclude_id, exclude_id, limit]).fetchdf()
+        if df is None or df.empty:
+            return []
+        return df.to_dict(orient='records')
+    except Exception as e:
+        logger.error(f"Error fetching colleagues for {company_key}: {e}")
+        return []
+
+
+class AutoEnricherScheduler:
+    """
+    Autonomous background scheduler for zero-touch periodic enrichment passes.
+    Runs periodically at configured intervals (default: every 6 hours).
+    """
+    def __init__(self, engine: EnrichmentEngine):
+        self.engine = engine
+        self._thread: Optional[threading.Thread] = None
+        self._stop_event = threading.Event()
+        self._lock = threading.Lock()
+        self._enabled = True
+        self._interval_hours = 6
+        self._last_run_at = None
+        self._load_config()
+        self.start_scheduler()
+
+    def _load_config(self):
+        state = get_enricher_state()
+        if "auto_pilot" in state:
+            cfg = state["auto_pilot"]
+            self._enabled = cfg.get("enabled", True)
+            self._interval_hours = cfg.get("interval_hours", 6)
+            self._last_run_at = cfg.get("last_run_at")
+
+    def _save_config(self):
+        set_enricher_state({
+            "auto_pilot": {
+                "enabled": self._enabled,
+                "interval_hours": self._interval_hours,
+                "last_run_at": self._last_run_at,
+                "next_run_in_seconds": self._interval_hours * 3600
+            }
+        })
+
+    def get_schedule(self) -> Dict[str, Any]:
+        return {
+            "enabled": self._enabled,
+            "interval_hours": self._interval_hours,
+            "last_run_at": self._last_run_at,
+            "is_active": self._thread is not None and self._thread.is_alive()
+        }
+
+    def update_schedule(self, enabled: bool, interval_hours: int = 6) -> Dict[str, Any]:
+        with self._lock:
+            self._enabled = enabled
+            self._interval_hours = max(1, interval_hours)
+            self._save_config()
+            logger.info(f"AutoEnricherScheduler config updated: enabled={enabled}, interval={interval_hours}h")
+            return self.get_schedule()
+
+    def start_scheduler(self):
+        with self._lock:
+            if self._thread and self._thread.is_alive():
+                return
+            self._stop_event.clear()
+            self._thread = threading.Thread(target=self._scheduler_loop, name="AutoEnricherSchedulerDaemon", daemon=True)
+            self._thread.start()
+            logger.info("AutoEnricherScheduler thread started.")
+
+    def _scheduler_loop(self):
+        while not self._stop_event.is_set():
+            try:
+                if self._enabled:
+                    current_st = self.engine.get_status()
+                    if current_st.get("status") != "running":
+                        logger.info("AutoEnricherScheduler triggering automated enrichment pass...")
+                        self.engine.start()
+                        self._last_run_at = datetime.now(timezone.utc).isoformat()
+                        self._save_config()
+                
+                sleep_seconds = self._interval_hours * 3600
+                for _ in range(max(1, int(sleep_seconds / 60))):
+                    if self._stop_event.is_set():
+                        break
+                    time.sleep(60)
+            except Exception as e:
+                logger.error(f"Error in AutoEnricherScheduler loop: {e}")
+                time.sleep(60)
+
+    def stop_scheduler(self):
+        self._stop_event.set()
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=2.0)
+
+
+auto_enricher_scheduler = AutoEnricherScheduler(enrichment_engine)
+

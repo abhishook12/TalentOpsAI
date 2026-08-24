@@ -42,6 +42,21 @@ def control_enricher(req: ControlRequest, admin: User = Depends(require_admin)):
     else:
         raise HTTPException(status_code=400, detail=f"Invalid action: {action}")
 
+class ScheduleRequest(BaseModel):
+    enabled: bool
+    interval_hours: int = 6
+
+@router.get("/enricher/schedule")
+def get_enricher_schedule(admin: User = Depends(require_admin)):
+    from app.services.enrichment_service import auto_enricher_scheduler
+    return auto_enricher_scheduler.get_schedule()
+
+@router.post("/enricher/schedule")
+def update_enricher_schedule(req: ScheduleRequest, admin: User = Depends(require_admin)):
+    from app.services.enrichment_service import auto_enricher_scheduler
+    return auto_enricher_scheduler.update_schedule(enabled=req.enabled, interval_hours=req.interval_hours)
+
+
 @router.post("/inject-data")
 def inject_data(
     background_tasks: BackgroundTasks,

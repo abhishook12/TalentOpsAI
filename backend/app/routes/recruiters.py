@@ -1318,11 +1318,64 @@ def api_auto_fix_recruiter_email(
 
     # Update in Postgres if row exists
     pg_rec = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
-    if pg_rec:
-        pg_rec.email = result['repaired_email']
-        pg_rec.email_status = 'verified'
-        pg_rec.email_confidence = result.get('confidence', 95)
-        pg_rec.is_deliverable = True
-        db.commit()
-
     return result
+
+
+class ExportRecruitersPayload(BaseModel):
+    recruiter_ids: Optional[List[int]] = None
+    search: Optional[str] = None
+    state: Optional[str] = None
+    company_key: Optional[str] = None
+    specialization: Optional[str] = None
+    has_phone: Optional[bool] = None
+    limit: Optional[int] = 10000
+
+
+@router.get("/{recruiter_id}/colleagues")
+def get_recruiter_colleagues(
+    recruiter_id: int,
+    limit: int = 15,
+    current_user: User = Depends(get_current_user_from_request)
+):
+    """Retrieve peer recruiters at the same company for Colleague Graph."""
+    rec = recruiter_store.get_by_id(recruiter_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Recruiter not found")
+        
+    company_key = rec.get("company_id")
+    if not company_key:
+        return {"colleagues": [], "company": None}
+        
+    from app.services.enrichment_service import get_company_colleagues
+    colleagues = get_company_colleagues(company_key=company_key, exclude_id=recruiter_id, limit=limit)
+    return {
+        "company": company_key,
+        "total_colleagues": len(colleagues),
+        "colleagues": colleagues
+    }
+
+
+@router.post("/export")
+def export_recruiters_endpoint(
+    payload: ExportRecruitersPayload,
+    current_user: User = Depends(get_current_user_from_request)
+):
+    """Stream matching recruiters directly as downloadable CSV."""
+    csv_content = recruiter_store.export_recruiters_csv(
+        search=payload.search,
+        state=payload.state,
+        company_key=payload.company_key,
+        specialization=payload.specialization,
+        has_phone=payload.has_phone,
+        recruiter_ids=payload.recruiter_ids,
+        limit=min(payload.limit or 10000, 50000)
+    )
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=talentops_recruiters_export.csv",
+            "Access-Control-Expose-Headers": "Content-Disposition"
+        }
+    )
+

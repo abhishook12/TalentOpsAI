@@ -3,10 +3,85 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Mail, Phone, ExternalLink, Building2, MapPin, Award,
   ShieldCheck, CheckCircle2, Copy, Check, Send, Sparkles,
-  Calendar, Clock, User, ChevronRight, AlertTriangle, Wand2, RefreshCw
+  Calendar, Clock, User, ChevronRight, AlertTriangle, Wand2, RefreshCw, Users
 } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+
+function ColleaguesSection({ recruiterId, company, onSelectRecruiter }) {
+  const [colleagues, setColleagues] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  React.useEffect(() => {
+    if (!recruiterId || !isExpanded) return;
+    let isMounted = true;
+    setLoading(true);
+    api.get(`/recruiters/${recruiterId}/colleagues?limit=10`)
+      .then(res => {
+        if (isMounted) setColleagues(res.data?.colleagues || []);
+      })
+      .catch(() => {
+        if (isMounted) setColleagues([]);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+    return () => { isMounted = false; };
+  }, [recruiterId, isExpanded]);
+
+  return (
+    <div className="p-4 rounded-xl bg-[#18181c] border border-[#27272a] space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Users className="w-4 h-4 text-emerald-400" />
+          <span className="text-xs font-semibold text-[#a1a1aa] uppercase tracking-wider">Company Colleagues</span>
+        </div>
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="text-xs text-emerald-400 hover:text-emerald-300 font-medium"
+        >
+          {isExpanded ? 'Collapse' : 'Explore Peers'}
+        </button>
+      </div>
+
+      {isExpanded && (
+        <div className="space-y-2 pt-2 border-t border-[#27272a]">
+          {loading ? (
+            <div className="text-xs text-[#71717a] py-2 flex items-center gap-2">
+              <RefreshCw className="w-3 h-3 animate-spin text-emerald-400" /> Finding colleagues at {company}...
+            </div>
+          ) : colleagues.length === 0 ? (
+            <div className="text-xs text-[#71717a] py-1">No other active colleagues found for this firm.</div>
+          ) : (
+            colleagues.map(colleague => (
+              <div
+                key={colleague.recruiter_id}
+                onClick={() => onSelectRecruiter(colleague)}
+                className="p-2.5 rounded-lg bg-[#202026] hover:bg-[#272730] border border-[#2d2d35] cursor-pointer transition-colors flex items-center justify-between group"
+              >
+                <div className="min-w-0 pr-2">
+                  <div className="text-xs font-semibold text-white group-hover:text-emerald-400 transition-colors truncate">
+                    {colleague.recruiter_name}
+                  </div>
+                  <div className="text-[10px] text-[#a1a1aa] truncate">
+                    {colleague.title || 'Recruiter'} {colleague.location ? `• ${colleague.location}` : ''}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono">
+                    {colleague.quality_score || 85}%
+                  </span>
+                  <ChevronRight className="w-3.5 h-3.5 text-[#71717a] group-hover:text-white" />
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function RecruiterProfileDrawer({
   recruiter: initialRecruiter,
@@ -273,6 +348,9 @@ export default function RecruiterProfileDrawer({
                   </div>
                 )}
               </div>
+
+              {/* Company Colleague Graph */}
+              <ColleaguesSection recruiterId={recruiter.recruiter_id} company={company} onSelectRecruiter={(colleague) => setRecruiter(colleague)} />
             </div>
 
             {/* Footer */}

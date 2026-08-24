@@ -403,10 +403,70 @@ export default function Recruiters() {
   }, [refetch])
 
 
-  const exportRecruiters = useCallback(() => {
-    if (totalCount === 0 || !recruiters?.length) return toast.error('No recruiters to export');
-    exportToExcel(recruiters, 'recruiters_export');
-  }, [totalCount, recruiters])
+  const [presets, setPresets] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('talentops_saved_presets') || '[]')
+    } catch {
+      return []
+    }
+  })
+
+  const saveCurrentPreset = useCallback(() => {
+    const name = window.prompt("Enter a name for this search preset (e.g. 'Texas Tech Recruiters'):")
+    if (!name || !name.trim()) return
+    const newPreset = {
+      id: Date.now(),
+      name: name.trim(),
+      search,
+      filters
+    }
+    const updated = [newPreset, ...presets.filter(p => p.name !== name.trim())]
+    setPresets(updated)
+    localStorage.setItem('talentops_saved_presets', JSON.stringify(updated))
+    toast.success(`Saved preset "${name.trim()}"!`)
+  }, [search, filters, presets])
+
+  const loadPreset = useCallback((preset) => {
+    if (!preset) return
+    setSearch(preset.search || '')
+    setFilters(preset.filters || {})
+    setPage(1)
+    toast.success(`Loaded preset "${preset.name}"`)
+  }, [setSearch, setFilters, setPage])
+
+  const deletePreset = useCallback((id, e) => {
+    e.stopPropagation()
+    const updated = presets.filter(p => p.id !== id)
+    setPresets(updated)
+    localStorage.setItem('talentops_saved_presets', JSON.stringify(updated))
+    toast.success("Preset removed")
+  }, [presets])
+
+  const exportRecruiters = useCallback(async () => {
+    if (totalCount === 0) return toast.error('No recruiters to export')
+    const toastId = toast.loading('Generating bulk CSV export...')
+    try {
+      const payload = {
+        search: debouncedSearch || undefined,
+        state: debouncedFilters.state || undefined,
+        specialization: debouncedFilters.title || debouncedFilters.specialization_sector || undefined,
+        has_phone: debouncedFilters.has_phone === 'yes' ? true : debouncedFilters.has_phone === 'no' ? false : undefined,
+        limit: 10000
+      }
+      const response = await api.post('/recruiters/export', payload, { responseType: 'blob' })
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `talentops_recruiters_${new Date().toISOString().slice(0,10)}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      toast.success(`Exported ${Math.min(totalCount, 10000).toLocaleString()} recruiters to CSV!`, { id: toastId })
+    } catch (e) {
+      toast.error('Failed to export recruiters', { id: toastId })
+    }
+  }, [totalCount, debouncedSearch, debouncedFilters])
+
 
   const openEdit = useCallback((r) => {
     setForm({
@@ -647,11 +707,13 @@ export default function Recruiters() {
           <div className="card" style={{ padding: 16, marginBottom: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ position: 'relative' }}>
               <i className="ti ti-search" style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 16 }} />
-              <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="Search recruiters..."
+              <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="Search recruiters or type smart query (e.g. 'Tech recruiters in Texas with phone')..."
                 style={{ width: '100%', paddingLeft: 44, height: 44, borderRadius: 8, border: '1px solid var(--card-border)', fontSize: 13.5, outline: 'none', background: 'var(--panel-bg)', color: 'var(--text-primary)' }} />
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', gap: 12 }}>
+            
+            {/* Presets & Filter Row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 <CustomSelect 
                   value={filters.state} 
                   onChange={val => updateFilter('state', val)}
@@ -677,11 +739,39 @@ export default function Recruiters() {
                   style={{ width: 140, height: 36 }}
                 />
               </div>
-              <button onClick={clearFilters} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', fontSize: 12.5, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
-                <i className="ti ti-filter-off" style={{ fontSize: 14 }} /> Clear Filters
-              </button>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {presets.length > 0 && (
+                  <select
+                    onChange={(e) => {
+                      const p = presets.find(item => String(item.id) === e.target.value)
+                      if (p) loadPreset(p)
+                    }}
+                    defaultValue=""
+                    style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--main-bg)', color: 'var(--text-primary)', fontSize: 12 }}
+                  >
+                    <option value="" disabled>Saved Presets ({presets.length})</option>
+                    {presets.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                )}
+                
+                <button
+                  onClick={saveCurrentPreset}
+                  title="Save current search & filter setup as a preset"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--card-border)', color: 'var(--text-primary)', padding: '6px 10px', borderRadius: 6, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontWeight: 500 }}
+                >
+                  <i className="ti ti-bookmark" /> Save Preset
+                </button>
+
+                <button onClick={clearFilters} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', fontSize: 12.5, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+                  <i className="ti ti-filter-off" style={{ fontSize: 14 }} /> Clear
+                </button>
+              </div>
             </div>
           </div>
+
     
           {/* Table */}
           <div className="card" style={{ overflow: 'hidden' }}>

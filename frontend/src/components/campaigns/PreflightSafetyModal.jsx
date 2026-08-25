@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShieldCheck, AlertTriangle, XCircle, CheckCircle2, ShieldAlert,
@@ -28,12 +28,12 @@ export default function PreflightSafetyModal({
   const [isCheckingSpam, setIsCheckingSpam] = useState(false);
 
   // Sync if prop updates
-  React.useEffect(() => {
+  useEffect(() => {
     setPreflightData(initialPreflightData);
   }, [initialPreflightData]);
 
   // Run spam score check when modal opens
-  React.useEffect(() => {
+  useEffect(() => {
     if (isOpen && (subject || body)) {
       setIsCheckingSpam(true);
       api.post('/campaigns/preflight-spam-check', { subject, body })
@@ -42,6 +42,18 @@ export default function PreflightSafetyModal({
         .finally(() => setIsCheckingSpam(false));
     }
   }, [isOpen, subject, body]);
+
+  // Escape key handler
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen || !preflightData) return null;
 
@@ -112,6 +124,9 @@ export default function PreflightSafetyModal({
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
         <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="preflight-modal-title"
           initial={{ opacity: 0, scale: 0.96, y: 8 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 8 }}
@@ -126,10 +141,16 @@ export default function PreflightSafetyModal({
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-white tracking-tight m-0 flex items-center gap-2">
-                  Pre-Flight Deliverability Check
-                  <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
-                    Verified
+                <h2 id="preflight-modal-title" className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+                  Pre-Flight Deliverability Gate
+                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border uppercase tracking-wider ${
+                    isSafe
+                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                      : isRisky
+                        ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                        : 'bg-red-500/10 text-red-400 border-red-500/20'
+                  }`}>
+                    {risk_level} Risk
                   </span>
                 </h2>
                 <p className="text-xs text-[#8e8e99] mt-0.5 m-0 font-normal">

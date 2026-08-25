@@ -88,20 +88,37 @@ const ConnectOutlookModal = ({ isOpen, onClose, onSuccess }) => {
     }, 1000);
   };
 
+  // Handle Escape key to close
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && status !== 'verifying') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, status, onClose]);
+
   if (!isOpen) return null;
 
   return (
     <div className="modal-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div 
-        className="absolute inset-0"
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         onClick={status !== 'verifying' ? onClose : undefined}
       />
       
       {/* Modal Box */}
-      <div className="relative glass-panel modal-enter w-full max-w-md overflow-hidden flex flex-col">
+      <div 
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="connect-outlook-title"
+        className="relative glass-panel modal-enter w-full max-w-md overflow-hidden flex flex-col z-10"
+      >
         {/* Header */}
         <div className="px-6 py-5 border-b border-[var(--outline)] flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-[var(--text-primary)]">Connect Outlook</h2>
+          <h2 id="connect-outlook-title" className="text-xl font-semibold text-[var(--text-primary)]">Connect Outlook</h2>
           {status !== 'verifying' && (
             <button 
               onClick={onClose}

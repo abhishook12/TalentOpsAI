@@ -5,7 +5,7 @@ import {
   Send, ArrowLeft, Plus, Mail, Activity, AlertCircle, FileText,
   CheckCircle2, Loader2, ChevronRight, Play, Eye, Download, Search,
   Pause, MoreHorizontal, Copy, Trash2, Archive, Save, Clock, RefreshCw, X,
-  ChevronDown, ChevronUp, Zap, ShieldCheck
+  ChevronDown, ChevronUp, Zap, ShieldCheck, Sparkles
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';

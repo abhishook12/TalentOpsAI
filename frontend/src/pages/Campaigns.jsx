@@ -509,19 +509,25 @@ export default function Campaigns() {
   // ─────────────────────────────────────────────────────────────────────────────
   const handleSend = useCallback(async () => {
     if (isSending) return;
+    setIsSending(true);
     setSendError(null);
     try {
       let cid = activeCampaignId;
       if (!cid) {
         const saved = await saveDraft();
         cid = saved;
-        if (!cid) { toast.error('Failed to save campaign draft'); return; }
+        if (!cid) { 
+          toast.error('Failed to save campaign draft'); 
+          setIsSending(false);
+          return; 
+        }
       }
       if (savePromiseRef.current) await savePromiseRef.current;
       
       const validRecipients = validatedRecipients.recipients.filter(r => r.status === 'valid');
       if (validRecipients.length === 0) {
         toast.error('Please add at least one valid recipient');
+        setIsSending(false);
         return;
       }
 
@@ -560,17 +566,21 @@ export default function Campaigns() {
         }
       }
 
-      // 4. Trigger Deliverability Pre-Flight Scan
-      const preflightRes = await api.post(`/campaigns/${cid}/preflight`, {
-        emails: validRecipients.map(r => r.email),
-        names: validRecipients.map(r => r.name || '')
-      });
-
-      setSafetyPreflightData(preflightRes.data);
-      setShowSafetyModal(true);
+      // 4. Instant Launch: Bypass all modal/preflight gates and start dispatch directly!
+      await api.post(`/campaigns/${cid}/start`);
+      
+      // 5. Instantly transition to the live sending workspace screen!
+      setWorkspaceMode('sending');
+      toast.success('Campaign dispatched instantly to Outlook Bridge!');
     } catch (e) {
-      const errDetail = e.response?.data?.detail || 'Failed to initialize pre-flight check';
-      toast.error(errDetail);
+      const errDetail = e.response?.data?.detail || 'Failed to start campaign';
+      if (errDetail.includes('attention')) {
+        setSendError(errDetail);
+      } else {
+        toast.error(errDetail);
+      }
+    } finally {
+      setIsSending(false);
     }
   }, [activeCampaignId, isSending, saveDraft, validatedRecipients, campaignName, fromEmail, signatureId, subject, subjectB, isABTest, smartTimezone, body]);
 

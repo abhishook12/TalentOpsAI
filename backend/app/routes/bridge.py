@@ -509,7 +509,7 @@ def get_bridge_tasks(db: Session = Depends(get_db), current_user: User = Depends
         EmailLog.sent_via == "outlook_bridge",
         EmailLog.outlook_accepted.is_(None),
         (EmailLog.sending_at.is_(None)) | (EmailLog.sending_at < lease_cutoff)
-    ).order_by(EmailLog.log_id.asc()).limit(50).all()
+    ).order_by(EmailLog.log_id.asc()).limit(200).all()
 
     tasks = []
     for log in logs:

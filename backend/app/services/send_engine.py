@@ -34,11 +34,11 @@ logger = logging.getLogger(__name__)
 
 # Bridge configuration
 BRIDGE_URL = "http://127.0.0.1:1337"
-WORKER_COUNT = 8  # Balanced: enough parallelism without OOM on Render free tier
+WORKER_COUNT = 16  # High-throughput asynchronous worker pool
 MAX_RETRIES_OVERALL = 3
 MAX_RECIPIENTS_PER_CAMPAIGN = 200  # Raised cap — handles real outreach volumes
-BATCH_SIZE = 25  # Larger batches = fewer DB round-trips per campaign
-BATCH_COOLDOWN_SECONDS = 0.5  # Minimal pause — bridge is the real throttle now
+BATCH_SIZE = 50  # Larger batches = fewer DB round-trips per campaign
+BATCH_COOLDOWN_SECONDS = 0.01  # Zero-wait instant dispatch
 CIRCUIT_BREAKER_THRESHOLD = 5  # Slightly more tolerant before auto-pause
 CAMPAIGN_TIMEOUT_SECONDS = 60 * 60  # 60 minute max — handles 200-recipient campaigns
 

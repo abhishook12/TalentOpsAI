@@ -173,7 +173,7 @@ def run_inner_loop(base_url, token, state):
             if res.status_code == 200:
                 data = res.json()
                 tasks = data.get("tasks", [])
-                full_batch = len(tasks) >= 50
+                full_batch = len(tasks) >= 200
                 if tasks:
                     logger.info(f"Received {len(tasks)} tasks to send.")
                     results = []
@@ -199,11 +199,9 @@ def run_inner_loop(base_url, token, state):
                             res_obj["error"] = error
                         results.append(res_obj)
 
-                        if len(results) >= 10:
+                        if len(results) >= 25:
                             post_results(base_url, token, results)
                             results = []
-
-                        time.sleep(0.05)
 
                     if results:
                         post_results(base_url, token, results)
@@ -216,7 +214,7 @@ def run_inner_loop(base_url, token, state):
             logger.warning(f"Network error fetching tasks: {e}")
 
         if not full_batch:
-            time.sleep(0.5)
+            time.sleep(0.2)
 
 def start_local_api():
     logger.info("Starting local outlook API server on port 8080...")

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useCallback } from 'react'
 import { exportToExcel } from '../services/export'
 import api, { API, getErrorMessage, logAction } from '../services/api'
 import { CompanyIdentity } from '../components/CompanyIdentity'
@@ -482,7 +482,7 @@ export default function AISearch() {
   const [selectedDetailLoading, setSelectedDetailLoading] = useState(false)
   const [selectedDetailError, setSelectedDetailError] = useState('')
   
-  const handleRowClick = React.useCallback((id) => {
+  const handleRowClick = useCallback((id) => {
     setSelectedDetail(null)
     setSelectedDetailLoading(true)
     setSelectedDetailError('')

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import api from "../services/api";
 import { useSessionState } from '../hooks/useSessionState';
 import { motion, AnimatePresence } from "framer-motion";
@@ -16,7 +16,7 @@ export default function ActivityLog() {
   const [visitors, setVisitors] = useState([]);
   const [visLoading, setVisLoading] = useState(true);
 
-  const fetchDatabaseActivity = React.useCallback(async () => {
+  const fetchDatabaseActivity = useCallback(async () => {
     try {
       const { data } = await api.get("/analytics/global-activity?limit=200", {
         withCredentials: true,
@@ -30,7 +30,7 @@ export default function ActivityLog() {
     }
   }, []);
 
-  const fetchVisitorLogs = React.useCallback(async () => {
+  const fetchVisitorLogs = useCallback(async () => {
     try {
       const { data } = await api.get("/analytics/visitor-logs?limit=200", {
         withCredentials: true,
@@ -43,7 +43,7 @@ export default function ActivityLog() {
     }
   }, []);
 
-  const fetchAll = React.useCallback(() => {
+  const fetchAll = useCallback(() => {
     if (activeTab === 'database') fetchDatabaseActivity();
     else fetchVisitorLogs();
   }, [activeTab, fetchDatabaseActivity, fetchVisitorLogs]);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { ShieldCheck, ShieldAlert, CheckCircle2, AlertTriangle, X, RefreshCw, Globe, Server, Key } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -9,7 +9,7 @@ export default function DomainHealthModal({ isOpen, onClose, initialDomain = '' 
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState(null);
 
-  const handleInspect = React.useCallback(async () => {
+  const handleInspect = useCallback(async () => {
     if (!domain.trim()) {
       toast.error('Please enter a domain to inspect');
       return;
@@ -28,7 +28,7 @@ export default function DomainHealthModal({ isOpen, onClose, initialDomain = '' 
     }
   }, [domain]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isOpen && domain) {
       handleInspect();
     }

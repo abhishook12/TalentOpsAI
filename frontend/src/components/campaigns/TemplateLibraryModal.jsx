@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, Search, Mail, RefreshCw, Check, Calendar, Users, BarChart3, Bookmark, Clock, Trash2 } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -23,7 +23,7 @@ export default function TemplateLibraryModal({ isOpen, onClose, onImport }) {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const fetchCampaigns = React.useCallback(async () => {
+  const fetchCampaigns = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ limit: '50' });
@@ -39,7 +39,7 @@ export default function TemplateLibraryModal({ isOpen, onClose, onImport }) {
     }
   }, [debouncedSearchQuery]);
 
-  const loadSavedTemplates = React.useCallback(() => {
+  const loadSavedTemplates = useCallback(() => {
     let templates = getSavedTemplates();
     if (debouncedSearchQuery) {
       templates = templates.filter(t => 

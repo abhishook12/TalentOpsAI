@@ -1,5 +1,5 @@
 import { toast } from 'react-hot-toast'
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api, { getErrorMessage } from '../../services/api';
 
 export default function UserManagement() {
@@ -27,7 +27,7 @@ export default function UserManagement() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newUser, setNewUser] = useState({ email: '', first_name: '', last_name: '', role_name: 'user', company: '' });
 
-  const loadAnalytics = React.useCallback(async () => {
+  const loadAnalytics = useCallback(async () => {
     try {
       const { data } = await api.get('/users/analytics');
       setAnalytics(data);
@@ -36,7 +36,7 @@ export default function UserManagement() {
     }
   }, []);
 
-  const loadUsers = React.useCallback(async () => {
+  const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
       const { data } = await api.get('/users', { 

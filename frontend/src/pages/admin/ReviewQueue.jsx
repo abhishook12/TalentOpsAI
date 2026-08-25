@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import api from '../../services/api'
 import { CompanyIdentity } from '../../components/CompanyIdentity'
 
@@ -7,7 +7,7 @@ export default function ReviewQueue({ setToast }) {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
 
-  const fetchQueue = React.useCallback(async () => {
+  const fetchQueue = useCallback(async () => {
     setLoading(true)
     try {
       const res = await api.get('/sentinel/review-queue')

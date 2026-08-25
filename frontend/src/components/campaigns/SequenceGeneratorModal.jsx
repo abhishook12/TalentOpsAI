@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Zap, Sparkles, X, Check, Copy, ArrowRight, Clock, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -15,7 +15,7 @@ export default function SequenceGeneratorModal({ isOpen, onClose, onApplyTouch }
   const [sequence, setSequence] = useState(null);
   const [selectedTouch, setSelectedTouch] = useState(0);
 
-  const handleGenerate = React.useCallback(async () => {
+  const handleGenerate = useCallback(async () => {
     setLoading(true);
     try {
       const res = await api.post('/campaigns/generate-sequence', {
@@ -38,7 +38,7 @@ export default function SequenceGeneratorModal({ isOpen, onClose, onApplyTouch }
     }
   }, [targetRole, companyName, industry, seniority, valueProps, tone]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isOpen && !sequence) {
       handleGenerate();
     }

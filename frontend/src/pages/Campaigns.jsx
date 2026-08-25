@@ -581,7 +581,7 @@ export default function Campaigns() {
       const cid = activeCampaignId;
       if (!cid) return;
 
-      await api.post(`/campaigns/${cid}/start`);
+      await api.post(`/campaigns/${cid}/start`, { exclude_risky: !!excludeRisky });
       setShowSafetyModal(false);
       setWorkspaceMode('sending');
       toast.success('Campaign launched with deliverability protection!');
@@ -596,6 +596,12 @@ export default function Campaigns() {
       setIsSending(false);
     }
   }, [activeCampaignId, isSending]);
+
+  const handleProgressStatusChange = useCallback((st) => {
+    if (st === 'completed') {
+      toast.success('Campaign completely delivered!');
+    }
+  }, []);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // List actions
@@ -1251,9 +1257,7 @@ export default function Campaigns() {
 
             {activeCampaignId ? (
               <div className="flex flex-col gap-6">
-                <CampaignProgress campaignId={activeCampaignId} onStatusChange={(st) => {
-                  if (st === 'completed') toast.success('Campaign completely delivered!');
-                }} />
+                <CampaignProgress campaignId={activeCampaignId} onStatusChange={handleProgressStatusChange} />
 
                 <div className="flex flex-col gap-2.5">
                   <div className="flex items-center justify-between">

@@ -73,8 +73,9 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
     }
   };
 
-  const percent = data.total > 0 ? Math.min(100, Math.round((data.sent / data.total) * 100)) : 0;
-  const isCompleted = data.status === 'completed' || (data.total > 0 && data.sent >= data.total);
+  const processed = (data.sent || 0) + (data.failed || 0);
+  const percent = data.total > 0 ? Math.min(100, Math.round((processed / data.total) * 100)) : 0;
+  const isCompleted = data.status === 'completed' || (data.total > 0 && processed >= data.total);
   const isActive = data.status === 'active' || data.status === 'sending';
   const isPaused = data.status === 'paused';
 

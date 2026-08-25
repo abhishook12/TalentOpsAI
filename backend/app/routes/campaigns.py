@@ -187,7 +187,7 @@ def api_campaign_auto_heal(
 
     # Persist repaired emails to PostgreSQL database
     if healed_map:
-        for cr in rec_links:
+        for cr in cr_rows:
             if cr.recruiter and cr.recruiter.email in healed_map:
                 old_email = cr.recruiter.email
                 new_email = healed_map[old_email]
@@ -281,19 +281,47 @@ def api_deliverability_report(
     return get_deliverability_report(campaign_id, emails)
 
 
+class StartCampaignPayload(BaseModel):
+    exclude_risky: Optional[bool] = False
+
+
 @router.post("/{campaign_id}/start")
-async def api_start_campaign(campaign_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+async def api_start_campaign(
+    campaign_id: int, 
+    background_tasks: BackgroundTasks, 
+    payload: Optional[StartCampaignPayload] = None,
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user_from_request)
+):
     from ..services.send_engine import start_campaign, _check_account_health
+    from ..services.campaign_preflight import run_preflight_check
     campaign = db.query(Campaign).filter(Campaign.user_id == current_user.id, Campaign.campaign_id == campaign_id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
         
     if campaign.status in ["active"]:
         return {"status": "started", "campaign_id": campaign_id, "message": "Campaign is already running"}
+
+    if payload and payload.exclude_risky:
+        cr_records = db.query(CampaignRecruiter).options(joinedload(CampaignRecruiter.recruiter)).filter(
+            CampaignRecruiter.campaign_id == campaign_id,
+            CampaignRecruiter.status.in_([CampaignRecruiterStatus.pending.value, CampaignRecruiterStatus.queued.value])
+        ).all()
+        emails = [cr.recruiter.email for cr in cr_records if cr.recruiter and cr.recruiter.email]
+        names = [cr.recruiter.recruiter_name or '' for cr in cr_records if cr.recruiter]
+        pf = run_preflight_check(campaign_id, emails, names)
+        excluded_emails = {r.email.lower() for r in pf.recipients if r.action in ('review', 'block')}
+        for cr in cr_records:
+            if cr.recruiter and cr.recruiter.email and cr.recruiter.email.lower() in excluded_emails:
+                cr.status = CampaignRecruiterStatus.cancelled.value
+        db.commit()
         
-    recipients_count = db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id).count()
-    if recipients_count > 50:
-        raise HTTPException(status_code=400, detail=f"Cannot start campaign: Max 50 recipients allowed per campaign for stability, but found {recipients_count}.")
+    recipients_count = db.query(CampaignRecruiter).filter(
+        CampaignRecruiter.campaign_id == campaign_id,
+        CampaignRecruiter.status.in_([CampaignRecruiterStatus.pending.value, CampaignRecruiterStatus.queued.value])
+    ).count()
+    if recipients_count > 200:
+        raise HTTPException(status_code=400, detail=f"Cannot start campaign: Max 200 recipients allowed per campaign for stability, but found {recipients_count}.")
         
     if not campaign.from_email:
         raise HTTPException(status_code=400, detail="Your sending account needs attention. No sender selected.")
@@ -810,6 +838,7 @@ def get_campaign_delivery_logs(
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user_from_request)
 ):
+    get_campaign_or_404(db, campaign_id, current_user)
     from ..models.campaigns import EmailLog, CampaignRecruiter
     from sqlalchemy.orm import joinedload
     

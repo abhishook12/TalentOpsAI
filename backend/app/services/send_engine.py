@@ -627,6 +627,13 @@ async def process_campaign_queue(campaign_id: int):
     # Wait for the queue to completely drain, which includes any retries put back into the queue
     # because queue.join() blocks until queue.task_done() matches the number of items put.
     try:
+        if cancel_event.is_set():
+            while not queue.empty():
+                try:
+                    queue.get_nowait()
+                    queue.task_done()
+                except (asyncio.QueueEmpty, ValueError):
+                    break
         await queue.join()
     except asyncio.CancelledError:
         pass

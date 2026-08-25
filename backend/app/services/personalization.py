@@ -72,7 +72,7 @@ def process_spintax(text: str, seed: Optional[int] = None) -> str:
     return text
 
 
-def interpolate_variables(text: str, recruiter: Any, company: Any = None, custom_vars: Dict[str, Any] = None, signature_html: Optional[str] = None) -> str:
+def interpolate_variables(text: str, recruiter: Any, company: Any = None, custom_vars: Dict[str, Any] = None, signature_html: Optional[str] = None, seed: Optional[int] = None) -> str:
     if not text:
         return ""
         
@@ -190,7 +190,8 @@ def interpolate_variables(text: str, recruiter: Any, company: Any = None, custom
         rec_id = recruiter.get("recruiter_id") or recruiter.get("id")
     else:
         rec_id = getattr(recruiter, "recruiter_id", getattr(recruiter, "id", None))
-    result = process_spintax(result, seed=rec_id if isinstance(rec_id, int) else None)
+    effective_seed = seed if seed is not None else (rec_id if isinstance(rec_id, int) else None)
+    result = process_spintax(result, seed=effective_seed)
     
     # Append signature if provided
     if signature_html:

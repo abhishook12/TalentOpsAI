@@ -34,13 +34,13 @@ logger = logging.getLogger(__name__)
 
 # Bridge configuration
 BRIDGE_URL = "http://127.0.0.1:1337"
-WORKER_COUNT = 5  # Reduced from 100 to prevent memory spikes and system crashes
+WORKER_COUNT = 8  # Balanced: enough parallelism without OOM on Render free tier
 MAX_RETRIES_OVERALL = 3
-MAX_RECIPIENTS_PER_CAMPAIGN = 50  # Hard cap — prevents system-wide lockdowns
-BATCH_SIZE = 10  # Process emails in small batches
-BATCH_COOLDOWN_SECONDS = 1.5  # Pause between batches to let memory settle
-CIRCUIT_BREAKER_THRESHOLD = 3  # Auto-pause after N consecutive provider failures
-CAMPAIGN_TIMEOUT_SECONDS = 30 * 60  # 30 minute max campaign duration
+MAX_RECIPIENTS_PER_CAMPAIGN = 200  # Raised cap — handles real outreach volumes
+BATCH_SIZE = 25  # Larger batches = fewer DB round-trips per campaign
+BATCH_COOLDOWN_SECONDS = 0.5  # Minimal pause — bridge is the real throttle now
+CIRCUIT_BREAKER_THRESHOLD = 5  # Slightly more tolerant before auto-pause
+CAMPAIGN_TIMEOUT_SECONDS = 60 * 60  # 60 minute max — handles 200-recipient campaigns
 
 # We use a ThreadPoolExecutor for requests.post to avoid blocking the asyncio event loop
 request_executor = concurrent.futures.ThreadPoolExecutor(max_workers=WORKER_COUNT * 2)

@@ -108,7 +108,7 @@ def run_inner_loop(base_url, token, state):
         # Return False to trigger supervisor retry logic with backoff
         return False
 
-    heartbeat_interval = 5
+    heartbeat_interval = 3
     headers = {"Authorization": f"Bearer {token}"}
     
     # 0. Verify Isolation - Check if local Outlook matches backend OAuth connected email
@@ -173,7 +173,7 @@ def run_inner_loop(base_url, token, state):
             if res.status_code == 200:
                 data = res.json()
                 tasks = data.get("tasks", [])
-                full_batch = len(tasks) >= 25
+                full_batch = len(tasks) >= 50
                 if tasks:
                     logger.info(f"Received {len(tasks)} tasks to send.")
                     results = []
@@ -199,11 +199,11 @@ def run_inner_loop(base_url, token, state):
                             res_obj["error"] = error
                         results.append(res_obj)
 
-                        if len(results) >= 5:
+                        if len(results) >= 10:
                             post_results(base_url, token, results)
                             results = []
 
-                        time.sleep(0.25)
+                        time.sleep(0.05)
 
                     if results:
                         post_results(base_url, token, results)
@@ -216,7 +216,7 @@ def run_inner_loop(base_url, token, state):
             logger.warning(f"Network error fetching tasks: {e}")
 
         if not full_batch:
-            time.sleep(2)
+            time.sleep(0.5)
 
 def start_local_api():
     logger.info("Starting local outlook API server on port 8080...")

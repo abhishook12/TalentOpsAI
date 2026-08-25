@@ -505,7 +505,7 @@ def get_bridge_tasks(db: Session = Depends(get_db), current_user: User = Depends
         EmailLog.status == EmailLogStatus.sending.value,
         EmailLog.sent_via == "outlook_bridge",
         EmailLog.outlook_accepted.is_(None),
-    ).order_by(EmailLog.log_id.asc()).limit(25).all()
+    ).order_by(EmailLog.log_id.asc()).limit(50).all()
 
     now = datetime.now(timezone.utc)
     tasks = []

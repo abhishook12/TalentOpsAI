@@ -329,6 +329,29 @@ export default function PreflightSafetyModal({
               </div>
             </div>
 
+            {/* Live Content & Spam Risk Meter */}
+            {spamResult && (
+              <div className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 ${
+                (spamResult.score || 0) < 30
+                  ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300'
+                  : (spamResult.score || 0) < 60
+                  ? 'bg-amber-500/10 border-amber-500/25 text-amber-300'
+                  : 'bg-rose-500/10 border-rose-500/25 text-rose-300'
+              }`}>
+                <div className="flex items-center gap-2.5">
+                  <Shield className="w-4 h-4 flex-shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold flex items-center gap-2">
+                      Spam Risk Score: {spamResult.score || 0}% ({spamResult.risk_level || 'Safe'})
+                    </div>
+                    <div className="text-[11px] text-[#8e8e99] mt-0.5">
+                      {spamResult.flags?.length > 0 ? `Trigger words detected: ${spamResult.flags.join(', ')}` : 'Zero spam trigger words detected in subject or email body.'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Recipient Deliverability Audit Table */}
             <div>
               <div className="flex items-center justify-between mb-2.5 gap-2">
@@ -404,14 +427,27 @@ export default function PreflightSafetyModal({
           </div>
 
           {/* Footer Controls */}
-          <div className="px-6 py-4 border-t border-[#22222a] bg-[#121217] flex items-center justify-between">
-            <button
-              onClick={onClose}
-              disabled={isLaunching}
-              className="px-4 py-2 text-xs font-semibold text-[#a1a1aa] hover:text-white bg-transparent hover:bg-[#202026] rounded-lg transition-colors cursor-pointer"
-            >
-              Back to Editor
-            </button>
+          <div className="px-6 py-4 border-t border-[#22222a] bg-[#121217] flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={onClose}
+                disabled={isLaunching}
+                className="px-4 py-2 text-xs font-semibold text-[#a1a1aa] hover:text-white bg-transparent hover:bg-[#202026] rounded-lg transition-colors cursor-pointer"
+              >
+                Back to Editor
+              </button>
+              {risky_review > 0 && (
+                <label className="flex items-center gap-2 text-xs text-[#a1a1aa] cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={excludeRisky}
+                    onChange={e => setExcludeRisky(e.target.checked)}
+                    className="w-4 h-4 rounded border-[#383846] bg-[#141419] text-emerald-500 focus:ring-emerald-500 cursor-pointer"
+                  />
+                  <span>Exclude Catch-All ({risky_review})</span>
+                </label>
+              )}
+            </div>
 
             <button
               onClick={() => onConfirmLaunch({ excludeRisky, effectiveSendCount })}

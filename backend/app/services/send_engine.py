@@ -458,11 +458,16 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                     )
                     db.add(log)
                     
+                    camp = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
                     subject_template = template.get("subject", "No Subject")
                     body_template = template.get("body", "")
+                    if camp:
+                        subject_template, body_template, _ = resolve_ab_variant_for_recipient(
+                            camp, recipient_id, subject_template, body_template, db
+                        )
                     
-                    subject = interpolate_variables(subject_template, recruiter, company)
-                    body = interpolate_variables(body_template, recruiter, company, signature_html=signature_html)
+                    subject = interpolate_variables(subject_template, recruiter, company, seed=recipient_id)
+                    body = interpolate_variables(body_template, recruiter, company, signature_html=signature_html, seed=recipient_id)
                     
                     log.subject = subject
                     log.body_preview = body[:500] if body else ""
@@ -584,16 +589,17 @@ async def process_campaign_queue(campaign_id: int):
     failure_counter = {'consecutive': 0}
     
     # Sender Account Pool & Round-Robin Rotation
+    from ..models.auth_models import ConnectedEmailAccount
     account_pool_ids = []
     with SessionLocal() as db:
         if sender_account_id:
             account_pool_ids = [sender_account_id]
         else:
-            active_accounts = db.query(SenderAccount).filter(
-                SenderAccount.user_id == user_id,
-                SenderAccount.is_active == True
+            active_accounts = db.query(ConnectedEmailAccount).filter(
+                ConnectedEmailAccount.user_id == user_id,
+                ConnectedEmailAccount.status == "connected"
             ).all()
-            account_pool_ids = [a.id for a in active_accounts]
+            account_pool_ids = [a.account_id for a in active_accounts]
 
     # Start workers with round-robin sender assignment
     workers = []

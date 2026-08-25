@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Database, Loader2 } from 'lucide-react';
+import { Database, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import api from '../services/api';
 import ConnectOutlookModal from './ConnectOutlookModal';
 
-export default function BridgeStatus({ onStatusChange }) {
+export default function BridgeStatus({ onStatusChange, compact = false }) {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -32,14 +32,47 @@ export default function BridgeStatus({ onStatusChange }) {
 
   if (loading && !status) {
     return (
-      <div className="flex items-center gap-2 text-sm text-gray-500">
-        <Loader2 className="w-4 h-4 animate-spin" />
-        Checking Outlook Bridge...
+      <div className="flex items-center gap-2 text-xs text-[#8e8e99] py-2 px-3 bg-[#141419] border border-[#22222a] rounded-lg">
+        <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+        Checking Outlook Bridge connection...
       </div>
     );
   }
 
   const isHealthy = status?.status === 'ok';
+
+  if (compact) {
+    return (
+      <>
+        <div className={`flex items-center justify-between px-3.5 py-2 rounded-lg border text-xs ${
+          isHealthy
+            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+            : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+        }`}>
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${isHealthy ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+            <span className="font-bold">{isHealthy ? 'Bridge Online & Healthy' : 'Bridge Offline'}</span>
+            <span className="text-[#8e8e99] text-[11px] hidden sm:inline">
+              — {isHealthy ? 'Local COM dispatch active' : 'Launch local bridge to send emails'}
+            </span>
+          </div>
+          {!isHealthy && (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-[11px] font-semibold rounded transition cursor-pointer"
+            >
+              Connect Outlook
+            </button>
+          )}
+        </div>
+        <ConnectOutlookModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSuccess={checkHealth}
+        />
+      </>
+    );
+  }
 
   return (
     <div style={{

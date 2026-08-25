@@ -185,6 +185,15 @@ def api_campaign_auto_heal(
     healed_map = {h['original_email']: h['repaired_email'] for h in heal_result.get('healed', [])}
     final_emails = [healed_map.get(e, e) for e in emails]
 
+    # Persist repaired emails to PostgreSQL database
+    if healed_map:
+        for cr in rec_links:
+            if cr.recruiter and cr.recruiter.email in healed_map:
+                old_email = cr.recruiter.email
+                new_email = healed_map[old_email]
+                cr.recruiter.email = new_email
+        db.commit()
+
     updated_preflight = run_preflight_check(campaign_id, final_emails, names)
 
     return {
@@ -1215,6 +1224,7 @@ def duplicate_campaign(campaign_id: int, db: Session = Depends(get_db), current_
     original = get_campaign_or_404(db, campaign_id, current_user)
     
     new_campaign = Campaign(
+        user_id=current_user.id,
         name=f"{original.name} (Copy)",
         description=original.description,
         status=CampaignStatus.draft.value,
@@ -1222,6 +1232,8 @@ def duplicate_campaign(campaign_id: int, db: Session = Depends(get_db), current_
         from_email=original.from_email,
         reply_to_email=original.reply_to_email,
         timezone=original.timezone,
+        sender_account_id=original.sender_account_id,
+        signature_id=original.signature_id,
         is_active=True,
         metadata_json=original.metadata_json,
     )
@@ -1232,6 +1244,7 @@ def duplicate_campaign(campaign_id: int, db: Session = Depends(get_db), current_
     template_map = {}
     for t in original.templates:
         new_t = EmailTemplate(
+            user_id=current_user.id,
             campaign_id=new_campaign.campaign_id,
             name=t.name,
             subject=t.subject,
@@ -1304,8 +1317,12 @@ def create_template(campaign_id: int, payload: TemplateCreate, request: Request,
     step = db.query(SequenceStep).filter(SequenceStep.campaign_id == campaign_id, SequenceStep.step_order == 1).first()
     
     if step and step.template_id:
-        template = db.query(EmailTemplate).filter(EmailTemplate.user_id == current_user.id, EmailTemplate.template_id == step.template_id).first()
+        template = db.query(EmailTemplate).filter(
+            EmailTemplate.campaign_id == campaign_id,
+            EmailTemplate.template_id == step.template_id
+        ).first()
         if template:
+            template.user_id = current_user.id
             template.name = payload.name.strip()
             template.subject = payload.subject
             template.body = payload.body
@@ -1317,6 +1334,7 @@ def create_template(campaign_id: int, payload: TemplateCreate, request: Request,
 
     # Create new template if none exists
     template = EmailTemplate(
+        user_id=current_user.id,
         campaign_id=campaign_id,
         name=payload.name.strip(),
         subject=payload.subject,

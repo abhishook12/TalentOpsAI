@@ -1332,13 +1332,18 @@ export default function Campaigns() {
 // ── Helper: StatusBadge ────────────────────────────────────────────────────────
 function StatusBadge({ status }) {
   const map = {
-    active: { bg: 'var(--card-border)', text: 'var(--text-primary)', dot: 'var(--text-primary)' },
+    active: { bg: 'rgba(6,182,212,0.15)', text: '#22d3ee', dot: '#06b6d4', border: '1px solid rgba(6,182,212,0.3)' },
+    sending: { bg: 'rgba(6,182,212,0.15)', text: '#22d3ee', dot: '#06b6d4', border: '1px solid rgba(6,182,212,0.3)' },
+    queued: { bg: 'rgba(59,130,246,0.15)', text: '#60a5fa', dot: '#3b82f6', border: '1px solid rgba(59,130,246,0.3)' },
+    retrying: { bg: 'rgba(245,158,11,0.15)', text: '#fbbf24', dot: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' },
     paused: { bg: '#3b2a0c', text: '#fcd34d', dot: '#f59e0b' },
     completed: { bg: '#0f3d24', text: '#86efac', dot: '#22c55e' },
+    cancelled: { bg: 'rgba(107,114,128,0.15)', text: '#9ca3af', dot: '#6b7280', border: '1px solid rgba(107,114,128,0.3)' },
+    archived: { bg: 'rgba(107,114,128,0.15)', text: '#9ca3af', dot: '#6b7280', border: '1px solid rgba(107,114,128,0.3)' },
     draft: { bg: 'transparent', text: 'var(--text-muted)', dot: '#6b7280', border: '1px solid var(--card-border)' },
     failed: { bg: 'rgba(239,68,68,0.1)', text: '#f87171', dot: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' },
   };
-  const s = map[status] || map.draft;
+  const s = map[(status || '').toLowerCase()] || map.draft;
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 999, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', background: s.bg, color: s.text, border: s.border }}>
       <span style={{ width: 5, height: 5, borderRadius: '50%', background: s.dot, flexShrink: 0 }} />

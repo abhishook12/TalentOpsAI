@@ -588,6 +588,59 @@ def enroll_emails(campaign_id: int, payload: EnrollEmailsRequest, db: Session = 
         
     return {"enrolled_count": enrolled}
 
+@router.get("/{campaign_id}/progress")
+def get_campaign_progress_rest(campaign_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    """Fetch real-time snapshot of campaign progress, counts, and latest logs."""
+    from ..models.campaigns import EmailLog
+    from sqlalchemy import func as sa_func
+    
+    camp = db.query(Campaign).filter(Campaign.campaign_id == campaign_id, Campaign.user_id == current_user.id).first()
+    if not camp:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+        
+    counts = dict(
+        db.query(CampaignRecruiter.status, sa_func.count())
+        .filter(CampaignRecruiter.campaign_id == campaign_id)
+        .group_by(CampaignRecruiter.status)
+        .all()
+    )
+    total = sum(counts.values())
+    sent = sum(counts.get(s, 0) for s in ['Sent', 'sent', 'Delivered', 'delivered', 'Opened', 'opened', 'Replied', 'replied', 'Bounced', 'bounced'])
+    failed = counts.get('Failed', 0) + counts.get('failed', 0)
+    queued = counts.get('Queued', 0) + counts.get('queued', 0)
+    sending = counts.get('Sending', 0) + counts.get('sending', 0)
+    retrying = counts.get('Retrying', 0) + counts.get('retrying', 0)
+    pending = counts.get('Pending', 0) + counts.get('pending', 0) + queued + sending + retrying
+    
+    logs = (
+        db.query(EmailLog)
+        .filter(EmailLog.campaign_id == campaign_id)
+        .order_by(EmailLog.log_id.desc())
+        .limit(50)
+        .all()
+    )
+    logs_data = [{
+        "log_id": l.log_id,
+        "email": l.recipient_email,
+        "status": l.status,
+        "time": l.sending_at.isoformat() if l.sending_at else None,
+        "error": l.error_message
+    } for l in logs]
+    
+    return {
+        "status": camp.status,
+        "total": total,
+        "sent": sent,
+        "failed": failed,
+        "pending": pending,
+        "queued": queued,
+        "sending": sending,
+        "retrying": retrying,
+        "progress_percent": round((sent / max(1, total)) * 100, 1) if total > 0 else 0,
+        "logs": logs_data
+    }
+
+
 @router.get("/{campaign_id}/progress-stream")
 async def stream_campaign_progress(request: Request, campaign_id: int, token: str = Query(default=None)):
     if not token:

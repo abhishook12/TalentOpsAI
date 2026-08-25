@@ -16,6 +16,7 @@ import RichTextComposer from '../components/RichTextComposer';
 import SignatureManager from '../components/SignatureManager';
 import DragDropRecipientBuilder from '../components/campaigns/DragDropRecipientBuilder';
 import CampaignProgress from '../components/CampaignProgress';
+import CampaignLogs from '../components/CampaignLogs';
 
 import TemplateLibraryModal from '../components/campaigns/TemplateLibraryModal';
 import ConnectionWizard from '../components/ConnectionWizard';
@@ -1229,28 +1230,48 @@ export default function Campaigns() {
           </>
         ) : (
           // ──────────────────────────────────────────────────────────────────────
-          // SENDING MODE: full-width live progress
+          // SENDING MODE: full-width live progress & real-time delivery logs feed
           // ──────────────────────────────────────────────────────────────────────
-          <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }} className="custom-scrollbar">
+          <div style={{ flex: 1, overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }} className="custom-scrollbar bg-[#0b0b0e]">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <h2 style={{ fontWeight: 800, fontSize: 20, margin: 0 }}>Campaign Sending</h2>
-                <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>{campaignName}</p>
+                <h2 style={{ fontWeight: 900, fontSize: 22, margin: 0, letterSpacing: '-0.02em', color: '#ffffff' }}>
+                  Live Outreach Monitor
+                </h2>
+                <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4 }}>
+                  {campaignName} — Real-time recipient status, COM bridge stream & deliverability watchdog
+                </p>
               </div>
               <button
                 onClick={() => setWorkspaceMode('compose')}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-[var(--border)] rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors">
-                <ArrowLeft size={13} /> Back to editor
+                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold border border-[var(--border)] rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-[var(--bg-hover)] transition-colors cursor-pointer shadow-sm">
+                <ArrowLeft size={14} /> Back to Composer
               </button>
             </div>
 
-            {activeCampaignId && (
-              <>
-                <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, overflow: 'hidden' }}>
-                  <CampaignProgress campaignId={activeCampaignId} />
-                </div>
+            {activeCampaignId ? (
+              <div className="flex flex-col gap-6">
+                <CampaignProgress campaignId={activeCampaignId} onStatusChange={(st) => {
+                  if (st === 'completed') toast.success('Campaign completely delivered!');
+                }} />
 
-              </>
+                <div className="flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-white tracking-tight m-0 flex items-center gap-2">
+                      <Mail size={15} className="text-cyan-400" />
+                      Recipient Delivery Ledger
+                    </h3>
+                    <span className="text-[11px] text-[#71717a]">Streaming every 1.5s via Outlook Bridge</span>
+                  </div>
+                  <CampaignLogs campaignId={activeCampaignId} />
+                </div>
+              </div>
+            ) : (
+              <div className="p-16 text-center text-[#71717a] border border-[#24242e] rounded-xl bg-[#111116]">
+                <Loader2 className="w-8 h-8 animate-spin text-cyan-400 mx-auto mb-3" />
+                <div className="text-sm font-bold text-white">Initializing Campaign Queue...</div>
+                <p className="text-xs text-[#71717a] mt-1">Fetching campaign identifiers and starting worker pool.</p>
+              </div>
             )}
           </div>
         )}

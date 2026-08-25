@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 from pydantic import BaseModel
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import time
 import os
 import json
@@ -206,7 +206,7 @@ def post_bridge_results(payload: BridgeResultsPayload, db: Session = Depends(get
         ).count()
         if non_terminal == 0:
             campaign = db.query(Campaign).filter(Campaign.user_id == current_user.id, Campaign.campaign_id == cid).first()
-            if campaign and campaign.status == CampaignStatus.active.value:
+            if campaign and campaign.status in [CampaignStatus.active.value, "active", "sending"]:
                 campaign.status = CampaignStatus.completed.value
     db.commit()
 
@@ -499,18 +499,21 @@ def bridge_google_callback(code: str = None, state: str = None, error: str = Non
 
 @router.get("/tasks")
 def get_bridge_tasks(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
-    """Fetch pending emails for the bridge."""
+    """Fetch pending emails for the bridge with an atomic 60s lease lock to prevent duplicate sends."""
+    now = datetime.now(timezone.utc)
+    lease_cutoff = now - timedelta(seconds=60)
+
     logs = db.query(EmailLog).join(Campaign, EmailLog.campaign_id == Campaign.campaign_id).filter(
         Campaign.user_id == current_user.id,
         EmailLog.status == EmailLogStatus.sending.value,
         EmailLog.sent_via == "outlook_bridge",
         EmailLog.outlook_accepted.is_(None),
+        (EmailLog.sending_at.is_(None)) | (EmailLog.sending_at < lease_cutoff)
     ).order_by(EmailLog.log_id.asc()).limit(50).all()
 
-    now = datetime.now(timezone.utc)
     tasks = []
     for log in logs:
-        # Reset the timeout clock at bridge dispatch, not while queued.
+        # Reset the lease clock at bridge dispatch
         log.sending_at = now
         tasks.append({
             "log_id": log.log_id,

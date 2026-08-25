@@ -453,7 +453,7 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                         recipient_name=rec_name,
                         status=EmailLogStatus.sending.value,
                         attempt_number=retry_count + 1,
-                        sending_at=datetime.now(timezone.utc),
+                        sending_at=None,
                         sent_via="outlook_bridge"
                     )
                     db.add(log)

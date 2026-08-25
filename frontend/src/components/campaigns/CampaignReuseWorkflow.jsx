@@ -157,7 +157,7 @@ export default function CampaignReuseWorkflow({ importedEmail, onClose, onComple
                     type="text" 
                     value={subject} 
                     onChange={e => setSubject(e.target.value)}
-                    className="w-full text-lg font-semibold text-gray-900 bg-transparent focus:outline-none focus:border-[var(--brand)] border-b border-transparent pb-1"
+                    className="w-full text-lg font-semibold text-white bg-transparent focus:outline-none focus:border-[var(--brand)] border-b border-transparent pb-1"
                   />
                 </div>
                 <div className="flex-1 overflow-auto p-6">

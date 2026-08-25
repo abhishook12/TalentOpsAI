@@ -4,10 +4,13 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
+import asyncio
 import os
 import smtplib
 from email.message import EmailMessage
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, Request
+from fastapi.responses import StreamingResponse, JSONResponse
+from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
@@ -1604,8 +1607,8 @@ def api_prepare_preview(campaign_id: int, request: PreparePreviewRequest, db: Se
         validation_errors.append({"code": "PROVIDER_OFFLINE", "message": f"Your sending account needs attention: {bridge_error or 'unreachable'}"})
     if not has_recipients:
         validation_errors.append({"code": "MISSING_RECIPIENTS", "message": "No valid recipients found."})
-    elif recipients_count > 50:
-        validation_errors.append({"code": "RECIPIENT_LIMIT_EXCEEDED", "message": f"Too many recipients ({recipients_count}). Max allowed is 50 per campaign to ensure stability."})
+    elif recipients_count > 200:
+        validation_errors.append({"code": "RECIPIENT_LIMIT_EXCEEDED", "message": f"Too many recipients ({recipients_count}). Max allowed is 200 per campaign to ensure stability."})
     if not has_template:
         validation_errors.append({"code": "MISSING_TEMPLATE", "message": "No template subject or body saved."})
 

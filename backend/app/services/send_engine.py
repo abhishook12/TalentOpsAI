@@ -969,8 +969,8 @@ def check_reputation_shield_health(campaign_id: int, db: Session) -> dict:
     })
 
     recruiters = db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_id == campaign_id).all()
-    sent_count = sum(1 for r in recruiters if r.sent_count > 0)
-    bounced_count = sum(1 for r in recruiters if r.bounced_at is not None)
+    sent_count = sum(1 for r in recruiters if r.sent_count > 0 or r.status in ('Sent', 'Delivered', 'Opened', 'Replied', 'Bounced'))
+    bounced_count = sum(1 for r in recruiters if r.bounced_at is not None or r.status in ('Bounced', 'bounced'))
     
     bounce_rate = (bounced_count / sent_count) if sent_count > 0 else 0.0
     tripped = False

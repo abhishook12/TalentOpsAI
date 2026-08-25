@@ -78,18 +78,26 @@ def interpolate_variables(text: str, recruiter: Any, company: Any = None, custom
             val = custom_vars[actual_key]
             
         elif var_name in ("firstname", "first_name"):
-            r_name = _get_val(recruiter, "recruiter_name") or _get_val(recruiter, "name")
-            if r_name:
-                val = r_name.strip().split()[0]
+            val = _get_val(recruiter, "first_name") or _get_val(recruiter, "firstname")
+            if not val:
+                r_name = _get_val(recruiter, "recruiter_name") or _get_val(recruiter, "name")
+                if r_name:
+                    val = r_name.strip().split()[0]
                 
         elif var_name in ("lastname", "last_name"):
-            r_name = _get_val(recruiter, "recruiter_name") or _get_val(recruiter, "name")
-            if r_name:
-                parts = r_name.strip().split()
-                val = parts[-1] if len(parts) > 1 else ""
+            val = _get_val(recruiter, "last_name") or _get_val(recruiter, "lastname")
+            if not val:
+                r_name = _get_val(recruiter, "recruiter_name") or _get_val(recruiter, "name")
+                if r_name:
+                    parts = r_name.strip().split()
+                    val = parts[-1] if len(parts) > 1 else ""
                 
         elif var_name in ("name", "fullname"):
             val = _get_val(recruiter, "recruiter_name") or _get_val(recruiter, "name")
+            if not val and (_get_val(recruiter, "first_name") or _get_val(recruiter, "last_name")):
+                fn = _get_val(recruiter, "first_name") or ""
+                ln = _get_val(recruiter, "last_name") or ""
+                val = f"{fn} {ln}".strip()
             
         elif var_name in ("company", "company_name"):
             val = _get_val(company, "company_name") or _get_val(company, "name") or _get_val(recruiter, "company_name") or _get_val(recruiter, "company")

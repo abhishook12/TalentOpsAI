@@ -170,7 +170,7 @@ export default function AdminTerminal() {
 
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
-  const callWithRetry = async (fn, { retries = 1, treat404AsSuccess = false } = {}) => {
+  const callWithRetry = useCallback(async (fn, { retries = 1, treat404AsSuccess = false } = {}) => {
     let lastError = null
     for (let attempt = 0; attempt <= retries; attempt += 1) {
       try {
@@ -192,7 +192,7 @@ export default function AdminTerminal() {
       }
     }
     throw lastError
-  }
+  }, [log])
 
   const [unlocked, setUnlocked] = useState(true)
   const [authError, setAuthError] = useState('')
@@ -205,7 +205,7 @@ export default function AdminTerminal() {
 
   const doLogout = async () => {
     clearStoredToken()
-    try { await logout() } catch {}
+    try { await logout() } catch { /* ignore logout error */ }
     setUnlocked(true)
     setActiveTab('overview')
   }
@@ -276,7 +276,7 @@ export default function AdminTerminal() {
     }
     
     setLoading(false)
-  }, [unlocked])
+  }, [unlocked, log])
 
   useEffect(() => { loadAll() }, [loadAll])
 
@@ -369,7 +369,7 @@ export default function AdminTerminal() {
     }
   }
 
-  const loadVisitorLogs = async (days = logDays) => {
+  const loadVisitorLogs = useCallback(async (days = logDays) => {
     setLoadingLogs(true)
     setLogsError(null)
     log(`Loading visitor logs for last ${days} days…`)
@@ -391,7 +391,7 @@ export default function AdminTerminal() {
       log('✗ Failed to load visitor logs: ' + msg, 'error')
     }
     setLoadingLogs(false)
-  }
+  }, [logDays, log])
 
   const loadLiveRecruiters = useCallback(async (signal) => {
     if (!unlocked || activeTab !== 'ops') return
@@ -416,7 +416,7 @@ export default function AdminTerminal() {
     } finally {
       setLiveRecruitersLoading(false)
     }
-  }, [unlocked, activeTab, liveRecruiterPage, liveRecruiterQuery, liveRecruiterState, liveRecruiterCompany, liveRecruiterJobId])
+  }, [unlocked, activeTab, liveRecruiterPage, liveRecruiterQuery, liveRecruiterState, liveRecruiterCompany, liveRecruiterJobId, log])
 
   const loadReviewQueue = useCallback(async () => {
     if (!unlocked) return
@@ -439,7 +439,7 @@ export default function AdminTerminal() {
     } finally {
       setReviewQueueLoading(false)
     }
-  }, [unlocked, reviewQueuePage])
+  }, [unlocked, reviewQueuePage, log])
 
   useEffect(() => {
     if (unlocked && activeTab === 'ops') {
@@ -573,7 +573,7 @@ export default function AdminTerminal() {
       setActionNotice({ type: 'error', text: `Delete failed: ${msg}` })
       log('✗ Failed to delete recruiter: ' + msg, 'error')
     }
-  }, [loadLiveRecruiters, log])
+  }, [callWithRetry, loadLiveRecruiters, log])
 
   const batchUpdateRecruiters = async (updates) => {
     if (!selectedRecruiters.length) return
@@ -634,7 +634,7 @@ export default function AdminTerminal() {
     if (unlocked && activeTab === 'logbook') {
       loadVisitorLogs(logDays)
     }
-  }, [unlocked, activeTab])
+  }, [unlocked, activeTab, loadVisitorLogs, logDays])
 
   const TABS = [
     { id: 'overview', icon: 'ti-layout-dashboard', label: 'Overview' },

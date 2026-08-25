@@ -32,15 +32,27 @@ function ThemeSwitcher() {
 
 const PAGE_NAMES = {
   '/': 'Dashboard',
-  '/recruiters': 'Recruiters',
-  '/analytics': 'Analytics',
-  '/search': 'AI Search',
-  '/directory': 'Directory',
+  '/campaigns': 'Email Outreach & Campaigns',
+  '/recruiters': 'Recruiters Directory',
+  '/analytics': 'Analytics & Reporting',
+  '/search': 'Search & Query Intelligence',
+  '/directory': 'Directory Browser',
   '/states': 'Directory > States',
   '/companies': 'Directory > Companies',
+  '/profile': 'User Profile',
+  '/settings': 'System Settings',
   '/admin': 'Admin Terminal',
-  '/activity': 'Activity Feed',
   '/sentinel': 'Data Quality Center (SENTINEL)',
+  '/mailintel': 'MailIntel Deliverability & Reputation',
+  '/review-queue': 'Review Queue',
+  '/admin/users': 'User Management',
+  '/admin/visitor-analytics': 'Visitor Analytics',
+  '/admin/devices': 'Trusted Devices',
+  '/activity': 'Activity Feed',
+  '/admin/jobs': 'Background Jobs',
+  '/admin/audit-logs': 'Audit Logs',
+  '/admin/health': 'System Health',
+  '/admin/settings': 'Admin Settings',
 }
 
 function getSessionId() {

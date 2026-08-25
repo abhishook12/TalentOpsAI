@@ -9,15 +9,7 @@ export default function DomainHealthModal({ isOpen, onClose, initialDomain = '' 
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState(null);
 
-  React.useEffect(() => {
-    if (isOpen && domain) {
-      handleInspect();
-    }
-  }, [isOpen]);
-
-  if (!isOpen) return null;
-
-  const handleInspect = async () => {
+  const handleInspect = React.useCallback(async () => {
     if (!domain.trim()) {
       toast.error('Please enter a domain to inspect');
       return;
@@ -34,7 +26,15 @@ export default function DomainHealthModal({ isOpen, onClose, initialDomain = '' 
     } finally {
       setLoading(false);
     }
-  };
+  }, [domain]);
+
+  React.useEffect(() => {
+    if (isOpen && domain) {
+      handleInspect();
+    }
+  }, [isOpen, domain, handleInspect]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">

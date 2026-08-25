@@ -23,17 +23,7 @@ export default function TemplateLibraryModal({ isOpen, onClose, onImport }) {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  useEffect(() => {
-    if (isOpen) {
-      if (activeTab === 'past') {
-        fetchCampaigns();
-      } else {
-        loadSavedTemplates();
-      }
-    }
-  }, [isOpen, activeTab, debouncedSearchQuery]);
-
-  const fetchCampaigns = async () => {
+  const fetchCampaigns = React.useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ limit: '50' });
@@ -47,9 +37,9 @@ export default function TemplateLibraryModal({ isOpen, onClose, onImport }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearchQuery]);
 
-  const loadSavedTemplates = () => {
+  const loadSavedTemplates = React.useCallback(() => {
     let templates = getSavedTemplates();
     if (debouncedSearchQuery) {
       templates = templates.filter(t => 
@@ -58,7 +48,17 @@ export default function TemplateLibraryModal({ isOpen, onClose, onImport }) {
       );
     }
     setSavedTemplates(templates);
-  };
+  }, [debouncedSearchQuery]);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (activeTab === 'past') {
+        fetchCampaigns();
+      } else {
+        loadSavedTemplates();
+      }
+    }
+  }, [isOpen, activeTab, fetchCampaigns, loadSavedTemplates]);
 
   const loadCampaignDetails = async (camp) => {
     setSelectedItem({ type: 'campaign', data: camp });

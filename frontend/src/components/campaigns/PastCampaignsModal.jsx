@@ -17,13 +17,7 @@ export default function PastCampaignsModal({ isOpen, onClose, onImport }) {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchCampaigns();
-    }
-  }, [isOpen, debouncedSearchQuery]);
-
-  const fetchCampaigns = async () => {
+  const fetchCampaigns = React.useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ limit: '50' });
@@ -37,7 +31,13 @@ export default function PastCampaignsModal({ isOpen, onClose, onImport }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearchQuery]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchCampaigns();
+    }
+  }, [isOpen, fetchCampaigns]);
 
   const loadCampaignDetails = async (id) => {
     setSelectedCampaignId(id);

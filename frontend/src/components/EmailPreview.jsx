@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Eye, ChevronLeft, ChevronRight, Mail, User, Briefcase, MapPin, Loader2 } from 'lucide-react';
 import api from '../services/api';
 
@@ -10,19 +10,8 @@ export default function EmailPreview({ campaignId, subjectTemplate, bodyTemplate
 
   const currentRecipient = recipients[currentIndex];
 
-  useEffect(() => {
-    if (currentRecipient && campaignId) {
-      if (subjectTemplate && bodyTemplate) {
-        // Fetch instantly since we're in the preview step and not typing
-        fetchPreview();
-      } else {
-        setPreviewData(null);
-        setLoading(false);
-      }
-    }
-  }, [currentIndex, subjectTemplate, bodyTemplate, signatureId, currentRecipient, campaignId]);
-
-  const fetchPreview = async () => {
+  const fetchPreview = useCallback(async () => {
+    if (!currentRecipient || !campaignId) return;
     try {
       setLoading(true);
       setError(null);
@@ -47,7 +36,18 @@ export default function EmailPreview({ campaignId, subjectTemplate, bodyTemplate
     } finally {
       setLoading(false);
     }
-  };
+  }, [campaignId, currentRecipient, subjectTemplate, bodyTemplate, signatureId]);
+
+  useEffect(() => {
+    if (currentRecipient && campaignId) {
+      if (subjectTemplate && bodyTemplate) {
+        fetchPreview();
+      } else {
+        setPreviewData(null);
+        setLoading(false);
+      }
+    }
+  }, [currentRecipient, campaignId, subjectTemplate, bodyTemplate, fetchPreview]);
 
   const handlePrev = () => setCurrentIndex(prev => Math.max(0, prev - 1));
   const handleNext = () => setCurrentIndex(prev => Math.min(recipients.length - 1, prev + 1));

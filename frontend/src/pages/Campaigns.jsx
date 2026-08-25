@@ -334,7 +334,7 @@ export default function Campaigns() {
     };
     savePromiseRef.current = doSave();
     return savePromiseRef.current;
-  }, [activeCampaignId, campaignName, fromEmail, signatureId, senderAccountId, subject, body]);
+  }, [activeCampaignId, campaignName, fromEmail, signatureId, senderAccountId, subject, body, setActiveCampaignId]);
 
   useEffect(() => {
     if (view !== 'workspace' || workspaceMode !== 'compose') return;
@@ -424,7 +424,7 @@ export default function Campaigns() {
     }, 2000);
 
     return () => clearTimeout(preflightTimerRef.current);
-  }, [senderAccountId, validatedRecipients, subject, body, view, workspaceMode]);
+  }, [senderAccountId, validatedRecipients, subject, body, view, workspaceMode, activeCampaignId, runPreflight, saveDraft]);
 
   // Background recipient validation (debounced 800ms after recipients change)
   const lastValidatedCountRef = useRef(0);
@@ -455,7 +455,7 @@ export default function Campaigns() {
       lastValidatedCountRef.current = currentCount;
     }, 800);
     return () => clearTimeout(validationTimerRef.current);
-  }, [validatedRecipients.recipients.length, view]);
+  }, [validatedRecipients.recipients, view]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Workspace open/close helpers
@@ -474,7 +474,7 @@ export default function Campaigns() {
     setWorkspaceMode('compose');
     setLastSaved(null);
     setView('workspace');
-  }, []);
+  }, [setActiveCampaignId, setView, setWorkspaceMode]);
 
   const loadCampaign = useCallback(async (id) => {
     try {
@@ -502,7 +502,7 @@ export default function Campaigns() {
     } catch {
       toast.error('Failed to load campaign');
     }
-  }, []);
+  }, [setActiveCampaignId, setView, setWorkspaceMode]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Send campaign & Pre-Flight Deliverability Gate
@@ -582,7 +582,7 @@ export default function Campaigns() {
     } finally {
       setIsSending(false);
     }
-  }, [activeCampaignId, isSending, saveDraft, validatedRecipients, campaignName, fromEmail, signatureId, subject, subjectB, isABTest, smartTimezone, body]);
+  }, [activeCampaignId, isSending, saveDraft, validatedRecipients, campaignName, fromEmail, signatureId, subject, subjectB, isABTest, smartTimezone, body, setWorkspaceMode]);
 
   const handleConfirmLaunch = useCallback(async ({ excludeRisky }) => {
     if (isSending) return;
@@ -605,7 +605,7 @@ export default function Campaigns() {
     } finally {
       setIsSending(false);
     }
-  }, [activeCampaignId, isSending]);
+  }, [activeCampaignId, isSending, setWorkspaceMode]);
 
   const handleProgressStatusChange = useCallback((st) => {
     if (st === 'completed') {

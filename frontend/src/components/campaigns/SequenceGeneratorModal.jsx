@@ -15,15 +15,7 @@ export default function SequenceGeneratorModal({ isOpen, onClose, onApplyTouch }
   const [sequence, setSequence] = useState(null);
   const [selectedTouch, setSelectedTouch] = useState(0);
 
-  React.useEffect(() => {
-    if (isOpen && !sequence) {
-      handleGenerate();
-    }
-  }, [isOpen]);
-
-  if (!isOpen) return null;
-
-  const handleGenerate = async () => {
+  const handleGenerate = React.useCallback(async () => {
     setLoading(true);
     try {
       const res = await api.post('/campaigns/generate-sequence', {
@@ -44,7 +36,15 @@ export default function SequenceGeneratorModal({ isOpen, onClose, onApplyTouch }
     } finally {
       setLoading(false);
     }
-  };
+  }, [targetRole, companyName, industry, seniority, valueProps, tone]);
+
+  React.useEffect(() => {
+    if (isOpen && !sequence) {
+      handleGenerate();
+    }
+  }, [isOpen, sequence, handleGenerate]);
+
+  if (!isOpen) return null;
 
   const copyToClipboard = (text, label) => {
     navigator.clipboard.writeText(text);

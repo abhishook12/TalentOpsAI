@@ -27,16 +27,16 @@ export default function UserManagement() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newUser, setNewUser] = useState({ email: '', first_name: '', last_name: '', role_name: 'user', company: '' });
 
-  const loadAnalytics = async () => {
+  const loadAnalytics = React.useCallback(async () => {
     try {
       const { data } = await api.get('/users/analytics');
       setAnalytics(data);
     } catch (err) {
       console.error("Failed to load analytics", err);
     }
-  };
+  }, []);
 
-  const loadUsers = async () => {
+  const loadUsers = React.useCallback(async () => {
     setLoading(true);
     try {
       const { data } = await api.get('/users', { 
@@ -55,18 +55,18 @@ export default function UserManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, roleFilter, statusFilter, page, limit]);
 
   useEffect(() => {
     loadAnalytics();
-  }, []);
+  }, [loadAnalytics]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       loadUsers();
     }, 400);
     return () => clearTimeout(timer);
-  }, [search, roleFilter, statusFilter, page]);
+  }, [loadUsers]);
 
   const toggleSelection = (id) => {
     if (selectedUsers.includes(id)) {

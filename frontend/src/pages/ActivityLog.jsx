@@ -16,7 +16,7 @@ export default function ActivityLog() {
   const [visitors, setVisitors] = useState([]);
   const [visLoading, setVisLoading] = useState(true);
 
-  const fetchDatabaseActivity = async () => {
+  const fetchDatabaseActivity = React.useCallback(async () => {
     try {
       const { data } = await api.get("/analytics/global-activity?limit=200", {
         withCredentials: true,
@@ -28,9 +28,9 @@ export default function ActivityLog() {
     } finally {
       setDbLoading(false);
     }
-  };
+  }, []);
 
-  const fetchVisitorLogs = async () => {
+  const fetchVisitorLogs = React.useCallback(async () => {
     try {
       const { data } = await api.get("/analytics/visitor-logs?limit=200", {
         withCredentials: true,
@@ -41,18 +41,18 @@ export default function ActivityLog() {
     } finally {
       setVisLoading(false);
     }
-  };
+  }, []);
 
-  const fetchAll = () => {
+  const fetchAll = React.useCallback(() => {
     if (activeTab === 'database') fetchDatabaseActivity();
     else fetchVisitorLogs();
-  };
+  }, [activeTab, fetchDatabaseActivity, fetchVisitorLogs]);
 
   useEffect(() => {
     fetchAll();
     const interval = setInterval(fetchAll, 5000);
     return () => clearInterval(interval);
-  }, [activeTab]);
+  }, [fetchAll]);
 
   const filteredActivity = activity.filter((item) => {
     if (dbFilter === "all") return true;

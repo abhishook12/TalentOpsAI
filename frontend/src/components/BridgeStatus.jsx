@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Database, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import api from '../services/api';
 import ConnectOutlookModal from './ConnectOutlookModal';
@@ -9,26 +9,26 @@ export default function BridgeStatus({ onStatusChange, compact = false }) {
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const checkHealth = async () => {
+  const checkHealth = useCallback(async () => {
     try {
       const res = await api.get('/health/outlook');
       setStatus(res.data);
       setError(null);
       if (onStatusChange) onStatusChange(res.data.status === 'ok');
-    } catch (err) {
+    } catch {
       setStatus({ status: 'offline', message: 'Bridge unreachable' });
       setError('Bridge unreachable');
       if (onStatusChange) onStatusChange(false);
     } finally {
       setLoading(false);
     }
-  };
+  }, [onStatusChange]);
 
   useEffect(() => {
     checkHealth();
     const interval = setInterval(checkHealth, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [checkHealth]);
 
   if (loading && !status) {
     return (

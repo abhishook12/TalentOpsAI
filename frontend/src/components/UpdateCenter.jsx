@@ -92,7 +92,7 @@ export default function UpdateCenter() {
       failed: features.filter(f => f.status.includes('Failed')).length,
       total: features.length,
     };
-  }, [activeStatus]);
+  }, [status?.features]);
 
   const updateTime = lastSyncedAt
     ? new Date(lastSyncedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })

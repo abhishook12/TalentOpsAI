@@ -1,7 +1,14 @@
 {
-    "status": "stopped",
-    "records_processed": 2,
-    "last_active": 1787155946.6871033,
-    "success_count": 1,
-    "current_phase": "stopped"
+    "status": "running",
+    "records_processed": 456205,
+    "last_active": 1787686258.2222445,
+    "success_count": 377,
+    "current_phase": "processed_0_records",
+    "rate_per_sec": 0,
+    "auto_pilot": {
+        "enabled": true,
+        "interval_hours": 12,
+        "last_run_at": "2026-08-25T19:30:33.388216+00:00",
+        "next_run_in_seconds": 43200
+    }
 }

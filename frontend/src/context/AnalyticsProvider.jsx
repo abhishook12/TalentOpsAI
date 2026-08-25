@@ -37,11 +37,10 @@ export function AnalyticsProvider({ children }) {
     }
   }, []);
 
-  const sendAnalytics = async (endpoint, payload) => {
+  const sendAnalytics = useCallback(async (endpoint, payload) => {
     if (!anonymousId || !sessionId) return;
     try {
       const authSession = JSON.parse(localStorage.getItem('auth_session') || '{}');
-      console.log(`[ANALYTICS] Sending ${endpoint} with email: ${authSession?.email}`);
       await fetch(`${API}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -54,10 +53,9 @@ export function AnalyticsProvider({ children }) {
         })
       });
     } catch (e) {
-      // Silently fail — analytics should never break the app
       console.warn('[ANALYTICS ERR]', e);
     }
-  };
+  }, [anonymousId, sessionId]);
 
   // Get current path safely without useRouter
   const getCurrentPath = () => {
@@ -80,7 +78,7 @@ export function AnalyticsProvider({ children }) {
       user_agent: navigator.userAgent,
       current_page: getCurrentPath()
     });
-  }, [anonymousId, sessionId]);
+  }, [anonymousId, sessionId, sendAnalytics]);
 
   // 2. Page Views — use popstate + MutationObserver to detect navigation without useRouter
   useEffect(() => {
@@ -108,16 +106,16 @@ export function AnalyticsProvider({ children }) {
       window.removeEventListener('popstate', checkPathChange);
       clearInterval(pathPoll);
     };
-  }, [anonymousId, sessionId]);
+  }, [sendAnalytics]);
 
   // 3. Activity Tracking & Heartbeat
-  const resetIdle = () => {
+  const resetIdle = useCallback(() => {
     lastActivityRef.current = Date.now();
     if (isIdleRef.current) {
       isIdleRef.current = false;
       sendAnalytics('/analytics/session/event', { event_type: 'active' });
     }
-  };
+  }, [sendAnalytics]);
 
   useEffect(() => {
     if (!anonymousId || !sessionId) return;
@@ -166,7 +164,7 @@ export function AnalyticsProvider({ children }) {
       clearInterval(idleTimeoutRef.current);
       clearInterval(heartbeatIntervalRef.current);
     };
-  }, [anonymousId, sessionId]);
+  }, [anonymousId, sessionId, resetIdle, sendAnalytics]);
 
   return (
     <AnalyticsContext.Provider value={{ sessionId, anonymousId }}>

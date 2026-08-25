@@ -487,7 +487,7 @@ export default function AISearch() {
     setSelectedDetailLoading(true)
     setSelectedDetailError('')
     setSelectedId(id)
-  }, [])
+  }, [setSelectedId])
 
   const [filterCompany, setFilterCompany] = useSessionState('ai_filterCompany', '')
   const [filterLocation, setFilterLocation] = useSessionState('ai_filterLocation', '')
@@ -619,7 +619,7 @@ export default function AISearch() {
       clearTimeout(t)
       controller.abort()
     }
-  }, [query, filterCompany, filterLocation, filterSpecialization])
+  }, [query, filterCompany, filterLocation, filterSpecialization, setSelectedId])
 
   const selectedSummary = useMemo(
     () => searchResults.find((r) => r.recruiter_id === selectedId) || null,

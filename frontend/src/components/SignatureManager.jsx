@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit2, Trash2, Check, X, Star } from 'lucide-react';
 import api from '../services/api';
 import RichTextComposer from './RichTextComposer';
@@ -13,7 +13,7 @@ export default function SignatureManager({ onSelectSignature, selectedSignatureI
   const [htmlContent, setHtmlContent] = useState('<p>Best regards,<br/>Your Name</p>');
   const [isDefault, setIsDefault] = useState(false);
 
-  const fetchSignatures = async () => {
+  const fetchSignatures = useCallback(async () => {
     try {
       setLoading(true);
       const res = await api.get('/campaigns/signatures/list');
@@ -29,11 +29,11 @@ export default function SignatureManager({ onSelectSignature, selectedSignatureI
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedSignatureId, onSelectSignature]);
 
   useEffect(() => {
     fetchSignatures();
-  }, []);
+  }, [fetchSignatures]);
 
   const handleSave = async () => {
     try {

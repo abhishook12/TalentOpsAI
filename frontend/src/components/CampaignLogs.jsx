@@ -22,7 +22,7 @@ export default function CampaignLogs({ campaignId }) {
     refetchInterval: 1500 // Poll every 1.5 seconds for real-time live feed
   });
 
-  const logs = logsData || [];
+  const logs = useMemo(() => logsData || [], [logsData]);
 
   const filteredLogs = useMemo(() => {
     return logs.filter(log => {

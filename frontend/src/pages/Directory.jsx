@@ -212,7 +212,7 @@ export default function Directory() {
     })()
 
     return () => { alive = false }
-  }, [debouncedCompanyQuery])
+  }, [debouncedCompanyQuery, setToast])
 
   const prevCompanyRef = useRef(selectedCompany?.company_key)
 
@@ -254,7 +254,7 @@ export default function Directory() {
     })()
 
     return () => { alive = false }
-  }, [selectedCompany])
+  }, [selectedCompany, setCompanyStates, setDebouncedRecruiterQuery, setPage, setRecruiterQuery, setRecruiters, setRecruitersTotal, setSelectedRecruiters, setSelectedState, setStateQuery, setStatesLoading, setToast])
 
   const prevStateRef = useRef(selectedState)
 
@@ -264,7 +264,7 @@ export default function Directory() {
       setSelectedRecruiters(new Map())
     }
     prevStateRef.current = selectedState
-  }, [selectedState])
+  }, [selectedState, setPage, setSelectedRecruiters])
 
   // Validate selectedState against loaded companyStates
   useEffect(() => {
@@ -318,7 +318,7 @@ export default function Directory() {
       alive = false
       controller.abort()
     }
-  }, [selectedCompany, selectedState, page, debouncedRecruiterQuery])
+  }, [selectedCompany, selectedState, page, debouncedRecruiterQuery, setRecruiters, setRecruitersLoading, setRecruitersTotal, setToast])
 
   // Clear ghost companies that were removed from the backend
   useEffect(() => {

@@ -7,22 +7,22 @@ export default function ReviewQueue({ setToast }) {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
 
-  const fetchQueue = async () => {
+  const fetchQueue = React.useCallback(async () => {
     setLoading(true)
     try {
       const res = await api.get('/sentinel/review-queue')
       setQueue(res.data.items)
       setTotal(res.data.total)
     } catch (err) {
-      setToast({ type: 'error', message: err?.response?.data?.detail || err.message || 'Failed to load review queue' })
+      if (setToast) setToast({ type: 'error', message: err?.response?.data?.detail || err.message || 'Failed to load review queue' })
     } finally {
       setLoading(false)
     }
-  }
+  }, [setToast])
 
   useEffect(() => {
     fetchQueue()
-  }, [])
+  }, [fetchQueue])
 
   const handleAction = async (recruiterId, action) => {
     try {

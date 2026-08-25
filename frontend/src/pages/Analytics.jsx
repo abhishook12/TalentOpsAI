@@ -111,7 +111,7 @@ const ChartBox = memo(function ChartBox({ children, height = 240 }) {
 
     observer.observe(element)
     return () => observer.disconnect()
-  }, [])
+  }, [height])
 
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%', height, minHeight: height }}>
@@ -201,7 +201,7 @@ export default function Analytics() {
   })
 
   const visits = analyticsData?.visits
-  const stateData = analyticsData?.stateData || []
+  const stateData = useMemo(() => analyticsData?.stateData || [], [analyticsData?.stateData])
   const dq = analyticsData?.dq
 
   const dailyData = useMemo(() => (visits?.daily || []).map(r => ({

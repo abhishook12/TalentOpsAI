@@ -2,8 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Loader2, CheckCircle2, XCircle, Search, Filter, RefreshCw,
-  Mail, AlertCircle, Clock, Send, Eye, MessageSquare
+  Mail, AlertCircle, Clock, Send, Eye, MessageSquare, Download
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import api from '../services/api';
 
 export default function CampaignLogs({ campaignId }) {
@@ -40,6 +41,30 @@ export default function CampaignLogs({ campaignId }) {
       return true;
     });
   }, [logs, filter, search]);
+
+  const exportCsv = () => {
+    if (!logs.length) {
+      toast.error('No delivery logs to export');
+      return;
+    }
+    const headers = ['Recipient Email', 'Status', 'Timestamp', 'Delivery Notes', 'Retry Count'];
+    const rows = logs.map(l => [
+      `"${l.email || ''}"`,
+      `"${l.status || ''}"`,
+      `"${l.last_sent ? new Date(l.last_sent).toLocaleString() : ''}"`,
+      `"${(l.error || (['delivered', 'sent'].includes((l.status || '').toLowerCase()) ? 'Sent via Outlook COM Bridge' : '')).replace(/"/g, '""')}"`,
+      l.retry_count || 0
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `campaign_${campaignId}_delivery_ledger.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Exported ${logs.length} delivery records to CSV!`);
+  };
 
   const deliveredCount = logs.filter(l => ['delivered', 'sent'].includes((l.status || '').toLowerCase())).length;
   const failedCount = logs.filter(l => ['failed', 'bounced'].includes((l.status || '').toLowerCase())).length;
@@ -83,6 +108,14 @@ export default function CampaignLogs({ campaignId }) {
               className="w-56 bg-[#181820] border border-[#2b2b38] rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-[#52525b] focus:outline-none focus:border-cyan-500 transition"
             />
           </div>
+          <button
+            onClick={exportCsv}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#181820] hover:bg-[#22222d] text-[#a1a1aa] hover:text-white border border-[#2b2b38] text-xs font-semibold transition cursor-pointer"
+            title="Export CSV"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Export CSV
+          </button>
           <button
             onClick={() => refetch()}
             disabled={isFetching}

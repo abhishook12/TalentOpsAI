@@ -820,6 +820,23 @@ export default function Campaigns() {
         {showTemplateLibrary && (
           <TemplateLibraryModal isOpen onClose={() => setShowTemplateLibrary(false)} onImport={(t) => { startNewCampaign(t); setShowTemplateLibrary(false); }} />
         )}
+        {showSequenceGenerator && (
+          <SequenceGeneratorModal
+            isOpen
+            onClose={() => setShowSequenceGenerator(false)}
+            onApplyTouch={(touch) => {
+              startNewCampaign({ subject: touch.subject, body: touch.body });
+              setShowSequenceGenerator(false);
+            }}
+          />
+        )}
+        {showDomainHealth && (
+          <DomainHealthModal
+            isOpen
+            onClose={() => setShowDomainHealth(false)}
+            initialDomain={fromEmail || 'talentops.ai'}
+          />
+        )}
       </div>
     );
   }

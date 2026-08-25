@@ -15,6 +15,12 @@ export default function SequenceGeneratorModal({ isOpen, onClose, onApplyTouch }
   const [sequence, setSequence] = useState(null);
   const [selectedTouch, setSelectedTouch] = useState(0);
 
+  React.useEffect(() => {
+    if (isOpen && !sequence) {
+      handleGenerate();
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleGenerate = async () => {

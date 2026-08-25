@@ -9,6 +9,12 @@ export default function DomainHealthModal({ isOpen, onClose, initialDomain = '' 
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState(null);
 
+  React.useEffect(() => {
+    if (isOpen && domain) {
+      handleInspect();
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleInspect = async () => {

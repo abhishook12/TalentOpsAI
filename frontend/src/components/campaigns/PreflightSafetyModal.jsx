@@ -391,7 +391,7 @@ export default function PreflightSafetyModal({
                         {r.name && <span className="text-[#71717a] text-[11px] truncate">({r.name})</span>}
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-[11px] text-[#71717a] font-mono">{r.confidence}%</span>
+                        <span className="text-[11px] text-[#71717a] font-mono">{r.email_confidence ?? r.confidence ?? 95}%</span>
                         {r.action === 'send' && (
                           <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                             Safe

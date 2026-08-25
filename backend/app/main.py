@@ -529,4 +529,5 @@ async def shutdown_event():
 
 from .routes import health
 app.include_router(health.router, prefix="/health", tags=["System Health"])
+app.include_router(bridge.router, prefix="/bridge", tags=["Bridge"])
 app.include_router(bridge.router, prefix="/api/bridge", tags=["Bridge"])

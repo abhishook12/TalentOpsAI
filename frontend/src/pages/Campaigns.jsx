@@ -922,33 +922,35 @@ export default function Campaigns() {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                     <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
-                      {isABTest ? 'Subject Line Matrix (A/B Testing)' : 'Subject Line'}
+                      {isABTest ? 'Subject Line Matrix (A/B Test)' : 'Subject Line'}
                     </label>
                     <button
                       type="button"
                       onClick={() => setIsABTest(!isABTest)}
                       style={{
                         fontSize: 11,
-                        fontWeight: 700,
+                        fontWeight: 600,
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 4,
-                        padding: '2px 8px',
-                        borderRadius: 4,
-                        background: isABTest ? 'rgba(99, 102, 241, 0.15)' : 'var(--bg-hover)',
+                        gap: 5,
+                        padding: '3px 9px',
+                        borderRadius: 6,
+                        background: isABTest ? 'rgba(99, 102, 241, 0.12)' : 'var(--bg-hover)',
                         color: isABTest ? '#818cf8' : 'var(--text-muted)',
-                        border: isABTest ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid var(--border)',
-                        cursor: 'pointer'
+                        border: isABTest ? '1px solid rgba(99, 102, 241, 0.25)' : '1px solid var(--border)',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
                       }}
                     >
-                      🧪 {isABTest ? 'Disable A/B Test' : '+ Enable A/B Split Test'}
+                      <Sparkles size={12} />
+                      {isABTest ? 'Disable A/B Split' : 'Enable A/B Split Test'}
                     </button>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <div style={{ position: 'relative' }}>
                       {isABTest && (
-                        <span style={{ position: 'absolute', left: 8, top: 9, fontSize: 10, fontWeight: 800, padding: '1px 5px', borderRadius: 3, background: 'rgba(99, 102, 241, 0.2)', color: '#a5b4fc' }}>
+                        <span style={{ position: 'absolute', left: 8, top: 9, fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 4, background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', border: '1px solid rgba(99, 102, 241, 0.25)' }}>
                           A
                         </span>
                       )}
@@ -963,7 +965,7 @@ export default function Campaigns() {
                           background: 'var(--bg-surface)',
                           border: '1px solid var(--card-border)',
                           borderRadius: 6,
-                          padding: isABTest ? '8px 12px 8px 32px' : '8px 12px',
+                          padding: isABTest ? '8px 12px 8px 36px' : '8px 12px',
                           fontSize: 14,
                           color: 'var(--text-primary)',
                           outline: 'none',
@@ -974,7 +976,7 @@ export default function Campaigns() {
 
                     {isABTest && (
                       <div style={{ position: 'relative' }}>
-                        <span style={{ position: 'absolute', left: 8, top: 9, fontSize: 10, fontWeight: 800, padding: '1px 5px', borderRadius: 3, background: 'rgba(236, 72, 153, 0.2)', color: '#f472b6' }}>
+                        <span style={{ position: 'absolute', left: 8, top: 9, fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 4, background: 'rgba(236, 72, 153, 0.15)', color: '#f472b6', border: '1px solid rgba(236, 72, 153, 0.25)' }}>
                           B
                         </span>
                         <input
@@ -988,7 +990,7 @@ export default function Campaigns() {
                             background: 'var(--bg-surface)',
                             border: '1px solid var(--card-border)',
                             borderRadius: 6,
-                            padding: '8px 12px 8px 32px',
+                            padding: '8px 12px 8px 36px',
                             fontSize: 14,
                             color: 'var(--text-primary)',
                             outline: 'none',
@@ -1077,18 +1079,18 @@ export default function Campaigns() {
                   </div>
 
                   {smartTimezone && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingTop: 4, borderTop: '1px solid var(--border)' }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'rgba(99, 102, 241, 0.12)', color: '#818cf8' }}>
-                        🇺🇸 ET: {timezoneStats.ET} leads
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingTop: 6, borderTop: '1px solid var(--border)' }}>
+                      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: 'rgba(99, 102, 241, 0.1)', color: '#a5b4fc', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+                        ET: {timezoneStats.ET} leads
                       </span>
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'rgba(16, 185, 129, 0.12)', color: '#34d399' }}>
-                        🇺🇸 CT: {timezoneStats.CT} leads
+                      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: 'rgba(16, 185, 129, 0.1)', color: '#6ee7b7', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                        CT: {timezoneStats.CT} leads
                       </span>
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'rgba(245, 158, 11, 0.12)', color: '#fbbf24' }}>
-                        🇺🇸 MT: {timezoneStats.MT} leads
+                      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: 'rgba(245, 158, 11, 0.1)', color: '#fcd34d', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                        MT: {timezoneStats.MT} leads
                       </span>
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'rgba(236, 72, 153, 0.12)', color: '#f472b6' }}>
-                        🇺🇸 PT: {timezoneStats.PT} leads
+                      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: 'rgba(236, 72, 153, 0.1)', color: '#f9a8d4', border: '1px solid rgba(236, 72, 153, 0.2)' }}>
+                        PT: {timezoneStats.PT} leads
                       </span>
                     </div>
                   )}

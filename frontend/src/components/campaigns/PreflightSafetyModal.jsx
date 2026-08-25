@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShieldCheck, AlertTriangle, XCircle, CheckCircle2, ShieldAlert,
-  ChevronRight, Send, X, ArrowRight, RefreshCw, Mail, Check, AlertCircle,
-  Wand2, Sparkles, CheckCheck
+  Send, X, RefreshCw, Mail, AlertCircle,
+  Wand2, Sparkles, CheckCheck, Clock, Shield, Search, ArrowUpRight, Zap
 } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -21,6 +21,7 @@ export default function PreflightSafetyModal({
   const [preflightData, setPreflightData] = useState(initialPreflightData);
   const [excludeRisky, setExcludeRisky] = useState(false);
   const [filterTier, setFilterTier] = useState('all'); // 'all' | 'safe' | 'review' | 'blocked'
+  const [searchQuery, setSearchQuery] = useState('');
   const [isHealing, setIsHealing] = useState(false);
   const [healedInfo, setHealedInfo] = useState(null);
   const [spamResult, setSpamResult] = useState(null);
@@ -49,7 +50,7 @@ export default function PreflightSafetyModal({
     safe_to_send = 0,
     risky_review = 0,
     blocked = 0,
-    deliverability_rate = 0,
+    deliverability_rate = 100,
     risk_level = 'low',
     can_proceed = true,
     warning_message = '',
@@ -57,9 +58,15 @@ export default function PreflightSafetyModal({
   } = preflightData;
 
   const filteredRecipients = recipients.filter(r => {
-    if (filterTier === 'safe') return r.action === 'send';
-    if (filterTier === 'review') return r.action === 'review';
-    if (filterTier === 'blocked') return r.action === 'block';
+    if (filterTier === 'safe' && r.action !== 'send') return false;
+    if (filterTier === 'review' && r.action !== 'review') return false;
+    if (filterTier === 'blocked' && r.action !== 'block') return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchEmail = (r.email || '').toLowerCase().includes(q);
+      const matchName = (r.name || '').toLowerCase().includes(q);
+      return matchEmail || matchName;
+    }
     return true;
   });
 
@@ -80,9 +87,9 @@ export default function PreflightSafetyModal({
       setPreflightData(updated_preflight);
       setHealedInfo(heal_summary);
       if (heal_summary.total_healed > 0) {
-        toast.success(`Successfully healed & repaired ${heal_summary.total_healed} emails!`);
+        toast.success(`Successfully repaired ${heal_summary.total_healed} email addresses!`);
       } else {
-        toast.info('No additional permutations or typos could be auto-repaired.');
+        toast.info('No additional domain permutations could be repaired.');
       }
     } catch (e) {
       toast.error(e.response?.data?.detail || 'Auto-healing failed');
@@ -91,98 +98,106 @@ export default function PreflightSafetyModal({
     }
   };
 
-  const getRiskBadge = () => {
-    if (risk_level === 'low') {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-          <ShieldCheck className="w-3.5 h-3.5" /> High Deliverability Safe (Score {deliverability_rate}%)
-        </span>
-      );
+  const getInitials = (name, email) => {
+    if (name && name.trim()) {
+      const parts = name.trim().split(/\s+/);
+      if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+      return parts[0].slice(0, 2).toUpperCase();
     }
-    if (risk_level === 'medium') {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-          <AlertTriangle className="w-3.5 h-3.5" /> Moderate Risk (Score {deliverability_rate}%)
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">
-        <ShieldAlert className="w-3.5 h-3.5" /> Critical Bounce Risk (Score {deliverability_rate}%)
-      </span>
-    );
+    if (email) return email.slice(0, 2).toUpperCase();
+    return 'RE';
   };
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          initial={{ opacity: 0, scale: 0.96, y: 8 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          className="w-full max-w-2xl bg-[#141417] border border-[#27272a] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+          exit={{ opacity: 0, scale: 0.96, y: 8 }}
+          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-2xl bg-[#0e0e11] border border-[#27272e] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+          style={{ boxShadow: '0 24px 64px -12px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05)' }}
         >
           {/* Header */}
-          <div className="px-6 py-5 border-b border-[#27272a] flex items-center justify-between bg-[#18181b]/50">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+          <div className="px-6 py-5 border-b border-[#22222a] flex items-center justify-between bg-[#121217]">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shadow-sm">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-white tracking-tight flex items-center gap-2 m-0">
-                  Campaign Deliverability Pre-Flight Gate
+                <h2 className="text-base font-bold text-white tracking-tight m-0 flex items-center gap-2">
+                  Pre-Flight Deliverability Check
+                  <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+                    Verified
+                  </span>
                 </h2>
-                <p className="text-xs text-[#a1a1aa] mt-0.5 m-0">
-                  Real-time DNS MX, deep mailbox ping & zero-bounce safety scan
+                <p className="text-xs text-[#8e8e99] mt-0.5 m-0 font-normal">
+                  Real-time MX validation, sender reputation watchdog & zero-bounce safety scan
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-[#71717a] hover:text-white hover:bg-[#27272a] transition-colors"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-[#71717a] hover:text-white hover:bg-[#202026] transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Body content */}
-          <div className="p-6 overflow-y-auto space-y-6 custom-scrollbar">
+          {/* Body Content */}
+          <div className="p-6 overflow-y-auto space-y-5 custom-scrollbar bg-[#0e0e11]">
             {/* Top Score Banner */}
-            <div className="flex items-center justify-between p-4 rounded-xl bg-[#1c1c21] border border-[#2c2c34]">
-              <div>
-                <div className="text-xs font-medium text-[#71717a] uppercase tracking-wider mb-1">
-                  Deliverability Gate Verdict
+            <div className="p-4 rounded-xl bg-[#141419] border border-[#262630] flex items-center justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-[#a1a1aa] uppercase tracking-wider">
+                    Deliverability Health
+                  </span>
+                  <span className="text-xs font-bold text-emerald-400">
+                    {deliverability_rate}% Safe & Deliverable
+                  </span>
                 </div>
-                <div>{getRiskBadge()}</div>
+                {/* Progress bar */}
+                <div className="w-full h-2 rounded-full bg-[#202028] overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${deliverability_rate}%`,
+                      background: deliverability_rate >= 80 ? 'linear-gradient(90deg, #10b981, #34d399)' : deliverability_rate >= 50 ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'linear-gradient(90deg, #ef4444, #f87171)'
+                    }}
+                  />
+                </div>
               </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-white tracking-tight">
-                  {deliverability_rate}%
+              <div className="pl-4 border-l border-[#262630] text-right flex-shrink-0">
+                <div className="text-2xl font-extrabold text-white tracking-tight">
+                  {effectiveSendCount}
+                  <span className="text-xs font-normal text-[#71717a] ml-1">/ {total_recipients}</span>
                 </div>
-                <div className="text-[11px] text-[#a1a1aa]">Calculated Safe Ratio</div>
+                <div className="text-[11px] text-[#8e8e99]">Ready to Dispatch</div>
               </div>
             </div>
 
             {/* Auto-Healer Banner if blocked or risky exist */}
             {(blocked > 0 || risky_review > 0) && (
-              <div className="p-4 rounded-xl bg-gradient-to-r from-purple-950/40 via-[#1e1b2e] to-[#18181b] border border-purple-500/30 flex items-center justify-between gap-4">
+              <div className="p-4 rounded-xl bg-gradient-to-r from-purple-950/30 via-[#181524] to-[#141419] border border-purple-500/25 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400 flex-shrink-0">
-                    <Wand2 className="w-4 h-4 animate-pulse" />
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/25 flex items-center justify-center text-purple-400 flex-shrink-0">
+                    <Wand2 className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-xs font-semibold text-white flex items-center gap-1.5">
+                    <div className="text-xs font-bold text-white flex items-center gap-1.5">
                       Autonomous Email Healer & Permutation Engine
                     </div>
-                    <div className="text-[11px] text-[#a1a1aa] truncate">
-                      Auto-correct domain typos, hoist alternates & synthesize valid corporate inboxes
+                    <div className="text-[11px] text-[#9ca3af] truncate">
+                      Auto-correct domain typos and synthesize valid corporate mailboxes
                     </div>
                   </div>
                 </div>
                 <button
                   onClick={handleAutoHeal}
                   disabled={isHealing}
-                  className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold flex items-center gap-1.5 flex-shrink-0 shadow-lg shadow-purple-950/40 transition-all cursor-pointer"
+                  className="px-3.5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold flex items-center gap-1.5 flex-shrink-0 shadow-md shadow-purple-950/50 transition-all cursor-pointer"
                 >
                   {isHealing ? (
                     <>
@@ -220,191 +235,164 @@ export default function PreflightSafetyModal({
               {/* Safe */}
               <div
                 onClick={() => setFilterTier(filterTier === 'safe' ? 'all' : 'safe')}
-                className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
                   filterTier === 'safe'
                     ? 'bg-emerald-500/10 border-emerald-500/40 ring-1 ring-emerald-500/30'
-                    : 'bg-[#18181b] border-[#27272a] hover:border-[#3f3f46]'
+                    : 'bg-[#141419] border-[#262630] hover:border-[#383846]'
                 }`}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-emerald-400 flex items-center gap-1.5">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Safe to Send
                   </span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-mono font-bold">
                     Tier 1-2
                   </span>
                 </div>
-                <div className="text-xl font-bold text-white">{safe_to_send}</div>
-                <div className="text-[11px] text-[#71717a] mt-0.5">Corporate & MX Verified</div>
+                <div className="text-xl font-black text-white">{safe_to_send}</div>
+                <div className="text-[11px] text-[#8e8e99] mt-0.5">Corporate & MX Verified</div>
               </div>
 
               {/* Risky */}
               <div
                 onClick={() => setFilterTier(filterTier === 'review' ? 'all' : 'review')}
-                className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
                   filterTier === 'review'
                     ? 'bg-amber-500/10 border-amber-500/40 ring-1 ring-amber-500/30'
-                    : 'bg-[#18181b] border-[#27272a] hover:border-[#3f3f46]'
+                    : 'bg-[#141419] border-[#262630] hover:border-[#383846]'
                 }`}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-amber-400 flex items-center gap-1.5">
-                    <AlertTriangle className="w-3.5 h-3.5" /> Review / Catch-All
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-semibold text-amber-400 flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5" /> Catch-All
                   </span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 font-mono font-bold">
                     Tier 3
                   </span>
                 </div>
-                <div className="text-xl font-bold text-white">{risky_review}</div>
-                <div className="text-[11px] text-[#71717a] mt-0.5">Catch-All / Role Inboxes</div>
+                <div className="text-xl font-black text-white">{risky_review}</div>
+                <div className="text-[11px] text-[#8e8e99] mt-0.5">Review Recommended</div>
               </div>
 
               {/* Blocked */}
               <div
                 onClick={() => setFilterTier(filterTier === 'blocked' ? 'all' : 'blocked')}
-                className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
                   filterTier === 'blocked'
                     ? 'bg-rose-500/10 border-rose-500/40 ring-1 ring-rose-500/30'
-                    : 'bg-[#18181b] border-[#27272a] hover:border-[#3f3f46]'
+                    : 'bg-[#141419] border-[#262630] hover:border-[#383846]'
                 }`}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-rose-400 flex items-center gap-1.5">
-                    <XCircle className="w-3.5 h-3.5" /> Auto-Blocked
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-semibold text-rose-400 flex items-center gap-1.5">
+                    <XCircle className="w-3.5 h-3.5" /> Excluded
                   </span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-300 font-mono font-bold">
                     Tier 4-5
                   </span>
                 </div>
-                <div className="text-xl font-bold text-white">{blocked}</div>
-                <div className="text-[11px] text-[#71717a] mt-0.5">Dead MX or Missing</div>
+                <div className="text-xl font-black text-white">{blocked}</div>
+                <div className="text-[11px] text-[#8e8e99] mt-0.5">Dead MX or Invalid</div>
               </div>
             </div>
-
-            {/* Catch-all toggle checkbox */}
-            {risky_review > 0 && (
-              <label className="flex items-center gap-3 p-3.5 rounded-xl bg-[#18181b] border border-[#27272a] cursor-pointer hover:border-[#3f3f46] transition-colors">
-                <input
-                  type="checkbox"
-                  checked={excludeRisky}
-                  onChange={(e) => setExcludeRisky(e.target.checked)}
-                  className="w-4 h-4 rounded border-[#3f3f46] bg-[#27272a] text-emerald-500 focus:ring-emerald-500/30"
-                />
-                <div className="text-xs">
-                  <span className="font-semibold text-white">Strict Safety Mode: </span>
-                  <span className="text-[#a1a1aa]">
-                    Exclude {risky_review} risky catch-all addresses from dispatch to guarantee 100% bounce protection.
-                  </span>
-                </div>
-              </label>
-            )}
-
-            {/* Content & Spam Risk Assessment Panel */}
-            {spamResult && (
-              <div className="p-4 rounded-xl bg-[#18181b] border border-[#27272a]">
-                <div className="flex items-center justify-between mb-2.5">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className={`w-4 h-4 ${spamResult.is_safe ? 'text-emerald-400' : 'text-amber-400'}`} />
-                    <span className="text-xs font-semibold text-white">Content Deliverability & Spam Score</span>
-                  </div>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                    spamResult.risk_tier === 'low'
-                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                      : spamResult.risk_tier === 'medium'
-                      ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                      : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                  }`}>
-                    {spamResult.deliverability_score}/100 Safe ({spamResult.risk_tier.toUpperCase()})
-                  </span>
-                </div>
-                <div className="text-[11px] text-[#a1a1aa] mb-2">{spamResult.summary}</div>
-                {spamResult.recommendations?.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-[#27272a]/60 space-y-1">
-                    {spamResult.recommendations.map((rec, idx) => (
-                      <div key={idx} className="text-[11px] text-amber-300/90 flex items-center gap-1.5">
-                        <span className="w-1 h-1 rounded-full bg-amber-400 flex-shrink-0" />
-                        <span>{rec}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Smart Outreach Powerhouse Badges (Timezone & Reputation Shield) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="p-3 rounded-xl bg-[#141416] border border-[#27272a] flex items-start gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0 text-xs">
-                  ⏰
+              <div className="p-3.5 rounded-xl bg-[#141419] border border-[#262630] flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center text-indigo-400 flex-shrink-0">
+                  <Clock className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="text-xs font-semibold text-white flex items-center gap-1.5">
-                    Prime-Time Dispatch
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-mono">8:45 AM</span>
+                  <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                    Prime-Time Timezone Dispatch
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-mono font-bold">8:45 AM</span>
                   </div>
-                  <div className="text-[11px] text-[#71717a] mt-0.5">
-                    Recipients scheduled by local US timezone (ET, CT, MT, PT).
+                  <div className="text-[11px] text-[#8e8e99] mt-0.5">
+                    Recipients scheduled for 8:45 AM local recipient time across ET, CT, MT, PT.
                   </div>
                 </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-[#141416] border border-[#27272a] flex items-start gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 flex-shrink-0 text-xs">
-                  🛡️
+              <div className="p-3.5 rounded-xl bg-[#141419] border border-[#262630] flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center text-emerald-400 flex-shrink-0">
+                  <ShieldCheck className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="text-xs font-semibold text-white flex items-center gap-1.5">
-                    Reputation Shield
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono">2.0% Tripwire</span>
+                  <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                    Domain Reputation Shield
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold">2.0% Cap</span>
                   </div>
-                  <div className="text-[11px] text-[#71717a] mt-0.5">
-                    Emergency circuit breaker auto-pauses if bounces spike.
+                  <div className="text-[11px] text-[#8e8e99] mt-0.5">
+                    Emergency circuit breaker auto-pauses campaign if bounce velocity spikes.
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Recipient Audit List */}
+            {/* Recipient Deliverability Audit Table */}
             <div>
-              <div className="flex items-center justify-between mb-2.5">
-                <div className="text-xs font-medium text-[#a1a1aa]">
-                  Recipient Deliverability Audit ({filteredRecipients.length} shown)
+              <div className="flex items-center justify-between mb-2.5 gap-2">
+                <div className="text-xs font-bold text-[#a1a1aa] uppercase tracking-wider">
+                  Recipient Deliverability Audit ({filteredRecipients.length})
                 </div>
-                {filterTier !== 'all' && (
-                  <button
-                    onClick={() => setFilterTier('all')}
-                    className="text-[11px] text-emerald-400 hover:underline"
-                  >
-                    Reset Filter
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-[#71717a]" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      placeholder="Filter leads..."
+                      className="text-[11px] pl-8 pr-2.5 py-1 rounded-lg bg-[#141419] border border-[#262630] text-white placeholder-[#71717a] outline-none focus:border-indigo-500 transition-colors w-32 sm:w-40"
+                    />
+                  </div>
+                  {filterTier !== 'all' && (
+                    <button
+                      onClick={() => setFilterTier('all')}
+                      className="text-[11px] text-indigo-400 hover:underline cursor-pointer"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="max-h-48 overflow-y-auto rounded-xl border border-[#27272a] bg-[#121215] divide-y divide-[#1e1e24] custom-scrollbar">
+
+              <div className="max-h-52 overflow-y-auto rounded-xl border border-[#262630] bg-[#121217] divide-y divide-[#1e1e26] custom-scrollbar">
                 {filteredRecipients.length === 0 ? (
-                  <div className="p-4 text-center text-xs text-[#71717a]">No recipients in this category</div>
+                  <div className="p-6 text-center text-xs text-[#71717a]">
+                    No recipient records match the selected filter.
+                  </div>
                 ) : (
                   filteredRecipients.map((r, i) => (
-                    <div key={i} className="px-3.5 py-2.5 flex items-center justify-between text-xs hover:bg-[#18181c] transition-colors">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Mail className="w-3.5 h-3.5 text-[#71717a] flex-shrink-0" />
-                        <span className="font-mono text-white truncate">{r.email}</span>
-                        {r.name && <span className="text-[#71717a] text-[11px] truncate">({r.name})</span>}
+                    <div key={i} className="px-4 py-3 flex items-center justify-between text-xs hover:bg-[#181820] transition-colors">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-7 h-7 rounded-full bg-[#20202a] border border-[#2e2e3a] flex items-center justify-center text-[10px] font-bold text-[#a1a1aa] flex-shrink-0">
+                          {getInitials(r.name, r.email)}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-semibold text-white truncate flex items-center gap-1.5">
+                            {r.email}
+                          </div>
+                          {r.name && <div className="text-[#71717a] text-[11px] truncate">{r.name}</div>}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-[11px] text-[#71717a] font-mono">{r.email_confidence ?? r.confidence ?? 95}%</span>
+                      <div className="flex items-center gap-2.5 flex-shrink-0">
+                        <span className="text-[11px] text-[#8e8e99] font-mono font-medium">
+                          {r.email_confidence ?? r.confidence ?? 95}% Verified
+                        </span>
                         {r.action === 'send' && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                            Safe
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+                            Ready to Send
                           </span>
                         )}
                         {r.action === 'review' && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/25">
                             Catch-All
                           </span>
                         )}
                         {r.action === 'block' && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">
-                            Blocked
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/25">
+                            Excluded
                           </span>
                         )}
                       </div>
@@ -416,22 +404,22 @@ export default function PreflightSafetyModal({
           </div>
 
           {/* Footer Controls */}
-          <div className="px-6 py-4 border-t border-[#27272a] bg-[#18181b]/50 flex items-center justify-between">
+          <div className="px-6 py-4 border-t border-[#22222a] bg-[#121217] flex items-center justify-between">
             <button
               onClick={onClose}
               disabled={isLaunching}
-              className="px-4 py-2 text-xs font-medium text-[#a1a1aa] hover:text-white bg-transparent hover:bg-[#27272a] rounded-lg transition-colors"
+              className="px-4 py-2 text-xs font-semibold text-[#a1a1aa] hover:text-white bg-transparent hover:bg-[#202026] rounded-lg transition-colors cursor-pointer"
             >
-              Cancel & Edit Draft
+              Back to Editor
             </button>
 
             <button
               onClick={() => onConfirmLaunch({ excludeRisky, effectiveSendCount })}
               disabled={!can_proceed || effectiveSendCount === 0 || isLaunching}
-              className={`px-5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all shadow-lg ${
+              className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-lg ${
                 can_proceed && effectiveSendCount > 0
-                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20 cursor-pointer'
-                  : 'bg-[#27272a] text-[#71717a] cursor-not-allowed'
+                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/40 cursor-pointer'
+                  : 'bg-[#202028] text-[#555562] cursor-not-allowed'
               }`}
             >
               {isLaunching ? (

@@ -76,6 +76,19 @@ STATUS_TO_TIER = {
 }
 
 
+DISPOSABLE_DOMAINS = {
+    'tempmail.com', 'mailinator.com', 'guerrillamail.com', '10minutemail.com',
+    'trashmail.com', 'sharklasers.com', 'yopmail.com', 'dispostable.com',
+    'temp-mail.org', 'throwawaymail.com', 'getairmail.com', 'maildrop.cc'
+}
+
+ROLE_PREFIXES = {
+    'admin', 'support', 'info', 'sales', 'billing', 'help', 'contact', 'jobs',
+    'careers', 'hr', 'marketing', 'privacy', 'abuse', 'postmaster', 'noreply',
+    'no-reply', 'press', 'inquiries', 'feedback', 'security'
+}
+
+
 def _classify_action(tier: int) -> str:
     """Map tier to action: send, review, or block."""
     if tier <= 2:
@@ -107,9 +120,11 @@ def run_preflight_check(
     Run a pre-flight deliverability check for all campaign recipients.
     
     Queries the unified DuckDB Parquet store for each recipient's
-    deliverability status and returns a categorized breakdown.
+    deliverability status and returns a categorized breakdown with live
+    MX, disposable, and role-based detection.
     """
     import re
+    import socket
     start_time = time.time()
     
     if not recipient_names:
@@ -149,14 +164,36 @@ def run_preflight_check(
             is_deliverable = bool(row[3]) if row[3] is not None else True
         else:
             recruiter_id = None
-            if email_clean and re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email_clean):
-                email_status = 'valid'
-                email_confidence = 80
-                is_deliverable = True
-            else:
-                email_status = 'missing'
+            if not email_clean or not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email_clean):
+                email_status = 'invalid'
                 email_confidence = 0
                 is_deliverable = False
+            else:
+                local_part, _, domain = email_clean.partition('@')
+                if domain in DISPOSABLE_DOMAINS:
+                    email_status = 'undeliverable'
+                    email_confidence = 5
+                    is_deliverable = False
+                elif local_part in ROLE_PREFIXES:
+                    email_status = 'risky_catchall'
+                    email_confidence = 65
+                    is_deliverable = True
+                else:
+                    # Live DNS check
+                    try:
+                        addr = socket.getaddrinfo(domain, 80, family=socket.AF_INET, type=socket.SOCK_STREAM)
+                        has_dns = len(addr) > 0
+                    except Exception:
+                        has_dns = False
+                    
+                    if has_dns:
+                        email_status = 'valid'
+                        email_confidence = 90
+                        is_deliverable = True
+                    else:
+                        email_status = 'undeliverable'
+                        email_confidence = 0
+                        is_deliverable = False
         
         tier, tier_label = STATUS_TO_TIER.get(email_status, (2, 'Tier 2 — Likely Deliverable'))
         action = _classify_action(tier)

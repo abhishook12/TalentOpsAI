@@ -8,9 +8,8 @@ import os
 import smtplib
 from email.message import EmailMessage
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, Request
-from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from ..database import get_db
 from ..services.auth_service import get_current_user_from_request
@@ -134,11 +133,11 @@ def api_campaign_preflight(
         emails = payload.emails
         names = payload.names if payload.names else []
     else:
-        cr_rows = db.query(CampaignRecruiter).filter(
+        cr_rows = db.query(CampaignRecruiter).options(joinedload(CampaignRecruiter.recruiter)).filter(
             CampaignRecruiter.campaign_id == campaign_id
         ).all()
-        emails = [cr.email for cr in cr_rows if cr.email]
-        names = [cr.recruiter_name or '' for cr in cr_rows]
+        emails = [cr.recruiter.email for cr in cr_rows if cr.recruiter and cr.recruiter.email]
+        names = [cr.recruiter.recruiter_name or '' for cr in cr_rows if cr.recruiter]
 
     if not emails:
         raise HTTPException(status_code=400, detail="No recipients to check")
@@ -170,11 +169,11 @@ def api_campaign_auto_heal(
         emails = payload.emails
         names = payload.names if payload.names else []
     else:
-        cr_rows = db.query(CampaignRecruiter).filter(
+        cr_rows = db.query(CampaignRecruiter).options(joinedload(CampaignRecruiter.recruiter)).filter(
             CampaignRecruiter.campaign_id == campaign_id
         ).all()
-        emails = [cr.email for cr in cr_rows if cr.email]
-        names = [cr.recruiter_name or '' for cr in cr_rows]
+        emails = [cr.recruiter.email for cr in cr_rows if cr.recruiter and cr.recruiter.email]
+        names = [cr.recruiter.recruiter_name or '' for cr in cr_rows if cr.recruiter]
 
     # Run Healing
     heal_result = email_healer.heal_campaign_recipients(emails, names)
@@ -259,10 +258,10 @@ def api_deliverability_report(
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
 
-    cr_rows = db.query(CampaignRecruiter).filter(
+    cr_rows = db.query(CampaignRecruiter).options(joinedload(CampaignRecruiter.recruiter)).filter(
         CampaignRecruiter.campaign_id == campaign_id
     ).all()
-    emails = [cr.email for cr in cr_rows if cr.email]
+    emails = [cr.recruiter.email for cr in cr_rows if cr.recruiter and cr.recruiter.email]
 
     if not emails:
         return {"campaign_id": campaign_id, "summary": {"total": 0}, "tiers": {}}

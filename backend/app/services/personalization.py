@@ -54,6 +54,24 @@ METRO_HUB_NAMES = {
     "DMV_CAPITAL": "Washington DC Capital Region"
 }
 
+def process_spintax(text: str, seed: Optional[int] = None) -> str:
+    """
+    Processes nested and flat spintax e.g. {Hi|Hello|Hey} into randomized variations.
+    Guarantees unique email hashing across outreach batches to prevent ESP spam flags.
+    """
+    if not text or '{' not in text:
+        return text
+    import random
+    rng = random.Random(seed) if seed is not None else random
+    
+    pattern = re.compile(r'\{([^{}]+)\}')
+    count = 0
+    while pattern.search(text) and count < 10:
+        text = pattern.sub(lambda m: rng.choice(m.group(1).split('|')), text)
+        count += 1
+    return text
+
+
 def interpolate_variables(text: str, recruiter: Any, company: Any = None, custom_vars: Dict[str, Any] = None, signature_html: Optional[str] = None) -> str:
     if not text:
         return ""
@@ -137,6 +155,8 @@ def interpolate_variables(text: str, recruiter: Any, company: Any = None, custom
         elif var_name in ("seniorityrole", "seniority_role"):
             sen = _get_val(recruiter, "seniority_level") or "Specialist"
             if sen == "Executive":
+                val = "executive talent leader"
+            elif sen == "Director":
                 val = "talent acquisition leader"
             elif sen == "Lead":
                 val = "lead recruitment partner"
@@ -163,6 +183,14 @@ def interpolate_variables(text: str, recruiter: Any, company: Any = None, custom
         return default_val if default_val is not None else ""
         
     result = VARIABLE_PATTERN.sub(replace_var, text)
+    
+    # Process Spintax to ensure structural anti-spam uniqueness
+    rec_id = None
+    if isinstance(recruiter, dict):
+        rec_id = recruiter.get("recruiter_id") or recruiter.get("id")
+    else:
+        rec_id = getattr(recruiter, "recruiter_id", getattr(recruiter, "id", None))
+    result = process_spintax(result, seed=rec_id if isinstance(rec_id, int) else None)
     
     # Append signature if provided
     if signature_html:

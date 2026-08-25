@@ -437,15 +437,17 @@ def search_recruiters(
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db)
 ):
-    """
-    Smart weighted search using DuckDB Parquet store.
-    """
+    comp_str = company if isinstance(company, str) and company.strip() else None
+    loc_str = location if isinstance(location, str) and location.strip() else None
+    spec_str = specialization if isinstance(specialization, str) and specialization.strip() else None
+    lim_int = limit if isinstance(limit, int) else 50
+
     results = recruiter_store.search(
-        q=q,
-        company=company,
-        location=location,
-        specialization=specialization,
-        limit=limit
+        q=q if isinstance(q, str) else str(q),
+        company=comp_str,
+        location=loc_str,
+        specialization=spec_str,
+        limit=lim_int
     )
     
     from .analytics import infer_company_from_domain, DOMAIN_DISPLAY_NAMES, FREE_EMAIL_PROVIDERS
@@ -559,7 +561,61 @@ def search_recruiters(
             "is_deliverable": row.get("is_deliverable", True),
             "quality_tier": _search_quality_tier(row),
         })
-    return formatted
+
+    # ── Deduplicate by normalized name: merge contact info into highest-scoring record ──
+    import re as _re
+    dedup_map = {}
+    for rec in formatted:
+        name = (rec.get("recruiter_name") or "").strip().lower()
+        name = _re.sub(r'\s+', ' ', name)
+        if not name:
+            dedup_map[id(rec)] = rec
+            continue
+
+        if name in dedup_map:
+            primary = dedup_map[name]
+            # Merge emails from duplicate into primary's alternate slots
+            dup_email = rec.get("email")
+            if dup_email:
+                existing_emails = set()
+                for ek in ("email", "email2", "email3", "email4"):
+                    v = primary.get(ek)
+                    if v and str(v).strip():
+                        existing_emails.add(str(v).strip().lower())
+                if str(dup_email).strip().lower() not in existing_emails:
+                    for slot in ("email2", "email3", "email4"):
+                        if not primary.get(slot) or not str(primary[slot]).strip():
+                            primary[slot] = dup_email
+                            break
+                    else:
+                        alt = primary.get("alternate_emails") or ""
+                        primary["alternate_emails"] = (alt + "," + dup_email).strip(",")
+            # Merge phones from duplicate
+            dup_phone = rec.get("phone")
+            if dup_phone:
+                existing_phones = set()
+                for pk in ("phone", "phone2", "phone3", "phone4"):
+                    v = primary.get(pk)
+                    if v and str(v).strip():
+                        existing_phones.add(_re.sub(r'[^\d+]', '', str(v)))
+                dup_digits = _re.sub(r'[^\d+]', '', str(dup_phone))
+                if dup_digits not in existing_phones:
+                    for slot in ("phone2", "phone3", "phone4"):
+                        if not primary.get(slot) or not str(primary[slot]).strip():
+                            primary[slot] = dup_phone
+                            break
+            # Merge linkedin if primary is missing one
+            if not primary.get("linkedin") and rec.get("linkedin"):
+                primary["linkedin"] = rec["linkedin"]
+            # Keep higher completeness & relevance
+            if (rec.get("completeness_score") or 0) > (primary.get("completeness_score") or 0):
+                primary["completeness_score"] = rec["completeness_score"]
+            if (rec.get("relevance_score") or 0) > (primary.get("relevance_score") or 0):
+                primary["relevance_score"] = rec["relevance_score"]
+        else:
+            dedup_map[name] = rec
+
+    return list(dedup_map.values())
 
 from sqlalchemy.orm import load_only
 from ..services.recruiter_store import METRO_HUBS
@@ -936,10 +992,15 @@ def export_recruiters(
 @router.get("/{recruiter_id}")
 def get_recruiter(recruiter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
-    if not r:
-        raise HTTPException(status_code=404, detail="Recruiter not found")
-        
-    return serialize_recruiter(r)
+    if r:
+        return serialize_recruiter(r)
+    
+    # Fallback: recruiter may exist in Parquet store but not in PostgreSQL
+    parquet_record = recruiter_store.get_by_id(recruiter_id)
+    if parquet_record:
+        return parquet_record
+    
+    raise HTTPException(status_code=404, detail="Recruiter not found")
 
 @router.post("/{recruiter_id}/email/approve")
 def approve_email(recruiter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
@@ -1020,7 +1081,32 @@ def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Dep
         raise HTTPException(status_code=403, detail="Read-only access: Cannot modify global recruiter database")
     r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
     if not r:
-        raise HTTPException(status_code=404, detail="Recruiter not found")
+        parquet_rec = recruiter_store.get_by_id(recruiter_id)
+        if parquet_rec:
+            cid = parquet_rec.get("company_id")
+            num_cid = None
+            if cid is not None:
+                try:
+                    num_cid = int(cid)
+                except (ValueError, TypeError):
+                    pass
+            r = Recruiter(
+                recruiter_id=recruiter_id,
+                recruiter_name=parquet_rec.get("recruiter_name"),
+                email=parquet_rec.get("email"),
+                phone=parquet_rec.get("phone"),
+                title=parquet_rec.get("title") or parquet_rec.get("specialization"),
+                company_id=num_cid,
+                location=parquet_rec.get("location"),
+                state=parquet_rec.get("state"),
+                linkedin=parquet_rec.get("linkedin"),
+                notes=parquet_rec.get("notes"),
+                is_active=parquet_rec.get("is_active", True)
+            )
+            db.add(r)
+            db.flush()
+        else:
+            raise HTTPException(status_code=404, detail="Recruiter not found")
         
     update_data = data.dict(exclude_unset=True)
     apply_recruiter_update(r, update_data, db)

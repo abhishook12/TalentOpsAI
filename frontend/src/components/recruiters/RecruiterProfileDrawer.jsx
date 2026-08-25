@@ -150,6 +150,24 @@ export default function RecruiterProfileDrawer({
 
   const grade = getGradeBadge(completeness);
 
+  const allEmails = Array.from(new Set([
+    recruiter.email,
+    recruiter.email2,
+    recruiter.email3,
+    recruiter.email4,
+    ...(Array.isArray(recruiter.all_emails) ? recruiter.all_emails : []),
+    ...(typeof recruiter.alternate_emails === 'string' ? recruiter.alternate_emails.split(',') : [])
+  ].map(e => e?.trim()).filter(e => e && e.includes('@') && !e.includes('missing.local'))));
+
+  const allPhones = Array.from(new Set([
+    recruiter.phone,
+    recruiter.phone2,
+    recruiter.phone3,
+    recruiter.phone4,
+    ...(Array.isArray(recruiter.all_phones) ? recruiter.all_phones : []),
+    ...(typeof recruiter.alternate_phones === 'string' ? recruiter.alternate_phones.split(',') : [])
+  ].map(p => p?.trim()).filter(p => p && p.replace(/[^\d+]/g, '').length >= 7)));
+
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 overflow-hidden">
@@ -280,49 +298,77 @@ export default function RecruiterProfileDrawer({
                   )}
                 </div>
 
-                {/* Email Item */}
-                <div className="p-3 rounded-xl bg-[#18181c] border border-[#27272a] flex items-center justify-between group hover:border-[#3f3f46] transition-colors">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 flex-shrink-0">
-                      <Mail className="w-4 h-4" />
+                {/* Email Items */}
+                {allEmails.length > 0 ? (
+                  allEmails.map((em, idx) => (
+                    <div key={`email-${idx}`} className="p-3 rounded-xl bg-[#18181c] border border-[#27272a] flex items-center justify-between group hover:border-[#3f3f46] transition-colors">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 flex-shrink-0">
+                          <Mail className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[10px] text-[#71717a]">{idx === 0 ? 'Primary Email' : `Email ${idx + 1}`}</div>
+                          <div className="text-xs font-mono text-white truncate">{em}</div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => copyToClipboard(em, `Email ${idx + 1}`)}
+                        className="p-1.5 rounded-lg text-[#71717a] hover:text-white hover:bg-[#27272a] transition-colors"
+                        title="Copy Email"
+                      >
+                        {copiedField === `Email ${idx + 1}` ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
                     </div>
-                    <div className="min-w-0">
-                      <div className="text-[10px] text-[#71717a]">Primary Email</div>
-                      <div className="text-xs font-mono text-white truncate">{email || 'Not Available'}</div>
+                  ))
+                ) : (
+                  <div className="p-3 rounded-xl bg-[#18181c] border border-[#27272a] flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 flex-shrink-0">
+                        <Mail className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-[10px] text-[#71717a]">Primary Email</div>
+                        <div className="text-xs font-mono text-[#71717a]">Not Available</div>
+                      </div>
                     </div>
                   </div>
-                  {email && (
-                    <button
-                      onClick={() => copyToClipboard(email, 'Email')}
-                      className="p-1.5 rounded-lg text-[#71717a] hover:text-white hover:bg-[#27272a] transition-colors"
-                      title="Copy Email"
-                    >
-                      {copiedField === 'Email' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    </button>
-                  )}
-                </div>
+                )}
 
-                {/* Phone Item */}
-                <div className="p-3 rounded-xl bg-[#18181c] border border-[#27272a] flex items-center justify-between group hover:border-[#3f3f46] transition-colors">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 flex-shrink-0">
-                      <Phone className="w-4 h-4" />
+                {/* Phone Items */}
+                {allPhones.length > 0 ? (
+                  allPhones.map((ph, idx) => (
+                    <div key={`phone-${idx}`} className="p-3 rounded-xl bg-[#18181c] border border-[#27272a] flex items-center justify-between group hover:border-[#3f3f46] transition-colors">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 flex-shrink-0">
+                          <Phone className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[10px] text-[#71717a]">{idx === 0 ? 'Direct Phone' : `Phone ${idx + 1}`}</div>
+                          <div className="text-xs font-mono text-white truncate">{ph}</div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => copyToClipboard(ph, `Phone ${idx + 1}`)}
+                        className="p-1.5 rounded-lg text-[#71717a] hover:text-white hover:bg-[#27272a] transition-colors"
+                        title="Copy Phone"
+                      >
+                        {copiedField === `Phone ${idx + 1}` ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
                     </div>
-                    <div className="min-w-0">
-                      <div className="text-[10px] text-[#71717a]">Direct Phone</div>
-                      <div className="text-xs font-mono text-white truncate">{phone || 'Not Available'}</div>
+                  ))
+                ) : (
+                  <div className="p-3 rounded-xl bg-[#18181c] border border-[#27272a] flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 flex-shrink-0">
+                        <Phone className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-[10px] text-[#71717a]">Direct Phone</div>
+                        <div className="text-xs font-mono text-[#71717a]">Not Available</div>
+                      </div>
                     </div>
                   </div>
-                  {phone && (
-                    <button
-                      onClick={() => copyToClipboard(phone, 'Phone')}
-                      className="p-1.5 rounded-lg text-[#71717a] hover:text-white hover:bg-[#27272a] transition-colors"
-                      title="Copy Phone"
-                    >
-                      {copiedField === 'Phone' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    </button>
-                  )}
-                </div>
+                )}
 
                 {/* Location Item */}
                 <div className="p-3 rounded-xl bg-[#18181c] border border-[#27272a] flex items-center justify-between">

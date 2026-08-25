@@ -55,11 +55,12 @@ const EDIT_FORM_FIELDS = [
 
 function contactSlots(values, fallback) {
   const list = Array.isArray(values) && values.length
-    ? values
+    ? values.filter(v => v && String(v).trim())
     : fallback && String(fallback).trim()
       ? [String(fallback).trim()]
       : []
-  return Array.from({ length: CONTACT_SLOT_COUNT }, (_, index) => list[index] || '')
+  // Only return slots that have actual data; if none, return one empty slot so the UI renders
+  return list.length ? list : ['']
 }
 
 function badgeForMatch(matchType) {
@@ -1197,20 +1198,26 @@ export default function AISearch() {
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Emails</div>
                     <div style={{ display: 'grid', gap: 6 }}>
                       {contactSlots(selectedInsight.emails, selected.email).map((email, index) => (
-                        <div
-                          key={`email-slot-${index}`}
-                          style={{
-                            fontSize: 12,
-                            color: email ? 'var(--text-primary)' : 'var(--text-muted)',
-                            fontWeight: 700,
-                            minHeight: 18,
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          }}
-                        >
-                          {index + 1}. {email}
-                        </div>
+                        email ? (
+                          <div
+                            key={`email-slot-${index}`}
+                            style={{
+                              fontSize: 12,
+                              color: 'var(--text-primary)',
+                              fontWeight: 700,
+                              minHeight: 18,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            {index + 1}. {email}
+                          </div>
+                        ) : (
+                          <div key={`email-slot-${index}`} style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 700, minHeight: 18 }}>
+                            Not available
+                          </div>
+                        )
                       ))}
                     </div>
                   </div>
@@ -1218,20 +1225,26 @@ export default function AISearch() {
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Phones</div>
                     <div style={{ display: 'grid', gap: 6 }}>
                       {contactSlots(selectedInsight.phones, selected.phone).map((phone, index) => (
-                        <div
-                          key={`phone-slot-${index}`}
-                          style={{
-                            fontSize: 12,
-                            color: phone ? 'var(--text-primary)' : 'var(--text-muted)',
-                            fontWeight: 700,
-                            minHeight: 18,
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          }}
-                        >
-                          {index + 1}. {phone}
-                        </div>
+                        phone ? (
+                          <div
+                            key={`phone-slot-${index}`}
+                            style={{
+                              fontSize: 12,
+                              color: 'var(--text-primary)',
+                              fontWeight: 700,
+                              minHeight: 18,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            {index + 1}. {phone}
+                          </div>
+                        ) : (
+                          <div key={`phone-slot-${index}`} style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 700, minHeight: 18 }}>
+                            Not available
+                          </div>
+                        )
                       ))}
                     </div>
                   </div>

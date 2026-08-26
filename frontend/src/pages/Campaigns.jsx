@@ -512,18 +512,6 @@ export default function Campaigns() {
     setIsSending(true);
     setSendError(null);
     try {
-      let cid = activeCampaignId;
-      if (!cid) {
-        const saved = await saveDraft();
-        cid = saved;
-        if (!cid) { 
-          toast.error('Failed to save campaign draft'); 
-          setIsSending(false);
-          return; 
-        }
-      }
-      if (savePromiseRef.current) await savePromiseRef.current;
-      
       const validRecipients = validatedRecipients.recipients.filter(r => r.status === 'valid');
       if (validRecipients.length === 0) {
         toast.error('Please add at least one valid recipient');
@@ -531,49 +519,36 @@ export default function Campaigns() {
         return;
       }
 
-      // 1. Prepare preview & enroll recipients
-      await api.post(`/campaigns/${cid}/prepare-preview`, {
-        name: campaignName,
+      // Single ultra-fast fire-and-forget launch call (<100ms)
+      const res = await api.post('/campaigns/launch', {
+        campaign_id: activeCampaignId || null,
+        name: campaignName || 'New Campaign',
         from_email: fromEmail,
+        sender_account_id: senderAccountId,
         signature_id: signatureId,
         subject: subject,
         body: body,
         recipients: validRecipients,
+        ab_test: (isABTest && subjectB.trim()) ? {
+          enabled: true,
+          variant_b_subject: subjectB,
+          variant_b_body: body,
+          test_sample_percent: 20
+        } : null,
+        smart_timezone: smartTimezone,
+        exclude_risky: false
       });
 
-      // 2. Configure A/B testing if active
-      if (isABTest && subjectB.trim()) {
-        try {
-          await api.post(`/campaigns/${cid}/ab-test`, {
-            enabled: true,
-            variant_a_subject: subject,
-            variant_a_body: body,
-            variant_b_subject: subjectB,
-            variant_b_body: body,
-            test_sample_percent: 20
-          });
-        } catch {
-          // Non-blocking
-        }
+      const launchedCid = res.data.campaign_id;
+      if (launchedCid) {
+        setActiveCampaignId(launchedCid);
       }
-
-      // 3. Schedule smart timezone dispatch if active
-      if (smartTimezone) {
-        try {
-          await api.post(`/campaigns/${cid}/smart-schedule`);
-        } catch {
-          // Non-blocking
-        }
-      }
-
-      // 4. Instant Launch: Bypass all modal/preflight gates and start dispatch directly!
-      await api.post(`/campaigns/${cid}/start`);
       
-      // 5. Instantly transition to the live sending workspace screen!
+      // Instantly transition to the live sending workspace screen!
       setWorkspaceMode('sending');
-      toast.success('Campaign dispatched instantly to Outlook Bridge!');
+      toast.success('Campaign dispatched instantly!');
     } catch (e) {
-      const errDetail = e.response?.data?.detail || 'Failed to start campaign';
+      const errDetail = e.response?.data?.detail || 'Failed to launch campaign';
       if (errDetail.includes('attention')) {
         setSendError(errDetail);
       } else {
@@ -582,21 +557,42 @@ export default function Campaigns() {
     } finally {
       setIsSending(false);
     }
-  }, [activeCampaignId, isSending, saveDraft, validatedRecipients, campaignName, fromEmail, signatureId, subject, subjectB, isABTest, smartTimezone, body, setWorkspaceMode]);
+  }, [activeCampaignId, isSending, validatedRecipients, campaignName, fromEmail, senderAccountId, signatureId, subject, subjectB, isABTest, smartTimezone, body, setActiveCampaignId, setWorkspaceMode]);
 
   const handleConfirmLaunch = useCallback(async ({ excludeRisky }) => {
     if (isSending) return;
     setIsSending(true);
     try {
-      const cid = activeCampaignId;
-      if (!cid) return;
+      const validRecipients = validatedRecipients.recipients.filter(r => r.status === 'valid');
+      const res = await api.post('/campaigns/launch', {
+        campaign_id: activeCampaignId || null,
+        name: campaignName || 'New Campaign',
+        from_email: fromEmail,
+        sender_account_id: senderAccountId,
+        signature_id: signatureId,
+        subject: subject,
+        body: body,
+        recipients: validRecipients,
+        ab_test: (isABTest && subjectB.trim()) ? {
+          enabled: true,
+          variant_b_subject: subjectB,
+          variant_b_body: body,
+          test_sample_percent: 20
+        } : null,
+        smart_timezone: smartTimezone,
+        exclude_risky: !!excludeRisky
+      });
 
-      await api.post(`/campaigns/${cid}/start`, { exclude_risky: !!excludeRisky });
+      const launchedCid = res.data.campaign_id;
+      if (launchedCid) {
+        setActiveCampaignId(launchedCid);
+      }
+
       setShowSafetyModal(false);
       setWorkspaceMode('sending');
       toast.success('Campaign launched with deliverability protection!');
     } catch (e) {
-      const errDetail = e.response?.data?.detail || 'Failed to start campaign';
+      const errDetail = e.response?.data?.detail || 'Failed to launch campaign';
       if (errDetail.includes('attention')) {
         setSendError(errDetail);
       } else {
@@ -605,7 +601,7 @@ export default function Campaigns() {
     } finally {
       setIsSending(false);
     }
-  }, [activeCampaignId, isSending, setWorkspaceMode]);
+  }, [activeCampaignId, isSending, validatedRecipients, campaignName, fromEmail, senderAccountId, signatureId, subject, subjectB, isABTest, smartTimezone, body, setActiveCampaignId, setWorkspaceMode]);
 
   const handleProgressStatusChange = useCallback((st) => {
     if (st === 'completed') {

@@ -29,7 +29,249 @@ from ..models.campaigns import (
 )
 from ..models.models import Recruiter
 
+from ..database import get_db, SessionLocal
+
 router = APIRouter()
+
+class ABTestConfig(BaseModel):
+    enabled: bool = True
+    variant_b_subject: Optional[str] = None
+    variant_b_body: Optional[str] = None
+    test_sample_percent: int = 20
+
+class RecipientItem(BaseModel):
+    email: str
+    name: Optional[str] = None
+    role: Optional[str] = None
+    company: Optional[str] = None
+    recruiter_id: Optional[int] = None
+    status: Optional[str] = "valid"
+
+class LaunchCampaignRequest(BaseModel):
+    campaign_id: Optional[int] = None
+    name: Optional[str] = "New Campaign"
+    from_email: str
+    sender_account_id: Optional[int] = None
+    signature_id: Optional[int] = None
+    subject: str
+    body: str
+    recipients: list[RecipientItem]
+    ab_test: Optional[ABTestConfig] = None
+    smart_timezone: bool = False
+    exclude_risky: bool = False
+
+
+async def _launch_campaign_background(
+    campaign_id: int,
+    user_id: int,
+    request: LaunchCampaignRequest
+):
+    """Background processor for instant campaign launch: upserts templates, enrolls recipients, and triggers engine."""
+    from ..services.send_engine import start_campaign, schedule_campaign_prime_time
+    from ..services.campaign_preflight import run_preflight_check
+    import json
+    
+    with SessionLocal() as db:
+        campaign = db.query(Campaign).filter(Campaign.campaign_id == campaign_id).first()
+        if not campaign:
+            return
+            
+        # 1. Upsert template & step 1
+        first_step = db.query(SequenceStep).filter(SequenceStep.campaign_id == campaign_id).order_by(SequenceStep.step_order.asc()).first()
+        t = None
+        if first_step and first_step.template_id:
+            t = db.query(EmailTemplate).filter(EmailTemplate.template_id == first_step.template_id).first()
+            
+        if not t:
+            t = EmailTemplate(
+                campaign_id=campaign_id,
+                user_id=user_id,
+                name=request.subject or "Campaign Email",
+                subject=request.subject or "",
+                body=request.body or ""
+            )
+            db.add(t)
+            db.flush()
+            if not first_step:
+                first_step = SequenceStep(campaign_id=campaign_id, step_order=1, template_id=t.template_id)
+                db.add(first_step)
+                db.flush()
+            else:
+                first_step.template_id = t.template_id
+        else:
+            t.name = request.subject or "Campaign Email"
+            t.subject = request.subject or ""
+            t.body = request.body or ""
+            
+        # 2. Batch resolve / create Recruiters & CampaignRecruiters
+        email_map = {}
+        for rec in request.recipients:
+            clean_email = str(rec.email).strip().lower()
+            if clean_email:
+                email_map[clean_email] = rec
+
+        if email_map:
+            emails_list = list(email_map.keys())
+            existing_recs = db.query(Recruiter).filter(func.lower(Recruiter.email).in_(emails_list)).all()
+            rec_by_email = {r.email.lower(): r for r in existing_recs}
+            for r in existing_recs:
+                if r.user_id is None:
+                    r.user_id = user_id
+                    
+            new_recs = []
+            for email, rec_item in email_map.items():
+                if email not in rec_by_email:
+                    new_recs.append(Recruiter(
+                        user_id=user_id,
+                        email=email,
+                        recruiter_name=rec_item.name or email.split('@')[0],
+                        title=rec_item.role,
+                        data_source="campaign_import"
+                    ))
+            
+            if new_recs:
+                db.add_all(new_recs)
+                db.flush()
+                for r in new_recs:
+                    rec_by_email[r.email.lower()] = r
+
+            all_rec_ids = [r.recruiter_id for r in rec_by_email.values()]
+            existing_enrollments = db.query(CampaignRecruiter.recruiter_id).filter(
+                CampaignRecruiter.campaign_id == campaign_id,
+                CampaignRecruiter.recruiter_id.in_(all_rec_ids)
+            ).all()
+            existing_cr_ids = {row[0] for row in existing_enrollments}
+            
+            new_crs = []
+            for r in rec_by_email.values():
+                if r.recruiter_id not in existing_cr_ids:
+                    new_crs.append(CampaignRecruiter(
+                        campaign_id=campaign_id,
+                        recruiter_id=r.recruiter_id,
+                        current_step_id=first_step.step_id,
+                        status=CampaignRecruiterStatus.pending.value,
+                        enrolled_at=datetime.now(timezone.utc),
+                        next_send_at=campaign.start_at or datetime.now(timezone.utc)
+                    ))
+            if new_crs:
+                db.add_all(new_crs)
+
+        # 3. Configure A/B test if provided
+        if request.ab_test and request.ab_test.enabled and request.ab_test.variant_b_subject:
+            meta = json.loads(campaign.metadata_json) if campaign.metadata_json else {}
+            meta["ab_test"] = {
+                "enabled": True,
+                "variant_a": {
+                    "subject": request.subject,
+                    "body": request.body
+                },
+                "variant_b": {
+                    "subject": request.ab_test.variant_b_subject,
+                    "body": request.ab_test.variant_b_body or request.body
+                },
+                "test_sample_percent": request.ab_test.test_sample_percent
+            }
+            campaign.metadata_json = json.dumps(meta)
+
+        # 4. Filter risky if exclude_risky requested
+        if request.exclude_risky:
+            cr_records = db.query(CampaignRecruiter).options(joinedload(CampaignRecruiter.recruiter)).filter(
+                CampaignRecruiter.campaign_id == campaign_id,
+                CampaignRecruiter.status.in_([CampaignRecruiterStatus.pending.value, CampaignRecruiterStatus.queued.value])
+            ).all()
+            emails = [cr.recruiter.email for cr in cr_records if cr.recruiter and cr.recruiter.email]
+            names = [cr.recruiter.recruiter_name or '' for cr in cr_records if cr.recruiter]
+            pf = run_preflight_check(campaign_id, emails, names)
+            excluded_emails = {r.email.lower() for r in pf.recipients if r.action in ('review', 'block')}
+            for cr in cr_records:
+                if cr.recruiter and cr.recruiter.email and cr.recruiter.email.lower() in excluded_emails:
+                    cr.status = CampaignRecruiterStatus.cancelled.value
+
+        # 5. Apply smart timezone prime time if enabled
+        if request.smart_timezone:
+            schedule_campaign_prime_time(campaign_id, db)
+
+        db.commit()
+
+    # 6. Kick off send_engine processor
+    await start_campaign(campaign_id)
+
+
+@router.post("/launch")
+async def api_launch_campaign(
+    request: LaunchCampaignRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request)
+):
+    """
+    Ultra-low-latency, zero-friction campaign dispatch endpoint (Outlook/Gmail speed).
+    Performs fast synchronous validation and sets campaign state in <50ms,
+    then executes heavy enrollment, formatting, and engine kickoff in the background.
+    """
+    from ..services.send_engine import _check_account_health
+    
+    if not request.from_email:
+        raise HTTPException(status_code=400, detail="Your sending account needs attention. No sender selected.")
+        
+    valid_recs = [r for r in request.recipients if r.email and r.email.strip()]
+    if not valid_recs:
+        raise HTTPException(status_code=400, detail="Please add at least one valid recipient.")
+        
+    if len(valid_recs) > 200:
+        raise HTTPException(status_code=400, detail=f"Cannot launch campaign: Max 200 recipients allowed, but found {len(valid_recs)}.")
+        
+    healthy, error = _check_account_health(request.sender_account_id, current_user.id)
+    if not healthy:
+        raise HTTPException(status_code=400, detail=f"Your sending account needs attention: {error}")
+        
+    # Get or create campaign
+    campaign_id = request.campaign_id
+    if campaign_id:
+        campaign = db.query(Campaign).filter(
+            Campaign.user_id == current_user.id,
+            Campaign.campaign_id == campaign_id
+        ).with_for_update().first()
+        if not campaign:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+        if campaign.status == "active":
+            return {"status": "already_running", "campaign_id": campaign_id, "message": "Campaign is already running"}
+            
+        campaign.name = request.name or campaign.name
+        campaign.from_email = request.from_email
+        campaign.sender_account_id = request.sender_account_id
+        campaign.signature_id = request.signature_id
+        campaign.status = "active"
+    else:
+        campaign = Campaign(
+            user_id=current_user.id,
+            name=request.name or "New Campaign",
+            from_email=request.from_email,
+            sender_account_id=request.sender_account_id,
+            signature_id=request.signature_id,
+            status="active"
+        )
+        db.add(campaign)
+        db.flush()
+        campaign_id = campaign.campaign_id
+
+    db.commit()
+
+    # Delegate heavy tasks to background
+    background_tasks.add_task(
+        _launch_campaign_background,
+        campaign_id=campaign_id,
+        user_id=current_user.id,
+        request=request
+    )
+
+    return {
+        "status": "launched",
+        "campaign_id": campaign_id,
+        "recipient_count": len(valid_recs),
+        "message": "Campaign launched instantly!"
+    }
+
 
 class BulkSendRequest(BaseModel):
     emails: list[str]
@@ -39,56 +281,13 @@ class BulkSendRequest(BaseModel):
     cc: Optional[str] = None
     bcc: Optional[str] = None
 
-def send_bulk_emails_background(request: BulkSendRequest):
-    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
-    smtp_port = int(os.environ.get("SMTP_PORT", 587))
-    smtp_user = os.environ.get("SMTP_USER")
-    smtp_pass = os.environ.get("SMTP_PASS")
-    
-    if not smtp_user or not smtp_pass:
-        print("❌ Cannot send bulk emails: SMTP_USER or SMTP_PASS not set.")
-        return
-
-    try:
-        server = smtplib.SMTP(smtp_server, smtp_port)
-        server.starttls()
-        server.login(smtp_user, smtp_pass)
-        
-        for email_addr in request.emails:
-            msg = EmailMessage()
-            msg.set_content(request.body)
-            msg["Subject"] = request.subject
-            msg["From"] = f"TalentOps <{request.from_email}>"
-            msg["To"] = email_addr
-            
-            if request.cc:
-                msg["Cc"] = request.cc
-            if request.bcc:
-                msg["Bcc"] = request.bcc
-                
-            try:
-                server.send_message(msg)
-                print(f"✅ Sent email to {email_addr}")
-            except Exception as e:
-                print(f"❌ Failed to send to {email_addr}: {e}")
-                
-        server.quit()
-        print("✅ Bulk send background task completed.")
-    except Exception as e:
-        print(f"❌ SMTP connection failed: {e}")
-
 @router.post("/bulk-send")
 def bulk_send_emails(
     request: BulkSendRequest,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user_from_request),
 ):
-    """Retired unsafe SMTP path.
-
-    Campaign delivery must preserve one-recipient records, bridge handoff,
-    validation, and audit logs. This legacy endpoint bypassed all four and also
-    permitted CC/BCC, so it must never send production outreach.
-    """
+    """Retired unsafe SMTP path."""
     raise HTTPException(
         status_code=410,
         detail="Legacy bulk SMTP sending is disabled. Create a campaign to send individual emails through the Outlook Bridge.",

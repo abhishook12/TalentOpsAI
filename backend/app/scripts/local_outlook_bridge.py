@@ -214,7 +214,7 @@ def run_inner_loop(base_url, token, state):
             logger.warning(f"Network error fetching tasks: {e}")
 
         if not full_batch:
-            time.sleep(0.2)
+            time.sleep(0.05 if (tasks and len(tasks) > 0) else 0.2)
 
 def start_local_api():
     logger.info("Starting local outlook API server on port 8080...")

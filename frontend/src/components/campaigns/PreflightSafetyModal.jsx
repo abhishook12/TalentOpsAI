@@ -69,6 +69,9 @@ export default function PreflightSafetyModal({
     recipients = []
   } = preflightData;
 
+  const isSafe = risk_level === 'low';
+  const isRisky = risk_level === 'medium';
+
   const filteredRecipients = recipients.filter(r => {
     if (filterTier === 'safe' && r.action !== 'send') return false;
     if (filterTier === 'review' && r.action !== 'review') return false;

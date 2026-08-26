@@ -31,6 +31,11 @@ RUN_STARTUP_MIGRATIONS = os.getenv("RUN_STARTUP_MIGRATIONS", "true").lower() in 
 if RUN_STARTUP_MIGRATIONS:
     try:
         models.Base.metadata.create_all(bind=engine)
+        try:
+            from .database_security import enforce_database_rls_and_security
+            enforce_database_rls_and_security(engine)
+        except Exception as e:
+            logger.warning("Error enforcing RLS security on startup: %s", e)
         if os.getenv("CREATE_INDEXES_AT_STARTUP", "false").lower() in ("1", "true", "yes"):
             try:
                 create_performance_indexes()

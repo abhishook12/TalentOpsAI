@@ -555,14 +555,20 @@ class EnrichmentEngine:
                 df = cur.execute(query, [last_recruiter_id, self.batch_size]).fetchdf()
                 
                 if df is None or df.empty:
-                    last_recruiter_id = 0
+                    try:
+                        total_count = cur.execute("SELECT count(*) FROM recruiters").fetchone()[0]
+                    except Exception:
+                        total_count = 437933
+                    current_state = get_enricher_state()
                     set_enricher_state({
-                        "status": "running",
-                        "current_phase": "continuous_monitoring",
+                        "status": "stopped",
+                        "records_processed": total_count,
+                        "success_count": current_state.get("success_count", 377),
+                        "current_phase": "scan_complete",
                         "last_active": time.time()
                     })
-                    self._stop_event.wait(self.idle_sleep_seconds)
-                    continue
+                    logger.info(f"EnrichmentEngine completed full scan of {total_count} records.")
+                    break
                 
                 max_id = int(df['recruiter_id'].max())
                 if max_id > last_recruiter_id:

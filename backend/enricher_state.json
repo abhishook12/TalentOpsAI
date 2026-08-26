@@ -1,14 +1,14 @@
 {
     "status": "running",
-    "records_processed": 477660,
-    "last_active": 1787687081.7898629,
+    "records_processed": 437933,
+    "last_active": 1787768520.3719761,
     "success_count": 377,
-    "current_phase": "processed_0_records",
+    "current_phase": "active_batch_processing",
     "rate_per_sec": 0,
     "auto_pilot": {
         "enabled": true,
         "interval_hours": 12,
-        "last_run_at": "2026-08-25T19:44:18.754089+00:00",
+        "last_run_at": "2026-08-26T18:22:00.350148+00:00",
         "next_run_in_seconds": 43200
     }
 }

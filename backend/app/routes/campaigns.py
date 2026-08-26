@@ -1056,6 +1056,7 @@ def get_campaign_delivery_logs(
             "id": log.log_id,
             "email": log.recipient_email,
             "status": log.status,
+            "sent_via": log.sent_via or "direct_api",
             "last_sent": log.sending_at.isoformat() if log.sending_at else None,
             "error": log.error_message,
             "retry_count": cr.retry_count if cr else 0

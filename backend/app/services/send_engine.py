@@ -405,7 +405,25 @@ def _check_and_finalize_campaign(campaign_id: int):
             db.commit()
 
 async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, signature_html: str, template: dict, from_email: str, user_id: int, sender_account_id: int, cancel_event: asyncio.Event = None, failure_counter: dict = None):
+    from ..models.auth_models import ConnectedEmailAccount, User
     logger.info(f"Worker {worker_id} started for campaign {campaign_id}")
+
+    # Check if direct provider dispatch (Google API / Graph API / SMTP) is available
+    can_direct_send = False
+    provider_name = "outlook_bridge"
+    with SessionLocal() as db:
+        if sender_account_id:
+            acc = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.account_id == sender_account_id).first()
+        else:
+            u = db.query(User).filter(User.id == user_id).first()
+            if u and u.default_sender_id:
+                acc = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.account_id == u.default_sender_id).first()
+            else:
+                acc = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.user_id == user_id).first()
+        if acc and (acc.access_token or acc.smtp_pass):
+            can_direct_send = True
+            provider_name = f"api_{acc.provider}"
+
     while True:
         # Fix #21: Check cancel signal before processing next item
         if cancel_event and cancel_event.is_set():
@@ -430,12 +448,12 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                     if not recipient or recipient.status == CampaignRecruiterStatus.cancelled.value:
                         return False
                     
-                    # Idempotency guard: If an active sending log already exists, reuse it rather than duplicating
+                    # Idempotency guard: If an active sending log already exists and we are in bridge mode, reuse it
                     existing_active_log = db.query(EmailLog).filter(
                         EmailLog.campaign_recruiter_id == recipient_id,
                         EmailLog.status == EmailLogStatus.sending.value
                     ).first()
-                    if existing_active_log:
+                    if existing_active_log and not can_direct_send:
                         return existing_active_log.recipient_email, existing_active_log.subject, existing_active_log.body_html, existing_active_log.log_id
 
                     # Mark sending
@@ -453,8 +471,8 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                         recipient_name=rec_name,
                         status=EmailLogStatus.sending.value,
                         attempt_number=retry_count + 1,
-                        sending_at=None,
-                        sent_via="outlook_bridge"
+                        sending_at=datetime.now(timezone.utc),
+                        sent_via=provider_name
                     )
                     db.add(log)
                     
@@ -471,7 +489,7 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                     
                     log.subject = subject
                     log.body_preview = body[:500] if body else ""
-                    log.body_html = body or ""  # Full body for the bridge — body_preview is truncated and must not be sent
+                    log.body_html = body or ""
                     db.commit()
                     return rec_email, subject, body, log.log_id
 
@@ -484,17 +502,53 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
             rec_email, subject, body, log_id = result
             
             payload = {
+                "campaign_id": campaign_id,
+                "from_email": from_email,
                 "to_email": rec_email,
                 "subject": subject,
                 "html_body": body or ""
             }
             
-            # Delivery is intentionally performed only by the local Outlook
-            # Bridge. The bridge polls this EmailLog, invokes one Outlook COM
-            # mail.Send() per recipient, then reports the terminal result.
-            # Do not call Graph/Gmail/SMTP here: doing so created duplicate
-            # sends while still labelling the log as an Outlook Bridge send.
-            logger.info(f"Worker {worker_id}: queued Outlook Bridge task for {rec_email} (log {log_id})")
+            if can_direct_send:
+                # INSTANT DIRECT DISPATCH via Google API / Graph API / SMTP
+                success, error, err_type = await _send_email_via_provider(sender_account_id, user_id, payload)
+                
+                def _record_send_result(success, error):
+                    with SessionLocal() as db:
+                        log = db.query(EmailLog).filter(EmailLog.log_id == log_id).first()
+                        cr = db.query(CampaignRecruiter).filter(CampaignRecruiter.campaign_recruiter_id == recipient_id).first()
+                        now = datetime.now(timezone.utc)
+                        if success:
+                            if log:
+                                log.status = EmailLogStatus.sent.value
+                                log.sent_at = now
+                                log.error_message = None
+                            if cr:
+                                cr.status = CampaignRecruiterStatus.sent.value
+                                cr.sent_at = now
+                        else:
+                            if log:
+                                log.status = EmailLogStatus.failed.value
+                                log.error_message = str(error)[:500] if error else "Send failed"
+                            if cr:
+                                cr.status = CampaignRecruiterStatus.failed.value
+                        db.commit()
+
+                await asyncio.to_thread(_record_send_result, success, error)
+                if success:
+                    logger.info(f"Worker {worker_id}: INSTANTLY dispatched email to {rec_email} (log {log_id})")
+                    if failure_counter:
+                        failure_counter['consecutive'] = 0
+                else:
+                    logger.warning(f"Worker {worker_id}: Direct send failed for {rec_email}: {error}")
+                    if failure_counter:
+                        failure_counter['consecutive'] += 1
+                
+                # Check and finalize if all recipients in campaign are sent
+                await asyncio.to_thread(_check_and_finalize_campaign, campaign_id)
+            else:
+                # Queued for local Outlook COM bridge
+                logger.info(f"Worker {worker_id}: queued Outlook Bridge task for {rec_email} (log {log_id})")
                 
         except Exception as e:
             logger.error(f"Worker {worker_id} exception for {recipient_id}: {e}")

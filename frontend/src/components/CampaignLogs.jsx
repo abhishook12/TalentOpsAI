@@ -192,11 +192,11 @@ export default function CampaignLogs({ campaignId }) {
                         </span>
                       ) : isDelivered ? (
                         <span className="text-emerald-400/90 text-[11px] font-medium flex items-center gap-1">
-                          Sent via Outlook COM Bridge
+                          {log.sent_via?.startsWith('api_') ? `Sent via ${log.sent_via.replace('api_', '').toUpperCase()} API` : (log.sent_via === 'direct_api' ? 'Sent via Direct Cloud API' : 'Sent via Outlook Bridge')}
                         </span>
                       ) : isSending ? (
                         <span className="text-cyan-400/90 text-[11px] font-medium flex items-center gap-1">
-                          Transferring to Outlook...
+                          {log.sent_via?.startsWith('api_') ? `Dispatching via ${log.sent_via.replace('api_', '').toUpperCase()} API...` : (log.sent_via === 'direct_api' ? 'Dispatching via Direct Cloud API...' : 'Transferring to Outlook...')}
                         </span>
                       ) : (
                         <span className="text-[#52525b] text-[11px]">Queued in dispatch pipeline</span>

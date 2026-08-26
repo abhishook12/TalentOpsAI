@@ -106,9 +106,11 @@ async def _launch_campaign_background(
         # 2. Batch resolve / create Recruiters & CampaignRecruiters
         email_map = {}
         for rec in request.recipients:
-            clean_email = str(rec.email).strip().lower()
-            if clean_email:
-                email_map[clean_email] = rec
+            raw_email = str(rec.email).strip()
+            parts = [e.strip().lower() for e in re.split(r'[,;\s]+', raw_email) if e.strip() and '@' in e]
+            for clean_email in parts:
+                if clean_email and clean_email not in email_map:
+                    email_map[clean_email] = rec
 
         if email_map:
             emails_list = list(email_map.keys())

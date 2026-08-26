@@ -52,7 +52,7 @@ export default function CampaignLogs({ campaignId }) {
       `"${l.email || ''}"`,
       `"${l.status || ''}"`,
       `"${l.last_sent ? new Date(l.last_sent).toLocaleString() : ''}"`,
-      `"${(l.error || (['delivered', 'sent'].includes((l.status || '').toLowerCase()) ? 'Sent via Outlook COM Bridge' : '')).replace(/"/g, '""')}"`,
+      `"${(l.error || (['delivered', 'sent'].includes((l.status || '').toLowerCase()) ? 'Sent via Direct Cloud API' : '')).replace(/"/g, '""')}"`,
       l.retry_count || 0
     ]);
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');

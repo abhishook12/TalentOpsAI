@@ -119,7 +119,7 @@ export default function CampaignProgress({ campaignId, onStatusChange }) {
                 ? `All ${data.total} recipients have been processed.`
                 : isPaused
                 ? 'Queue is paused. Resuming will continue remaining recipients.'
-                : 'Dispatching emails via local Outlook Bridge with active rate limiting.'}
+                : 'Dispatching outreach in real-time via high-speed Cloud Direct API.'}
             </p>
           </div>
         </div>

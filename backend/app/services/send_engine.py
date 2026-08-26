@@ -389,14 +389,19 @@ def _check_and_finalize_campaign(campaign_id: int):
                 CampaignRecruiterStatus.pending.value,
                 CampaignRecruiterStatus.queued.value,
                 CampaignRecruiterStatus.sending.value,
-                CampaignRecruiterStatus.retrying.value
+                CampaignRecruiterStatus.retrying.value,
+                'Pending', 'Queued', 'Sending', 'Retrying',
+                'pending', 'queued', 'sending', 'retrying'
             ])
         ).count()
 
         if active_count == 0:
             failed_count = db.query(CampaignRecruiter).filter(
                 CampaignRecruiter.campaign_id == campaign_id,
-                CampaignRecruiter.status == CampaignRecruiterStatus.failed.value
+                CampaignRecruiter.status.in_([
+                    CampaignRecruiterStatus.failed.value,
+                    'Failed', 'failed'
+                ])
             ).count()
 
             new_status = CampaignStatus.failed.value if failed_count > 0 else CampaignStatus.completed.value
@@ -520,18 +525,21 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
                         now = datetime.now(timezone.utc)
                         if success:
                             if log:
-                                log.status = EmailLogStatus.sent.value
-                                log.sent_at = now
+                                log.status = EmailLogStatus.delivered.value
+                                log.delivered_at = now
                                 log.error_message = None
                             if cr:
-                                cr.status = CampaignRecruiterStatus.sent.value
-                                cr.sent_at = now
+                                cr.status = CampaignRecruiterStatus.delivered.value
+                                cr.last_sent_at = now
+                                cr.sent_count = (cr.sent_count or 0) + 1
                         else:
                             if log:
                                 log.status = EmailLogStatus.failed.value
+                                log.failed_at = now
                                 log.error_message = str(error)[:500] if error else "Send failed"
                             if cr:
                                 cr.status = CampaignRecruiterStatus.failed.value
+                                cr.last_error = str(error)[:500] if error else "Send failed"
                         db.commit()
 
                 await asyncio.to_thread(_record_send_result, success, error)

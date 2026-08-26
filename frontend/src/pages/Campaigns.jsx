@@ -1251,7 +1251,7 @@ export default function Campaigns() {
                   Live Outreach Monitor
                 </h2>
                 <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4 }}>
-                  {campaignName} — Real-time recipient status, COM bridge stream & deliverability watchdog
+                  {campaignName} — Real-time recipient delivery feed & deliverability watchdog
                 </p>
               </div>
               <button

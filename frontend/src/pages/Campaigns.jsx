@@ -148,6 +148,9 @@ export default function Campaigns() {
   // ── Accounts State ────────────────────────────────────────────────────────────
   const [accounts, setAccounts] = useState([]);
   const [showConnectionWizard, setShowConnectionWizard] = useState(false);
+  const selectedAccount = useMemo(() => {
+    return accounts.find(a => a.account_id === senderAccountId) || null;
+  }, [accounts, senderAccountId]);
 
   // ── Readiness / Preflight State ──────────────────────────────────────────────
   const [preflightData, setPreflightData] = useState(null);
@@ -282,7 +285,20 @@ export default function Campaigns() {
   const fetchAccounts = useCallback(async () => {
     try {
       const res = await api.get('/accounts');
-      setAccounts(res.data.items || []);
+      const items = res.data.items || [];
+      setAccounts(items);
+      if (items.length > 0) {
+        setSenderAccountId(prev => {
+          if (prev && items.some(a => a.account_id === prev)) return prev;
+          // Automatically pick default or best official non-shadow account
+          const preferred = items.find(a => a.is_default) || items.find(a => !a.is_shadow_alias) || items[0];
+          if (preferred) {
+            setFromEmail(preferred.email_address);
+            return preferred.account_id;
+          }
+          return prev;
+        });
+      }
     } catch {
       console.error('Failed to load accounts');
     }
@@ -923,7 +939,22 @@ export default function Campaigns() {
 
                 {/* FROM selector */}
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>From</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>From (Sending Account)</label>
+                    {selectedAccount && (
+                      <span style={{ fontSize: 11, fontWeight: 600, color: selectedAccount.is_shadow_alias ? '#f59e0b' : '#10b981', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        {selectedAccount.is_shadow_alias ? (
+                          <>
+                            <AlertCircle size={12} /> Personal Alias Detected
+                          </>
+                        ) : (
+                          <>
+                            <ShieldCheck size={12} /> Official Verified Sender
+                          </>
+                        )}
+                      </span>
+                    )}
+                  </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     {accounts.length > 0 ? (
                       <select
@@ -932,20 +963,53 @@ export default function Campaigns() {
                           const acc = accounts.find(a => a.account_id === Number(e.target.value));
                           if (acc) { setSenderAccountId(acc.account_id); setFromEmail(acc.email_address); }
                         }}
-                        style={{ flex: 1, background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, padding: '8px 12px', fontSize: 14, color: 'var(--text-primary)', outline: 'none' }}>
-                        <option value="">Select sending account…</option>
-                        {accounts.map(acc => (
-                          <option key={acc.account_id} value={acc.account_id}>{acc.email_address} ({acc.provider})</option>
-                        ))}
+                        style={{ flex: 1, background: 'var(--bg-surface)', border: selectedAccount?.is_shadow_alias ? '1px solid rgba(245, 158, 11, 0.5)' : '1px solid var(--card-border)', borderRadius: 6, padding: '8px 12px', fontSize: 14, color: 'var(--text-primary)', outline: 'none' }}>
+                        <option value="">Select official sending account…</option>
+                        {accounts.map(acc => {
+                          const label = acc.display_name 
+                            ? `${acc.display_name} <${acc.email_address}>`
+                            : acc.email_address;
+                          const tag = acc.is_shadow_alias 
+                            ? '⚠️ Bot-like Alias' 
+                            : acc.provider === 'google' 
+                              ? 'Google / Gmail' 
+                              : acc.provider.toUpperCase();
+                          return (
+                            <option key={acc.account_id} value={acc.account_id}>
+                              {label} ({tag}){acc.is_default ? ' ★ Default' : ''}
+                            </option>
+                          );
+                        })}
                       </select>
                     ) : (
                       <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, padding: '8px 12px' }}>
                         <Mail size={14} style={{ color: 'var(--text-muted)' }} />
-                        <span style={{ fontSize: 13, color: 'var(--text-muted)', flex: 1 }}>No accounts connected</span>
+                        <span style={{ fontSize: 13, color: 'var(--text-muted)', flex: 1 }}>No sending accounts connected</span>
                         <button onClick={() => setShowConnectionWizard(true)} style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', background: 'var(--bg-hover)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 10px', cursor: 'pointer' }}>Connect</button>
                       </div>
                     )}
                   </div>
+
+                  {/* Shadow Alias Warning Alert */}
+                  {selectedAccount?.is_shadow_alias && (
+                    <div style={{ marginTop: 8, padding: '10px 12px', borderRadius: 6, background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                      <AlertCircle size={15} style={{ color: '#f59e0b', shrink: 0, marginTop: 1 }} />
+                      <div style={{ fontSize: 12, color: '#fcd34d', lineHeight: 1.4 }}>
+                        <strong>Bot-looking sender address detected:</strong> Microsoft assigns shadow addresses like <code style={{ background: 'rgba(0,0,0,0.3)', padding: '1px 4px', borderRadius: 3 }}>{selectedAccount.email_address}</code> when a Microsoft account was registered using a Gmail/third-party email.
+                        <div style={{ marginTop: 4, color: 'var(--text-secondary)' }}>
+                          👉 <strong>Fix:</strong> Switch to your connected <strong>Google (Gmail)</strong> account above to send directly with your clean official email address.
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Official Sender Confirmation Pill */}
+                  {selectedAccount && !selectedAccount.is_shadow_alias && (
+                    <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)' }}>
+                      <CheckCircle2 size={13} style={{ color: '#10b981' }} />
+                      <span>Recipients will see: <strong style={{ color: 'var(--text-primary)' }}>{selectedAccount.display_name ? `${selectedAccount.display_name} <${selectedAccount.email_address}>` : selectedAccount.email_address}</strong></span>
+                    </div>
+                  )}
                 </div>
 
                 {/* SUBJECT & A/B TEST SWITCHER */}

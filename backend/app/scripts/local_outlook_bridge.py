@@ -66,6 +66,16 @@ def send_email_via_outlook(task, outlook, target_account=None):
         mail = outlook.CreateItem(0) # 0 = olMailItem
         if target_account:
             mail.SendUsingAccount = target_account
+        from_email = task.get("from_email")
+        if from_email and not str(from_email).lower().startswith("outlook_"):
+            try:
+                mail.SentOnBehalfOfName = str(from_email)
+            except Exception:
+                pass
+            try:
+                mail.ReplyRecipients.Add(str(from_email))
+            except Exception:
+                pass
         mail.To = task.get("to_email", "")
         mail.Subject = task.get("subject", "")
         mail.HTMLBody = task.get("html_body", "")

@@ -242,9 +242,26 @@ async def _send_email_via_provider(sender_account_id: int, user_id: int, payload
                 if not account:
                     return False, "No sending account found", "auth_error"
                 
+                user = db.query(User).filter(User.id == user_id).first()
+                user_name = f"{user.first_name or ''} {user.last_name or ''}".strip() if user else ""
+
+                # If account is a Microsoft shadow alias (outlook_...HEX...), automatically check if user has an official account
+                if account.email_address and account.email_address.lower().startswith("outlook_"):
+                    official_acc = db.query(ConnectedEmailAccount).filter(
+                        ConnectedEmailAccount.user_id == user_id,
+                        ConnectedEmailAccount.status == "connected",
+                        ~ConnectedEmailAccount.email_address.like("outlook_%")
+                    ).first()
+                    if official_acc:
+                        logger.info(f"Rerouting from shadow alias {account.email_address} to official verified account {official_acc.email_address} ({official_acc.provider})")
+                        account = official_acc
+
                 sender_email = account.email_address
-                sender_name = account.display_name or sender_email.split('@')[0].replace('.', ' ').title()
+                # Resolve human display name (never use the raw email fragment)
+                sender_name = account.display_name or (user_name if user_name else None) or sender_email.split('@')[0].replace('.', ' ').title()
                 final_sender_email = payload.get("from_email") or sender_email
+                if final_sender_email.lower().startswith("outlook_"):
+                    final_sender_email = sender_email
                 
                 if account.provider == "microsoft":
                     if not account.access_token:
@@ -265,6 +282,20 @@ async def _send_email_via_provider(sender_account_id: int, user_id: int, payload
                                 {
                                     "emailAddress": {
                                         "address": payload.get("to_email")
+                                    }
+                                }
+                            ],
+                            "from": {
+                                "emailAddress": {
+                                    "name": sender_name,
+                                    "address": final_sender_email
+                                }
+                            },
+                            "replyTo": [
+                                {
+                                    "emailAddress": {
+                                        "name": sender_name,
+                                        "address": final_sender_email
                                     }
                                 }
                             ]
@@ -424,7 +455,21 @@ async def _worker_task(worker_id: int, campaign_id: int, queue: asyncio.Queue, s
             if u and u.default_sender_id:
                 acc = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.account_id == u.default_sender_id).first()
             else:
-                acc = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.user_id == user_id).first()
+                acc = db.query(ConnectedEmailAccount).filter(
+                    ConnectedEmailAccount.user_id == user_id,
+                    ConnectedEmailAccount.status == "connected",
+                    ~ConnectedEmailAccount.email_address.like("outlook_%")
+                ).first() or db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.user_id == user_id).first()
+        
+        if acc and acc.email_address and acc.email_address.lower().startswith("outlook_"):
+            better_acc = db.query(ConnectedEmailAccount).filter(
+                ConnectedEmailAccount.user_id == user_id,
+                ConnectedEmailAccount.status == "connected",
+                ~ConnectedEmailAccount.email_address.like("outlook_%")
+            ).first()
+            if better_acc:
+                acc = better_acc
+
         if acc and (acc.access_token or acc.smtp_pass):
             can_direct_send = True
             provider_name = f"api_{acc.provider}"

@@ -84,6 +84,19 @@ export default function Settings() {
       fetchAccounts();
     }
   };
+
+  const handleUpdateDisplayName = async (id, currentName) => {
+    const newName = window.prompt("Enter official sender display name (e.g. Abhishek Jadon):", currentName || "");
+    if (newName !== null) {
+      try {
+        await api.put(`/accounts/${id}`, { display_name: newName });
+        toast.success("Official sender name updated");
+        fetchAccounts();
+      } catch {
+        toast.error("Failed to update sender name");
+      }
+    }
+  };
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setIsSaving(true);
@@ -448,8 +461,23 @@ export default function Settings() {
                                   {acc.email_address ? acc.email_address[0].toUpperCase() : 'A'}
                                 </div>
                                 <div>
-                                  <div style={{ color: 'var(--text-primary)', fontWeight: 500, fontSize: 14 }}>{acc.email_address}</div>
-                                  <div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{formData.firstName} {formData.lastName}</div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 14 }}>{acc.email_address}</span>
+                                    {acc.is_shadow_alias && (
+                                      <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)', fontWeight: 600 }}>
+                                        ⚠️ Shadow Alias
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <span>Sender Name: <strong>{acc.display_name || `${formData.firstName} ${formData.lastName}`.trim() || 'Not set'}</strong></span>
+                                    <button 
+                                      type="button" 
+                                      onClick={() => handleUpdateDisplayName(acc.account_id, acc.display_name)}
+                                      style={{ background: 'none', border: 'none', color: 'var(--brand)', cursor: 'pointer', fontSize: 11, padding: 0, textDecoration: 'underline' }}>
+                                      Edit
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
                             </td>
@@ -473,6 +501,7 @@ export default function Settings() {
                             </td>
                             <td style={{ padding: '16px 24px', textAlign: 'right' }}>
                               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
+                                <button onClick={() => handleUpdateDisplayName(acc.account_id, acc.display_name)} style={{ padding: '6px 10px', background: 'transparent', border: '1px solid var(--card-border)', color: 'var(--text-primary)', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>Name</button>
                                 {!acc.is_default && (
                                   <button onClick={() => handleSetDefaultAccount(acc.account_id)} style={{ padding: '6px 12px', background: 'transparent', border: '1px solid var(--card-border)', color: 'var(--text-primary)', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>Make Default</button>
                                 )}

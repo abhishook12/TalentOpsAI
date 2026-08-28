@@ -347,10 +347,12 @@ def bridge_oauth_callback(request: Request, code: str = None, state: str = None,
             """, status_code=400)
     else:
         user = db.query(User).filter(User.id == user_id).first()
-        if user:
-            connected_email = user.email
-
     # 3. Upsert ConnectedEmailAccount
+    user = db.query(User).filter(User.id == user_id).first()
+    display_name = me_data.get("displayName") if 'me_data' in locals() else None
+    if not display_name and user:
+        display_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or None
+
     outlook_account = db.query(ConnectedEmailAccount).filter(
         ConnectedEmailAccount.user_id == user_id,
         ConnectedEmailAccount.provider == "microsoft",
@@ -361,10 +363,15 @@ def bridge_oauth_callback(request: Request, code: str = None, state: str = None,
         db.add(outlook_account)
     
     outlook_account.email_address = connected_email
+    outlook_account.display_name = display_name or outlook_account.display_name
     outlook_account.access_token = access_token
     outlook_account.refresh_token = refresh_token
     outlook_account.status = "connected"
     outlook_account.last_synced_at = datetime.now(timezone.utc)
+    db.flush()
+
+    if user and not user.default_sender_id:
+        user.default_sender_id = outlook_account.account_id
     
     # 4. Upsert UserBridgeStatus (mark online immediately since server IS the bridge now)
     status_record = db.query(UserBridgeStatus).filter(UserBridgeStatus.user_id == user_id).first()
@@ -459,19 +466,26 @@ def bridge_google_callback(code: str = None, state: str = None, error: str = Non
             access_token = token_json["access_token"]
             refresh_token = token_json.get("refresh_token") # Note: only present if access_type=offline and prompt=consent
             
-            # Fetch user email
+            # Fetch user email and name
             headers = {"Authorization": f"Bearer {access_token}"}
             me_r = requests.get("https://www.googleapis.com/oauth2/v3/userinfo", headers=headers)
             me_r.raise_for_status()
-            connected_email = me_r.json().get("email")
+            user_info = me_r.json()
+            connected_email = user_info.get("email")
+            display_name = user_info.get("name")
         except Exception as e:
             return HTMLResponse(content=f"<html><body><h2>Failed to acquire Google tokens</h2><p>{str(e)}</p></body></html>", status_code=400)
     else:
         user = db.query(User).filter(User.id == user_id).first()
+        display_name = f"{user.first_name or ''} {user.last_name or ''}".strip() if user else None
         if user:
             connected_email = user.email
 
     # 3. Upsert ConnectedEmailAccount
+    user = db.query(User).filter(User.id == user_id).first()
+    if not display_name and user:
+        display_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or None
+
     account = db.query(ConnectedEmailAccount).filter(
         ConnectedEmailAccount.user_id == user_id, 
         ConnectedEmailAccount.provider == "google",
@@ -482,6 +496,7 @@ def bridge_google_callback(code: str = None, state: str = None, error: str = Non
         db.add(account)
     
     account.email_address = connected_email
+    account.display_name = display_name or account.display_name
     account.access_token = access_token
     # Don't overwrite refresh_token with None if Google didn't return one on this login
     if refresh_token:
@@ -489,6 +504,11 @@ def bridge_google_callback(code: str = None, state: str = None, error: str = Non
     account.status = "connected"
     account.health_status = "healthy"
     account.last_synced_at = datetime.now(timezone.utc)
+    db.flush()
+
+    # Automatically set this verified Google account as the user's primary default sender
+    if user:
+        user.default_sender_id = account.account_id
     
     db.commit()
     

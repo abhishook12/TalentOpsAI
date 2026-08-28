@@ -82,19 +82,37 @@ def connect_smtp(req: SMTPConnectionRequest, db: Session = Depends(get_db), curr
 @router.get("/")
 def list_accounts(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     accounts = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.user_id == current_user.id).all()
+    user_name = f"{current_user.first_name or ''} {current_user.last_name or ''}".strip()
     res = []
     for acc in accounts:
+        email_str = acc.email_address or ""
+        is_shadow = email_str.lower().startswith("outlook_")
+        effective_display_name = acc.display_name or (user_name if user_name else None) or email_str.split("@")[0].replace(".", " ").title()
         res.append({
             "account_id": acc.account_id,
             "provider": acc.provider,
             "email_address": acc.email_address,
-            "display_name": acc.display_name,
+            "display_name": effective_display_name,
             "status": acc.status,
             "health_status": acc.health_status,
             "last_verified_at": acc.last_verified_at.isoformat() if acc.last_verified_at else None,
-            "is_default": current_user.default_sender_id == acc.account_id
+            "is_default": current_user.default_sender_id == acc.account_id,
+            "is_shadow_alias": is_shadow
         })
     return {"items": res}
+
+class UpdateAccountRequest(BaseModel):
+    display_name: Optional[str] = None
+
+@router.put("/{account_id}")
+def update_account(account_id: int, req: UpdateAccountRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    account = db.query(ConnectedEmailAccount).filter(ConnectedEmailAccount.account_id == account_id, ConnectedEmailAccount.user_id == current_user.id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    if req.display_name is not None:
+        account.display_name = req.display_name.strip() or None
+    db.commit()
+    return {"status": "success", "display_name": account.display_name}
 
 @router.delete("/{account_id}")
 def disconnect_account(account_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):

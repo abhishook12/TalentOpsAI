@@ -1,6 +1,7 @@
+import os
 import requests
 
-RENDER_API_KEY = "rnd_d9ssMhxT81Gp3Id45K7kaa7KOOIK"
+RENDER_API_KEY = os.getenv('RENDER_API_KEY', '')
 SRV_ID = "srv-d8q3be1kh4rs73c36730"
 url = f"https://api.render.com/v1/services/{SRV_ID}/deploys"
 

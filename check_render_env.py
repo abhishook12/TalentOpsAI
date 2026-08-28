@@ -1,7 +1,7 @@
 import os
 import requests
 
-RENDER_API_KEY = "rnd_d9ssMhxT81Gp3Id45K7kaa7KOOIK"
+RENDER_API_KEY = os.getenv('RENDER_API_KEY', '')
 url = "https://api.render.com/v1/services/srv-d8bkagugvqtc73cvie6g/env-vars"
 
 headers = {

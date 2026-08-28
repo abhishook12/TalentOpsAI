@@ -13,7 +13,7 @@ if not tavily_keys:
     print("No TAVILY_API_KEYS in local .env!")
     sys.exit(1)
 
-RENDER_API_KEY = "rnd_d9ssMhxT81Gp3Id45K7kaa7KOOIK"
+RENDER_API_KEY = os.getenv('RENDER_API_KEY', '')
 headers = {
     "accept": "application/json",
     "authorization": f"Bearer {RENDER_API_KEY}",

@@ -58,9 +58,10 @@ def get_submissions(
     status: Optional[str] = None,
     recruiter_id: Optional[int] = None,
     company_id: Optional[int] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request)
 ):
-    query = db.query(Submission)
+    query = db.query(Submission).filter(Submission.user_id == current_user.id)
     if status:
         query = query.filter(Submission.status == status)
     if recruiter_id:
@@ -71,25 +72,25 @@ def get_submissions(
     return [serialize_submission(s) for s in results]
 
 @router.get("/{submission_id}")
-def get_submission(submission_id: int, db: Session = Depends(get_db)):
-    s = db.query(Submission).filter(Submission.submission_id == submission_id).first()
+def get_submission(submission_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    s = db.query(Submission).filter(Submission.submission_id == submission_id, Submission.user_id == current_user.id).first()
     if not s:
         raise HTTPException(status_code=404, detail="Submission not found")
     return serialize_submission(s)
 
 @router.post("/", status_code=201)
-def create_submission(data: SubmissionCreate, db: Session = Depends(get_db)):
+def create_submission(data: SubmissionCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     if data.status and data.status not in VALID_STATUSES:
         raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of {VALID_STATUSES}")
-    s = Submission(**data.dict())
+    s = Submission(**data.dict(), user_id=current_user.id)
     db.add(s)
     db.commit()
     db.refresh(s)
     return serialize_submission(s)
 
 @router.put("/{submission_id}")
-def update_submission(submission_id: int, data: SubmissionUpdate, db: Session = Depends(get_db)):
-    s = db.query(Submission).filter(Submission.submission_id == submission_id).first()
+def update_submission(submission_id: int, data: SubmissionUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    s = db.query(Submission).filter(Submission.submission_id == submission_id, Submission.user_id == current_user.id).first()
     if not s:
         raise HTTPException(status_code=404, detail="Submission not found")
     if data.status and data.status not in VALID_STATUSES:
@@ -101,8 +102,8 @@ def update_submission(submission_id: int, data: SubmissionUpdate, db: Session = 
     return serialize_submission(s)
 
 @router.delete("/{submission_id}")
-def delete_submission(submission_id: int, db: Session = Depends(get_db)):
-    s = db.query(Submission).filter(Submission.submission_id == submission_id).first()
+def delete_submission(submission_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
+    s = db.query(Submission).filter(Submission.submission_id == submission_id, Submission.user_id == current_user.id).first()
     if not s:
         raise HTTPException(status_code=404, detail="Submission not found")
     db.delete(s)

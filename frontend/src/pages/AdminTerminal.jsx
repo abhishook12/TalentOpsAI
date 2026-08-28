@@ -260,7 +260,13 @@ export default function AdminTerminal() {
     if (al) setAlerts(al.alerts || []); if (feed) setActivityFeed(feed); if (cov) setStateCoverage(cov)
     
     if (sawUnauthorized) {
-      const stillValid = await verifySession()
+      let stillValid = false
+      try {
+        await api.get('/auth/me')
+        stillValid = true
+      } catch (err) {
+        stillValid = false
+      }
       if (!stillValid) {
         setAuthError('Session expired. Please log in again.')
         setUnlocked(false)

@@ -1,6 +1,7 @@
 import json
 import os
 import traceback
+import logging
 from datetime import datetime
 
 from sqlalchemy.orm import Session
@@ -14,7 +15,7 @@ from ..utils.state_recovery import build_company_domain_state_index, infer_state
 from ..services.job_tracker import mark_progress, utc_now
 from app.services.adaptive_parser import parse_file
 from app.services.parquet_writer import parquet_writer
-from ..services.dedup_engine import deduplicate_and_enrich
+from ..services.dedup_engine import DeduplicationEngine
 
 logger = logging.getLogger("etl_worker")
 
@@ -132,7 +133,9 @@ def process_smart_import(job_id: str, filepath: str, column_map: dict = None):
                 all_raw_dicts.append(r.to_dict())
 
         # Step 2: Run within-file Deduplication Engine
-        unique_profiles, duplicate_report = deduplicate_and_enrich(all_raw_dicts)
+        engine = DeduplicationEngine()
+        unique_profiles = engine.process_records(all_raw_dicts)
+        duplicate_report = []
         
         duplicate_rows_count = len(all_raw_dicts) - len(unique_profiles)
         

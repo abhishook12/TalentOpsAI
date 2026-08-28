@@ -4,6 +4,7 @@ import api, { API, getErrorMessage, logAction } from '../services/api'
 import { CompanyIdentity } from '../components/CompanyIdentity'
 import { useSessionState } from '../hooks/useSessionState'
 import SaveToTalentPoolModal from '../components/talent_pools/SaveToTalentPoolModal'
+import { useAuth } from '../context/AuthContext'
 
 function initials(name) {
   const parts = (name || '').trim().split(' ').filter(Boolean)
@@ -471,6 +472,7 @@ function iconButtonStyle(disabled = false) {
 }
 
 export default function AISearch() {
+  const { login } = useAuth()
   const [query, setQuery] = useSessionState('ai_query', '')
   const [searchResults, setSearchResults] = useState([])
   const [showRaw, setShowRaw] = useState(false)

@@ -119,9 +119,9 @@ function AppShell() {
   if (isLockdown && user && !isAdmin && !isAuthPage) {
     return (
       <>
-        <GlobalErrorBoundary>
+        <BombproofErrorBoundary>
           <Maintenance />
-        </GlobalErrorBoundary>
+        </BombproofErrorBoundary>
       </>
     );
   }

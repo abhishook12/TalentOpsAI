@@ -177,7 +177,8 @@ def heartbeat(payload: SessionHeartbeatPayload, request: Request, db: Session = 
         session.current_page = payload.current_page
         
     if payload.status == "Active":
-        duration = (datetime.now(timezone.utc) - session.started_at).total_seconds()
+        started = session.started_at.replace(tzinfo=timezone.utc) if session.started_at.tzinfo is None else session.started_at
+        duration = (datetime.now(timezone.utc) - started).total_seconds()
         session.ended_at = datetime.now(timezone.utc)
         
     db.commit()

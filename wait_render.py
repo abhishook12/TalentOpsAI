@@ -3,7 +3,7 @@ import requests
 import time
 import sys
 
-RENDER_API_KEY = "rnd_d9ssMhxT81Gp3Id45K7kaa7KOOIK"
+RENDER_API_KEY = os.getenv('RENDER_API_KEY', '')
 SRVS = ["srv-d8bkagugvqtc73cvie6g", "srv-d8q3be1kh4rs73c36730"]
 
 headers = {

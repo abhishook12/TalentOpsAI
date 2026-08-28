@@ -10,7 +10,7 @@ import { useSessionState } from '../hooks/useSessionState';
 import ConnectionWizard from '../components/ConnectionWizard';
 
 export default function Settings() {
-  const { user, checkAuth } = useAuth();
+  const { user, checkAuthStatus } = useAuth();
   const { theme: currentTheme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useSessionState('settings_activeTab', 'profile');
   const [accounts, setAccounts] = useState([]);
@@ -63,7 +63,7 @@ export default function Settings() {
       await api.post(`/accounts/${id}/set-default`);
       toast.success('Default account updated');
       fetchAccounts();
-      checkAuth(); // update current user default sender in context
+      checkAuthStatus(); // update current user default sender in context
     } catch (err) {
       toast.error('Failed to set default account');
     }
@@ -94,7 +94,7 @@ export default function Settings() {
         company: formData.company,
         country: formData.country
       });
-      checkAuth();
+      checkAuthStatus();
       toast.success('Profile updated successfully');
     } catch (err) {
       toast.error('Failed to update profile');

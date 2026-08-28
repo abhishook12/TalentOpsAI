@@ -385,22 +385,6 @@ def login(request: Request, login_data: UserLogin, response: Response, db: Sessi
     password_is_valid = False
     if user and user.password_hash:
         password_is_valid = verify_password(login_data.password, user.password_hash)
-    elif not user and clean_email == "admin@talentops.ai":
-        # Auto-seed admin if missing
-        _ensure_default_roles(db)
-        superadmin_role = db.query(Role).filter(Role.name == 'superadmin').first()
-        user = User(
-            first_name='Admin',
-            last_name='User',
-            email='admin@talentops.ai',
-            password_hash=get_password_hash(login_data.password),
-            status='Active',
-            role_id=superadmin_role.id if superadmin_role else None
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        password_is_valid = True
 
     if not user or user.auth_provider not in ['local', 'both'] or not password_is_valid:
         history = LoginHistory(

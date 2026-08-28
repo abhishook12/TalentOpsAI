@@ -153,8 +153,11 @@ def trigger_deliverability_sweep(current_user: User = Depends(get_current_user_f
         raise HTTPException(status_code=403, detail="Admin authorization required")
         
     start_t = time.time()
-    from scripts.run_deliverability_engine import run_deliverability_pipeline
-    run_deliverability_pipeline()
+    try:
+        from scripts.run_deliverability_engine import run_deliverability_pipeline
+        run_deliverability_pipeline()
+    except ImportError:
+        raise HTTPException(status_code=501, detail="Deliverability engine not available in this deployment")
     duration = round(time.time() - start_t, 2)
     
     return {

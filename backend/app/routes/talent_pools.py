@@ -50,9 +50,9 @@ class AddRecruitersPayload(BaseModel):
 
 
 @router.get("")
-def list_talent_pools():
+def list_talent_pools(current_user = Depends(get_current_user_from_request)):
     """List all custom talent pools with member counts."""
-    pools = _load_pools()
+    pools = [p for p in _load_pools() if p.get("user_id") == current_user.id]
     return [
         {
             "id": p["id"],
@@ -69,7 +69,7 @@ def list_talent_pools():
 
 
 @router.post("")
-def create_talent_pool(payload: CreatePoolPayload):
+def create_talent_pool(payload: CreatePoolPayload, current_user = Depends(get_current_user_from_request)):
     """Create a new named talent pool."""
     if not payload.name.strip():
         raise HTTPException(status_code=400, detail="Talent pool name is required")
@@ -77,6 +77,7 @@ def create_talent_pool(payload: CreatePoolPayload):
     pools = _load_pools()
     new_pool = {
         "id": str(uuid.uuid4())[:8],
+        "user_id": current_user.id,
         "name": payload.name.strip(),
         "description": payload.description or "",
         "tags": payload.tags or [],
@@ -91,10 +92,10 @@ def create_talent_pool(payload: CreatePoolPayload):
 
 
 @router.get("/{pool_id}")
-def get_talent_pool_details(pool_id: str):
+def get_talent_pool_details(pool_id: str, current_user = Depends(get_current_user_from_request)):
     """Get full talent pool metadata and resolved recruiter records."""
     pools = _load_pools()
-    pool = next((p for p in pools if p["id"] == pool_id), None)
+    pool = next((p for p in pools if p["id"] == pool_id and p.get("user_id") == current_user.id), None)
     if not pool:
         raise HTTPException(status_code=404, detail="Talent pool not found")
 
@@ -118,10 +119,10 @@ def get_talent_pool_details(pool_id: str):
 
 
 @router.post("/{pool_id}/add-recruiters")
-def add_recruiters_to_pool(pool_id: str, payload: AddRecruitersPayload):
+def add_recruiters_to_pool(pool_id: str, payload: AddRecruitersPayload, current_user = Depends(get_current_user_from_request)):
     """Add a list of recruiter IDs to a talent pool."""
     pools = _load_pools()
-    pool = next((p for p in pools if p["id"] == pool_id), None)
+    pool = next((p for p in pools if p["id"] == pool_id and p.get("user_id") == current_user.id), None)
     if not pool:
         raise HTTPException(status_code=404, detail="Talent pool not found")
 
@@ -144,10 +145,10 @@ def add_recruiters_to_pool(pool_id: str, payload: AddRecruitersPayload):
 
 
 @router.delete("/{pool_id}/recruiters/{recruiter_id}")
-def remove_recruiter_from_pool(pool_id: str, recruiter_id: int):
+def remove_recruiter_from_pool(pool_id: str, recruiter_id: int, current_user = Depends(get_current_user_from_request)):
     """Remove a single recruiter from a talent pool."""
     pools = _load_pools()
-    pool = next((p for p in pools if p["id"] == pool_id), None)
+    pool = next((p for p in pools if p["id"] == pool_id and p.get("user_id") == current_user.id), None)
     if not pool:
         raise HTTPException(status_code=404, detail="Talent pool not found")
 
@@ -162,9 +163,12 @@ def remove_recruiter_from_pool(pool_id: str, recruiter_id: int):
 
 
 @router.delete("/{pool_id}")
-def delete_talent_pool(pool_id: str):
+def delete_talent_pool(pool_id: str, current_user = Depends(get_current_user_from_request)):
     """Delete a talent pool."""
     pools = _load_pools()
+    pool = next((p for p in pools if p["id"] == pool_id and p.get("user_id") == current_user.id), None)
+    if not pool:
+        raise HTTPException(status_code=404, detail="Talent pool not found")
     pools = [p for p in pools if p["id"] != pool_id]
     _save_pools(pools)
     return {"message": "Talent pool deleted", "deleted_id": pool_id}

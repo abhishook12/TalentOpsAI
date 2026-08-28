@@ -1065,6 +1065,99 @@ def get_campaign_delivery_logs(
         })
     return {"items": res}
 
+@router.get("/recent-recipients")
+def get_recent_recipients(
+    q: Optional[str] = Query(None),
+    limit: int = Query(25, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request)
+):
+    """
+    Returns historical campaign recipient suggestions and frequency metrics.
+    Searches campaign recruiters, email logs, and saved contacts for predictive autocompletion.
+    """
+    from ..models.campaigns import Campaign, CampaignRecruiter, EmailLog
+    from sqlalchemy import func
+    
+    query_str = (q or "").strip().lower()
+    user_campaign_ids = [c[0] for c in db.query(Campaign.campaign_id).filter(Campaign.user_id == current_user.id).all()]
+    
+    suggestions = []
+    seen_emails = set()
+    
+    if user_campaign_ids:
+        past_recipients = (
+            db.query(
+                CampaignRecruiter.email,
+                CampaignRecruiter.recruiter_name,
+                CampaignRecruiter.company,
+                func.count(CampaignRecruiter.id).label("use_count"),
+                func.max(CampaignRecruiter.created_at).label("last_used")
+            )
+            .filter(CampaignRecruiter.campaign_id.in_(user_campaign_ids))
+            .group_by(CampaignRecruiter.email, CampaignRecruiter.recruiter_name, CampaignRecruiter.company)
+            .order_by(func.max(CampaignRecruiter.created_at).desc(), func.count(CampaignRecruiter.id).desc())
+        )
+        
+        if query_str:
+            past_recipients = past_recipients.filter(
+                func.lower(CampaignRecruiter.email).like(f"%{query_str}%") |
+                func.lower(CampaignRecruiter.recruiter_name).like(f"%{query_str}%") |
+                func.lower(CampaignRecruiter.company).like(f"%{query_str}%")
+            )
+            
+        for r in past_recipients.limit(limit).all():
+            email = (r[0] or "").strip().lower()
+            if email and email not in seen_emails:
+                seen_emails.add(email)
+                suggestions.append({
+                    "email": email,
+                    "name": r[1] or email.split("@")[0],
+                    "company": r[2] or "",
+                    "use_count": int(r[3] or 1),
+                    "source": "campaign_history",
+                    "last_used": r[4].isoformat() if r[4] else None
+                })
+    
+    # 2. Augment with recruiters matching query if limit not reached
+    if len(suggestions) < limit:
+        try:
+            from ..services.recruiter_store import recruiter_store
+            recruiter_store._ensure_loaded()
+            safe_q = query_str.replace("'", "''") if query_str else ""
+            where_clause = ""
+            if safe_q:
+                where_clause = f"""
+                  AND (
+                    LOWER(email) LIKE '%{safe_q}%'
+                    OR LOWER(recruiter_name) LIKE '%{safe_q}%'
+                    OR LOWER(company_id) LIKE '%{safe_q}%'
+                  )
+                """
+            duck_res = recruiter_store._conn.execute(f"""
+                SELECT recruiter_name, email, company_id, location
+                FROM recruiters
+                WHERE email IS NOT NULL AND email LIKE '%@%'
+                {where_clause}
+                LIMIT {limit - len(suggestions)}
+            """).fetchall()
+            for row in duck_res:
+                em = (row[1] or "").strip().lower()
+                if em and em not in seen_emails:
+                    seen_emails.add(em)
+                    suggestions.append({
+                        "email": em,
+                        "name": row[0] or em.split("@")[0],
+                        "company": row[2] or "",
+                        "use_count": 0,
+                        "source": "database",
+                        "last_used": None
+                    })
+        except Exception:
+            pass
+
+    return {"items": suggestions, "total": len(suggestions)}
+
 class DeliverabilityCheckRequest(BaseModel):
     subject: Optional[str] = ""
     body: Optional[str] = ""

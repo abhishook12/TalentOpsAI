@@ -31,11 +31,33 @@ import time
 
 def check_outlook_bridge(db: Session, current_user_id: int):
     try:
-        from ..models.auth_models import UserBridgeStatus
+        from ..models.auth_models import UserBridgeStatus, ConnectedEmailAccount
         import datetime
+        
+        # First check: Does the user have ANY connected email account?
+        # If so, the connection is valid — tokens are persisted in DB.
+        connected_account = db.query(ConnectedEmailAccount).filter(
+            ConnectedEmailAccount.user_id == current_user_id,
+            ConnectedEmailAccount.status == "connected"
+        ).first()
+        
+        if connected_account:
+            # Ensure bridge status record exists and is marked online
+            status_record = db.query(UserBridgeStatus).filter(UserBridgeStatus.user_id == current_user_id).first()
+            if not status_record:
+                status_record = UserBridgeStatus(user_id=current_user_id, status='online', last_heartbeat=datetime.datetime.now(datetime.timezone.utc))
+                db.add(status_record)
+                db.commit()
+            elif status_record.status != 'online':
+                status_record.status = 'online'
+                status_record.last_heartbeat = datetime.datetime.now(datetime.timezone.utc)
+                db.commit()
+            return {"status": "ok", "message": f"Connected via {connected_account.provider}: {connected_account.email_address}"}
+        
+        # Fallback: check legacy UserBridgeStatus
         status_record = db.query(UserBridgeStatus).filter(UserBridgeStatus.user_id == current_user_id).first()
         if not status_record:
-            return {"status": "unhealthy", "error": "No bridge status recorded."}
+            return {"status": "unhealthy", "error": "No email account connected. Connect one in Settings → API & Integrations."}
         
         if not status_record.last_heartbeat:
             return {"status": "unhealthy", "error": "No heartbeat received yet."}

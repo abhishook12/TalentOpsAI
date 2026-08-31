@@ -46,8 +46,15 @@ export const CompanyIdentity = memo(function CompanyIdentity({
   if (cleanDomain && !failedDomains.has(cleanDomain)) {
     const urls = []
     if (logo_url) urls.push(logo_url)
-    urls.push(`https://logo.clearbit.com/${cleanDomain}?size=${logoSize * 4}`)
-    urls.push(`https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${cleanDomain}&size=${logoSize * 4}`)
+    // Tier 1: Hunter.io — free, no auth, high-res PNG logos
+    urls.push(`https://logos.hunter.io/${cleanDomain}`)
+    // Tier 2: Tomba.io — free, no auth, high-res with sizing
+    urls.push(`https://logo.tomba.io/${cleanDomain}?size=${Math.max(logoSize * 4, 128)}`)
+    // Tier 3: CompanyEnrich — free, no auth, transparent PNG
+    urls.push(`https://api.companyenrich.com/logo/${cleanDomain}`)
+    // Tier 4: Google Favicon (reliable but lower quality)
+    urls.push(`https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${cleanDomain}&size=${Math.max(logoSize * 4, 128)}`)
+    // Tier 5: DuckDuckGo (last resort)
     urls.push(`https://icons.duckduckgo.com/ip3/${cleanDomain}.ico`)
     
     const uniqueUrls = [...new Set(urls)]
@@ -104,14 +111,16 @@ export const CompanyIdentity = memo(function CompanyIdentity({
             width: size, 
             height: size, 
             minWidth: size,
-            borderRadius: 12, 
-            objectFit: 'cover',
-            background: 'var(--panel-bg)',
+            borderRadius: 10, 
+            objectFit: 'contain',
+            background: '#ffffff',
             border: '1px solid var(--card-border)',
-            flexShrink: 0
+            flexShrink: 0,
+            padding: 3,
+            imageRendering: 'auto'
           }}
           onError={() => {
-            if (cleanDomain && errorLevel >= 3) failedDomains.add(cleanDomain)
+            if (cleanDomain && errorLevel >= 4) failedDomains.add(cleanDomain)
             setErrorLevel(prev => prev + 1)
           }}
         />

@@ -66,9 +66,9 @@ class IdentityEngine:
             return False
             
     async def get_clearbit_logo(self, domain: str, session: aiohttp.ClientSession) -> Optional[str]:
-        # The backend VM lacks DNS/Internet to verify Clearbit logos.
-        # We will assume the logo exists and let the frontend handle broken images via onerror.
-        return f"https://logo.clearbit.com/{domain}"
+        # Clearbit Logo API was deprecated. Use Hunter.io (free, no auth, high-res PNG).
+        # Frontend also has a 5-tier fallback cascade, so this URL just seeds the DB.
+        return f"https://logos.hunter.io/{domain}"
 
     def get_domains_to_process(self) -> List[Dict[str, Any]]:
         if not os.path.exists(PARQUET_FILE):

@@ -32,16 +32,20 @@ export function CompanyLogo({ domain, name, logo_url, size = 32, style = {} }) {
     return <div style={fallbackStyle}>{initial}</div>
   }
 
-  // 4-Tier Logo Service Cascade:
+  // 5-Tier Logo Service Cascade (High-Quality, Free, No Auth):
   // Level 0: Verified logo from Backend canonical identity
-  // Level 1: Clearbit fallback (if no backend logo_url provided, try clearbit directly)
-  // Level 2: Google Favicon v2 (Reliable fallback for almost all web servers, scalable)
-  // Level 3: DuckDuckGo Favicons
+  // Level 1: Hunter.io — free, no auth, high-res PNG logos
+  // Level 2: Tomba.io — free, no auth, high-res with sizing  
+  // Level 3: CompanyEnrich — free, no auth, transparent PNG
+  // Level 4: Google Favicon v2 (reliable fallback)
+  // Level 5: DuckDuckGo Favicons (last resort)
   
   const urls = []
   if (logo_url) urls.push(logo_url)
-  urls.push(`https://logo.clearbit.com/${cleanDomain}?size=${size * 4}`)
-  urls.push(`https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${cleanDomain}&size=${size * 4}`)
+  urls.push(`https://logos.hunter.io/${cleanDomain}`)
+  urls.push(`https://logo.tomba.io/${cleanDomain}?size=${Math.max(size * 4, 128)}`)
+  urls.push(`https://api.companyenrich.com/logo/${cleanDomain}`)
+  urls.push(`https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${cleanDomain}&size=${Math.max(size * 4, 128)}`)
   urls.push(`https://icons.duckduckgo.com/ip3/${cleanDomain}.ico`)
   
   const uniqueUrls = [...new Set(urls)]
@@ -50,7 +54,7 @@ export function CompanyLogo({ domain, name, logo_url, size = 32, style = {} }) {
     currentLogo = uniqueUrls[errorLevel]
   }
 
-  if (errorLevel >= 4 || !currentLogo) {
+  if (errorLevel >= 5 || !currentLogo) {
     return <div style={fallbackStyle}>{initial}</div>
   }
 
@@ -58,14 +62,17 @@ export function CompanyLogo({ domain, name, logo_url, size = 32, style = {} }) {
     <img
       src={currentLogo}
       alt={`${name || domain} logo`}
+      loading="lazy"
       onError={() => setErrorLevel(prev => prev + 1)}
       style={{
         width: size,
         height: size,
-        borderRadius: 12,
-        objectFit: 'cover',
+        borderRadius: 10,
+        objectFit: 'contain',
         backgroundColor: '#ffffff',
         border: '1px solid #4b5563',
+        padding: 2,
+        imageRendering: 'auto',
         ...style
       }}
     />

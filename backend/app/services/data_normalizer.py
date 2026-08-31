@@ -325,7 +325,7 @@ def normalize_record(raw: Dict[str, Any], record_id: int) -> Dict[str, Any]:
         "company_confidence": "High" if company else "Medium",
         "company_reasoning": "verified_domain" if domain else "inferred",
         "merged_into_id": 0.0,
-        "logo_url": f"https://logo.clearbit.com/{domain}" if domain else "",
+        "logo_url": f"https://logos.hunter.io/{domain}" if domain else "",
         "seniority_level": seniority,
         "timezone_code": "EST",
         "timezone": "America/New_York",

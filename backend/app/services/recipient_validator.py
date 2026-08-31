@@ -195,7 +195,7 @@ def validate_recipients(raw_emails: List[str], db: Session) -> ValidationResult:
 
         # 4. Check DNS MX Registry
         if domain:
-            recipient.logo_url = f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
+            recipient.logo_url = f"https://logos.hunter.io/{domain}"
             if domain in mx_registry:
                 mx_info = mx_registry[domain]
                 is_mx_deliv = bool(mx_info.get("valid", False) or mx_info.get("is_deliverable", False))

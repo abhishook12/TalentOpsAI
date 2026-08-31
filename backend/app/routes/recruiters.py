@@ -332,6 +332,8 @@ def serialize_recruiter(r):
         "raw_data": r.__dict__.get("raw_data"),
         "company_id": r.company_id,
         "company_name": r.company.company_name if hasattr(r, "company") and r.company else None,
+        "company_domain": getattr(r.company, "primary_domain", None) if hasattr(r, "company") and r.company else (r.email.split('@')[-1].lower() if (r.email and '@' in r.email and r.email.split('@')[-1].lower() not in ('gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com')) else None),
+        "logo_url": getattr(r.company, "logo_url", None) if hasattr(r, "company") and r.company and r.company.logo_url else (f"https://logos.hunter.io/{r.email.split('@')[-1].lower()}" if (r.email and '@' in r.email and r.email.split('@')[-1].lower() not in ('gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com')) else None),
         "location": r.location if r.location else (r.company.location if hasattr(r, "company") and r.company else None),
         "state": r.state,
         "normalized_city": getattr(r, "normalized_city", None),
@@ -510,7 +512,7 @@ def search_recruiters(
         else:
             c_name = "Unknown Company" if raw_key and raw_key.isdigit() else (raw_key or "Unknown Company")
 
-        logo_url = (f"https://www.google.com/s2/favicons?domain={company_domain}&sz=128" if company_domain else None)
+        logo_url = (comp.logo_url if comp and comp.logo_url else None) or (f"https://logos.hunter.io/{company_domain}" if company_domain else None)
 
         comp_data = {
             "company_id": comp.company_id if comp else row.get("company_id"),
@@ -787,7 +789,7 @@ def get_recruiters(
                 "state": r.get('state'),
                 "website": f"https://{company_domain}" if company_domain else None,
                 "primary_domain": company_domain,
-                "logo_url": r.get("logo_url") or (f"https://www.google.com/s2/favicons?domain={company_domain}&sz=128" if company_domain else None),
+                "logo_url": (comp.logo_url if comp and comp.logo_url else None) or r.get("logo_url") or (f"https://logos.hunter.io/{company_domain}" if company_domain else None),
                 "email_pattern": None
             }
 
@@ -810,7 +812,7 @@ def get_recruiters(
             "company_id": r.get("company_id"),
             "company_name": c_name,
             "company_domain": company_domain,
-            "logo_url": r.get("logo_url") or (comp.logo_url if comp else None) or (f"https://www.google.com/s2/favicons?domain={company_domain}&sz=128" if company_domain else None),
+            "logo_url": (comp.logo_url if comp and comp.logo_url else None) or r.get("logo_url") or (f"https://logos.hunter.io/{company_domain}" if company_domain else None),
             "company": company_obj,
             "location": r.get("location") or (comp.location if comp else None),
             "state": r.get("state"),

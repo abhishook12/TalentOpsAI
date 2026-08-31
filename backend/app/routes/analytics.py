@@ -482,6 +482,7 @@ def companies_search(
             "needs_review_count": 0,
             "recruiter_count": row['recruiter_count'],
             "logo_domain": logo_domain,
+            "logo_url": (company.logo_url if company and company.logo_url else None) or (f"https://logos.hunter.io/{logo_domain}" if logo_domain else None),
             "full_count": total_count,
         })
     

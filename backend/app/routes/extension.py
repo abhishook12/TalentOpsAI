@@ -1155,6 +1155,13 @@ def download_extension_zip(
         if "config.json" not in [f.filename for f in zf.filelist]:
             zf.writestr("config.json", json.dumps(custom_config, indent=2))
 
+        # Guarantee all required manifest icons exist in zip package
+        fallback_png = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\rIDATx\x9cc`\x00\x00\x00\x02\x00\x01H\xaf\xa4q\x00\x00\x00\x00IEND\xaeB`\x82'
+        current_files = [f.filename for f in zf.filelist]
+        for icon_name in ["icons/icon16.png", "icons/icon32.png", "icons/icon48.png", "icons/icon128.png"]:
+            if icon_name not in current_files:
+                zf.writestr(icon_name, fallback_png)
+
     zip_buffer.seek(0)
     zip_bytes = zip_buffer.getvalue()
 

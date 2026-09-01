@@ -127,8 +127,8 @@ async def get_extension_user(
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token payload")
     user = db.query(User).filter(User.id == int(user_id)).first()
-    if not user or not user.is_active:
-        raise HTTPException(status_code=401, detail="User not found or inactive")
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
     return user
 
 
@@ -146,8 +146,8 @@ def auto_activate_extension(
     if not device_id:
         device_id = f"ext-{secrets.token_hex(6)}"
 
-    # Get admin owner
-    admin = db.query(User).filter(User.is_superuser == True).first()
+    # Get admin owner — use the known admin email, then fallback to first user
+    admin = db.query(User).filter(User.email == "abhishekjadon824@gmail.com").first()
     if not admin:
         admin = db.query(User).first()
     owner_id = admin.id if admin else 1

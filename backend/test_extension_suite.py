@@ -5,7 +5,21 @@ from app.database import SessionLocal
 from app.models.auth_models import User
 from app.models.extension_models import ExtensionActivationCode, ExtensionDevice, ExtensionHeartbeat, ExtensionSubmissionLog
 from app.models.models import Recruiter, Company
-from app.routes.extension import activate_extension, ingest_extension_batch, extension_heartbeat, extension_report, create_activation_code, ActivationRequest, BatchRequest, ExtensionContact, HeartbeatRequest, CreateCodeRequest
+from app.routes.extension import (
+    auto_activate_extension,
+    activate_extension,
+    ingest_extension_batch,
+    extension_heartbeat,
+    extension_report,
+    get_live_extension_feed,
+    get_live_extension_summary,
+    create_activation_code,
+    ActivationRequest,
+    BatchRequest,
+    ExtensionContact,
+    HeartbeatRequest,
+    CreateCodeRequest,
+)
 from fastapi import Request
 from starlette.requests import Request as StarletteRequest
 
@@ -21,20 +35,26 @@ if not admin_user:
     admin_user = db.query(User).first()
 print(f"Using Admin User: id={admin_user.id}, email={admin_user.email}")
 
-# 2. Create Activation Code
+# 2. Test Zero-Touch Auto-Activation
+auto_dev = f"test-auto-{uuid.uuid4().hex[:8]}"
+auto_res = auto_activate_extension(req={"device_id": auto_dev}, db=db)
+assert "access_token" in auto_res, f"Auto-activate failed: {auto_res}"
+print(f"[OK] Auto-Activation succeeded for device {auto_dev}")
+
+# 3. Create Activation Code
 create_req = CreateCodeRequest(label="Automated QA Test Code", max_uses=5)
 code_res = create_activation_code(req=create_req, db=db, current_user=admin_user)
 code = code_res["code"]
 print(f"[OK] Generated Activation Code: {code}")
 
-# 3. Activate Extension Device
+# 4. Activate Extension Device
 device_id = f"test-ext-{uuid.uuid4().hex[:12]}"
 act_req = ActivationRequest(activation_code=code, device_id=device_id, user_agent="Mozilla/5.0 Test Chrome/120.0")
 act_res = activate_extension(req=act_req, db=db)
 token = act_res["access_token"]
 print(f"[OK] Extension Activated for device {device_id}. Received JWT.")
 
-# 4. Ingest Batch of Profiles
+# 5. Ingest Batch of Profiles
 mock_contacts = [
     ExtensionContact(
         recruiter_name="Sarah Jenkins",
@@ -89,7 +109,7 @@ batch_res = ingest_extension_batch(
 print(f"[OK] Ingested batch: accepted={batch_res['accepted']}, duplicates={batch_res['duplicates']}")
 assert batch_res['accepted'] == 3, f"Expected 3 accepted, got {batch_res['accepted']}"
 
-# 5. Ingest Duplicate to test deduplication & enhancement
+# 6. Ingest Duplicate to test deduplication & enhancement
 dup_contacts = [
     ExtensionContact(
         recruiter_name="Sarah Jenkins",
@@ -114,7 +134,7 @@ dup_res = ingest_extension_batch(
 print(f"[OK] Deduplication test: accepted={dup_res['accepted']}, duplicates={dup_res['duplicates']}")
 assert dup_res['duplicates'] == 1, f"Expected 1 duplicate, got {dup_res['duplicates']}"
 
-# 6. Heartbeat Ping
+# 7. Heartbeat Ping
 hb_req = HeartbeatRequest(
     device_id=device_id,
     session_captured=4,
@@ -128,7 +148,16 @@ hb_res = extension_heartbeat(req=hb_req, db=db, current_user=admin_user)
 print(f"[OK] Heartbeat ping response: {hb_res}")
 assert hb_res["ok"] == True
 
-# 7. Admin Report
+# 8. Test Live Feed & Live Summary
+feed_res = get_live_extension_feed(limit=5, db=db, current_user=admin_user)
+assert "feed" in feed_res and len(feed_res["feed"]) > 0
+print(f"[OK] Live feed retrieved: {len(feed_res['feed'])} recent items")
+
+summary_res = get_live_extension_summary(db=db, current_user=admin_user)
+assert summary_res["total_recruiters"] > 0
+print(f"[OK] Live summary retrieved: {summary_res['total_recruiters']} recruiters, {summary_res['active_scouts']} active scouts")
+
+# 9. Admin Report
 report_res = extension_report(days=7, db=db, current_user=admin_user)
 print(f"[OK] Admin report retrieved successfully.")
 print(f"     Total accepted in period: {report_res['totals']['accepted']}")

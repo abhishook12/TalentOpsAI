@@ -41,16 +41,16 @@
   let initialCaptureDone = false;
 
   // Immediate burst on page injection
-  setTimeout(() => runAutonomousFusionScan(true), 150);
-  setTimeout(() => runAutonomousFusionScan(true), 800);
-  setTimeout(() => runAutonomousFusionScan(false), 2000);
+  setTimeout(() => runAutonomousFusionScan(true), 100);
+  setTimeout(() => runAutonomousFusionScan(true), 500);
+  setTimeout(() => runAutonomousFusionScan(true), 1200);
 
-  // 100% Autonomous 24/7 Heartbeat Ticker: Scans active page continuously every 2.5s
+  // 100% Autonomous 24/7 Fast Heartbeat Ticker: Scans active page continuously every 1.0s
   setInterval(() => {
     if (document.visibilityState === 'visible') {
       runAutonomousFusionScan(false);
     }
-  }, 2500);
+  }, 1000);
 
   // ── 3. Listen for Messages from Background Worker ──────────
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {

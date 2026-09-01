@@ -25,6 +25,7 @@ window.TalentScout.detectLinkedIn = function() {
   results.push(..._scrapeRecruiterPlatform());
   results.push(..._scrapeMessaging());
   results.push(..._scrapeFeedPosts());
+  results.push(..._scrapeAllLinkedInCards());
 
   // ── 3. Page Title & Meta Fallback (Guaranteed Yield) ───────
   if (results.length === 0 && /^\/(in|pub)\//.test(path)) {
@@ -285,6 +286,46 @@ function _scrapeFeedPosts() {
         source: 'linkedin_feed',
       });
     }
+  });
+
+  return results;
+}
+
+function _scrapeAllLinkedInCards() {
+  const ts = window.TalentScout;
+  const results = [];
+  const cleanUrl = window.location.href.split('?')[0].split('#')[0];
+
+  const allProfileAnchors = document.querySelectorAll('a[href*="/in/"]');
+  allProfileAnchors.forEach(a => {
+    const href = a.href.split('?')[0].split('#')[0];
+    if (href === cleanUrl) return;
+
+    const container = a.closest('li, div.artdeco-entity-lockup, div.discover-person-card, section, div.feed-shared-following-card, .profile-card, aside div') || a.parentElement;
+    if (!container) return;
+
+    const nameText = a.querySelector('span[aria-hidden="true"], h3, h4, strong')?.textContent?.trim() || a.textContent?.trim();
+    const finalName = ts.normalizeName(nameText) || ts.inferNameFromLinkedInSlug(href);
+    if (!finalName || ['see all', 'view profile', 'follow', 'message', 'connect', 'linkedin member'].includes(finalName.toLowerCase())) return;
+
+    const sub = container.querySelector('.artdeco-entity-lockup__subtitle, .entity-result__primary-subtitle, p, [class*="headline"], [class*="occupation"], .t-12')?.textContent?.trim();
+    let company = null;
+    let title = sub || 'Professional';
+    if (title.includes(' at ')) {
+      const p = title.split(' at ');
+      company = p[1].split(/[,|•\n]/)[0].trim();
+    } else if (title.includes(' @ ')) {
+      const p = title.split(' @ ');
+      company = p[1].split(/[,|•\n]/)[0].trim();
+    }
+
+    results.push({
+      recruiter_name: finalName,
+      title: title.slice(0, 100),
+      company_name: company,
+      linkedin_url: href,
+      source: 'linkedin_sidebar',
+    });
   });
 
   return results;

@@ -249,8 +249,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         // ── Visual Scraper Messages ──
         case 'CAPTURE_VISIBLE_TAB': {
           try {
-            const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'jpeg', quality: 75 });
-            sendResponse({ ok: true, dataUrl });
+            const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            const targetWinId = sender.tab?.windowId || activeTab?.windowId || null;
+            const dataUrl = await chrome.tabs.captureVisibleTab(targetWinId, { format: 'jpeg', quality: 75 });
+            
+            // Increment totalCaptured metric
+            const local = await chrome.storage.local.get(['totalCaptured']);
+            const nextCap = (local.totalCaptured || 0) + 1;
+            await chrome.storage.local.set({ totalCaptured: nextCap });
+
+            sendResponse({ ok: true, dataUrl, totalCaptured: nextCap });
           } catch (e) {
             sendResponse({ ok: false, error: e.message });
           }

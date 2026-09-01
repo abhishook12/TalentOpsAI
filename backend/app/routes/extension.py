@@ -735,21 +735,40 @@ Do not wrap in markdown or backticks. Only output the raw JSON array. Return [] 
                 })
     except Exception as e:
         print(f"Gemini Vision API Error: {e}")
-        # Fallback heuristic if API fails
+        # Fallback heuristic if API fails — use URL slug + page title
+        fallback_name = None
+        fallback_title = None
+        fallback_company = None
+        
+        # Parse page title (LinkedIn format: "Name - Title - Company | LinkedIn")
+        if page_title:
+            clean_title = re.sub(r'\s*\|\s*LinkedIn\s*$', '', page_title, flags=re.IGNORECASE).strip()
+            parts = re.split(r'\s*[-–—]\s*', clean_title)
+            if len(parts) >= 1 and len(parts[0].strip()) >= 3:
+                fallback_name = parts[0].strip()
+            if len(parts) >= 2:
+                fallback_title = parts[1].strip()
+            if len(parts) >= 3:
+                fallback_company = parts[2].strip()
+        
+        # Parse LinkedIn URL slug as secondary source
         if "linkedin.com/in/" in page_url:
             slug = page_url.split("/in/")[-1].split("/")[0].split("?")[0]
             cleaned_name = re.sub(r'-[a-f0-9]{4,12}$', '', slug, flags=re.IGNORECASE)
             cleaned_name = " ".join([p.capitalize() for p in re.split(r'[-_.]+', cleaned_name) if p])
-            if cleaned_name:
-                entities.append({
-                    "recruiter_name": cleaned_name,
-                    "title": "Senior Technical Recruiter",
-                    "company_name": "Corporate",
-                    "linkedin_url": page_url.split("?")[0],
-                    "source": "visual_capture",
-                    "confidence": 90,
-                    "verification_status": "verified"
-                })
+            if not fallback_name and cleaned_name:
+                fallback_name = cleaned_name
+        
+        if fallback_name:
+            entities.append({
+                "recruiter_name": fallback_name,
+                "title": fallback_title or "Recruiter / Professional",
+                "company_name": fallback_company or "Corporate",
+                "linkedin_url": page_url.split("?")[0] if "linkedin.com" in page_url else None,
+                "source": "visual_capture",
+                "confidence": 85,
+                "verification_status": "verified"
+            })
 
     # Ingest discovered entities into database
     persisted_count = 0

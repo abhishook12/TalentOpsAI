@@ -1,12 +1,12 @@
 // ============================================================
-// content.js — Ultra-Fast Autonomous Visual & DOM Data Fusion Brain
-// 100% Autonomous • Zero-Configuration • Complete Forensic Provenance
+// content.js — 1-Second Autonomous Visual & DOM Data Fusion Brain
+// User Inactivity Pause (10s idle) • 1s Capture Rate • Domain Relevance Filter
 // ============================================================
 
 (function() {
   'use strict';
 
-  // Prevent multiple timer loops if reinjected
+  // Prevent duplicate background loops if reinjected
   if (window.__talentScoutHeartbeatRunning) return;
   window.__talentScoutHeartbeatRunning = true;
 
@@ -16,6 +16,30 @@
   let isScanning = false;
   let debounceTimer = null;
   let lastUrl = location.href;
+
+  // ── 0. Activity / Inactivity Tracker (10-second Screen Idle Watchdog) ──
+  let lastActivityTime = Date.now();
+  const INACTIVITY_THRESHOLD_MS = 10000; // 10 seconds idle condition
+
+  function recordUserActivity() {
+    const wasIdle = (Date.now() - lastActivityTime) >= INACTIVITY_THRESHOLD_MS;
+    lastActivityTime = Date.now();
+
+    if (wasIdle) {
+      console.log('%c[TalentOps Scout] ⚡ Screen interaction detected — resuming active capture & analysis', 'color:#10b981;font-weight:bold;');
+      logEvent('ACTIVITY_RESUMED', 'User moved screen/input — capture active');
+      runAutonomousFusionScan(true);
+    }
+  }
+
+  // Track all user screen movements & keyboard/touch inputs
+  ['mousemove', 'scroll', 'keydown', 'click', 'wheel', 'touchstart'].forEach(evtName => {
+    window.addEventListener(evtName, recordUserActivity, { passive: true });
+  });
+
+  function isUserActive() {
+    return (Date.now() - lastActivityTime) < INACTIVITY_THRESHOLD_MS;
+  }
 
   function logEvent(eventType, detail) {
     try {
@@ -31,7 +55,7 @@
     } catch (_) {}
   }
 
-  console.log('%c[TalentOps Scout] 🚀 Autonomous Scout Engine Active on: ' + location.hostname, 'color:#3b82f6;font-weight:bold;');
+  console.log('%c[TalentOps Scout] 🚀 Autonomous Scout Engine Active (1s Cadence • 10s Idle Protection) on: ' + location.hostname, 'color:#3b82f6;font-weight:bold;');
 
   // ── 1. Notify background of Page View immediately ───────────
   try {
@@ -43,21 +67,26 @@
     logEvent('PAGE_OBSERVED', document.title || location.hostname);
   } catch (_) {}
 
-  // ── 2. Immediate Initial Autonomous Scan & Periodic Continuous Heartbeat ──
+  // ── 2. Immediate Initial Burst on Navigation ─────────────────
   setTimeout(() => runAutonomousFusionScan(true), 200);
   setTimeout(() => runAutonomousFusionScan(true), 1000);
-  setTimeout(() => runAutonomousFusionScan(true), 2500);
 
-  // 100% Autonomous 24/7 Fast Heartbeat: Scans active page continuously every 1.5s
+  // ── 3. High-Speed 1-Second Continuous Loop (Pauses if idle for >10s) ──
   setInterval(() => {
+    // If screen is not moved / no interaction for 10s -> DON'T capture anything
+    if (!isUserActive()) {
+      return;
+    }
+
     if (document.visibilityState === 'visible') {
       runAutonomousFusionScan(false);
     }
-  }, 1500);
+  }, 1000); // 1-second capture cadence
 
-  // ── 3. Listen for Messages from Background Worker ──────────
+  // ── 4. Listen for Messages from Background Worker ────────────
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === 'TRIGGER_SCAN' || msg.type === 'MANUAL_CAPTURE') {
+      recordUserActivity();
       if (msg.type === 'MANUAL_CAPTURE') {
         chrome.storage.local.set({ seenKeysWithTime: {} });
       }
@@ -66,10 +95,11 @@
     }
   });
 
-  // ── 4. Real-Time Dynamic Observers (Mutations, Focus, Visibility, SPA Navigation) ──
+  // ── 5. Real-Time Dynamic Observers (Mutations, Focus, Visibility, SPA Navigation) ──
   const observer = new MutationObserver(() => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
+      recordUserActivity();
       if (location.href !== lastUrl) {
         lastUrl = location.href;
         if (ts.Visual?.Diff) ts.Visual.Diff.resetBaseline();
@@ -97,38 +127,75 @@
     });
   }
 
-  // Window Focus & Tab Visibility Listeners
-  window.addEventListener('focus', () => runAutonomousFusionScan(true));
+  // Window Focus & Visibility Listeners
+  window.addEventListener('focus', () => {
+    recordUserActivity();
+    runAutonomousFusionScan(true);
+  });
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') runAutonomousFusionScan(true);
+    if (document.visibilityState === 'visible') {
+      recordUserActivity();
+      runAutonomousFusionScan(true);
+    }
   });
 
   // SPA Navigation Catchers (popstate, hashchange)
   window.addEventListener('popstate', () => {
+    recordUserActivity();
     lastUrl = location.href;
     if (ts.Visual?.Diff) ts.Visual.Diff.resetBaseline();
     chrome.storage.local.set({ seenKeysWithTime: {} });
     runAutonomousFusionScan(true);
   });
   window.addEventListener('hashchange', () => {
+    recordUserActivity();
     lastUrl = location.href;
     if (ts.Visual?.Diff) ts.Visual.Diff.resetBaseline();
     chrome.storage.local.set({ seenKeysWithTime: {} });
     runAutonomousFusionScan(true);
   });
 
-  // Scroll Observer for Feeds & Search
-  let scrollTimer = null;
-  window.addEventListener('scroll', () => {
-    if (!scrollTimer) {
-      scrollTimer = setTimeout(() => {
-        runAutonomousFusionScan(false);
-        scrollTimer = null;
-      }, 200);
-    }
-  }, { passive: true });
+  // ── 6. Domain Relevance Filter (Use if useful to domain, throw if junk) ──
+  function isDomainRelevantContact(r) {
+    if (!r) return false;
+    if (!r.recruiter_name && !r.email && !r.linkedin_url) return false;
 
-  // ── 5. Autonomous Visual + DOM Data Fusion Engine ──────────
+    const name = (r.recruiter_name || '').toLowerCase().trim();
+    const title = (r.title || '').toLowerCase().trim();
+
+    // Discard generic non-person junk & web navigation labels
+    const junkNames = [
+      'linkedin member', 'view profile', 'see all', 'member', 'unknown',
+      'sign in', 'join now', 'experience', 'education', 'contact info',
+      'profile', 'home', 'feed', 'jobs', 'messaging', 'notifications',
+      'search', 'privacy policy', 'terms of service', 'about', 'help center',
+      'show more', 'show less', 'follow', 'connect', 'message'
+    ];
+    if (junkNames.includes(name)) return false;
+
+    // Reject names with only symbols or length < 2
+    if (name.length < 2) return false;
+
+    // If found on LinkedIn profile/search/recruiter, it's inherently relevant
+    if (r.source && r.source.includes('linkedin')) return true;
+
+    // Check relevant recruiting, talent acquisition & corporate hiring domain keywords
+    const domainKeywords = [
+      'recruiter', 'recruiting', 'talent', 'acquisition', 'hr', 'human resources',
+      'staffing', 'sourcer', 'sourcing', 'headhunter', 'hiring', 'people ops',
+      'people partner', 'workforce', 'placement', 'coordinator', 'talent partner',
+      'talent lead', 'talent manager', 'recruitment', 'founder', 'co-founder',
+      'ceo', 'cto', 'vp', 'director', 'manager', 'lead', 'head of', 'partner',
+      'officer', 'specialist', 'consultant', 'engineer', 'developer'
+    ];
+
+    const matchesTitle = domainKeywords.some(kw => title.includes(kw));
+    const hasCorporateProfile = Boolean(r.email || r.linkedin_url || (r.recruiter_name && r.company_name));
+
+    return matchesTitle || hasCorporateProfile;
+  }
+
+  // ── 7. Autonomous Visual + DOM Data Fusion Engine ──────────
   async function runAutonomousFusionScan(force = false) {
     if (isScanning && !force) return;
     isScanning = true;
@@ -142,12 +209,12 @@
         logEvent('DOM_ERROR', String(domErr?.message || domErr).slice(0, 120));
       }
 
-      // 2. SECOND: Run Visual Pipeline in Background with Strict 2s Timeout
+      // 2. SECOND: Run Visual Pipeline in Background with Strict 1.5s Timeout
       let visualLeads = [];
       try {
         visualLeads = await Promise.race([
           runVisualCapturePipeline(force),
-          new Promise(r => setTimeout(() => r([]), 2000))
+          new Promise(r => setTimeout(() => r([]), 1500))
         ]);
       } catch (vizErr) {
         logEvent('VISUAL_ERROR', String(vizErr?.message || vizErr).slice(0, 120));
@@ -161,10 +228,8 @@
         return;
       }
 
-      // 4. Filter Qualified Leads
-      const qualified = fusedLeads.filter(r => {
-        return Boolean(r.recruiter_name || r.email || r.linkedin_url);
-      });
+      // 4. DOMAIN FILTER: Keep if useful to our domain, throw away if not
+      const qualified = fusedLeads.filter(isDomainRelevantContact);
 
       if (qualified.length === 0) {
         isScanning = false;
@@ -196,7 +261,7 @@
       }));
 
       const leadNames = enriched.map(e => e.recruiter_name).filter(Boolean).join(', ');
-      console.log(`%c[TalentOps Scout] 🎯 Discovered ${enriched.length} Lead(s): ${leadNames}`, 'color:#10b981;font-weight:bold;');
+      console.log(`%c[TalentOps Scout] 🎯 [1s Capture] Discovered ${enriched.length} Lead(s): ${leadNames}`, 'color:#10b981;font-weight:bold;');
       logEvent('DATA_EXTRACTED', `Discovered ${enriched.length} contact(s): ${leadNames}`);
 
       // 8. Stream directly to background service worker for instant sync
@@ -226,7 +291,7 @@
     }
   }
 
-  // ── 6. Visual-First Pipeline ───────────────────────────────
+  // ── 8. Visual-First Pipeline ───────────────────────────────
   async function runVisualCapturePipeline(force = false) {
     if (!ts.Visual?.Diff || !ts.Visual?.Store || !ts.Visual?.Engine) return [];
 
@@ -235,8 +300,7 @@
       chrome.runtime.sendMessage({ type: 'CAPTURE_VISIBLE_TAB' }, res => {
         r(res || null);
       });
-      // 1.5s watchdog timeout for background message
-      setTimeout(() => r(null), 1500);
+      setTimeout(() => r(null), 1200);
     }).catch(() => null);
 
     if (!capRes || !capRes.ok || !capRes.dataUrl) return [];
@@ -286,7 +350,7 @@
     return entities;
   }
 
-  // ── 7. DOM Detector Pipeline ───────────────────────────────
+  // ── 9. DOM Detector Pipeline ───────────────────────────────
   function runDomDetectorPipeline() {
     const all = [];
     try { if (ts.detectLinkedIn) all.push(...ts.detectLinkedIn()); } catch (_) {}
@@ -298,7 +362,7 @@
     return all;
   }
 
-  // ── 8. Data Fusion: Merge Visual & DOM Discoveries ──────────
+  // ── 10. Data Fusion: Merge Visual & DOM Discoveries ─────────
   function fuseVisualAndDomLeads(visualLeads = [], domLeads = []) {
     const mergedMap = new Map();
 
@@ -328,7 +392,7 @@
     return Array.from(mergedMap.values());
   }
 
-  // ── 9. Local Cache Deduplication (with 60-second TTL per key) ──
+  // ── 11. Local Cache Deduplication (with 60-second TTL per key) ──
   async function deduplicateLocally(results) {
     const stored = await new Promise(r => chrome.storage.local.get(['seenKeysWithTime'], r));
     const seenMap = stored.seenKeysWithTime || {};

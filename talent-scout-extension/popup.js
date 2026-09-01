@@ -1,4 +1,4 @@
-// popup.js — Dynamic Power Meter, Live Counters, Mode Switcher & Stream Feed
+// popup.js — Dynamic Power Meter, Autonomous Live Counters & Stream Feed
 
 const $ = id => document.getElementById(id);
 const API_BASE = 'https://talentopsai-1.onrender.com';
@@ -11,7 +11,6 @@ async function init() {
   }
 
   showDashboard();
-  initModeSwitcher();
   loadLiveStats();
   setInterval(loadLiveStats, 2000); // Auto-refresh live stats every 2s while popup is open
 }
@@ -35,7 +34,6 @@ function showLogin() {
 
     if (res?.ok) {
       showDashboard();
-      initModeSwitcher();
       loadLiveStats();
     } else {
       showError(res?.error || 'Invalid activation code. Try again.');
@@ -52,39 +50,6 @@ function showLogin() {
 function showDashboard() {
   $('screen-login').classList.add('hidden');
   $('screen-active').classList.remove('hidden');
-
-  // Wire Scan Page button
-  const scanBtn = $('btn-scan-page');
-  if (scanBtn && !scanBtn.dataset.wired) {
-    scanBtn.dataset.wired = 'true';
-    scanBtn.addEventListener('click', async () => {
-      scanBtn.disabled = true;
-      scanBtn.textContent = 'Scanning…';
-
-      try {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (tab && tab.id) {
-          await chrome.tabs.sendMessage(tab.id, { type: 'TRIGGER_SCAN' }).catch(() => {});
-          const cur = await chrome.storage.local.get(['pagesScanned']);
-          const next = (cur.pagesScanned || 0) + 1;
-          await chrome.storage.local.set({ pagesScanned: next });
-
-          await chrome.runtime.sendMessage({ type: 'FLUSH_NOW' }).catch(() => {});
-          showFeedback('✓ Page scanned & intelligence synced!');
-        } else {
-          showFeedback('Page active & listening 24/7');
-        }
-      } catch (e) {
-        showFeedback('Page scanned & synchronized');
-      } finally {
-        setTimeout(() => {
-          scanBtn.disabled = false;
-          scanBtn.textContent = '⚡ Scan Page';
-          loadLiveStats();
-        }, 800);
-      }
-    });
-  }
 
   // Wire Sync Queue button
   const syncBtn = $('btn-sync-now');
@@ -104,44 +69,6 @@ function showDashboard() {
   }
 }
 
-async function initModeSwitcher() {
-  const modeRes = await chrome.runtime.sendMessage({ type: 'GET_SCRAPER_MODE' }).catch(() => ({ mode: 'HYBRID' }));
-  const activeMode = modeRes?.mode || 'HYBRID';
-  updateModeButtonsUI(activeMode);
-
-  ['mode-hybrid', 'mode-visual', 'mode-dom'].forEach(btnId => {
-    const btn = $(btnId);
-    if (btn && !btn.dataset.wired) {
-      btn.dataset.wired = 'true';
-      btn.addEventListener('click', async () => {
-        const selectedMode = btn.dataset.mode;
-        await chrome.runtime.sendMessage({ type: 'SET_SCRAPER_MODE', mode: selectedMode });
-        updateModeButtonsUI(selectedMode);
-        showFeedback(`✓ Mode switched to ${btn.textContent.trim()}`);
-      });
-    }
-  });
-}
-
-function updateModeButtonsUI(activeMode) {
-  ['mode-hybrid', 'mode-visual', 'mode-dom'].forEach(btnId => {
-    const btn = $(btnId);
-    if (!btn) return;
-    if (btn.dataset.mode === activeMode) {
-      btn.classList.add('active');
-    } else {
-      btn.classList.remove('active');
-    }
-  });
-
-  const statusText = $('conn-status');
-  if (statusText) {
-    if (activeMode === 'VISUAL') statusText.textContent = '24/7 Active • Visual First';
-    else if (activeMode === 'DOM') statusText.textContent = '24/7 Active • DOM Mode';
-    else statusText.textContent = '24/7 Active • Hybrid AI';
-  }
-}
-
 async function loadLiveStats() {
   const statsRes = await chrome.runtime.sendMessage({ type: 'GET_STATS' }).catch(() => ({}));
   const localData = await chrome.storage.local.get([
@@ -150,8 +77,7 @@ async function loadLiveStats() {
     'recentCaptures',
     'totalCollectedEver',
     'userEmail',
-    'userRole',
-    'scraperMode'
+    'userRole'
   ]);
 
   const totalSent = statsRes?.totalSent || localData.totalSent || 0;
@@ -166,26 +92,26 @@ async function loadLiveStats() {
   if ($('stat-pending')) $('stat-pending').textContent = queueLen.toLocaleString();
 
   // 2. Compute Scout Power Meter & Score
-  const score = Math.min(100, Math.max(75, 75 + Math.min(25, (pagesScanned * 2 + totalCaptured * 3))));
+  const score = Math.min(100, Math.max(88, 88 + Math.min(12, (pagesScanned + totalCaptured * 2))));
 
   if ($('scout-score')) $('scout-score').textContent = score;
   if ($('meter-bar-fill')) $('meter-bar-fill').style.width = `${score}%`;
 
   if ($('scout-user-label')) {
-    const mode = localData.scraperMode || 'Hybrid';
-    $('scout-user-label').textContent = `${mode} AI Active`;
+    if (localData.userEmail) {
+      $('scout-user-label').textContent = `Autonomous Scout: ${localData.userEmail.split('@')[0]}`;
+    } else {
+      $('scout-user-label').textContent = 'Autonomous Intelligence Active';
+    }
   }
 
   if ($('scout-rank')) {
     if (score >= 95) {
       $('scout-rank').textContent = 'Master Scout';
-      $('scout-efficiency-text').textContent = 'Visual & DOM continuous extraction';
-    } else if (score >= 85) {
-      $('scout-rank').textContent = 'Pro Scout';
-      $('scout-efficiency-text').textContent = 'Real-time corporate screen pipeline';
+      $('scout-efficiency-text').textContent = 'Autonomous continuous visual & DOM extraction';
     } else {
       $('scout-rank').textContent = 'Active Scout';
-      $('scout-efficiency-text').textContent = 'Scanning web for candidate leads';
+      $('scout-efficiency-text').textContent = 'Continuously monitoring web for leads';
     }
   }
 

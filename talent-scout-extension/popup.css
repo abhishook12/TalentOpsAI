@@ -141,52 +141,61 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Mode Selector Card ── */
-.mode-selector-card {
+/* ── Autonomous Engine Telemetry Card ── */
+.engine-telemetry-card {
   background: #0f172a;
   border: 1px solid #1e293b;
   border-radius: 8px;
-  padding: 7px 9px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+  padding: 8px 10px;
 }
 
-.mode-label {
-  font-size: 9px;
+.engine-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.engine-title {
+  font-size: 10px;
   font-weight: 700;
-  color: #64748b;
+  color: #94a3b8;
   letter-spacing: 0.5px;
 }
 
-.mode-pills {
+.engine-badge {
+  font-size: 9px;
+  font-weight: 700;
+  color: #4ade80;
+  background: rgba(34, 197, 94, 0.15);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.engine-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px 8px;
+}
+
+.engine-item {
+  font-size: 9px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
   gap: 4px;
 }
 
-.mode-btn {
-  background: #131b2e;
-  border: 1px solid #1e293b;
-  color: #94a3b8;
-  font-size: 10px;
-  font-weight: 700;
-  border-radius: 5px;
-  padding: 4px 2px;
-  cursor: pointer;
-  transition: all 0.2s;
+.engine-item b {
+  color: #38bdf8;
 }
 
-.mode-btn:hover {
-  background: #1e293b;
-  color: #f8fafc;
-}
-
-.mode-btn.active {
-  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
-  border-color: #6366f1;
-  color: #ffffff;
-  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.4);
+.engine-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #22c55e;
+  display: inline-block;
 }
 
 /* ── Meter Card ── */

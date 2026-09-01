@@ -1,6 +1,6 @@
 // ============================================================
-// content.js — Real-Time High-Speed Observer & Visual-First Ingestion Brain
-// Supports 3 Operational Modes: VISUAL (Screenshot-First), DOM, and HYBRID
+// content.js — Continuous Autonomous Visual & DOM Data Fusion Brain
+// 100% Autonomous • Zero-Configuration • 24/7 Passive Intelligence
 // ============================================================
 
 (function() {
@@ -22,17 +22,17 @@
     });
   } catch (_) {}
 
-  // ── 2. Immediate Initial Scan on Load ──────────────────────
+  // ── 2. Immediate Initial Autonomous Scan on Load ───────────
   setTimeout(() => {
-    runUnifiedScan();
-    setTimeout(runUnifiedScan, 800);
-    setTimeout(runUnifiedScan, 2000);
-  }, 50);
+    runAutonomousFusionScan();
+    setTimeout(runAutonomousFusionScan, 800);
+    setTimeout(runAutonomousFusionScan, 2200);
+  }, 60);
 
   // ── 3. Listen for Messages from Background Worker ──────────
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === 'TRIGGER_SCAN' || msg.type === 'MANUAL_CAPTURE') {
-      runUnifiedScan(true).then(() => sendResponse({ ok: true }));
+      runAutonomousFusionScan(true).then(() => sendResponse({ ok: true }));
       return true;
     }
   });
@@ -52,7 +52,7 @@
           });
         } catch (_) {}
       }
-      runUnifiedScan();
+      runAutonomousFusionScan();
     }, 60);
   });
 
@@ -72,7 +72,7 @@
           characterData: false,
           attributes: false,
         });
-        runUnifiedScan();
+        runAutonomousFusionScan();
       }
     });
   }
@@ -82,47 +82,34 @@
   window.addEventListener('scroll', () => {
     if (!scrollTimer) {
       scrollTimer = setTimeout(() => {
-        runUnifiedScan();
+        runAutonomousFusionScan();
         scrollTimer = null;
-      }, 200);
+      }, 220);
     }
   }, { passive: true });
 
-  // ── 6. Unified Multi-Mode Scan Runner ──────────────────────
-  async function runUnifiedScan(force = false) {
+  // ── 6. Autonomous Visual + DOM Data Fusion Engine ──────────
+  async function runAutonomousFusionScan(force = false) {
     if (isScanning && !force) return;
     isScanning = true;
 
     try {
-      // Check active scraper mode
-      const modeRes = await new Promise(r => chrome.runtime.sendMessage({ type: 'GET_SCRAPER_MODE' }, r)).catch(() => ({ mode: 'HYBRID' }));
-      const mode = modeRes?.mode || 'HYBRID';
+      // 1. Run Visual-First Screen Capture & Understanding
+      const visualLeads = await runVisualCapturePipeline(force);
 
-      const results = [];
+      // 2. Run DOM & Microdata Heuristic Scanners
+      const domLeads = runDomDetectorPipeline();
 
-      // ── A. VISUAL MODE (Screenshot & Screen Understanding First) ──
-      if (mode === 'VISUAL' || mode === 'HYBRID') {
-        const visualResults = await runVisualScan(force);
-        if (visualResults && visualResults.length > 0) {
-          results.push(...visualResults);
-        }
-      }
+      // 3. FUSE DATA: Merge Visual + DOM intelligence into superior enriched records
+      const fusedLeads = fuseVisualAndDomLeads(visualLeads, domLeads);
 
-      // ── B. DOM MODE (HTML & DOM Detectors) ────────────────────────
-      if (mode === 'DOM' || (mode === 'HYBRID' && results.length === 0)) {
-        const domResults = runDomScan();
-        if (domResults && domResults.length > 0) {
-          results.push(...domResults);
-        }
-      }
-
-      if (results.length === 0) {
+      if (fusedLeads.length === 0) {
         isScanning = false;
         return;
       }
 
-      // ── C. Filter, Score, & Deduplicate ──────────────────────────
-      const qualified = results.filter(r => {
+      // 4. Quality Scoring
+      const qualified = fusedLeads.filter(r => {
         const score = ts.scoreRelevance ? ts.scoreRelevance(r) : 50;
         r._relevance_score = score;
         return score >= 20;
@@ -133,13 +120,14 @@
         return;
       }
 
+      // 5. Local Fast Deduplication
       const fresh = await deduplicateLocally(qualified);
       if (fresh.length === 0) {
         isScanning = false;
         return;
       }
 
-      // Enrich metadata
+      // 6. Enrich Metadata
       const enriched = fresh.map(r => ({
         ...r,
         source_url: location.href,
@@ -147,39 +135,39 @@
         captured_at: new Date().toISOString(),
       }));
 
-      // Queue instantly to background service worker
+      // 7. Stream directly to background service worker
       chrome.runtime.sendMessage({
         type: 'QUEUE_CONTACTS',
         contacts: enriched,
       });
 
-      // Housekeeping: purge expired temporary screenshots (2-3 min TTL)
+      // 8. Auto-Purge expired temporary screenshots (2-3 min TTL)
       if (ts.Visual?.Store) {
         ts.Visual.Store.purgeExpired().catch(() => {});
       }
 
     } catch (e) {
-      // Silent catch
+      // Silent error handler
     } finally {
       isScanning = false;
     }
   }
 
-  // ── 7. Visual-First Pipeline (Canvas Diff + Temporary Storage + Vision Extraction)
-  async function runVisualScan(force = false) {
+  // ── 7. Visual-First Pipeline ───────────────────────────────
+  async function runVisualCapturePipeline(force = false) {
     if (!ts.Visual?.Diff || !ts.Visual?.Store || !ts.Visual?.Engine) return [];
 
-    // 1. Capture visual frame from background
+    // Capture visual frame from background
     const capRes = await new Promise(r => chrome.runtime.sendMessage({ type: 'CAPTURE_VISIBLE_TAB' }, r)).catch(() => null);
     if (!capRes || !capRes.ok || !capRes.dataUrl) return [];
 
-    // 2. Compute visual difference
+    // Evaluate visual difference score
     const diff = await ts.Visual.Diff.evaluateFrame(capRes.dataUrl);
     if (!diff.isMeaningful && !force) {
-      return []; // Frame is identical or tiny noise — skip expensive processing
+      return []; // Tiny/unimportant animation change — skip
     }
 
-    // 3. Save to temporary storage with 3-minute TTL
+    // Save temporary screenshot into IndexedDB with 3-minute TTL
     const stored = await ts.Visual.Store.saveScreenshot({
       page_url: location.href,
       page_title: document.title,
@@ -188,14 +176,14 @@
       status: 'PROCESSING',
     });
 
-    // 4. Run Visual Intelligence Analysis
+    // Run Visual Intelligence Multi-Entity Extraction
     const analysis = await ts.Visual.Engine.analyzeScreenshot(capRes.dataUrl, {
       change_score: diff.score,
     });
 
     const entities = analysis?.entities || [];
 
-    // 5. Update temporary storage status and lock in cleanup timer
+    // Lock in cleanup timer after sync
     if (stored?.id) {
       await ts.Visual.Store.updateStatus(stored.id, 'SYNC_COMPLETE', entities);
     }
@@ -203,8 +191,8 @@
     return entities;
   }
 
-  // ── 8. DOM Detectors Pipeline ──────────────────────────────
-  function runDomScan() {
+  // ── 8. DOM Detector Pipeline ───────────────────────────────
+  function runDomDetectorPipeline() {
     const all = [];
     const linkedin = ts.detectLinkedIn ? ts.detectLinkedIn() : [];
     const email = ts.detectEmail ? ts.detectEmail() : [];
@@ -217,7 +205,36 @@
     return all;
   }
 
-  // ── 9. Local Cache Deduplication ───────────────────────────
+  // ── 9. Data Fusion: Merge Visual & DOM Discoveries ──────────
+  function fuseVisualAndDomLeads(visualLeads = [], domLeads = []) {
+    const mergedMap = new Map();
+
+    // Ingest DOM leads first as baseline
+    domLeads.forEach(d => {
+      const key = (d.email || d.linkedin_url || `${d.recruiter_name}@${d.company_name}` || '').toLowerCase();
+      if (key) mergedMap.set(key, { ...d });
+    });
+
+    // Merge Visual leads into matching records or append new ones
+    visualLeads.forEach(v => {
+      const key = (v.email || v.linkedin_url || `${v.recruiter_name}@${v.company_name}` || '').toLowerCase();
+      if (key && mergedMap.has(key)) {
+        const existing = mergedMap.get(key);
+        // Enrich existing with visual context
+        if (v.title && !existing.title) existing.title = v.title;
+        if (v.company_name && !existing.company_name) existing.company_name = v.company_name;
+        if (v.phone && !existing.phone) existing.phone = v.phone;
+        if (v.location && !existing.location) existing.location = v.location;
+        existing.source = 'visual_dom_fusion';
+      } else if (key) {
+        mergedMap.set(key, { ...v, source: 'visual_capture' });
+      }
+    });
+
+    return Array.from(mergedMap.values());
+  }
+
+  // ── 10. Local Cache Deduplication ──────────────────────────
   async function deduplicateLocally(results) {
     const stored = await new Promise(r => chrome.storage.local.get(['seenKeys'], r));
     const seenKeys = new Set(stored.seenKeys || []);

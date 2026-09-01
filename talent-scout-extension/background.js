@@ -107,6 +107,16 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   }
 });
 
+// ── 2b. Seamless Active Tab Switch Listener ──────────────────
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  try {
+    const tab = await chrome.tabs.get(activeInfo.tabId);
+    if (tab?.url && tab.url.startsWith('http')) {
+      chrome.tabs.sendMessage(activeInfo.tabId, { type: 'TRIGGER_SCAN' }).catch(() => {});
+    }
+  } catch (_) {}
+});
+
 // ── 3. Periodic Alarms (Fallback flush & Hourly Heartbeat) ────
 chrome.alarms.create('sendBatch', { periodInMinutes: 0.5 });
 chrome.alarms.create('heartbeat', { periodInMinutes: 60 });

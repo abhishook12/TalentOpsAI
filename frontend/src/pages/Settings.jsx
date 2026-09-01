@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
-import { User, Bell, Lock, Key, Globe, Shield, Smartphone, ArrowRight, Laptop, LogOut, Mail, Server, MoreVertical, ExternalLink, Star, Loader2 } from 'lucide-react';
+import { User, Bell, Lock, Key, Globe, Shield, Smartphone, ArrowRight, Laptop, LogOut, Mail, Server, MoreVertical, ExternalLink, Star, Loader2, Puzzle, Download, CheckCircle, Copy } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { API } from '../services/api';
@@ -142,6 +142,7 @@ export default function Settings() {
     { id: 'notifications', label: 'Notifications' },
     { id: 'security', label: 'Privacy & Security' },
     { id: 'integrations', label: 'API & Integrations' },
+    { id: 'extension', label: 'Talent Scout Extension' },
   ];
 
   return (
@@ -587,6 +588,71 @@ export default function Settings() {
                   <Bell size={32} style={{ color: 'var(--text-secondary)', marginBottom: 16 }} />
                   <h3 style={{ margin: '0 0 8px', fontSize: 16, color: 'var(--text-primary)', fontWeight: 500 }}>Notifications are managed globally</h3>
                   <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)' }}>Notification settings are currently managed by your organization administrator.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'extension' && (
+            <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              {/* Banner */}
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(56, 189, 248, 0.08) 100%)',
+                border: '1px solid rgba(99, 102, 241, 0.35)', borderRadius: 12, padding: '24px 28px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+              }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                    <Puzzle size={22} color="#818cf8" />
+                    <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                      Talent Scout Chrome Extension
+                    </h2>
+                  </div>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: 13, margin: 0, lineHeight: 1.5, maxWidth: 520 }}>
+                    Automatically capture and enrich recruiter profiles from LinkedIn, Gmail, Outlook, and job sites as you browse the web.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    const downloadUrl = 'https://talentopsai-1.onrender.com/recruiters/extension/download';
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = 'talentops-scout-extension.zip';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    toast.success('Extension package downloaded!');
+                  }}
+                  style={{
+                    padding: '10px 22px', background: '#6366f1', color: '#ffffff', border: 'none',
+                    borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex',
+                    alignItems: 'center', gap: 8, boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  <Download size={16} />
+                  <span>⚡ 1-Click Download</span>
+                </button>
+              </div>
+
+              {/* 3 Steps */}
+              <div style={{ background: 'var(--bg-panel)', borderRadius: 12, border: '1px solid var(--card-border)', padding: 24 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 16px' }}>
+                  Quick 3-Step Setup
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+                  <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#818cf8', marginBottom: 4 }}>1. Download ZIP</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Click the button above and unzip the downloaded folder.</div>
+                  </div>
+                  <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8', marginBottom: 4 }}>2. Open Extensions</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Go to <code>chrome://extensions/</code> and enable Developer mode.</div>
+                  </div>
+                  <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#4ade80', marginBottom: 4 }}>3. Load & Activate</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Click <b>Load unpacked</b>, select the folder, and enter your activation code.</div>
+                  </div>
                 </div>
               </div>
             </div>

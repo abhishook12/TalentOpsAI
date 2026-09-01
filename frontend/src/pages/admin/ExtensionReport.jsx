@@ -100,15 +100,15 @@ export default function ExtensionReport() {
           >
             <span>⚡ 1-Click Install Extension</span>
           </button>
-          <div style={{ display: 'flex', gap: 4, background: 'var(--surface-2)', padding: 3, borderRadius: 8 }}>
+          <div style={{ display: 'flex', gap: 4, background: '#1e293b', padding: 3, borderRadius: 8, border: '1px solid #334155' }}>
             {[7, 14, 30, 90].map(d => (
               <button
                 key={d}
                 onClick={() => setDays(d)}
                 style={{
                   padding: '5px 12px', borderRadius: 6, border: 'none', fontSize: 12, fontWeight: 600,
-                  background: days === d ? 'var(--brand)' : 'transparent',
-                  color: days === d ? '#fff' : 'var(--text-secondary)',
+                  background: days === d ? '#6366f1' : 'transparent',
+                  color: days === d ? '#ffffff' : '#94a3b8',
                   cursor: 'pointer',
                 }}
               >
@@ -121,13 +121,13 @@ export default function ExtensionReport() {
 
       {/* 1-Click Installation Banner */}
       <div style={{
-        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(56, 189, 248, 0.08) 100%)',
-        border: '1px solid rgba(99, 102, 241, 0.3)', borderRadius: 12, padding: '16px 20px',
+        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(56, 189, 248, 0.08) 100%)',
+        border: '1px solid rgba(99, 102, 241, 0.35)', borderRadius: 12, padding: '16px 20px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{
-            fontSize: 24, background: 'rgba(99, 102, 241, 0.2)', width: 44, height: 44,
+            fontSize: 24, background: 'rgba(99, 102, 241, 0.25)', width: 44, height: 44,
             borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             📡
@@ -144,8 +144,9 @@ export default function ExtensionReport() {
         <button
           onClick={handleDownloadAndInstall}
           style={{
-            padding: '8px 18px', background: 'var(--brand)', color: '#fff', border: 'none',
+            padding: '9px 20px', background: '#6366f1', color: '#ffffff', border: 'none',
             borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+            boxShadow: '0 2px 10px rgba(99, 102, 241, 0.4)',
           }}
         >
           Download & Setup

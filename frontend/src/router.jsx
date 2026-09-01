@@ -114,6 +114,13 @@ const settingsRoute = createRoute({
   component: lazyComponent(() => import('./pages/Settings')),
 })
 
+const extensionHubRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/extension',
+  component: lazyComponent(() => import('./pages/ExtensionHub')),
+})
+
+
 const profileRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/profile',
@@ -253,6 +260,7 @@ const routeTree = rootRoute.addChildren([
   mailIntelRoute,
   profileRoute,
   settingsRoute,
+  extensionHubRoute,
   adminLayoutRoute.addChildren([
     adminRoute,
     activityRoute,

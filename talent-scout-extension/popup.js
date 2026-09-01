@@ -207,7 +207,11 @@ async function renderLiveDiscoveries(recentLocal = []) {
   // If local list empty, query live provenance endpoint from backend (ONLY actual discovery events)
   if (list.length === 0) {
     try {
-      const res = await fetch(`${API_BASE}/recruiters/extension/live-feed?limit=6`).then(r => r.json()).catch(() => null);
+      const auth = await chrome.storage.local.get(['authToken']);
+      const syncAuth = await chrome.storage.sync.get(['authToken']);
+      const token = auth.authToken || syncAuth.authToken;
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+      const res = await fetch(`${API_BASE}/recruiters/extension/live-feed?limit=6`, { headers }).then(r => r.json()).catch(() => null);
       if (res?.feed && res.feed.length > 0) {
         list = res.feed;
       }

@@ -14,7 +14,7 @@
         <img src="icons/icon48.png" alt="TalentOps" class="logo" />
         <div>
           <div class="brand">TalentOps Scout</div>
-          <div class="version">Autonomous Intelligence v3.0</div>
+          <div class="version">Forensic Intelligence v3.0</div>
         </div>
       </div>
     </div>
@@ -32,7 +32,7 @@
     </div>
   </div>
 
-  <!-- 2. DASHBOARD SCREEN (100% Autonomous 24/7 Engine) -->
+  <!-- 2. DASHBOARD SCREEN (100% Autonomous & Traceable Forensic Engine) -->
   <div id="screen-active" class="screen">
     <!-- Header with Continuous Live Status -->
     <div class="header">
@@ -53,51 +53,33 @@
       </div>
     </div>
 
-    <!-- Autonomous Engine Status Card -->
+    <!-- Autonomous Engine Live Diagnostic Status -->
     <div class="engine-telemetry-card">
       <div class="engine-header">
-        <span class="engine-title">SCOUT ENGINE</span>
-        <span class="engine-badge">● AUTONOMOUS</span>
+        <span class="engine-title">LIVE CAPTURE ENGINE</span>
+        <span class="engine-badge">● AUTONOMOUS 24/7</span>
       </div>
       <div class="engine-grid">
         <div class="engine-item"><span class="engine-dot"></span> Visual Capture: <b>ACTIVE</b></div>
         <div class="engine-item"><span class="engine-dot"></span> DOM Extraction: <b>ACTIVE</b></div>
         <div class="engine-item"><span class="engine-dot"></span> Change Detection: <b>ACTIVE</b></div>
-        <div class="engine-item"><span class="engine-dot"></span> Database Sync: <b>ACTIVE</b></div>
+        <div class="engine-item"><span class="engine-dot"></span> Cloud DB Sync: <b>ACTIVE</b></div>
       </div>
     </div>
 
-    <!-- Scout Power / Activity Score Meter -->
-    <div class="meter-card">
-      <div class="meter-header">
-        <span class="meter-label">Scout Power Meter</span>
-        <span id="scout-rank" class="meter-badge">Master Scout</span>
-      </div>
-      <div class="score-row">
-        <div class="score-number" id="scout-score">98</div>
-        <div class="score-desc">
-          <div class="score-title" id="scout-user-label">Continuous Extraction Active</div>
-          <div class="score-sub" id="scout-efficiency-text">Autonomous visual & DOM intelligence</div>
-        </div>
-      </div>
-      <div class="meter-bar-track">
-        <div id="meter-bar-fill" class="meter-bar-fill" style="width: 98%;"></div>
-      </div>
-    </div>
-
-    <!-- 4 Stats Counters Grid -->
+    <!-- Evidence-Based Live Metrics Grid -->
     <div class="stats-grid">
       <div class="stat-box">
+        <div class="stat-val" id="stat-scanned" style="color: #c084fc;">0</div>
+        <div class="stat-lbl">👁️ Pages Observed</div>
+      </div>
+      <div class="stat-box">
         <div class="stat-val" id="stat-collected" style="color: #60a5fa;">0</div>
-        <div class="stat-lbl">🎯 Collected</div>
+        <div class="stat-lbl">🎯 Discovered</div>
       </div>
       <div class="stat-box">
         <div class="stat-val" id="stat-synced" style="color: #4ade80;">0</div>
         <div class="stat-lbl">🚀 Synced DB</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-val" id="stat-scanned" style="color: #c084fc;">1</div>
-        <div class="stat-lbl">🔍 Pages Read</div>
       </div>
       <div class="stat-box">
         <div class="stat-val" id="stat-pending" style="color: #fbbf24;">0</div>
@@ -108,23 +90,51 @@
     <!-- Notification Toast / Alert Box -->
     <div id="scan-feedback" class="feedback-banner hidden"></div>
 
-    <!-- Live Captured Stream Preview -->
-    <div class="activity-section">
-      <div class="section-header">
-        <span id="stream-header-title">⚡ Live Intelligence Feed</span>
-        <span id="stream-count" class="badge-mini">Live</span>
-      </div>
-      <div id="feed-list" class="feed-list">
-        <div class="feed-empty">
-          <span>📡 Continuous autonomous extraction active • streaming leads into database.</span>
+    <!-- Tabs Navigation: Live Discoveries vs Real-Time Event Log -->
+    <div class="tab-nav">
+      <button id="tab-btn-feed" class="tab-btn active">⚡ Live Discoveries</button>
+      <button id="tab-btn-logs" class="tab-btn">📋 Real-Time Event Log</button>
+    </div>
+
+    <!-- TAB A: Live Discoveries Feed (Only Genuine Session Extractions) -->
+    <div id="tab-feed" class="tab-content active">
+      <div class="activity-section">
+        <div id="feed-list" class="feed-list">
+          <div class="feed-empty">
+            <span>📡 Waiting for browser screen change or profile navigation...</span>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- 24/7 Continuous Autonomous Status Footer -->
+    <!-- TAB B: Real-Time Event Log -->
+    <div id="tab-logs" class="tab-content hidden">
+      <div class="event-log-container" id="event-log-list">
+        <div class="log-entry log-info">
+          <span class="log-time">Now</span>
+          <span class="log-tag">READY</span>
+          <span class="log-msg">Autonomous Visual & DOM engine active</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Buffer Diagnostics Footer -->
     <div class="footer-live-status">
       <span class="live-pulse-dot"></span>
-      <span class="live-status-text" id="footer-status-text">Continuously running in background • 0 action needed</span>
+      <span class="live-status-text" id="footer-status-text">Visual buffer: 0 images (0 MB) • Auto-purges in 3m</span>
+    </div>
+  </div>
+
+  <!-- 3. FORENSIC RECORD PROVENANCE MODAL -->
+  <div id="modal-provenance" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title">🔍 RECORD PROVENANCE</div>
+        <button id="modal-close" class="modal-close-btn">✕</button>
+      </div>
+      <div class="modal-body" id="modal-provenance-content">
+        <!-- Injected dynamically by popup.js -->
+      </div>
     </div>
   </div>
 

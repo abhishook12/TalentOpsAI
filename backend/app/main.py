@@ -58,7 +58,12 @@ if RUN_STARTUP_MIGRATIONS:
             except Exception:
                 _db.rollback()
 
-            # Ensure any missing tables (like smart_import_jobs) are created
+            # Ensure any missing tables (like extension_discovery_events) are created
+            try:
+                from .models import extension_models
+                Base.metadata.create_all(bind=_db.get_bind())
+            except Exception as e:
+                logger.warning("Error creating missing model tables: %s", e)
             
             try:
                 from .seed_roles import seed_roles_and_permissions

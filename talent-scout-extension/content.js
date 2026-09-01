@@ -1,6 +1,6 @@
 // ============================================================
 // content.js — Continuous Autonomous Visual & DOM Data Fusion Brain
-// 100% Autonomous • Zero-Configuration • 24/7 Passive Intelligence
+// 100% Autonomous • Zero-Configuration • Complete Forensic Provenance
 // ============================================================
 
 (function() {
@@ -13,6 +13,20 @@
   let debounceTimer = null;
   let lastUrl = location.href;
 
+  function logEvent(eventType, detail) {
+    try {
+      chrome.runtime.sendMessage({
+        type: 'APPEND_EVENT_LOG',
+        event: {
+          timestamp: new Date().toLocaleTimeString(),
+          type: eventType,
+          detail: detail || '',
+          url: location.href,
+        }
+      });
+    } catch (_) {}
+  }
+
   // ── 1. Notify background of Page View immediately ───────────
   try {
     chrome.runtime.sendMessage({
@@ -20,6 +34,7 @@
       url: location.href,
       title: document.title,
     });
+    logEvent('PAGE_OBSERVED', document.title || location.hostname);
   } catch (_) {}
 
   // ── 2. Immediate Initial Autonomous Scan on Load ───────────
@@ -44,6 +59,7 @@
       if (location.href !== lastUrl) {
         lastUrl = location.href;
         if (ts.Visual?.Diff) ts.Visual.Diff.resetBaseline();
+        logEvent('PAGE_CHANGED', document.title || location.hostname);
         try {
           chrome.runtime.sendMessage({
             type: 'PAGE_VIEW',
@@ -127,13 +143,18 @@
         return;
       }
 
-      // 6. Enrich Metadata
+      // 6. Enrich Metadata with Provenance Trace
       const enriched = fresh.map(r => ({
         ...r,
+        discovery_id: r.discovery_id || ('DISC-' + crypto.randomUUID().slice(0, 8).toUpperCase()),
+        capture_id: r.capture_id || ('CAP-' + Math.floor(10000 + Math.random() * 90000)),
         source_url: location.href,
         source_page_title: document.title,
         captured_at: new Date().toISOString(),
+        confidence: r.confidence || 92,
       }));
+
+      logEvent('DATA_EXTRACTED', `Discovered ${enriched.length} contact(s): ${enriched.map(e => e.recruiter_name).join(', ')}`);
 
       // 7. Stream directly to background service worker
       chrome.runtime.sendMessage({
@@ -143,7 +164,10 @@
 
       // 8. Auto-Purge expired temporary screenshots (2-3 min TTL)
       if (ts.Visual?.Store) {
-        ts.Visual.Store.purgeExpired().catch(() => {});
+        const purged = await ts.Visual.Store.purgeExpired().catch(() => 0);
+        if (purged > 0) {
+          logEvent('SCREENSHOT_PURGED', `${purged} temporary buffer image(s) deleted`);
+        }
       }
 
     } catch (e) {
@@ -167,8 +191,12 @@
       return []; // Tiny/unimportant animation change — skip
     }
 
+    const captureId = 'VC-' + Math.floor(10000 + Math.random() * 90000);
+    logEvent('SCREENSHOT_CAPTURED', `${captureId} (Delta: ${Math.round(diff.score * 100)}%)`);
+
     // Save temporary screenshot into IndexedDB with 3-minute TTL
     const stored = await ts.Visual.Store.saveScreenshot({
+      id: captureId,
       page_url: location.href,
       page_title: document.title,
       change_score: diff.score,
@@ -176,12 +204,24 @@
       status: 'PROCESSING',
     });
 
+    logEvent('VISION_PROCESSING', `${captureId} analyzing people & context`);
+
     // Run Visual Intelligence Multi-Entity Extraction
     const analysis = await ts.Visual.Engine.analyzeScreenshot(capRes.dataUrl, {
       change_score: diff.score,
+      capture_id: captureId,
     });
 
-    const entities = analysis?.entities || [];
+    const entities = (analysis?.entities || []).map(e => ({
+      ...e,
+      capture_id: captureId,
+      visual_change_score: diff.score,
+      screenshot_preview: capRes.dataUrl.slice(0, 150) + '...', // safe preview token
+    }));
+
+    if (entities.length > 0) {
+      logEvent('FOUND_PEOPLE', `${entities.length} people identified visually in ${captureId}`);
+    }
 
     // Lock in cleanup timer after sync
     if (stored?.id) {
@@ -225,6 +265,8 @@
         if (v.company_name && !existing.company_name) existing.company_name = v.company_name;
         if (v.phone && !existing.phone) existing.phone = v.phone;
         if (v.location && !existing.location) existing.location = v.location;
+        existing.capture_id = v.capture_id || existing.capture_id;
+        existing.visual_change_score = v.visual_change_score || existing.visual_change_score;
         existing.source = 'visual_dom_fusion';
       } else if (key) {
         mergedMap.set(key, { ...v, source: 'visual_capture' });

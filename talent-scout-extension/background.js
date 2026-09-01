@@ -15,6 +15,17 @@ let contactQueue = [];
 let sessionStats = { captured: 0, sent: 0, duplicates: 0, errors: 0 };
 let deviceId = null;
 let fastFlushTimer = null;
+let sessionLogs = [];
+
+function addSessionLog(evt) {
+  sessionLogs.unshift({
+    timestamp: evt.timestamp || new Date().toLocaleTimeString(),
+    type: evt.type || 'INFO',
+    detail: evt.detail || '',
+    url: evt.url || '',
+  });
+  if (sessionLogs.length > 50) sessionLogs = sessionLogs.slice(0, 50);
+}
 
 // ── 0. Load Pre-Configured Credentials if bundled with Package ──
 async function loadPreConfiguredCredentials() {
@@ -221,6 +232,20 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           break;
         }
 
+        // ── Session Event Logs ──
+        case 'APPEND_EVENT_LOG': {
+          if (msg.event) {
+            addSessionLog(msg.event);
+          }
+          sendResponse({ ok: true });
+          break;
+        }
+
+        case 'GET_EVENT_LOGS': {
+          sendResponse({ ok: true, logs: sessionLogs });
+          break;
+        }
+
         // ── Visual Scraper Messages ──
         case 'CAPTURE_VISIBLE_TAB': {
           try {
@@ -229,18 +254,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           } catch (e) {
             sendResponse({ ok: false, error: e.message });
           }
-          break;
-        }
-
-        case 'GET_SCRAPER_MODE': {
-          const local = await chrome.storage.local.get(['scraperMode']);
-          sendResponse({ ok: true, mode: local.scraperMode || 'HYBRID' });
-          break;
-        }
-
-        case 'SET_SCRAPER_MODE': {
-          await chrome.storage.local.set({ scraperMode: msg.mode || 'HYBRID' });
-          sendResponse({ ok: true, mode: msg.mode });
           break;
         }
 
@@ -356,6 +369,12 @@ async function flushQueue() {
     if (res.ok) {
       sessionStats.sent += data.accepted || 0;
       sessionStats.duplicates += data.duplicates || 0;
+
+      addSessionLog({
+        timestamp: new Date().toLocaleTimeString(),
+        type: 'DATABASE_SYNC_SUCCESS',
+        detail: `Synced ${data.accepted || 0} new, ${data.duplicates || 0} matched/enriched`,
+      });
 
       const cur = await chrome.storage.local.get(['totalSent']);
       await chrome.storage.local.set({

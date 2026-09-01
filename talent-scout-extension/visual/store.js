@@ -168,15 +168,38 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
   }
 
   /**
-   * Startup cleanup / wipe all
+   * Diagnostic summary of active memory buffer & next auto-purge countdown
    */
-  async function purgeAll() {
+  async function getBufferDiagnostics() {
     const db = await openDB();
+    const now = Date.now();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const tx = db.transaction(STORE_NAME, 'readonly');
       const store = tx.objectStore(STORE_NAME);
-      const req = store.clear();
-      req.onsuccess = () => resolve(true);
+      const req = store.getAll();
+
+      req.onsuccess = () => {
+        const items = req.result || [];
+        let totalBytes = 0;
+        let minExpires = Infinity;
+
+        items.forEach(item => {
+          if (item.image_data) totalBytes += item.image_data.length;
+          if (item.expires_at && item.expires_at < minExpires) {
+            minExpires = item.expires_at;
+          }
+        });
+
+        const nextPurgeSec = minExpires !== Infinity ? Math.max(0, Math.round((minExpires - now) / 1000)) : 180;
+        const mb = (totalBytes / (1024 * 1024)).toFixed(2);
+
+        resolve({
+          capturedCount: items.length,
+          storageMB: `${mb} MB`,
+          storageBytes: totalBytes,
+          nextPurgeSec: nextPurgeSec,
+        });
+      };
       req.onerror = () => reject(req.error);
     });
   }
@@ -189,6 +212,7 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
     getRecentScreenshots,
     purgeExpired,
     purgeAll,
+    getBufferDiagnostics,
     DEFAULT_TTL_MS,
   };
 

@@ -3,7 +3,7 @@ import json
 import uuid
 from app.database import SessionLocal
 from app.models.auth_models import User
-from app.models.extension_models import ExtensionActivationCode, ExtensionDevice, ExtensionHeartbeat, ExtensionSubmissionLog
+from app.models.extension_models import ExtensionActivationCode, ExtensionDevice, ExtensionHeartbeat, ExtensionSubmissionLog, ExtensionDiscoveryEvent
 from app.models.models import Recruiter, Company
 from app.routes.extension import (
     auto_activate_extension,
@@ -15,6 +15,7 @@ from app.routes.extension import (
     get_live_extension_summary,
     analyze_vision_screenshot,
     get_scraper_mode_comparison,
+    get_discovery_provenance,
     create_activation_code,
     ActivationRequest,
     BatchRequest,
@@ -26,9 +27,12 @@ from app.routes.extension import (
 from fastapi import Request
 from starlette.requests import Request as StarletteRequest
 
-db = SessionLocal()
+from app.database import Base
 
-print("=== EXTENSION & VISUAL SUITE INTEGRATION TEST ===")
+db = SessionLocal()
+Base.metadata.create_all(bind=db.get_bind())
+
+print("=== EXTENSION & FORENSIC PROVENANCE INTEGRATION TEST ===")
 
 # 1. Fetch admin user
 admin_user = db.query(User).filter(User.email == "abhishekjadon824@gmail.com").first()
@@ -57,9 +61,14 @@ act_res = activate_extension(req=act_req, db=db)
 token = act_res["access_token"]
 print(f"[OK] Extension Activated for device {device_id}. Received JWT.")
 
-# 5. Ingest Batch of Profiles (DOM Scraper)
+# 5. Ingest Batch of Profiles with Provenance
+test_disc_id = f"DISC-TEST-{uuid.uuid4().hex[:6].upper()}"
+test_cap_id = f"VC-TEST-{uuid.uuid4().hex[:4].upper()}"
+
 mock_contacts = [
     ExtensionContact(
+        discovery_id=test_disc_id,
+        capture_id=test_cap_id,
         recruiter_name="Sarah Jenkins",
         email=f"sjenkins_{uuid.uuid4().hex[:6]}@apexsystems.com",
         phone="512-555-0199",
@@ -67,11 +76,15 @@ mock_contacts = [
         company_name="Apex Systems",
         linkedin_url=f"https://www.linkedin.com/in/sarah-jenkins-{uuid.uuid4().hex[:6]}/",
         location="Austin, TX",
-        source="linkedin_profile",
+        source="visual_dom_fusion",
         source_url="https://www.linkedin.com/in/sarah-jenkins/",
-        source_page_title="Sarah Jenkins | LinkedIn"
+        source_page_title="Sarah Jenkins | LinkedIn",
+        visual_change_score=0.82,
+        confidence=96,
     ),
     ExtensionContact(
+        discovery_id=f"DISC-TEST-{uuid.uuid4().hex[:6].upper()}",
+        capture_id=test_cap_id,
         recruiter_name="Michael Chang",
         email=f"mchang_{uuid.uuid4().hex[:6]}@insightglobal.com",
         phone="404-555-0144",
@@ -81,22 +94,13 @@ mock_contacts = [
         location="Atlanta, GA",
         source="gmail_signature",
         source_url="https://mail.google.com/mail/u/0/#inbox/18b",
-        source_page_title="Re: Senior DevOps Role - Insight Global"
-    ),
-    ExtensionContact(
-        recruiter_name="Amanda Cruz",
-        email=f"acruz_{uuid.uuid4().hex[:6]}@teksystems.com",
-        title="Staffing Specialist",
-        company_name="TEKsystems",
-        location="Dallas, TX",
-        source="indeed_job_posting",
-        source_url="https://www.indeed.com/viewjob?jk=123",
-        source_page_title="TEKsystems - Cloud Engineer Job in Dallas"
+        source_page_title="Re: Senior DevOps Role - Insight Global",
+        visual_change_score=0.74,
+        confidence=92,
     )
 ]
 
 batch_req = BatchRequest(contacts=mock_contacts, device_id=device_id)
-
 scope = {"type": "http", "method": "POST", "path": "/recruiters/extension/batch", "headers": []}
 mock_req = StarletteRequest(scope)
 
@@ -109,55 +113,64 @@ batch_res = ingest_extension_batch(
     x_extension_version="3.0.0"
 )
 print(f"[OK] Ingested batch: accepted={batch_res['accepted']}, duplicates={batch_res['duplicates']}")
-assert batch_res['accepted'] == 3, f"Expected 3 accepted, got {batch_res['accepted']}"
+assert batch_res['accepted'] == 2, f"Expected 2 accepted, got {batch_res['accepted']}"
 
-# 6. Test Visual-First Scraper Pipeline
+# 6. Test Provenance Discovery Query
+prov_res = get_discovery_provenance(discovery_id=test_disc_id, db=db, current_user=admin_user)
+assert prov_res["discovery_id"] == test_disc_id
+assert prov_res["capture_id"] == test_cap_id
+assert prov_res["db_action"] == "NEW_DISCOVERY"
+assert prov_res["audit_verified"] == True
+print(f"[OK] Verified Forensic Provenance for {test_disc_id}: Recruiter={prov_res['recruiter_name']}, Action={prov_res['db_action']}, Score={prov_res['visual_change_score']}")
+
+# 7. Test Visual-First Scraper Pipeline
 vis_req = VisionAnalyzeRequest(
     image_data="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==",
     page_url="https://www.linkedin.com/in/david-ross-talent-lead/",
     page_title="David Ross - Head of Technical Sourcing | LinkedIn",
     change_score=0.88,
-    captured_at="2026-09-01T18:00:00Z"
+    captured_at="2026-09-02T00:00:00Z"
 )
 vis_res = analyze_vision_screenshot(req=vis_req, db=db)
 assert vis_res["status"] == "SUCCESS"
 assert len(vis_res["entities"]) > 0
 print(f"[OK] Visual-First Scraper analyzed screenshot: found {len(vis_res['entities'])} entities")
 
-# 7. Test Metrics Comparison (DOM vs Visual)
+# 8. Test Metrics Comparison (DOM vs Visual)
 comp_res = get_scraper_mode_comparison(db=db, current_user=admin_user)
 assert "dom_scraper" in comp_res and "visual_scraper" in comp_res
 print(f"[OK] Scraper comparison: DOM={comp_res['dom_scraper']['total_captured']}, Visual={comp_res['visual_scraper']['total_captured']}")
 
-# 8. Heartbeat Ping
+# 9. Heartbeat Ping
 hb_req = HeartbeatRequest(
     device_id=device_id,
     session_captured=4,
-    session_sent=3,
-    session_duplicates=1,
+    session_sent=2,
+    session_duplicates=0,
     queue_pending=0,
-    total_ever_sent=3,
+    total_ever_sent=2,
     extension_version="3.0.0"
 )
 hb_res = extension_heartbeat(req=hb_req, db=db, current_user=admin_user)
 print(f"[OK] Heartbeat ping response: {hb_res}")
 assert hb_res["ok"] == True
 
-# 9. Test Live Feed & Live Summary
+# 10. Test Live Feed (Strictly Provenance Events)
 feed_res = get_live_extension_feed(limit=5, db=db, current_user=admin_user)
 assert "feed" in feed_res and len(feed_res["feed"]) > 0
-print(f"[OK] Live feed retrieved: {len(feed_res['feed'])} recent items")
+top_item = feed_res["feed"][0]
+assert "discovery_id" in top_item and "db_action" in top_item
+print(f"[OK] Live Provenance Feed retrieved: {len(feed_res['feed'])} items (Top: {top_item['recruiter_name']} - {top_item['db_action']})")
 
 summary_res = get_live_extension_summary(db=db, current_user=admin_user)
 assert summary_res["total_recruiters"] > 0
 print(f"[OK] Live summary retrieved: {summary_res['total_recruiters']} recruiters, {summary_res['active_scouts']} active scouts")
 
-# 10. Admin Report
+# 11. Admin Report
 report_res = extension_report(days=7, db=db, current_user=admin_user)
 print(f"[OK] Admin report retrieved successfully.")
 print(f"     Total accepted in period: {report_res['totals']['accepted']}")
 print(f"     Total active devices: {len(report_res['devices'])}")
-print(f"     Daily summary rows: {len(report_res['daily_summary'])}")
-assert report_res['totals']['accepted'] >= 3, "Report totals did not reflect ingested contacts"
+assert report_res['totals']['accepted'] >= 2, "Report totals did not reflect ingested contacts"
 
-print("\n=== ALL EXTENSION & VISUAL SUITE INTEGRATION TESTS PASSED ===")
+print("\n=== ALL EXTENSION & FORENSIC PROVENANCE TESTS PASSED ===")

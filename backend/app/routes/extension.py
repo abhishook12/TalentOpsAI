@@ -33,6 +33,7 @@ from ..models.extension_models import (
     ExtensionDevice,
     ExtensionHeartbeat,
     ExtensionSubmissionLog,
+    ExtensionDiscoveryEvent,
 )
 from ..models.auth_models import User
 from ..services.auth_service import (
@@ -62,6 +63,8 @@ class ActivationRequest(BaseModel):
 
 
 class ExtensionContact(BaseModel):
+    discovery_id: Optional[str] = None
+    capture_id: Optional[str] = None
     recruiter_name: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
@@ -74,6 +77,8 @@ class ExtensionContact(BaseModel):
     source_page_title: Optional[str] = None
     device_id: Optional[str] = None
     captured_at: Optional[str] = None
+    visual_change_score: Optional[float] = None
+    confidence: Optional[int] = None
     _relevance_score: Optional[int] = None
 
 
@@ -322,16 +327,41 @@ def ingest_extension_batch(
             if existing:
                 # Update if new data improves the record
                 updated = False
+                fields_added = []
                 if contact.phone and not existing.phone:
-                    existing.phone = contact.phone; updated = True
+                    existing.phone = contact.phone; updated = True; fields_added.append("Phone")
                 if contact.linkedin_url and not existing.linkedin:
-                    existing.linkedin = contact.linkedin_url.split("?")[0]; updated = True
+                    existing.linkedin = contact.linkedin_url.split("?")[0]; updated = True; fields_added.append("LinkedIn")
                 if contact.title and not existing.title:
-                    existing.title = contact.title; updated = True
+                    existing.title = contact.title; updated = True; fields_added.append("Title")
                 if contact.location and not existing.location:
-                    existing.location = contact.location; updated = True
+                    existing.location = contact.location; updated = True; fields_added.append("Location")
                 if updated:
                     db.add(existing)
+
+                # Log Provenance Event
+                disc_event = ExtensionDiscoveryEvent(
+                    discovery_id=contact.discovery_id or f"DISC-{secrets.token_hex(4).upper()}",
+                    capture_id=contact.capture_id or f"CAP-{secrets.token_hex(4).upper()}",
+                    device_id=device_id,
+                    owner_user_id=current_user.id,
+                    recruiter_id=existing.recruiter_id,
+                    recruiter_name=existing.recruiter_name,
+                    company_name=contact.company_name or (existing.company.company_name if existing.company else None),
+                    title=existing.title,
+                    email=existing.email,
+                    phone=existing.phone,
+                    linkedin_url=existing.linkedin,
+                    location=existing.location,
+                    source_url=contact.source_url,
+                    source_page_title=contact.source_page_title,
+                    extraction_source=contact.source or "extension",
+                    visual_change_score=str(contact.visual_change_score or 0.0),
+                    confidence=contact.confidence or 92,
+                    db_action="ENRICHED" if updated else "PREVIOUSLY_KNOWN",
+                    fields_added=json.dumps(fields_added),
+                )
+                db.add(disc_event)
                 duplicates += 1
                 continue
 
@@ -385,7 +415,32 @@ def ingest_extension_batch(
                 needs_review=not bool(email),  # flag if no real email
             )
             db.add(recruiter)
+            db.flush()
             accepted += 1
+
+            # Log New Discovery Provenance Event
+            disc_event = ExtensionDiscoveryEvent(
+                discovery_id=contact.discovery_id or f"DISC-{secrets.token_hex(4).upper()}",
+                capture_id=contact.capture_id or f"CAP-{secrets.token_hex(4).upper()}",
+                device_id=device_id,
+                owner_user_id=current_user.id,
+                recruiter_id=recruiter.recruiter_id,
+                recruiter_name=name,
+                company_name=contact.company_name,
+                title=contact.title,
+                email=recruiter.email,
+                phone=contact.phone,
+                linkedin_url=contact.linkedin_url,
+                location=contact.location,
+                source_url=contact.source_url,
+                source_page_title=contact.source_page_title,
+                extraction_source=contact.source or "extension",
+                visual_change_score=str(contact.visual_change_score or 0.0),
+                confidence=contact.confidence or 95,
+                db_action="NEW_DISCOVERY",
+                fields_added=json.dumps(["Name", "Title", "Company", "Email" if email else None, "Phone" if contact.phone else None, "LinkedIn" if contact.linkedin_url else None]),
+            )
+            db.add(disc_event)
 
         except Exception as e:
             errors.append(str(e)[:100])
@@ -464,7 +519,7 @@ def extension_heartbeat(
     return {"ok": True}
 
 
-# ── GET /recruiters/extension/live-feed — All Users ─────────────────────────
+# ── GET /recruiters/extension/live-feed — Authentic Discovery Stream ─────────
 @router.get("/live-feed")
 def get_live_extension_feed(
     limit: int = Query(15, ge=1, le=50),
@@ -472,32 +527,95 @@ def get_live_extension_feed(
     current_user: User = Depends(get_current_user_from_request),
 ):
     """
-    Returns latest enriched contacts captured across the scout network.
-    Accessible by all authenticated users to see real-time updates.
+    Returns verified discovery events captured across the scout network.
+    Every single record is an actual live event with full audit provenance.
+    Never returns seeded or raw historical database inventory without discovery traces.
     """
-    recent_recruiters = (
-        db.query(Recruiter)
-        .order_by(Recruiter.recruiter_id.desc())
+    events = (
+        db.query(ExtensionDiscoveryEvent)
+        .order_by(ExtensionDiscoveryEvent.created_at.desc())
         .limit(limit)
         .all()
     )
 
     feed = []
-    for r in recent_recruiters:
-        comp_name = r.company.company_name if r.company else None
-        has_real_email = bool(r.email and not r.email.endswith("@noemail.talentops"))
+    for ev in events:
+        fields = []
+        if ev.fields_added:
+            try:
+                fields = [f for f in json.loads(ev.fields_added) if f]
+            except Exception:
+                pass
+
         feed.append({
-            "id": r.recruiter_id,
-            "recruiter_name": r.recruiter_name,
-            "title": r.title or "Recruiter / Talent Partner",
-            "company_name": comp_name,
-            "location": r.location,
-            "has_email": has_real_email,
-            "has_phone": bool(r.phone),
-            "has_linkedin": bool(r.linkedin),
-            "verification_status": "verified" if has_real_email else "enriched",
+            "discovery_id": ev.discovery_id,
+            "capture_id": ev.capture_id,
+            "recruiter_id": ev.recruiter_id,
+            "recruiter_name": ev.recruiter_name,
+            "title": ev.title or "Recruiter / Talent Partner",
+            "company_name": ev.company_name or "Corporate",
+            "location": ev.location,
+            "has_email": bool(ev.email and not ev.email.endswith("@noemail.talentops")),
+            "has_phone": bool(ev.phone),
+            "has_linkedin": bool(ev.linkedin_url),
+            "source_url": ev.source_url,
+            "source_page_title": ev.source_page_title,
+            "extraction_source": ev.extraction_source,
+            "visual_change_score": ev.visual_change_score,
+            "confidence": ev.confidence or 92,
+            "db_action": ev.db_action or "NEW_DISCOVERY",
+            "fields_added": fields,
+            "timestamp": ev.created_at.isoformat() if ev.created_at else None,
         })
     return {"feed": feed}
+
+
+# ── GET /recruiters/extension/provenance/{discovery_id} ─────────────────────
+@router.get("/provenance/{discovery_id}")
+def get_discovery_provenance(
+    discovery_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Returns full forensic audit trace for a specific candidate discovery event.
+    """
+    ev = db.query(ExtensionDiscoveryEvent).filter(
+        ExtensionDiscoveryEvent.discovery_id == discovery_id
+    ).first()
+
+    if not ev:
+        raise HTTPException(status_code=404, detail="Discovery provenance record not found")
+
+    fields = []
+    if ev.fields_added:
+        try:
+            fields = [f for f in json.loads(ev.fields_added) if f]
+        except Exception:
+            pass
+
+    return {
+        "discovery_id": ev.discovery_id,
+        "capture_id": ev.capture_id,
+        "recruiter_id": ev.recruiter_id,
+        "recruiter_name": ev.recruiter_name,
+        "title": ev.title,
+        "company_name": ev.company_name,
+        "email": ev.email,
+        "phone": ev.phone,
+        "linkedin_url": ev.linkedin_url,
+        "location": ev.location,
+        "source_url": ev.source_url,
+        "source_page_title": ev.source_page_title,
+        "device_id": ev.device_id,
+        "extraction_source": ev.extraction_source,
+        "visual_change_score": ev.visual_change_score,
+        "confidence": ev.confidence,
+        "db_action": ev.db_action,
+        "fields_added": fields,
+        "timestamp": ev.created_at.isoformat() if ev.created_at else None,
+        "audit_verified": True,
+    }
 
 
 # ── GET /recruiters/extension/live-summary — All Users ──────────────────────

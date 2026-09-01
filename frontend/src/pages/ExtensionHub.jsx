@@ -247,52 +247,63 @@ export default function ExtensionHub() {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e' }} />
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px #22c55e' }} />
             <h3 style={{ fontSize: 15, fontWeight: 700, color: '#f8fafc', margin: 0 }}>
-              Live Database Enrichment Feed
+              Live Traceable Discovery Stream
             </h3>
           </div>
           <span style={{ fontSize: 12, color: '#94a3b8' }}>
-            ⚡ Streaming live from all active scout instances
+            ⚡ Real-time verified discoveries only • Complete audit provenance
           </span>
         </div>
 
         {liveFeed.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '24px 0', color: '#64748b', fontSize: 13 }}>
-            Connecting to real-time feed stream...
+          <div style={{ textAlign: 'center', padding: '28px 0', color: '#64748b', fontSize: 13 }}>
+            📡 No live captures yet in this browser session. Waiting for screen change or navigation...
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-            {liveFeed.map((item, idx) => (
-              <div key={idx} style={{
-                background: '#131b2e', border: '1px solid #1e293b', borderRadius: 10, padding: '12px 14px',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{
-                    width: 32, height: 32, borderRadius: 8, background: 'rgba(99, 102, 241, 0.2)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#818cf8',
-                    fontWeight: 700, fontSize: 13
-                  }}>
-                    {item.recruiter_name ? item.recruiter_name.charAt(0) : 'R'}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>
-                      {item.recruiter_name}
-                    </div>
-                    <div style={{ fontSize: 11, color: '#94a3b8' }}>
-                      {item.company_name || 'Corporate'} • {item.title || 'Recruiter'}
-                    </div>
-                  </div>
-                </div>
-                <span style={{
-                  fontSize: 10, fontWeight: 700, background: 'rgba(34, 197, 94, 0.15)',
-                  color: '#4ade80', padding: '3px 8px', borderRadius: 12
+            {liveFeed.map((item, idx) => {
+              const isNew = item.db_action === 'NEW_DISCOVERY' || !item.db_action;
+              const isEnriched = item.db_action === 'ENRICHED';
+              const tagLabel = isNew ? 'NEW DISCOVERY' : isEnriched ? 'ENRICHED' : 'PREVIOUSLY KNOWN';
+              const tagColor = isNew ? '#4ade80' : isEnriched ? '#38bdf8' : '#94a3b8';
+              const tagBg = isNew ? 'rgba(34, 197, 94, 0.15)' : isEnriched ? 'rgba(56, 189, 248, 0.15)' : 'rgba(148, 163, 184, 0.15)';
+
+              return (
+                <div key={idx} style={{
+                  background: '#131b2e', border: '1px solid #1e293b', borderRadius: 10, padding: '12px 14px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                 }}>
-                  Synced
-                </span>
-              </div>
-            ))}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 8, background: 'rgba(99, 102, 241, 0.2)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#818cf8',
+                      fontWeight: 700, fontSize: 13
+                    }}>
+                      {item.recruiter_name ? item.recruiter_name.charAt(0) : 'R'}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>
+                        {item.recruiter_name}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                        {item.company_name || 'Corporate'} • {item.title || 'Recruiter'}
+                      </div>
+                      <div style={{ fontSize: 10, color: '#64748b', marginTop: 2, fontFamily: 'monospace' }}>
+                        {item.discovery_id || `DISC-R${item.recruiter_id || idx}`} • {item.extraction_source || 'Visual + DOM'}
+                      </div>
+                    </div>
+                  </div>
+                  <span style={{
+                    fontSize: 9, fontWeight: 700, background: tagBg,
+                    color: tagColor, padding: '3px 8px', borderRadius: 12, border: `1px solid ${tagColor}40`
+                  }}>
+                    {tagLabel}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

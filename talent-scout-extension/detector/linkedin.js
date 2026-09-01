@@ -47,7 +47,7 @@ window.TalentScout.detectLinkedIn = function() {
 
 function _scrapeSingleProfile() {
   const ts = window.TalentScout;
-  const cleanUrl = window.location.href.split('?')[0].split('#')[0];
+  const cleanUrl = location.href.split('?')[0].split('#')[0];
 
   // Name — try multiple modern and legacy LinkedIn DOM selectors
   let name = ts.text([
@@ -74,7 +74,7 @@ function _scrapeSingleProfile() {
   ]);
 
   // Location
-  const location = ts.text([
+  const candidateLocation = ts.text([
     '.text-body-small.inline.t-black--light.break-words',
     '.top-card__subline-item',
     '.pv-text-details__left-panel .t-black--light',
@@ -127,7 +127,7 @@ function _scrapeSingleProfile() {
     recruiter_name: finalName || ts.inferNameFromLinkedInSlug(cleanUrl) || 'LinkedIn Member',
     title: title || 'Professional',
     company_name: company || null,
-    location: location || null,
+    location: candidateLocation || null,
     email: email || null,
     phone: phone || null,
     linkedin_url: cleanUrl,
@@ -140,7 +140,7 @@ function _scrapeFromTitleAndMeta() {
   const rawTitle = document.title || '';
   if (!rawTitle) return null;
 
-  const cleanUrl = window.location.href.split('?')[0].split('#')[0];
+  const cleanUrl = location.href.split('?')[0].split('#')[0];
   const inferredName = ts.inferNameFromLinkedInSlug(cleanUrl);
 
   const parts = rawTitle.replace(/\s*\|\s*LinkedIn$/i, '').split(/\s*[-–—|]\s*/);
@@ -200,7 +200,7 @@ function _scrapeSearchCards() {
       '.entity-result__summary',
     ], card);
 
-    const location = ts.text([
+    const candidateLocation = ts.text([
       '.entity-result__tertiary-subtitle',
       '.subline-level-3',
     ], card);
@@ -212,7 +212,7 @@ function _scrapeSearchCards() {
       recruiter_name: finalName,
       title: title || 'Professional',
       company_name: company || null,
-      location: location || null,
+      location: candidateLocation || null,
       linkedin_url: href,
       source: 'linkedin_search',
     });
@@ -231,7 +231,7 @@ function _scrapeRecruiterPlatform() {
     const name = ts.text(['.profile-card__name', '.result-lockup__name', 'h3', 'h4'], card);
     const title = ts.text(['.profile-card__headline', '.result-lockup__headline', '.t-12'], card);
     const company = ts.text(['.profile-card__company', '.result-lockup__company'], card);
-    const location = ts.text(['.profile-card__location', '.result-lockup__location'], card);
+    const candidateLocation = ts.text(['.profile-card__location', '.result-lockup__location'], card);
 
     const finalName = ts.normalizeName(name) || (anchor ? ts.inferNameFromLinkedInSlug(anchor.href) : null);
     if (!finalName) return;
@@ -240,7 +240,7 @@ function _scrapeRecruiterPlatform() {
       recruiter_name: finalName,
       title: title || null,
       company_name: company || null,
-      location: location || null,
+      location: candidateLocation || null,
       linkedin_url: anchor ? anchor.href.split('?')[0] : null,
       source: 'linkedin_recruiter',
     });
@@ -299,7 +299,7 @@ function _scrapeFeedPosts() {
 function _scrapeAllLinkedInCards() {
   const ts = window.TalentScout;
   const results = [];
-  const cleanUrl = window.location.href.split('?')[0].split('#')[0];
+  const cleanUrl = location.href.split('?')[0].split('#')[0];
 
   const allProfileAnchors = document.querySelectorAll('a[href*="/in/"]');
   allProfileAnchors.forEach(a => {

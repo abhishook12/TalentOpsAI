@@ -156,27 +156,33 @@ window.TalentScout.normalizeName = function(raw) {
   if (!raw) return null;
   let clean = String(raw).trim();
 
-  // 1. Remove LinkedIn Degree connection badges (1st, 2nd, 3rd, 3rd+)
+  // 1. Remove LinkedIn degree connection phrases: "1st degree connection", "2nd degree", "degree connection", etc.
+  clean = clean.replace(/\b(?:\d+(?:st|nd|rd|th)?\s+)?degree(?:\s+connection)?\b/gi, '');
   clean = clean.replace(/\b(?:1st|2nd|3rd|3rd\+|\d+(?:st|nd|rd|th))\b/gi, '');
 
-  // 2. Remove Pronouns (he/him, she/her, they/them, etc.)
+  // 2. Remove Pronouns: (he/him), (she/her), (they/them), etc.
   clean = clean.replace(/\((?:he\/him|she\/her|they\/them|she\/they|he\/they|any)\)/gi, '');
 
-  // 3. Remove common professional suffixes & certifications
+  // 3. Remove Title / Tag / Headline suffixes after hyphens or pipes: "John Doe - Senior Technical Recruiter" -> "John Doe"
+  if (clean.includes(' - ') || clean.includes(' | ') || clean.includes(' — ') || clean.includes(' – ')) {
+    clean = clean.split(/\s*[-–—|]\s*/)[0].trim();
+  }
+
+  // 4. Remove common professional suffixes & certifications
   clean = clean.replace(/,?\s*\b(?:phd|mba|pmp|cir|cdr|cpc|shrm(?:-cp|-scp)?|sphr|phr|recruiter|talent|hr|staffing|esq|cpa|md|dds|ms|bs|ba|ma|rn)\b/gi, '');
 
-  // 4. Strip numbers and unwanted symbols, keep letters, hyphens, spaces, apostrophes
+  // 5. Strip numbers and unwanted symbols, keep letters, hyphens, spaces, apostrophes
   clean = clean.replace(/\d+/g, ' ');
   clean = clean.replace(/[^\w\s'.\-]/g, ' ').replace(/\s+/g, ' ').trim();
 
-  // 5. Reject if empty, too short, too long, or common junk labels
+  // 6. Reject if empty, too short, too long, or common junk labels
   if (clean.length < 2 || clean.length > 60) return null;
   const lower = clean.toLowerCase();
-  if (['linkedin member', 'view profile', 'see all', 'member', 'unknown', 'sign in', 'join now', 'experience', 'education', 'contact info'].includes(lower)) {
+  if (['linkedin member', 'view profile', 'see all', 'member', 'unknown', 'sign in', 'join now', 'experience', 'education', 'contact info', 'profile'].includes(lower)) {
     return null;
   }
 
-  // 6. Capitalize words cleanly (Title Case)
+  // 7. Capitalize words cleanly (Title Case)
   return clean.replace(/\b\w/g, c => c.toUpperCase());
 };
 

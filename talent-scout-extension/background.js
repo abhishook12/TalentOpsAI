@@ -92,6 +92,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     try {
       switch (msg.type) {
 
+        // Content script reports page view
+        case 'PAGE_VIEW': {
+          const local = await chrome.storage.local.get(['pagesScanned']);
+          const next = (local.pagesScanned || 0) + 1;
+          await chrome.storage.local.set({ pagesScanned: next });
+          sendResponse({ ok: true, pagesScanned: next });
+          break;
+        }
+
         // Content script submits captured contacts
         case 'QUEUE_CONTACTS': {
           const contacts = (msg.contacts || []).map(c => ({

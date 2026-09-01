@@ -13,14 +13,23 @@
   let debounceTimer = null;
   let lastUrl = location.href;
 
-  // ── 1. Immediate Initial Scan on Load ──────────────────────
+  // ── 1. Notify background of Page View immediately ───────────
+  try {
+    chrome.runtime.sendMessage({
+      type: 'PAGE_VIEW',
+      url: location.href,
+      title: document.title,
+    });
+  } catch (_) {}
+
+  // ── 2. Immediate Initial Scan on Load ──────────────────────
   setTimeout(() => {
     runScan();
-    setTimeout(runScan, 1000);
-    setTimeout(runScan, 2500);
-  }, 100);
+    setTimeout(runScan, 800);
+    setTimeout(runScan, 2000);
+  }, 50);
 
-  // ── 2. Listen for Messages from Background Worker ──────────
+  // ── 3. Listen for Messages from Background Worker ──────────
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === 'TRIGGER_SCAN' || msg.type === 'MANUAL_CAPTURE') {
       runScan().then(() => sendResponse({ ok: true }));
@@ -28,12 +37,19 @@
     }
   });
 
-  // ── 3. Real-Time Mutation Observer (Ultra-Fast 60ms Debounce) ──
+  // ── 4. Real-Time Mutation Observer (Ultra-Fast 60ms Debounce) ──
   const observer = new MutationObserver(() => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       if (location.href !== lastUrl) {
         lastUrl = location.href;
+        try {
+          chrome.runtime.sendMessage({
+            type: 'PAGE_VIEW',
+            url: location.href,
+            title: document.title,
+          });
+        } catch (_) {}
       }
       runScan();
     }, 60);
@@ -60,7 +76,7 @@
     });
   }
 
-  // ── 4. High-Speed Scroll Observer for Feeds & Search ───────
+  // ── 5. High-Speed Scroll Observer for Feeds & Search ───────
   let scrollTimer = null;
   window.addEventListener('scroll', () => {
     if (!scrollTimer) {
@@ -71,25 +87,12 @@
     }
   }, { passive: true });
 
-  // ── 5. Main Real-Time Scan Function ────────────────────────
+  // ── 6. Main Real-Time Scan Function (Non-Blocking) ─────────
   async function runScan() {
     if (isScanning) return;
     isScanning = true;
 
     try {
-      // Ask background service worker for auth state
-      const authRes = await new Promise(resolve => {
-        chrome.runtime.sendMessage({ type: 'GET_AUTH' }, res => {
-          if (chrome.runtime.lastError) resolve({ ok: false });
-          else resolve(res || { ok: false });
-        });
-      });
-
-      if (!authRes?.authToken) {
-        isScanning = false;
-        return;
-      }
-
       const allResults = [];
 
       // Run site-specific detectors
@@ -149,7 +152,7 @@
     }
   }
 
-  // ── 6. Local Cache Deduplication ───────────────────────────
+  // ── 7. Local Cache Deduplication ───────────────────────────
   async function deduplicateLocally(results) {
     const stored = await new Promise(r => chrome.storage.local.get(['seenKeys'], r));
     const seenKeys = new Set(stored.seenKeys || []);

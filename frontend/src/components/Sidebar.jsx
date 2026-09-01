@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link as NavLink, useLocation } from '@tanstack/react-router'
 import api, { clearStoredToken } from '../services/api'
-import { LayoutDashboard, Activity, Users, Map, BarChart2, Search, Eye, Radar, LogOut, ShieldCheck, Settings, UserCircle, HeartPulse, UserCog, Server, Shield, Mail } from 'lucide-react'
+import { LayoutDashboard, Activity, Users, Map, BarChart2, Search, Eye, Radar, LogOut, ShieldCheck, Settings, UserCircle, HeartPulse, UserCog, Server, Shield, Mail, Puzzle } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 export default function Sidebar() {
@@ -64,6 +64,7 @@ export default function Sidebar() {
       badge: pendingDevicesCount > 0 ? pendingDevicesCount : null
     },
     { to: '/activity', label: 'Activity Logs', icon: Activity },
+    { to: '/admin/extension', label: 'Extension Scout', icon: Puzzle },
     { to: '/admin/jobs', label: 'Background Jobs', icon: Server },
     { to: '/admin/audit-logs', label: 'Audit Logs', icon: Shield },
     { to: '/admin/health', label: 'System Health', icon: HeartPulse },

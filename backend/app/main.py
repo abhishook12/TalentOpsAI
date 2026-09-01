@@ -18,10 +18,12 @@ from .config import (
     ENABLE_QUALITY_ENGINE,
     ENABLE_SENTINEL_ENGINE,
 )
-from .routes import recruiters, companies, vendors, candidates, submissions, analytics, admin, auth, actions, updates, ai, campaigns, harvester, users, visitor_analytics, notifications, bridge, accounts
+from .routes import recruiters, companies, vendors, candidates, submissions, analytics, admin, auth, actions, updates, ai, campaigns, harvester, users, visitor_analytics, notifications, bridge, accounts, extension
 from .database import get_db, engine
 from .models import models, auth_models
+from .models import extension_models  # Extension device/activation tracking
 from .create_indexes import create_performance_indexes
+
 
 from .core.logger import setup_logger
 logger = setup_logger(level=logging.INFO if IS_PRODUCTION else logging.DEBUG)
@@ -326,6 +328,7 @@ app.include_router(visitor_analytics.router, prefix="/admin/visitor-analytics", 
 app.include_router(sentinel.router, prefix="/sentinel", tags=["Sentinel"])
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(accounts.router, prefix="/accounts", tags=["Accounts"])
+app.include_router(extension.router, tags=["Extension"])  # /recruiters/extension/*
 app.include_router(actions.router, prefix="/actions", tags=["Actions"])
 app.include_router(updates.router)
 app.include_router(ai.router, prefix="/ai", tags=["AI"])

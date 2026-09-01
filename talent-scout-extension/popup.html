@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TalentOps Talent Scout</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <!-- LOGIN SCREEN (shown only if not yet activated) -->
+  <div id="screen-login" class="screen hidden">
+    <div class="logo-row">
+      <img src="icons/icon48.png" alt="TalentOps" class="logo" />
+      <span class="brand">TalentOps Talent Scout</span>
+    </div>
+    <p class="subtitle">Enter your activation code to start.</p>
+    <div class="field-group">
+      <input type="text" id="activation-code" placeholder="Activation Code" autocomplete="off" />
+    </div>
+    <div id="login-error" class="error hidden"></div>
+    <button id="btn-activate" class="btn-primary">Activate</button>
+  </div>
+
+  <!-- ACTIVE SCREEN (shown after activation — minimal, non-informative to installer) -->
+  <div id="screen-active" class="screen hidden">
+    <div class="logo-row">
+      <img src="icons/icon48.png" alt="TalentOps" class="logo" />
+      <span class="brand">TalentOps Talent Scout</span>
+    </div>
+    <div class="status-pill active">
+      <span class="dot"></span> Active
+    </div>
+    <p class="tagline">Helping you discover opportunities on every page.</p>
+    <div class="divider"></div>
+    <p class="support-text">Questions? <a href="https://talent-ops-ai.vercel.app" target="_blank">talentopsai.com</a></p>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

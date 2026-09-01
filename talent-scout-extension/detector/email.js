@@ -88,7 +88,7 @@ function _scrapeOutlookWeb() {
   const emailBody = document.querySelector('[aria-label="Message body"], .rps_f8f1, [data-app-section="MessageBody"]');
   if (!emailBody) return results;
 
-  const fullText = emailBody.innerText || emailText.textContent || '';
+  const fullText = emailBody.innerText || emailBody.textContent || '';
 
   // Sender info from the mail header card
   const senderCard = document.querySelector('.ms-Persona-primaryText, [aria-label*="From"] .ms-Persona, .allowTextSelection');

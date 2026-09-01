@@ -73,11 +73,10 @@ async function loadLiveStats() {
     'totalCollectedEver'
   ]);
 
-  const stats = statsRes?.stats || { captured: 0, sent: 0, duplicates: 0 };
+  const totalSent = statsRes?.totalSent || 0;
+  const totalCaptured = statsRes?.totalCollected || 0;
+  const pagesScanned = statsRes?.pagesScanned || 0;
   const queueLen = statsRes?.queueLength || 0;
-  const totalSent = (localData.totalSent || 0) + stats.sent;
-  const totalCaptured = (localData.totalCollectedEver || 0) + stats.captured;
-  const pagesScanned = localData.pagesScanned || Math.max(1, Math.round(totalCaptured * 1.4));
 
   // 1. Update Counters
   $('stat-collected').textContent = totalCaptured.toLocaleString();
@@ -86,8 +85,8 @@ async function loadLiveStats() {
   $('stat-pending').textContent = queueLen.toLocaleString();
 
   // 2. Compute Scout Power Meter & Score
-  const efficiency = totalCaptured > 0 ? Math.min(100, Math.round((totalSent / Math.max(1, totalCaptured)) * 100)) : 95;
-  const score = Math.min(100, Math.max(60, 60 + Math.min(40, totalCaptured * 2)));
+  const score = Math.min(100, Math.max(60, 60 + Math.min(40, (pagesScanned + totalCaptured * 3))));
+
 
   $('scout-score').textContent = score;
   $('meter-bar-fill').style.width = `${score}%`;

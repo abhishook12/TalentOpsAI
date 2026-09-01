@@ -115,10 +115,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
         // Popup asks for live stats & queue status
         case 'GET_STATS': {
+          const local = await chrome.storage.local.get(['pagesScanned', 'totalSent', 'totalCollectedEver']);
           sendResponse({
             ok: true,
             stats: sessionStats,
             queueLength: contactQueue.length,
+            pagesScanned: local.pagesScanned || 0,
+            totalSent: (local.totalSent || 0) + sessionStats.sent,
+            totalCollected: (local.totalCollectedEver || 0) + sessionStats.captured,
           });
           break;
         }

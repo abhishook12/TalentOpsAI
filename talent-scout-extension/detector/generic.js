@@ -11,7 +11,7 @@ window.TalentScout.detectGeneric = function() {
   const results = [];
   const host = location.hostname.toLowerCase();
 
-  // Skip search engines and video platforms
+  // Skip search engines and major social video feeds
   const skipHosts = [
     'google.', 'bing.com', 'duckduckgo.com', 'youtube.com', 'facebook.com',
     'twitter.com', 'x.com', 'instagram.com', 'reddit.com', 'wikipedia.org',
@@ -19,27 +19,31 @@ window.TalentScout.detectGeneric = function() {
   ];
   if (skipHosts.some(s => host.includes(s))) return [];
 
+  const company = _inferCompanyFromHost(host);
+  const pageFullText = document.body ? (document.body.innerText || document.body.textContent || '') : '';
+
   // ── Strategy 1: Scan all LinkedIn Profile Links on the Page ──
-  const linkedinAnchors = document.querySelectorAll('a[href*="linkedin.com/in/"]');
+  const linkedinAnchors = document.querySelectorAll('a[href*="linkedin.com/in/"], a[href*="linkedin.com/pub/"]');
   linkedinAnchors.forEach(a => {
     const href = a.href.split('?')[0].split('#')[0];
     const inferredName = ts.inferNameFromLinkedInSlug(href);
     const linkText = a.textContent?.trim();
     const finalName = ts.normalizeName(linkText) || inferredName;
 
-    // Check parent container for title/company/email
+    // Check parent container for title/email/phone
     const container = a.closest('div, section, article, li, tr, td, p') || a.parentElement;
     const containerText = container ? (container.innerText || container.textContent || '') : '';
     const email = ts.extractEmail(containerText);
     const phone = ts.extractPhone(containerText);
 
-    if (finalName) {
+    if (finalName || inferredName) {
       results.push({
-        recruiter_name: finalName,
+        recruiter_name: finalName || inferredName,
+        title: _pickTitleNearElement(a) || 'Contact',
         email: email || null,
         phone: phone || null,
         linkedin_url: href,
-        company_name: _inferCompanyFromHost(host),
+        company_name: company,
         source: `web_link:${host}`,
       });
     }
@@ -52,7 +56,6 @@ window.TalentScout.detectGeneric = function() {
     const email = ts.extractEmail(rawEmail);
     if (!email) return;
 
-    // Try name from link text or email local part
     const linkText = a.textContent?.trim();
     const finalName = ts.normalizeName(linkText) || ts.inferNameFromEmail(email);
 
@@ -61,19 +64,37 @@ window.TalentScout.detectGeneric = function() {
     const phone = ts.extractPhone(containerText);
     const linkedin = ts.extractLinkedIn(containerText);
 
-    if (finalName || email) {
-      results.push({
-        recruiter_name: finalName || email.split('@')[0],
-        email: email,
-        phone: phone || null,
-        linkedin_url: linkedin || null,
-        company_name: _inferCompanyFromHost(host),
-        source: `web_mailto:${host}`,
-      });
-    }
+    results.push({
+      recruiter_name: finalName || email.split('@')[0],
+      email: email,
+      phone: phone || null,
+      title: _pickTitleNearElement(a) || 'Contact',
+      linkedin_url: linkedin || null,
+      company_name: company,
+      source: `web_mailto:${host}`,
+    });
   });
 
-  // ── Strategy 3: JSON-LD Structured Metadata ────────────────
+  // ── Strategy 3: Full-Page Regex Stream for Corporate Emails ──
+  const allEmails = pageFullText.match(ts.PATTERNS.email) || [];
+  const uniqueEmails = [...new Set(allEmails)].slice(0, 10);
+
+  uniqueEmails.forEach(rawEmail => {
+    const email = rawEmail.toLowerCase().trim();
+    const domain = email.split('@')[1] || '';
+    if (ts.PATTERNS.freeEmailDomains.has(domain)) return;
+
+    const inferredName = ts.inferNameFromEmail(email);
+    results.push({
+      recruiter_name: inferredName || email.split('@')[0],
+      email: email,
+      company_name: company || domain.split('.')[0],
+      title: 'Corporate Contact',
+      source: `web_stream:${host}`,
+    });
+  });
+
+  // ── Strategy 4: JSON-LD Structured Metadata ────────────────
   const jsonLdScripts = document.querySelectorAll('script[type="application/ld+json"]');
   jsonLdScripts.forEach(s => {
     try {
@@ -85,15 +106,15 @@ window.TalentScout.detectGeneric = function() {
           const email = ts.extractEmail(item.email);
           const phone = ts.extractPhone(item.telephone);
           const title = item.jobTitle;
-          const company = item.worksFor?.name || item.affiliation?.name || _inferCompanyFromHost(host);
+          const itemCompany = item.worksFor?.name || item.affiliation?.name || company;
 
           if (name || email) {
             results.push({
-              recruiter_name: name || (email ? email.split('@')[0] : null),
+              recruiter_name: name || (email ? email.split('@')[0] : 'Contact'),
               email: email || null,
               phone: phone || null,
-              title: title || null,
-              company_name: company || null,
+              title: title || 'Professional',
+              company_name: itemCompany || null,
               source: `jsonld:${host}`,
             });
           }
@@ -102,7 +123,7 @@ window.TalentScout.detectGeneric = function() {
     } catch (_) {}
   });
 
-  // ── Strategy 4: Profile / Team / Staff Container Cards ──────
+  // ── Strategy 5: Team / Staff / Profile Cards ────────────────
   const cards = document.querySelectorAll([
     '[class*="team"]', '[class*="staff"]', '[class*="recruiter"]',
     '[class*="profile"]', '[class*="author"]', '[class*="contact"]',
@@ -124,12 +145,12 @@ window.TalentScout.detectGeneric = function() {
 
     if (name || email) {
       results.push({
-        recruiter_name: ts.normalizeName(name) || (email ? ts.inferNameFromEmail(email) : null),
+        recruiter_name: ts.normalizeName(name) || (email ? ts.inferNameFromEmail(email) : 'Contact'),
         email: email || null,
         phone: phone || null,
-        title: title || null,
+        title: title || 'Professional',
         linkedin_url: linkedin || null,
-        company_name: _inferCompanyFromHost(host),
+        company_name: company,
         source: `card:${host}`,
       });
     }
@@ -151,6 +172,19 @@ function _inferCompanyFromHost(host) {
   if (!host) return null;
   const clean = host.replace(/^www\./, '').split('.')[0];
   return clean.length >= 2 ? clean.charAt(0).toUpperCase() + clean.slice(1) : null;
+}
+
+function _pickTitleNearElement(el) {
+  const container = el.closest('div, section, li, p, tr, td') || el.parentElement;
+  if (!container) return null;
+  const text = container.innerText || '';
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  for (const line of lines) {
+    if (line.length >= 3 && line.length <= 60 && !line.includes('@') && !/\d{4}/.test(line)) {
+      return line;
+    }
+  }
+  return null;
 }
 
 function _pickCardName(card) {

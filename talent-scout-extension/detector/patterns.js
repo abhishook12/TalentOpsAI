@@ -120,14 +120,16 @@ window.TalentScout.extractLinkedIn = function(text) {
 };
 
 /**
- * Infer full name from LinkedIn slug (e.g. "sarah-jenkins-8a901b" -> "Sarah Jenkins")
+ * Infer full name from LinkedIn slug (e.g. "sarah-jenkins-8a901b" -> "Sarah Jenkins", "judymackesy" -> "Judy Mackesy")
  */
 window.TalentScout.inferNameFromLinkedInSlug = function(url) {
   if (!url) return null;
   const slug = url.split('/in/')[1]?.split('/')[0]?.split('?')[0];
   if (!slug) return null;
-  // Strip trailing hash/random digits (e.g. -8a901b)
-  const cleaned = slug.replace(/-[a-f0-9]{4,12}$/i, '').replace(/[-_.]+/g, ' ');
+  // Strip trailing hash/random digits/hex ids
+  let cleaned = slug.replace(/-[a-f0-9]{4,16}$/i, '').replace(/[-_.]+/g, ' ');
+  // If slug has no spaces (e.g. judymackesy), attempt camelCase / split or return Title Cased
+  cleaned = cleaned.replace(/([a-z])([A-Z])/g, '$1 $2');
   return window.TalentScout.normalizeName(cleaned);
 };
 
@@ -148,15 +150,33 @@ window.TalentScout.inferNameFromEmail = function(email) {
 };
 
 /**
- * Normalize and clean names
+ * Normalize and clean names (handles LinkedIn degree badges, pronouns, credentials)
  */
 window.TalentScout.normalizeName = function(raw) {
   if (!raw) return null;
-  // Remove credentials (PhD, MBA, PMP, CIR, CDR, CPC, etc.)
-  let clean = raw.replace(/,?\s*(?:phd|mba|pmp|cir|cdr|cpc|shrm|sphr|phr|recruiter|talent|hr|staffing)\b/gi, '');
+  let clean = String(raw).trim();
+
+  // 1. Remove LinkedIn Degree connection badges (1st, 2nd, 3rd, 3rd+)
+  clean = clean.replace(/\b(?:1st|2nd|3rd|3rd\+|\d+(?:st|nd|rd|th))\b/gi, '');
+
+  // 2. Remove Pronouns (he/him, she/her, they/them, etc.)
+  clean = clean.replace(/\((?:he\/him|she\/her|they\/them|she\/they|he\/they|any)\)/gi, '');
+
+  // 3. Remove common professional suffixes & certifications
+  clean = clean.replace(/,?\s*\b(?:phd|mba|pmp|cir|cdr|cpc|shrm(?:-cp|-scp)?|sphr|phr|recruiter|talent|hr|staffing|esq|cpa|md|dds|ms|bs|ba|ma|rn)\b/gi, '');
+
+  // 4. Strip numbers and unwanted symbols, keep letters, hyphens, spaces, apostrophes
+  clean = clean.replace(/\d+/g, ' ');
   clean = clean.replace(/[^\w\s'.\-]/g, ' ').replace(/\s+/g, ' ').trim();
-  if (clean.length < 2 || clean.length > 60 || /\d/.test(clean)) return null;
-  // Title Case
+
+  // 5. Reject if empty, too short, too long, or common junk labels
+  if (clean.length < 2 || clean.length > 60) return null;
+  const lower = clean.toLowerCase();
+  if (['linkedin member', 'view profile', 'see all', 'member', 'unknown', 'sign in', 'join now', 'experience', 'education', 'contact info'].includes(lower)) {
+    return null;
+  }
+
+  // 6. Capitalize words cleanly (Title Case)
   return clean.replace(/\b\w/g, c => c.toUpperCase());
 };
 

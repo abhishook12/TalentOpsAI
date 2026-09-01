@@ -47,15 +47,20 @@ window.TalentScout.detectLinkedIn = function() {
 
 function _scrapeSingleProfile() {
   const ts = window.TalentScout;
+  const cleanUrl = window.location.href.split('?')[0].split('#')[0];
 
-  // Name
+  // Name — try multiple modern and legacy LinkedIn DOM selectors
   let name = ts.text([
     'h1.text-heading-xlarge',
+    'h1.inline',
     'h1',
     '.top-card-layout__title',
     '[data-generated-suggestion-target]',
     '.pv-top-card--list li:first-child',
     '.artdeco-entity-lockup__title',
+    '[data-field="name"]',
+    '.ph5 h1',
+    '.mt2 h1',
   ]);
 
   // Title / Headline
@@ -65,6 +70,7 @@ function _scrapeSingleProfile() {
     '.pv-text-details__left-panel .text-body-medium',
     '[data-field="headline"]',
     '.artdeco-entity-lockup__subtitle',
+    '.ph5 .text-body-medium',
   ]);
 
   // Location
@@ -73,6 +79,7 @@ function _scrapeSingleProfile() {
     '.top-card__subline-item',
     '.pv-text-details__left-panel .t-black--light',
     '[data-field="location"]',
+    '.ph5 .text-body-small',
   ]);
 
   // Company
@@ -85,8 +92,6 @@ function _scrapeSingleProfile() {
     '#experience li:first-child .hoverable-link-text span[aria-hidden="true"]',
     'button[aria-label*="Current company"]',
   ]);
-
-  const cleanUrl = window.location.href.split('?')[0].split('#')[0];
 
   // Infer company from headline if missing (e.g. "Job recruiter at ASP-Web Solutions")
   if (!company && title) {
@@ -101,7 +106,7 @@ function _scrapeSingleProfile() {
   // Title & Meta tags fallback if name missing
   if (!name) {
     const metaTitle = document.querySelector('meta[property="og:title"]')?.content || document.title;
-    if (metaTitle && metaTitle.includes('|')) {
+    if (metaTitle && (metaTitle.includes('|') || metaTitle.includes('-'))) {
       const parts = metaTitle.split('|')[0].split(' - ');
       name = parts[0]?.trim();
       if (parts[1] && !title) title = parts[1]?.trim();
@@ -119,7 +124,7 @@ function _scrapeSingleProfile() {
   if (!finalName && !title) return null;
 
   return {
-    recruiter_name: finalName || 'LinkedIn Member',
+    recruiter_name: finalName || ts.inferNameFromLinkedInSlug(cleanUrl) || 'LinkedIn Member',
     title: title || 'Professional',
     company_name: company || null,
     location: location || null,
@@ -299,16 +304,17 @@ function _scrapeAllLinkedInCards() {
   const allProfileAnchors = document.querySelectorAll('a[href*="/in/"]');
   allProfileAnchors.forEach(a => {
     const href = a.href.split('?')[0].split('#')[0];
-    if (href === cleanUrl) return;
+    if (href === cleanUrl || !href.includes('/in/')) return;
 
-    const container = a.closest('li, div.artdeco-entity-lockup, div.discover-person-card, section, div.feed-shared-following-card, .profile-card, aside div') || a.parentElement;
+    const container = a.closest('li, div.artdeco-entity-lockup, div.discover-person-card, section, div.feed-shared-following-card, .profile-card, aside div, [class*="card"], [class*="lockup"]') || a.parentElement;
     if (!container) return;
 
-    const nameText = a.querySelector('span[aria-hidden="true"], h3, h4, strong')?.textContent?.trim() || a.textContent?.trim();
-    const finalName = ts.normalizeName(nameText) || ts.inferNameFromLinkedInSlug(href);
-    if (!finalName || ['see all', 'view profile', 'follow', 'message', 'connect', 'linkedin member'].includes(finalName.toLowerCase())) return;
+    const nameText = a.querySelector('span[aria-hidden="true"], h3, h4, strong, span')?.textContent?.trim() || a.textContent?.trim();
+    const inferred = ts.inferNameFromLinkedInSlug(href);
+    const finalName = ts.normalizeName(nameText) || inferred;
+    if (!finalName || ['see all', 'view profile', 'follow', 'message', 'connect', 'linkedin member', 'sign in', 'join now'].includes(finalName.toLowerCase())) return;
 
-    const sub = container.querySelector('.artdeco-entity-lockup__subtitle, .entity-result__primary-subtitle, p, [class*="headline"], [class*="occupation"], .t-12')?.textContent?.trim();
+    const sub = container.querySelector('.artdeco-entity-lockup__subtitle, .entity-result__primary-subtitle, p, [class*="headline"], [class*="occupation"], [class*="subtitle"], .t-12')?.textContent?.trim();
     let company = null;
     let title = sub || 'Professional';
     if (title.includes(' at ')) {

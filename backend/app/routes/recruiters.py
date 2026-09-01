@@ -445,6 +445,8 @@ def search_recruiters(
     spec_str = specialization if isinstance(specialization, str) and specialization.strip() else None
     lim_int = limit if isinstance(limit, int) else 50
 
+    from sqlalchemy import or_
+
     results = recruiter_store.search(
         q=q if isinstance(q, str) else str(q),
         company=comp_str,
@@ -452,6 +454,46 @@ def search_recruiters(
         specialization=spec_str,
         limit=lim_int
     )
+
+    # ── Live PostgreSQL Real-Time Discovery Merge ───────────────
+    try:
+        q_like = f"%{str(q).strip().lower()}%"
+        pg_query = db.query(Recruiter).outerjoin(Company, Recruiter.company_id == Company.company_id).filter(
+            or_(
+                Recruiter.recruiter_name.ilike(q_like),
+                Recruiter.email.ilike(q_like),
+                Recruiter.title.ilike(q_like),
+                Recruiter.linkedin.ilike(q_like),
+                Company.company_name.ilike(q_like)
+            )
+        )
+        if comp_str:
+            pg_query = pg_query.filter(Company.company_name.ilike(f"%{comp_str}%"))
+        if loc_str:
+            pg_query = pg_query.filter(Recruiter.location.ilike(f"%{loc_str}%"))
+
+        pg_recs = pg_query.limit(25).all()
+        for r in reversed(pg_recs):
+            rec_dict = {
+                "recruiter_id": r.recruiter_id,
+                "recruiter_name": r.recruiter_name,
+                "email": r.email if not (r.email and r.email.endswith("@noemail.talentops")) else None,
+                "phone": r.phone,
+                "linkedin": r.linkedin,
+                "title": r.title or "Recruiter / Talent Lead",
+                "company_id": r.company_id,
+                "company_name": r.company.company_name if r.company else None,
+                "location": r.location,
+                "quality_score": 95,
+                "completeness_score": 90,
+                "relevance_score": 300,  # Top priority for live discoveries
+                "is_active": r.is_active,
+                "created_at": r.created_at,
+            }
+            if not any(str(x.get("recruiter_id")) == str(r.recruiter_id) for x in results):
+                results.insert(0, rec_dict)
+    except Exception as e:
+        logger.warning("Error searching live PostgreSQL records: %s", e)
     
     from .analytics import infer_company_from_domain, DOMAIN_DISPLAY_NAMES, FREE_EMAIL_PROVIDERS
 
@@ -540,7 +582,8 @@ def search_recruiters(
             "alternate_emails": row.get("alternate_emails"),
             "alternate_phones": row.get("alternate_phones"),
             "linkedin": row.get("linkedin"),
-            "specialization": row.get("specialization"),
+            "title": row.get("title") or row.get("specialization") or "Recruiter / Talent Lead",
+            "specialization": row.get("specialization") or row.get("title"),
             "notes": row.get("notes"),
             "quality_score": row.get("quality_score"),
             "company_id": row.get("company_id"),

@@ -18,7 +18,10 @@ import string
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Header
+import io
+import os
+import zipfile
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Header, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import text, func as sqlfunc
@@ -604,3 +607,43 @@ def deactivate_activation_code(
     record.is_active = False
     db.commit()
     return {"ok": True, "code": record.code, "status": "deactivated"}
+
+
+@router.get("/download")
+def download_extension_zip(
+    code: Optional[str] = None,
+):
+    """
+    1-Click Extension Package Downloader.
+    Returns a complete, ready-to-unzip Chrome Extension package (.zip).
+    """
+    # Locate extension directory
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    ext_dir = os.path.join(os.path.dirname(base_dir), "talent-scout-extension")
+    if not os.path.exists(ext_dir):
+        # Fallback if working directory is root
+        ext_dir = os.path.abspath("talent-scout-extension")
+
+    if not os.path.exists(ext_dir):
+        raise HTTPException(status_code=404, detail="Extension directory not found on server")
+
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for root, _, files in os.walk(ext_dir):
+            for file in files:
+                file_path = os.path.join(root, file)
+                rel_path = os.path.relpath(file_path, ext_dir)
+                zf.write(file_path, arcname=rel_path)
+
+    zip_buffer.seek(0)
+    zip_bytes = zip_buffer.getvalue()
+
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": "attachment; filename=talentops-scout-extension.zip",
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
+    )
+

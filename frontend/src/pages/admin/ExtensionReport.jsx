@@ -1,12 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../../services/api'
 
-const COLORS = {
-  accepted: '#22c55e',
-  duplicates: '#f59e0b',
-  received: '#6366f1',
-}
-
 export default function ExtensionReport() {
   const [days, setDays] = useState(7)
   const [report, setReport] = useState(null)
@@ -15,6 +9,8 @@ export default function ExtensionReport() {
   const [codeLoading, setCodeLoading] = useState(false)
   const [newCodeLabel, setNewCodeLabel] = useState('')
   const [tab, setTab] = useState('overview') // overview | devices | codes
+  const [showInstallModal, setShowInstallModal] = useState(false)
+  const [copiedCode, setCopiedCode] = useState(false)
 
   const fetchReport = useCallback(async () => {
     setLoading(true)
@@ -65,34 +61,95 @@ export default function ExtensionReport() {
     }
   }
 
+  const handleDownloadAndInstall = () => {
+    // Trigger download
+    const downloadUrl = 'https://talentopsai-1.onrender.com/recruiters/extension/download'
+    const a = document.createElement('a')
+    a.href = downloadUrl
+    a.download = 'talentops-scout-extension.zip'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+
+    setShowInstallModal(true)
+  }
+
+  const activeCode = codes.find(c => c.is_active)?.code || 'TALENTOPS-UUL8MORQ'
+
   return (
     <div style={{ padding: '24px', maxWidth: 1100, margin: '0 auto' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
             🧩 Extension Activity Report
           </h1>
           <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0', fontSize: 13 }}>
-            Silent scraper activity from all installed extension devices
+            Universal Scout activity from all installed extension instances
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {[7, 14, 30, 90].map(d => (
-            <button
-              key={d}
-              onClick={() => setDays(d)}
-              style={{
-                padding: '6px 14px', borderRadius: 8, border: 'none', fontSize: 12, fontWeight: 600,
-                background: days === d ? 'var(--brand)' : 'var(--surface-2)',
-                color: days === d ? '#fff' : 'var(--text-secondary)',
-                cursor: 'pointer',
-              }}
-            >
-              {d}d
-            </button>
-          ))}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <button
+            onClick={handleDownloadAndInstall}
+            style={{
+              padding: '8px 16px', borderRadius: 8, border: 'none', fontSize: 13, fontWeight: 700,
+              background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
+              color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+              boxShadow: '0 2px 10px rgba(99, 102, 241, 0.35)',
+            }}
+          >
+            <span>⚡ 1-Click Install Extension</span>
+          </button>
+          <div style={{ display: 'flex', gap: 4, background: 'var(--surface-2)', padding: 3, borderRadius: 8 }}>
+            {[7, 14, 30, 90].map(d => (
+              <button
+                key={d}
+                onClick={() => setDays(d)}
+                style={{
+                  padding: '5px 12px', borderRadius: 6, border: 'none', fontSize: 12, fontWeight: 600,
+                  background: days === d ? 'var(--brand)' : 'transparent',
+                  color: days === d ? '#fff' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                }}
+              >
+                {d}d
+              </button>
+            ))}
+          </div>
         </div>
+      </div>
+
+      {/* 1-Click Installation Banner */}
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(56, 189, 248, 0.08) 100%)',
+        border: '1px solid rgba(99, 102, 241, 0.3)', borderRadius: 12, padding: '16px 20px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{
+            fontSize: 24, background: 'rgba(99, 102, 241, 0.2)', width: 44, height: 44,
+            borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            📡
+          </div>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
+              Add Talent Scout to your Browser
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+              Passively enriches your database with verified recruiters from LinkedIn, Gmail, and job sites as you browse.
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={handleDownloadAndInstall}
+          style={{
+            padding: '8px 18px', background: 'var(--brand)', color: '#fff', border: 'none',
+            borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+          }}
+        >
+          Download & Setup
+        </button>
       </div>
 
       {/* Tabs */}
@@ -326,6 +383,117 @@ export default function ExtensionReport() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 1-Click Setup Modal */}
+      {showInstallModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 20,
+        }}>
+          <div style={{
+            background: '#0f172a', border: '1px solid #334155', borderRadius: 16, maxWidth: 520, width: '100%',
+            padding: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#f8fafc' }}>
+                  🚀 3-Step Quick Setup Guide
+                </h2>
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: '#94a3b8' }}>
+                  Your extension ZIP package is downloading automatically.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowInstallModal(false)}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 18, cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, margin: '20px 0' }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <div style={{
+                  background: '#6366f1', color: '#fff', width: 26, height: 26, borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flexShrink: 0,
+                }}>
+                  1
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#f8fafc' }}>Unzip the Package</div>
+                  <div style={{ fontSize: 12, color: '#94a3b8' }}>Right-click <code>talentops-scout-extension.zip</code> and extract/unzip it.</div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <div style={{
+                  background: '#38bdf8', color: '#fff', width: 26, height: 26, borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flexShrink: 0,
+                }}>
+                  2
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#f8fafc' }}>Open Chrome Extensions</div>
+                  <div style={{ fontSize: 12, color: '#94a3b8' }}>Navigate to <code>chrome://extensions/</code> and enable <b>Developer mode</b> (top right).</div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <div style={{
+                  background: '#4ade80', color: '#090d16', width: 26, height: 26, borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flexShrink: 0,
+                }}>
+                  3
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#f8fafc' }}>Load Unpacked</div>
+                  <div style={{ fontSize: 12, color: '#94a3b8' }}>Click <b>Load unpacked</b> and select the unzipped folder.</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Activation Code Copy Box */}
+            <div style={{
+              background: '#1e293b', border: '1px solid #334155', borderRadius: 10, padding: 14,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+              <div>
+                <div style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600 }}>
+                  Your Activation Code
+                </div>
+                <div style={{ fontSize: 14, fontFamily: 'monospace', fontWeight: 700, color: '#4ade80', marginTop: 2 }}>
+                  {activeCode}
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(activeCode)
+                  setCopiedCode(true)
+                  setTimeout(() => setCopiedCode(false), 2000)
+                }}
+                style={{
+                  padding: '6px 14px', background: copiedCode ? '#22c55e' : '#6366f1', color: '#fff',
+                  border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                {copiedCode ? '✓ Copied!' : 'Copy Code'}
+              </button>
+            </div>
+
+            <div style={{ marginTop: 20, textAlign: 'right' }}>
+              <button
+                onClick={() => setShowInstallModal(false)}
+                style={{
+                  padding: '9px 20px', background: '#334155', color: '#f8fafc', border: 'none',
+                  borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Done
+              </button>
             </div>
           </div>
         </div>

@@ -56,15 +56,15 @@
     <!-- Autonomous Engine Live Diagnostic Status -->
     <div class="engine-telemetry-card">
       <div class="engine-header">
-        <span class="engine-title">LIVE CAPTURE ENGINE</span>
-        <button id="btn-test-capture" class="btn-xs" style="margin-left:auto; background:rgba(99,102,241,0.2); color:#818cf8; border:1px solid rgba(99,102,241,0.5); padding:2px 6px; border-radius:4px; font-size:9px; cursor:pointer;">TEST CAPTURE</button>
-        <span class="engine-badge" style="margin-left:8px;">● AUTONOMOUS 24/7</span>
+        <span class="engine-title" id="engine-state-title">ENGINE: ACTIVE (1s LOOP)</span>
+        <button id="btn-test-capture" class="btn-xs" style="margin-left:auto; background:rgba(99,102,241,0.2); color:#818cf8; border:1px solid rgba(99,102,241,0.5); padding:2px 6px; border-radius:4px; font-size:9px; cursor:pointer;">FORCE SCAN</button>
+        <span class="engine-badge" id="engine-status-badge" style="margin-left:8px;">● 24/7 AUTONOMOUS</span>
       </div>
       <div class="engine-grid">
-        <div class="engine-item"><span class="engine-dot"></span> Visual Capture: <b>ACTIVE</b></div>
-        <div class="engine-item"><span class="engine-dot"></span> DOM Extraction: <b>ACTIVE</b></div>
-        <div class="engine-item"><span class="engine-dot"></span> Change Detection: <b>ACTIVE</b></div>
-        <div class="engine-item"><span class="engine-dot"></span> Cloud DB Sync: <b>ACTIVE</b></div>
+        <div class="engine-item"><span class="engine-dot" id="dot-state"></span> State: <b id="val-engine-state">ACTIVE</b></div>
+        <div class="engine-item"><span class="engine-dot"></span> Idle Timer: <b id="val-idle-timer">0s / 10s</b></div>
+        <div class="engine-item"><span class="engine-dot"></span> Last Capture: <b id="val-last-capture">None</b></div>
+        <div class="engine-item"><span class="engine-dot"></span> Last Discovery: <b id="val-last-discovery">None</b></div>
       </div>
     </div>
 

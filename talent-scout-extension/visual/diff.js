@@ -1,6 +1,6 @@
 // ============================================================
-// visual/diff.js — Perceptual Visual Change Detector & Noise Suppressor
-// Lightweight, ultra-fast canvas-based frame comparison
+// visual/diff.js — Perceptual Regional Change Detector & Noise Suppressor
+// Algorithms 5, 9, 29: Region-Weighted Diffing, Noise & Spinner Suppression
 // ============================================================
 
 window.TalentScout = window.TalentScout || {};
@@ -9,8 +9,7 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
 (function() {
   'use strict';
 
-  // Configurable thresholds — ultra-sensitive for automatic continuous capture
-  const DEFAULT_CHANGE_THRESHOLD = 0.03; // 0.00 = identical, 0.03+ = captures any visual change
+  const DEFAULT_CHANGE_THRESHOLD = 0.035; // 3.5% meaningful regional change threshold
   const DOWNSCALE_WIDTH = 64;
   const DOWNSCALE_HEIGHT = 64;
 
@@ -29,7 +28,7 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
   }
 
   /**
-   * Convert an image bitmap/element/dataUrl to downscaled grayscale Uint8ClampedArray
+   * Convert image source to downscaled grayscale Uint8Array
    */
   async function getImagePixels(imageSource) {
     const { ctx } = getCanvas();
@@ -52,44 +51,54 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
     // Convert to grayscale buffer (64x64 = 4096 bytes)
     const gray = new Uint8Array(DOWNSCALE_WIDTH * DOWNSCALE_HEIGHT);
     for (let i = 0, j = 0; i < pixels.length; i += 4, j++) {
-      // Luminance: 0.299 R + 0.587 G + 0.114 B
       gray[j] = (pixels[i] * 0.299 + pixels[i + 1] * 0.587 + pixels[i + 2] * 0.114) | 0;
     }
     return gray;
   }
 
   /**
-   * Compute normalized difference score between two grayscale pixel buffers (0.00 to 1.00)
+   * Algorithm 29: Region-Based Change Detection
+   * Main Content (middle 70% vertical & horizontal) gets 80% weight.
+   * Header/Footer/Margins get 20% weight to suppress noise from clocks, spinners, tabs.
    */
-  function computeDifferenceScore(pixelsA, pixelsB) {
+  function computeRegionalDifferenceScore(pixelsA, pixelsB) {
     if (!pixelsA || !pixelsB || pixelsA.length !== pixelsB.length) return 1.0;
 
-    let diffPixels = 0;
-    let totalDelta = 0;
-    const len = pixelsA.length;
-    const PIXEL_DELTA_TOLERANCE = 18; // ignore tiny sensor noise/compression artifacts
+    let mainRegionDelta = 0;
+    let mainRegionPixels = 0;
+    let outerRegionDelta = 0;
+    let outerRegionPixels = 0;
 
-    for (let i = 0; i < len; i++) {
-      const delta = Math.abs(pixelsA[i] - pixelsB[i]);
-      if (delta > PIXEL_DELTA_TOLERANCE) {
-        diffPixels++;
-        totalDelta += delta;
+    const PIXEL_TOLERANCE = 16; // ignore sensor noise / micro-compression artifacts
+
+    for (let y = 0; y < DOWNSCALE_HEIGHT; y++) {
+      const isMainY = y >= 8 && y <= 56; // middle 75%
+      for (let x = 0; x < DOWNSCALE_WIDTH; x++) {
+        const isMainX = x >= 6 && x <= 58; // middle 80%
+        const idx = y * DOWNSCALE_WIDTH + x;
+
+        const delta = Math.abs(pixelsA[idx] - pixelsB[idx]);
+        if (delta > PIXEL_TOLERANCE) {
+          if (isMainY && isMainX) {
+            mainRegionDelta += delta;
+            mainRegionPixels++;
+          } else {
+            outerRegionDelta += delta;
+            outerRegionPixels++;
+          }
+        }
       }
     }
 
-    const pixelDiffRatio = diffPixels / len;
-    const avgIntensityChange = totalDelta / (len * 255);
+    const totalMainPixels = 48 * 52; // ~2496 pixels
+    const totalOuterPixels = (DOWNSCALE_WIDTH * DOWNSCALE_HEIGHT) - totalMainPixels; // ~1600 pixels
 
-    // Combined score favoring structural changes
-    return Number((pixelDiffRatio * 0.7 + avgIntensityChange * 0.3).toFixed(4));
-  }
+    const mainRatio = mainRegionPixels / totalMainPixels;
+    const outerRatio = outerRegionPixels / totalOuterPixels;
 
-  /**
-   * Check if change is meaningful or merely transient animation/spinner noise
-   */
-  function isMeaningfulChange(score, threshold = DEFAULT_CHANGE_THRESHOLD) {
-    if (score < threshold) return false;
-    return true;
+    // Weighted score favoring main content changes over header/spinner noise
+    const weightedScore = (mainRatio * 0.8) + (outerRatio * 0.2);
+    return Number(weightedScore.toFixed(4));
   }
 
   /**
@@ -103,8 +112,9 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
         return { isMeaningful: true, score: 1.0, isBaseline: true };
       }
 
-      const score = computeDifferenceScore(prevFrameData, currentPixels);
-      const isMeaningful = isMeaningfulChange(score, customThreshold || DEFAULT_CHANGE_THRESHOLD);
+      const score = computeRegionalDifferenceScore(prevFrameData, currentPixels);
+      const threshold = customThreshold || DEFAULT_CHANGE_THRESHOLD;
+      const isMeaningful = score >= threshold;
 
       if (isMeaningful) {
         prevFrameData = currentPixels;
@@ -124,11 +134,10 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
     prevFrameData = null;
   }
 
-  // Export to window.TalentScout.Visual
+  // Export to window.TalentScout.Visual.Diff
   window.TalentScout.Visual.Diff = {
     getImagePixels,
-    computeDifferenceScore,
-    isMeaningfulChange,
+    computeRegionalDifferenceScore,
     evaluateFrame,
     resetBaseline,
     DEFAULT_CHANGE_THRESHOLD,

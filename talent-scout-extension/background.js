@@ -181,9 +181,29 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           break;
         }
 
+        case 'ENGINE_STATE_UPDATE': {
+          await chrome.storage.local.set({
+            engineState: msg.state || 'ACTIVE_SAMPLING',
+            idleSeconds: msg.idleSeconds || 0,
+            lastCapture: msg.lastCapture || null,
+            lastDiscovery: msg.lastDiscovery || null,
+          });
+          sendResponse({ ok: true });
+          break;
+        }
+
         // Popup asks for live stats & queue status
         case 'GET_STATS': {
-          const local = await chrome.storage.local.get(['pagesScanned', 'totalSent', 'totalCollectedEver', 'totalCaptured']);
+          const local = await chrome.storage.local.get([
+            'pagesScanned',
+            'totalSent',
+            'totalCollectedEver',
+            'totalCaptured',
+            'engineState',
+            'idleSeconds',
+            'lastCapture',
+            'lastDiscovery',
+          ]);
           sendResponse({
             ok: true,
             stats: sessionStats,
@@ -192,6 +212,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             totalSent: local.totalSent || 0,
             totalCollected: local.totalCollectedEver || 0,
             totalCaptured: local.totalCaptured || 0,
+            engineState: local.engineState || 'ACTIVE_SAMPLING',
+            idleSeconds: local.idleSeconds || 0,
+            lastCapture: local.lastCapture || null,
+            lastDiscovery: local.lastDiscovery || null,
           });
           break;
         }

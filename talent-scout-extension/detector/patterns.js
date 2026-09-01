@@ -1,5 +1,6 @@
 // ============================================================
-// detector/patterns.js — High-Speed Entity Extractor & Heuristics
+// detector/patterns.js — High-Speed Entity Extractor & Domain Relevance Engine
+// Algorithms 6, 11, 14, 15, 32: Usefulness Scoring Gate & Field-Level Enrichment
 // ============================================================
 
 window.TalentScout = window.TalentScout || {};
@@ -17,7 +18,7 @@ window.TalentScout.PATTERNS = {
   // Mailto links
   mailto: /mailto:([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10})/i,
 
-  // Common free email providers to filter out
+  // Free email domains
   freeEmailDomains: new Set([
     'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com',
     'icloud.com', 'live.com', 'msn.com', 'me.com', 'mail.com',
@@ -37,46 +38,97 @@ window.TalentScout.PATTERNS = {
     'founder', 'co-founder', 'director of recruitment', 'people & culture',
     'talent acquisition specialist', 'lead recruiter'
   ],
+
+  // Broad professional role keywords
+  professionalKeywords: [
+    'founder', 'co-founder', 'ceo', 'cto', 'cpo', 'coo', 'vp', 'vice president',
+    'director', 'head of', 'partner', 'lead', 'manager', 'specialist',
+    'consultant', 'officer', 'principal', 'engineer', 'architect', 'developer',
+    'analyst', 'account executive', 'business development', 'product manager'
+  ],
 };
 
 /**
- * Score relevance (0-100) — lenient and aggressive for high yield
+ * Algorithm 11: Calculate Frame/Entity Usefulness Score (0 - 100)
+ * Evaluates whether extracted data contains real professional/recruiting signals.
  */
-window.TalentScout.scoreRelevance = function(data) {
-  let score = 30; // base score for any detected person entity
-  const titleLower = (data.title || '').toLowerCase();
-  const companyLower = (data.company_name || '').toLowerCase();
+window.TalentScout.calculateUsefulnessScore = function(data) {
+  if (!data) return 0;
+  let score = 0;
 
-  // If found on LinkedIn, auto +30
-  if (data.source && data.source.includes('linkedin')) {
-    score += 30;
+  const name = (data.recruiter_name || '').trim();
+  const title = (data.title || '').toLowerCase().trim();
+  const company = (data.company_name || '').trim();
+
+  // 1. Person detected (+25)
+  if (name && name.length >= 2) {
+    const isJunkName = ['linkedin member', 'view profile', 'see all', 'member', 'unknown', 'sign in', 'join now', 'experience', 'education', 'contact info', 'profile'].includes(name.toLowerCase());
+    if (!isJunkName) score += 25;
   }
 
-  // If found in an email signature, auto +30
-  if (data.source && data.source.includes('signature')) {
-    score += 30;
-  }
-
-  // Title keyword matching
+  // 2. Recruiting / Hiring signal (+20)
   for (const kw of window.TalentScout.PATTERNS.recruiterKeywords) {
-    if (titleLower.includes(kw)) { score += 40; break; }
-  }
-
-  // Corporate work email (not free provider)
-  if (data.email) {
-    const domain = (data.email.split('@')[1] || '').toLowerCase();
-    if (!window.TalentScout.PATTERNS.freeEmailDomains.has(domain)) {
-      score += 30;
-    } else {
-      score += 10;
+    if (title.includes(kw)) {
+      score += 20;
+      break;
     }
   }
 
-  if (data.linkedin_url) score += 20;
-  if (data.company_name) score += 15;
-  if (data.phone) score += 15;
+  // 3. Professional role detected (+20)
+  if (title && title.length >= 3) {
+    for (const kw of window.TalentScout.PATTERNS.professionalKeywords) {
+      if (title.includes(kw)) {
+        score += 20;
+        break;
+      }
+    }
+    // Base credit for any non-empty title if no keyword match
+    if (score < 45) score += 10;
+  }
+
+  // 4. Company detected (+15)
+  if (company && company.length >= 2) {
+    score += 15;
+  }
+
+  // 5. LinkedIn URL detected (+10)
+  if (data.linkedin_url && data.linkedin_url.includes('linkedin.com/in/')) {
+    score += 10;
+  }
+
+  // 6. Email detected (+10)
+  if (data.email) {
+    const domain = (data.email.split('@')[1] || '').toLowerCase();
+    score += 10;
+    if (!window.TalentScout.PATTERNS.freeEmailDomains.has(domain)) {
+      score += 5; // Corporate email bonus
+    }
+  }
+
+  // 7. Phone detected (+10)
+  if (data.phone) {
+    score += 10;
+  }
+
+  // 8. Location detected (+5)
+  if (data.location) {
+    score += 5;
+  }
+
+  // 9. LinkedIn source auto-boost (+10)
+  if (data.source && data.source.includes('linkedin')) {
+    score += 10;
+  }
 
   return Math.min(score, 100);
+};
+
+/**
+ * Hard Gate: Is entity useful to our domain? (Threshold >= 35)
+ */
+window.TalentScout.isUsefulDomainEntity = function(data) {
+  const score = window.TalentScout.calculateUsefulnessScore(data);
+  return score >= 35;
 };
 
 /**
@@ -87,7 +139,6 @@ window.TalentScout.extractEmail = function(text) {
   const matches = text.match(window.TalentScout.PATTERNS.email);
   if (!matches || matches.length === 0) return null;
 
-  // Prefer non-freemail
   const corporate = matches.find(m => {
     const domain = (m.split('@')[1] || '').toLowerCase();
     return !window.TalentScout.PATTERNS.freeEmailDomains.has(domain);
@@ -102,7 +153,6 @@ window.TalentScout.extractPhone = function(text) {
   if (!text) return null;
   const matches = text.match(window.TalentScout.PATTERNS.phone);
   if (!matches || matches.length === 0) return null;
-  // Clean phone string
   const clean = matches[0].replace(/[^\d+()-\s]/g, '').trim();
   return clean.length >= 10 ? clean : null;
 };
@@ -120,26 +170,23 @@ window.TalentScout.extractLinkedIn = function(text) {
 };
 
 /**
- * Infer full name from LinkedIn slug (e.g. "sarah-jenkins-8a901b" -> "Sarah Jenkins", "judymackesy" -> "Judy Mackesy")
+ * Infer full name from LinkedIn slug
  */
 window.TalentScout.inferNameFromLinkedInSlug = function(url) {
   if (!url) return null;
   const slug = url.split('/in/')[1]?.split('/')[0]?.split('?')[0];
   if (!slug) return null;
-  // Strip trailing hash/random digits/hex ids
   let cleaned = slug.replace(/-[a-f0-9]{4,16}$/i, '').replace(/[-_.]+/g, ' ');
-  // If slug has no spaces (e.g. judymackesy), attempt camelCase / split or return Title Cased
   cleaned = cleaned.replace(/([a-z])([A-Z])/g, '$1 $2');
   return window.TalentScout.normalizeName(cleaned);
 };
 
 /**
- * Infer name from corporate email (e.g. "sarah.jenkins@apexsystems.com" -> "Sarah Jenkins")
+ * Infer name from corporate email
  */
 window.TalentScout.inferNameFromEmail = function(email) {
   if (!email || !email.includes('@')) return null;
   const local = email.split('@')[0];
-  // Handle formats: firstname.lastname, firstname_lastname, firstnamelastname
   if (local.includes('.') || local.includes('_') || local.includes('-')) {
     const parts = local.split(/[._-]+/);
     if (parts.length >= 2 && parts[0].length >= 2 && parts[1].length >= 2) {
@@ -150,20 +197,20 @@ window.TalentScout.inferNameFromEmail = function(email) {
 };
 
 /**
- * Normalize and clean names (handles LinkedIn degree badges, pronouns, credentials)
+ * Normalize and clean names
  */
 window.TalentScout.normalizeName = function(raw) {
   if (!raw) return null;
   let clean = String(raw).trim();
 
-  // 1. Remove LinkedIn degree connection phrases: "1st degree connection", "2nd degree", "degree connection", etc.
+  // 1. Remove LinkedIn degree connection phrases: "1st degree connection", "2nd degree", etc.
   clean = clean.replace(/\b(?:\d+(?:st|nd|rd|th)?\s+)?degree(?:\s+connection)?\b/gi, '');
   clean = clean.replace(/\b(?:1st|2nd|3rd|3rd\+|\d+(?:st|nd|rd|th))\b/gi, '');
 
   // 2. Remove Pronouns: (he/him), (she/her), (they/them), etc.
   clean = clean.replace(/\((?:he\/him|she\/her|they\/them|she\/they|he\/they|any)\)/gi, '');
 
-  // 3. Remove Title / Tag / Headline suffixes after hyphens or pipes: "John Doe - Senior Technical Recruiter" -> "John Doe"
+  // 3. Remove Title / Headline suffixes after hyphens or pipes
   if (clean.includes(' - ') || clean.includes(' | ') || clean.includes(' — ') || clean.includes(' – ')) {
     clean = clean.split(/\s*[-–—|]\s*/)[0].trim();
   }
@@ -171,11 +218,11 @@ window.TalentScout.normalizeName = function(raw) {
   // 4. Remove common professional suffixes & certifications
   clean = clean.replace(/,?\s*\b(?:phd|mba|pmp|cir|cdr|cpc|shrm(?:-cp|-scp)?|sphr|phr|recruiter|talent|hr|staffing|esq|cpa|md|dds|ms|bs|ba|ma|rn)\b/gi, '');
 
-  // 5. Strip numbers and unwanted symbols, keep letters, hyphens, spaces, apostrophes
+  // 5. Strip numbers and unwanted symbols
   clean = clean.replace(/\d+/g, ' ');
   clean = clean.replace(/[^\w\s'.\-]/g, ' ').replace(/\s+/g, ' ').trim();
 
-  // 6. Reject if empty, too short, too long, or common junk labels
+  // 6. Reject if empty, too short, too long, or junk
   if (clean.length < 2 || clean.length > 60) return null;
   const lower = clean.toLowerCase();
   if (['linkedin member', 'view profile', 'see all', 'member', 'unknown', 'sign in', 'join now', 'experience', 'education', 'contact info', 'profile'].includes(lower)) {

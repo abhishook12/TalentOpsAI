@@ -1,6 +1,6 @@
 // ============================================================
-// visual/store.js — IndexedDB Temporary Screenshot Storage & Lifecycle
-// Guaranteed 2-3 Minute Retention Window with Automatic Purge
+// visual/store.js — IndexedDB Temporary Processing Buffer & Strict Lifecycle
+// Algorithms 24, 25, 26: Temporary Buffer Queue, MAX_BUFFER limit, 2-3m Auto-Purge
 // ============================================================
 
 window.TalentScout = window.TalentScout || {};
@@ -10,9 +10,10 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
   'use strict';
 
   const DB_NAME = 'TalentScoutVisualDB';
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;
   const STORE_NAME = 'temporary_screenshots';
-  const DEFAULT_TTL_MS = 3 * 60 * 1000; // 3 Minutes TTL
+  const DEFAULT_TTL_MS = 2.5 * 60 * 1000; // 2.5 Minutes Processing TTL
+  const MAX_BUFFER_SIZE = 15; // Algorithm 26: Hard ceiling on buffered frames
 
   let dbPromise = null;
 
@@ -37,7 +38,7 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
   }
 
   /**
-   * Save a newly captured screenshot with metadata
+   * Save screenshot into temporary processing buffer (enforcing MAX_BUFFER_SIZE)
    */
   async function saveScreenshot({
     id,
@@ -46,11 +47,23 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
     tab_id,
     change_score,
     image_data,
-    status = 'CAPTURED',
+    status = 'PROCESSING',
   }) {
     const db = await openDB();
+
+    // Check buffer size and prune oldest if exceeding limit
+    try {
+      const all = await getRecentScreenshots(50);
+      if (all.length >= MAX_BUFFER_SIZE) {
+        const toDelete = all.slice(MAX_BUFFER_SIZE - 1);
+        const txDel = db.transaction(STORE_NAME, 'readwrite');
+        const stDel = txDel.objectStore(STORE_NAME);
+        toDelete.forEach(item => stDel.delete(item.id));
+      }
+    } catch (_) {}
+
     const item = {
-      id: id || ('vis_' + crypto.randomUUID()),
+      id: id || ('VC-' + Math.floor(10000 + Math.random() * 90000)),
       captured_at: new Date().toISOString(),
       page_url: page_url || '',
       page_title: page_title || '',
@@ -60,7 +73,7 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
       status: status,
       extracted_entities: [],
       created_timestamp: Date.now(),
-      expires_at: Date.now() + DEFAULT_TTL_MS, // Initial expiration
+      expires_at: Date.now() + DEFAULT_TTL_MS,
     };
 
     return new Promise((resolve, reject) => {
@@ -73,7 +86,19 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
   }
 
   /**
-   * Update status, extracted leads, and set final 2-3 min cleanup countdown
+   * Discard non-useful frames immediately (Algorithm 24)
+   */
+  async function discardScreenshot(id) {
+    if (!id) return;
+    try {
+      const db = await openDB();
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).delete(id);
+    } catch (_) {}
+  }
+
+  /**
+   * Update status & lock in cleanup expiration
    */
   async function updateStatus(id, newStatus, extractedEntities = null) {
     const db = await openDB();
@@ -91,7 +116,6 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
           item.extracted_entities = extractedEntities;
         }
 
-        // When processing/sync is complete, lock in the 2.5 min deletion timer
         if (newStatus === 'SYNC_COMPLETE' || newStatus === 'EXTRACTED') {
           item.expires_at = Date.now() + (2.5 * 60 * 1000);
         }
@@ -104,24 +128,7 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
     });
   }
 
-  /**
-   * Fetch single screenshot by ID (for debugger / inspector preview)
-   */
-  async function getScreenshot(id) {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readonly');
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.get(id);
-      req.onsuccess = () => resolve(req.result || null);
-      req.onerror = () => reject(req.error);
-    });
-  }
-
-  /**
-   * Get all active screenshots within retention window (latest first)
-   */
-  async function getRecentScreenshots(limit = 10) {
+  async function getRecentScreenshots(limit = 15) {
     const db = await openDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readonly');
@@ -167,9 +174,6 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
     });
   }
 
-  /**
-   * Diagnostic summary of active memory buffer & next auto-purge countdown
-   */
   async function getBufferDiagnostics() {
     const db = await openDB();
     const now = Date.now();
@@ -190,11 +194,12 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
           }
         });
 
-        const nextPurgeSec = minExpires !== Infinity ? Math.max(0, Math.round((minExpires - now) / 1000)) : 180;
+        const nextPurgeSec = minExpires !== Infinity ? Math.max(0, Math.round((minExpires - now) / 1000)) : 150;
         const mb = (totalBytes / (1024 * 1024)).toFixed(2);
 
         resolve({
           capturedCount: items.length,
+          maxBuffer: MAX_BUFFER_SIZE,
           storageMB: `${mb} MB`,
           storageBytes: totalBytes,
           nextPurgeSec: nextPurgeSec,
@@ -204,9 +209,6 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
     });
   }
 
-  /**
-   * Purge ALL screenshots (full buffer reset)
-   */
   async function purgeAll() {
     const db = await openDB();
     return new Promise((resolve, reject) => {
@@ -218,15 +220,15 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
     });
   }
 
-  // Export to window.TalentScout.Visual.Store
   window.TalentScout.Visual.Store = {
     saveScreenshot,
+    discardScreenshot,
     updateStatus,
-    getScreenshot,
     getRecentScreenshots,
     purgeExpired,
     purgeAll,
     getBufferDiagnostics,
+    MAX_BUFFER_SIZE,
     DEFAULT_TTL_MS,
   };
 

@@ -130,13 +130,37 @@ async function loadLiveStats() {
   const pagesScanned = Math.max(0, statsRes?.pagesScanned ?? localData.pagesScanned ?? 0);
   const totalCapturedScreens = statsRes?.totalCaptured ?? localData.totalCaptured ?? 0;
 
-  // 1. Update Metrics
+  // 1. Update Engine Telemetry Card
+  const engineState = statsRes?.engineState || localData.engineState || 'ACTIVE_SAMPLING';
+  const idleSec = statsRes?.idleSeconds ?? localData.idleSeconds ?? 0;
+  const lastCap = statsRes?.lastCapture || localData.lastCapture || 'None';
+  const lastDisc = statsRes?.lastDiscovery || localData.lastDiscovery || 'None';
+
+  if ($('val-engine-state')) {
+    if (engineState === 'IDLE_WATCH' || idleSec >= 10) {
+      $('val-engine-state').textContent = 'IDLE (NO CHANGE)';
+      $('val-engine-state').style.color = '#f59e0b';
+      if ($('engine-state-title')) $('engine-state-title').textContent = 'ENGINE: PAUSED (IDLE)';
+      if ($('dot-state')) $('dot-state').style.background = '#f59e0b';
+    } else {
+      $('val-engine-state').textContent = 'ACTIVE (1s LOOP)';
+      $('val-engine-state').style.color = '#10b981';
+      if ($('engine-state-title')) $('engine-state-title').textContent = 'ENGINE: ACTIVE (1s LOOP)';
+      if ($('dot-state')) $('dot-state').style.background = '#10b981';
+    }
+  }
+
+  if ($('val-idle-timer')) $('val-idle-timer').textContent = `${idleSec}s / 10s`;
+  if ($('val-last-capture')) $('val-last-capture').textContent = lastCap;
+  if ($('val-last-discovery')) $('val-last-discovery').textContent = lastDisc;
+
+  // 2. Update Metrics
   if ($('stat-scanned')) $('stat-scanned').textContent = pagesScanned.toLocaleString();
   if ($('stat-captured')) $('stat-captured').textContent = totalCapturedScreens.toLocaleString();
   if ($('stat-collected')) $('stat-collected').textContent = totalExtracted.toLocaleString();
   if ($('stat-synced')) $('stat-synced').textContent = totalSent.toLocaleString();
 
-  // 2. Fetch Buffer Diagnostics
+  // 3. Fetch Buffer Diagnostics
   try {
     if (window.TalentScout?.Visual?.Store) {
       const diag = await window.TalentScout.Visual.Store.getBufferDiagnostics();
@@ -144,7 +168,7 @@ async function loadLiveStats() {
         const mins = Math.floor(diag.nextPurgeSec / 60);
         const secs = diag.nextPurgeSec % 60;
         const purgeTimeStr = `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
-        $('footer-status-text').textContent = `Visual buffer: ${diag.capturedCount} images (${diag.storageMB}) • Auto-purges in ${purgeTimeStr}`;
+        $('footer-status-text').textContent = `Processing buffer: ${diag.capturedCount}/${diag.maxBuffer || 15} images (${diag.storageMB}) • Auto-purges in ${purgeTimeStr}`;
       }
     }
   } catch (_) {}

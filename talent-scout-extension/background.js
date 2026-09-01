@@ -188,14 +188,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
         // Popup asks for live stats & queue status
         case 'GET_STATS': {
-          const local = await chrome.storage.local.get(['pagesScanned', 'totalSent', 'totalCollectedEver']);
+          const local = await chrome.storage.local.get(['pagesScanned', 'totalSent', 'totalCollectedEver', 'totalCaptured']);
           sendResponse({
             ok: true,
             stats: sessionStats,
             queueLength: contactQueue.length,
             pagesScanned: local.pagesScanned || 0,
-            totalSent: (local.totalSent || 0) + sessionStats.sent,
-            totalCollected: (local.totalCollectedEver || 0) + sessionStats.captured,
+            totalSent: local.totalSent || 0,
+            totalCollected: local.totalCollectedEver || 0,
+            totalCaptured: local.totalCaptured || 0,
           });
           break;
         }
@@ -378,7 +379,8 @@ async function flushQueue() {
     const data = await res.json().catch(() => ({}));
 
     if (res.ok) {
-      sessionStats.sent += data.accepted || 0;
+      const processedCount = (data.accepted || 0) + (data.duplicates || 0);
+      sessionStats.sent += processedCount;
       sessionStats.duplicates += data.duplicates || 0;
 
       addSessionLog({
@@ -391,9 +393,9 @@ async function flushQueue() {
       await chrome.storage.local.set({
         lastFlushAt: new Date().toISOString(),
         lastAccepted: data.accepted || 0,
-        totalSent: (cur.totalSent || 0) + (data.accepted || 0),
+        totalSent: (cur.totalSent || 0) + processedCount,
       });
-      return data.accepted || 0;
+      return processedCount;
     } else {
       contactQueue.unshift(...batch);
       sessionStats.errors += 1;

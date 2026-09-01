@@ -125,10 +125,10 @@ async function loadLiveStats() {
     'userEmail',
   ]);
 
-  const totalSent = statsRes?.totalSent || localData.totalSent || 0;
-  const totalExtracted = statsRes?.totalCollected || localData.totalCollectedEver || 0;
-  const pagesScanned = Math.max(0, statsRes?.pagesScanned || localData.pagesScanned || 0);
-  const totalCapturedScreens = localData.totalCaptured || 0;
+  const totalSent = statsRes?.totalSent ?? localData.totalSent ?? 0;
+  const totalExtracted = statsRes?.totalCollected ?? localData.totalCollectedEver ?? 0;
+  const pagesScanned = Math.max(0, statsRes?.pagesScanned ?? localData.pagesScanned ?? 0);
+  const totalCapturedScreens = statsRes?.totalCaptured ?? localData.totalCaptured ?? 0;
 
   // 1. Update Metrics
   if ($('stat-scanned')) $('stat-scanned').textContent = pagesScanned.toLocaleString();

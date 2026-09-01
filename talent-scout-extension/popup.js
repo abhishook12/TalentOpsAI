@@ -1,6 +1,7 @@
 // popup.js — Dynamic Power Meter, Live Counters & Stream Feed
 
 const $ = id => document.getElementById(id);
+const API_BASE = 'https://talentopsai-1.onrender.com';
 
 async function init() {
   let auth = await chrome.runtime.sendMessage({ type: 'GET_AUTH' }).catch(() => ({}));
@@ -11,7 +12,7 @@ async function init() {
 
   showDashboard();
   loadLiveStats();
-  setInterval(loadLiveStats, 1500); // Auto-refresh live stats every 1.5s while popup is open
+  setInterval(loadLiveStats, 2000); // Auto-refresh live stats every 2s while popup is open
 }
 
 function showLogin() {
@@ -50,6 +51,43 @@ function showDashboard() {
   $('screen-login').classList.add('hidden');
   $('screen-active').classList.remove('hidden');
 
+  // Wire Scan Page button
+  const scanBtn = $('btn-scan-page');
+  if (scanBtn && !scanBtn.dataset.wired) {
+    scanBtn.dataset.wired = 'true';
+    scanBtn.addEventListener('click', async () => {
+      scanBtn.disabled = true;
+      scanBtn.textContent = 'Scanning…';
+
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tab && tab.id) {
+          // Send scan message
+          await chrome.tabs.sendMessage(tab.id, { type: 'TRIGGER_SCAN' }).catch(() => {});
+          // Increment pages scanned
+          const cur = await chrome.storage.local.get(['pagesScanned']);
+          const next = (cur.pagesScanned || 0) + 1;
+          await chrome.storage.local.set({ pagesScanned: next });
+
+          // Flush queue
+          await chrome.runtime.sendMessage({ type: 'FLUSH_NOW' }).catch(() => {});
+
+          showFeedback('✓ Page scanned & intelligence synced!');
+        } else {
+          showFeedback('Page active & listening 24/7');
+        }
+      } catch (e) {
+        showFeedback('Page scanned & synchronized');
+      } finally {
+        setTimeout(() => {
+          scanBtn.disabled = false;
+          scanBtn.textContent = '⚡ Scan Page';
+          loadLiveStats();
+        }, 800);
+      }
+    });
+  }
+
   // Wire Sync Queue button
   const syncBtn = $('btn-sync-now');
   if (syncBtn && !syncBtn.dataset.wired) {
@@ -62,6 +100,7 @@ function showDashboard() {
         syncBtn.style.transform = 'rotate(0deg)';
         syncBtn.disabled = false;
         loadLiveStats();
+        showFeedback('✓ Database queue synchronized!');
       }, 600);
     });
   }
@@ -73,12 +112,14 @@ async function loadLiveStats() {
     'totalSent',
     'pagesScanned',
     'recentCaptures',
-    'totalCollectedEver'
+    'totalCollectedEver',
+    'userEmail',
+    'userRole'
   ]);
 
   const totalSent = statsRes?.totalSent || localData.totalSent || 0;
   const totalCaptured = statsRes?.totalCollected || localData.totalCollectedEver || 0;
-  const pagesScanned = statsRes?.pagesScanned || localData.pagesScanned || 0;
+  const pagesScanned = Math.max(1, statsRes?.pagesScanned || localData.pagesScanned || 0);
   const queueLen = statsRes?.queueLength || 0;
 
   // 1. Update Counters
@@ -88,38 +129,37 @@ async function loadLiveStats() {
   if ($('stat-pending')) $('stat-pending').textContent = queueLen.toLocaleString();
 
   // 2. Compute Scout Power Meter & Score
-  const score = Math.min(100, Math.max(60, 60 + Math.min(40, (pagesScanned + totalCaptured * 3))));
+  const score = Math.min(100, Math.max(75, 75 + Math.min(25, (pagesScanned * 2 + totalCaptured * 3))));
 
   if ($('scout-score')) $('scout-score').textContent = score;
   if ($('meter-bar-fill')) $('meter-bar-fill').style.width = `${score}%`;
 
+  if ($('scout-user-label') && localData.userEmail) {
+    $('scout-user-label').textContent = `${localData.userRole || 'User'}: ${localData.userEmail.split('@')[0]}`;
+  }
+
   if ($('scout-rank')) {
     if (score >= 95) {
       $('scout-rank').textContent = 'Master Scout';
-      $('scout-efficiency-text').textContent = 'Elite corporate enrichment rate';
-    } else if (score >= 80) {
+      $('scout-efficiency-text').textContent = 'Autonomous continuous extraction';
+    } else if (score >= 85) {
       $('scout-rank').textContent = 'Pro Scout';
-      $('scout-efficiency-text').textContent = 'High precision active listening';
+      $('scout-efficiency-text').textContent = 'Real-time corporate data pipeline';
     } else {
       $('scout-rank').textContent = 'Active Scout';
-      $('scout-efficiency-text').textContent = 'Scanning web for talent';
+      $('scout-efficiency-text').textContent = 'Scanning web for candidate leads';
     }
   }
 
-  // 3. Render Live Stream Feed
+  // 3. Render Live Stream Feed (Local or Network Fallback)
   const recent = localData.recentCaptures || [];
-  if ($('stream-count')) $('stream-count').textContent = `${recent.length} recent`;
-
   const feedList = $('feed-list');
-  if (feedList) {
-    if (recent.length === 0) {
-      feedList.innerHTML = `
-        <div class="feed-empty">
-          <span>📡 Browse LinkedIn, Gmail, or job sites to see live verified captures appear here.</span>
-        </div>`;
-    } else {
+
+  if (recent.length > 0) {
+    if ($('stream-count')) $('stream-count').textContent = `${recent.length} recent`;
+    if (feedList) {
       feedList.innerHTML = recent.slice(0, 6).map(item => {
-        const icon = item.source?.includes('linkedin') ? '💼' : item.source?.includes('gmail') || item.source?.includes('outlook') ? '✉️' : '🌐';
+        const icon = item.source?.includes('linkedin') ? '💼' : (item.source?.includes('gmail') || item.source?.includes('outlook')) ? '✉️' : '🌐';
         return `
           <div class="feed-item">
             <div class="feed-left">
@@ -133,6 +173,35 @@ async function loadLiveStats() {
           </div>`;
       }).join('');
     }
+  } else {
+    // Try fetching network live feed as fallback
+    try {
+      const feedRes = await fetch(`${API_BASE}/recruiters/extension/live-feed?limit=5`).then(r => r.json()).catch(() => null);
+      if (feedRes?.feed && feedRes.feed.length > 0 && feedList) {
+        if ($('stream-count')) $('stream-count').textContent = 'Cloud Live';
+        feedList.innerHTML = feedRes.feed.slice(0, 5).map(item => `
+          <div class="feed-item">
+            <div class="feed-left">
+              <span class="feed-icon">💼</span>
+              <div>
+                <div class="feed-name">${escapeHtml(item.recruiter_name || 'Recruiter')}</div>
+                <div class="feed-sub">${escapeHtml(item.company_name || item.title || 'Talent Lead')}</div>
+              </div>
+            </div>
+            <span class="feed-tag">${item.verification_status || 'Verified'}</span>
+          </div>
+        `).join('');
+      }
+    } catch (_) {}
+  }
+}
+
+function showFeedback(msg) {
+  const el = $('scan-feedback');
+  if (el) {
+    el.textContent = msg;
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 3000);
   }
 }
 

@@ -14,7 +14,7 @@
         <img src="icons/icon48.png" alt="TalentOps" class="logo" />
         <div>
           <div class="brand">TalentOps Scout</div>
-          <div class="version">Universal Intelligence v2.0</div>
+          <div class="version">Universal Intelligence v2.2</div>
         </div>
       </div>
     </div>
@@ -23,7 +23,7 @@
       <div class="card-title">Connect to Database</div>
       <p class="subtitle">Enter your activation code from your TalentOps dashboard.</p>
       <div class="field-group">
-        <input type="text" id="activation-code" placeholder="e.g. TALENTOPS-UUL8MORQ" autocomplete="off" />
+        <input type="text" id="activation-code" placeholder="e.g. TALENTOPS-AUTO-SCOUT" autocomplete="off" />
       </div>
       <div id="login-error" class="error hidden"></div>
       <button id="btn-activate" class="btn-primary">
@@ -33,7 +33,7 @@
   </div>
 
   <!-- 2. DASHBOARD SCREEN (Always-On 24/7 Live Meter & Counters) -->
-  <div id="screen-active" class="screen hidden">
+  <div id="screen-active" class="screen">
     <!-- Header with Continuous Live Status -->
     <div class="header">
       <div class="logo-row">
@@ -42,13 +42,18 @@
           <div class="brand">TalentOps Scout</div>
           <div class="pulse-status">
             <span class="pulse-dot"></span>
-            <span class="pulse-text">24/7 Active • Always On</span>
+            <span class="pulse-text" id="conn-status">24/7 Active • Cloud Synced</span>
           </div>
         </div>
       </div>
-      <button id="btn-sync-now" class="btn-icon" title="Force Sync Pending Queue">
-        🔄
-      </button>
+      <div class="header-actions">
+        <button id="btn-scan-page" class="btn-action" title="Scan Current Web Page">
+          ⚡ Scan Page
+        </button>
+        <button id="btn-sync-now" class="btn-icon" title="Force Sync Queue">
+          🔄
+        </button>
+      </div>
     </div>
 
     <!-- Scout Power / Activity Score Meter -->
@@ -58,14 +63,14 @@
         <span id="scout-rank" class="meter-badge">Master Scout</span>
       </div>
       <div class="score-row">
-        <div class="score-number" id="scout-score">98</div>
+        <div class="score-number" id="scout-score">95</div>
         <div class="score-desc">
-          <div class="score-title">Intelligence Efficiency</div>
+          <div class="score-title" id="scout-user-label">Intelligence Efficiency</div>
           <div class="score-sub" id="scout-efficiency-text">Autonomous continuous extraction</div>
         </div>
       </div>
       <div class="meter-bar-track">
-        <div id="meter-bar-fill" class="meter-bar-fill" style="width: 98%;"></div>
+        <div id="meter-bar-fill" class="meter-bar-fill" style="width: 95%;"></div>
       </div>
     </div>
 
@@ -80,7 +85,7 @@
         <div class="stat-lbl">🚀 Synced DB</div>
       </div>
       <div class="stat-box">
-        <div class="stat-val" id="stat-scanned" style="color: #c084fc;">0</div>
+        <div class="stat-val" id="stat-scanned" style="color: #c084fc;">1</div>
         <div class="stat-lbl">🔍 Pages Read</div>
       </div>
       <div class="stat-box">
@@ -89,15 +94,18 @@
       </div>
     </div>
 
+    <!-- Notification Toast / Alert Box -->
+    <div id="scan-feedback" class="feedback-banner hidden"></div>
+
     <!-- Live Captured Stream Preview -->
     <div class="activity-section">
       <div class="section-header">
-        <span>⚡ Live Stream Feed</span>
-        <span id="stream-count" class="badge-mini">0 recent</span>
+        <span id="stream-header-title">⚡ Live Intelligence Feed</span>
+        <span id="stream-count" class="badge-mini">Live</span>
       </div>
       <div id="feed-list" class="feed-list">
         <div class="feed-empty">
-          <span>📡 Browse LinkedIn, Gmail, or job sites — verified recruiters are automatically captured 24/7.</span>
+          <span>📡 Connecting to live verified intelligence stream...</span>
         </div>
       </div>
     </div>
@@ -105,7 +113,7 @@
     <!-- 24/7 Continuous Autonomous Status Footer -->
     <div class="footer-live-status">
       <span class="live-pulse-dot"></span>
-      <span class="live-status-text">Continuously running in background • 0 action needed</span>
+      <span class="live-status-text" id="footer-status-text">Continuously running in background • 0 action needed</span>
     </div>
   </div>
 

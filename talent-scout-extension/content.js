@@ -6,8 +6,8 @@
 (function() {
   'use strict';
 
+  window.TalentScout = window.TalentScout || {};
   const ts = window.TalentScout;
-  if (!ts) return;
 
   let isScanning = false;
   let debounceTimer = null;

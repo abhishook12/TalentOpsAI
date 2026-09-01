@@ -1,11 +1,12 @@
 // ============================================================
-// detector/linkedin.js — Ultra-Fast LinkedIn High-Yield Extractor
+// detector/linkedin.js — Bulletproof LinkedIn Scraper
+// Uses DOM Selectors + OpenGraph Tags + Document Title + Text Stream
 // ============================================================
 
 window.TalentScout = window.TalentScout || {};
 
 window.TalentScout.detectLinkedIn = function() {
-  const host = location.hostname;
+  const host = location.hostname.toLowerCase();
   const path = location.pathname;
   const ts = window.TalentScout;
 
@@ -19,25 +20,19 @@ window.TalentScout.detectLinkedIn = function() {
     if (single) results.push(single);
   }
 
-  // ── 2. Search Results & People Directory ───────────────────
-  if (path.includes('/search/') || path.includes('/mynetwork/')) {
-    results.push(..._scrapeSearchCards());
-  }
-
-  // ── 3. Recruiter Platform (recruiter.linkedin.com) ─────────
-  if (host.includes('recruiter.linkedin.com') || path.includes('/talent/')) {
-    results.push(..._scrapeRecruiterPlatform());
-  }
-
-  // ── 4. Messaging & InMail Threads ──────────────────────────
-  if (path.includes('/messaging/')) {
-    results.push(..._scrapeMessaging());
-  }
-
-  // ── 5. Feed Posts with Hiring Announcements ────────────────
+  // ── 2. Search Results, Recruiter & Network Cards ───────────
+  results.push(..._scrapeSearchCards());
+  results.push(..._scrapeRecruiterPlatform());
+  results.push(..._scrapeMessaging());
   results.push(..._scrapeFeedPosts());
 
-  // Deduplicate locally by LinkedIn URL / Name
+  // ── 3. Page Title & Meta Fallback (Guaranteed Yield) ───────
+  if (results.length === 0 && /^\/(in|pub)\//.test(path)) {
+    const fallback = _scrapeFromTitleAndMeta();
+    if (fallback) results.push(fallback);
+  }
+
+  // Deduplicate locally
   const seen = new Set();
   return results.filter(r => {
     const key = r.linkedin_url || r.email || r.recruiter_name;
@@ -53,20 +48,22 @@ function _scrapeSingleProfile() {
   const ts = window.TalentScout;
 
   // Name
-  const name = ts.text([
+  let name = ts.text([
     'h1.text-heading-xlarge',
     'h1',
     '.top-card-layout__title',
     '[data-generated-suggestion-target]',
     '.pv-top-card--list li:first-child',
+    '.artdeco-entity-lockup__title',
   ]);
 
   // Title / Headline
-  const title = ts.text([
+  let title = ts.text([
     '.text-body-medium.break-words',
     '.top-card-layout__headline',
     '.pv-text-details__left-panel .text-body-medium',
     '[data-field="headline"]',
+    '.artdeco-entity-lockup__subtitle',
   ]);
 
   // Location
@@ -78,7 +75,7 @@ function _scrapeSingleProfile() {
   ]);
 
   // Company
-  const company = ts.text([
+  let company = ts.text([
     '.pv-text-details__right-panel .inline-show-more-text',
     '.pv-text-details__right-panel a',
     '.top-card-layout__card .topcard__org-name-link',
@@ -88,26 +85,61 @@ function _scrapeSingleProfile() {
     'button[aria-label*="Current company"]',
   ]);
 
-  // Contact Info (if open or rendered)
-  const contactModal = document.querySelector('.pv-contact-info, .pv-profile-section__section-info');
-  const fullText = (contactModal ? contactModal.textContent : '') + ' ' + (document.body.innerText || '');
+  const cleanUrl = window.location.href.split('?')[0].split('#')[0];
+
+  // Title & Meta tags fallback if name missing
+  if (!name) {
+    const metaTitle = document.querySelector('meta[property="og:title"]')?.content || document.title;
+    if (metaTitle && metaTitle.includes('|')) {
+      const parts = metaTitle.split('|')[0].split(' - ');
+      name = parts[0]?.trim();
+      if (parts[1] && !title) title = parts[1]?.trim();
+      if (parts[2] && !company) company = parts[2]?.trim();
+    }
+  }
+
+  const finalName = ts.normalizeName(name) || ts.inferNameFromLinkedInSlug(cleanUrl);
+
+  // Extract contact info
+  const fullText = document.body ? (document.body.innerText || '') : '';
   const email = ts.extractEmail(fullText);
   const phone = ts.extractPhone(fullText);
-
-  const cleanUrl = window.location.href.split('?')[0].split('#')[0];
-  const finalName = ts.normalizeName(name) || ts.inferNameFromLinkedInSlug(cleanUrl);
 
   if (!finalName && !title) return null;
 
   return {
-    recruiter_name: finalName,
-    title: title || null,
+    recruiter_name: finalName || 'LinkedIn Member',
+    title: title || 'Professional',
     company_name: company || null,
     location: location || null,
     email: email || null,
     phone: phone || null,
     linkedin_url: cleanUrl,
     source: 'linkedin_profile',
+  };
+}
+
+function _scrapeFromTitleAndMeta() {
+  const ts = window.TalentScout;
+  const rawTitle = document.title || '';
+  if (!rawTitle) return null;
+
+  const cleanUrl = window.location.href.split('?')[0].split('#')[0];
+  const inferredName = ts.inferNameFromLinkedInSlug(cleanUrl);
+
+  const parts = rawTitle.replace(/\s*\|\s*LinkedIn$/i, '').split(/\s*[-–—|]\s*/);
+  const name = ts.normalizeName(parts[0]) || inferredName;
+  const title = parts[1] || null;
+  const company = parts[2] || null;
+
+  if (!name) return null;
+
+  return {
+    recruiter_name: name,
+    title: title || 'Recruiter / Professional',
+    company_name: company || null,
+    linkedin_url: cleanUrl,
+    source: 'linkedin_meta',
   };
 }
 
@@ -121,6 +153,7 @@ function _scrapeSearchCards() {
     '.discover-person-card',
     '.mn-discovery-person-card',
     '.artdeco-entity-lockup',
+    '[data-view-name="search-entity-result-universal-template"]',
   ].join(','));
 
   const results = [];
@@ -161,7 +194,7 @@ function _scrapeSearchCards() {
 
     results.push({
       recruiter_name: finalName,
-      title: title || null,
+      title: title || 'Professional',
       company_name: company || null,
       location: location || null,
       linkedin_url: href,
@@ -230,16 +263,12 @@ function _scrapeFeedPosts() {
     const actorName = ts.text(['.update-components-actor__name', '.feed-shared-actor__name'], post);
     const actorTitle = ts.text(['.update-components-actor__description', '.feed-shared-actor__description'], post);
     const anchor = post.querySelector('.update-components-actor__container-link, a[href*="/in/"]');
-    const postText = (post.innerText || '').toLowerCase();
-
-    // Check if post author is a recruiter or hiring
-    const isHiringPost = postText.includes('hiring') || postText.includes('looking for') || postText.includes('recruiting');
     const finalName = ts.normalizeName(actorName);
 
-    if (finalName && (isHiringPost || ts.scoreRelevance({ title: actorTitle }) >= 40)) {
+    if (finalName) {
       results.push({
         recruiter_name: finalName,
-        title: actorTitle || null,
+        title: actorTitle || 'Hiring Lead',
         linkedin_url: anchor ? anchor.href.split('?')[0] : null,
         email: ts.extractEmail(post.innerText || ''),
         phone: ts.extractPhone(post.innerText || ''),

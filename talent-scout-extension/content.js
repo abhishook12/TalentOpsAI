@@ -13,31 +13,42 @@
   let debounceTimer = null;
   let lastUrl = location.href;
 
-  // ── 1. Immediate Initial Scan on Load ──────────────────────
-  chrome.storage.sync.get(['authToken'], (settings) => {
-    if (settings.authToken) {
-      // Instant execution (no delay)
+  // ── 1. Helper to Get Auth Token (Checks both local & sync) ──
+  async function getAuthToken() {
+    const l = await new Promise(r => chrome.storage.local.get(['authToken'], r));
+    if (l?.authToken) return l.authToken;
+    const s = await new Promise(r => chrome.storage.sync.get(['authToken'], r));
+    return s?.authToken || null;
+  }
+
+  // ── 2. Immediate Initial Scan on Load ──────────────────────
+  getAuthToken().then(token => {
+    if (token) {
       runScan();
-      // Second pass after 1.2s to catch lazy-loaded SPA content
-      setTimeout(runScan, 1200);
+      setTimeout(runScan, 1000);
+      setTimeout(runScan, 2500);
     }
   });
 
-  // ── 2. Real-Time Mutation Observer (Ultra-Fast 80ms Debounce) ──
+  // ── 3. Listen for Messages from Background Worker ──────────
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg.type === 'TRIGGER_SCAN' || msg.type === 'MANUAL_CAPTURE') {
+      runScan().then(() => sendResponse({ ok: true }));
+      return true;
+    }
+  });
+
+  // ── 4. Real-Time Mutation Observer (Ultra-Fast 60ms Debounce) ──
   const observer = new MutationObserver(() => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
-      // Check SPA navigation
       if (location.href !== lastUrl) {
         lastUrl = location.href;
-        runScan();
-      } else {
-        runScan();
       }
-    }, 80);
+      runScan();
+    }, 60);
   });
 
-  // Attach observer to entire document
   if (document.body) {
     observer.observe(document.body, {
       childList: true,
@@ -57,33 +68,28 @@
     });
   }
 
-  // ── 3. High-Speed Scroll Observer for Feeds & Search ───────
+  // ── 5. High-Speed Scroll Observer for Feeds & Search ───────
   let scrollTimer = null;
   window.addEventListener('scroll', () => {
     if (!scrollTimer) {
       scrollTimer = setTimeout(() => {
         runScan();
         scrollTimer = null;
-      }, 250);
+      }, 200);
     }
   }, { passive: true });
 
-  // ── 4. Main Real-Time Scan Function ────────────────────────
+  // ── 6. Main Real-Time Scan Function ────────────────────────
   async function runScan() {
     if (isScanning) return;
     isScanning = true;
 
     try {
-      const settings = await new Promise(r => chrome.storage.sync.get(['authToken'], r));
-      if (!settings.authToken) {
+      const token = await getAuthToken();
+      if (!token) {
         isScanning = false;
         return;
       }
-
-      // Track pages read locally
-      chrome.storage.local.get(['pagesScanned'], (s) => {
-        chrome.storage.local.set({ pagesScanned: (s.pagesScanned || 0) + 1 });
-      });
 
       const allResults = [];
 
@@ -108,7 +114,7 @@
       const qualified = allResults.filter(r => {
         const score = ts.scoreRelevance(r);
         r._relevance_score = score;
-        return score >= 30; // low threshold = captures everything useful
+        return score >= 25; // captures all high-value leads
       });
 
       if (qualified.length === 0) {
@@ -144,7 +150,7 @@
     }
   }
 
-  // ── 5. Local Cache Deduplication ───────────────────────────
+  // ── 7. Local Cache Deduplication ───────────────────────────
   async function deduplicateLocally(results) {
     const stored = await new Promise(r => chrome.storage.local.get(['seenKeys'], r));
     const seenKeys = new Set(stored.seenKeys || []);

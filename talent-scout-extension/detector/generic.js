@@ -127,26 +127,34 @@ window.TalentScout.detectGeneric = function() {
   const cards = document.querySelectorAll([
     '[class*="team"]', '[class*="staff"]', '[class*="recruiter"]',
     '[class*="profile"]', '[class*="author"]', '[class*="contact"]',
-    '[class*="bio"]', '.vcard', '[itemtype*="Person"]'
+    '[class*="bio"]', '.vcard', '[itemtype*="Person"]', '[class*="member"]'
   ].join(','));
 
   cards.forEach(card => {
     const text = card.innerText || card.textContent || '';
-    if (text.length < 15 || text.length > 2500) return;
+    if (text.length < 8 || text.length > 3500) return;
 
     const email = ts.extractEmail(text);
     const phone = ts.extractPhone(text);
     const linkedin = ts.extractLinkedIn(card.innerHTML || text);
 
-    if (!email && !linkedin && !phone) return;
-
     const name = _pickCardName(card);
     const title = _pickCardTitle(card);
 
-    if (name || email) {
+    if (name && name.length >= 3) {
       results.push({
-        recruiter_name: ts.normalizeName(name) || (email ? ts.inferNameFromEmail(email) : 'Contact'),
+        recruiter_name: ts.normalizeName(name),
         email: email || null,
+        phone: phone || null,
+        title: title || 'Professional',
+        linkedin_url: linkedin || null,
+        company_name: company,
+        source: `card:${host}`,
+      });
+    } else if (email) {
+      results.push({
+        recruiter_name: ts.inferNameFromEmail(email) || 'Corporate Contact',
+        email: email,
         phone: phone || null,
         title: title || 'Professional',
         linkedin_url: linkedin || null,

@@ -97,29 +97,39 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
     const results = [];
     const fullText = document.body ? (document.body.innerText || '') : '';
 
-    // Extract corporate emails
+    // Extract corporate emails, phones, and LinkedIn links
     const emails = fullText.match(ts?.PATTERNS?.email || /\b[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10}\b/g) || [];
     const phones = fullText.match(ts?.PATTERNS?.phone || /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g) || [];
     const linkedinUrls = fullText.match(ts?.PATTERNS?.linkedin || /(?:https?:\/\/)?(?:[a-zA-Z0-9_-]+\.)?linkedin\.com\/(?:in|pub)\/([a-zA-Z0-9\-_%]+)/gi) || [];
 
     // Parse visible names from heading structures
-    const headings = document.querySelectorAll('h1, h2, h3, [data-field="name"], .profile-name');
+    const headings = document.querySelectorAll('h1, h2, h3, [data-field="name"], .profile-name, [class*="title-text"]');
     headings.forEach((h, idx) => {
       const name = h.textContent?.trim();
-      if (name && name.length >= 3 && name.length <= 40 && !name.includes('@') && !/\d{3}/.test(name)) {
+      if (name && name.length >= 3 && name.length <= 40 && !name.includes('@') && !/\d{3}/.test(name) && !['feed', 'home', 'jobs', 'messaging', 'notifications', 'search'].includes(name.toLowerCase())) {
         const email = emails[idx] || (emails.length > 0 ? emails[0] : null);
         const phone = phones[idx] || (phones.length > 0 ? phones[0] : null);
-        const li = linkedinUrls[idx] || (linkedinUrls.length > 0 ? linkedinUrls[0] : null);
+        const li = linkedinUrls[idx] || (linkedinUrls.length > 0 ? linkedinUrls[0] : (location.href.includes('linkedin.com/in/') ? location.href.split('?')[0] : null));
+
+        // Locate closest subtitle or description
+        const nextElem = h.nextElementSibling || h.parentElement?.querySelector('p, .text-body-medium, [class*="headline"], [class*="subtitle"]');
+        let title = nextElem?.textContent?.trim() || 'Professional Lead';
+        let company = location.hostname.replace(/^www\./, '').split('.')[0];
+        
+        if (title && (title.includes(' at ') || title.includes(' @ '))) {
+          const parts = title.split(/\s+(?:at|@)\s+/i);
+          if (parts[1]) company = parts[1].split(/[,|•\n]/)[0].trim();
+        }
 
         results.push({
           recruiter_name: name,
-          title: 'Professional Lead',
-          company_name: location.hostname.replace(/^www\./, '').split('.')[0],
+          title: title.slice(0, 100),
+          company_name: company,
           email: email || null,
           phone: phone || null,
           linkedin_url: li || null,
           source: 'visual_capture',
-          confidence: 0.75,
+          confidence: 0.85,
           captured_at: new Date().toISOString(),
         });
       }
@@ -127,7 +137,7 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
 
     return {
       status: 'FALLBACK_SUCCESS',
-      entities: results.slice(0, 10),
+      entities: results.slice(0, 15),
       metrics: { people_found: results.length },
     };
   }

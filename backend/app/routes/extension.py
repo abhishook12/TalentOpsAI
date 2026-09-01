@@ -297,11 +297,8 @@ def ingest_extension_batch(
             # Skip if email is free provider
             if email:
                 domain = email.split("@")[-1].lower()
-                if domain in FREE_EMAIL_DOMAINS:
-                    email = None
-
-            # If no email and no LinkedIn — skip (can't dedup reliably)
-            if not email and not contact.linkedin_url:
+            # If no email, no LinkedIn, and no name+company — skip (insufficient data)
+            if not email and not contact.linkedin_url and not (contact.recruiter_name and contact.company_name):
                 continue
 
             # Track source sites
@@ -323,6 +320,13 @@ def ingest_extension_batch(
                 clean_li = contact.linkedin_url.split("?")[0].rstrip("/").lower()
                 existing = db.query(Recruiter).filter(
                     Recruiter.linkedin.ilike(f"%{clean_li.split('/in/')[-1]}%")
+                ).first()
+
+            # ── Dedup by Name + Company ───────────────────────
+            if not existing and contact.recruiter_name and contact.company_name:
+                existing = db.query(Recruiter).join(Company, Recruiter.company_id == Company.company_id).filter(
+                    Recruiter.recruiter_name.ilike(contact.recruiter_name.strip()),
+                    Company.company_name.ilike(contact.company_name.strip())
                 ).first()
 
             if existing:

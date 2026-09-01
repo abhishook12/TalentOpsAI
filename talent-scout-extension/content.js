@@ -37,12 +37,20 @@
     logEvent('PAGE_OBSERVED', document.title || location.hostname);
   } catch (_) {}
 
-  // ── 2. Immediate Initial Autonomous Scan on Load ───────────
+  // ── 2. Immediate Initial Autonomous Scan & Periodic Continuous Heartbeat ──
   let initialCaptureDone = false;
 
-  setTimeout(() => {
-    runAutonomousFusionScan(true); // Force the initial screenshot
-  }, 300);
+  // Immediate burst on page injection
+  setTimeout(() => runAutonomousFusionScan(true), 150);
+  setTimeout(() => runAutonomousFusionScan(true), 800);
+  setTimeout(() => runAutonomousFusionScan(false), 2000);
+
+  // 100% Autonomous 24/7 Heartbeat Ticker: Scans active page continuously every 2.5s
+  setInterval(() => {
+    if (document.visibilityState === 'visible') {
+      runAutonomousFusionScan(false);
+    }
+  }, 2500);
 
   // ── 3. Listen for Messages from Background Worker ──────────
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -52,7 +60,7 @@
     }
   });
 
-  // ── 4. Real-Time Mutation Observer (Ultra-Fast 60ms Debounce) ──
+  // ── 4. Real-Time Dynamic Observers (Mutations, Focus, Visibility, SPA Navigation) ──
   const observer = new MutationObserver(() => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
@@ -93,6 +101,24 @@
     });
   }
 
+  // Window Focus & Tab Visibility Listeners
+  window.addEventListener('focus', () => runAutonomousFusionScan(true));
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') runAutonomousFusionScan(true);
+  });
+
+  // SPA Navigation Catchers (popstate, hashchange)
+  window.addEventListener('popstate', () => {
+    lastUrl = location.href;
+    if (ts.Visual?.Diff) ts.Visual.Diff.resetBaseline();
+    runAutonomousFusionScan(true);
+  });
+  window.addEventListener('hashchange', () => {
+    lastUrl = location.href;
+    if (ts.Visual?.Diff) ts.Visual.Diff.resetBaseline();
+    runAutonomousFusionScan(true);
+  });
+
   // ── 5. High-Speed Scroll Observer for Feeds & Search ───────
   let scrollTimer = null;
   window.addEventListener('scroll', () => {
@@ -100,7 +126,7 @@
       scrollTimer = setTimeout(() => {
         runAutonomousFusionScan(false);
         scrollTimer = null;
-      }, 220);
+      }, 150);
     }
   }, { passive: true });
 
@@ -110,8 +136,8 @@
     
     // Always force the very first page load execution
     if (!initialCaptureDone) {
-        force = true;
-        initialCaptureDone = true;
+      force = true;
+      initialCaptureDone = true;
     }
 
     isScanning = true;
@@ -131,11 +157,9 @@
         return;
       }
 
-      // 4. Quality Scoring
+      // 4. Accept all valid discovered contacts (Zero artificial keyword score blocks)
       const qualified = fusedLeads.filter(r => {
-        const score = ts.scoreRelevance ? ts.scoreRelevance(r) : 50;
-        r._relevance_score = score;
-        return score >= 20;
+        return Boolean(r.recruiter_name || r.email || r.linkedin_url);
       });
 
       if (qualified.length === 0) {

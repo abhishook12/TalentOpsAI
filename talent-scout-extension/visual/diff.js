@@ -9,8 +9,8 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
 (function() {
   'use strict';
 
-  // Configurable thresholds
-  const DEFAULT_CHANGE_THRESHOLD = 0.15; // 0.00 = identical, 0.15+ = meaningful change
+  // Configurable thresholds — ultra-sensitive for automatic continuous capture
+  const DEFAULT_CHANGE_THRESHOLD = 0.03; // 0.00 = identical, 0.03+ = captures any visual change
   const DOWNSCALE_WIDTH = 64;
   const DOWNSCALE_HEIGHT = 64;
 

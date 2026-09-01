@@ -87,6 +87,16 @@ function _scrapeSingleProfile() {
 
   const cleanUrl = window.location.href.split('?')[0].split('#')[0];
 
+  // Infer company from headline if missing (e.g. "Job recruiter at ASP-Web Solutions")
+  if (!company && title) {
+    const atMatch = title.match(/\b(?:at|@)\s+([^,|•\n\r]+)/i);
+    if (atMatch) company = atMatch[1].trim();
+    else if (title.includes(' | ')) {
+      const parts = title.split(' | ');
+      if (parts.length >= 2) company = parts[parts.length - 1].trim();
+    }
+  }
+
   // Title & Meta tags fallback if name missing
   if (!name) {
     const metaTitle = document.querySelector('meta[property="og:title"]')?.content || document.title;

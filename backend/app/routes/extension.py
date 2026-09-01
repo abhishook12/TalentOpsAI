@@ -456,6 +456,73 @@ def extension_heartbeat(
     return {"ok": True}
 
 
+# ── GET /recruiters/extension/live-feed — All Users ─────────────────────────
+@router.get("/live-feed")
+def get_live_extension_feed(
+    limit: int = Query(15, ge=1, le=50),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Returns latest enriched contacts captured across the scout network.
+    Accessible by all authenticated users to see real-time updates.
+    """
+    recent_recruiters = (
+        db.query(Recruiter)
+        .order_by(Recruiter.recruiter_id.desc())
+        .limit(limit)
+        .all()
+    )
+
+    feed = []
+    for r in recent_recruiters:
+        comp_name = r.company.company_name if r.company else None
+        has_real_email = bool(r.email and not r.email.endswith("@noemail.talentops"))
+        feed.append({
+            "id": r.recruiter_id,
+            "recruiter_name": r.recruiter_name,
+            "title": r.title or "Recruiter / Talent Partner",
+            "company_name": comp_name,
+            "location": r.location,
+            "has_email": has_real_email,
+            "has_phone": bool(r.phone),
+            "has_linkedin": bool(r.linkedin),
+            "verification_status": "verified" if has_real_email else "enriched",
+        })
+    return {"feed": feed}
+
+
+# ── GET /recruiters/extension/live-summary — All Users ──────────────────────
+@router.get("/live-summary")
+def get_live_extension_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Returns real-time global database synchronization stats for all users.
+    """
+    total_recruiters = db.query(sqlfunc.count(Recruiter.recruiter_id)).scalar() or 0
+    total_companies = db.query(sqlfunc.count(Company.company_id)).scalar() or 0
+    active_devices = db.query(sqlfunc.count(ExtensionDevice.id)).scalar() or 0
+
+    today_cutoff = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_added_sql = text("""
+        SELECT COALESCE(SUM(contacts_accepted), 0)
+        FROM extension_submission_logs
+        WHERE submitted_at >= :today
+    """)
+    today_added = db.execute(today_added_sql, {"today": today_cutoff}).scalar() or 0
+
+    return {
+        "total_recruiters": total_recruiters,
+        "total_companies": total_companies,
+        "active_scouts": active_devices,
+        "enriched_today": int(today_added),
+        "sync_status": "live",
+        "last_synced_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
 # ── GET /recruiters/extension/report — ADMIN ONLY ────────────────────────────
 
 @router.get("/report")

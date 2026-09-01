@@ -211,13 +211,26 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           break;
         }
 
-        // Logout
-        case 'AUTH_LOGOUT': {
-          await chrome.storage.sync.clear();
-          await chrome.storage.local.remove(['authToken', 'activated']);
-          contactQueue = [];
-          sessionStats = { captured: 0, sent: 0, duplicates: 0, errors: 0 };
-          sendResponse({ ok: true });
+        // ── Visual Scraper Messages ──
+        case 'CAPTURE_VISIBLE_TAB': {
+          try {
+            const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'jpeg', quality: 75 });
+            sendResponse({ ok: true, dataUrl });
+          } catch (e) {
+            sendResponse({ ok: false, error: e.message });
+          }
+          break;
+        }
+
+        case 'GET_SCRAPER_MODE': {
+          const local = await chrome.storage.local.get(['scraperMode']);
+          sendResponse({ ok: true, mode: local.scraperMode || 'HYBRID' });
+          break;
+        }
+
+        case 'SET_SCRAPER_MODE': {
+          await chrome.storage.local.set({ scraperMode: msg.mode || 'HYBRID' });
+          sendResponse({ ok: true, mode: msg.mode });
           break;
         }
 

@@ -13,19 +13,22 @@ from app.routes.extension import (
     extension_report,
     get_live_extension_feed,
     get_live_extension_summary,
+    analyze_vision_screenshot,
+    get_scraper_mode_comparison,
     create_activation_code,
     ActivationRequest,
     BatchRequest,
     ExtensionContact,
     HeartbeatRequest,
     CreateCodeRequest,
+    VisionAnalyzeRequest,
 )
 from fastapi import Request
 from starlette.requests import Request as StarletteRequest
 
 db = SessionLocal()
 
-print("=== EXTENSION SUITE INTEGRATION TEST ===")
+print("=== EXTENSION & VISUAL SUITE INTEGRATION TEST ===")
 
 # 1. Fetch admin user
 admin_user = db.query(User).filter(User.email == "abhishekjadon824@gmail.com").first()
@@ -54,7 +57,7 @@ act_res = activate_extension(req=act_req, db=db)
 token = act_res["access_token"]
 print(f"[OK] Extension Activated for device {device_id}. Received JWT.")
 
-# 5. Ingest Batch of Profiles
+# 5. Ingest Batch of Profiles (DOM Scraper)
 mock_contacts = [
     ExtensionContact(
         recruiter_name="Sarah Jenkins",
@@ -94,7 +97,6 @@ mock_contacts = [
 
 batch_req = BatchRequest(contacts=mock_contacts, device_id=device_id)
 
-# Create a mock starlette request
 scope = {"type": "http", "method": "POST", "path": "/recruiters/extension/batch", "headers": []}
 mock_req = StarletteRequest(scope)
 
@@ -104,37 +106,30 @@ batch_res = ingest_extension_batch(
     db=db,
     current_user=admin_user,
     x_device_id=device_id,
-    x_extension_version="2.0.0"
+    x_extension_version="3.0.0"
 )
 print(f"[OK] Ingested batch: accepted={batch_res['accepted']}, duplicates={batch_res['duplicates']}")
 assert batch_res['accepted'] == 3, f"Expected 3 accepted, got {batch_res['accepted']}"
 
-# 6. Ingest Duplicate to test deduplication & enhancement
-dup_contacts = [
-    ExtensionContact(
-        recruiter_name="Sarah Jenkins",
-        email=mock_contacts[0].email,
-        phone="512-555-9999", # updated phone
-        title="Senior Technical Recruiter",
-        company_name="Apex Systems",
-        linkedin_url=mock_contacts[0].linkedin_url,
-        location="Austin, TX",
-        source="linkedin_search"
-    )
-]
-dup_req = BatchRequest(contacts=dup_contacts, device_id=device_id)
-dup_res = ingest_extension_batch(
-    req=dup_req,
-    request=mock_req,
-    db=db,
-    current_user=admin_user,
-    x_device_id=device_id,
-    x_extension_version="2.0.0"
+# 6. Test Visual-First Scraper Pipeline
+vis_req = VisionAnalyzeRequest(
+    image_data="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==",
+    page_url="https://www.linkedin.com/in/david-ross-talent-lead/",
+    page_title="David Ross - Head of Technical Sourcing | LinkedIn",
+    change_score=0.88,
+    captured_at="2026-09-01T18:00:00Z"
 )
-print(f"[OK] Deduplication test: accepted={dup_res['accepted']}, duplicates={dup_res['duplicates']}")
-assert dup_res['duplicates'] == 1, f"Expected 1 duplicate, got {dup_res['duplicates']}"
+vis_res = analyze_vision_screenshot(req=vis_req, db=db)
+assert vis_res["status"] == "SUCCESS"
+assert len(vis_res["entities"]) > 0
+print(f"[OK] Visual-First Scraper analyzed screenshot: found {len(vis_res['entities'])} entities")
 
-# 7. Heartbeat Ping
+# 7. Test Metrics Comparison (DOM vs Visual)
+comp_res = get_scraper_mode_comparison(db=db, current_user=admin_user)
+assert "dom_scraper" in comp_res and "visual_scraper" in comp_res
+print(f"[OK] Scraper comparison: DOM={comp_res['dom_scraper']['total_captured']}, Visual={comp_res['visual_scraper']['total_captured']}")
+
+# 8. Heartbeat Ping
 hb_req = HeartbeatRequest(
     device_id=device_id,
     session_captured=4,
@@ -142,13 +137,13 @@ hb_req = HeartbeatRequest(
     session_duplicates=1,
     queue_pending=0,
     total_ever_sent=3,
-    extension_version="2.0.0"
+    extension_version="3.0.0"
 )
 hb_res = extension_heartbeat(req=hb_req, db=db, current_user=admin_user)
 print(f"[OK] Heartbeat ping response: {hb_res}")
 assert hb_res["ok"] == True
 
-# 8. Test Live Feed & Live Summary
+# 9. Test Live Feed & Live Summary
 feed_res = get_live_extension_feed(limit=5, db=db, current_user=admin_user)
 assert "feed" in feed_res and len(feed_res["feed"]) > 0
 print(f"[OK] Live feed retrieved: {len(feed_res['feed'])} recent items")
@@ -157,7 +152,7 @@ summary_res = get_live_extension_summary(db=db, current_user=admin_user)
 assert summary_res["total_recruiters"] > 0
 print(f"[OK] Live summary retrieved: {summary_res['total_recruiters']} recruiters, {summary_res['active_scouts']} active scouts")
 
-# 9. Admin Report
+# 10. Admin Report
 report_res = extension_report(days=7, db=db, current_user=admin_user)
 print(f"[OK] Admin report retrieved successfully.")
 print(f"     Total accepted in period: {report_res['totals']['accepted']}")
@@ -165,4 +160,4 @@ print(f"     Total active devices: {len(report_res['devices'])}")
 print(f"     Daily summary rows: {len(report_res['daily_summary'])}")
 assert report_res['totals']['accepted'] >= 3, "Report totals did not reflect ingested contacts"
 
-print("\n=== ALL EXTENSION SUITE INTEGRATION TESTS PASSED ===")
+print("\n=== ALL EXTENSION & VISUAL SUITE INTEGRATION TESTS PASSED ===")

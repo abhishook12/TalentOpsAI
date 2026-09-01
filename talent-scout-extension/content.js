@@ -1,6 +1,6 @@
 // ============================================================
-// content.js — Real-Time High-Speed Observer & Ingestion Brain
-// 24/7 Zero-Lag Continuous Universal Scraper
+// content.js — Real-Time High-Speed Observer & Visual-First Ingestion Brain
+// Supports 3 Operational Modes: VISUAL (Screenshot-First), DOM, and HYBRID
 // ============================================================
 
 (function() {
@@ -24,15 +24,15 @@
 
   // ── 2. Immediate Initial Scan on Load ──────────────────────
   setTimeout(() => {
-    runScan();
-    setTimeout(runScan, 800);
-    setTimeout(runScan, 2000);
+    runUnifiedScan();
+    setTimeout(runUnifiedScan, 800);
+    setTimeout(runUnifiedScan, 2000);
   }, 50);
 
   // ── 3. Listen for Messages from Background Worker ──────────
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === 'TRIGGER_SCAN' || msg.type === 'MANUAL_CAPTURE') {
-      runScan().then(() => sendResponse({ ok: true }));
+      runUnifiedScan(true).then(() => sendResponse({ ok: true }));
       return true;
     }
   });
@@ -43,6 +43,7 @@
     debounceTimer = setTimeout(() => {
       if (location.href !== lastUrl) {
         lastUrl = location.href;
+        if (ts.Visual?.Diff) ts.Visual.Diff.resetBaseline();
         try {
           chrome.runtime.sendMessage({
             type: 'PAGE_VIEW',
@@ -51,7 +52,7 @@
           });
         } catch (_) {}
       }
-      runScan();
+      runUnifiedScan();
     }, 60);
   });
 
@@ -71,7 +72,7 @@
           characterData: false,
           attributes: false,
         });
-        runScan();
+        runUnifiedScan();
       }
     });
   }
@@ -81,42 +82,50 @@
   window.addEventListener('scroll', () => {
     if (!scrollTimer) {
       scrollTimer = setTimeout(() => {
-        runScan();
+        runUnifiedScan();
         scrollTimer = null;
       }, 200);
     }
   }, { passive: true });
 
-  // ── 6. Main Real-Time Scan Function (Non-Blocking) ─────────
-  async function runScan() {
-    if (isScanning) return;
+  // ── 6. Unified Multi-Mode Scan Runner ──────────────────────
+  async function runUnifiedScan(force = false) {
+    if (isScanning && !force) return;
     isScanning = true;
 
     try {
-      const allResults = [];
+      // Check active scraper mode
+      const modeRes = await new Promise(r => chrome.runtime.sendMessage({ type: 'GET_SCRAPER_MODE' }, r)).catch(() => ({ mode: 'HYBRID' }));
+      const mode = modeRes?.mode || 'HYBRID';
 
-      // Run site-specific detectors
-      const linkedin = ts.detectLinkedIn ? ts.detectLinkedIn() : [];
-      const email = ts.detectEmail ? ts.detectEmail() : [];
-      const indeed = ts.detectIndeed ? ts.detectIndeed() : [];
-      const glassdoor = ts.detectGlassdoor ? ts.detectGlassdoor() : [];
-      const ziprecruiter = ts.detectZipRecruiter ? ts.detectZipRecruiter() : [];
+      const results = [];
 
-      // Always run generic scanner as deep fallback to maximize yield
-      const generic = ts.detectGeneric ? ts.detectGeneric() : [];
+      // ── A. VISUAL MODE (Screenshot & Screen Understanding First) ──
+      if (mode === 'VISUAL' || mode === 'HYBRID') {
+        const visualResults = await runVisualScan(force);
+        if (visualResults && visualResults.length > 0) {
+          results.push(...visualResults);
+        }
+      }
 
-      allResults.push(...linkedin, ...email, ...indeed, ...glassdoor, ...ziprecruiter, ...generic);
+      // ── B. DOM MODE (HTML & DOM Detectors) ────────────────────────
+      if (mode === 'DOM' || (mode === 'HYBRID' && results.length === 0)) {
+        const domResults = runDomScan();
+        if (domResults && domResults.length > 0) {
+          results.push(...domResults);
+        }
+      }
 
-      if (allResults.length === 0) {
+      if (results.length === 0) {
         isScanning = false;
         return;
       }
 
-      // Filter and score
-      const qualified = allResults.filter(r => {
-        const score = ts.scoreRelevance(r);
+      // ── C. Filter, Score, & Deduplicate ──────────────────────────
+      const qualified = results.filter(r => {
+        const score = ts.scoreRelevance ? ts.scoreRelevance(r) : 50;
         r._relevance_score = score;
-        return score >= 20; // low threshold = captures all useful leads
+        return score >= 20;
       });
 
       if (qualified.length === 0) {
@@ -124,7 +133,6 @@
         return;
       }
 
-      // Local fast deduplication (in-memory & cache)
       const fresh = await deduplicateLocally(qualified);
       if (fresh.length === 0) {
         isScanning = false;
@@ -145,14 +153,71 @@
         contacts: enriched,
       });
 
+      // Housekeeping: purge expired temporary screenshots (2-3 min TTL)
+      if (ts.Visual?.Store) {
+        ts.Visual.Store.purgeExpired().catch(() => {});
+      }
+
     } catch (e) {
-      // Silent error handler
+      // Silent catch
     } finally {
       isScanning = false;
     }
   }
 
-  // ── 7. Local Cache Deduplication ───────────────────────────
+  // ── 7. Visual-First Pipeline (Canvas Diff + Temporary Storage + Vision Extraction)
+  async function runVisualScan(force = false) {
+    if (!ts.Visual?.Diff || !ts.Visual?.Store || !ts.Visual?.Engine) return [];
+
+    // 1. Capture visual frame from background
+    const capRes = await new Promise(r => chrome.runtime.sendMessage({ type: 'CAPTURE_VISIBLE_TAB' }, r)).catch(() => null);
+    if (!capRes || !capRes.ok || !capRes.dataUrl) return [];
+
+    // 2. Compute visual difference
+    const diff = await ts.Visual.Diff.evaluateFrame(capRes.dataUrl);
+    if (!diff.isMeaningful && !force) {
+      return []; // Frame is identical or tiny noise — skip expensive processing
+    }
+
+    // 3. Save to temporary storage with 3-minute TTL
+    const stored = await ts.Visual.Store.saveScreenshot({
+      page_url: location.href,
+      page_title: document.title,
+      change_score: diff.score,
+      image_data: capRes.dataUrl,
+      status: 'PROCESSING',
+    });
+
+    // 4. Run Visual Intelligence Analysis
+    const analysis = await ts.Visual.Engine.analyzeScreenshot(capRes.dataUrl, {
+      change_score: diff.score,
+    });
+
+    const entities = analysis?.entities || [];
+
+    // 5. Update temporary storage status and lock in cleanup timer
+    if (stored?.id) {
+      await ts.Visual.Store.updateStatus(stored.id, 'SYNC_COMPLETE', entities);
+    }
+
+    return entities;
+  }
+
+  // ── 8. DOM Detectors Pipeline ──────────────────────────────
+  function runDomScan() {
+    const all = [];
+    const linkedin = ts.detectLinkedIn ? ts.detectLinkedIn() : [];
+    const email = ts.detectEmail ? ts.detectEmail() : [];
+    const indeed = ts.detectIndeed ? ts.detectIndeed() : [];
+    const glassdoor = ts.detectGlassdoor ? ts.detectGlassdoor() : [];
+    const ziprecruiter = ts.detectZipRecruiter ? ts.detectZipRecruiter() : [];
+    const generic = ts.detectGeneric ? ts.detectGeneric() : [];
+
+    all.push(...linkedin, ...email, ...indeed, ...glassdoor, ...ziprecruiter, ...generic);
+    return all;
+  }
+
+  // ── 9. Local Cache Deduplication ───────────────────────────
   async function deduplicateLocally(results) {
     const stored = await new Promise(r => chrome.storage.local.get(['seenKeys'], r));
     const seenKeys = new Set(stored.seenKeys || []);

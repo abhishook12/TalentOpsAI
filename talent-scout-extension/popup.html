@@ -7,14 +7,14 @@
   <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
-  <!-- 1. ACTIVATION SCREEN (Shown if not yet connected) -->
+  <!-- 1. ACTIVATION SCREEN -->
   <div id="screen-login" class="screen hidden">
     <div class="header">
       <div class="logo-row">
         <img src="icons/icon48.png" alt="TalentOps" class="logo" />
         <div>
           <div class="brand">TalentOps Scout</div>
-          <div class="version">Universal Intelligence v2.2</div>
+          <div class="version">Visual & DOM AI v3.0</div>
         </div>
       </div>
     </div>
@@ -32,7 +32,7 @@
     </div>
   </div>
 
-  <!-- 2. DASHBOARD SCREEN (Always-On 24/7 Live Meter & Counters) -->
+  <!-- 2. DASHBOARD SCREEN -->
   <div id="screen-active" class="screen">
     <!-- Header with Continuous Live Status -->
     <div class="header">
@@ -47,12 +47,22 @@
         </div>
       </div>
       <div class="header-actions">
-        <button id="btn-scan-page" class="btn-action" title="Scan Current Web Page">
+        <button id="btn-scan-page" class="btn-action" title="Scan Current Web Page Visually">
           ⚡ Scan Page
         </button>
         <button id="btn-sync-now" class="btn-icon" title="Force Sync Queue">
           🔄
         </button>
+      </div>
+    </div>
+
+    <!-- Scraper Mode Switcher: Visual First vs Hybrid vs DOM -->
+    <div class="mode-selector-card">
+      <div class="mode-label">SCRAPER ENGINE MODE</div>
+      <div class="mode-pills">
+        <button id="mode-hybrid" class="mode-btn active" data-mode="HYBRID">⚡ Hybrid</button>
+        <button id="mode-visual" class="mode-btn" data-mode="VISUAL">👁️ Visual First</button>
+        <button id="mode-dom" class="mode-btn" data-mode="DOM">📑 DOM</button>
       </div>
     </div>
 
@@ -65,8 +75,8 @@
       <div class="score-row">
         <div class="score-number" id="scout-score">95</div>
         <div class="score-desc">
-          <div class="score-title" id="scout-user-label">Intelligence Efficiency</div>
-          <div class="score-sub" id="scout-efficiency-text">Autonomous continuous extraction</div>
+          <div class="score-title" id="scout-user-label">Visual Intelligence Active</div>
+          <div class="score-sub" id="scout-efficiency-text">Autonomous visual change observer</div>
         </div>
       </div>
       <div class="meter-bar-track">
@@ -97,7 +107,7 @@
     <!-- Notification Toast / Alert Box -->
     <div id="scan-feedback" class="feedback-banner hidden"></div>
 
-    <!-- Live Captured Stream Preview -->
+    <!-- Live Captured Stream Preview with Visual Toggle -->
     <div class="activity-section">
       <div class="section-header">
         <span id="stream-header-title">⚡ Live Intelligence Feed</span>
@@ -110,10 +120,10 @@
       </div>
     </div>
 
-    <!-- 24/7 Continuous Autonomous Status Footer -->
+    <!-- 24/7 Continuous Autonomous Status Footer with Memory Auto-Purge Notice -->
     <div class="footer-live-status">
       <span class="live-pulse-dot"></span>
-      <span class="live-status-text" id="footer-status-text">Continuously running in background • 0 action needed</span>
+      <span class="live-status-text" id="footer-status-text">Visual buffer auto-purges every 3m • 0 action needed</span>
     </div>
   </div>
 

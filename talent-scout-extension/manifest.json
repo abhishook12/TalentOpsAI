@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "TalentOps Talent Scout",
-  "version": "2.2.0",
-  "description": "Passively captures recruiter & professional contact data from any site you browse and sends it live to TalentOpsAI.",
+  "version": "3.0.0",
+  "description": "Visual-First & DOM Autonomous Scraping Engine for TalentOpsAI. Observes live screen changes, extracts verified recruiter leads, and enriches candidate pipelines 24/7.",
   "permissions": [
     "activeTab",
     "storage",
@@ -38,6 +38,9 @@
         "detector/glassdoor.js",
         "detector/ziprecruiter.js",
         "detector/generic.js",
+        "visual/diff.js",
+        "visual/store.js",
+        "visual/engine.js",
         "content.js"
       ],
       "run_at": "document_end",
@@ -52,7 +55,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["config.json", "icons/*"],
+      "resources": ["config.json", "icons/*", "visual/*"],
       "matches": ["<all_urls>"]
     }
   ]

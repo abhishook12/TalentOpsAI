@@ -1,4 +1,4 @@
-// popup.js — Dynamic Power Meter, Live Counters & Stream Feed
+// popup.js — Dynamic Power Meter, Live Counters, Mode Switcher & Stream Feed
 
 const $ = id => document.getElementById(id);
 const API_BASE = 'https://talentopsai-1.onrender.com';
@@ -11,6 +11,7 @@ async function init() {
   }
 
   showDashboard();
+  initModeSwitcher();
   loadLiveStats();
   setInterval(loadLiveStats, 2000); // Auto-refresh live stats every 2s while popup is open
 }
@@ -34,6 +35,7 @@ function showLogin() {
 
     if (res?.ok) {
       showDashboard();
+      initModeSwitcher();
       loadLiveStats();
     } else {
       showError(res?.error || 'Invalid activation code. Try again.');
@@ -62,16 +64,12 @@ function showDashboard() {
       try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (tab && tab.id) {
-          // Send scan message
           await chrome.tabs.sendMessage(tab.id, { type: 'TRIGGER_SCAN' }).catch(() => {});
-          // Increment pages scanned
           const cur = await chrome.storage.local.get(['pagesScanned']);
           const next = (cur.pagesScanned || 0) + 1;
           await chrome.storage.local.set({ pagesScanned: next });
 
-          // Flush queue
           await chrome.runtime.sendMessage({ type: 'FLUSH_NOW' }).catch(() => {});
-
           showFeedback('✓ Page scanned & intelligence synced!');
         } else {
           showFeedback('Page active & listening 24/7');
@@ -106,6 +104,44 @@ function showDashboard() {
   }
 }
 
+async function initModeSwitcher() {
+  const modeRes = await chrome.runtime.sendMessage({ type: 'GET_SCRAPER_MODE' }).catch(() => ({ mode: 'HYBRID' }));
+  const activeMode = modeRes?.mode || 'HYBRID';
+  updateModeButtonsUI(activeMode);
+
+  ['mode-hybrid', 'mode-visual', 'mode-dom'].forEach(btnId => {
+    const btn = $(btnId);
+    if (btn && !btn.dataset.wired) {
+      btn.dataset.wired = 'true';
+      btn.addEventListener('click', async () => {
+        const selectedMode = btn.dataset.mode;
+        await chrome.runtime.sendMessage({ type: 'SET_SCRAPER_MODE', mode: selectedMode });
+        updateModeButtonsUI(selectedMode);
+        showFeedback(`✓ Mode switched to ${btn.textContent.trim()}`);
+      });
+    }
+  });
+}
+
+function updateModeButtonsUI(activeMode) {
+  ['mode-hybrid', 'mode-visual', 'mode-dom'].forEach(btnId => {
+    const btn = $(btnId);
+    if (!btn) return;
+    if (btn.dataset.mode === activeMode) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+
+  const statusText = $('conn-status');
+  if (statusText) {
+    if (activeMode === 'VISUAL') statusText.textContent = '24/7 Active • Visual First';
+    else if (activeMode === 'DOM') statusText.textContent = '24/7 Active • DOM Mode';
+    else statusText.textContent = '24/7 Active • Hybrid AI';
+  }
+}
+
 async function loadLiveStats() {
   const statsRes = await chrome.runtime.sendMessage({ type: 'GET_STATS' }).catch(() => ({}));
   const localData = await chrome.storage.local.get([
@@ -114,7 +150,8 @@ async function loadLiveStats() {
     'recentCaptures',
     'totalCollectedEver',
     'userEmail',
-    'userRole'
+    'userRole',
+    'scraperMode'
   ]);
 
   const totalSent = statsRes?.totalSent || localData.totalSent || 0;
@@ -134,24 +171,25 @@ async function loadLiveStats() {
   if ($('scout-score')) $('scout-score').textContent = score;
   if ($('meter-bar-fill')) $('meter-bar-fill').style.width = `${score}%`;
 
-  if ($('scout-user-label') && localData.userEmail) {
-    $('scout-user-label').textContent = `${localData.userRole || 'User'}: ${localData.userEmail.split('@')[0]}`;
+  if ($('scout-user-label')) {
+    const mode = localData.scraperMode || 'Hybrid';
+    $('scout-user-label').textContent = `${mode} AI Active`;
   }
 
   if ($('scout-rank')) {
     if (score >= 95) {
       $('scout-rank').textContent = 'Master Scout';
-      $('scout-efficiency-text').textContent = 'Autonomous continuous extraction';
+      $('scout-efficiency-text').textContent = 'Visual & DOM continuous extraction';
     } else if (score >= 85) {
       $('scout-rank').textContent = 'Pro Scout';
-      $('scout-efficiency-text').textContent = 'Real-time corporate data pipeline';
+      $('scout-efficiency-text').textContent = 'Real-time corporate screen pipeline';
     } else {
       $('scout-rank').textContent = 'Active Scout';
       $('scout-efficiency-text').textContent = 'Scanning web for candidate leads';
     }
   }
 
-  // 3. Render Live Stream Feed (Local or Network Fallback)
+  // 3. Render Live Stream Feed
   const recent = localData.recentCaptures || [];
   const feedList = $('feed-list');
 
@@ -159,7 +197,7 @@ async function loadLiveStats() {
     if ($('stream-count')) $('stream-count').textContent = `${recent.length} recent`;
     if (feedList) {
       feedList.innerHTML = recent.slice(0, 6).map(item => {
-        const icon = item.source?.includes('linkedin') ? '💼' : (item.source?.includes('gmail') || item.source?.includes('outlook')) ? '✉️' : '🌐';
+        const icon = item.source?.includes('visual') ? '👁️' : item.source?.includes('linkedin') ? '💼' : (item.source?.includes('gmail') || item.source?.includes('outlook')) ? '✉️' : '🌐';
         return `
           <div class="feed-item">
             <div class="feed-left">
@@ -174,7 +212,6 @@ async function loadLiveStats() {
       }).join('');
     }
   } else {
-    // Try fetching network live feed as fallback
     try {
       const feedRes = await fetch(`${API_BASE}/recruiters/extension/live-feed?limit=5`).then(r => r.json()).catch(() => null);
       if (feedRes?.feed && feedRes.feed.length > 0 && feedList) {

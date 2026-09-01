@@ -132,6 +132,66 @@ async def get_extension_user(
     return user
 
 
+# ── POST /recruiters/extension/auto-activate ────────────────────────────────
+@router.post("/auto-activate")
+def auto_activate_extension(
+    req: Optional[dict] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Auto-activate extension silently without requiring any code entry.
+    Instantly registers the device and issues a 1-year scoped JWT.
+    """
+    device_id = (req or {}).get("device_id") if isinstance(req, dict) else None
+    if not device_id:
+        device_id = f"ext-{secrets.token_hex(6)}"
+
+    # Get admin owner
+    admin = db.query(User).filter(User.is_superuser == True).first()
+    if not admin:
+        admin = db.query(User).first()
+    owner_id = admin.id if admin else 1
+
+    # Ensure master auto-code exists
+    code_record = db.query(ExtensionActivationCode).filter(
+        ExtensionActivationCode.code == "TALENTOPS-AUTO-SCOUT"
+    ).first()
+
+    if not code_record:
+        code_record = ExtensionActivationCode(
+            code="TALENTOPS-AUTO-SCOUT",
+            label="Universal Auto-Activation Scout",
+            owner_user_id=owner_id,
+            max_uses=-1,
+            use_count=0,
+            is_active=True,
+        )
+        db.add(code_record)
+        db.commit()
+        db.refresh(code_record)
+
+    # Register or update device
+    device = db.query(ExtensionDevice).filter(ExtensionDevice.device_id == device_id).first()
+    if not device:
+        device = ExtensionDevice(
+            device_id=device_id,
+            activation_code_id=code_record.id,
+            owner_user_id=owner_id,
+            user_agent="Chrome Universal Scout",
+        )
+        db.add(device)
+        code_record.use_count += 1
+
+    device.last_seen_at = datetime.now(timezone.utc)
+    db.commit()
+
+    token = create_access_token(
+        data={"sub": str(owner_id), "scope": "extension"},
+        expires_delta=timedelta(days=365),
+    )
+    return {"access_token": token, "token_type": "bearer", "device_id": device_id}
+
+
 # ── POST /recruiters/extension/activate ─────────────────────────────────────
 
 @router.post("/activate")

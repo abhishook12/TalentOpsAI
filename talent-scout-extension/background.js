@@ -1,11 +1,12 @@
 // ============================================================
 // background.js — High-Speed Service Worker Engine
-// Continuous Background Listener + Instant Tab Navigation Tracker
+// Continuous Background Listener + Zero-Touch Auto-Activation
 // ============================================================
 
 const PRODUCTION_API = 'https://talentopsai-1.onrender.com';
 const BATCH_ENDPOINT = '/recruiters/extension/batch';
 const ACTIVATE_ENDPOINT = '/recruiters/extension/activate';
+const AUTO_ACTIVATE_ENDPOINT = '/recruiters/extension/auto-activate';
 const REPORT_ENDPOINT = '/recruiters/extension/heartbeat';
 const BATCH_SIZE = 25;
 
@@ -15,15 +16,20 @@ let sessionStats = { captured: 0, sent: 0, duplicates: 0, errors: 0 };
 let deviceId = null;
 let fastFlushTimer = null;
 
-// ── 1. Init: Generate or Load Persistent Device ID ────────────
+// ── 1. Init: Generate Device ID & Auto-Activate ───────────────
 chrome.runtime.onInstalled.addListener(async () => {
-  const stored = await chrome.storage.local.get(['device_id']);
+  const stored = await chrome.storage.local.get(['device_id', 'authToken']);
   if (!stored.device_id) {
     const id = 'ext-' + crypto.randomUUID();
     await chrome.storage.local.set({ device_id: id });
     deviceId = id;
   } else {
     deviceId = stored.device_id;
+  }
+
+  // Zero-Touch auto-activate on install
+  if (!stored.authToken) {
+    await autoActivateExtension();
   }
 
   // Retroactively inject into all open tabs
@@ -48,8 +54,12 @@ chrome.runtime.onInstalled.addListener(async () => {
 });
 
 // Load deviceId on startup
-chrome.storage.local.get(['device_id'], (s) => {
+chrome.storage.local.get(['device_id'], async (s) => {
   deviceId = s.device_id || 'ext-unknown';
+  const tokenData = await chrome.storage.local.get(['authToken']);
+  if (!tokenData.authToken) {
+    await autoActivateExtension();
+  }
 });
 
 // ── 2. Real-Time Tab Navigation & Pages Read Tracker ──────────
@@ -134,24 +144,35 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           break;
         }
 
-        // Popup asks for auth state (checks both local and sync)
+        // Popup or Content asks for auth state
         case 'GET_AUTH': {
-          const l = await chrome.storage.local.get(['authToken', 'activated']);
-          const s = await chrome.storage.sync.get(['authToken', 'activated']);
-          const authToken = l.authToken || s.authToken || null;
-          const activated = l.activated || s.activated || false;
-          sendResponse({ ok: true, authToken, activated });
+          let l = await chrome.storage.local.get(['authToken', 'activated']);
+          let s = await chrome.storage.sync.get(['authToken', 'activated']);
+          let authToken = l.authToken || s.authToken || null;
+
+          if (!authToken) {
+            authToken = await autoActivateExtension();
+          }
+
+          sendResponse({ ok: true, authToken, activated: true });
           break;
         }
 
-        // Popup submits activation code
+        // Auto-activate request
+        case 'AUTH_AUTO_ACTIVATE': {
+          const token = await autoActivateExtension();
+          sendResponse({ ok: !!token, authToken: token, activated: true });
+          break;
+        }
+
+        // Manual code activation
         case 'AUTH_ACTIVATE': {
           const result = await activateExtension(msg.activationCode);
           sendResponse(result);
           break;
         }
 
-        // Popup logs out
+        // Logout
         case 'AUTH_LOGOUT': {
           await chrome.storage.sync.clear();
           await chrome.storage.local.remove(['authToken', 'activated']);
@@ -171,7 +192,32 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   return true;
 });
 
-// ── 5. Activation ──────────────────────────────────────────────
+// ── 5. Auto & Manual Activation ───────────────────────────────
+
+async function autoActivateExtension() {
+  const local = await chrome.storage.local.get(['device_id', 'authToken']);
+  const devId = local.device_id || deviceId || ('ext-' + crypto.randomUUID());
+
+  if (local.authToken) return local.authToken;
+
+  try {
+    const res = await fetch(`${PRODUCTION_API}${AUTO_ACTIVATE_ENDPOINT}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ device_id: devId }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && (data.access_token || data.token)) {
+      const token = data.access_token || data.token;
+      await chrome.storage.sync.set({ authToken: token, activated: true });
+      await chrome.storage.local.set({ authToken: token, activated: true, device_id: devId });
+      deviceId = devId;
+      return token;
+    }
+  } catch (_) {}
+  return null;
+}
 
 async function activateExtension(code) {
   const local = await chrome.storage.local.get(['device_id']);
@@ -218,7 +264,11 @@ async function flushQueue() {
 
   const l = await chrome.storage.local.get(['authToken']);
   const s = await chrome.storage.sync.get(['authToken']);
-  const token = l.authToken || s.authToken;
+  let token = l.authToken || s.authToken;
+
+  if (!token) {
+    token = await autoActivateExtension();
+  }
   if (!token) return 0;
 
   const batch = contactQueue.splice(0, BATCH_SIZE);
@@ -238,12 +288,6 @@ async function flushQueue() {
         session_stats: sessionStats,
       }),
     });
-
-    if (res.status === 401) {
-      await chrome.storage.sync.remove(['authToken', 'activated']);
-      await chrome.storage.local.remove(['authToken', 'activated']);
-      return 0;
-    }
 
     const data = await res.json().catch(() => ({}));
 

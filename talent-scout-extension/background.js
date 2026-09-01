@@ -77,7 +77,7 @@ chrome.runtime.onInstalled.addListener(async () => {
     const tabs = await chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] });
     for (const tab of tabs) {
       chrome.scripting.executeScript({
-        target: { tabId: tab.id, allFrames: true },
+        target: { tabId: tab.id, allFrames: false },
         files: [
           'detector/patterns.js',
           'detector/linkedin.js',
@@ -86,6 +86,9 @@ chrome.runtime.onInstalled.addListener(async () => {
           'detector/glassdoor.js',
           'detector/ziprecruiter.js',
           'detector/generic.js',
+          'visual/diff.js',
+          'visual/store.js',
+          'visual/engine.js',
           'content.js'
         ]
       }).catch(() => {});

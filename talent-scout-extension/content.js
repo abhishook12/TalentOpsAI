@@ -6,12 +6,17 @@
 (function() {
   'use strict';
 
+  // Prevent double-injection
+  if (window.__talentScoutInjected) return;
+  window.__talentScoutInjected = true;
+
   window.TalentScout = window.TalentScout || {};
   const ts = window.TalentScout;
 
   let isScanning = false;
   let debounceTimer = null;
   let lastUrl = location.href;
+  let scanCount = 0;
 
   function logEvent(eventType, detail) {
     try {
@@ -40,21 +45,25 @@
   // ── 2. Immediate Initial Autonomous Scan & Periodic Continuous Heartbeat ──
   let initialCaptureDone = false;
 
-  // Immediate burst on page injection
-  setTimeout(() => runAutonomousFusionScan(true), 100);
-  setTimeout(() => runAutonomousFusionScan(true), 500);
-  setTimeout(() => runAutonomousFusionScan(true), 1200);
+  // Immediate burst on page injection — staggered to let LinkedIn JS render
+  setTimeout(() => runAutonomousFusionScan(true), 300);
+  setTimeout(() => runAutonomousFusionScan(true), 1500);
+  setTimeout(() => runAutonomousFusionScan(true), 3000);
 
-  // 100% Autonomous 24/7 Fast Heartbeat Ticker: Scans active page continuously every 1.0s
+  // 100% Autonomous 24/7 Fast Heartbeat Ticker: Scans active page continuously every 2s
   setInterval(() => {
     if (document.visibilityState === 'visible') {
       runAutonomousFusionScan(false);
     }
-  }, 1000);
+  }, 2000);
 
   // ── 3. Listen for Messages from Background Worker ──────────
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === 'TRIGGER_SCAN' || msg.type === 'MANUAL_CAPTURE') {
+      // Clear dedup cache on manual capture so it re-captures everything visible
+      if (msg.type === 'MANUAL_CAPTURE') {
+        chrome.storage.local.set({ seenKeys: [] });
+      }
       runAutonomousFusionScan(true).then(() => sendResponse({ ok: true }));
       return true;
     }
@@ -75,31 +84,18 @@
             title: document.title,
           });
         } catch (_) {}
+        // Clear dedup on navigation so new page gets fresh capture
+        chrome.storage.local.set({ seenKeys: [] });
       }
       runAutonomousFusionScan(false);
-    }, 60);
+    }, 100);
   });
-
-  if (document.body) {
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      characterData: false,
-      attributes: false,
-    });
-  } else {
-    document.addEventListener('DOMContentLoaded', () => {
-      if (document.body) {
-        observer.observe(document.body, {
-          childList: true,
-          subtree: true,
-          characterData: false,
-          attributes: false,
-        });
-        runAutonomousFusionScan(true);
-      }
-    });
-  }
+  observer.observe(document.body || document.documentElement, {
+    childList: true,
+    subtree: true,
+    characterData: false,
+    attributes: false,
+  });
 
   // Window Focus & Tab Visibility Listeners
   window.addEventListener('focus', () => runAutonomousFusionScan(true));
@@ -111,11 +107,13 @@
   window.addEventListener('popstate', () => {
     lastUrl = location.href;
     if (ts.Visual?.Diff) ts.Visual.Diff.resetBaseline();
+    chrome.storage.local.set({ seenKeys: [] });
     runAutonomousFusionScan(true);
   });
   window.addEventListener('hashchange', () => {
     lastUrl = location.href;
     if (ts.Visual?.Diff) ts.Visual.Diff.resetBaseline();
+    chrome.storage.local.set({ seenKeys: [] });
     runAutonomousFusionScan(true);
   });
 
@@ -126,7 +124,7 @@
       scrollTimer = setTimeout(() => {
         runAutonomousFusionScan(false);
         scrollTimer = null;
-      }, 150);
+      }, 250);
     }
   }, { passive: true });
 
@@ -141,13 +139,24 @@
     }
 
     isScanning = true;
+    scanCount++;
 
     try {
       // 1. Run Visual-First Screen Capture & Understanding
-      const visualLeads = await runVisualCapturePipeline(force);
+      let visualLeads = [];
+      try {
+        visualLeads = await runVisualCapturePipeline(force);
+      } catch (vizErr) {
+        logEvent('VISUAL_ERROR', String(vizErr?.message || vizErr).slice(0, 120));
+      }
 
-      // 2. Run DOM & Microdata Heuristic Scanners
-      const domLeads = runDomDetectorPipeline();
+      // 2. Run DOM & Microdata Heuristic Scanners (THIS IS THE PRIMARY ENGINE)
+      let domLeads = [];
+      try {
+        domLeads = runDomDetectorPipeline();
+      } catch (domErr) {
+        logEvent('DOM_ERROR', String(domErr?.message || domErr).slice(0, 120));
+      }
 
       // 3. FUSE DATA: Merge Visual + DOM intelligence into superior enriched records
       const fusedLeads = fuseVisualAndDomLeads(visualLeads, domLeads);
@@ -167,14 +176,20 @@
         return;
       }
 
-      // 5. Local Fast Deduplication
+      // 5. Local Fast Deduplication (time-limited: re-allow after 60 seconds)
       const fresh = await deduplicateLocally(qualified);
       if (fresh.length === 0) {
         isScanning = false;
         return;
       }
 
-      // 6. Enrich Metadata with Provenance Trace
+      // 6. Update Captured counter IMMEDIATELY
+      try {
+        const capLocal = await new Promise(r => chrome.storage.local.get(['totalCaptured'], r));
+        await new Promise(r => chrome.storage.local.set({ totalCaptured: (capLocal.totalCaptured || 0) + fresh.length }, r));
+      } catch (_) {}
+
+      // 7. Enrich Metadata with Provenance Trace
       const enriched = fresh.map(r => ({
         ...r,
         discovery_id: r.discovery_id || ('DISC-' + crypto.randomUUID().slice(0, 8).toUpperCase()),
@@ -187,22 +202,28 @@
 
       logEvent('DATA_EXTRACTED', `Discovered ${enriched.length} contact(s): ${enriched.map(e => e.recruiter_name).join(', ')}`);
 
-      // 7. Stream directly to background service worker
-      chrome.runtime.sendMessage({
-        type: 'QUEUE_CONTACTS',
-        contacts: enriched,
-      });
+      // 8. Stream directly to background service worker for sync
+      try {
+        chrome.runtime.sendMessage({
+          type: 'QUEUE_CONTACTS',
+          contacts: enriched,
+        });
+      } catch (queueErr) {
+        logEvent('QUEUE_ERROR', String(queueErr?.message || queueErr).slice(0, 120));
+      }
 
-      // 8. Auto-Purge expired temporary screenshots (2-3 min TTL)
+      // 9. Auto-Purge expired temporary screenshots (2-3 min TTL)
       if (ts.Visual?.Store) {
-        const purged = await ts.Visual.Store.purgeExpired().catch(() => 0);
-        if (purged > 0) {
-          logEvent('SCREENSHOT_PURGED', `${purged} temporary buffer image(s) deleted`);
-        }
+        try {
+          const purged = await ts.Visual.Store.purgeExpired();
+          if (purged > 0) {
+            logEvent('SCREENSHOT_PURGED', `${purged} temporary buffer image(s) deleted`);
+          }
+        } catch (_) {}
       }
 
     } catch (e) {
-      // Silent error handler
+      logEvent('SCAN_ERROR', String(e?.message || e).slice(0, 200));
     } finally {
       isScanning = false;
     }
@@ -224,11 +245,6 @@
 
     const captureId = 'VC-' + Math.floor(10000 + Math.random() * 90000);
     logEvent('SCREENSHOT_CAPTURED', `${captureId} (Delta: ${Math.round(diff.score * 100)}%)`);
-    
-    // Update captured count metric
-    chrome.storage.local.get(['totalCaptured'], (res) => {
-      chrome.storage.local.set({ totalCaptured: (res.totalCaptured || 0) + 1 });
-    });
 
     // Save temporary screenshot into IndexedDB with 3-minute TTL
     const stored = await ts.Visual.Store.saveScreenshot({
@@ -270,14 +286,12 @@
   // ── 8. DOM Detector Pipeline ───────────────────────────────
   function runDomDetectorPipeline() {
     const all = [];
-    const linkedin = ts.detectLinkedIn ? ts.detectLinkedIn() : [];
-    const email = ts.detectEmail ? ts.detectEmail() : [];
-    const indeed = ts.detectIndeed ? ts.detectIndeed() : [];
-    const glassdoor = ts.detectGlassdoor ? ts.detectGlassdoor() : [];
-    const ziprecruiter = ts.detectZipRecruiter ? ts.detectZipRecruiter() : [];
-    const generic = ts.detectGeneric ? ts.detectGeneric() : [];
-
-    all.push(...linkedin, ...email, ...indeed, ...glassdoor, ...ziprecruiter, ...generic);
+    try { if (ts.detectLinkedIn) all.push(...ts.detectLinkedIn()); } catch (_) {}
+    try { if (ts.detectEmail) all.push(...ts.detectEmail()); } catch (_) {}
+    try { if (ts.detectIndeed) all.push(...ts.detectIndeed()); } catch (_) {}
+    try { if (ts.detectGlassdoor) all.push(...ts.detectGlassdoor()); } catch (_) {}
+    try { if (ts.detectZipRecruiter) all.push(...ts.detectZipRecruiter()); } catch (_) {}
+    try { if (ts.detectGeneric) all.push(...ts.detectGeneric()); } catch (_) {}
     return all;
   }
 
@@ -312,25 +326,39 @@
     return Array.from(mergedMap.values());
   }
 
-  // ── 10. Local Cache Deduplication ──────────────────────────
+  // ── 10. Local Cache Deduplication (with 2-minute TTL per key) ──
   async function deduplicateLocally(results) {
-    const stored = await new Promise(r => chrome.storage.local.get(['seenKeys'], r));
-    const seenKeys = new Set(stored.seenKeys || []);
-    const newKeys = [];
+    const stored = await new Promise(r => chrome.storage.local.get(['seenKeysWithTime'], r));
+    const seenMap = stored.seenKeysWithTime || {};
+    const now = Date.now();
+    const TTL = 120000; // 2 minutes — allow re-capture after this time
+    const newEntries = {};
     const fresh = [];
 
     results.forEach(r => {
       const key = r.email || r.linkedin_url || `${r.recruiter_name}@${r.company_name}`;
-      if (!key || seenKeys.has(key)) return;
-      seenKeys.add(key);
-      newKeys.push(key);
+      if (!key) return;
+      
+      const lastSeen = seenMap[key];
+      if (lastSeen && (now - lastSeen) < TTL) return; // Still within cooldown
+      
+      newEntries[key] = now;
       fresh.push(r);
     });
 
-    if (newKeys.length > 0) {
-      const allSeen = [...seenKeys];
-      const trimmed = allSeen.slice(-3000);
-      chrome.storage.local.set({ seenKeys: trimmed });
+    if (Object.keys(newEntries).length > 0) {
+      // Merge and trim to prevent unbounded growth
+      const merged = { ...seenMap, ...newEntries };
+      const keys = Object.keys(merged);
+      if (keys.length > 2000) {
+        // Keep only most recent 1500
+        const sorted = keys.sort((a, b) => merged[b] - merged[a]).slice(0, 1500);
+        const trimmed = {};
+        sorted.forEach(k => trimmed[k] = merged[k]);
+        chrome.storage.local.set({ seenKeysWithTime: trimmed });
+      } else {
+        chrome.storage.local.set({ seenKeysWithTime: merged });
+      }
     }
 
     return fresh;

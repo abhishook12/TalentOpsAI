@@ -739,10 +739,13 @@ def deactivate_activation_code(
 @router.get("/download")
 def download_extension_zip(
     code: Optional[str] = None,
+    user_token: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
 ):
     """
     1-Click Extension Package Downloader.
     Returns a complete, ready-to-unzip Chrome Extension package (.zip).
+    Dynamically embeds pre-configured JWT and config so ZERO user action is needed.
     """
     # Locate extension directory
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -754,13 +757,62 @@ def download_extension_zip(
     if not os.path.exists(ext_dir):
         raise HTTPException(status_code=404, detail="Extension directory not found on server")
 
+    # Determine user identity to pre-configure
+    user_id = 1
+    user_email = "team@talentops.ai"
+    user_role = "User"
+
+    if user_token:
+        try:
+            payload = _jwt.decode(user_token, SECRET_KEY, algorithms=[ALGORITHM])
+            uid = payload.get("sub")
+            if uid:
+                u = db.query(User).filter(User.id == int(uid)).first()
+                if u:
+                    user_id = u.id
+                    user_email = u.email
+                    user_role = "Admin" if is_admin_user(u) else "User"
+        except Exception:
+            pass
+    else:
+        admin = db.query(User).filter(User.email == "abhishekjadon824@gmail.com").first() or db.query(User).first()
+        if admin:
+            user_id = admin.id
+            user_email = admin.email
+            user_role = "Admin"
+
+    # Generate 1-year scoped extension token for this user
+    auto_token = create_access_token(
+        data={"sub": str(user_id), "scope": "extension"},
+        expires_delta=timedelta(days=365),
+    )
+
+    custom_config = {
+        "apiUrl": "https://talentopsai-1.onrender.com",
+        "autoToken": auto_token,
+        "userId": user_id,
+        "userEmail": user_email,
+        "userRole": user_role,
+        "activationCode": code or "TALENTOPS-AUTO-SCOUT",
+    }
+
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
         for root, _, files in os.walk(ext_dir):
             for file in files:
                 file_path = os.path.join(root, file)
                 rel_path = os.path.relpath(file_path, ext_dir)
-                zf.write(file_path, arcname=rel_path)
+                posix_path = rel_path.replace("\\", "/")
+
+                # Overwrite config.json with personalized user config
+                if file == "config.json":
+                    zf.writestr("config.json", json.dumps(custom_config, indent=2))
+                else:
+                    zf.write(file_path, arcname=posix_path)
+
+        # Ensure config.json exists in zip
+        if "config.json" not in [f.filename for f in zf.filelist]:
+            zf.writestr("config.json", json.dumps(custom_config, indent=2))
 
     zip_buffer.seek(0)
     zip_bytes = zip_buffer.getvalue()

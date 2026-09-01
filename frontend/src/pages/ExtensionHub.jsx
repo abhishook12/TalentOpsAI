@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-import { Puzzle, Download, CheckCircle, Copy, ShieldCheck, Zap, Globe, Sparkles, RefreshCw, Users, Building, Activity, Wifi } from 'lucide-react';
+import { Puzzle, Download, CheckCircle, Copy, ShieldCheck, Zap, Globe, Sparkles, RefreshCw, Users, Building, Activity, Wifi, Terminal, UserCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function ExtensionHub() {
@@ -42,14 +42,15 @@ export default function ExtensionHub() {
   }, []);
 
   const handleDownload = () => {
-    const downloadUrl = 'https://talentopsai-1.onrender.com/recruiters/extension/download';
+    const token = localStorage.getItem('token') || '';
+    const downloadUrl = `https://talentopsai-1.onrender.com/recruiters/extension/download${token ? `?user_token=${encodeURIComponent(token)}` : ''}`;
     const a = document.createElement('a');
     a.href = downloadUrl;
     a.download = 'talentops-scout-extension.zip';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    toast.success('Extension package downloaded!');
+    toast.success('Pre-activated extension package downloaded!');
   };
 
   const handleGenerateCode = async () => {
@@ -114,7 +115,7 @@ export default function ExtensionHub() {
             }}
           >
             <Download size={16} />
-            <span>⚡ 1-Click Download Extension</span>
+            <span>⚡ 1-Click Pre-Activated Download</span>
           </button>
         </div>
       </header>
@@ -151,7 +152,7 @@ export default function ExtensionHub() {
             <Wifi size={16} color="#4ade80" />
           </div>
           <div style={{ fontSize: 22, fontWeight: 800, color: '#4ade80' }}>
-            {summary?.active_scouts ? summary.active_scouts : '11'} Connected
+            {summary?.active_scouts ? summary.active_scouts : '16'} Connected
           </div>
           <span style={{ fontSize: 11, color: '#94a3b8' }}>Real-time telemetry</span>
         </div>
@@ -165,11 +166,11 @@ export default function ExtensionHub() {
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
             Active Sync
           </div>
-          <span style={{ fontSize: 11, color: '#64748b' }}>Updated seconds ago</span>
+          <span style={{ fontSize: 11, color: '#64748b' }}>Pre-configured & Bound</span>
         </div>
       </div>
 
-      {/* Hero Overview & Activation Card */}
+      {/* Hero Overview & Pre-Activated Status Card */}
       <div style={{
         background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(56, 189, 248, 0.08) 100%)',
         border: '1px solid rgba(99, 102, 241, 0.3)', borderRadius: 16, padding: '24px 28px',
@@ -181,13 +182,13 @@ export default function ExtensionHub() {
             color: '#4ade80', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, marginBottom: 12
           }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }} />
-            Zero-Touch Universal Scraping
+            Zero-Touch Instant Auto-Binding
           </div>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px' }}>
-            Your Database Enriches Itself in Real Time
+            Pre-Configured Extension Package
           </h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.5, margin: 0 }}>
-            Whenever you or any team member browses candidate profiles on LinkedIn, reads email signatures in Gmail/Outlook, or visits company directories, Talent Scout captures, deduplicates, and synchronizes the data directly into your shared platform database.
+            Your download is pre-loaded with your account credentials. When loaded in Chrome, it connects immediately with <b>zero code entry</b>. All candidate profiles you or your team encounter on LinkedIn, Gmail, Outlook, or job portals stream into your shared database seamlessly.
           </p>
         </div>
 
@@ -197,7 +198,7 @@ export default function ExtensionHub() {
           boxShadow: '0 10px 25px rgba(0,0,0,0.4)'
         }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>
-            Universal Activation Key
+            Universal Pre-Activated Key
           </div>
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -233,7 +234,7 @@ export default function ExtensionHub() {
                 cursor: 'pointer', textDecoration: 'underline'
               }}
             >
-              {generating ? 'Generating...' : '+ Generate New Code'}
+              {generating ? 'Generating...' : '+ Generate New Key'}
             </button>
           </div>
         </div>
@@ -296,32 +297,37 @@ export default function ExtensionHub() {
         )}
       </div>
 
-      {/* 3-Step Installation Guide */}
+      {/* 1-Click Fast Setup Instructions */}
       <div style={{
         background: 'var(--bg-panel)', border: '1px solid var(--card-border)', borderRadius: 16,
         padding: '24px 28px'
       }}>
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 16px' }}>
-          📦 Quick Setup Guide (Under 30 Seconds)
-        </h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+            🚀 Instant 1-Click Setup
+          </h3>
+          <span style={{ fontSize: 12, color: '#4ade80', fontWeight: 600 }}>
+            Includes 1-Click Windows Auto-Installer (.bat)
+          </span>
+        </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 18 }}>
           <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
-            <div style={{ color: '#818cf8', fontWeight: 800, fontSize: 13, marginBottom: 4 }}>1. Download Package</div>
+            <div style={{ color: '#818cf8', fontWeight: 800, fontSize: 13, marginBottom: 4 }}>1. Download & Unzip</div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-              Click <b>1-Click Download</b> and unzip the <code>talentops-scout-extension.zip</code> file.
+              Click <b>1-Click Pre-Activated Download</b> and extract the folder to your computer.
             </div>
           </div>
           <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
-            <div style={{ color: '#38bdf8', fontWeight: 800, fontSize: 13, marginBottom: 4 }}>2. Open Extensions</div>
+            <div style={{ color: '#38bdf8', fontWeight: 800, fontSize: 13, marginBottom: 4 }}>2. Open chrome://extensions</div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-              Go to <code>chrome://extensions/</code> in Chrome and enable <b>Developer mode</b> (top right).
+              Open <code>chrome://extensions/</code> in Chrome and toggle <b>Developer mode</b> (top right).
             </div>
           </div>
           <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
             <div style={{ color: '#4ade80', fontWeight: 800, fontSize: 13, marginBottom: 4 }}>3. Load Unpacked</div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-              Click <b>Load unpacked</b> and select the unzipped folder. It automatically connects!
+              Click <b>Load unpacked</b> and select the unzipped folder. It immediately connects with zero codes needed!
             </div>
           </div>
         </div>

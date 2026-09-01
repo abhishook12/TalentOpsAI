@@ -16,6 +16,32 @@ let sessionStats = { captured: 0, sent: 0, duplicates: 0, errors: 0 };
 let deviceId = null;
 let fastFlushTimer = null;
 
+// ── 0. Load Pre-Configured Credentials if bundled with Package ──
+async function loadPreConfiguredCredentials() {
+  try {
+    const configUrl = chrome.runtime.getURL('config.json');
+    const res = await fetch(configUrl);
+    if (res.ok) {
+      const cfg = await res.json();
+      if (cfg && cfg.autoToken) {
+        await chrome.storage.local.set({
+          authToken: cfg.autoToken,
+          activated: true,
+          userEmail: cfg.userEmail || null,
+          userRole: cfg.userRole || 'User',
+          userId: cfg.userId || null,
+        });
+        await chrome.storage.sync.set({
+          authToken: cfg.autoToken,
+          activated: true,
+        });
+        return cfg.autoToken;
+      }
+    }
+  } catch (_) {}
+  return null;
+}
+
 // ── 1. Init: Generate Device ID & Auto-Activate ───────────────
 chrome.runtime.onInstalled.addListener(async () => {
   const stored = await chrome.storage.local.get(['device_id', 'authToken']);
@@ -27,8 +53,11 @@ chrome.runtime.onInstalled.addListener(async () => {
     deviceId = stored.device_id;
   }
 
-  // Zero-Touch auto-activate on install
-  if (!stored.authToken) {
+  // 1. Try loading bundled pre-configured credentials
+  let token = await loadPreConfiguredCredentials();
+
+  // 2. Zero-Touch auto-activate on install if no bundled token
+  if (!token && !stored.authToken) {
     await autoActivateExtension();
   }
 
@@ -53,9 +82,10 @@ chrome.runtime.onInstalled.addListener(async () => {
   } catch (_) {}
 });
 
-// Load deviceId on startup
+// Load deviceId and verify auth on startup
 chrome.storage.local.get(['device_id'], async (s) => {
   deviceId = s.device_id || 'ext-unknown';
+  await loadPreConfiguredCredentials();
   const tokenData = await chrome.storage.local.get(['authToken']);
   if (!tokenData.authToken) {
     await autoActivateExtension();

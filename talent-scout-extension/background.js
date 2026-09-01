@@ -175,13 +175,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             totalCollectedEver: totalEver,
           });
 
-          // High-Speed Real-Time Sync: Flush queue in 1.2s or immediately if >= 10 items
-          if (contactQueue.length >= 10) {
-            flushQueue();
-          } else {
-            clearTimeout(fastFlushTimer);
-            fastFlushTimer = setTimeout(() => flushQueue(), 1200);
-          }
+          // High-Speed Real-Time Sync: Flush immediately
+          flushQueue();
           sendResponse({ ok: true });
           break;
         }

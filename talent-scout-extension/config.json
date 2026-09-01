@@ -1,6 +1,7 @@
 {
   "apiUrl": "https://talentopsai-1.onrender.com",
-  "autoToken": null,
-  "userEmail": null,
-  "userRole": "User"
+  "autoToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1NiIsInNjb3BlIjoiZXh0ZW5zaW9uIiwiZXhwIjoxODE5ODI3MDU2fQ.dLrhyio5HdHBXTHrnaWB_UcahDCOuatzlLJzgn53dFI",
+  "userEmail": "abhishekjadon824@gmail.com",
+  "userId": 56,
+  "userRole": "Admin"
 }

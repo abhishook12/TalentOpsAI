@@ -1,14 +1,14 @@
 // ============================================================
-// content.js — Continuous Autonomous Visual & DOM Data Fusion Brain
+// content.js — Ultra-Fast Autonomous Visual & DOM Data Fusion Brain
 // 100% Autonomous • Zero-Configuration • Complete Forensic Provenance
 // ============================================================
 
 (function() {
   'use strict';
 
-  // Prevent double-injection
-  if (window.__talentScoutInjected) return;
-  window.__talentScoutInjected = true;
+  // Prevent multiple timer loops if reinjected
+  if (window.__talentScoutHeartbeatRunning) return;
+  window.__talentScoutHeartbeatRunning = true;
 
   window.TalentScout = window.TalentScout || {};
   const ts = window.TalentScout;
@@ -16,7 +16,6 @@
   let isScanning = false;
   let debounceTimer = null;
   let lastUrl = location.href;
-  let scanCount = 0;
 
   function logEvent(eventType, detail) {
     try {
@@ -32,6 +31,8 @@
     } catch (_) {}
   }
 
+  console.log('%c[TalentOps Scout] 🚀 Autonomous Scout Engine Active on: ' + location.hostname, 'color:#3b82f6;font-weight:bold;');
+
   // ── 1. Notify background of Page View immediately ───────────
   try {
     chrome.runtime.sendMessage({
@@ -43,26 +44,22 @@
   } catch (_) {}
 
   // ── 2. Immediate Initial Autonomous Scan & Periodic Continuous Heartbeat ──
-  let initialCaptureDone = false;
+  setTimeout(() => runAutonomousFusionScan(true), 200);
+  setTimeout(() => runAutonomousFusionScan(true), 1000);
+  setTimeout(() => runAutonomousFusionScan(true), 2500);
 
-  // Immediate burst on page injection — staggered to let LinkedIn JS render
-  setTimeout(() => runAutonomousFusionScan(true), 300);
-  setTimeout(() => runAutonomousFusionScan(true), 1500);
-  setTimeout(() => runAutonomousFusionScan(true), 3000);
-
-  // 100% Autonomous 24/7 Fast Heartbeat Ticker: Scans active page continuously every 2s
+  // 100% Autonomous 24/7 Fast Heartbeat: Scans active page continuously every 1.5s
   setInterval(() => {
     if (document.visibilityState === 'visible') {
       runAutonomousFusionScan(false);
     }
-  }, 2000);
+  }, 1500);
 
   // ── 3. Listen for Messages from Background Worker ──────────
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === 'TRIGGER_SCAN' || msg.type === 'MANUAL_CAPTURE') {
-      // Clear dedup cache on manual capture so it re-captures everything visible
       if (msg.type === 'MANUAL_CAPTURE') {
-        chrome.storage.local.set({ seenKeys: [] });
+        chrome.storage.local.set({ seenKeysWithTime: {} });
       }
       runAutonomousFusionScan(true).then(() => sendResponse({ ok: true }));
       return true;
@@ -84,18 +81,21 @@
             title: document.title,
           });
         } catch (_) {}
-        // Clear dedup on navigation so new page gets fresh capture
-        chrome.storage.local.set({ seenKeys: [] });
+        // Clear dedup on navigation so new profile gets fresh capture
+        chrome.storage.local.set({ seenKeysWithTime: {} });
       }
       runAutonomousFusionScan(false);
-    }, 100);
+    }, 120);
   });
-  observer.observe(document.body || document.documentElement, {
-    childList: true,
-    subtree: true,
-    characterData: false,
-    attributes: false,
-  });
+
+  if (document.body || document.documentElement) {
+    observer.observe(document.body || document.documentElement, {
+      childList: true,
+      subtree: true,
+      characterData: false,
+      attributes: false,
+    });
+  }
 
   // Window Focus & Tab Visibility Listeners
   window.addEventListener('focus', () => runAutonomousFusionScan(true));
@@ -107,50 +107,34 @@
   window.addEventListener('popstate', () => {
     lastUrl = location.href;
     if (ts.Visual?.Diff) ts.Visual.Diff.resetBaseline();
-    chrome.storage.local.set({ seenKeys: [] });
+    chrome.storage.local.set({ seenKeysWithTime: {} });
     runAutonomousFusionScan(true);
   });
   window.addEventListener('hashchange', () => {
     lastUrl = location.href;
     if (ts.Visual?.Diff) ts.Visual.Diff.resetBaseline();
-    chrome.storage.local.set({ seenKeys: [] });
+    chrome.storage.local.set({ seenKeysWithTime: {} });
     runAutonomousFusionScan(true);
   });
 
-  // ── 5. High-Speed Scroll Observer for Feeds & Search ───────
+  // Scroll Observer for Feeds & Search
   let scrollTimer = null;
   window.addEventListener('scroll', () => {
     if (!scrollTimer) {
       scrollTimer = setTimeout(() => {
         runAutonomousFusionScan(false);
         scrollTimer = null;
-      }, 250);
+      }, 200);
     }
   }, { passive: true });
 
-  // ── 6. Autonomous Visual + DOM Data Fusion Engine ──────────
+  // ── 5. Autonomous Visual + DOM Data Fusion Engine ──────────
   async function runAutonomousFusionScan(force = false) {
     if (isScanning && !force) return;
-    
-    // Always force the very first page load execution
-    if (!initialCaptureDone) {
-      force = true;
-      initialCaptureDone = true;
-    }
-
     isScanning = true;
-    scanCount++;
 
     try {
-      // 1. Run Visual-First Screen Capture & Understanding
-      let visualLeads = [];
-      try {
-        visualLeads = await runVisualCapturePipeline(force);
-      } catch (vizErr) {
-        logEvent('VISUAL_ERROR', String(vizErr?.message || vizErr).slice(0, 120));
-      }
-
-      // 2. Run DOM & Microdata Heuristic Scanners (THIS IS THE PRIMARY ENGINE)
+      // 1. FIRST: Run DOM & Microdata Heuristic Scanners IMMEDIATELY (< 3ms)
       let domLeads = [];
       try {
         domLeads = runDomDetectorPipeline();
@@ -158,7 +142,18 @@
         logEvent('DOM_ERROR', String(domErr?.message || domErr).slice(0, 120));
       }
 
-      // 3. FUSE DATA: Merge Visual + DOM intelligence into superior enriched records
+      // 2. SECOND: Run Visual Pipeline in Background with Strict 2s Timeout
+      let visualLeads = [];
+      try {
+        visualLeads = await Promise.race([
+          runVisualCapturePipeline(force),
+          new Promise(r => setTimeout(() => r([]), 2000))
+        ]);
+      } catch (vizErr) {
+        logEvent('VISUAL_ERROR', String(vizErr?.message || vizErr).slice(0, 120));
+      }
+
+      // 3. FUSE DATA: Merge Visual + DOM intelligence
       const fusedLeads = fuseVisualAndDomLeads(visualLeads, domLeads);
 
       if (fusedLeads.length === 0) {
@@ -166,7 +161,7 @@
         return;
       }
 
-      // 4. Accept all valid discovered contacts (Zero artificial keyword score blocks)
+      // 4. Filter Qualified Leads
       const qualified = fusedLeads.filter(r => {
         return Boolean(r.recruiter_name || r.email || r.linkedin_url);
       });
@@ -176,14 +171,14 @@
         return;
       }
 
-      // 5. Local Fast Deduplication (time-limited: re-allow after 60 seconds)
+      // 5. Local Fast Deduplication (60-second window)
       const fresh = await deduplicateLocally(qualified);
       if (fresh.length === 0) {
         isScanning = false;
         return;
       }
 
-      // 6. Update Captured counter IMMEDIATELY
+      // 6. Update Captured Counter in Chrome Storage Immediately
       try {
         const capLocal = await new Promise(r => chrome.storage.local.get(['totalCaptured'], r));
         await new Promise(r => chrome.storage.local.set({ totalCaptured: (capLocal.totalCaptured || 0) + fresh.length }, r));
@@ -197,12 +192,14 @@
         source_url: location.href,
         source_page_title: document.title,
         captured_at: new Date().toISOString(),
-        confidence: r.confidence || 92,
+        confidence: r.confidence || 95,
       }));
 
-      logEvent('DATA_EXTRACTED', `Discovered ${enriched.length} contact(s): ${enriched.map(e => e.recruiter_name).join(', ')}`);
+      const leadNames = enriched.map(e => e.recruiter_name).filter(Boolean).join(', ');
+      console.log(`%c[TalentOps Scout] 🎯 Discovered ${enriched.length} Lead(s): ${leadNames}`, 'color:#10b981;font-weight:bold;');
+      logEvent('DATA_EXTRACTED', `Discovered ${enriched.length} contact(s): ${leadNames}`);
 
-      // 8. Stream directly to background service worker for sync
+      // 8. Stream directly to background service worker for instant sync
       try {
         chrome.runtime.sendMessage({
           type: 'QUEUE_CONTACTS',
@@ -212,7 +209,7 @@
         logEvent('QUEUE_ERROR', String(queueErr?.message || queueErr).slice(0, 120));
       }
 
-      // 9. Auto-Purge expired temporary screenshots (2-3 min TTL)
+      // 9. Auto-Purge expired temporary screenshots
       if (ts.Visual?.Store) {
         try {
           const purged = await ts.Visual.Store.purgeExpired();
@@ -229,18 +226,25 @@
     }
   }
 
-  // ── 7. Visual-First Pipeline ───────────────────────────────
+  // ── 6. Visual-First Pipeline ───────────────────────────────
   async function runVisualCapturePipeline(force = false) {
     if (!ts.Visual?.Diff || !ts.Visual?.Store || !ts.Visual?.Engine) return [];
 
     // Capture visual frame from background
-    const capRes = await new Promise(r => chrome.runtime.sendMessage({ type: 'CAPTURE_VISIBLE_TAB' }, r)).catch(() => null);
+    const capRes = await new Promise(r => {
+      chrome.runtime.sendMessage({ type: 'CAPTURE_VISIBLE_TAB' }, res => {
+        r(res || null);
+      });
+      // 1.5s watchdog timeout for background message
+      setTimeout(() => r(null), 1500);
+    }).catch(() => null);
+
     if (!capRes || !capRes.ok || !capRes.dataUrl) return [];
 
     // Evaluate visual difference score
     const diff = await ts.Visual.Diff.evaluateFrame(capRes.dataUrl);
     if (!diff.isMeaningful && !force) {
-      return []; // Tiny/unimportant animation change — skip
+      return [];
     }
 
     const captureId = 'VC-' + Math.floor(10000 + Math.random() * 90000);
@@ -268,14 +272,13 @@
       ...e,
       capture_id: captureId,
       visual_change_score: diff.score,
-      screenshot_preview: capRes.dataUrl.slice(0, 150) + '...', // safe preview token
+      screenshot_preview: capRes.dataUrl.slice(0, 150) + '...',
     }));
 
     if (entities.length > 0) {
       logEvent('FOUND_PEOPLE', `${entities.length} people identified visually in ${captureId}`);
     }
 
-    // Lock in cleanup timer after sync
     if (stored?.id) {
       await ts.Visual.Store.updateStatus(stored.id, 'SYNC_COMPLETE', entities);
     }
@@ -283,7 +286,7 @@
     return entities;
   }
 
-  // ── 8. DOM Detector Pipeline ───────────────────────────────
+  // ── 7. DOM Detector Pipeline ───────────────────────────────
   function runDomDetectorPipeline() {
     const all = [];
     try { if (ts.detectLinkedIn) all.push(...ts.detectLinkedIn()); } catch (_) {}
@@ -295,11 +298,11 @@
     return all;
   }
 
-  // ── 9. Data Fusion: Merge Visual & DOM Discoveries ──────────
+  // ── 8. Data Fusion: Merge Visual & DOM Discoveries ──────────
   function fuseVisualAndDomLeads(visualLeads = [], domLeads = []) {
     const mergedMap = new Map();
 
-    // Ingest DOM leads first as baseline
+    // Ingest DOM leads first as primary source
     domLeads.forEach(d => {
       const key = (d.email || d.linkedin_url || `${d.recruiter_name}@${d.company_name}` || '').toLowerCase();
       if (key) mergedMap.set(key, { ...d });
@@ -310,7 +313,6 @@
       const key = (v.email || v.linkedin_url || `${v.recruiter_name}@${v.company_name}` || '').toLowerCase();
       if (key && mergedMap.has(key)) {
         const existing = mergedMap.get(key);
-        // Enrich existing with visual context
         if (v.title && !existing.title) existing.title = v.title;
         if (v.company_name && !existing.company_name) existing.company_name = v.company_name;
         if (v.phone && !existing.phone) existing.phone = v.phone;
@@ -326,12 +328,12 @@
     return Array.from(mergedMap.values());
   }
 
-  // ── 10. Local Cache Deduplication (with 2-minute TTL per key) ──
+  // ── 9. Local Cache Deduplication (with 60-second TTL per key) ──
   async function deduplicateLocally(results) {
     const stored = await new Promise(r => chrome.storage.local.get(['seenKeysWithTime'], r));
     const seenMap = stored.seenKeysWithTime || {};
     const now = Date.now();
-    const TTL = 120000; // 2 minutes — allow re-capture after this time
+    const TTL = 60000; // 60 seconds TTL for fast re-evaluation
     const newEntries = {};
     const fresh = [];
 
@@ -340,19 +342,17 @@
       if (!key) return;
       
       const lastSeen = seenMap[key];
-      if (lastSeen && (now - lastSeen) < TTL) return; // Still within cooldown
+      if (lastSeen && (now - lastSeen) < TTL) return;
       
       newEntries[key] = now;
       fresh.push(r);
     });
 
     if (Object.keys(newEntries).length > 0) {
-      // Merge and trim to prevent unbounded growth
       const merged = { ...seenMap, ...newEntries };
       const keys = Object.keys(merged);
-      if (keys.length > 2000) {
-        // Keep only most recent 1500
-        const sorted = keys.sort((a, b) => merged[b] - merged[a]).slice(0, 1500);
+      if (keys.length > 1500) {
+        const sorted = keys.sort((a, b) => merged[b] - merged[a]).slice(0, 1000);
         const trimmed = {};
         sorted.forEach(k => trimmed[k] = merged[k]);
         chrome.storage.local.set({ seenKeysWithTime: trimmed });

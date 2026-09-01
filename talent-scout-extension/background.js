@@ -60,9 +60,37 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           }));
           contactQueue.push(...contacts);
           sessionStats.captured += contacts.length;
+
+          // Save recent captures and cumulative total in local storage
+          const local = await chrome.storage.local.get(['recentCaptures', 'totalCollectedEver']);
+          const existingRecent = local.recentCaptures || [];
+          const updatedRecent = [...contacts.slice(0, 5), ...existingRecent].slice(0, 15);
+          const totalEver = (local.totalCollectedEver || 0) + contacts.length;
+          await chrome.storage.local.set({
+            recentCaptures: updatedRecent,
+            totalCollectedEver: totalEver,
+          });
+
           // Flush immediately if queue full
           if (contactQueue.length >= BATCH_SIZE) flushQueue();
           sendResponse({ ok: true });
+          break;
+        }
+
+        // Popup asks for live stats & queue status
+        case 'GET_STATS': {
+          sendResponse({
+            ok: true,
+            stats: sessionStats,
+            queueLength: contactQueue.length,
+          });
+          break;
+        }
+
+        // Popup forces immediate queue sync
+        case 'FLUSH_NOW': {
+          const count = await flushQueue();
+          sendResponse({ ok: true, sent: count });
           break;
         }
 

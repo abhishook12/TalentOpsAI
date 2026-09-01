@@ -7,32 +7,107 @@
   <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
-  <!-- LOGIN SCREEN (shown only if not yet activated) -->
+  <!-- 1. ACTIVATION SCREEN (Shown if not yet connected) -->
   <div id="screen-login" class="screen hidden">
-    <div class="logo-row">
-      <img src="icons/icon48.png" alt="TalentOps" class="logo" />
-      <span class="brand">TalentOps Talent Scout</span>
+    <div class="header">
+      <div class="logo-row">
+        <img src="icons/icon48.png" alt="TalentOps" class="logo" />
+        <div>
+          <div class="brand">TalentOps Scout</div>
+          <div class="version">Universal Intelligence v2.0</div>
+        </div>
+      </div>
     </div>
-    <p class="subtitle">Enter your activation code to start.</p>
-    <div class="field-group">
-      <input type="text" id="activation-code" placeholder="Activation Code" autocomplete="off" />
+    
+    <div class="activation-card">
+      <div class="card-title">Connect to Database</div>
+      <p class="subtitle">Enter your activation code from your TalentOps dashboard.</p>
+      <div class="field-group">
+        <input type="text" id="activation-code" placeholder="e.g. TALENTOPS-UUL8MORQ" autocomplete="off" />
+      </div>
+      <div id="login-error" class="error hidden"></div>
+      <button id="btn-activate" class="btn-primary">
+        <span>⚡ Connect & Activate</span>
+      </button>
     </div>
-    <div id="login-error" class="error hidden"></div>
-    <button id="btn-activate" class="btn-primary">Activate</button>
   </div>
 
-  <!-- ACTIVE SCREEN (shown after activation — minimal, non-informative to installer) -->
+  <!-- 2. DASHBOARD SCREEN (Rich Activity & Scout Score Meter) -->
   <div id="screen-active" class="screen hidden">
-    <div class="logo-row">
-      <img src="icons/icon48.png" alt="TalentOps" class="logo" />
-      <span class="brand">TalentOps Talent Scout</span>
+    <!-- Header with Pulse Status -->
+    <div class="header">
+      <div class="logo-row">
+        <img src="icons/icon48.png" alt="TalentOps" class="logo" />
+        <div>
+          <div class="brand">TalentOps Scout</div>
+          <div class="pulse-status">
+            <span class="pulse-dot"></span>
+            <span class="pulse-text">Radar Active • Listening</span>
+          </div>
+        </div>
+      </div>
+      <button id="btn-sync-now" class="btn-icon" title="Force Sync Pending Queue">
+        🔄
+      </button>
     </div>
-    <div class="status-pill active">
-      <span class="dot"></span> Active
+
+    <!-- Scout Power / Activity Score Meter -->
+    <div class="meter-card">
+      <div class="meter-header">
+        <span class="meter-label">Scout Power Meter</span>
+        <span id="scout-rank" class="meter-badge">Master Scout</span>
+      </div>
+      <div class="score-row">
+        <div class="score-number" id="scout-score">98</div>
+        <div class="score-desc">
+          <div class="score-title">Intelligence Efficiency</div>
+          <div class="score-sub" id="scout-efficiency-text">High corporate enrichment rate</div>
+        </div>
+      </div>
+      <div class="meter-bar-track">
+        <div id="meter-bar-fill" class="meter-bar-fill" style="width: 98%;"></div>
+      </div>
     </div>
-    <p class="tagline">Helping you discover opportunities on every page.</p>
-    <div class="divider"></div>
-    <p class="support-text">Questions? <a href="https://talent-ops-ai.vercel.app" target="_blank">talentopsai.com</a></p>
+
+    <!-- 4 Stats Counters Grid -->
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-val" id="stat-collected" style="color: #60a5fa;">0</div>
+        <div class="stat-lbl">🎯 Collected</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="stat-synced" style="color: #4ade80;">0</div>
+        <div class="stat-lbl">🚀 Synced DB</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="stat-scanned" style="color: #c084fc;">0</div>
+        <div class="stat-lbl">🔍 Pages Read</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="stat-pending" style="color: #fbbf24;">0</div>
+        <div class="stat-lbl">⏳ In Queue</div>
+      </div>
+    </div>
+
+    <!-- Live Captured Stream Preview -->
+    <div class="activity-section">
+      <div class="section-header">
+        <span>⚡ Live Stream Feed</span>
+        <span id="stream-count" class="badge-mini">0 recent</span>
+      </div>
+      <div id="feed-list" class="feed-list">
+        <div class="feed-empty">
+          <span>📡 Browse LinkedIn, Gmail, or job sites to see live verified captures appear here.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Manual Trigger & Actions -->
+    <div class="action-footer">
+      <button id="btn-scan-page" class="btn-scan">
+        <span>⚡ Scan Current Page Now</span>
+      </button>
+    </div>
   </div>
 
   <script src="popup.js"></script>

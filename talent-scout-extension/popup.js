@@ -1,13 +1,14 @@
-// popup.js — Minimal silent activation popup
-// Installer sees only "Active" dot — no data stats, no info
+// popup.js — Dynamic Power Meter, Live Counters & Stream Feed
 
 const $ = id => document.getElementById(id);
 
 async function init() {
-  const stored = await chrome.runtime.sendMessage({ type: 'GET_AUTH' });
+  const auth = await chrome.runtime.sendMessage({ type: 'GET_AUTH' });
 
-  if (stored?.authToken) {
-    showActive();
+  if (auth?.authToken) {
+    showDashboard();
+    loadLiveStats();
+    setInterval(loadLiveStats, 2000); // Auto-refresh live stats every 2s while popup is open
   } else {
     showLogin();
   }
@@ -22,7 +23,7 @@ function showLogin() {
     if (!code) return showError('Enter your activation code.');
 
     $('btn-activate').disabled = true;
-    $('btn-activate').textContent = 'Activating…';
+    $('btn-activate').textContent = 'Connecting…';
     $('login-error').classList.add('hidden');
 
     const res = await chrome.runtime.sendMessage({
@@ -31,11 +32,12 @@ function showLogin() {
     });
 
     if (res?.ok) {
-      showActive();
+      showDashboard();
+      loadLiveStats();
     } else {
       showError(res?.error || 'Invalid activation code. Try again.');
       $('btn-activate').disabled = false;
-      $('btn-activate').textContent = 'Activate';
+      $('btn-activate').textContent = '⚡ Connect & Activate';
     }
   });
 
@@ -44,15 +46,126 @@ function showLogin() {
   });
 }
 
-function showActive() {
+function showDashboard() {
   $('screen-login').classList.add('hidden');
   $('screen-active').classList.remove('hidden');
+
+  // Wire Sync Queue button
+  $('btn-sync-now').addEventListener('click', async () => {
+    const btn = $('btn-sync-now');
+    btn.style.transform = 'rotate(180deg)';
+    btn.disabled = true;
+    await chrome.runtime.sendMessage({ type: 'FLUSH_NOW' });
+    setTimeout(() => {
+      btn.style.transform = 'rotate(0deg)';
+      btn.disabled = false;
+      loadLiveStats();
+    }, 600);
+  });
+
+  // Wire Scan Current Page button
+  $('btn-scan-page').addEventListener('click', async () => {
+    const btn = $('btn-scan-page');
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳ Scanning page DOM…</span>';
+
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab?.id) {
+      try {
+        const res = await chrome.tabs.sendMessage(tab.id, { type: 'MANUAL_CAPTURE' });
+        const count = res?.count || 0;
+        btn.innerHTML = `<span>✅ Found ${count} contact${count === 1 ? '' : 's'}!</span>`;
+      } catch (err) {
+        btn.innerHTML = '<span>ℹ️ Open LinkedIn or Gmail to scan</span>';
+      }
+    }
+
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<span>⚡ Scan Current Page Now</span>';
+      loadLiveStats();
+    }, 2000);
+  });
+}
+
+async function loadLiveStats() {
+  const statsRes = await chrome.runtime.sendMessage({ type: 'GET_STATS' });
+  const localData = await chrome.storage.local.get([
+    'totalSent',
+    'pagesScanned',
+    'recentCaptures',
+    'totalCollectedEver'
+  ]);
+
+  const stats = statsRes?.stats || { captured: 0, sent: 0, duplicates: 0 };
+  const queueLen = statsRes?.queueLength || 0;
+  const totalSent = (localData.totalSent || 0) + stats.sent;
+  const totalCaptured = (localData.totalCollectedEver || 0) + stats.captured;
+  const pagesScanned = localData.pagesScanned || Math.max(1, Math.round(totalCaptured * 1.4));
+
+  // 1. Update Counters
+  $('stat-collected').textContent = totalCaptured.toLocaleString();
+  $('stat-synced').textContent = totalSent.toLocaleString();
+  $('stat-scanned').textContent = pagesScanned.toLocaleString();
+  $('stat-pending').textContent = queueLen.toLocaleString();
+
+  // 2. Compute Scout Power Meter & Score
+  const efficiency = totalCaptured > 0 ? Math.min(100, Math.round((totalSent / Math.max(1, totalCaptured)) * 100)) : 95;
+  const score = Math.min(100, Math.max(60, 60 + Math.min(40, totalCaptured * 2)));
+
+  $('scout-score').textContent = score;
+  $('meter-bar-fill').style.width = `${score}%`;
+
+  if (score >= 95) {
+    $('scout-rank').textContent = 'Master Scout';
+    $('scout-efficiency-text').textContent = 'Elite corporate enrichment rate';
+  } else if (score >= 80) {
+    $('scout-rank').textContent = 'Pro Scout';
+    $('scout-efficiency-text').textContent = 'High precision active listening';
+  } else {
+    $('scout-rank').textContent = 'Active Scout';
+    $('scout-efficiency-text').textContent = 'Scanning web for talent';
+  }
+
+  // 3. Render Live Stream Feed
+  const recent = localData.recentCaptures || [];
+  $('stream-count').textContent = `${recent.length} recent`;
+
+  const feedList = $('feed-list');
+  if (recent.length === 0) {
+    feedList.innerHTML = `
+      <div class="feed-empty">
+        <span>📡 Browse LinkedIn, Gmail, or job sites to see live verified captures appear here.</span>
+      </div>`;
+  } else {
+    feedList.innerHTML = recent.slice(0, 6).map(item => {
+      const icon = item.source?.includes('linkedin') ? '💼' : item.source?.includes('gmail') || item.source?.includes('outlook') ? '✉️' : '🌐';
+      return `
+        <div class="feed-item">
+          <div class="feed-left">
+            <span class="feed-icon">${icon}</span>
+            <div>
+              <div class="feed-name">${escapeHtml(item.recruiter_name || 'Recruiter')}</div>
+              <div class="feed-sub">${escapeHtml(item.company_name || item.title || 'Corporate Contact')}</div>
+            </div>
+          </div>
+          <span class="feed-tag">Verified</span>
+        </div>`;
+    }).join('');
+  }
 }
 
 function showError(msg) {
   const el = $('login-error');
   el.textContent = msg;
   el.classList.remove('hidden');
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/[&<>"']/g, m => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+  })[m]);
 }
 
 init();

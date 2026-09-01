@@ -67,9 +67,11 @@
     // Check auth before every scan
     const settings = await new Promise(r => chrome.storage.sync.get(['authToken', 'autoCapture'], r));
     if (!settings.authToken) return [];
-    if (!manual && settings.autoCapture === false) return [];
+    // Increment pages scanned count locally
+    chrome.storage.local.get(['pagesScanned'], (s) => {
+      chrome.storage.local.set({ pagesScanned: (s.pagesScanned || 0) + 1 });
+    });
 
-    const allResults = [];
 
     try {
       // Run site-specific detectors

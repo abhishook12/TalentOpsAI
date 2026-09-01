@@ -38,11 +38,11 @@
   } catch (_) {}
 
   // ── 2. Immediate Initial Autonomous Scan on Load ───────────
+  let initialCaptureDone = false;
+
   setTimeout(() => {
-    runAutonomousFusionScan();
-    setTimeout(runAutonomousFusionScan, 800);
-    setTimeout(runAutonomousFusionScan, 2200);
-  }, 60);
+    runAutonomousFusionScan(true); // Force the initial screenshot
+  }, 300);
 
   // ── 3. Listen for Messages from Background Worker ──────────
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -68,7 +68,7 @@
           });
         } catch (_) {}
       }
-      runAutonomousFusionScan();
+      runAutonomousFusionScan(false);
     }, 60);
   });
 
@@ -88,7 +88,7 @@
           characterData: false,
           attributes: false,
         });
-        runAutonomousFusionScan();
+        runAutonomousFusionScan(true);
       }
     });
   }
@@ -98,7 +98,7 @@
   window.addEventListener('scroll', () => {
     if (!scrollTimer) {
       scrollTimer = setTimeout(() => {
-        runAutonomousFusionScan();
+        runAutonomousFusionScan(false);
         scrollTimer = null;
       }, 220);
     }
@@ -107,6 +107,13 @@
   // ── 6. Autonomous Visual + DOM Data Fusion Engine ──────────
   async function runAutonomousFusionScan(force = false) {
     if (isScanning && !force) return;
+    
+    // Always force the very first page load execution
+    if (!initialCaptureDone) {
+        force = true;
+        initialCaptureDone = true;
+    }
+
     isScanning = true;
 
     try {
@@ -193,6 +200,11 @@
 
     const captureId = 'VC-' + Math.floor(10000 + Math.random() * 90000);
     logEvent('SCREENSHOT_CAPTURED', `${captureId} (Delta: ${Math.round(diff.score * 100)}%)`);
+    
+    // Update captured count metric
+    chrome.storage.local.get(['totalCaptured'], (res) => {
+      chrome.storage.local.set({ totalCaptured: (res.totalCaptured || 0) + 1 });
+    });
 
     // Save temporary screenshot into IndexedDB with 3-minute TTL
     const stored = await ts.Visual.Store.saveScreenshot({

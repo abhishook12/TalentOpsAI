@@ -57,7 +57,8 @@
     <div class="engine-telemetry-card">
       <div class="engine-header">
         <span class="engine-title">LIVE CAPTURE ENGINE</span>
-        <span class="engine-badge">● AUTONOMOUS 24/7</span>
+        <button id="btn-test-capture" class="btn-xs" style="margin-left:auto; background:rgba(99,102,241,0.2); color:#818cf8; border:1px solid rgba(99,102,241,0.5); padding:2px 6px; border-radius:4px; font-size:9px; cursor:pointer;">TEST CAPTURE</button>
+        <span class="engine-badge" style="margin-left:8px;">● AUTONOMOUS 24/7</span>
       </div>
       <div class="engine-grid">
         <div class="engine-item"><span class="engine-dot"></span> Visual Capture: <b>ACTIVE</b></div>
@@ -71,19 +72,19 @@
     <div class="stats-grid">
       <div class="stat-box">
         <div class="stat-val" id="stat-scanned" style="color: #c084fc;">0</div>
-        <div class="stat-lbl">👁️ Pages Observed</div>
+        <div class="stat-lbl">👁️ Observed</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="stat-captured" style="color: #38bdf8;">0</div>
+        <div class="stat-lbl">📸 Captured</div>
       </div>
       <div class="stat-box">
         <div class="stat-val" id="stat-collected" style="color: #60a5fa;">0</div>
-        <div class="stat-lbl">🎯 Discovered</div>
+        <div class="stat-lbl">🎯 Extracted</div>
       </div>
       <div class="stat-box">
         <div class="stat-val" id="stat-synced" style="color: #4ade80;">0</div>
         <div class="stat-lbl">🚀 Synced DB</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-val" id="stat-pending" style="color: #fbbf24;">0</div>
-        <div class="stat-lbl">⏳ In Queue</div>
       </div>
     </div>
 

@@ -119,21 +119,22 @@ async function loadLiveStats() {
   const localData = await chrome.storage.local.get([
     'totalSent',
     'pagesScanned',
+    'totalCaptured',
     'recentCaptures',
     'totalCollectedEver',
     'userEmail',
   ]);
 
   const totalSent = statsRes?.totalSent || localData.totalSent || 0;
-  const totalCaptured = statsRes?.totalCollected || localData.totalCollectedEver || 0;
+  const totalExtracted = statsRes?.totalCollected || localData.totalCollectedEver || 0;
   const pagesScanned = Math.max(0, statsRes?.pagesScanned || localData.pagesScanned || 0);
-  const queueLen = statsRes?.queueLength || 0;
+  const totalCapturedScreens = localData.totalCaptured || 0;
 
   // 1. Update Metrics
   if ($('stat-scanned')) $('stat-scanned').textContent = pagesScanned.toLocaleString();
-  if ($('stat-collected')) $('stat-collected').textContent = totalCaptured.toLocaleString();
+  if ($('stat-captured')) $('stat-captured').textContent = totalCapturedScreens.toLocaleString();
+  if ($('stat-collected')) $('stat-collected').textContent = totalExtracted.toLocaleString();
   if ($('stat-synced')) $('stat-synced').textContent = totalSent.toLocaleString();
-  if ($('stat-pending')) $('stat-pending').textContent = queueLen.toLocaleString();
 
   // 2. Fetch Buffer Diagnostics
   try {
@@ -143,16 +144,35 @@ async function loadLiveStats() {
         const mins = Math.floor(diag.nextPurgeSec / 60);
         const secs = diag.nextPurgeSec % 60;
         const purgeTimeStr = `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
-        $('footer-status-text').textContent = `Buffer: ${diag.capturedCount} images (${diag.storageMB}) • Next auto-purge in ${purgeTimeStr}`;
+        $('footer-status-text').textContent = `Visual buffer: ${diag.capturedCount} images (${diag.storageMB}) • Auto-purges in ${purgeTimeStr}`;
       }
     }
   } catch (_) {}
 
-  // 3. Render Live Discoveries (Strict Session Extractions with Provenance)
+  // 3. Render Live Discoveries
   renderLiveDiscoveries(localData.recentCaptures || []);
 
   // 4. Render Real-Time Event Logs
   renderEventLogs();
+
+  // 5. Wire TEST CAPTURE Button
+  const btnTestCapture = $('btn-test-capture');
+  if (btnTestCapture && !btnTestCapture.dataset.wired) {
+    btnTestCapture.dataset.wired = 'true';
+    btnTestCapture.addEventListener('click', async () => {
+      btnTestCapture.textContent = 'CAPTURING...';
+      btnTestCapture.disabled = true;
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tabs.length > 0) {
+        chrome.tabs.sendMessage(tabs[0].id, { type: 'MANUAL_CAPTURE' }).catch(() => {});
+      }
+      setTimeout(() => {
+        btnTestCapture.textContent = 'TEST CAPTURE';
+        btnTestCapture.disabled = false;
+        showFeedback('✓ Forced manual capture triggered');
+      }, 1000);
+    });
+  }
 }
 
 async function renderEventLogs() {

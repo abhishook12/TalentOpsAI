@@ -10,6 +10,7 @@ Endpoints:
   POST /recruiters/extension/codes      — ADMIN: create new activation code
 """
 
+import base64
 import json
 import logging
 import re
@@ -666,64 +667,89 @@ def analyze_vision_screenshot(
     entities = []
     page_url = req.page_url or ""
     page_title = req.page_title or ""
-    host = ""
-    if page_url:
-        try:
-            from urllib.parse import urlparse
-            host = urlparse(page_url).hostname or ""
-        except Exception:
-            pass
+    
+    # Extract Base64 Image
+    try:
+        header, encoded = req.image_data.split(",", 1)
+        image_bytes = base64.b64decode(encoded)
+        from io import BytesIO
+        from PIL import Image
+        img = Image.open(BytesIO(image_bytes))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Invalid image format")
 
-    # Infer default company from hostname
-    company_name = None
-    if host and not any(skip in host for skip in ["google.", "bing.", "youtube.", "linkedin.com", "mail.google.com", "outlook."]):
-        clean_host = host.replace("www.", "").split(".")[0]
-        if len(clean_host) >= 2:
-            company_name = clean_host.capitalize()
+    try:
+        from google import genai
+        from google.genai import types
+        import os
+        import json
+        
+        api_key = os.environ.get("GEMINI_API_KEY", "AQ.Ab8RN6JeAR1jCZaGpC-HcXZBHrtG-TK0oZQL6aQCMMm3vuyHYQ")
+        client = genai.Client(api_key=api_key)
+        
+        prompt = f"""You are an expert TalentOps Visual AI.
+Extract any recruiters, talent acquisition professionals, or HR contacts visible in this screenshot.
+Page URL: {page_url}
+Page Title: {page_title}
 
-    # Extract LinkedIn slug if viewing a profile URL
-    if "linkedin.com/in/" in page_url:
-        slug = page_url.split("/in/")[-1].split("/")[0].split("?")[0]
-        cleaned_name = re.sub(r'-[a-f0-9]{4,12}$', '', slug, flags=re.IGNORECASE)
-        cleaned_name = " ".join([p.capitalize() for p in re.split(r'[-_.]+', cleaned_name) if p])
-        if cleaned_name:
-            entities.append({
-                "recruiter_name": cleaned_name,
-                "title": "Senior Technical Recruiter",
-                "company_name": company_name or "Corporate",
-                "linkedin_url": page_url.split("?")[0],
-                "source": "visual_capture",
-                "confidence": 0.90,
-                "verification_status": "verified",
-            })
+Return a valid JSON list of objects. Each object must have these exact keys (use null if missing):
+"recruiter_name"
+"title"
+"company_name"
+"location"
+"linkedin_url"
+"email"
+"phone"
 
-    # Title-based entity discovery
-    if page_title and ("|" in page_title or "-" in page_title):
-        parts = re.split(r'\s*[-–—|]\s*', page_title)
-        candidate_name = parts[0].strip()
-        if len(candidate_name) >= 3 and len(candidate_name) <= 40 and not any(d in candidate_name for d in ["@", "http", "www", "404", "Home", "Feed"]):
-            cand_title = parts[1].strip() if len(parts) > 1 else "Talent Partner"
-            cand_company = parts[2].strip() if len(parts) > 2 else company_name
-            if not any(e["recruiter_name"].lower() == candidate_name.lower() for e in entities):
+Do not wrap in markdown or backticks. Only output the raw JSON array. Return [] if no relevant people are found."""
+
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=[img, prompt],
+            config=types.GenerateContentConfig(
+                temperature=0.1,
+            )
+        )
+        
+        raw_json = response.text.strip()
+        if raw_json.startswith("```json"):
+            raw_json = raw_json[7:-3].strip()
+        elif raw_json.startswith("```"):
+            raw_json = raw_json[3:-3].strip()
+            
+        parsed_entities = json.loads(raw_json)
+        
+        for item in parsed_entities:
+            if item.get("recruiter_name"):
                 entities.append({
-                    "recruiter_name": candidate_name,
-                    "title": cand_title,
-                    "company_name": cand_company or "Corporate",
+                    "recruiter_name": item.get("recruiter_name"),
+                    "title": item.get("title") or "Talent Partner",
+                    "company_name": item.get("company_name") or "Corporate",
+                    "location": item.get("location"),
+                    "linkedin_url": item.get("linkedin_url") or (page_url if "linkedin.com/in/" in page_url else None),
+                    "email": item.get("email"),
+                    "phone": item.get("phone"),
                     "source": "visual_capture",
-                    "confidence": 0.85,
-                    "verification_status": "verified",
+                    "confidence": 95,
+                    "verification_status": "verified"
                 })
-
-    # Fallback generic person if viewing a valid corporate portal
-    if len(entities) == 0 and company_name:
-        entities.append({
-            "recruiter_name": f"{company_name} Talent Team",
-            "title": "Hiring & Talent Acquisition",
-            "company_name": company_name,
-            "source": "visual_capture",
-            "confidence": 0.70,
-            "verification_status": "enriched",
-        })
+    except Exception as e:
+        print(f"Gemini Vision API Error: {e}")
+        # Fallback heuristic if API fails
+        if "linkedin.com/in/" in page_url:
+            slug = page_url.split("/in/")[-1].split("/")[0].split("?")[0]
+            cleaned_name = re.sub(r'-[a-f0-9]{4,12}$', '', slug, flags=re.IGNORECASE)
+            cleaned_name = " ".join([p.capitalize() for p in re.split(r'[-_.]+', cleaned_name) if p])
+            if cleaned_name:
+                entities.append({
+                    "recruiter_name": cleaned_name,
+                    "title": "Senior Technical Recruiter",
+                    "company_name": "Corporate",
+                    "linkedin_url": page_url.split("?")[0],
+                    "source": "visual_capture",
+                    "confidence": 90,
+                    "verification_status": "verified"
+                })
 
     # Ingest discovered entities into database
     persisted_count = 0

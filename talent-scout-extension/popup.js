@@ -62,30 +62,6 @@ function showDashboard() {
       loadLiveStats();
     }, 600);
   });
-
-  // Wire Scan Current Page button
-  $('btn-scan-page').addEventListener('click', async () => {
-    const btn = $('btn-scan-page');
-    btn.disabled = true;
-    btn.innerHTML = '<span>⏳ Scanning page DOM…</span>';
-
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab?.id) {
-      try {
-        const res = await chrome.tabs.sendMessage(tab.id, { type: 'MANUAL_CAPTURE' });
-        const count = res?.count || 0;
-        btn.innerHTML = `<span>✅ Found ${count} contact${count === 1 ? '' : 's'}!</span>`;
-      } catch (err) {
-        btn.innerHTML = '<span>ℹ️ Open LinkedIn or Gmail to scan</span>';
-      }
-    }
-
-    setTimeout(() => {
-      btn.disabled = false;
-      btn.innerHTML = '<span>⚡ Scan Current Page Now</span>';
-      loadLiveStats();
-    }, 2000);
-  });
 }
 
 async function loadLiveStats() {

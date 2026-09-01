@@ -61,6 +61,18 @@
     attributes: false,
   });
 
+  // ── Scroll Listener for infinite feeds (LinkedIn search, Gmail, job boards) ──
+  let scrollThrottle = null;
+  window.addEventListener('scroll', () => {
+    if (!scrollThrottle) {
+      scrollThrottle = setTimeout(() => {
+        runScan();
+        scrollThrottle = null;
+      }, 500);
+    }
+  }, { passive: true });
+
+
   // ── Main Scan ─────────────────────────────────────────────
 
   async function runScan(manual = false) {

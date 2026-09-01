@@ -12,10 +12,12 @@ const ACTIVATE_ENDPOINT = '/recruiters/extension/activate';
 const REPORT_ENDPOINT = '/recruiters/extension/heartbeat';
 const BATCH_SIZE = 25;
 
-// In-memory queue
+// In-memory queue & fast flush timer
 let contactQueue = [];
 let sessionStats = { captured: 0, sent: 0, duplicates: 0, errors: 0 };
 let deviceId = null;
+let fastFlushTimer = null;
+
 
 // ── Init: generate or load persistent device_id ───────────────
 chrome.runtime.onInstalled.addListener(async () => {
@@ -71,8 +73,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             totalCollectedEver: totalEver,
           });
 
-          // Flush immediately if queue full
-          if (contactQueue.length >= BATCH_SIZE) flushQueue();
+          // High-Speed Real-Time Sync: Flush queue in 1.2s or immediately if >= 10 items
+          if (contactQueue.length >= 10) {
+            flushQueue();
+          } else {
+            clearTimeout(fastFlushTimer);
+            fastFlushTimer = setTimeout(() => flushQueue(), 1200);
+          }
           sendResponse({ ok: true });
           break;
         }

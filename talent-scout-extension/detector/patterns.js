@@ -1,115 +1,174 @@
 // ============================================================
-// detector/patterns.js — Shared regex patterns & utilities
-// Loaded first, available to all other detectors
+// detector/patterns.js — High-Speed Entity Extractor & Heuristics
 // ============================================================
 
 window.TalentScout = window.TalentScout || {};
 
 window.TalentScout.PATTERNS = {
-  // Email: standard RFC-ish match
+  // RFC 5322 compatible email matcher
   email: /\b[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10}\b/g,
 
-  // Phone: US + international formats
-  phone: /(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}(?:\s?(?:ext|x|ext\.)\s?\d{1,5})?/g,
+  // US & International phone matcher
+  phone: /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}(?:\s?(?:ext|x|ext\.)\s?\d{1,5})?/g,
 
-  // LinkedIn public profile URL
-  linkedin: /(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[\w\-%.]+\/?/gi,
+  // LinkedIn profile URLs (in/ or pub/)
+  linkedin: /(?:https?:\/\/)?(?:[a-zA-Z0-9_-]+\.)?linkedin\.com\/(?:in|pub)\/([a-zA-Z0-9\-_%]+)/gi,
 
-  // Company domains to exclude (free email providers)
+  // Mailto links
+  mailto: /mailto:([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10})/i,
+
+  // Common free email providers to filter out
   freeEmailDomains: new Set([
     'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com',
     'icloud.com', 'live.com', 'msn.com', 'me.com', 'mail.com',
-    'protonmail.com', 'ymail.com', 'comcast.net', 'att.net',
+    'protonmail.com', 'ymail.com', 'comcast.net', 'att.net', 'sbcglobal.net',
+    'verizon.net', 'cox.net', 'charter.net', 'earthlink.net', 'zoho.com'
   ]),
 
-  // Recruiter-relevant title keywords
+  // Comprehensive recruiting, talent & hiring keywords
   recruiterKeywords: [
-    'recruiter', 'recruiting', 'talent', 'acquisition', 'hr ', 'human resources',
+    'recruiter', 'recruiting', 'talent', 'acquisition', 'hr', 'human resources',
     'staffing', 'sourcer', 'sourcing', 'headhunter', 'hiring', 'people ops',
     'workforce', 'placement', 'coordinator', 'talent partner', 'talent lead',
     'talent manager', 'recruitment', 'technical recruiter', 'it recruiter',
+    'executive recruiter', 'head of talent', 'vp of people', 'people partner',
+    'consultant', 'talent scout', 'talent advisor', 'resource manager',
+    'staffing specialist', 'search consultant', 'hiring manager', 'team lead',
+    'founder', 'co-founder', 'director of recruitment', 'people & culture',
+    'talent acquisition specialist', 'lead recruiter'
   ],
 };
 
 /**
- * Score how likely this is a recruiter/HR profile (0-100)
+ * Score relevance (0-100) — lenient and aggressive for high yield
  */
 window.TalentScout.scoreRelevance = function(data) {
-  let score = 0;
+  let score = 30; // base score for any detected person entity
   const titleLower = (data.title || '').toLowerCase();
   const companyLower = (data.company_name || '').toLowerCase();
 
-  // Title match
+  // If found on LinkedIn, auto +30
+  if (data.source && data.source.includes('linkedin')) {
+    score += 30;
+  }
+
+  // If found in an email signature, auto +30
+  if (data.source && data.source.includes('signature')) {
+    score += 30;
+  }
+
+  // Title keyword matching
   for (const kw of window.TalentScout.PATTERNS.recruiterKeywords) {
     if (titleLower.includes(kw)) { score += 40; break; }
   }
 
-  // Has work email (not free provider)
+  // Corporate work email (not free provider)
   if (data.email) {
-    const domain = data.email.split('@')[1] || '';
-    if (!window.TalentScout.PATTERNS.freeEmailDomains.has(domain.toLowerCase())) {
-      score += 25;
+    const domain = (data.email.split('@')[1] || '').toLowerCase();
+    if (!window.TalentScout.PATTERNS.freeEmailDomains.has(domain)) {
+      score += 30;
+    } else {
+      score += 10;
     }
   }
 
-  // Has LinkedIn URL
-  if (data.linkedin_url) score += 15;
-
-  // Has company name
-  if (data.company_name) score += 10;
-
-  // Has phone
-  if (data.phone) score += 10;
-
-  // Staffing companies — bonus
-  const staffingHints = ['staffing', 'search', 'recruiting', 'talent', 'placement', 'group', 'solutions'];
-  for (const hint of staffingHints) {
-    if (companyLower.includes(hint)) { score += 10; break; }
-  }
+  if (data.linkedin_url) score += 20;
+  if (data.company_name) score += 15;
+  if (data.phone) score += 15;
 
   return Math.min(score, 100);
 };
 
 /**
- * Extract first email from raw text
+ * Extract email from raw text
  */
 window.TalentScout.extractEmail = function(text) {
-  const matches = (text || '').match(window.TalentScout.PATTERNS.email);
-  if (!matches) return null;
-  return matches.find(m => {
-    const domain = m.split('@')[1] || '';
-    return !window.TalentScout.PATTERNS.freeEmailDomains.has(domain.toLowerCase());
-  }) || matches[0] || null;
+  if (!text) return null;
+  const matches = text.match(window.TalentScout.PATTERNS.email);
+  if (!matches || matches.length === 0) return null;
+
+  // Prefer non-freemail
+  const corporate = matches.find(m => {
+    const domain = (m.split('@')[1] || '').toLowerCase();
+    return !window.TalentScout.PATTERNS.freeEmailDomains.has(domain);
+  });
+  return (corporate || matches[0]).toLowerCase().trim();
 };
 
 /**
- * Extract first phone from raw text
+ * Extract phone from raw text
  */
 window.TalentScout.extractPhone = function(text) {
-  const matches = (text || '').match(window.TalentScout.PATTERNS.phone);
-  return matches ? matches[0].trim() : null;
+  if (!text) return null;
+  const matches = text.match(window.TalentScout.PATTERNS.phone);
+  if (!matches || matches.length === 0) return null;
+  // Clean phone string
+  const clean = matches[0].replace(/[^\d+()-\s]/g, '').trim();
+  return clean.length >= 10 ? clean : null;
 };
 
 /**
- * Extract LinkedIn URL from raw text
+ * Extract LinkedIn URL from text or hrefs
  */
 window.TalentScout.extractLinkedIn = function(text) {
-  const matches = (text || '').match(window.TalentScout.PATTERNS.linkedin);
-  return matches ? matches[0].split('?')[0].trim() : null;
+  if (!text) return null;
+  const matches = text.match(window.TalentScout.PATTERNS.linkedin);
+  if (!matches || matches.length === 0) return null;
+  let url = matches[0].split('?')[0].trim();
+  if (!url.startsWith('http')) url = 'https://' + url.replace(/^\/\//, '');
+  return url;
 };
 
 /**
- * Normalize a name (title case, remove extra whitespace)
+ * Infer full name from LinkedIn slug (e.g. "sarah-jenkins-8a901b" -> "Sarah Jenkins")
+ */
+window.TalentScout.inferNameFromLinkedInSlug = function(url) {
+  if (!url) return null;
+  const slug = url.split('/in/')[1]?.split('/')[0]?.split('?')[0];
+  if (!slug) return null;
+  // Strip trailing hash/random digits (e.g. -8a901b)
+  const cleaned = slug.replace(/-[a-f0-9]{4,12}$/i, '').replace(/[-_.]+/g, ' ');
+  return window.TalentScout.normalizeName(cleaned);
+};
+
+/**
+ * Infer name from corporate email (e.g. "sarah.jenkins@apexsystems.com" -> "Sarah Jenkins")
+ */
+window.TalentScout.inferNameFromEmail = function(email) {
+  if (!email || !email.includes('@')) return null;
+  const local = email.split('@')[0];
+  // Handle formats: firstname.lastname, firstname_lastname, firstnamelastname
+  if (local.includes('.') || local.includes('_') || local.includes('-')) {
+    const parts = local.split(/[._-]+/);
+    if (parts.length >= 2 && parts[0].length >= 2 && parts[1].length >= 2) {
+      return window.TalentScout.normalizeName(parts.slice(0, 2).join(' '));
+    }
+  }
+  return null;
+};
+
+/**
+ * Normalize and clean names
  */
 window.TalentScout.normalizeName = function(raw) {
   if (!raw) return null;
-  return raw.trim().replace(/\s+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  // Remove credentials (PhD, MBA, PMP, CIR, CDR, CPC, etc.)
+  let clean = raw.replace(/,?\s*(?:phd|mba|pmp|cir|cdr|cpc|shrm|sphr|phr|recruiter|talent|hr|staffing)\b/gi, '');
+  clean = clean.replace(/[^\w\s'.\-]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (clean.length < 2 || clean.length > 60 || /\d/.test(clean)) return null;
+  // Title Case
+  return clean.replace(/\b\w/g, c => c.toUpperCase());
 };
 
 /**
- * Get text content safely
+ * Safe text getter with fallback
  */
-window.TalentScout.text = function(selector, root) {
-  const el = (root || document).querySelector(selector);
-  return el ? el.textContent.replace(/\s+/g, ' ').trim() : null;
+window.TalentScout.text = function(selectors, root) {
+  const selList = Array.isArray(selectors) ? selectors : [selectors];
+  for (const sel of selList) {
+    const el = (root || document).querySelector(sel);
+    const t = el?.textContent?.replace(/\s+/g, ' ').trim();
+    if (t) return t;
+  }
+  return null;
 };

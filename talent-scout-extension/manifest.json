@@ -40,8 +40,8 @@
         "detector/generic.js",
         "content.js"
       ],
-      "run_at": "document_idle",
-      "all_frames": false
+      "run_at": "document_end",
+      "all_frames": true
     }
   ],
   "icons": {

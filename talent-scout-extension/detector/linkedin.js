@@ -287,10 +287,61 @@ function _scrapeSingleProfile(pageCompanyContext) {
     aboutSummary = null;
   }
 
-  // Extract contact info
-  const fullText = document.body ? (document.body.innerText || '') : '';
-  const email = ts.extractEmail(fullText);
-  const phone = ts.extractPhone(fullText);
+  // 8. Contact Info (Direct DOM Overlay + Text Fallback)
+  let email = ts.text([
+    '.ci-email a',
+    '.ci-email .pv-contact-info__contact-link',
+    'a[href^="mailto:"]',
+    '.pv-contact-info__ci-container a[href^="mailto:"]',
+  ]);
+  if (email && email.startsWith('mailto:')) email = email.replace(/^mailto:/i, '').trim();
+
+  let phone = ts.text([
+    '.ci-phone .pv-contact-info__contact-link',
+    '.ci-phone span.t-14',
+    '.ci-phone ul li span',
+    'a[href^="tel:"]',
+  ]);
+  if (phone && phone.startsWith('tel:')) phone = phone.replace(/^tel:/i, '').trim();
+
+  let website = ts.text([
+    '.ci-websites a',
+    '.ci-websites .pv-contact-info__contact-link',
+    'a.pv-contact-info__contact-link[href^="http"]',
+  ]);
+
+  let connectedDate = ts.text([
+    '.ci-connected .pv-contact-info__contact-item',
+    '.ci-connected .t-14',
+  ]);
+
+  // Fallback body regex if not in overlay
+  if (!email || !phone) {
+    const fullText = document.body ? (document.body.innerText || '') : '';
+    if (!email) email = ts.extractEmail(fullText);
+    if (!phone) phone = ts.extractPhone(fullText);
+  }
+
+  // 9. Skills & Core Competencies
+  const skillsList = [];
+  const skillNodes = document.querySelectorAll('#skills ~ div ul > li, section[data-section="skills"] li, .pv-skill-categories-section li');
+  skillNodes.forEach(node => {
+    const skillName = ts.text(['.hoverable-link-text span[aria-hidden="true"]', 'span[aria-hidden="true"]', '.t-bold'], node);
+    if (skillName && skillName.length >= 2 && skillName.length <= 40 && !ts.isUIAction(skillName)) {
+      if (!skillsList.includes(skillName)) skillsList.push(skillName);
+    }
+  });
+
+  // 10. Certifications & Licenses
+  const certsList = [];
+  const certNodes = document.querySelectorAll('#licenses_and_certifications ~ div ul > li, section[data-section="certifications"] li');
+  certNodes.forEach(node => {
+    const certTitle = ts.text(['.hoverable-link-text span[aria-hidden="true"]', 'span[aria-hidden="true"]', '.t-bold'], node);
+    const certOrg = ts.text(['.t-normal span[aria-hidden="true"]', '.t-14.t-normal'], node);
+    if (certTitle && !ts.isUIAction(certTitle)) {
+      certsList.push({ title: certTitle, issuer: certOrg || null });
+    }
+  });
 
   if (!finalName && !title) return null;
 
@@ -298,27 +349,30 @@ function _scrapeSingleProfile(pageCompanyContext) {
     recruiter_name: finalName,
     title: title,
     company_name: company_name,
-    linkedin_url: cleanUrl,
     email: email,
     phone: phone,
   });
 
-  const profileData = {
-    recruiter_name: finalName || ts.inferNameFromLinkedInSlug(cleanUrl) || 'LinkedIn Member',
+  return {
+    recruiter_name: finalName,
     title: title,
-    headline: rawTitle || null,
-    specialty: specialty || null,
+    headline: rawTitle,
+    specialty: specialty,
     company_name: company_name,
     previous_company: previousCompany,
     source_platform: 'LinkedIn',
-    location: candidateLocation || null,
-    education: education || null,
-    followers_count: followers || null,
-    connections_count: connections || null,
-    about_summary: aboutSummary || null,
+    location: candidateLocation,
+    education: education,
+    followers_count: followers,
+    connections_count: connections,
+    about_summary: aboutSummary,
     experience_history: experienceHistory.length > 0 ? experienceHistory : null,
-    email: email || null,
-    phone: phone || null,
+    skills: skillsList.length > 0 ? skillsList : null,
+    certifications: certsList.length > 0 ? certsList : null,
+    website: website,
+    connected_date: connectedDate,
+    email: email,
+    phone: phone,
     linkedin_url: cleanUrl,
     source: 'linkedin_profile',
     confidence: conf.overall,

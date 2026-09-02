@@ -281,29 +281,36 @@ class DiscoveryProcessor:
         connections_count = most_common([getattr(r, "connections_count", None) for r in cluster])
         about_summary = most_common([getattr(r, "about_summary", None) for r in cluster])
         
+        # Merge progressive complex JSON fields (grab longest/richest)
+        skills_opts = [getattr(r, "skills", None) for r in cluster if getattr(r, "skills", None)]
+        skills = max(skills_opts, key=len) if skills_opts else None
+        
+        exp_opts = [getattr(r, "experience_history", None) for r in cluster if getattr(r, "experience_history", None)]
+        experience_history = max(exp_opts, key=len) if exp_opts else None
+        
         # Track employment history and job changes (Current vs Previous)
         previous_company = most_common([getattr(r, "previous_company", None) for r in cluster if getattr(r, "previous_company", None)])
         
         current_company = None
         if clean_companies:
             if previous_company:
-                for comp in clean_companies:
+                for comp in reversed(clean_companies):
                     if comp.lower() != previous_company.lower():
                         current_company = comp
                         break
             if not current_company:
-                current_company = clean_companies[0]
+                current_company = clean_companies[-1] # newest
 
         if not previous_company and clean_companies and len(set(clean_companies)) > 1:
-            for comp in clean_companies[1:]:
+            for comp in reversed(clean_companies[:-1]):
                 if comp.lower() != current_company.lower():
                     previous_company = comp
                     break
 
-        current_title = clean_titles[0] if clean_titles else "Professional"
+        current_title = clean_titles[-1] if clean_titles else "Professional"
         previous_title = None
-        if clean_titles and len(clean_titles) > 1:
-            for tit in clean_titles[1:]:
+        if clean_titles and len(set(clean_titles)) > 1:
+            for tit in reversed(clean_titles[:-1]):
                 if tit.lower() != current_title.lower():
                     previous_title = tit
                     break
@@ -351,6 +358,8 @@ class DiscoveryProcessor:
             followers_count=followers_count,
             connections_count=connections_count,
             about_summary=about_summary,
+            skills=skills,
+            experience_history=experience_history,
             identity_confidence=round(conf, 2),
             observation_count=obs_count,
             name_confidence=name_conf,
@@ -475,6 +484,18 @@ class DiscoveryProcessor:
             if not m_comp_name or normalize_text(person.current_company) != normalize_text(m_comp_name):
                 has_new_company = True
                 new_fields.append('company')
+
+        # Deep Profile Field Checks
+        import json
+        meta = json.loads(master_match.metadata_json) if master_match.metadata_json else {}
+        if person.education and not meta.get("education"):
+            new_fields.append('education')
+        if person.skills and not meta.get("skills"):
+            new_fields.append('skills')
+        if person.experience_history and not meta.get("experience_history"):
+            new_fields.append('experience_history')
+        if person.about_summary and not meta.get("about_summary"):
+            new_fields.append('about_summary')
 
         # Conflict checks: Contradictory LinkedIn URLs
         if master_match.linkedin and person.linkedin_url:
@@ -605,6 +626,16 @@ class DiscoveryProcessor:
 
                 # Create master Recruiter
                 fallback_email = person.primary_email or f"ext_{secrets.token_hex(8)}@noemail.talentops"
+                
+                metadata_dict = {
+                    "education": person.education,
+                    "skills": json.loads(person.skills) if person.skills else None,
+                    "experience_history": json.loads(person.experience_history) if person.experience_history else None,
+                    "about_summary": person.about_summary,
+                    "connections_count": person.connections_count,
+                    "followers_count": person.followers_count,
+                }
+                
                 new_recruiter = Recruiter(
                     user_id=person.owner_user_id,
                     recruiter_name=person.canonical_name,
@@ -618,6 +649,7 @@ class DiscoveryProcessor:
                     is_active=True,
                     needs_review=bool(person.identity_confidence < 0.85 or not person.primary_email),
                     trust_score=int(person.identity_confidence * 100),
+                    metadata_json=json.dumps({k: v for k, v in metadata_dict.items() if v is not None})
                 )
                 self.db.add(new_recruiter)
                 self.db.flush()
@@ -686,6 +718,27 @@ class DiscoveryProcessor:
                             self.db.flush()
                         recruiter.company_id = comp.company_id
                         fields_enriched.append(f"Company: {person.current_company}")
+
+                # Deep Profile Progressive Enrichment
+                meta = json.loads(recruiter.metadata_json) if recruiter.metadata_json else {}
+                if person.education and not meta.get("education"):
+                    meta["education"] = person.education
+                    fields_enriched.append("Education")
+                if person.skills and not meta.get("skills"):
+                    meta["skills"] = json.loads(person.skills)
+                    fields_enriched.append("Skills")
+                if person.experience_history and not meta.get("experience_history"):
+                    meta["experience_history"] = json.loads(person.experience_history)
+                    fields_enriched.append("Experience")
+                if person.about_summary and not meta.get("about_summary"):
+                    meta["about_summary"] = person.about_summary
+                    fields_enriched.append("About")
+                if person.connections_count and not meta.get("connections_count"):
+                    meta["connections_count"] = person.connections_count
+                if person.followers_count and not meta.get("followers_count"):
+                    meta["followers_count"] = person.followers_count
+                
+                recruiter.metadata_json = json.dumps(meta)
 
                 self.db.add(recruiter)
                 person.recruiter_id = recruiter.recruiter_id

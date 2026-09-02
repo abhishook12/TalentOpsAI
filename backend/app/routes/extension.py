@@ -83,6 +83,15 @@ class ExtensionContact(BaseModel):
     visual_change_score: Optional[float] = None
     confidence: Optional[int] = None
     _relevance_score: Optional[int] = None
+    
+    # Progressive Deep Profile Fields
+    education: Optional[str] = None
+    followers_count: Optional[str] = None
+    connections_count: Optional[str] = None
+    about_summary: Optional[str] = None
+    experience_history: Optional[list] = None
+    skills: Optional[list] = None
+    certifications: Optional[list] = None
 
 
 class BatchRequest(BaseModel):
@@ -335,6 +344,14 @@ def ingest_extension_batch(
                 processing_status="pending",
                 identity_confidence=0.0,
                 quality_score=0,
+                
+                # Deep Profile Progressive Enrichment
+                education=contact.education,
+                about_summary=contact.about_summary,
+                followers_count=contact.followers_count,
+                connections_count=contact.connections_count,
+                skills=json.dumps(contact.skills) if contact.skills else None,
+                experience_history=json.dumps(contact.experience_history) if contact.experience_history else None,
             )
             db.add(staging_record)
             staged += 1

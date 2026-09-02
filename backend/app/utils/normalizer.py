@@ -188,9 +188,25 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
     if is_job_posting_title(lower):
         return False, None, f"Name is a job title ('{cleaned}'), not a human individual"
 
-    # 4. Reject generic non-name placeholders
+    # 4. Reject feed posts, articles, newsletters, and announcements
+    if re.search(r'\b(?:feed post|post number|page posts?|feed item|reactions?|comments?|shares?|newsletter|announcement|headline news|sponsored|promoted)\b', lower):
+        return False, None, f"Name is a feed/post UI element ('{cleaned}')"
+
+    # 5. Reject names containing digits (e.g. 'Feed post number 1')
+    if re.search(r'\d', cleaned):
+        return False, None, f"Name contains numeric digits ('{cleaned}')"
+
+    # 6. Reject generic non-name placeholders
     if lower in {'professional lead', 'candidate lead', 'linkedin member', 'view profile', 'see all', 'member', 'unknown', 'sign in', 'join now', 'corporate contact'}:
         return False, None, f"Name is a generic placeholder ('{cleaned}')"
+
+    # 7. Reject notification and sentence fragments
+    if re.search(r'accepted your invitation|sent you a message|top skills|skills|celebrates|work anniversary|shared a post|reacted to|watch for signs|greater risk', lower):
+        return False, None, f"Name is notification or feed noise ('{cleaned}')"
+
+    # 8. Must be alphabetic words (2 to 4 words max)
+    if not re.match(r'^[a-zA-Z\s\'.\-]+$', cleaned) or len(cleaned.split()) > 4:
+        return False, None, f"Name structure is unnatural ('{cleaned}')"
 
     return True, cleaned.title(), None
 
@@ -236,7 +252,7 @@ def clean_title(raw_title: Optional[str]) -> Optional[str]:
     return title if title and not is_ui_action(title) else None
 
 def clean_company(raw_company: Optional[str], page_context: Optional[str] = None) -> Optional[str]:
-    """Cleans a raw company name, rejecting platform names and applying valid company page context."""
+    """Cleans a raw company name, rejecting platform names, emojis, sentences, and applying valid company page context."""
     comp = None
     if raw_company and not is_platform_name(raw_company):
         comp = str(raw_company).strip()
@@ -255,6 +271,13 @@ def clean_company(raw_company: Optional[str], page_context: Optional[str] = None
 
     if not comp or is_platform_name(comp):
         return None
+
+    # Reject if company string contains emojis, alert words, or is a sentence
+    if re.search(r'[🚨⚠️❗❓❌✅]', comp) or re.search(r'\b(?:greater risk|watch for|signs of|illness|warning|alert|sponsored|weather|news)\b', comp, flags=re.IGNORECASE):
+        return None
+    if len(comp.split()) > 6 or comp.count('.') >= 2 or comp.endswith('.'):
+        return None
+
     return comp
 
 def split_title_and_company(

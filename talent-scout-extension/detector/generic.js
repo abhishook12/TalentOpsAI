@@ -11,9 +11,9 @@ window.TalentScout.detectGeneric = function() {
   const results = [];
   const host = location.hostname.toLowerCase();
 
-  // Skip search engines and major social video feeds
+  // Skip LinkedIn (handled exclusively by detectLinkedIn), search engines, and major social feeds
   const skipHosts = [
-    'google.', 'bing.com', 'duckduckgo.com', 'youtube.com', 'facebook.com',
+    'linkedin.com', 'google.', 'bing.com', 'duckduckgo.com', 'youtube.com', 'facebook.com',
     'twitter.com', 'x.com', 'instagram.com', 'reddit.com', 'wikipedia.org',
     'amazon.', 'netflix.com', 'github.com', 'gitlab.com', 'stackoverflow.com'
   ];

@@ -200,17 +200,23 @@ window.TalentScout.validateHumanName = function(rawName) {
     return { isValid: false, reason: `job_title_as_name:${name}` };
   }
 
-  if (['professional lead', 'candidate lead', 'linkedin member', 'view profile', 'corporate contact', 'search chat'].includes(lower)) {
-    return { isValid: false, reason: `generic_placeholder:${name}` };
+  // Reject feed posts, articles, newsletter headers, and page elements
+  if (/\b(?:feed post|post number|page posts?|feed item|reactions?|comments?|shares?|newsletter|announcement|headline news|sponsored|promoted)\b/i.test(lower)) {
+    return { isValid: false, reason: `feed_post_noise:${name}` };
+  }
+
+  // Reject names containing digits (e.g. "Feed post number 1", "Candidate 2")
+  if (/\d/.test(name)) {
+    return { isValid: false, reason: `digits_in_name:${name}` };
   }
 
   // Reject notification strings
-  if (/accepted your invitation|sent you a message|top skills|skills|celebrates|work anniversary|shared a post|reacted to/i.test(lower)) {
+  if (/accepted your invitation|sent you a message|top skills|skills|celebrates|work anniversary|shared a post|reacted to|watch for signs|greater risk/i.test(lower)) {
     return { isValid: false, reason: `notification_noise:${name}` };
   }
 
-  // Must contain at least one letter and at least 2 characters
-  if (!/[a-zA-Z]/.test(name) || name.split(' ').length > 5) {
+  // Must contain at least one letter, no emojis, and between 2 to 4 words
+  if (!/^[a-zA-Z\s'.\-]+$/.test(name) || name.split(' ').length > 4) {
     return { isValid: false, reason: 'unnatural_name_structure' };
   }
 
@@ -260,8 +266,11 @@ window.TalentScout.cleanTitleAndCompany = function(rawTitle, rawCompany, pageCom
     title = null;
   }
 
-  // 2. If company is a platform name (e.g. 'SimplyHired', 'LinkedIn'), nullify or fallback to page context
+  // 2. If company is a platform name, sentence, or contains emojis/alerts, nullify or fallback
   if (window.TalentScout.isPlatformName(company)) {
+    company = null;
+  }
+  if (company && (/[^\w\s&.,'\-]/i.test(company) || /[🚨⚠️❗❓❌✅]/.test(company) || /\b(?:greater risk|watch for|signs of|illness|warning|alert|sponsored|weather|news)\b/i.test(company) || company.split(' ').length > 6)) {
     company = null;
   }
 
@@ -296,7 +305,7 @@ window.TalentScout.cleanTitleAndCompany = function(rawTitle, rawCompany, pageCom
 
   // 4. Inherit Page-Level Company Context if missing or invalid
   if ((!company || window.TalentScout.isPlatformName(company)) && pageCompanyContext) {
-    if (!window.TalentScout.isPlatformName(pageCompanyContext)) {
+    if (!window.TalentScout.isPlatformName(pageCompanyContext) && !/[🚨⚠️❗❓]/.test(pageCompanyContext) && pageCompanyContext.split(' ').length <= 6) {
       company = pageCompanyContext.trim();
     }
   }
@@ -304,6 +313,7 @@ window.TalentScout.cleanTitleAndCompany = function(rawTitle, rawCompany, pageCom
   // Final sanity checks
   if (window.TalentScout.isUIAction(title)) title = null;
   if (window.TalentScout.isPlatformName(company)) company = null;
+  if (company && (company.split(' ').length > 6 || /\b(?:greater risk|watch for|signs of|illness)\b/i.test(company))) company = null;
 
   return {
     title: title || 'Professional',
@@ -399,7 +409,7 @@ window.TalentScout.extractEmail = function(text) {
 };
 
 /**
- * Extract phone from text
+ * Extract phone from text (strictly 10-11 digits, rejecting 13-digit millisecond epoch timestamps)
  */
 window.TalentScout.extractPhone = function(text) {
   if (!text) return null;
@@ -407,7 +417,13 @@ window.TalentScout.extractPhone = function(text) {
   if (!matches) return null;
   const phone = matches[0].trim();
   const digits = phone.replace(/\D/g, '');
-  return (digits.length >= 10 && digits.length <= 15) ? phone : null;
+  
+  // Reject numbers that are not standard 10 or 11 digits, or look like timestamps (starting with 175, 170, 160 with trailing zeros)
+  if (digits.length < 10 || digits.length > 11) return null;
+  if (/^1[6789]\d{8,}$/.test(digits) && digits.endsWith('0000')) return null;
+  if (digits === '1750896000000' || digits.length >= 12) return null;
+
+  return phone;
 };
 
 /**

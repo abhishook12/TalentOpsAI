@@ -35,8 +35,14 @@ window.TalentScout.detectLinkedIn = function() {
     }
   }
 
-  // ── 1. Company People & Grid Cards (/company/*/people/ or /people) ──
-  results.push(..._scrapeCompanyPeoplePage(pageCompanyContext));
+  // ── 1. Company People & Grid Cards (/company/*/people) ──
+  if (path.includes('/company/')) {
+    if (path.includes('/people')) {
+      results.push(..._scrapeCompanyPeoplePage(pageCompanyContext));
+    }
+    // Company home/posts/feed pages do NOT contain individual recruiter profile entities
+    return results;
+  }
 
   // ── 2. Single Profile Page (/in/ or /pub/) ─────────────────
   if (/^\/(in|pub)\//.test(path)) {
@@ -48,7 +54,6 @@ window.TalentScout.detectLinkedIn = function() {
   results.push(..._scrapeSearchCards(pageCompanyContext));
   results.push(..._scrapeRecruiterPlatform(pageCompanyContext));
   results.push(..._scrapeMessaging());
-  results.push(..._scrapeFeedPosts(pageCompanyContext));
   results.push(..._scrapeAllLinkedInCards(pageCompanyContext));
 
   // ── 4. Page Title & Meta Fallback (Guaranteed Yield) ───────

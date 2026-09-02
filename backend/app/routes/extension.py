@@ -666,31 +666,52 @@ def analyze_vision_screenshot(
         client = genai.Client(api_key=api_key)
         
         prompt = f"""You are an expert TalentOps Visual Intelligence & Forensic Extraction Engine.
-Analyze this screenshot and extract ONLY explicitly visible human professionals, recruiters, hiring managers, or talent contacts.
+Analyze this screenshot and extract ALL visibly present professional intelligence.
 
 Context Metadata:
 - Page URL: {page_url}
 - Page Title: {page_title}
 - Page Type: {page_type}
 
-CRITICAL EXTRACTION & EVIDENCE RULES:
-1. JOB BOARDS vs PEOPLE DIRECTORIES: On job search pages (SimplyHired, Indeed /jobs, ZipRecruiter, Glassdoor /job), listings are JOB POSTINGS, NOT people. Do NOT convert job titles (e.g. "Transmission Project Manager", "High School Mathematics Teacher", "Mobile Phlebotomist") into candidate person names! Only extract people if an explicit recruiter/hiring manager card with a real human person's name is visible. Return [] if no real person is present.
-2. ENUMERATE EVERY REAL PERSON: On people directories (LinkedIn /people, team pages), extract ALL visible individuals.
-3. SEPARATE SOURCE PLATFORM FROM EMPLOYER: Platform names (SimplyHired, LinkedIn, Indeed, Glassdoor) are NEVER employer companies unless the card explicitly states they are employed by that platform.
-4. STRICTLY REJECT UI BUTTONS: Words like "Contact", "Connect", "Message", "Follow", "Pending", "Apply", "Easy Apply", "Submit" are UI action buttons, NOT titles or names.
-5. TITLE & COMPANY CONSENSUS: Split headlines like "Recruiting Manager at SynergyGrid IT" into title="Recruiting Manager" and company_name="SynergyGrid IT".
+MANDATORY EXTRACTION CONTRACT (Extract whenever visibly present, NEVER invent if absent):
+1. PERSON: Full name, profile URL, connection degree (e.g. 1st, 2nd, 3rd), follower count, connection count (e.g. "17 connections").
+2. CURRENT EMPLOYMENT: Current job title, current company (NEVER platform name like LinkedIn/SimplyHired), employment status.
+3. LOCATION: City, state/region, country.
+4. EDUCATION: Educational institution (e.g. University of Delaware), degree, dates.
+5. ABOUT DECOMPOSITION (DO NOT FLATTEN): Parse years of experience (e.g. "15+ years"), industries (e.g. Technology, Finance, Healthcare, Marketing), specialties (e.g. "Software engineering sourcing", "Talent acquisition"), candidate focus, employer focus.
+6. EMPLOYMENT HISTORY: Previous companies, previous titles, date ranges.
+7. CONTACT: Email, phone, website, LinkedIn URL.
+8. REJECT UI CONTROLS: "Connect", "Message", "Follow", "Contact", "See more", "Apply" are UI buttons, NOT titles or names.
+9. SECONDARY ENTITIES: Note any secondary people or recommended profiles in secondary_entities.
 
-Return a valid JSON list of objects:
+Return a valid JSON list of primary profile objects:
 [
   {{
     "recruiter_name": "Human Full Name",
-    "title": "Clean Job Title (or null, NEVER UI buttons, NEVER 'Professional Lead')",
-    "company_name": "Employer Company (NEVER SimplyHired / LinkedIn)",
-    "location": "City, State / Country or null",
-    "linkedin_url": "Profile URL if visible or null",
-    "email": "Email address or null",
-    "phone": "Phone number or null",
-    "evidence_region": "Visual bounding area or description",
+    "title": "Current Job Title",
+    "company_name": "Current Employer Company (NEVER LinkedIn)",
+    "previous_company": "Previous Company if visible or null",
+    "location": "City, State, Country or null",
+    "education": "University / School name or null",
+    "connection_degree": "1st/2nd/3rd or null",
+    "connections_count": "e.g. 17 connections or null",
+    "followers_count": "e.g. 500+ followers or null",
+    "about_summary": "Full about text or null",
+    "about_insights": {{
+      "years_experience": "e.g. 15+ years recruitment experience",
+      "industries": ["Technology", "Finance", "Healthcare", "Marketing"],
+      "specialties": ["Software engineering sourcing", "Talent acquisition"],
+      "candidate_focus": "Marketing candidate focus",
+      "employer_focus": "Employer/candidate relationship focus"
+    }},
+    "experience_history": [
+      {{ "title": "Role", "company": "Company", "dates": "Dates", "is_current": true }}
+    ],
+    "skills": ["Skill 1", "Skill 2"],
+    "email": "Email or null",
+    "phone": "Phone or null",
+    "linkedin_url": "Profile URL or null",
+    "secondary_entities": [],
     "name_confidence": 98,
     "title_confidence": 95,
     "company_confidence": 90,
@@ -753,11 +774,24 @@ Output ONLY the raw JSON array. Return [] if no real human person is visibly gro
                 linkedin=item.get("linkedin_url"),
             )
 
-            entities.append({
+            # Structured About Decomposition
+            raw_about = item.get("about_summary")
+            about_decomp = item.get("about_insights") or decompose_about_section(raw_about)
+
+            entity_dict = {
                 "recruiter_name": grounding["clean_name"],
                 "title": t,
                 "company_name": c,
+                "previous_company": item.get("previous_company"),
                 "location": item.get("location"),
+                "education": item.get("education"),
+                "connection_degree": item.get("connection_degree") or extract_connection_degree(raw_name),
+                "connections_count": item.get("connections_count") or extract_connection_count(item.get("connections_count")),
+                "followers_count": item.get("followers_count"),
+                "about_summary": raw_about,
+                "about_insights": about_decomp,
+                "experience_history": item.get("experience_history"),
+                "skills": item.get("skills"),
                 "linkedin_url": item.get("linkedin_url") or (page_url if "linkedin.com/in/" in page_url else None),
                 "email": item.get("email"),
                 "phone": item.get("phone"),
@@ -766,7 +800,10 @@ Output ONLY the raw JSON array. Return [] if no real human person is visibly gro
                 "confidence": conf["overall"],
                 "field_confidences": conf,
                 "evidence_grounding_score": grounding["grounding_score"],
-            })
+            }
+
+            entity_dict["completeness_report"] = generate_completeness_report(entity_dict)
+            entities.append(entity_dict)
     except Exception as e:
         logger.warning(f"Gemini Vision API Error: {e}")
         pass

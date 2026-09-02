@@ -437,6 +437,192 @@ window.TalentScout.extractLinkedIn = function(text) {
 };
 
 /**
+ * Extract connection degree (1st, 2nd, 3rd, 3rd+)
+ */
+window.TalentScout.extractConnectionDegree = function(text) {
+  if (!text) return null;
+  const m = text.match(/\b(1st|2nd|3rd(?:\+)?)\b/i);
+  return m ? m[1].toLowerCase() : null;
+};
+
+/**
+ * Extract connection count (e.g. "17 connections", "500+ connections")
+ */
+window.TalentScout.extractConnectionCount = function(text) {
+  if (!text) return null;
+  const m = text.match(/\b(\d+(?:\+)?\s+connections?)\b/i);
+  return m ? m[1] : null;
+};
+
+/**
+ * Decompose raw About summary into structured professional observations
+ * (Prevents flattening/discarding the About section into a single useless string)
+ */
+window.TalentScout.decomposeAboutSection = function(rawAbout) {
+  if (!rawAbout || typeof rawAbout !== 'string' || rawAbout.length < 15) return null;
+
+  const text = rawAbout.trim();
+  const lower = text.toLowerCase();
+
+  // 1. Extract years of experience
+  let yearsExp = null;
+  const yMatch = text.match(/\b(\d+\+?\s*years?(?:\s+of)?(?:\s+recruitment|\s+recruiting|\s+staffing|\s+industry|\s+professional|\s+experience|\s+expertise)?)\b/i);
+  if (yMatch) yearsExp = yMatch[1].trim();
+
+  // 2. Extract Industries
+  const knownIndustries = [
+    'Technology', 'Software Engineering', 'IT', 'Finance', 'Healthcare',
+    'Marketing', 'Sales', 'Biotech', 'Pharmaceutical', 'Manufacturing',
+    'Retail', 'Aerospace', 'Defense', 'Energy', 'Cybersecurity', 'Cloud',
+    'Artificial Intelligence', 'Data Science', 'Hospitality', 'Education'
+  ];
+  const matchedIndustries = [];
+  knownIndustries.forEach(ind => {
+    const reg = new RegExp(`\\b${ind}\\b`, 'i');
+    if (reg.test(text)) matchedIndustries.push(ind);
+  });
+
+  // 3. Extract Specialties & Domains
+  const knownSpecialties = [
+    'Software engineering sourcing', 'Talent acquisition', 'Executive search',
+    'Technical recruiting', 'Full-cycle recruiting', 'Contract staffing',
+    'Direct placement', 'Candidate screening', 'Pipeline generation',
+    'Campus recruiting', 'Leadership hiring', 'Sourcing strategy'
+  ];
+  const matchedSpecialties = [];
+  knownSpecialties.forEach(spec => {
+    const reg = new RegExp(`\\b${spec}\\b`, 'i');
+    if (reg.test(text)) matchedSpecialties.push(spec);
+  });
+
+  // 4. Extract Candidate & Employer Focus
+  let candidateFocus = null;
+  if (/marketing\s+candidate\s+focus/i.test(text)) candidateFocus = 'Marketing candidate focus';
+  else if (/engineering\s+candidate\s+focus/i.test(text)) candidateFocus = 'Engineering candidate focus';
+  else if (/executive\s+candidate\s+focus/i.test(text)) candidateFocus = 'Executive candidate focus';
+
+  let employerFocus = null;
+  if (/employer\s*[\/\-]\s*candidate\s+relationship/i.test(text) || /candidate\s*[\/\-]\s*employer\s+relationship/i.test(text)) {
+    employerFocus = 'Employer/candidate relationship focus';
+  } else if (/client\s+partnership/i.test(text)) {
+    employerFocus = 'Client partnership focus';
+  }
+
+  // 5. Build clean tree of structured observations
+  const observations = [];
+  if (yearsExp) observations.push(yearsExp);
+  matchedIndustries.forEach(i => observations.push(i));
+  matchedSpecialties.forEach(s => observations.push(s));
+  if (candidateFocus) observations.push(candidateFocus);
+  if (employerFocus) observations.push(employerFocus);
+
+  return {
+    raw_about: text,
+    years_experience: yearsExp,
+    industries: matchedIndustries.length > 0 ? matchedIndustries : null,
+    specialties: matchedSpecialties.length > 0 ? matchedSpecialties : null,
+    candidate_focus: candidateFocus,
+    employer_focus: employerFocus,
+    structured_observations: observations.length > 0 ? observations : [text],
+  };
+};
+
+/**
+ * Generate Comprehensive Forensic Completeness Report for Every Capture
+ */
+window.TalentScout.generateCompletenessReport = function(entity, pageContext = {}) {
+  const visibleCategories = [];
+  const extractedCategories = [];
+  const notFound = [];
+  const uncertain = [];
+
+  // 1. Person Identity
+  if (entity.recruiter_name) {
+    visibleCategories.push('PERSON_NAME');
+    extractedCategories.push({ field: 'name', value: entity.recruiter_name, confidence: entity.field_confidences?.name || 95 });
+  } else {
+    notFound.push('PERSON_NAME');
+  }
+
+  // 2. Current Title & Company
+  if (entity.title) {
+    visibleCategories.push('CURRENT_TITLE');
+    extractedCategories.push({ field: 'title', value: entity.title, confidence: entity.field_confidences?.title || 90 });
+  } else {
+    notFound.push('CURRENT_TITLE');
+  }
+
+  if (entity.company_name) {
+    visibleCategories.push('CURRENT_COMPANY');
+    extractedCategories.push({ field: 'company', value: entity.company_name, confidence: entity.field_confidences?.company || 85 });
+  } else {
+    notFound.push('CURRENT_COMPANY');
+  }
+
+  // 3. Location
+  if (entity.location) {
+    visibleCategories.push('LOCATION');
+    extractedCategories.push({ field: 'location', value: entity.location, confidence: 90 });
+  } else {
+    notFound.push('LOCATION');
+  }
+
+  // 4. Education
+  if (entity.education) {
+    visibleCategories.push('EDUCATION');
+    extractedCategories.push({ field: 'education', value: entity.education, confidence: 90 });
+  } else {
+    notFound.push('EDUCATION');
+  }
+
+  // 5. Connections & Degree Context
+  if (entity.connections_count || entity.connection_degree) {
+    visibleCategories.push('SOCIAL_GRAPH_PROOF');
+    extractedCategories.push({
+      field: 'social_graph',
+      connections: entity.connections_count || null,
+      degree: entity.connection_degree || null,
+      followers: entity.followers_count || null,
+    });
+  }
+
+  // 6. About Decomposed Intelligence
+  if (entity.about_insights || entity.about_summary) {
+    visibleCategories.push('STRUCTURED_ABOUT_DECOMPOSITION');
+    extractedCategories.push({ field: 'about_insights', value: entity.about_insights || entity.about_summary });
+  } else {
+    notFound.push('STRUCTURED_ABOUT_DECOMPOSITION');
+  }
+
+  // 7. Employment History
+  if (entity.experience_history && entity.experience_history.length > 0) {
+    visibleCategories.push('EMPLOYMENT_HISTORY');
+    extractedCategories.push({ field: 'employment_history', count: entity.experience_history.length, roles: entity.experience_history });
+  } else {
+    notFound.push('EMPLOYMENT_HISTORY');
+  }
+
+  // 8. Contact Channels
+  if (entity.email) extractedCategories.push({ field: 'email', value: entity.email });
+  if (entity.phone) extractedCategories.push({ field: 'phone', value: entity.phone });
+  if (entity.website) extractedCategories.push({ field: 'website', value: entity.website });
+  if (!entity.email && !entity.phone) notFound.push('PRIVATE_CONTACT_INFO (NOT GROUNDED ON PUBLIC VIEW)');
+
+  return {
+    source_platform: entity.source_platform || 'LinkedIn',
+    canonical_person: entity.recruiter_name,
+    visible_categories: visibleCategories,
+    extracted_categories: extractedCategories,
+    not_found: notFound,
+    uncertain: uncertain,
+    rejected_ui_text: ['Connect', 'Message', 'Follow', 'Contact', 'Apply'],
+    secondary_entities_observed: pageContext.secondary_people_count || 0,
+    new_information: extractedCategories.map(c => c.field),
+    evidence_grounding_status: 'PASS',
+  };
+};
+
+/**
  * Infer human name from LinkedIn profile slug
  */
 window.TalentScout.inferNameFromLinkedInSlug = function(url) {

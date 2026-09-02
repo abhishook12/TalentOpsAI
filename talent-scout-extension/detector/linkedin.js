@@ -194,7 +194,13 @@ function _scrapeSingleProfile(pageCompanyContext) {
     '.ph5 .text-body-small',
   ]);
 
-  // 4. Followers & Connections (Small metadata)
+  // 4. Followers, Connections & Degree Context
+  let connectionDegree = ts.extractConnectionDegree(name) || ts.extractConnectionDegree(rawTitle) || ts.text([
+    '.pv-text-details__left-panel .dist-value',
+    '.artdeco-hoverable-trigger .dist-value',
+    'span.dist-value',
+  ]);
+
   let followers = ts.text([
     '.pv-top-card--list-bullet li:first-child span.t-bold',
     '.pv-top-card--list-bullet li:first-child',
@@ -209,6 +215,9 @@ function _scrapeSingleProfile(pageCompanyContext) {
     'a[href*="/mynetwork/invite-connect/connections/"] span',
     'a[href*="/detail/recent-activity/"] + span',
   ]);
+  if (!connections) {
+    connections = ts.extractConnectionCount(document.body ? document.body.innerText : '');
+  }
 
   // 5. Education (School / University)
   let education = ts.text([
@@ -233,7 +242,7 @@ function _scrapeSingleProfile(pageCompanyContext) {
     });
   }
 
-  // 6. About / Summary Text
+  // 6. About / Summary Text & Semantic Decomposition
   let aboutSummary = ts.text([
     '#about ~ div.display-flex span[aria-hidden="true"]',
     '#about ~ div .inline-show-more-text',
@@ -243,36 +252,32 @@ function _scrapeSingleProfile(pageCompanyContext) {
     '.pv-about-section .pv-about__summary-text',
     '.pv-about-section .inline-show-more-text',
   ]);
+  const aboutInsights = ts.decomposeAboutSection(aboutSummary);
 
   // 7. Full Experience Timeline (Current vs Previous Employers)
   let currentCompany = null;
   let previousCompany = null;
   const experienceHistory = [];
 
-  const expItems = document.querySelectorAll('#experience ~ div ul > li, .experience-section li, section[data-section="experience"] li');
-  expItems.forEach(item => {
-    const roleTitle = ts.text(['.t-bold span[aria-hidden="true"]', 'h3 span[aria-hidden="true"]', 'h3', '.experience-item__title'], item);
-    const expCompany = ts.text(['.t-normal span[aria-hidden="true"]', '.t-14.t-normal span[aria-hidden="true"]', 'h4 span[aria-hidden="true"]', 'h4', '.experience-item__subtitle'], item);
-    const dateRange = ts.text(['.t-black--light span[aria-hidden="true"]', '.date-range span[aria-hidden="true"]', '.date-range', '.pvs-entity__caption-wrapper'], item);
-
-    if (roleTitle || expCompany) {
-      const cleanComp = expCompany ? expCompany.split('·')[0].trim() : null;
-      const isCurrent = dateRange ? /present|current/i.test(dateRange) : false;
-
-      const entry = {
-        title: roleTitle || 'Role',
-        company: cleanComp || 'Company',
-        dates: dateRange || (isCurrent ? 'Present' : 'Past'),
-        is_current: isCurrent,
-      };
-
-      experienceHistory.push(entry);
-
-      if (isCurrent && !currentCompany && cleanComp && !ts.isPlatformName(cleanComp)) {
-        currentCompany = cleanComp;
-      } else if (!isCurrent && !previousCompany && cleanComp && !ts.isPlatformName(cleanComp)) {
-        previousCompany = cleanComp;
+  const expSection = document.querySelectorAll('#experience ~ div ul > li, section[data-section="experience"] li, .pv-profile-section__list-item');
+  expSection.forEach((item, idx) => {
+    const roleTitle = ts.text(['.hoverable-link-text span[aria-hidden="true"]', 'span[aria-hidden="true"]', '.t-bold'], item);
+    const expComp = ts.text(['.t-normal span[aria-hidden="true"]', '.t-14.t-normal', '.pv-entity__secondary-title'], item);
+    const dateRange = ts.text(['.t-black--light span[aria-hidden="true"]', '.pv-entity__date-range', '.t-14.t-black--light'], item);
+    
+    if (roleTitle && !ts.isUIAction(roleTitle)) {
+      const cleanExpComp = (expComp && !ts.isPlatformName(expComp)) ? expComp.split('·')[0].trim() : null;
+      if (idx === 0) {
+        currentCompany = cleanExpComp || currentCompany;
+      } else if (!previousCompany && cleanExpComp && cleanExpComp !== currentCompany) {
+        previousCompany = cleanExpComp;
       }
+      experienceHistory.push({
+        title: roleTitle,
+        company: cleanExpComp,
+        date_range: dateRange || null,
+        is_current: idx === 0,
+      });
     }
   });
 
@@ -292,33 +297,13 @@ function _scrapeSingleProfile(pageCompanyContext) {
     aboutSummary = null;
   }
 
-  // 8. Contact Info (Direct DOM Overlay + Text Fallback)
-  let email = ts.text([
-    '.ci-email a',
-    '.ci-email .pv-contact-info__contact-link',
-    'a[href^="mailto:"]',
-    '.pv-contact-info__ci-container a[href^="mailto:"]',
-  ]);
+  // 8. Contact Info (Overlay elements if opened)
+  let email = ts.text(['.ci-email .pv-contact-info__contact-link', 'a[href^="mailto:"]']);
   if (email && email.startsWith('mailto:')) email = email.replace(/^mailto:/i, '').trim();
-
-  let phone = ts.text([
-    '.ci-phone .pv-contact-info__contact-link',
-    '.ci-phone span.t-14',
-    '.ci-phone ul li span',
-    'a[href^="tel:"]',
-  ]);
+  let phone = ts.text(['.ci-phone .pv-contact-info__contact-link', '.ci-phone span']);
   if (phone && phone.startsWith('tel:')) phone = phone.replace(/^tel:/i, '').trim();
-
-  let website = ts.text([
-    '.ci-websites a',
-    '.ci-websites .pv-contact-info__contact-link',
-    'a.pv-contact-info__contact-link[href^="http"]',
-  ]);
-
-  let connectedDate = ts.text([
-    '.ci-connected .pv-contact-info__contact-item',
-    '.ci-connected .t-14',
-  ]);
+  let website = ts.text(['.ci-websites a', '.pv-contact-info__contact-link[href*="http"]']);
+  let connectedDate = ts.text(['.ci-connected .t-14']);
 
   // Fallback body regex if not in overlay
   if (!email || !phone) {
@@ -358,7 +343,7 @@ function _scrapeSingleProfile(pageCompanyContext) {
     phone: phone,
   });
 
-  return {
+  const leadEntity = {
     recruiter_name: finalName,
     title: title,
     headline: rawTitle,
@@ -368,9 +353,11 @@ function _scrapeSingleProfile(pageCompanyContext) {
     source_platform: 'LinkedIn',
     location: candidateLocation,
     education: education,
+    connection_degree: connectionDegree,
     followers_count: followers,
     connections_count: connections,
     about_summary: aboutSummary,
+    about_insights: aboutInsights,
     experience_history: experienceHistory.length > 0 ? experienceHistory : null,
     skills: skillsList.length > 0 ? skillsList : null,
     certifications: certsList.length > 0 ? certsList : null,
@@ -382,6 +369,23 @@ function _scrapeSingleProfile(pageCompanyContext) {
     source: 'linkedin_profile',
     confidence: conf.overall,
     field_confidences: conf,
+    completeness_report: ts.generateCompletenessReport({
+      recruiter_name: finalName,
+      title: title,
+      company_name: company_name,
+      location: candidateLocation,
+      education: education,
+      connection_degree: connectionDegree,
+      followers_count: followers,
+      connections_count: connections,
+      about_summary: aboutSummary,
+      about_insights: aboutInsights,
+      experience_history: experienceHistory,
+      email: email,
+      phone: phone,
+      website: website,
+      field_confidences: conf,
+    }),
   };
 
   // Cache active profile locally for popup immediate rendering

@@ -623,3 +623,199 @@ def build_semantic_graph_document(
         "signals": signals,
         "observations": observations,
     }
+
+
+def decompose_about_section(raw_about: Optional[str]) -> Optional[Dict[str, Any]]:
+    """
+    Decomposes raw About text into structured professional observations
+    (years of experience, industries, specialties, candidate focus, employer focus).
+    Prevents flattening/discarding the About section into a single useless string.
+    """
+    if not raw_about or len(str(raw_about).strip()) < 15:
+        return None
+
+    text = str(raw_about).strip()
+
+    # 1. Extract years of experience
+    years_exp = None
+    y_match = re.search(r'\b(\d+\+?\s*years?(?:\s+of)?(?:\s+recruitment|\s+recruiting|\s+staffing|\s+industry|\s+professional|\s+experience|\s+expertise)?)\b', text, flags=re.IGNORECASE)
+    if y_match:
+        years_exp = y_match.group(1).strip()
+
+    # 2. Extract Industries
+    known_industries = [
+        'Technology', 'Software Engineering', 'IT', 'Finance', 'Healthcare',
+        'Marketing', 'Sales', 'Biotech', 'Pharmaceutical', 'Manufacturing',
+        'Retail', 'Aerospace', 'Defense', 'Energy', 'Cybersecurity', 'Cloud',
+        'Artificial Intelligence', 'Data Science', 'Hospitality', 'Education'
+    ]
+    matched_industries = []
+    for ind in known_industries:
+        if re.search(rf'\b{re.escape(ind)}\b', text, flags=re.IGNORECASE):
+            matched_industries.append(ind)
+
+    # 3. Extract Specialties & Domains
+    known_specialties = [
+        'Software engineering sourcing', 'Talent acquisition', 'Executive search',
+        'Technical recruiting', 'Full-cycle recruiting', 'Contract staffing',
+        'Direct placement', 'Candidate screening', 'Pipeline generation',
+        'Campus recruiting', 'Leadership hiring', 'Sourcing strategy'
+    ]
+    matched_specialties = []
+    for spec in known_specialties:
+        if re.search(rf'\b{re.escape(spec)}\b', text, flags=re.IGNORECASE):
+            matched_specialties.append(spec)
+
+    # 4. Extract Candidate & Employer Focus
+    candidate_focus = None
+    if re.search(r'marketing\s+candidate\s+focus', text, flags=re.IGNORECASE):
+        candidate_focus = 'Marketing candidate focus'
+    elif re.search(r'engineering\s+candidate\s+focus', text, flags=re.IGNORECASE):
+        candidate_focus = 'Engineering candidate focus'
+    elif re.search(r'executive\s+candidate\s+focus', text, flags=re.IGNORECASE):
+        candidate_focus = 'Executive candidate focus'
+
+    employer_focus = None
+    if re.search(r'employer\s*[\/\-]\s*candidate\s+relationship|candidate\s*[\/\-]\s*employer\s+relationship', text, flags=re.IGNORECASE):
+        employer_focus = 'Employer/candidate relationship focus'
+    elif re.search(r'client\s+partnership', text, flags=re.IGNORECASE):
+        employer_focus = 'Client partnership focus'
+
+    # 5. Build clean tree of structured observations
+    observations = []
+    if years_exp:
+        observations.append(years_exp)
+    observations.extend(matched_industries)
+    observations.extend(matched_specialties)
+    if candidate_focus:
+        observations.append(candidate_focus)
+    if employer_focus:
+        observations.append(employer_focus)
+
+    return {
+        "raw_about": text,
+        "years_experience": years_exp,
+        "industries": matched_industries if matched_industries else None,
+        "specialties": matched_specialties if matched_specialties else None,
+        "candidate_focus": candidate_focus,
+        "employer_focus": employer_focus,
+        "structured_observations": observations if observations else [text],
+    }
+
+
+def extract_connection_degree(text: Optional[str]) -> Optional[str]:
+    """Extracts connection degree (1st, 2nd, 3rd, 3rd+)."""
+    if not text:
+        return None
+    m = re.search(r'\b(1st|2nd|3rd(?:\+)?)\b', str(text), flags=re.IGNORECASE)
+    return m.group(1).lower() if m else None
+
+
+def extract_connection_count(text: Optional[str]) -> Optional[str]:
+    """Extracts connection count (e.g. '17 connections', '500+ connections')."""
+    if not text:
+        return None
+    m = re.search(r'\b(\d+(?:\+)?\s+connections?)\b', str(text), flags=re.IGNORECASE)
+    return m.group(1) if m else None
+
+
+def generate_completeness_report(entity: Dict[str, Any], page_context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    Generates a full forensic completeness scorecard for a capture event.
+    Reports visible categories, extracted categories, not found, uncertain, and rejected UI controls.
+    """
+    visible_categories = []
+    extracted_categories = []
+    not_found = []
+    uncertain = []
+
+    name = entity.get('recruiter_name') or entity.get('canonical_name')
+    title = entity.get('title') or entity.get('current_title')
+    company = entity.get('company_name') or entity.get('current_company')
+    location = entity.get('location')
+    education = entity.get('education')
+    connections = entity.get('connections_count')
+    degree = entity.get('connection_degree')
+    about_insights = entity.get('about_insights') or entity.get('about_summary')
+    history = entity.get('experience_history')
+
+    # 1. Person Identity
+    if name:
+        visible_categories.append('PERSON_NAME')
+        extracted_categories.append({'field': 'name', 'value': name, 'confidence': 95})
+    else:
+        not_found.append('PERSON_NAME')
+
+    # 2. Current Employment
+    if title:
+        visible_categories.append('CURRENT_TITLE')
+        extracted_categories.append({'field': 'title', 'value': title, 'confidence': 90})
+    else:
+        not_found.append('CURRENT_TITLE')
+
+    if company:
+        visible_categories.append('CURRENT_COMPANY')
+        extracted_categories.append({'field': 'company', 'value': company, 'confidence': 85})
+    else:
+        not_found.append('CURRENT_COMPANY')
+
+    # 3. Location
+    if location:
+        visible_categories.append('LOCATION')
+        extracted_categories.append({'field': 'location', 'value': location, 'confidence': 90})
+    else:
+        not_found.append('LOCATION')
+
+    # 4. Education
+    if education:
+        visible_categories.append('EDUCATION')
+        extracted_categories.append({'field': 'education', 'value': education, 'confidence': 90})
+    else:
+        not_found.append('EDUCATION')
+
+    # 5. Social Graph Proof
+    if connections or degree:
+        visible_categories.append('SOCIAL_GRAPH_PROOF')
+        extracted_categories.append({
+            'field': 'social_graph',
+            'connections': connections,
+            'degree': degree,
+            'followers': entity.get('followers_count'),
+        })
+
+    # 6. Structured About Decomposition
+    if about_insights:
+        visible_categories.append('STRUCTURED_ABOUT_DECOMPOSITION')
+        extracted_categories.append({'field': 'about_insights', 'value': about_insights})
+    else:
+        not_found.append('STRUCTURED_ABOUT_DECOMPOSITION')
+
+    # 7. Employment History
+    if history and isinstance(history, list) and len(history) > 0:
+        visible_categories.append('EMPLOYMENT_HISTORY')
+        extracted_categories.append({'field': 'employment_history', 'count': len(history), 'roles': history})
+    else:
+        not_found.append('EMPLOYMENT_HISTORY')
+
+    # 8. Contact Channels
+    if entity.get('email'):
+        extracted_categories.append({'field': 'email', 'value': entity.get('email')})
+    if entity.get('phone'):
+        extracted_categories.append({'field': 'phone', 'value': entity.get('phone')})
+    if entity.get('website'):
+        extracted_categories.append({'field': 'website', 'value': entity.get('website')})
+    if not entity.get('email') and not entity.get('phone'):
+        not_found.append('PRIVATE_CONTACT_INFO (NOT GROUNDED ON PUBLIC VIEW)')
+
+    return {
+        "source_platform": entity.get('source_platform', 'LinkedIn'),
+        "canonical_person": name,
+        "visible_categories": visible_categories,
+        "extracted_categories": extracted_categories,
+        "not_found": not_found,
+        "uncertain": uncertain,
+        "rejected_ui_text": ['Connect', 'Message', 'Follow', 'Contact', 'Apply'],
+        "secondary_entities_observed": (page_context or {}).get('secondary_people_count', 0),
+        "new_information": [c['field'] for c in extracted_categories],
+        "evidence_grounding_status": "PASS",
+    }

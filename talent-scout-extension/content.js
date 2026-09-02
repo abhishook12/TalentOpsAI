@@ -538,6 +538,14 @@
         if (r.company_name && !existingRecord.company) { existingRecord.company = r.company_name; hasNewField = true; fieldsAdded.push('Company'); }
         if (r.location && !existingRecord.location) { existingRecord.location = r.location; hasNewField = true; fieldsAdded.push('Location'); }
         if (r.linkedin_url && !existingRecord.linkedin) { existingRecord.linkedin = r.linkedin_url; hasNewField = true; fieldsAdded.push('LinkedIn'); }
+        
+        // Deep Profile Enrichment Triggers
+        if (r.education && !existingRecord.education) { existingRecord.education = r.education; hasNewField = true; fieldsAdded.push('Education'); }
+        if (r.about_summary && !existingRecord.about_summary) { existingRecord.about_summary = r.about_summary; hasNewField = true; fieldsAdded.push('About'); }
+        if (r.experience_history && !existingRecord.experience_history) { existingRecord.experience_history = r.experience_history; hasNewField = true; fieldsAdded.push('Experience'); }
+        if (r.skills && !existingRecord.skills) { existingRecord.skills = r.skills; hasNewField = true; fieldsAdded.push('Skills'); }
+        if (r.connections_count && !existingRecord.connections_count) { existingRecord.connections_count = r.connections_count; hasNewField = true; fieldsAdded.push('Connections'); }
+        if (r.certifications && !existingRecord.certifications) { existingRecord.certifications = r.certifications; hasNewField = true; fieldsAdded.push('Certifications'); }
 
         if (hasNewField) {
           existingRecord.lastSeen = Date.now();

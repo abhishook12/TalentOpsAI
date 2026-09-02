@@ -161,15 +161,30 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
 
     name = str(raw_name).strip()
     # Strip degree connection bullets and numbers
-    name = re.sub(r'[·•]\s*\d+(?:st|nd|rd|th)?', '', name, flags=re.IGNORECASE)
+    name = re.sub(r'[·•]\s*\d*(?:st|nd|rd|th)?(?:\s*degree(?:\s+connection)?)?', ' ', name, flags=re.IGNORECASE)
     name = re.sub(r'\b\d+(?:st|nd|rd|th)?\s+degree(?:\s+connection)?\b', '', name, flags=re.IGNORECASE)
     name = re.sub(r'\b\d+(?:st|nd|rd|th)\b', '', name, flags=re.IGNORECASE)
+    # Clean mashed ordinal suffixes attached to words (e.g. "2ndManaging" -> "Managing", "NdHuma" -> "Huma")
+    name = re.sub(r'\b\d*(?:st|nd|rd|th)([A-Z])', r' \1', name, flags=re.IGNORECASE)
+    name = re.sub(r'\b(?:st|nd|rd|th)([A-Z][a-z]+)', r' \1', name, flags=re.IGNORECASE)
     name = re.sub(r'\((?:he\/him|she\/her|they\/them|she\/they|he\/they|any)\)', '', name, flags=re.IGNORECASE)
     name = re.sub(r'\b(?:MBA|SHRM-CP|PHR|SPHR|PMP|CPA|MD|JD|PhD|BSc|MSc|BA|BS|MA|MS)\b', '', name, flags=re.IGNORECASE)
     # Split hyphens / pipes / commas
     parts = re.split(r'[-–—|,]', name)[0]
     cleaned = re.sub(r'[^\w\s\'.]', ' ', parts).strip()
     cleaned = " ".join(cleaned.split())
+
+    # Truncate trailing role title words (e.g. "Klaus Raem Managing..." -> "Klaus Raem")
+    tokens = cleaned.split()
+    if len(tokens) >= 3:
+        cut_idx = -1
+        for i in range(2, len(tokens)):
+            tok_lower = tokens[i].lower()
+            if re.match(r'^(founder|ceo|cto|cpo|coo|vp|recruiter|sourcer|consultant|manager|director|managing|engineer|developer|analyst|specialist|partner|lead|head|architect|sap|oracle|staffing|talent|hiring|hr|human|resources|operations)$', tok_lower):
+                cut_idx = i
+                break
+        if cut_idx >= 2:
+            cleaned = " ".join(tokens[:cut_idx])
 
     if not cleaned or len(cleaned) < 2 or len(cleaned) > 50:
         return False, None, "Invalid length for person name"

@@ -71,6 +71,32 @@ function showDashboard() {
       }, 600);
     });
   }
+
+  const purgeBtn = $('btn-purge-old');
+  if (purgeBtn && !purgeBtn.dataset.wired) {
+    purgeBtn.dataset.wired = 'true';
+    purgeBtn.addEventListener('click', async () => {
+      purgeBtn.disabled = true;
+      purgeBtn.style.opacity = '0.5';
+      
+      // 1. Purge IndexedDB temporary screenshots
+      try {
+        if (window.TalentScout?.Visual?.Store?.purgeExpiredScreenshots) {
+          await window.TalentScout.Visual.Store.purgeExpiredScreenshots(true);
+        }
+      } catch (_) {}
+
+      // 2. Reset totalCaptured and clean storage
+      await chrome.runtime.sendMessage({ type: 'PURGE_AND_RESET_SCREENSHOTS' });
+
+      setTimeout(() => {
+        purgeBtn.disabled = false;
+        purgeBtn.style.opacity = '1';
+        loadLiveStats();
+        showFeedback('🧹 Old screenshots purged & counter reset!');
+      }, 400);
+    });
+  }
 }
 
 function initTabs() {

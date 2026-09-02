@@ -148,27 +148,24 @@ window.TalentScout.validateHumanName = function(rawName) {
   name = name.split(/[\r\n\t]+/)[0].trim();
 
   // Strip degree bullets, numbers, pronouns, and degree credentials
-  name = name.replace(/[·•]\s*\d+(?:st|nd|rd|th)?/gi, '');
-  name = name.replace(/\b\d+(?:st|nd|rd|th)?\s+degree(?:\s+connection)?\b/gi, '');
-  name = name.replace(/\b\d+(?:st|nd|rd|th)\b/gi, '');
+  name = name.replace(/[·•]\s*\d*(?:st|nd|rd|th)?(?:\s*degree(?:\s+connection)?)?/gi, ' ');
+  name = name.replace(/\b\d+(?:st|nd|rd|th)?\s+degree(?:\s+connection)?\b/gi, ' ');
+  name = name.replace(/\b\d+(?:st|nd|rd|th)\b/gi, ' ');
+  // Clean mashed ordinal suffixes attached to words (e.g. "2ndManaging" -> "Managing", "NdHuma" -> "Huma")
+  name = name.replace(/\b\d*(?:st|nd|rd|th)([A-Z])/gi, ' $1');
+  name = name.replace(/\b(?:st|nd|rd|th)([A-Z][a-z]+)/gi, ' $1');
   name = name.replace(/\((?:he\/him|she\/her|they\/them|she\/they|he\/they|any)\)/gi, '');
   name = name.replace(/\b(?:MBA|SHRM-CP|PHR|SPHR|PMP|CPA|MD|JD|PhD|BSc|MSc|BA|BS|MA|MS)\b/gi, '');
   name = name.split(/[-–—|,]/)[0].replace(/[^\w\s\'.]/g, ' ').trim();
   name = name.replace(/\s+/g, ' ');
 
-  // Check if original raw phrase was a job title
-  if (window.TalentScout.isJobTitle(name.toLowerCase())) {
-    return { isValid: false, reason: `job_title_as_name:${name}` };
-  }
-
-  // If name has trailing role title words (e.g. "Aditi Chauhan SAP SuccessFactors" -> "Aditi Chauhan", "Jitendra Tripathi Founder" -> "Jitendra Tripathi")
+  // If name has trailing role title words (e.g. "Klaus Raem Managing..." -> "Klaus Raem", "Deepa Kharayat Human..." -> "Deepa Kharayat")
   const tokens = name.split(' ');
   if (tokens.length >= 3) {
-    const roleNouns = window.TalentScout.PATTERNS.jobRoleNouns;
     let cutIdx = -1;
     for (let i = 2; i < tokens.length; i++) {
       const tokLower = tokens[i].toLowerCase();
-      if (roleNouns.has(tokLower) || /^(founder|ceo|cto|cpo|coo|vp|recruiter|sourcer|consultant|manager|director|engineer|developer|analyst|specialist|partner|lead|head|architect|sap|oracle|staffing|talent|hiring|hr)$/i.test(tokLower)) {
+      if (/^(founder|ceo|cto|cpo|coo|vp|recruiter|sourcer|consultant|manager|director|managing|engineer|developer|analyst|specialist|partner|lead|head|architect|sap|oracle|staffing|talent|hiring|hr|human|resources|operations)$/i.test(tokLower)) {
         cutIdx = i;
         break;
       }

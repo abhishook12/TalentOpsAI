@@ -662,7 +662,7 @@ def analyze_vision_screenshot(
         import os
         import json
         
-        api_key = os.environ.get("GEMINI_API_KEY", "AQ.Ab8RN6JeAR1jCZaGpC-HcXZBHrtG-TK0oZQL6aQCMMm3vuyHYQ")
+        api_key = os.environ.get("GEMINI_API_KEY", "AIzaSyC_bkmVCB7AokOzTkfSo_Jgk4BeU3ybXv4")
         client = genai.Client(api_key=api_key)
         
         prompt = f"""You are an expert TalentOps Visual Intelligence & Forensic Extraction Engine.
@@ -700,13 +700,22 @@ Return a valid JSON list of objects:
 
 Output ONLY the raw JSON array. Return [] if no real human person is visibly grounded in this image."""
 
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=[img, prompt],
-            config=types.GenerateContentConfig(
-                temperature=0.1,
+        try:
+            response = client.models.generate_content(
+                model='gemini-flash-latest',
+                contents=[img, prompt],
+                config=types.GenerateContentConfig(
+                    temperature=0.1,
+                )
             )
-        )
+        except Exception:
+            response = client.models.generate_content(
+                model='gemini-3.6-flash',
+                contents=[img, prompt],
+                config=types.GenerateContentConfig(
+                    temperature=0.1,
+                )
+            )
         
         raw_json = response.text.strip()
         if raw_json.startswith("```json"):

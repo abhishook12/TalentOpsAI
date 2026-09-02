@@ -193,6 +193,10 @@ async function loadLiveStats() {
       activeCard.classList.remove('hidden');
       const pName = activeProfile.recruiter_name || activeProfile.name;
       if ($('active-profile-name')) $('active-profile-name').textContent = pName;
+      if ($('active-profile-degree')) {
+        const deg = activeProfile.connection_degree;
+        $('active-profile-degree').textContent = deg ? `${deg.toUpperCase()}` : '3RD';
+      }
       if ($('active-profile-platform')) $('active-profile-platform').textContent = activeProfile.source_platform || 'LinkedIn';
       if ($('active-profile-headline')) {
         $('active-profile-headline').textContent = activeProfile.headline || `${activeProfile.title || 'Professional'} @ ${activeProfile.company_name || 'Company'}`;
@@ -201,19 +205,72 @@ async function loadLiveStats() {
         const count = activeProfile.observation_count || activeProfile.capture_ids?.length || 1;
         $('active-profile-frames').textContent = `🔒 ${count} Frame${count > 1 ? 's' : ''} Enriched`;
       }
+      
+      // 1. Mandatory Structured Fields
       if ($('active-val-company')) $('active-val-company').textContent = activeProfile.company_name || '—';
+      if ($('active-val-title')) $('active-val-title').textContent = activeProfile.title || '—';
       if ($('active-val-location')) $('active-val-location').textContent = activeProfile.location || '—';
       if ($('active-val-education')) $('active-val-education').textContent = activeProfile.education || '—';
-      if ($('active-val-specialty')) $('active-val-specialty').textContent = activeProfile.specialty || (activeProfile.title || '—');
-      if ($('active-val-followers')) $('active-val-followers').textContent = activeProfile.followers_count || '—';
-      if ($('active-val-connections')) $('active-val-connections').textContent = activeProfile.connections_count || '500+ Connections';
+      if ($('active-val-connections')) $('active-val-connections').textContent = activeProfile.connections_count || activeProfile.followers_count || '—';
+      if ($('active-val-prevcomp')) $('active-val-prevcomp').textContent = activeProfile.previous_company || (activeProfile.experience_history?.[1]?.company) || '—';
+      if ($('active-val-email')) $('active-val-email').textContent = activeProfile.email || '—';
+      if ($('active-val-phone')) $('active-val-phone').textContent = activeProfile.phone || '—';
 
-      // Update Field Verification Checklist
+      // 2. Decomposed About Intelligence
+      const aboutContainer = $('active-about-decomposed');
+      const aboutInsights = activeProfile.about_insights || (window.TalentScout?.decomposeAboutSection ? window.TalentScout.decomposeAboutSection(activeProfile.about_summary) : null);
+
+      if (aboutContainer && aboutInsights) {
+        aboutContainer.classList.remove('hidden');
+        
+        const yrBadge = $('about-years-badge');
+        if (yrBadge && aboutInsights.years_experience) {
+          yrBadge.classList.remove('hidden');
+          if ($('val-about-years')) $('val-about-years').textContent = aboutInsights.years_experience;
+        } else if (yrBadge) {
+          yrBadge.classList.add('hidden');
+        }
+
+        const fBadge = $('about-focus-badge');
+        const focusText = aboutInsights.candidate_focus || aboutInsights.employer_focus;
+        if (fBadge && focusText) {
+          fBadge.classList.remove('hidden');
+          if ($('val-about-focus')) $('val-about-focus').textContent = focusText;
+        } else if (fBadge) {
+          fBadge.classList.add('hidden');
+        }
+
+        const indRow = $('about-industries-row');
+        const indTags = $('about-industries-tags');
+        if (indRow && indTags) {
+          if (aboutInsights.industries && aboutInsights.industries.length > 0) {
+            indRow.classList.remove('hidden');
+            indTags.innerHTML = aboutInsights.industries.map(i => `<span class="tag-pill">${escapeHtml(i)}</span>`).join('');
+          } else {
+            indRow.classList.add('hidden');
+          }
+        }
+
+        const specRow = $('about-specialties-row');
+        const specTags = $('about-specialties-tags');
+        if (specRow && specTags) {
+          if (aboutInsights.specialties && aboutInsights.specialties.length > 0) {
+            specRow.classList.remove('hidden');
+            specTags.innerHTML = aboutInsights.specialties.map(s => `<span class="tag-pill">${escapeHtml(s)}</span>`).join('');
+          } else {
+            specRow.classList.add('hidden');
+          }
+        }
+      } else if (aboutContainer) {
+        aboutContainer.classList.add('hidden');
+      }
+
+      // 3. Update Field Verification Checklist
       const setCheck = (id, exists, label) => {
         const el = $(id);
         if (el) {
           el.className = exists ? 'chk-item chk-pass' : 'chk-item chk-none';
-          el.textContent = exists ? `✓ ${label}` : `✗ ${label}`;
+          el.textContent = exists ? `✓ ${label}` : `○ ${label}`;
         }
       };
 
@@ -222,18 +279,9 @@ async function loadLiveStats() {
       setCheck('chk-field-company', Boolean(activeProfile.company_name), 'Company');
       setCheck('chk-field-location', Boolean(activeProfile.location), 'Location');
       setCheck('chk-field-education', Boolean(activeProfile.education), 'School');
+      setCheck('chk-field-about', Boolean(aboutInsights), 'About Decomp');
       setCheck('chk-field-email', Boolean(activeProfile.email), 'Email');
       setCheck('chk-field-phone', Boolean(activeProfile.phone), 'Phone');
-
-      const aboutBox = $('active-profile-about-box');
-      if (aboutBox) {
-        if (activeProfile.about_summary) {
-          aboutBox.classList.remove('hidden');
-          if ($('active-val-about')) $('active-val-about').textContent = activeProfile.about_summary.slice(0, 160) + (activeProfile.about_summary.length > 160 ? '...' : '');
-        } else {
-          aboutBox.classList.add('hidden');
-        }
-      }
     } else {
       activeCard.classList.add('hidden');
     }
@@ -389,80 +437,124 @@ function openProvenanceModal(item) {
     window.TalentScout.evaluateEvidenceGrounding(item, item.source_url, item.source_page_title) : 
     { is_grounded: true, grounding_score: 95, page_type: 'GENERIC_WEB', rejection_reasons: [] };
 
-  const isGrounded = grounding.is_grounded && overallConf > 0;
-  const statusColor = isGrounded ? '#4ade80' : '#ef4444';
-  const statusLabel = isGrounded ? (dbAction || 'NEW_DISCOVERY') : 'REJECTED — UNGROUNDED';
+  const aboutInsights = item.about_insights || (window.TalentScout?.decomposeAboutSection ? window.TalentScout.decomposeAboutSection(item.about_summary) : null);
+  const degree = item.connection_degree || (window.TalentScout?.extractConnectionDegree ? window.TalentScout.extractConnectionDegree(item.recruiter_name) : null);
+  const connections = item.connections_count || (window.TalentScout?.extractConnectionCount ? window.TalentScout.extractConnectionCount(item.connections_count) : null);
+  const expHistory = item.experience_history || [];
 
   body.innerHTML = `
+    <!-- 1. PERSON & SOCIAL GRAPH -->
     <div class="prov-field">
-      <div class="prov-label">Discovered Candidate & Title</div>
-      <div class="prov-val" style="font-size: 13px; font-weight: 600; color: #fff;">${escapeHtml(item.recruiter_name || 'No Person Discovered')}</div>
-      <div class="prov-val" style="color: #38bdf8; font-size: 11px;">${escapeHtml(item.title || 'N/A')}</div>
+      <div class="prov-label">👤 CANDIDATE IDENTITY & SOCIAL PROOF</div>
+      <div style="display:flex; align-items:center; gap:6px; margin-top:2px;">
+        <span style="font-size: 14px; font-weight: 700; color: #fff;">${escapeHtml(item.recruiter_name || 'No Person Discovered')}</span>
+        ${degree ? `<span class="tag-pill" style="color:#38bdf8; background:rgba(56,189,248,0.2); border-color:#38bdf8;">${escapeHtml(degree.toUpperCase())}</span>` : ''}
+      </div>
+      <div style="color: #38bdf8; font-size: 11px; margin-top:2px;">${escapeHtml(item.title || 'Professional')}</div>
     </div>
 
+    <!-- 2. CURRENT EMPLOYMENT -->
     <div class="prov-grid-2">
       <div class="prov-field">
-        <div class="prov-label">Employer Company</div>
-        <div class="prov-val" style="font-weight: 500; color: #f8fafc;">${escapeHtml(employer || 'None / Page Context')}</div>
+        <div class="prov-label">🏢 Current Employer</div>
+        <div class="prov-val" style="font-weight: 600; color: #f8fafc;">${escapeHtml(employer || '—')}</div>
       </div>
       <div class="prov-field">
-        <div class="prov-label">Source Platform</div>
+        <div class="prov-label">🌐 Source Platform</div>
         <div class="prov-val" style="color: #94a3b8;">${escapeHtml(sourcePlatform)}</div>
       </div>
     </div>
 
+    <!-- 3. LOCATION & EDUCATION -->
     <div class="prov-grid-2">
       <div class="prov-field">
-        <div class="prov-label">Evidence Grounding Status</div>
-        <div class="prov-val" style="color: ${statusColor}; font-weight: 600; font-size: 11px;">${statusLabel}</div>
+        <div class="prov-label">📍 Location</div>
+        <div class="prov-val" style="color: #cbd5e1;">${escapeHtml(item.location || '—')}</div>
       </div>
       <div class="prov-field">
-        <div class="prov-label">Evidence Grounding Score</div>
-        <div class="prov-val" style="color: ${statusColor}; font-weight: 600;">${isGrounded ? overallConf : 0}%</div>
+        <div class="prov-label">🎓 Education</div>
+        <div class="prov-val" style="color: #cbd5e1;">${escapeHtml(item.education || '—')}</div>
       </div>
     </div>
 
+    <!-- 4. SOCIAL GRAPH CONNECTIONS -->
     <div class="prov-grid-2">
+      <div class="prov-field">
+        <div class="prov-label">🔗 Connections</div>
+        <div class="prov-val" style="color: #a5b4fc;">${escapeHtml(connections || '500+ Connections')}</div>
+      </div>
+      <div class="prov-field">
+        <div class="prov-label">👥 Followers</div>
+        <div class="prov-val" style="color: #a5b4fc;">${escapeHtml(item.followers_count || '—')}</div>
+      </div>
+    </div>
+
+    <!-- 5. STRUCTURED ABOUT INTELLIGENCE (UNFLATTENED) -->
+    <div class="prov-field" style="background: rgba(15, 23, 42, 0.7); padding: 8px; border-radius: 6px; border: 1px solid rgba(99, 102, 241, 0.3);">
+      <div class="prov-label" style="color: #818cf8; margin-bottom: 4px;">🧠 STRUCTURED ABOUT INTELLIGENCE</div>
+      ${aboutInsights ? `
+        <div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:6px;">
+          ${aboutInsights.years_experience ? `<span class="about-chip chip-years">⏱️ ${escapeHtml(aboutInsights.years_experience)}</span>` : ''}
+          ${aboutInsights.candidate_focus ? `<span class="about-chip chip-focus">🎯 ${escapeHtml(aboutInsights.candidate_focus)}</span>` : ''}
+          ${aboutInsights.employer_focus ? `<span class="about-chip chip-focus">🤝 ${escapeHtml(aboutInsights.employer_focus)}</span>` : ''}
+        </div>
+        ${aboutInsights.industries && aboutInsights.industries.length > 0 ? `
+          <div style="font-size:9px; margin-top:3px; display:flex; gap:4px; align-items:center;">
+            <span style="color:#64748b; font-weight:600;">Industries:</span>
+            <div style="display:flex; flex-wrap:wrap; gap:2px;">
+              ${aboutInsights.industries.map(i => `<span class="tag-pill">${escapeHtml(i)}</span>`).join('')}
+            </div>
+          </div>` : ''}
+        ${aboutInsights.specialties && aboutInsights.specialties.length > 0 ? `
+          <div style="font-size:9px; margin-top:3px; display:flex; gap:4px; align-items:center;">
+            <span style="color:#64748b; font-weight:600;">Specialties:</span>
+            <div style="display:flex; flex-wrap:wrap; gap:2px;">
+              ${aboutInsights.specialties.map(s => `<span class="tag-pill">${escapeHtml(s)}</span>`).join('')}
+            </div>
+          </div>` : ''}
+      ` : `<div style="font-size:9px; color:#64748b;">— (No About section grounded in current frame)</div>`}
+    </div>
+
+    <!-- 6. EMPLOYMENT HISTORY & PROGRESSION -->
+    ${expHistory.length > 0 ? `
+      <div class="prov-field" style="margin-top:6px;">
+        <div class="prov-label">📜 EMPLOYMENT PROGRESSION (${expHistory.length} ROLES)</div>
+        <div style="font-size:9px; color:#cbd5e1; display:flex; flex-direction:column; gap:3px;">
+          ${expHistory.map(h => `<div>• <b>${escapeHtml(h.title || 'Role')}</b> at ${escapeHtml(h.company || 'Company')} <span style="color:#64748b;">(${escapeHtml(h.dates || h.date_range || 'Past')})</span></div>`).join('')}
+        </div>
+      </div>
+    ` : ''}
+
+    <!-- 7. CONTACT CHANNELS -->
+    <div class="prov-field" style="margin-top: 6px; border-top: 1px solid #1e293b; padding-top: 6px;">
+      <div class="prov-label">📞 DIRECT CONTACT CHANNELS</div>
+      <div class="prov-val" style="font-size: 9px; color: #a5b4fc; line-height: 1.5;">
+        ${item.email ? `✉️ Email: <b>${escapeHtml(item.email)}</b><br>` : '✉️ Email: <span style="color:#64748b;">— (Not visible)</span><br>'}
+        ${item.phone ? `📞 Phone: <b>${escapeHtml(item.phone)}</b><br>` : '📞 Phone: <span style="color:#64748b;">— (Not visible)</span><br>'}
+        ${item.linkedin_url ? `🔗 Profile: <span style="color:#38bdf8;">${escapeHtml(item.linkedin_url)}</span>` : ''}
+      </div>
+    </div>
+
+    <!-- 8. FORENSIC AUDIT & PROVENANCE -->
+    <div class="prov-grid-2" style="margin-top:6px; border-top: 1px solid #1e293b; padding-top: 6px;">
       <div class="prov-field">
         <div class="prov-label">Discovery ID</div>
         <div class="prov-val mono">${escapeHtml(discId)}</div>
       </div>
       <div class="prov-field">
-        <div class="prov-label">Capture Frame / Delta</div>
-        <div class="prov-val mono">${escapeHtml(capId)} (${delta})</div>
+        <div class="prov-label">Capture Frame</div>
+        <div class="prov-val mono">${escapeHtml(capId)}</div>
       </div>
     </div>
 
-    <div class="prov-field" style="background: rgba(15, 23, 42, 0.6); padding: 6px; border-radius: 4px; border: 1px solid #1e293b;">
-      <div class="prov-label" style="margin-bottom: 4px;">Evidence Grounding & Context Validation</div>
-      <div style="font-size: 9px; line-height: 1.4; color: #cbd5e1;">
-        <div>${isGrounded ? '✓' : '✗'} Person Entity: <span style="color:${isGrounded ? '#4ade80' : '#f87171'};">${escapeHtml(item.recruiter_name || 'None')}</span></div>
-        <div>${item.title ? '✓' : '—'} Role Headline: <span style="color:#4ade80;">${escapeHtml(item.title || 'None')}</span></div>
-        <div>${employer ? '✓' : '—'} Employer Context: <span style="color:#4ade80;">${escapeHtml(employer || 'None')}</span></div>
-        <div>✓ UI Controls Excluded: <span style="color:#f59e0b;">Connect / Message / Contact / Apply / View</span></div>
-        ${grounding.rejection_reasons.length > 0 ? `<div style="color: #f87171; margin-top: 3px;">⚠️ ${escapeHtml(grounding.rejection_reasons.join(', '))}</div>` : ''}
+    <div class="prov-grid-2">
+      <div class="prov-field">
+        <div class="prov-label">Evidence Grounding</div>
+        <div class="prov-val" style="color: ${statusColor}; font-weight: 600; font-size: 11px;">${statusLabel}</div>
       </div>
-    </div>
-
-    <div class="prov-field" style="margin-top: 6px;">
-      <div class="prov-label">Page Archetype & Pipeline</div>
-      <div class="prov-badge-row">
-        <span class="prov-pill">${escapeHtml(grounding.page_type || 'PAGE')}</span>
-        <span class="prov-pill">Grounding Gate: ${isGrounded ? 'PASS' : 'REJECT'}</span>
-      </div>
-    </div>
-
-    <div class="prov-field">
-      <div class="prov-label">Source Page URL</div>
-      <div class="prov-val mono" style="font-size: 8px;">${escapeHtml(item.source_url || location.href)}</div>
-    </div>
-
-    <div class="prov-field" style="margin-top: 6px; border-top: 1px solid #1e293b; padding-top: 6px;">
-      <div class="prov-label">Direct Channel Evidence</div>
-      <div class="prov-val" style="font-size: 9px; color: #a5b4fc;">
-        ${item.email ? `✉️ Email: ${escapeHtml(item.email)}<br>` : ''}
-        ${item.phone ? `📞 Phone: ${escapeHtml(item.phone)}<br>` : ''}
-        ${item.linkedin_url ? `🔗 LinkedIn Profile URL Identified` : '🌐 Web Observation'}
+      <div class="prov-field">
+        <div class="prov-label">Confidence Score</div>
+        <div class="prov-val" style="color: ${statusColor}; font-weight: 600;">${isGrounded ? overallConf : 0}%</div>
       </div>
     </div>
   `;

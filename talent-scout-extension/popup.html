@@ -94,24 +94,44 @@
     <!-- Active Profile Context Lock Card (Multi-Frame Accumulator & Live Extraction) -->
     <div id="active-profile-card" class="active-profile-card hidden">
       <div class="active-profile-header">
-        <span class="active-lock-badge" id="active-lock-title">⚡ CURRENT PAGE EXTRACTION</span>
+        <span class="active-lock-badge" id="active-lock-title">⚡ LIVE CANDIDATE EXTRACTION</span>
         <span id="active-profile-frames" class="active-frames-badge">Live Ground Truth</span>
       </div>
       <div class="active-profile-body">
         <div class="active-name-row">
           <span id="active-profile-name" class="active-profile-name">—</span>
+          <span id="active-profile-degree" class="active-degree-pill">—</span>
           <span id="active-profile-platform" class="active-platform-pill">LinkedIn</span>
         </div>
         <div id="active-profile-headline" class="active-profile-headline">—</div>
         
-        <!-- Extracted Fields Breakdown -->
+        <!-- Mandatory Structured Fields Breakdown -->
         <div class="active-meta-grid">
-          <div class="active-meta-item" id="active-meta-company">🏢 <span id="active-val-company">—</span></div>
-          <div class="active-meta-item" id="active-meta-location">📍 <span id="active-val-location">—</span></div>
-          <div class="active-meta-item" id="active-meta-education">🎓 <span id="active-val-education">—</span></div>
-          <div class="active-meta-item" id="active-meta-specialty">💼 <span id="active-val-specialty">—</span></div>
-          <div class="active-meta-item" id="active-meta-followers">👥 <span id="active-val-followers">—</span></div>
-          <div class="active-meta-item" id="active-meta-connections">🔗 <span id="active-val-connections">—</span></div>
+          <div class="active-meta-item" id="active-meta-company"><span class="meta-label">🏢 Current Co:</span> <b id="active-val-company">—</b></div>
+          <div class="active-meta-item" id="active-meta-title"><span class="meta-label">💼 Current Title:</span> <b id="active-val-title">—</b></div>
+          <div class="active-meta-item" id="active-meta-location"><span class="meta-label">📍 Location:</span> <b id="active-val-location">—</b></div>
+          <div class="active-meta-item" id="active-meta-education"><span class="meta-label">🎓 Education:</span> <b id="active-val-education">—</b></div>
+          <div class="active-meta-item" id="active-meta-connections"><span class="meta-label">🔗 Social Graph:</span> <b id="active-val-connections">—</b></div>
+          <div class="active-meta-item" id="active-meta-prevcomp"><span class="meta-label">📜 Past Co:</span> <b id="active-val-prevcomp">—</b></div>
+          <div class="active-meta-item" id="active-meta-email"><span class="meta-label">✉️ Email:</span> <b id="active-val-email">—</b></div>
+          <div class="active-meta-item" id="active-meta-phone"><span class="meta-label">📞 Phone:</span> <b id="active-val-phone">—</b></div>
+        </div>
+
+        <!-- Decomposed About Section Intelligence (Unflattened) -->
+        <div id="active-about-decomposed" class="active-about-decomposed hidden">
+          <div class="about-section-header">🧠 STRUCTURED ABOUT INTELLIGENCE</div>
+          <div class="about-chips-container">
+            <div id="about-years-badge" class="about-chip chip-years hidden">⏱️ <span id="val-about-years">—</span></div>
+            <div id="about-focus-badge" class="about-chip chip-focus hidden">🎯 <span id="val-about-focus">—</span></div>
+          </div>
+          <div id="about-industries-row" class="about-tag-row hidden">
+            <span class="tag-row-label">Industries:</span>
+            <div id="about-industries-tags" class="tag-badges-wrap"></div>
+          </div>
+          <div id="about-specialties-row" class="about-tag-row hidden">
+            <span class="tag-row-label">Specialties:</span>
+            <div id="about-specialties-tags" class="tag-badges-wrap"></div>
+          </div>
         </div>
 
         <!-- Field Verification Status Checklist -->
@@ -121,12 +141,9 @@
           <span class="chk-item chk-none" id="chk-field-company">○ Company</span>
           <span class="chk-item chk-none" id="chk-field-location">○ Location</span>
           <span class="chk-item chk-none" id="chk-field-education">○ School</span>
-          <span class="chk-item chk-none" id="chk-field-email">✗ Email</span>
-          <span class="chk-item chk-none" id="chk-field-phone">✗ Phone</span>
-        </div>
-
-        <div id="active-profile-about-box" class="active-about-box hidden">
-          <span class="about-label">About:</span> <span id="active-val-about">—</span>
+          <span class="chk-item chk-none" id="chk-field-about">○ About Decomp</span>
+          <span class="chk-item chk-none" id="chk-field-email">○ Email</span>
+          <span class="chk-item chk-none" id="chk-field-phone">○ Phone</span>
         </div>
       </div>
     </div>

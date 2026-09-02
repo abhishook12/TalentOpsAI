@@ -483,6 +483,10 @@ function openProvenanceModal(item) {
   const degree = item.connection_degree || (window.TalentScout?.extractConnectionDegree ? window.TalentScout.extractConnectionDegree(item.recruiter_name) : null);
   const connections = item.connections_count || (window.TalentScout?.extractConnectionCount ? window.TalentScout.extractConnectionCount(item.connections_count) : null);
   const expHistory = item.experience_history || [];
+  
+  const isGrounded = grounding.is_grounded;
+  const statusColor = isGrounded ? '#10b981' : '#f43f5e';
+  const statusLabel = isGrounded ? 'PASS' : 'FAIL';
 
   body.innerHTML = `
     <!-- 1. PERSON & SOCIAL GRAPH -->

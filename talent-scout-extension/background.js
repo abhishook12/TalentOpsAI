@@ -341,10 +341,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
         case 'PURGE_AND_RESET_SCREENSHOTS': {
           try {
-            // Reset counter and clear recent temporary capture lists
             await chrome.storage.local.set({
               totalCaptured: 0,
               recentCaptures: [],
+              knownEntityFieldMap: {},
             });
             sessionStats.captured = 0;
             addSessionLog({ type: 'PURGE_COMPLETE', detail: 'Purged old screenshots & reset capture counter to 0' });

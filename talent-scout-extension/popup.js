@@ -319,6 +319,11 @@ async function loadLiveStats() {
       setCheck('chk-field-about', Boolean(aboutInsights), 'About Decomp');
       setCheck('chk-field-email', Boolean(activeProfile.email), 'Email');
       setCheck('chk-field-phone', Boolean(activeProfile.phone), 'Phone');
+      
+      // Wire click for Active Profile Card to open the Forensic Modal
+      activeCard.onclick = () => {
+        openProvenanceModal(activeProfile);
+      };
     } else {
       activeCard.classList.add('hidden');
     }

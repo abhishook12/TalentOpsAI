@@ -192,6 +192,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           break;
         }
 
+        case 'ACTIVE_PROFILE_UPDATE': {
+          if (msg.profile) {
+            await chrome.storage.local.set({
+              activeProfile: msg.profile,
+              currentActiveProfile: msg.profile,
+            });
+          }
+          sendResponse({ ok: true });
+          break;
+        }
+
         // Popup asks for live stats & queue status
         case 'GET_STATS': {
           const local = await chrome.storage.local.get([
@@ -398,20 +409,26 @@ async function flushQueue() {
     const data = await res.json().catch(() => ({}));
 
     if (res.ok) {
-      const processedCount = (data.accepted || 0) + (data.duplicates || 0);
+      const stagedCount = data.staged || data.accepted || 0;
+      const processedCount = stagedCount + (data.duplicates || 0);
       sessionStats.sent += processedCount;
       sessionStats.duplicates += data.duplicates || 0;
+
+      const pStats = data.processor_stats || {};
+      const logDetail = pStats.processed !== undefined 
+        ? `Staged & Processed ${stagedCount} discoveries (${pStats.new || 0} new, ${pStats.enriched || 0} enriched, ${pStats.review || 0} review)`
+        : `Staged ${stagedCount} discoveries in batch intelligence queue`;
 
       addSessionLog({
         timestamp: new Date().toLocaleTimeString(),
         type: 'DATABASE_SYNC_SUCCESS',
-        detail: `Synced ${data.accepted || 0} new, ${data.duplicates || 0} matched/enriched`,
+        detail: logDetail,
       });
 
       const cur = await chrome.storage.local.get(['totalSent']);
       await chrome.storage.local.set({
         lastFlushAt: new Date().toISOString(),
-        lastAccepted: data.accepted || 0,
+        lastAccepted: stagedCount,
         totalSent: (cur.totalSent || 0) + processedCount,
       });
       return processedCount;

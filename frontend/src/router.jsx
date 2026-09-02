@@ -209,6 +209,12 @@ const extensionReportRoute = createRoute({
   component: lazyComponent(() => import('./pages/admin/ExtensionReport')),
 })
 
+const stagingPipelineRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: '/admin/staging',
+  component: lazyComponent(() => import('./pages/StagingPipeline')),
+})
+
 
 const campaignsRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -275,6 +281,7 @@ const routeTree = rootRoute.addChildren([
     trustedDevicesRoute,
     intelligenceCenterRoute,
     extensionReportRoute,
+    stagingPipelineRoute,
   ]),
   notFoundRoute
 ])

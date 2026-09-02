@@ -1,18 +1,27 @@
 // ============================================================
-// detector/ziprecruiter.js — ZipRecruiter job page extractor
+// detector/ziprecruiter.js — ZipRecruiter Universal Detector
 // ============================================================
 
 window.TalentScout = window.TalentScout || {};
 
 window.TalentScout.detectZipRecruiter = function() {
-  const host = location.hostname;
+  const host = location.hostname.toLowerCase();
   if (!host.includes('ziprecruiter.com')) return [];
 
   const ts = window.TalentScout;
   const results = [];
 
+  // Page-Level Company Context
+  const pageCompany = ts.text([
+    'a[class*="t_org_link"]',
+    '[class*="company_name"]',
+    '[class*="HiringCompanyName"]',
+    'h2.company-name',
+    'h2',
+  ]);
+
   // Recruiter card at the top of job detail
-  const recruiterCard = document.querySelector([
+  const recruiterCards = document.querySelectorAll([
     '.hiring_company',
     '[class*="HiringCompany"]',
     '.job_location',
@@ -21,43 +30,62 @@ window.TalentScout.detectZipRecruiter = function() {
     '[data-testid="job-description-header"]',
   ].join(','));
 
-  const company = ts.text([
-    'a[class*="t_org_link"]',
-    '[class*="company_name"]',
-    '[class*="HiringCompanyName"]',
-    'h2',
-  ].join(','));
-
-  if (recruiterCard) {
-    const text = recruiterCard.innerText || recruiterCard.textContent || '';
+  recruiterCards.forEach(card => {
+    const text = card.innerText || card.textContent || '';
     const email = ts.extractEmail(text);
     const phone = ts.extractPhone(text);
-    const name = _extractRecruiterName(recruiterCard);
+    const name = _extractRecruiterName(card);
+    const finalName = ts.normalizeName(name);
 
-    if (name || email) {
+    if (finalName || email) {
+      const { title, company_name } = ts.cleanTitleAndCompany(null, null, pageCompany);
+      const conf = ts.calculateFieldConfidences({
+        recruiter_name: finalName,
+        title: title,
+        company_name: company_name,
+      });
+
       results.push({
-        recruiter_name: ts.normalizeName(name),
-        company_name: company || null,
+        recruiter_name: finalName || 'ZipRecruiter Lead',
+        title: title || 'Talent Acquisition',
+        company_name: company_name,
+        source_platform: 'ZipRecruiter',
         email: email || null,
         phone: phone || null,
         source: 'ziprecruiter_job',
+        confidence: conf.overall,
+        field_confidences: conf,
       });
     }
-  }
+  });
 
   // Candidate search results (employer-side)
   const candidateCards = document.querySelectorAll('[class*="candidate_card"], [class*="CandidateListItem"]');
   candidateCards.forEach(card => {
     const name = ts.text('[class*="candidate_name"], h3, h4', card);
-    const title = ts.text('[class*="job_title"], [class*="headline"]', card);
+    const rawTitle = ts.text('[class*="job_title"], [class*="headline"]', card);
     const location = ts.text('[class*="location"]', card);
-    if (!name) return;
-    results.push({
-      recruiter_name: ts.normalizeName(name),
-      title: title || null,
-      location: location || null,
-      source: 'ziprecruiter_candidates',
-    });
+    const finalName = ts.normalizeName(name);
+
+    if (finalName && !ts.isUIAction(finalName)) {
+      const { title, company_name } = ts.cleanTitleAndCompany(rawTitle, null, pageCompany);
+      const conf = ts.calculateFieldConfidences({
+        recruiter_name: finalName,
+        title: title,
+        company_name: company_name,
+      });
+
+      results.push({
+        recruiter_name: finalName,
+        title: title,
+        company_name: company_name,
+        source_platform: 'ZipRecruiter',
+        location: location || null,
+        source: 'ziprecruiter_candidates',
+        confidence: conf.overall,
+        field_confidences: conf,
+      });
+    }
   });
 
   return results;
@@ -68,7 +96,7 @@ function _extractRecruiterName(card) {
   for (const sel of selectors) {
     const el = card.querySelector(sel);
     const t = el?.textContent?.trim();
-    if (t && t.length < 60 && !t.includes('@')) return t;
+    if (t && t.length < 60 && !t.includes('@') && !window.TalentScout.isUIAction(t)) return t;
   }
   return null;
 }

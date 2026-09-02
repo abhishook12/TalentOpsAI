@@ -60,18 +60,32 @@ function _scrapeGmail() {
     const { name: sigName, title: sigTitle, company: sigCompany } = _parseNameTitleCompany(sigBlock || fullText);
 
     const finalEmail = sigEmail || senderEmail;
-    const finalName = sigName || senderName;
+    const finalName = ts.normalizeName(sigName || senderName);
 
     if (!finalEmail && !finalName) return;
+    if (finalName && ts.isUIAction(finalName)) return;
+
+    const { title, company_name } = ts.cleanTitleAndCompany(sigTitle, sigCompany);
+    const conf = ts.calculateFieldConfidences({
+      recruiter_name: finalName,
+      title: title,
+      company_name: company_name,
+      email: finalEmail,
+      phone: sigPhone,
+      linkedin: sigLinkedIn,
+    });
 
     results.push({
-      recruiter_name: ts.normalizeName(finalName),
+      recruiter_name: finalName,
       email: finalEmail || null,
       phone: sigPhone || null,
-      title: sigTitle || null,
-      company_name: sigCompany || null,
+      title: title,
+      company_name: company_name,
+      source_platform: 'Gmail',
       linkedin_url: sigLinkedIn || null,
       source: 'gmail_signature',
+      confidence: conf.overall,
+      field_confidences: conf,
     });
   });
 
@@ -103,17 +117,31 @@ function _scrapeOutlookWeb() {
   const { name: sigName, title: sigTitle, company: sigCompany } = _parseNameTitleCompany(sigBlock || fullText);
 
   const finalEmail = sigEmail || senderEmail;
-  const finalName = sigName || senderName;
+  const finalName = ts.normalizeName(sigName || senderName);
 
   if (finalEmail || finalName) {
+    if (finalName && ts.isUIAction(finalName)) return results;
+    const { title, company_name } = ts.cleanTitleAndCompany(sigTitle, sigCompany);
+    const conf = ts.calculateFieldConfidences({
+      recruiter_name: finalName,
+      title: title,
+      company_name: company_name,
+      email: finalEmail,
+      phone: sigPhone,
+      linkedin: sigLinkedIn,
+    });
+
     results.push({
-      recruiter_name: ts.normalizeName(finalName),
+      recruiter_name: finalName,
       email: finalEmail || null,
       phone: sigPhone || null,
-      title: sigTitle || null,
-      company_name: sigCompany || null,
+      title: title,
+      company_name: company_name,
+      source_platform: 'Outlook',
       linkedin_url: sigLinkedIn || null,
       source: 'outlook_signature',
+      confidence: conf.overall,
+      field_confidences: conf,
     });
   }
 
@@ -129,22 +157,37 @@ function _scrapeYahooMail() {
   const emailBody = document.querySelector('[data-test-id="message-body"], .msg-body');
   if (!emailBody) return results;
 
-  const fullText = emailBody.innerText || '';
+  const fullText = emailBody.innerText || emailBody.textContent || '';
   const sigBlock = _extractSignatureBlock(fullText);
   const sigEmail = ts.extractEmail(sigBlock || fullText);
   const sigPhone = ts.extractPhone(sigBlock || fullText);
   const sigLinkedIn = ts.extractLinkedIn(sigBlock || fullText);
   const { name: sigName, title: sigTitle, company: sigCompany } = _parseNameTitleCompany(sigBlock || fullText);
+  const finalName = ts.normalizeName(sigName);
 
-  if (sigEmail || sigName) {
+  if (sigEmail || finalName) {
+    if (finalName && ts.isUIAction(finalName)) return results;
+    const { title, company_name } = ts.cleanTitleAndCompany(sigTitle, sigCompany);
+    const conf = ts.calculateFieldConfidences({
+      recruiter_name: finalName,
+      title: title,
+      company_name: company_name,
+      email: sigEmail,
+      phone: sigPhone,
+      linkedin: sigLinkedIn,
+    });
+
     results.push({
-      recruiter_name: ts.normalizeName(sigName),
+      recruiter_name: finalName,
       email: sigEmail || null,
       phone: sigPhone || null,
-      title: sigTitle || null,
-      company_name: sigCompany || null,
+      title: title,
+      company_name: company_name,
+      source_platform: 'Yahoo Mail',
       linkedin_url: sigLinkedIn || null,
-      source: 'yahoo_mail_signature',
+      source: 'yahoo_signature',
+      confidence: conf.overall,
+      field_confidences: conf,
     });
   }
 

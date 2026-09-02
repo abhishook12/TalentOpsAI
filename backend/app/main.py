@@ -18,9 +18,9 @@ from .config import (
     ENABLE_QUALITY_ENGINE,
     ENABLE_SENTINEL_ENGINE,
 )
-from .routes import recruiters, companies, vendors, candidates, submissions, analytics, admin, auth, actions, updates, ai, campaigns, harvester, users, visitor_analytics, notifications, bridge, accounts, extension
+from .routes import recruiters, companies, vendors, candidates, submissions, analytics, admin, auth, actions, updates, ai, campaigns, harvester, users, visitor_analytics, notifications, bridge, accounts, extension, staging
 from .database import get_db, engine
-from .models import models, auth_models
+from .models import models, auth_models, staging_models
 from .models import extension_models  # Extension device/activation tracking
 from .create_indexes import create_performance_indexes
 
@@ -58,9 +58,9 @@ if RUN_STARTUP_MIGRATIONS:
             except Exception:
                 _db.rollback()
 
-            # Ensure any missing tables (like extension_discovery_events) are created
+            # Ensure any missing tables (like extension_discovery_events, discovery_staging, resolved_persons) are created
             try:
-                from .models import extension_models
+                from .models import extension_models, staging_models
                 Base.metadata.create_all(bind=_db.get_bind())
             except Exception as e:
                 logger.warning("Error creating missing model tables: %s", e)
@@ -334,6 +334,7 @@ app.include_router(sentinel.router, prefix="/sentinel", tags=["Sentinel"])
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(accounts.router, prefix="/accounts", tags=["Accounts"])
 app.include_router(extension.router, tags=["Extension"])  # /recruiters/extension/*
+app.include_router(staging.router)
 app.include_router(actions.router, prefix="/actions", tags=["Actions"])
 app.include_router(updates.router)
 app.include_router(ai.router, prefix="/ai", tags=["AI"])
@@ -348,6 +349,10 @@ from .routes import talent_pools
 app.include_router(talent_pools.router)
 from .routes import domain_health
 app.include_router(domain_health.router)
+from .routes import knowledge
+app.include_router(knowledge.router)
+from .routes import scout_nodes
+app.include_router(scout_nodes.router)
 
 
 @app.get("/")
@@ -467,6 +472,24 @@ async def timeout_stuck_emails_sweep():
             logger.error(f"Error in timeout stuck emails sweep task: {e}")
             await asyncio.sleep(5)
 
+
+async def discovery_batch_processor_loop():
+    """Periodic background runner for the Discovery Staging Batch Intelligence Engine."""
+    while True:
+        try:
+            from .database import SessionLocal
+            from .services.discovery_processor import run_batch_processor
+            def _do_batch():
+                with SessionLocal() as db:
+                    return run_batch_processor(db, limit=100)
+            await asyncio.to_thread(_do_batch)
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error(f"Error in discovery batch processor background loop: {e}")
+        await asyncio.sleep(30)
+
+
 @app.on_event("startup")
 async def startup_event():
     from .services.sync_layer import sync_manager
@@ -497,6 +520,7 @@ async def startup_event():
             app.state.bg_task_conn = conn  # Keep connection open to hold the lock
         asyncio.create_task(timeout_stuck_emails_sweep())
         asyncio.create_task(sync_engine_loop())
+        asyncio.create_task(discovery_batch_processor_loop())
         restart_active_campaigns()
         if ENABLE_SENTINEL_ENGINE:
             sentinel_engine.start()
@@ -506,7 +530,7 @@ async def startup_event():
             verification_engine.start()
         if ENABLE_DATA_FILLER_ENGINE:
             data_filler_engine.start()
-        logger.info("Acquired leader lock; started background tasks.")
+        logger.info("Acquired leader lock; started background tasks including Discovery Batch Intelligence Engine.")
     else:
         if conn:
             conn.close()

@@ -238,6 +238,19 @@ def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depen
     return result
 
 
+@router.get("/scraper-ingestion-summary")
+def get_scraper_ingestion_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Returns real-time scraper ingestion, enrichment counts, field modifications,
+    forensic timestamps, and traceable before/after diffs.
+    """
+    from ..services.ingestion_telemetry import get_live_scraper_ingestion_summary
+    return get_live_scraper_ingestion_summary(db, current_user.id)
+
+
 @router.get("/recruiters-by-state")
 @cached_endpoint(ttl_seconds=300)
 def recruiters_by_state(db: Session = Depends(get_db)):

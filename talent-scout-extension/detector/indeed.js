@@ -1,15 +1,24 @@
 // ============================================================
-// detector/indeed.js — Indeed job postings & employer pages
+// detector/indeed.js — Indeed Universal Context-Aware Detector
 // ============================================================
 
 window.TalentScout = window.TalentScout || {};
 
 window.TalentScout.detectIndeed = function() {
-  const host = location.hostname;
+  const host = location.hostname.toLowerCase();
   if (!host.includes('indeed.com')) return [];
 
   const ts = window.TalentScout;
   const results = [];
+
+  // Extract Page-Level Company Context
+  const pageCompany = ts.text([
+    '[data-testid="inlineHeader-companyName"]',
+    '.jobsearch-InlineCompanyRating-companyHeader',
+    '.cmp-CompactHeaderTopInfo-name',
+    'h1.cmp-Header-title',
+    'h1',
+  ]);
 
   // ── 1. Job Posting Page — Hiring Manager Section ──────────
   const hiringCards = document.querySelectorAll([
@@ -17,60 +26,68 @@ window.TalentScout.detectIndeed = function() {
     '.recruitingCompanyName',
     '.hiring-manager',
     '[class*="HiringInsights"]',
-    '.css-1wnkgqh', // Indeed hiring insights section
+    '.css-1wnkgqh',
   ].join(','));
 
   hiringCards.forEach(card => {
     const text = card.innerText || card.textContent || '';
     const name = _pickNameFromIndeedCard(card);
-    const title = _pickTitleFromIndeedCard(card);
+    const rawTitle = _pickTitleFromIndeedCard(card);
     const email = ts.extractEmail(text);
     const phone = ts.extractPhone(text);
 
     if (name || email) {
-      results.push({
-        recruiter_name: ts.normalizeName(name),
-        title: title || null,
-        email: email || null,
-        phone: phone || null,
-        company_name: _pickCompanyFromPage(),
-        source: 'indeed_job_posting',
-      });
-    }
-  });
+      const finalName = ts.normalizeName(name);
+      if (finalName && !ts.isUIAction(finalName)) {
+        const { title, company_name } = ts.cleanTitleAndCompany(rawTitle, null, pageCompany);
+        const conf = ts.calculateFieldConfidences({
+          recruiter_name: finalName,
+          title: title,
+          company_name: company_name,
+        });
 
-  // ── 2. Company Profile Page ────────────────────────────────
-  if (location.pathname.includes('/cmp/')) {
-    const companyName = document.querySelector('h1')?.textContent?.trim();
-    const contactSection = document.querySelector('[data-tn-section="company-contact"], .cmp-contact');
-    if (contactSection) {
-      const text = contactSection.innerText || contactSection.textContent || '';
-      const email = ts.extractEmail(text);
-      const phone = ts.extractPhone(text);
-      if (email || phone) {
         results.push({
-          company_name: companyName,
+          recruiter_name: finalName,
+          title: title,
+          company_name: company_name,
+          source_platform: 'Indeed',
           email: email || null,
           phone: phone || null,
-          source: 'indeed_company_page',
+          source: 'indeed_job_posting',
+          confidence: conf.overall,
+          field_confidences: conf,
         });
       }
     }
-  }
+  });
 
-  // ── 3. Resume Search Results (Employer side) ──────────────
-  const resumeCards = document.querySelectorAll('.resumeCard, [data-tn-element="result-item"]');
+  // ── 2. Resume Search Results (Employer side) ──────────────
+  const resumeCards = document.querySelectorAll('.resumeCard, [data-tn-element="result-item"], .ia-ResumeCard');
   resumeCards.forEach(card => {
-    const name = card.querySelector('a.resumeTitle, .icl-u-lg-mr--sm')?.textContent?.trim();
-    const title = card.querySelector('.title, .currentJobTitle, .resumeTitle + span')?.textContent?.trim();
+    const name = card.querySelector('a.resumeTitle, .icl-u-lg-mr--sm, h2, h3')?.textContent?.trim();
+    const rawTitle = card.querySelector('.title, .currentJobTitle, .resumeTitle + span, p')?.textContent?.trim();
     const location = card.querySelector('.location, .icl-u-xs-mt--xs')?.textContent?.trim();
-    if (!name) return;
-    results.push({
-      recruiter_name: ts.normalizeName(name),
-      title: title || null,
-      location: location || null,
-      source: 'indeed_resume_search',
-    });
+    const finalName = ts.normalizeName(name);
+
+    if (finalName && !ts.isUIAction(finalName)) {
+      const { title, company_name } = ts.cleanTitleAndCompany(rawTitle, null, pageCompany);
+      const conf = ts.calculateFieldConfidences({
+        recruiter_name: finalName,
+        title: title,
+        company_name: company_name,
+      });
+
+      results.push({
+        recruiter_name: finalName,
+        title: title,
+        company_name: company_name,
+        source_platform: 'Indeed',
+        location: location || null,
+        source: 'indeed_resume_search',
+        confidence: conf.overall,
+        field_confidences: conf,
+      });
+    }
   });
 
   return results;
@@ -81,7 +98,7 @@ function _pickNameFromIndeedCard(card) {
   for (const sel of selectors) {
     const el = card.querySelector(sel);
     const t = el?.textContent?.trim();
-    if (t && t.length < 60 && !t.includes('@')) return t;
+    if (t && t.length < 60 && !t.includes('@') && !window.TalentScout.isUIAction(t)) return t;
   }
   return null;
 }
@@ -91,22 +108,7 @@ function _pickTitleFromIndeedCard(card) {
   for (const sel of selectors) {
     const el = card.querySelector(sel);
     const t = el?.textContent?.trim();
-    if (t && t.length < 80) return t;
-  }
-  return null;
-}
-
-function _pickCompanyFromPage() {
-  const selectors = [
-    '[data-company-name]',
-    '.company',
-    '[class*="CompanyName"]',
-    'h2[data-testid="jobsearch-JobInfoHeader-companyName"]',
-  ];
-  for (const sel of selectors) {
-    const el = document.querySelector(sel);
-    const t = el?.textContent?.trim() || el?.getAttribute('data-company-name');
-    if (t) return t;
+    if (t && t.length < 80 && !window.TalentScout.isUIAction(t)) return t;
   }
   return null;
 }

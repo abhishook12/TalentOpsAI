@@ -76,7 +76,7 @@
       </div>
       <div class="stat-box">
         <div class="stat-val" id="stat-captured" style="color: #38bdf8;">0</div>
-        <div class="stat-lbl">📸 Captured</div>
+        <div class="stat-lbl">📸 Captured (Total)</div>
       </div>
       <div class="stat-box">
         <div class="stat-val" id="stat-collected" style="color: #60a5fa;">0</div>
@@ -91,13 +91,53 @@
     <!-- Notification Toast / Alert Box -->
     <div id="scan-feedback" class="feedback-banner hidden"></div>
 
+    <!-- Active Profile Context Lock Card (Multi-Frame Accumulator & Live Extraction) -->
+    <div id="active-profile-card" class="active-profile-card hidden">
+      <div class="active-profile-header">
+        <span class="active-lock-badge" id="active-lock-title">⚡ CURRENT PAGE EXTRACTION</span>
+        <span id="active-profile-frames" class="active-frames-badge">Live Ground Truth</span>
+      </div>
+      <div class="active-profile-body">
+        <div class="active-name-row">
+          <span id="active-profile-name" class="active-profile-name">—</span>
+          <span id="active-profile-platform" class="active-platform-pill">LinkedIn</span>
+        </div>
+        <div id="active-profile-headline" class="active-profile-headline">—</div>
+        
+        <!-- Extracted Fields Breakdown -->
+        <div class="active-meta-grid">
+          <div class="active-meta-item" id="active-meta-company">🏢 <span id="active-val-company">—</span></div>
+          <div class="active-meta-item" id="active-meta-location">📍 <span id="active-val-location">—</span></div>
+          <div class="active-meta-item" id="active-meta-education">🎓 <span id="active-val-education">—</span></div>
+          <div class="active-meta-item" id="active-meta-specialty">💼 <span id="active-val-specialty">—</span></div>
+          <div class="active-meta-item" id="active-meta-followers">👥 <span id="active-val-followers">—</span></div>
+          <div class="active-meta-item" id="active-meta-connections">🔗 <span id="active-val-connections">—</span></div>
+        </div>
+
+        <!-- Field Verification Status Checklist -->
+        <div class="active-checklist" id="active-field-checklist">
+          <span class="chk-item chk-none" id="chk-field-name">○ Name</span>
+          <span class="chk-item chk-none" id="chk-field-title">○ Title</span>
+          <span class="chk-item chk-none" id="chk-field-company">○ Company</span>
+          <span class="chk-item chk-none" id="chk-field-location">○ Location</span>
+          <span class="chk-item chk-none" id="chk-field-education">○ School</span>
+          <span class="chk-item chk-none" id="chk-field-email">✗ Email</span>
+          <span class="chk-item chk-none" id="chk-field-phone">✗ Phone</span>
+        </div>
+
+        <div id="active-profile-about-box" class="active-about-box hidden">
+          <span class="about-label">About:</span> <span id="active-val-about">—</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Tabs Navigation: Live Discoveries vs Real-Time Event Log -->
     <div class="tab-nav">
       <button id="tab-btn-feed" class="tab-btn active">⚡ Live Discoveries</button>
       <button id="tab-btn-logs" class="tab-btn">📋 Real-Time Event Log</button>
     </div>
 
-    <!-- TAB A: Live Discoveries Feed (Only Genuine Session Extractions) -->
+    <!-- TAB A: Live Discoveries Feed -->
     <div id="tab-feed" class="tab-content active">
       <div class="activity-section">
         <div id="feed-list" class="feed-list">
@@ -119,10 +159,21 @@
       </div>
     </div>
 
-    <!-- Buffer Diagnostics Footer -->
-    <div class="footer-live-status">
-      <span class="live-pulse-dot"></span>
-      <span class="live-status-text" id="footer-status-text">Visual buffer: 0 images (0 MB) • Auto-purges in 3m</span>
+    <!-- Real 1-Hour Rolling Evidence Buffer & Auto-Purge Lifecycle Diagnostics Footer -->
+    <div class="footer-diagnostics-card">
+      <div class="footer-diag-row">
+        <span class="live-pulse-dot"></span>
+        <span class="diag-title">1-HOUR EVIDENCE BUFFER</span>
+        <span class="diag-purge-active" id="diag-purge-active">● 1-HR AUTO-PURGE</span>
+      </div>
+      <div class="diag-metrics-grid">
+        <div>Active (1-Hr Buffer): <b id="diag-val-buffered">0 / 200</b></div>
+        <div>Processing: <b id="diag-val-processing">0</b></div>
+        <div>In 1-Hr Window: <b id="diag-val-pending">0</b></div>
+        <div>Purged (&gt;1-Hr Old): <b id="diag-val-purged">0</b></div>
+        <div>Temp Storage: <b id="diag-val-storage">0.00 MB</b></div>
+        <div>Next Purge Cycle: <b id="diag-val-next-purge">60m</b></div>
+      </div>
     </div>
   </div>
 

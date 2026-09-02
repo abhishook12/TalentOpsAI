@@ -20,6 +20,7 @@ import { CompanyIdentity } from '../components/CompanyIdentity'
 import AIInsights from '../components/AIInsights'
 import EnrichmentLiveFeed from '../components/EnrichmentLiveFeed'
 import EnricherControlPanel from '../components/EnricherControlPanel'
+import LiveIngestionPipeline from '../components/LiveIngestionPipeline'
 import { Skeleton, SkeletonRow } from '../components/ui/Skeleton'
 import AnimatedNumber from '../components/ui/AnimatedNumber'
 
@@ -90,6 +91,12 @@ export default function Dashboard() {
     sharedQueryOpts
   )
 
+  const { data: ingestionData, isLoading: ingestionLoading, isFetching: ingestionFetching } = useCachedQuery(
+    'dashboard-ingestion-summary',
+    async () => (await api.get('/analytics/scraper-ingestion-summary')).data,
+    { ...sharedQueryOpts, refetchInterval: 10000 }
+  )
+
   const { data: visits, isLoading: visitsLoading, error: visitsError, isFetching: visitsFetching } = useCachedQuery(
     'dashboard-visits',
     async () => (await api.get('/analytics/visit-stats')).data,
@@ -102,7 +109,7 @@ export default function Dashboard() {
     sharedQueryOpts
   )
 
-  const isFetchingAny = kpisFetching || dqFetching || visitsFetching || companiesFetching
+  const isFetchingAny = kpisFetching || dqFetching || visitsFetching || companiesFetching || ingestionFetching
 
   const handleRefresh = useCallback(async () => {
     if (isManualRefreshing.current || isFetchingAny) return
@@ -112,6 +119,7 @@ export default function Dashboard() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] }),
         queryClient.invalidateQueries({ queryKey: ['dashboard-data-quality'] }),
+        queryClient.invalidateQueries({ queryKey: ['dashboard-ingestion-summary'] }),
         queryClient.invalidateQueries({ queryKey: ['dashboard-visits'] }),
         queryClient.invalidateQueries({ queryKey: ['dashboard-top-companies'] }),
         queryClient.invalidateQueries({ queryKey: ['recruiters-by-state'] }),
@@ -129,43 +137,44 @@ export default function Dashboard() {
   const totalPages = Number(visits?.total_visits || 0)
   const today = Number(visits?.today || 0)
   const yesterday = Number(visits?.yesterday || 0)
+
   const metrics = useMemo(() => ([
     {
-      label: 'Total Recruiters',
+      label: 'Master DB: Total People',
       value: typeof dataQuality?.total_recruiters === 'number' ? <AnimatedNumber value={dataQuality.total_recruiters} /> : '—',
-      sublabel: dataQuality?.total_recruiters ? 'Real database count' : '—',
+      sublabel: `Canonical DB count (+${ingestionData?.metrics_today?.new_people_created || 0} new today)`,
       icon: 'ti-users',
       tone: 'neutral',
     },
     {
-      label: 'States Covered',
-      value: typeof dataQuality?.states_covered === 'number' ? <AnimatedNumber value={dataQuality.states_covered} /> : '—',
-      sublabel: typeof dataQuality?.state_coverage === 'number' ? <><AnimatedNumber value={dataQuality.state_coverage} />% mapped coverage</> : 'Needs state inference',
-      icon: 'ti-map-2',
-      tone: 'neutral',
-    },
-    {
-      label: 'Known State Recruiters',
-      value: typeof dataQuality?.known_state_count === 'number' ? <AnimatedNumber value={dataQuality.known_state_count} /> : '—',
-      sublabel: 'Mapped via explicit or inferred logic',
-      icon: 'ti-map-pin-filled',
+      label: 'Enriched Today (Master)',
+      value: typeof ingestionData?.metrics_today?.existing_people_enriched === 'number' ? `+${ingestionData.metrics_today.existing_people_enriched}` : '+0',
+      sublabel: `+${ingestionData?.metrics_today?.fields_added || 0} fields added today`,
+      icon: 'ti-sparkles',
       tone: 'success',
     },
     {
-      label: 'Unknown State Recruiters',
-      value: typeof dataQuality?.unknown_state_count === 'number' ? <AnimatedNumber value={dataQuality.unknown_state_count} /> : '—',
-      sublabel: 'Missing location/company metadata entirely',
-      icon: 'ti-alert-triangle',
-      tone: dataQuality?.unknown_state_count > 0 ? 'warning' : 'neutral',
+      label: 'Scraper Ingested Today',
+      value: typeof ingestionData?.metrics_today?.raw_observations_received === 'number' ? <AnimatedNumber value={ingestionData.metrics_today.raw_observations_received} /> : '0',
+      sublabel: `${ingestionData?.metrics_today?.useful_discoveries || 0} validated discoveries`,
+      icon: 'ti-radar',
+      tone: 'neutral',
     },
     {
-      label: 'Searches Today',
+      label: 'Staging & Batch Queue',
+      value: typeof ingestionData?.metrics_today?.staging_records === 'number' ? <AnimatedNumber value={ingestionData.metrics_today.staging_records} /> : '0',
+      sublabel: 'Batch intelligence active',
+      icon: 'ti-layers-linked',
+      tone: 'neutral',
+    },
+    {
+      label: 'AI Search Queries',
       value: typeof visits?.searches_today === 'number' ? <AnimatedNumber value={visits.searches_today} /> : '—',
-      sublabel: 'Total AI search queries',
+      sublabel: 'User search traffic (distinct from scraper)',
       icon: 'ti-search',
       tone: 'neutral',
     },
-  ]), [dataQuality, visits])
+  ]), [dataQuality, visits, ingestionData])
 
   const dataHealth = [
     { label: 'Overall Quality Score', value: dataQuality?.quality_score, tone: dataQuality?.quality_score > 70 ? 'success' : (dataQuality?.quality_score > 40 ? 'warning' : 'danger') },
@@ -278,6 +287,11 @@ export default function Dashboard() {
 
       <div style={{ marginTop: '4px', marginBottom: '4px' }}>
         <USHeatmap />
+      </div>
+
+      {/* Dedicated Live Scraper & Enrichment Ingestion Pipeline Panel */}
+      <div style={{ marginTop: '4px', marginBottom: '8px' }}>
+        <LiveIngestionPipeline />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.35fr 0.95fr', gap: 12, minHeight: 0 }}>
@@ -436,6 +450,7 @@ export default function Dashboard() {
               ['Database', 'HEALTHY', 'success'],
               ['Search Engine', 'HEALTHY', 'success'],
               ['ETL Pipeline', 'HEALTHY', 'success'],
+              ['Discovery Staging', 'LIVE / BATCHED', 'success'],
               ['API Engine', 'HEALTHY', 'success'],
             ].map(([label, status, tone]) => (
               <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>
@@ -456,6 +471,9 @@ export default function Dashboard() {
             subtitle="Real actions only. Safe controls are enabled; destructive or unimplemented ones stay clearly disabled."
           />
           <div style={{ display: 'grid', gap: 10 }}>
+            <GhostButton onClick={() => navigate({ to: '/admin/staging' })}>
+              <i className="ti ti-layers-linked" /> Open Staging Pipeline
+            </GhostButton>
             <GhostButton onClick={() => navigate({ to: '/upload' })}>
               <i className="ti ti-database-import" /> Validate Import
             </GhostButton>

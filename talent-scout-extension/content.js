@@ -25,6 +25,41 @@
 
   let engineState = 'STARTING'; // 'STARTING' | 'ACTIVE_SAMPLING' | 'IDLE_WATCH'
 
+  // ── Active Profile Entity Lock (Multi-Frame Progressive Enrichment) ──
+  let activeProfileSession = {
+    profileUrl: null,
+    recruiter_name: null,
+    title: null,
+    company_name: null,
+    previous_company: null,
+    location: null,
+    education: null,
+    followers_count: null,
+    connections_count: null,
+    about_summary: null,
+    experience_history: [],
+    skills: [],
+    email: null,
+    phone: null,
+    linkedin_url: null,
+    source_platform: 'LinkedIn',
+    observation_count: 0,
+    capture_ids: [],
+    field_provenance: {},
+  };
+
+  function syncActiveProfileToStorage() {
+    try {
+      chrome.storage.local.set({
+        currentActiveProfile: activeProfileSession.recruiter_name ? activeProfileSession : null,
+      });
+      chrome.runtime.sendMessage({
+        type: 'ACTIVE_PROFILE_UPDATE',
+        profile: activeProfileSession.recruiter_name ? activeProfileSession : null,
+      });
+    } catch (_) {}
+  }
+
   function updateEngineTelemetry(state) {
     engineState = state;
     const idleSec = Math.floor((Date.now() - lastActivityTime) / 1000);
@@ -37,6 +72,7 @@
         lastDiscovery: lastDiscoveryTimestamp,
         url: location.href,
         title: document.title,
+        activeProfile: activeProfileSession.recruiter_name ? activeProfileSession : null,
       });
     } catch (_) {}
   }
@@ -161,8 +197,20 @@
     });
   }
 
-  // ── Message Listener for Manual Commands ─────────────────────
+  // ── Message Listener for Manual Commands & Active Profile Query ──
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg.type === 'GET_ACTIVE_PROFILE') {
+      let leads = [];
+      try {
+        if (window.TalentScout?.detectLinkedIn) {
+          leads = window.TalentScout.detectLinkedIn();
+        }
+      } catch (_) {}
+      const liveLead = leads.find(l => l.recruiter_name && l.recruiter_name !== 'LinkedIn Member') || leads[0] || (activeProfileSession.recruiter_name ? activeProfileSession : null);
+      sendResponse({ profile: liveLead });
+      return true;
+    }
+
     if (msg.type === 'TRIGGER_SCAN' || msg.type === 'MANUAL_CAPTURE') {
       recordUserActivity('message_trigger');
       if (msg.type === 'MANUAL_CAPTURE') {
@@ -210,6 +258,99 @@
         const isUseful = ts.isUsefulDomainEntity ? ts.isUsefulDomainEntity(lead) : Boolean(lead.recruiter_name || lead.email || lead.linkedin_url);
         return isUseful;
       });
+
+      // 4b. Progressive Active Profile Entity Lock (Profile View Multi-Frame Accumulation)
+      const cleanUrl = location.href.split('?')[0].split('#')[0];
+      if (/^\/(in|pub)\//.test(location.pathname)) {
+        if (activeProfileSession.profileUrl !== cleanUrl) {
+          // Reset lock for new candidate profile
+          activeProfileSession = {
+            profileUrl: cleanUrl,
+            recruiter_name: null,
+            title: null,
+            company_name: null,
+            previous_company: null,
+            location: null,
+            education: null,
+            followers_count: null,
+            connections_count: null,
+            about_summary: null,
+            experience_history: [],
+            skills: [],
+            email: null,
+            phone: null,
+            linkedin_url: cleanUrl,
+            source_platform: 'LinkedIn',
+            observation_count: 0,
+            capture_ids: [],
+            field_provenance: {},
+          };
+        }
+
+        // Merge newly discovered fields into active profile session
+        usefulLeads.forEach(lead => {
+          if (lead.recruiter_name && (!activeProfileSession.recruiter_name || activeProfileSession.recruiter_name === 'LinkedIn Member')) {
+            activeProfileSession.recruiter_name = lead.recruiter_name;
+            activeProfileSession.field_provenance.name = captureId;
+          }
+          if (lead.title && !activeProfileSession.title) {
+            activeProfileSession.title = lead.title;
+            activeProfileSession.field_provenance.title = captureId;
+          }
+          if (lead.company_name && !activeProfileSession.company_name) {
+            activeProfileSession.company_name = lead.company_name;
+            activeProfileSession.field_provenance.company = captureId;
+          }
+          if (lead.previous_company && !activeProfileSession.previous_company) {
+            activeProfileSession.previous_company = lead.previous_company;
+            activeProfileSession.field_provenance.previous_company = captureId;
+          }
+          if (lead.location && !activeProfileSession.location) {
+            activeProfileSession.location = lead.location;
+            activeProfileSession.field_provenance.location = captureId;
+          }
+          if (lead.education && !activeProfileSession.education) {
+            activeProfileSession.education = lead.education;
+            activeProfileSession.field_provenance.education = captureId;
+          }
+          if (lead.followers_count && !activeProfileSession.followers_count) {
+            activeProfileSession.followers_count = lead.followers_count;
+            activeProfileSession.field_provenance.followers = captureId;
+          }
+          if (lead.connections_count && !activeProfileSession.connections_count) {
+            activeProfileSession.connections_count = lead.connections_count;
+            activeProfileSession.field_provenance.connections = captureId;
+          }
+          if (lead.about_summary && !activeProfileSession.about_summary) {
+            activeProfileSession.about_summary = lead.about_summary;
+            activeProfileSession.field_provenance.about = captureId;
+          }
+          if (lead.experience_history && lead.experience_history.length > 0) {
+            activeProfileSession.experience_history = lead.experience_history;
+            activeProfileSession.field_provenance.experience = captureId;
+          }
+          if (lead.email && !activeProfileSession.email) {
+            activeProfileSession.email = lead.email;
+            activeProfileSession.field_provenance.email = captureId;
+          }
+          if (lead.phone && !activeProfileSession.phone) {
+            activeProfileSession.phone = lead.phone;
+            activeProfileSession.field_provenance.phone = captureId;
+          }
+        });
+
+        if (captureId && !activeProfileSession.capture_ids.includes(captureId)) {
+          activeProfileSession.capture_ids.push(captureId);
+          activeProfileSession.observation_count++;
+        }
+
+        syncActiveProfileToStorage();
+      } else {
+        if (activeProfileSession.profileUrl) {
+          activeProfileSession.profileUrl = null;
+          syncActiveProfileToStorage();
+        }
+      }
 
       // Hard Rule 12: If no useful domain data -> DISCARD immediately without DB operation
       if (usefulLeads.length === 0) {

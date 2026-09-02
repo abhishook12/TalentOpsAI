@@ -1,31 +1,26 @@
 // ============================================================
-// detector/glassdoor.js — Glassdoor employer & recruiter extractor
+// detector/glassdoor.js — Glassdoor Universal Context-Aware Detector
 // ============================================================
 
 window.TalentScout = window.TalentScout || {};
 
 window.TalentScout.detectGlassdoor = function() {
-  const host = location.hostname;
+  const host = location.hostname.toLowerCase();
   if (!host.includes('glassdoor.com')) return [];
 
   const ts = window.TalentScout;
   const results = [];
 
-  // ── 1. Job Listing Page ─────────────────────────────────
-  const jobTitle = ts.text([
-    '[data-test="job-title"]',
-    '.e1tk4kwz4',
-    'h1',
-  ].join(','));
-
-  const company = ts.text([
+  // Page-Level Company Context
+  const pageCompany = ts.text([
     '[data-test="employer-name"]',
     '.e1tk4kwz4 + div',
     '[class*="EmployerName"]',
+    'h1.employer-name',
     'h2',
-  ].join(','));
+  ]);
 
-  // Recruiter info on glassdoor can be in "Meet the recruiter" or "Employer profile" sections
+  // ── 1. Job Listing Page — Recruiter Section ─────────────
   const recruiterSection = document.querySelector([
     '[data-test="recruiter-section"]',
     '[class*="HiringInsights"]',
@@ -40,20 +35,32 @@ window.TalentScout.detectGlassdoor = function() {
     const email = ts.extractEmail(text);
     const phone = ts.extractPhone(text);
     const linkedin = ts.extractLinkedIn(recruiterSection.innerHTML || '');
+    const finalName = ts.normalizeName(name);
 
-    if (name || email) {
+    if (finalName || email) {
+      const { title, company_name } = ts.cleanTitleAndCompany(null, null, pageCompany);
+      const conf = ts.calculateFieldConfidences({
+        recruiter_name: finalName,
+        title: title,
+        company_name: company_name,
+      });
+
       results.push({
-        recruiter_name: ts.normalizeName(name),
-        company_name: company || null,
+        recruiter_name: finalName || 'Glassdoor Hiring Lead',
+        title: title || 'Hiring Lead',
+        company_name: company_name,
+        source_platform: 'Glassdoor',
         email: email || null,
         phone: phone || null,
         linkedin_url: linkedin || null,
         source: 'glassdoor_job',
+        confidence: conf.overall,
+        field_confidences: conf,
       });
     }
   }
 
-  // ── 2. Company Review Page — HR Response Authors ─────────
+  // ── 2. Company Review Page — HR Responders ───────────────
   const hrResponders = document.querySelectorAll([
     '[data-test="employer-response"] .author',
     '.employer-response .employer-name',
@@ -61,12 +68,24 @@ window.TalentScout.detectGlassdoor = function() {
   ].join(','));
 
   hrResponders.forEach(el => {
-    const name = el.textContent?.trim();
-    if (name && name.length < 60) {
+    const rawName = el.textContent?.trim();
+    const finalName = ts.normalizeName(rawName);
+    if (finalName && !ts.isUIAction(finalName)) {
+      const { title, company_name } = ts.cleanTitleAndCompany('HR Lead / Representative', null, pageCompany);
+      const conf = ts.calculateFieldConfidences({
+        recruiter_name: finalName,
+        title: title,
+        company_name: company_name,
+      });
+
       results.push({
-        recruiter_name: ts.normalizeName(name),
-        company_name: company || null,
+        recruiter_name: finalName,
+        title: title,
+        company_name: company_name,
+        source_platform: 'Glassdoor',
         source: 'glassdoor_company_review',
+        confidence: conf.overall,
+        field_confidences: conf,
       });
     }
   });

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link as NavLink, useLocation } from '@tanstack/react-router'
 import api, { clearStoredToken } from '../services/api'
-import { LayoutDashboard, Activity, Users, Map, BarChart2, Search, Eye, Radar, LogOut, ShieldCheck, Settings, UserCircle, HeartPulse, UserCog, Server, Shield, Mail, Puzzle } from 'lucide-react'
+import { LayoutDashboard, Activity, Users, Map, BarChart2, Search, Eye, Radar, LogOut, ShieldCheck, Settings, UserCircle, HeartPulse, UserCog, Server, Shield, Mail, Puzzle, Layers } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 export default function Sidebar() {
@@ -53,6 +53,7 @@ export default function Sidebar() {
   const adminNav = [
     { isGroupHeader: true, label: 'Command Center' },
     { to: '/admin', label: 'Admin Terminal', icon: LayoutDashboard },
+    { to: '/admin/staging', label: 'Staging Pipeline', icon: Layers, badge: 'New' },
     { to: '/sentinel', label: 'Data Quality Center', icon: HeartPulse },
     { to: '/review-queue', label: 'Review Queue', icon: Search },
     { to: '/mailintel', label: 'MAILINTEL', icon: Mail },

@@ -1,6 +1,6 @@
 // ============================================================
-// detector/linkedin.js — Bulletproof LinkedIn Scraper
-// Uses DOM Selectors + OpenGraph Tags + Document Title + Text Stream
+// detector/linkedin.js — Bulletproof Context-Aware LinkedIn Scraper
+// Extracts Multi-Person Grids, Page Context & Rejects UI Actions
 // ============================================================
 
 window.TalentScout = window.TalentScout || {};
@@ -14,29 +14,53 @@ window.TalentScout.detectLinkedIn = function() {
 
   const results = [];
 
-  // ── 1. Single Profile Page (/in/ or /pub/) ─────────────────
+  // ── Extract Page-Level Company Context ──────────────────────
+  let pageCompanyContext = null;
+  if (path.includes('/company/')) {
+    // 1. Try DOM selectors for company name in header
+    pageCompanyContext = ts.text([
+      '.org-top-card-summary__title',
+      'h1.org-top-card-summary__title',
+      '.org-top-card__primary-content h1',
+      '.ember-view h1',
+      'h1',
+    ]);
+    
+    // 2. Fallback to parsing page title or URL slug
+    if (!pageCompanyContext || pageCompanyContext.toLowerCase() === 'linkedin') {
+      const match = path.match(/\/company\/([^\/]+)/);
+      if (match && match[1]) {
+        pageCompanyContext = match[1].replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      }
+    }
+  }
+
+  // ── 1. Company People & Grid Cards (/company/*/people/ or /people) ──
+  results.push(..._scrapeCompanyPeoplePage(pageCompanyContext));
+
+  // ── 2. Single Profile Page (/in/ or /pub/) ─────────────────
   if (/^\/(in|pub)\//.test(path)) {
-    const single = _scrapeSingleProfile();
+    const single = _scrapeSingleProfile(pageCompanyContext);
     if (single) results.push(single);
   }
 
-  // ── 2. Search Results, Recruiter & Network Cards ───────────
-  results.push(..._scrapeSearchCards());
-  results.push(..._scrapeRecruiterPlatform());
+  // ── 3. Search Results, Recruiter & Network Cards ───────────
+  results.push(..._scrapeSearchCards(pageCompanyContext));
+  results.push(..._scrapeRecruiterPlatform(pageCompanyContext));
   results.push(..._scrapeMessaging());
-  results.push(..._scrapeFeedPosts());
-  results.push(..._scrapeAllLinkedInCards());
+  results.push(..._scrapeFeedPosts(pageCompanyContext));
+  results.push(..._scrapeAllLinkedInCards(pageCompanyContext));
 
-  // ── 3. Page Title & Meta Fallback (Guaranteed Yield) ───────
+  // ── 4. Page Title & Meta Fallback (Guaranteed Yield) ───────
   if (results.length === 0 && /^\/(in|pub)\//.test(path)) {
-    const fallback = _scrapeFromTitleAndMeta();
+    const fallback = _scrapeFromTitleAndMeta(pageCompanyContext);
     if (fallback) results.push(fallback);
   }
 
   // Deduplicate locally
   const seen = new Set();
   return results.filter(r => {
-    const key = r.linkedin_url || r.email || r.recruiter_name;
+    const key = (r.linkedin_url || r.email || `${r.recruiter_name}@${r.company_name}` || '').toLowerCase();
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -45,15 +69,95 @@ window.TalentScout.detectLinkedIn = function() {
 
 // ── Private Extractors ───────────────────────────────────────
 
-function _scrapeSingleProfile() {
+/**
+ * Scrapes company people page cards and 'People you may know' grids
+ */
+function _scrapeCompanyPeoplePage(pageCompanyContext) {
+  const ts = window.TalentScout;
+  const results = [];
+
+  // Find all person cards in company grids
+  const cardSelectors = [
+    '.org-people-profile-card',
+    '.org-people-profile-card__profile-info',
+    '.artdeco-card',
+    '[data-view-name="profile-card"]',
+    '.discover-person-card',
+    '.grid li',
+    'li.org-people-profiles-module__profile-item',
+  ];
+
+  const cards = document.querySelectorAll(cardSelectors.join(','));
+
+  cards.forEach(card => {
+    const anchor = card.querySelector('a[href*="/in/"]');
+    const href = anchor ? anchor.href.split('?')[0].split('#')[0] : null;
+
+    // Extract Name
+    let rawName = ts.text([
+      '.org-people-profile-card__profile-title',
+      '.artdeco-entity-lockup__title',
+      '.discover-person-card__name',
+      'a[href*="/in/"] span[aria-hidden="true"]',
+      'a[href*="/in/"]',
+      'h3', 'h4',
+    ], card);
+
+    if (!rawName && anchor) {
+      rawName = anchor.textContent?.trim();
+    }
+
+    const finalName = ts.normalizeName(rawName) || (href ? ts.inferNameFromLinkedInSlug(href) : null);
+    if (!finalName) return;
+
+    // Extract Title / Headline
+    let rawHeadline = ts.text([
+      '.org-people-profile-card__profile-position',
+      '.artdeco-entity-lockup__subtitle',
+      '.discover-person-card__occupation',
+      '.lt-line-clamp--multi-line',
+      'p',
+      '.text-body-small',
+    ], card);
+
+    // If headline text is a UI action or button text, ignore it
+    if (ts.isUIAction(rawHeadline)) {
+      rawHeadline = null;
+    }
+
+    // Clean title and resolve company with page context
+    const { title, company_name } = ts.cleanTitleAndCompany(rawHeadline, null, pageCompanyContext);
+
+    // Calculate component-based confidences
+    const conf = ts.calculateFieldConfidences({
+      recruiter_name: finalName,
+      title: title,
+      company_name: company_name,
+    });
+
+    results.push({
+      recruiter_name: finalName,
+      title: title,
+      company_name: company_name,
+      source_platform: 'LinkedIn',
+      linkedin_url: href,
+      source: 'linkedin_company_people',
+      confidence: conf.overall,
+      field_confidences: conf,
+    });
+  });
+
+  return results;
+}
+
+function _scrapeSingleProfile(pageCompanyContext) {
   const ts = window.TalentScout;
   const cleanUrl = location.href.split('?')[0].split('#')[0];
 
-  // Name — try multiple modern and legacy LinkedIn DOM selectors
+  // 1. Name — try multiple modern and legacy LinkedIn DOM selectors
   let name = ts.text([
     'h1.text-heading-xlarge',
     'h1.inline',
-    'h1',
     '.top-card-layout__title',
     '[data-generated-suggestion-target]',
     '.pv-top-card--list li:first-child',
@@ -61,11 +165,13 @@ function _scrapeSingleProfile() {
     '[data-field="name"]',
     '.ph5 h1',
     '.mt2 h1',
+    'h1',
   ]);
 
-  // Title / Headline
-  let title = ts.text([
+  // 2. Title / Headline
+  let rawTitle = ts.text([
     '.text-body-medium.break-words',
+    '.text-body-medium',
     '.top-card-layout__headline',
     '.pv-text-details__left-panel .text-body-medium',
     '[data-field="headline"]',
@@ -73,48 +179,113 @@ function _scrapeSingleProfile() {
     '.ph5 .text-body-medium',
   ]);
 
-  // Location
+  // 3. Location (City, State, Country)
   const candidateLocation = ts.text([
     '.text-body-small.inline.t-black--light.break-words',
+    '.text-body-small.inline.t-black--light',
     '.top-card__subline-item',
     '.pv-text-details__left-panel .t-black--light',
     '[data-field="location"]',
     '.ph5 .text-body-small',
   ]);
 
-  // Company
-  let company = ts.text([
+  // 4. Followers & Connections (Small metadata)
+  let followers = ts.text([
+    '.pv-top-card--list-bullet li:first-child span.t-bold',
+    '.pv-top-card--list-bullet li:first-child',
+    'span.t-black--light.t-normal span.t-bold',
+    'ul.pv-top-card--list-bullet li:first-child',
+    '.ph5 ul.pv-top-card--list-bullet li',
+  ]);
+  let connections = ts.text([
+    '.pv-top-card--list-bullet li:nth-child(2) span.t-bold',
+    '.pv-top-card--list-bullet li:nth-child(2)',
+    '.t-black--light.t-bold',
+    'a[href*="/mynetwork/invite-connect/connections/"] span',
+    'a[href*="/detail/recent-activity/"] + span',
+  ]);
+
+  // 5. Education (School / University)
+  let education = ts.text([
+    'a[href*="/school/"] span[aria-hidden="true"]',
+    'a[href*="/school/"] span',
+    'a[href*="/school/"]',
+    '#education ~ div ul li .hoverable-link-text span[aria-hidden="true"]',
+    '#education ~ div ul li h3 span[aria-hidden="true"]',
+    '#education ~ div ul li h3',
+    '.education__list-item h3',
+    'section[data-section="education"] h3',
+  ]);
+
+  if (!education) {
+    // Check right panel items for university keywords
+    const rightPanelAnchors = document.querySelectorAll('.pv-text-details__right-panel a, .pv-text-details__right-panel li');
+    rightPanelAnchors.forEach(a => {
+      const txt = a.textContent?.trim();
+      if (txt && /university|college|institute|school|academy|polytechnic|alabama|tech|state|bs|ba|master|bachelor/i.test(txt)) {
+        education = txt.replace(/\s+/g, ' ');
+      }
+    });
+  }
+
+  // 6. About / Summary Text
+  let aboutSummary = ts.text([
+    '#about ~ div.display-flex span[aria-hidden="true"]',
+    '#about ~ div .inline-show-more-text',
+    '#about ~ div p',
+    'section[data-section="about"] .inline-show-more-text',
+    'section[data-section="about"] span[aria-hidden="true"]',
+    '.pv-about-section .pv-about__summary-text',
+    '.pv-about-section .inline-show-more-text',
+  ]);
+
+  // 7. Full Experience Timeline (Current vs Previous Employers)
+  let currentCompany = null;
+  let previousCompany = null;
+  const experienceHistory = [];
+
+  const expItems = document.querySelectorAll('#experience ~ div ul > li, .experience-section li, section[data-section="experience"] li');
+  expItems.forEach(item => {
+    const roleTitle = ts.text(['.t-bold span[aria-hidden="true"]', 'h3 span[aria-hidden="true"]', 'h3', '.experience-item__title'], item);
+    const expCompany = ts.text(['.t-normal span[aria-hidden="true"]', '.t-14.t-normal span[aria-hidden="true"]', 'h4 span[aria-hidden="true"]', 'h4', '.experience-item__subtitle'], item);
+    const dateRange = ts.text(['.t-black--light span[aria-hidden="true"]', '.date-range span[aria-hidden="true"]', '.date-range', '.pvs-entity__caption-wrapper'], item);
+
+    if (roleTitle || expCompany) {
+      const cleanComp = expCompany ? expCompany.split('·')[0].trim() : null;
+      const isCurrent = dateRange ? /present|current/i.test(dateRange) : false;
+
+      const entry = {
+        title: roleTitle || 'Role',
+        company: cleanComp || 'Company',
+        dates: dateRange || (isCurrent ? 'Present' : 'Past'),
+        is_current: isCurrent,
+      };
+
+      experienceHistory.push(entry);
+
+      if (isCurrent && !currentCompany && cleanComp && !ts.isPlatformName(cleanComp)) {
+        currentCompany = cleanComp;
+      } else if (!isCurrent && !previousCompany && cleanComp && !ts.isPlatformName(cleanComp)) {
+        previousCompany = cleanComp;
+      }
+    }
+  });
+
+  // Top card explicit company fallback
+  let rawCompany = currentCompany || ts.text([
     '.pv-text-details__right-panel .inline-show-more-text',
     '.pv-text-details__right-panel a',
     '.top-card-layout__card .topcard__org-name-link',
     '.top-card-layout__first-subline a',
-    '#experience li:first-child .t-bold span[aria-hidden="true"]',
-    '#experience li:first-child .hoverable-link-text span[aria-hidden="true"]',
     'button[aria-label*="Current company"]',
   ]);
 
-  // Infer company from headline if missing (e.g. "Job recruiter at ASP-Web Solutions")
-  if (!company && title) {
-    const atMatch = title.match(/\b(?:at|@)\s+([^,|•\n\r]+)/i);
-    if (atMatch) company = atMatch[1].trim();
-    else if (title.includes(' | ')) {
-      const parts = title.split(' | ');
-      if (parts.length >= 2) company = parts[parts.length - 1].trim();
-    }
-  }
-
-  // Title & Meta tags fallback if name missing
-  if (!name) {
-    const metaTitle = document.querySelector('meta[property="og:title"]')?.content || document.title;
-    if (metaTitle && (metaTitle.includes('|') || metaTitle.includes('-'))) {
-      const parts = metaTitle.split('|')[0].split(' - ');
-      name = parts[0]?.trim();
-      if (parts[1] && !title) title = parts[1]?.trim();
-      if (parts[2] && !company) company = parts[2]?.trim();
-    }
-  }
-
+  const { title, company_name, specialty } = ts.cleanTitleAndCompany(rawTitle, rawCompany, pageCompanyContext);
   const finalName = ts.normalizeName(name) || ts.inferNameFromLinkedInSlug(cleanUrl);
+
+  if (aboutSummary && (aboutSummary.length < 15 || aboutSummary.toLowerCase() === (company_name || '').toLowerCase())) {
+    aboutSummary = null;
+  }
 
   // Extract contact info
   const fullText = document.body ? (document.body.innerText || '') : '';
@@ -123,43 +294,83 @@ function _scrapeSingleProfile() {
 
   if (!finalName && !title) return null;
 
-  return {
+  const conf = ts.calculateFieldConfidences({
+    recruiter_name: finalName,
+    title: title,
+    company_name: company_name,
+    linkedin_url: cleanUrl,
+    email: email,
+    phone: phone,
+  });
+
+  const profileData = {
     recruiter_name: finalName || ts.inferNameFromLinkedInSlug(cleanUrl) || 'LinkedIn Member',
-    title: title || 'Professional',
-    company_name: company || null,
+    title: title,
+    headline: rawTitle || null,
+    specialty: specialty || null,
+    company_name: company_name,
+    previous_company: previousCompany,
+    source_platform: 'LinkedIn',
     location: candidateLocation || null,
+    education: education || null,
+    followers_count: followers || null,
+    connections_count: connections || null,
+    about_summary: aboutSummary || null,
+    experience_history: experienceHistory.length > 0 ? experienceHistory : null,
     email: email || null,
     phone: phone || null,
     linkedin_url: cleanUrl,
     source: 'linkedin_profile',
+    confidence: conf.overall,
+    field_confidences: conf,
   };
+
+  // Cache active profile locally for popup immediate rendering
+  try {
+    if (chrome?.storage?.local) {
+      chrome.storage.local.set({ activeProfile: profileData });
+    }
+  } catch (_) {}
+
+  return profileData;
 }
 
-function _scrapeFromTitleAndMeta() {
+function _scrapeFromTitleAndMeta(pageCompanyContext) {
   const ts = window.TalentScout;
-  const rawTitle = document.title || '';
-  if (!rawTitle) return null;
+  const rawDocTitle = document.title || '';
+  if (!rawDocTitle) return null;
 
   const cleanUrl = location.href.split('?')[0].split('#')[0];
   const inferredName = ts.inferNameFromLinkedInSlug(cleanUrl);
 
-  const parts = rawTitle.replace(/\s*\|\s*LinkedIn$/i, '').split(/\s*[-–—|]\s*/);
+  const parts = rawDocTitle.replace(/\s*\|\s*LinkedIn$/i, '').split(/\s*[-–—|]\s*/);
   const name = ts.normalizeName(parts[0]) || inferredName;
-  const title = parts[1] || null;
-  const company = parts[2] || null;
+  const rawTitle = parts[1] || null;
+  const rawCompany = parts[2] || null;
 
   if (!name) return null;
 
+  const { title, company_name } = ts.cleanTitleAndCompany(rawTitle, rawCompany, pageCompanyContext);
+
+  const conf = ts.calculateFieldConfidences({
+    recruiter_name: name,
+    title: title,
+    company_name: company_name,
+  });
+
   return {
     recruiter_name: name,
-    title: title || 'Recruiter / Professional',
-    company_name: company || null,
+    title: title,
+    company_name: company_name,
+    source_platform: 'LinkedIn',
     linkedin_url: cleanUrl,
     source: 'linkedin_meta',
+    confidence: conf.overall,
+    field_confidences: conf,
   };
 }
 
-function _scrapeSearchCards() {
+function _scrapeSearchCards(pageCompanyContext) {
   const ts = window.TalentScout;
   const cards = document.querySelectorAll([
     'li.reusable-search__result-container',
@@ -187,14 +398,14 @@ function _scrapeSearchCards() {
       'h3', 'h4',
     ], card);
 
-    const title = ts.text([
+    const rawTitle = ts.text([
       '.entity-result__primary-subtitle',
       '.discover-person-card__occupation',
       '.artdeco-entity-lockup__subtitle',
       '.subline-level-1',
     ], card);
 
-    const company = ts.text([
+    const rawCompany = ts.text([
       '.entity-result__secondary-subtitle',
       '.subline-level-2',
       '.entity-result__summary',
@@ -208,20 +419,31 @@ function _scrapeSearchCards() {
     const finalName = ts.normalizeName(name) || ts.inferNameFromLinkedInSlug(href);
     if (!finalName) return;
 
+    const { title, company_name } = ts.cleanTitleAndCompany(rawTitle, rawCompany, pageCompanyContext);
+
+    const conf = ts.calculateFieldConfidences({
+      recruiter_name: finalName,
+      title: title,
+      company_name: company_name,
+    });
+
     results.push({
       recruiter_name: finalName,
-      title: title || 'Professional',
-      company_name: company || null,
+      title: title,
+      company_name: company_name,
+      source_platform: 'LinkedIn',
       location: candidateLocation || null,
       linkedin_url: href,
       source: 'linkedin_search',
+      confidence: conf.overall,
+      field_confidences: conf,
     });
   });
 
   return results;
 }
 
-function _scrapeRecruiterPlatform() {
+function _scrapeRecruiterPlatform(pageCompanyContext) {
   const ts = window.TalentScout;
   const results = [];
   const cards = document.querySelectorAll('.profile-card, .profile-list-item, [data-control-name="view_profile"], .talent-card');
@@ -229,17 +451,20 @@ function _scrapeRecruiterPlatform() {
   cards.forEach(card => {
     const anchor = card.querySelector('a[href*="/in/"], a[href*="/talent/profile/"]');
     const name = ts.text(['.profile-card__name', '.result-lockup__name', 'h3', 'h4'], card);
-    const title = ts.text(['.profile-card__headline', '.result-lockup__headline', '.t-12'], card);
-    const company = ts.text(['.profile-card__company', '.result-lockup__company'], card);
+    const rawTitle = ts.text(['.profile-card__headline', '.result-lockup__headline', '.t-12'], card);
+    const rawCompany = ts.text(['.profile-card__company', '.result-lockup__company'], card);
     const candidateLocation = ts.text(['.profile-card__location', '.result-lockup__location'], card);
 
     const finalName = ts.normalizeName(name) || (anchor ? ts.inferNameFromLinkedInSlug(anchor.href) : null);
     if (!finalName) return;
 
+    const { title, company_name } = ts.cleanTitleAndCompany(rawTitle, rawCompany, pageCompanyContext);
+
     results.push({
       recruiter_name: finalName,
-      title: title || null,
-      company_name: company || null,
+      title: title,
+      company_name: company_name,
+      source_platform: 'LinkedIn',
       location: candidateLocation || null,
       linkedin_url: anchor ? anchor.href.split('?')[0] : null,
       source: 'linkedin_recruiter',
@@ -262,6 +487,7 @@ function _scrapeMessaging() {
 
     results.push({
       recruiter_name: finalName,
+      source_platform: 'LinkedIn',
       linkedin_url: anchor ? anchor.href.split('?')[0] : null,
       source: 'linkedin_messaging',
     });
@@ -270,21 +496,24 @@ function _scrapeMessaging() {
   return results;
 }
 
-function _scrapeFeedPosts() {
+function _scrapeFeedPosts(pageCompanyContext) {
   const ts = window.TalentScout;
   const results = [];
   const posts = document.querySelectorAll('.feed-shared-update-v2, .feed-shared-actor, [data-urn*="activity"]');
 
   posts.forEach(post => {
     const actorName = ts.text(['.update-components-actor__name', '.feed-shared-actor__name'], post);
-    const actorTitle = ts.text(['.update-components-actor__description', '.feed-shared-actor__description'], post);
+    const rawTitle = ts.text(['.update-components-actor__description', '.feed-shared-actor__description'], post);
     const anchor = post.querySelector('.update-components-actor__container-link, a[href*="/in/"]');
     const finalName = ts.normalizeName(actorName);
 
     if (finalName) {
+      const { title, company_name } = ts.cleanTitleAndCompany(rawTitle, null, pageCompanyContext);
       results.push({
         recruiter_name: finalName,
-        title: actorTitle || 'Hiring Lead',
+        title: title || 'Hiring Lead',
+        company_name: company_name,
+        source_platform: 'LinkedIn',
         linkedin_url: anchor ? anchor.href.split('?')[0] : null,
         email: ts.extractEmail(post.innerText || ''),
         phone: ts.extractPhone(post.innerText || ''),
@@ -296,7 +525,7 @@ function _scrapeFeedPosts() {
   return results;
 }
 
-function _scrapeAllLinkedInCards() {
+function _scrapeAllLinkedInCards(pageCompanyContext) {
   const ts = window.TalentScout;
   const results = [];
   const cleanUrl = location.href.split('?')[0].split('#')[0];
@@ -312,23 +541,16 @@ function _scrapeAllLinkedInCards() {
     const nameText = a.querySelector('span[aria-hidden="true"], h3, h4, strong, span')?.textContent?.trim() || a.textContent?.trim();
     const inferred = ts.inferNameFromLinkedInSlug(href);
     const finalName = ts.normalizeName(nameText) || inferred;
-    if (!finalName || ['see all', 'view profile', 'follow', 'message', 'connect', 'linkedin member', 'sign in', 'join now'].includes(finalName.toLowerCase())) return;
+    if (!finalName) return;
 
-    const sub = container.querySelector('.artdeco-entity-lockup__subtitle, .entity-result__primary-subtitle, p, [class*="headline"], [class*="occupation"], [class*="subtitle"], .t-12')?.textContent?.trim();
-    let company = null;
-    let title = sub || 'Professional';
-    if (title.includes(' at ')) {
-      const p = title.split(' at ');
-      company = p[1].split(/[,|•\n]/)[0].trim();
-    } else if (title.includes(' @ ')) {
-      const p = title.split(' @ ');
-      company = p[1].split(/[,|•\n]/)[0].trim();
-    }
+    const rawSub = container.querySelector('.artdeco-entity-lockup__subtitle, .entity-result__primary-subtitle, p, [class*="headline"], [class*="occupation"], [class*="subtitle"], .t-12')?.textContent?.trim();
+    const { title, company_name } = ts.cleanTitleAndCompany(rawSub, null, pageCompanyContext);
 
     results.push({
       recruiter_name: finalName,
-      title: title.slice(0, 100),
-      company_name: company,
+      title: title,
+      company_name: company_name,
+      source_platform: 'LinkedIn',
       linkedin_url: href,
       source: 'linkedin_sidebar',
     });

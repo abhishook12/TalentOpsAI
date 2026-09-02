@@ -29,6 +29,7 @@ from sqlalchemy import text, func as sqlfunc
 
 from ..database import get_db
 from ..models.models import Recruiter, Company
+from ..models.staging_models import DiscoveryStaging, ResolvedPerson
 from ..models.extension_models import (
     ExtensionActivationCode,
     ExtensionDevice,
@@ -37,6 +38,7 @@ from ..models.extension_models import (
     ExtensionDiscoveryEvent,
 )
 from ..models.auth_models import User
+from ..services.discovery_processor import run_batch_processor
 from ..services.auth_service import (
     get_current_user_from_request,
     require_role,
@@ -277,28 +279,18 @@ def ingest_extension_batch(
 ):
     """
     Receive batch of scraped contacts from extension.
-    Deduplicates by email, creates/updates Recruiter records silently.
+    Stages raw observations into discovery_staging table for Batch Intelligence Processing.
     """
     device_id = req.device_id or x_device_id or "unknown"
-    accepted = 0
-    duplicates = 0
+    batch_id = f"BATCH-{secrets.token_hex(6).upper()}"
+    staged = 0
     errors = []
     source_sites = set()
 
     for contact in req.contacts:
         try:
-            # Must have at least name or email
-            if not contact.email and not contact.recruiter_name:
-                continue
-
-            # Normalize email
-            email = (contact.email or "").strip().lower() or None
-
-            # Skip if email is free provider
-            if email:
-                domain = email.split("@")[-1].lower()
-            # If no email, no LinkedIn, and no name+company — skip (insufficient data)
-            if not email and not contact.linkedin_url and not (contact.recruiter_name and contact.company_name):
+            # Must have at least name, email, or LinkedIn
+            if not contact.email and not contact.recruiter_name and not contact.linkedin_url:
                 continue
 
             # Track source sites
@@ -306,157 +298,56 @@ def ingest_extension_batch(
                 try:
                     from urllib.parse import urlparse
                     host = urlparse(contact.source_url).hostname or ""
-                    if host: source_sites.add(host)
+                    if host:
+                        source_sites.add(host)
                 except Exception:
                     pass
 
-            # ── Dedup by email ────────────────────────────────
-            existing = None
-            if email:
-                existing = db.query(Recruiter).filter(Recruiter.email == email).first()
+            discovery_id = contact.discovery_id or f"DISC-{secrets.token_hex(4).upper()}"
 
-            # ── Dedup by LinkedIn URL ─────────────────────────
-            if not existing and contact.linkedin_url:
-                clean_li = contact.linkedin_url.split("?")[0].rstrip("/").lower()
-                existing = db.query(Recruiter).filter(
-                    Recruiter.linkedin.ilike(f"%{clean_li.split('/in/')[-1]}%")
-                ).first()
+            # Check if discovery_id already staged to prevent duplicate submission frames
+            existing_staged = db.query(DiscoveryStaging).filter(
+                DiscoveryStaging.discovery_id == discovery_id
+            ).first()
 
-            # ── Dedup by Name + Company ───────────────────────
-            if not existing and contact.recruiter_name and contact.company_name:
-                existing = db.query(Recruiter).join(Company, Recruiter.company_id == Company.company_id).filter(
-                    Recruiter.recruiter_name.ilike(contact.recruiter_name.strip()),
-                    Company.company_name.ilike(contact.company_name.strip())
-                ).first()
-
-            if existing:
-                # Update if new data improves the record
-                updated = False
-                fields_added = []
-                if contact.phone and not existing.phone:
-                    existing.phone = contact.phone; updated = True; fields_added.append("Phone")
-                if contact.linkedin_url and not existing.linkedin:
-                    existing.linkedin = contact.linkedin_url.split("?")[0]; updated = True; fields_added.append("LinkedIn")
-                if contact.title and not existing.title:
-                    existing.title = contact.title; updated = True; fields_added.append("Title")
-                if contact.location and not existing.location:
-                    existing.location = contact.location; updated = True; fields_added.append("Location")
-                if updated:
-                    db.add(existing)
-
-                # Log Provenance Event
-                disc_event = ExtensionDiscoveryEvent(
-                    discovery_id=contact.discovery_id or f"DISC-{secrets.token_hex(4).upper()}",
-                    capture_id=contact.capture_id or f"CAP-{secrets.token_hex(4).upper()}",
-                    device_id=device_id,
-                    owner_user_id=current_user.id,
-                    recruiter_id=existing.recruiter_id,
-                    recruiter_name=existing.recruiter_name,
-                    company_name=contact.company_name or (existing.company.company_name if existing.company else None),
-                    title=existing.title,
-                    email=existing.email,
-                    phone=existing.phone,
-                    linkedin_url=existing.linkedin,
-                    location=existing.location,
-                    source_url=contact.source_url,
-                    source_page_title=contact.source_page_title,
-                    extraction_source=contact.source or "extension",
-                    visual_change_score=str(contact.visual_change_score or 0.0),
-                    confidence=contact.confidence or 92,
-                    db_action="ENRICHED" if updated else "PREVIOUSLY_KNOWN",
-                    fields_added=json.dumps(fields_added),
-                )
-                db.add(disc_event)
-                duplicates += 1
+            if existing_staged:
                 continue
 
-            # ── Need at least a name if no email ─────────────
-            name = (contact.recruiter_name or "").strip()
-            if not name:
-                continue
-
-            # ── Resolve or create company ─────────────────────
-            company_id = None
-            if email:
-                email_domain = email.split("@")[-1].lower()
-                comp = db.query(Company).filter(
-                    Company.primary_domain == email_domain
-                ).first()
-                if comp:
-                    company_id = comp.company_id
-                elif contact.company_name:
-                    new_comp = Company(
-                        company_name=contact.company_name.strip(),
-                        canonical_name=contact.company_name.strip(),
-                        primary_domain=email_domain,
-                        website=f"https://{email_domain}",
-                        logo_url=f"https://logos.hunter.io/{email_domain}",
-                        verification_status="unverified",
-                        trust_score=60,
-                        data_source="extension",
-                    )
-                    db.add(new_comp)
-                    db.flush()
-                    company_id = new_comp.company_id
-            elif contact.company_name:
-                comp = db.query(Company).filter(
-                    Company.company_name.ilike(contact.company_name.strip())
-                ).first()
-                if comp:
-                    company_id = comp.company_id
-
-            # ── Create new Recruiter ──────────────────────────
-            recruiter = Recruiter(
-                recruiter_name=name,
-                email=email or f"ext_{secrets.token_hex(8)}@noemail.talentops",
-                phone=contact.phone,
-                linkedin=contact.linkedin_url.split("?")[0] if contact.linkedin_url else None,
-                title=contact.title,
-                location=contact.location,
-                company_id=company_id,
-                notes=f"Source: {contact.source or 'extension'} | Page: {contact.source_page_title or ''} | Device: {device_id}",
-                data_source="extension",
-                is_active=True,
-                needs_review=not bool(email),  # flag if no real email
-            )
-            db.add(recruiter)
-            db.flush()
-            accepted += 1
-
-            # Log New Discovery Provenance Event
-            disc_event = ExtensionDiscoveryEvent(
-                discovery_id=contact.discovery_id or f"DISC-{secrets.token_hex(4).upper()}",
-                capture_id=contact.capture_id or f"CAP-{secrets.token_hex(4).upper()}",
+            staging_record = DiscoveryStaging(
+                batch_id=batch_id,
+                discovery_id=discovery_id,
+                session_id=str(req.session_stats.get("sessionId")) if req.session_stats else None,
                 device_id=device_id,
                 owner_user_id=current_user.id,
-                recruiter_id=recruiter.recruiter_id,
-                recruiter_name=name,
-                company_name=contact.company_name,
-                title=contact.title,
-                email=recruiter.email,
-                phone=contact.phone,
-                linkedin_url=contact.linkedin_url,
-                location=contact.location,
+                raw_name=contact.recruiter_name,
+                raw_title=contact.title,
+                raw_company=contact.company_name,
+                raw_email=contact.email,
+                raw_phone=contact.phone,
+                raw_linkedin=contact.linkedin_url,
+                raw_location=contact.location,
                 source_url=contact.source_url,
                 source_page_title=contact.source_page_title,
-                extraction_source=contact.source or "extension",
+                capture_id=contact.capture_id,
+                extraction_source=contact.source or "visual_dom_fusion",
                 visual_change_score=str(contact.visual_change_score or 0.0),
-                confidence=contact.confidence or 95,
-                db_action="NEW_DISCOVERY",
-                fields_added=json.dumps(["Name", "Title", "Company", "Email" if email else None, "Phone" if contact.phone else None, "LinkedIn" if contact.linkedin_url else None]),
+                dom_confidence=contact.confidence or 90,
+                processing_status="pending",
+                identity_confidence=0.0,
+                quality_score=0,
             )
-            db.add(disc_event)
+            db.add(staging_record)
+            staged += 1
 
         except Exception as e:
             errors.append(str(e)[:100])
-            logger.warning("Extension batch error: %s", e)
+            logger.warning("Extension staging error: %s", e)
 
     # Update device stats
     device = db.query(ExtensionDevice).filter(ExtensionDevice.device_id == device_id).first()
     if device:
         device.total_submitted += len(req.contacts)
-        device.total_accepted += accepted
-        device.total_duplicates += duplicates
+        device.total_accepted += staged
         device.last_seen_at = datetime.now(timezone.utc)
         if x_extension_version:
             device.extension_version = x_extension_version
@@ -466,8 +357,8 @@ def ingest_extension_batch(
         device_id=device_id,
         owner_user_id=current_user.id,
         contacts_received=len(req.contacts),
-        contacts_accepted=accepted,
-        contacts_duplicate=duplicates,
+        contacts_accepted=staged,
+        contacts_duplicate=0,
         contacts_errored=len(errors),
         source_sites=json.dumps(list(source_sites)),
     )
@@ -477,19 +368,85 @@ def ingest_extension_batch(
         db.commit()
     except Exception as e:
         db.rollback()
-        logger.error("Extension batch commit failed: %s", e)
-        raise HTTPException(status_code=500, detail="Database error during batch insert")
+        logger.error("Extension batch staging commit failed: %s", e)
+        raise HTTPException(status_code=500, detail="Database error during batch staging")
+
+    # Run batch processor on staged batch and ingest knowledge graph document
+    processor_stats = {}
+    kg_stats = {}
+    if staged > 0:
+        try:
+            from ..services.discovery_processor import DiscoveryProcessor, run_batch_processor
+            from ..utils.normalizer import build_semantic_graph_document
+            
+            processor = DiscoveryProcessor(db)
+            processor_stats = processor.process_pending_batch(limit=100)
+
+            # Build and Ingest Open-Ended Knowledge Graph Document
+            kg_doc = build_semantic_graph_document(
+                raw_contacts=[c.model_dump() if hasattr(c, 'model_dump') else dict(c) for c in req.contacts],
+                page_url=req.contacts[0].source_url if req.contacts else None,
+                page_title=req.contacts[0].source_page_title if req.contacts else None,
+                capture_id=req.contacts[0].capture_id if req.contacts else None,
+            )
+            kg_stats = processor.process_knowledge_graph_document(kg_doc, owner_user_id=current_user.id)
+
+        except Exception as pe:
+            logger.warning("Auto batch processor / knowledge graph run error: %s", pe)
 
     logger.info(
-        "Extension batch: device=%s accepted=%d dup=%d err=%d",
-        device_id, accepted, duplicates, len(errors)
+        "Extension staged: device=%s batch=%s staged=%d processor_stats=%s kg_stats=%s",
+        device_id, batch_id, staged, processor_stats, kg_stats
     )
 
     return {
-        "accepted": accepted,
-        "duplicates": duplicates,
-        "errors": errors[:5],  # don't leak too much
+        "status": "STAGED",
+        "batch_id": batch_id,
+        "staged": staged,
+        "accepted": staged,
+        "duplicates": 0,
+        "processor_stats": processor_stats,
+        "knowledge_graph_stats": kg_stats,
+        "errors": errors[:5],
     }
+
+
+# ── GET /recruiters/extension/staging-status ───────────────────────────────
+@router.get("/staging-status")
+def get_extension_staging_status(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Returns count of staged records by status for telemetry popups.
+    """
+    counts = dict(
+        db.query(
+            DiscoveryStaging.processing_status,
+            sqlfunc.count(DiscoveryStaging.id)
+        ).group_by(DiscoveryStaging.processing_status).all()
+    )
+    return {
+        "pending": counts.get("pending", 0),
+        "batched": counts.get("batched", 0),
+        "processing": counts.get("processing", 0),
+        "committed": counts.get("committed", 0),
+        "rejected": counts.get("rejected", 0),
+        "review": counts.get("review", 0),
+    }
+
+
+# ── POST /recruiters/extension/process-batch ───────────────────────────────
+@router.post("/process-batch")
+def trigger_extension_batch_process(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Triggers batch intelligence processing immediately.
+    """
+    stats = run_batch_processor(db, limit=100)
+    return {"ok": True, "stats": stats}
 
 
 # ── POST /recruiters/extension/heartbeat ─────────────────────────────────────
@@ -682,6 +639,23 @@ def analyze_vision_screenshot(
     except Exception as e:
         raise HTTPException(status_code=400, detail="Invalid image format")
 
+    from ..utils.normalizer import (
+        classify_page_type,
+        validate_human_name,
+        is_ui_action,
+        is_platform_name,
+        is_job_posting_title,
+        clean_title,
+        clean_company,
+        split_title_and_company,
+        calculate_field_confidences,
+        evaluate_evidence_grounding,
+        UI_ACTION_TERMS,
+        PLATFORM_NAMES,
+    )
+
+    page_type = classify_page_type(page_url, page_title)
+
     try:
         from google import genai
         from google.genai import types
@@ -691,21 +665,40 @@ def analyze_vision_screenshot(
         api_key = os.environ.get("GEMINI_API_KEY", "AQ.Ab8RN6JeAR1jCZaGpC-HcXZBHrtG-TK0oZQL6aQCMMm3vuyHYQ")
         client = genai.Client(api_key=api_key)
         
-        prompt = f"""You are an expert TalentOps Visual AI.
-Extract any recruiters, talent acquisition professionals, or HR contacts visible in this screenshot.
-Page URL: {page_url}
-Page Title: {page_title}
+        prompt = f"""You are an expert TalentOps Visual Intelligence & Forensic Extraction Engine.
+Analyze this screenshot and extract ONLY explicitly visible human professionals, recruiters, hiring managers, or talent contacts.
 
-Return a valid JSON list of objects. Each object must have these exact keys (use null if missing):
-"recruiter_name"
-"title"
-"company_name"
-"location"
-"linkedin_url"
-"email"
-"phone"
+Context Metadata:
+- Page URL: {page_url}
+- Page Title: {page_title}
+- Page Type: {page_type}
 
-Do not wrap in markdown or backticks. Only output the raw JSON array. Return [] if no relevant people are found."""
+CRITICAL EXTRACTION & EVIDENCE RULES:
+1. JOB BOARDS vs PEOPLE DIRECTORIES: On job search pages (SimplyHired, Indeed /jobs, ZipRecruiter, Glassdoor /job), listings are JOB POSTINGS, NOT people. Do NOT convert job titles (e.g. "Transmission Project Manager", "High School Mathematics Teacher", "Mobile Phlebotomist") into candidate person names! Only extract people if an explicit recruiter/hiring manager card with a real human person's name is visible. Return [] if no real person is present.
+2. ENUMERATE EVERY REAL PERSON: On people directories (LinkedIn /people, team pages), extract ALL visible individuals.
+3. SEPARATE SOURCE PLATFORM FROM EMPLOYER: Platform names (SimplyHired, LinkedIn, Indeed, Glassdoor) are NEVER employer companies unless the card explicitly states they are employed by that platform.
+4. STRICTLY REJECT UI BUTTONS: Words like "Contact", "Connect", "Message", "Follow", "Pending", "Apply", "Easy Apply", "Submit" are UI action buttons, NOT titles or names.
+5. TITLE & COMPANY CONSENSUS: Split headlines like "Recruiting Manager at SynergyGrid IT" into title="Recruiting Manager" and company_name="SynergyGrid IT".
+
+Return a valid JSON list of objects:
+[
+  {{
+    "recruiter_name": "Human Full Name",
+    "title": "Clean Job Title (or null, NEVER UI buttons, NEVER 'Professional Lead')",
+    "company_name": "Employer Company (NEVER SimplyHired / LinkedIn)",
+    "location": "City, State / Country or null",
+    "linkedin_url": "Profile URL if visible or null",
+    "email": "Email address or null",
+    "phone": "Phone number or null",
+    "evidence_region": "Visual bounding area or description",
+    "name_confidence": 98,
+    "title_confidence": 95,
+    "company_confidence": 90,
+    "overall_confidence": 94
+  }}
+]
+
+Output ONLY the raw JSON array. Return [] if no real human person is visibly grounded in this image."""
 
         response = client.models.generate_content(
             model='gemini-2.5-flash',
@@ -724,108 +717,98 @@ Do not wrap in markdown or backticks. Only output the raw JSON array. Return [] 
         parsed_entities = json.loads(raw_json)
         
         for item in parsed_entities:
-            if item.get("recruiter_name"):
-                entities.append({
-                    "recruiter_name": item.get("recruiter_name"),
-                    "title": item.get("title") or "Talent Partner",
-                    "company_name": item.get("company_name") or "Corporate",
-                    "location": item.get("location"),
-                    "linkedin_url": item.get("linkedin_url") or (page_url if "linkedin.com/in/" in page_url else None),
-                    "email": item.get("email"),
-                    "phone": item.get("phone"),
-                    "source": "visual_capture",
-                    "confidence": 95,
-                    "verification_status": "verified"
-                })
-    except Exception as e:
-        print(f"Gemini Vision API Error: {e}")
-        # Fallback heuristic if API fails — use URL slug + page title
-        fallback_name = None
-        fallback_title = None
-        fallback_company = None
-        
-        # Parse page title (LinkedIn format: "Name - Title - Company | LinkedIn")
-        if page_title:
-            clean_title = re.sub(r'\s*\|\s*LinkedIn\s*$', '', page_title, flags=re.IGNORECASE).strip()
-            parts = re.split(r'\s*[-–—]\s*', clean_title)
-            if len(parts) >= 1 and len(parts[0].strip()) >= 3:
-                fallback_name = parts[0].strip()
-            if len(parts) >= 2:
-                fallback_title = parts[1].strip()
-            if len(parts) >= 3:
-                fallback_company = parts[2].strip()
-        
-        # Parse LinkedIn URL slug as secondary source
-        if "linkedin.com/in/" in page_url:
-            slug = page_url.split("/in/")[-1].split("/")[0].split("?")[0]
-            cleaned_name = re.sub(r'-[a-f0-9]{4,12}$', '', slug, flags=re.IGNORECASE)
-            cleaned_name = " ".join([p.capitalize() for p in re.split(r'[-_.]+', cleaned_name) if p])
-            if not fallback_name and cleaned_name:
-                fallback_name = cleaned_name
-        
-        if fallback_name:
-            entities.append({
-                "recruiter_name": fallback_name,
-                "title": fallback_title or "Recruiter / Professional",
-                "company_name": fallback_company or "Corporate",
-                "linkedin_url": page_url.split("?")[0] if "linkedin.com" in page_url else None,
-                "source": "visual_capture",
-                "confidence": 85,
-                "verification_status": "verified"
-            })
+            raw_name = (item.get("recruiter_name") or "").strip()
+            raw_title = (item.get("title") or "").strip()
+            raw_comp = (item.get("company_name") or "").strip()
 
-    # Ingest discovered entities into database
-    persisted_count = 0
+            # Evidence Grounding Validation
+            grounding = evaluate_evidence_grounding(
+                raw_name=raw_name,
+                raw_title=raw_title,
+                raw_company=raw_comp,
+                page_url=page_url,
+                page_title=page_title,
+            )
+
+            if not grounding["is_grounded"]:
+                logger.info("Rejected ungrounded visual candidate '%s': %s", raw_name, grounding["rejection_reasons"])
+                continue
+
+            t, c = split_title_and_company(raw_title, raw_comp, page_title)
+            conf = calculate_field_confidences(
+                name=grounding["clean_name"],
+                title=t,
+                company=c,
+                email=item.get("email"),
+                phone=item.get("phone"),
+                linkedin=item.get("linkedin_url"),
+            )
+
+            entities.append({
+                "recruiter_name": grounding["clean_name"],
+                "title": t,
+                "company_name": c,
+                "location": item.get("location"),
+                "linkedin_url": item.get("linkedin_url") or (page_url if "linkedin.com/in/" in page_url else None),
+                "email": item.get("email"),
+                "phone": item.get("phone"),
+                "source": "visual_capture",
+                "source_platform": "SimplyHired" if "simplyhired" in page_url.lower() else ("LinkedIn" if "linkedin.com" in page_url.lower() else "Web"),
+                "confidence": conf["overall"],
+                "field_confidences": conf,
+                "evidence_grounding_score": grounding["grounding_score"],
+            })
+    except Exception as e:
+        logger.warning(f"Gemini Vision API Error: {e}")
+        pass
+
+    # Stage raw discoveries into discovery_staging with immutable capture ID
+    batch_id = f"BATCH-VIS-{secrets.token_hex(4).upper()}"
+    capture_id = getattr(req, "capture_id", None) or f"VC-{secrets.token_hex(3).upper()}"
+    staged_count = 0
+
     for ent in entities:
         name = ent.get("recruiter_name")
-        if not name: continue
+        if not name:
+            continue
 
-        # Resolve or create company
-        comp_id = None
-        c_name = ent.get("company_name")
-        if c_name:
-            comp = db.query(Company).filter(Company.company_name.ilike(c_name.strip())).first()
-            if not comp:
-                comp = Company(
-                    company_name=c_name.strip(),
-                    canonical_name=c_name.strip(),
-                    verification_status="verified",
-                    trust_score=80,
-                    data_source="visual_capture",
-                )
-                db.add(comp)
-                db.flush()
-            comp_id = comp.company_id
+        stg = DiscoveryStaging(
+            batch_id=batch_id,
+            discovery_id=f"DISC-{secrets.token_hex(4).upper()}",
+            device_id="visual-engine",
+            owner_user_id=1,  # Primary workspace user
+            raw_name=name,
+            raw_title=ent.get("title"),
+            raw_company=ent.get("company_name"),
+            raw_email=ent.get("email"),
+            raw_phone=ent.get("phone"),
+            raw_linkedin=ent.get("linkedin_url"),
+            raw_location=ent.get("location"),
+            source_url=page_url,
+            source_page_title=page_title,
+            capture_id=capture_id,
+            extraction_source="visual_capture",
+            visual_change_score=str(req.change_score or 0.0),
+            dom_confidence=ent.get("confidence", 85),
+            processing_status="pending",
+        )
+        db.add(stg)
+        staged_count += 1
 
-        # Check existing recruiter
-        existing = db.query(Recruiter).filter(Recruiter.recruiter_name.ilike(name.strip())).first()
-        if not existing:
-            gen_email = f"vis_{secrets.token_hex(6)}@noemail.talentops"
-            recruiter = Recruiter(
-                recruiter_name=name.strip(),
-                email=gen_email,
-                title=ent.get("title", "Recruiter"),
-                company_id=comp_id,
-                linkedin=ent.get("linkedin_url"),
-                data_source="visual_capture",
-                is_active=True,
-                notes=f"Source: visual_capture | URL: {page_url} | Score: {req.change_score}",
-            )
-            db.add(recruiter)
-            persisted_count += 1
-
-    if persisted_count > 0:
+    if staged_count > 0:
         try:
             db.commit()
-        except Exception:
+            run_batch_processor(db, limit=50)
+        except Exception as e:
             db.rollback()
+            logger.warning(f"Error committing staged visual discoveries: {e}")
 
     return {
         "status": "SUCCESS",
         "entities": entities,
         "metrics": {
             "people_found": len(entities),
-            "persisted_new": persisted_count,
+            "staged_count": staged_count,
             "change_score": req.change_score,
             "mode": "visual",
         }

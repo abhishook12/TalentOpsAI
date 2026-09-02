@@ -1,6 +1,6 @@
 // ============================================================
-// visual/engine.js — Visual Intelligence & Multi-Entity Extractor
-// Analyzes screenshots for people, titles, companies, emails, phones & context
+// visual/engine.js — Visual Intelligence & Evidence-Grounded Extractor
+// Analyzes screenshots with Strict Evidence Grounding Gate
 // ============================================================
 
 window.TalentScout = window.TalentScout || {};
@@ -32,12 +32,19 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
 
     // Ignore Authentication / Login forms
     if (url.includes('/login') || url.includes('/signin') || url.includes('/signup') || title.includes('log in to') || title.includes('sign in to')) {
-      if (!url.includes('/in/') && !url.includes('/talent/')) {
+      if (!url.includes('/in/') && !url.includes('/talent/') && !url.includes('/company/')) {
         return { isValid: false, reason: 'login_page' };
       }
     }
 
-    return { isValid: true, page_url: location.href, page_title: document.title };
+    const pageType = window.TalentScout.classifyPageType ? window.TalentScout.classifyPageType(location.href, document.title) : 'GENERIC_WEB';
+
+    return {
+      isValid: true,
+      page_type: pageType,
+      page_url: location.href,
+      page_title: document.title
+    };
   }
 
   /**
@@ -53,11 +60,13 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
       };
     }
 
+    const captureId = metadata.capture_id || `VC-${Math.floor(10000 + Math.random() * 90000)}`;
+
     const tokenData = await chrome.storage.local.get(['authToken']);
     const token = tokenData.authToken;
 
     try {
-      // 1. Send Screenshot to Backend Vision Analysis Engine
+      // 1. Send Screenshot to Backend Vision Analysis Engine with Immutable capture_id
       const res = await fetch(`${PRODUCTION_API}${VISION_ENDPOINT}`, {
         method: 'POST',
         headers: {
@@ -65,9 +74,11 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
           'Authorization': token ? `Bearer ${token}` : '',
         },
         body: JSON.stringify({
+          capture_id: captureId,
           image_data: screenshotDataUrl,
           page_url: location.href,
           page_title: document.title,
+          page_type: pageCheck.page_type,
           change_score: metadata.change_score || 0.5,
           captured_at: new Date().toISOString(),
         }),
@@ -77,75 +88,112 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
         const data = await res.json();
         return {
           status: 'SUCCESS',
+          capture_id: captureId,
+          page_type: pageCheck.page_type,
           entities: data.entities || [],
           metrics: data.metrics || {},
         };
       }
     } catch (e) {
-      // Backend vision offline fallback: extract visible text anchors + canvas regions
+      // Backend vision offline fallback
     }
 
     // 2. Client-Side Fallback Vision Heuristic Parser
-    return fallbackClientExtraction(metadata);
+    return fallbackClientExtraction(metadata, captureId, pageCheck.page_type);
   }
 
   /**
    * Fallback visual extraction when vision API is processing
    */
-  function fallbackClientExtraction(metadata) {
+  function fallbackClientExtraction(metadata, captureId, pageType) {
     const ts = window.TalentScout;
     const results = [];
-    const fullText = document.body ? (document.body.innerText || '') : '';
+    const host = location.hostname.toLowerCase();
 
-    // Extract corporate emails, phones, and LinkedIn links
-    const emails = fullText.match(ts?.PATTERNS?.email || /\b[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10}\b/g) || [];
-    const phones = fullText.match(ts?.PATTERNS?.phone || /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g) || [];
-    const linkedinUrls = fullText.match(ts?.PATTERNS?.linkedin || /(?:https?:\/\/)?(?:[a-zA-Z0-9_-]+\.)?linkedin\.com\/(?:in|pub)\/([a-zA-Z0-9\-_%]+)/gi) || [];
-
-    // Parse visible names from heading structures
-    const headings = document.querySelectorAll('h1, h2, h3, [data-field="name"], .profile-name, [class*="title-text"]');
-    headings.forEach((h, idx) => {
-      const name = h.textContent?.trim();
-      if (name && name.length >= 3 && name.length <= 40 && !name.includes('@') && !/\d{3}/.test(name) && !['feed', 'home', 'jobs', 'messaging', 'notifications', 'search'].includes(name.toLowerCase())) {
-        const email = emails[idx] || (emails.length > 0 ? emails[0] : null);
-        const phone = phones[idx] || (phones.length > 0 ? phones[0] : null);
-        const li = linkedinUrls[idx] || (linkedinUrls.length > 0 ? linkedinUrls[0] : (location.href.includes('linkedin.com/in/') ? location.href.split('?')[0] : null));
-
-        // Locate closest subtitle or description
-        const nextElem = h.nextElementSibling || h.parentElement?.querySelector('p, .text-body-medium, [class*="headline"], [class*="subtitle"]');
-        let title = nextElem?.textContent?.trim() || 'Professional Lead';
-        let company = location.hostname.replace(/^www\./, '').split('.')[0];
-        
-        if (title && (title.includes(' at ') || title.includes(' @ '))) {
-          const parts = title.split(/\s+(?:at|@)\s+/i);
-          if (parts[1]) company = parts[1].split(/[,|•\n]/)[0].trim();
-        }
-
-        results.push({
-          recruiter_name: name,
-          title: title.slice(0, 100),
-          company_name: company,
-          email: email || null,
-          phone: phone || null,
-          linkedin_url: li || null,
-          source: 'visual_capture',
-          confidence: 0.85,
-          captured_at: new Date().toISOString(),
-        });
+    // HARD INVARIANT: On a JOB_SEARCH_PAGE (SimplyHired, Indeed /jobs, ZipRecruiter /jobs),
+    // job postings are NOT human people!
+    if (pageType === 'JOB_SEARCH_PAGE') {
+      // Look exclusively for explicit hiring manager / recruiter sections
+      const recruiterCards = document.querySelectorAll('[data-testid="recruiter-info"], .hiring-manager, .recruiter-section');
+      if (recruiterCards.length === 0) {
+        // No explicit human recruiter on job search page
+        return {
+          status: 'JOB_PAGE_NO_PEOPLE',
+          capture_id: captureId,
+          page_type: pageType,
+          entities: [],
+          metrics: { people_found: 0, reason: 'Job search page contains job postings, no explicit recruiter cards' },
+        };
       }
+    }
+
+    // Extract Page-Level Company Context
+    let pageCompany = null;
+    const path = location.pathname.toLowerCase();
+    
+    if (path.includes('/company/')) {
+      pageCompany = ts?.text ? ts.text(['.org-top-card-summary__title', 'h1']) : null;
+      if (!pageCompany) {
+        const m = path.match(/\/company\/([^\/]+)/);
+        if (m && m[1]) pageCompany = m[1].replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      }
+    }
+
+    // Parse visible candidate cards (LinkedIn /people, etc.)
+    const cardElements = document.querySelectorAll('.org-people-profile-card, .discover-person-card, .artdeco-card, [data-view-name="profile-card"], .profile-card, li.reusable-search__result-container');
+    
+    cardElements.forEach((card) => {
+      const rawName = card.querySelector('h3, h4, .org-people-profile-card__profile-title, [class*="name"], a[href*="/in/"]')?.textContent?.trim();
+      const nameVal = ts.validateHumanName(rawName);
+
+      // HARD INVARIANT: Must be a validated human name (not job title, UI action, or platform name)
+      if (!nameVal.isValid) return;
+
+      const rawSubtitle = card.querySelector('.org-people-profile-card__profile-position, [class*="subtitle"], [class*="occupation"], p')?.textContent?.trim();
+      const { title, company_name } = ts.cleanTitleAndCompany(rawSubtitle, null, pageCompany);
+      
+      const anchor = card.querySelector('a[href*="/in/"]');
+      const liUrl = anchor ? anchor.href.split('?')[0] : null;
+
+      const conf = ts.calculateFieldConfidences({
+        recruiter_name: nameVal.cleanName,
+        title: title,
+        company_name: company_name,
+        linkedin_url: liUrl,
+      });
+
+      const grounding = ts.evaluateEvidenceGrounding({
+        recruiter_name: nameVal.cleanName,
+        title: title,
+        company_name: company_name,
+      }, location.href, document.title);
+
+      if (!grounding.is_grounded) return;
+
+      results.push({
+        capture_id: captureId,
+        recruiter_name: nameVal.cleanName,
+        title: title,
+        company_name: company_name,
+        source_platform: host.includes('linkedin') ? 'LinkedIn' : (host.includes('indeed') ? 'Indeed' : host),
+        linkedin_url: liUrl,
+        source: 'visual_capture',
+        confidence: conf.overall,
+        field_confidences: conf,
+        evidence_grounding_score: grounding.grounding_score,
+        captured_at: new Date().toISOString(),
+      });
     });
 
     return {
       status: 'FALLBACK_SUCCESS',
+      capture_id: captureId,
+      page_type: pageType,
       entities: results.slice(0, 15),
       metrics: { people_found: results.length },
     };
   }
 
-  // Export to window.TalentScout.Visual.Engine
-  window.TalentScout.Visual.Engine = {
-    classifyPageContext,
-    analyzeScreenshot,
-  };
-
+  window.TalentScout.Visual.analyzeScreenshot = analyzeScreenshot;
+  window.TalentScout.Visual.classifyPageContext = classifyPageContext;
 })();

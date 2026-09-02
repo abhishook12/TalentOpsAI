@@ -538,17 +538,25 @@ function _scrapeAllLinkedInCards(pageCompanyContext) {
     const container = a.closest('li, div.artdeco-entity-lockup, div.discover-person-card, section, div.feed-shared-following-card, .profile-card, aside div, [class*="card"], [class*="lockup"]') || a.parentElement;
     if (!container) return;
 
-    const nameText = a.querySelector('span[aria-hidden="true"], h3, h4, strong, span')?.textContent?.trim() || a.textContent?.trim();
+    const nameText = a.querySelector('.entity-result__title-text span[aria-hidden="true"], .artdeco-entity-lockup__title span[aria-hidden="true"], span[aria-hidden="true"], strong, h3, h4')?.textContent?.trim() || a.textContent?.trim();
     const inferred = ts.inferNameFromLinkedInSlug(href);
-    const finalName = ts.normalizeName(nameText) || inferred;
+    let finalName = ts.normalizeName(nameText) || inferred;
     if (!finalName) return;
 
-    const rawSub = container.querySelector('.artdeco-entity-lockup__subtitle, .entity-result__primary-subtitle, p, [class*="headline"], [class*="occupation"], [class*="subtitle"], .t-12')?.textContent?.trim();
+    // If normalized name was overly greedy but inferred slug name is clean, prefer inferred
+    if (inferred && finalName.split(' ').length > 3 && inferred.split(' ').length <= 3) {
+      finalName = inferred;
+    }
+
+    const rawSub = container.querySelector('.artdeco-entity-lockup__subtitle, .entity-result__primary-subtitle, [class*="headline"], [class*="occupation"], [class*="subtitle"], .t-12')?.textContent?.trim();
     const { title, company_name } = ts.cleanTitleAndCompany(rawSub, null, pageCompanyContext);
+
+    // If title is identical to name or just the name repeated, nullify it
+    const cleanTitle = (title && title.toLowerCase() === finalName.toLowerCase()) ? null : title;
 
     results.push({
       recruiter_name: finalName,
-      title: title,
+      title: cleanTitle,
       company_name: company_name,
       source_platform: 'LinkedIn',
       linkedin_url: href,

@@ -366,9 +366,9 @@
 
       const leadsToProcess = [...freshLeads, ...enrichedLeads];
       if (leadsToProcess.length === 0) {
-        // Redundant sighting with zero new fields — discard image without duplicate DB writes
+        // Sighting of previously known candidate on screen — retain frame in 1-hour buffer with metadata
         if (captureId && ts.Visual?.Store) {
-          await ts.Visual.Store.discardScreenshot(captureId);
+          await ts.Visual.Store.updateStatus(captureId, 'EXTRACTION_COMPLETE', usefulLeads);
         }
         isScanning = false;
         return;

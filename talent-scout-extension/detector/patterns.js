@@ -45,7 +45,7 @@ window.TalentScout.PATTERNS = {
     'education', 'skills', 'interests', 'activity', 'highlights',
     'mutual connections', 'mutual connection', 'people you may know',
     'see all people', 'past company', 'current company', 'view job',
-    'save job', 'quick apply now'
+    'save job', 'quick apply now', 'top skills', 'start a post', 'write an article'
   ]),
 
   // Platform Names — Never treat these as the employer company
@@ -144,6 +144,9 @@ window.TalentScout.validateHumanName = function(rawName) {
   if (!rawName) return { isValid: false, reason: 'empty_name' };
 
   let name = rawName.trim();
+  // Strip newlines / tabs (DOM concatenated subtitles)
+  name = name.split(/[\r\n\t]+/)[0].trim();
+
   // Strip degree bullets, numbers, pronouns, and degree credentials
   name = name.replace(/[·•]\s*\d+(?:st|nd|rd|th)?/gi, '');
   name = name.replace(/\b\d+(?:st|nd|rd|th)?\s+degree(?:\s+connection)?\b/gi, '');
@@ -153,11 +156,37 @@ window.TalentScout.validateHumanName = function(rawName) {
   name = name.split(/[-–—|,]/)[0].replace(/[^\w\s\'.]/g, ' ').trim();
   name = name.replace(/\s+/g, ' ');
 
+  // Check if original raw phrase was a job title
+  if (window.TalentScout.isJobTitle(name.toLowerCase())) {
+    return { isValid: false, reason: `job_title_as_name:${name}` };
+  }
+
+  // If name has trailing role title words (e.g. "Aditi Chauhan SAP SuccessFactors" -> "Aditi Chauhan", "Jitendra Tripathi Founder" -> "Jitendra Tripathi")
+  const tokens = name.split(' ');
+  if (tokens.length >= 3) {
+    const roleNouns = window.TalentScout.PATTERNS.jobRoleNouns;
+    let cutIdx = -1;
+    for (let i = 2; i < tokens.length; i++) {
+      const tokLower = tokens[i].toLowerCase();
+      if (roleNouns.has(tokLower) || /^(founder|ceo|cto|cpo|coo|vp|recruiter|sourcer|consultant|manager|director|engineer|developer|analyst|specialist|partner|lead|head|architect|sap|oracle|staffing|talent|hiring|hr)$/i.test(tokLower)) {
+        cutIdx = i;
+        break;
+      }
+    }
+    if (cutIdx >= 2) {
+      name = tokens.slice(0, cutIdx).join(' ');
+    }
+  }
+
   if (!name || name.length < 2 || name.length > 50) {
     return { isValid: false, reason: 'invalid_length' };
   }
 
   const lower = name.toLowerCase();
+
+  if (window.TalentScout.isJobTitle(lower)) {
+    return { isValid: false, reason: `job_title_as_name:${name}` };
+  }
 
   if (window.TalentScout.isUIAction(lower)) {
     return { isValid: false, reason: `ui_action:${name}` };
@@ -173,6 +202,11 @@ window.TalentScout.validateHumanName = function(rawName) {
 
   if (['professional lead', 'candidate lead', 'linkedin member', 'view profile', 'corporate contact', 'search chat'].includes(lower)) {
     return { isValid: false, reason: `generic_placeholder:${name}` };
+  }
+
+  // Reject notification strings
+  if (/accepted your invitation|sent you a message|top skills|skills|celebrates|work anniversary|shared a post|reacted to/i.test(lower)) {
+    return { isValid: false, reason: `notification_noise:${name}` };
   }
 
   // Must contain at least one letter and at least 2 characters
@@ -218,8 +252,11 @@ window.TalentScout.cleanTitleAndCompany = function(rawTitle, rawCompany, pageCom
   let company = (rawCompany || '').trim();
   let specialty = null;
 
-  // 1. If title is a UI action, nullify it immediately
+  // 1. If title is a UI action or notification, nullify it immediately
   if (window.TalentScout.isUIAction(title) || ['contact', 'professional lead', 'candidate lead'].includes(title.toLowerCase())) {
+    title = null;
+  }
+  if (title && /accepted your invitation|sent you a message|top skills|skills|shared a post|celebrates|work anniversary|endorsed you|commented on/i.test(title)) {
     title = null;
   }
 

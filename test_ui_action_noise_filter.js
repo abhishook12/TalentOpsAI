@@ -17,14 +17,20 @@ const tests = [
   { name: 'Recruiting Technical Recruiter', expectedValid: false },
   { name: 'Volunteer Experience', expectedValid: false },
   { name: 'Recent Activity', expectedValid: false },
+  { name: 'Harsh Kumar accepted your invitation to connect.', expectedValid: false },
+
+  // Trailing Role/Title cleanup
+  { name: 'Aditi Chauhan SAP SuccessFactors', expectedValid: true, expectedClean: 'Aditi Chauhan' },
+  { name: 'Jitendra Tripathi Founder', expectedValid: true, expectedClean: 'Jitendra Tripathi' },
 
   // Legitimate Human Names
-  { name: 'Meagan Garnett', expectedValid: true },
-  { name: 'Alexandra Fotos', expectedValid: true },
-  { name: 'Kelsei Martinez', expectedValid: true },
-  { name: 'Judy Mackesy', expectedValid: true },
-  { name: 'Ronit Ron', expectedValid: true },
-  { name: 'Jessica Eisenberg', expectedValid: true },
+  { name: 'Meagan Garnett', expectedValid: true, expectedClean: 'Meagan Garnett' },
+  { name: 'Alexandra Fotos', expectedValid: true, expectedClean: 'Alexandra Fotos' },
+  { name: 'Kelsei Martinez', expectedValid: true, expectedClean: 'Kelsei Martinez' },
+  { name: 'Judy Mackesy', expectedValid: true, expectedClean: 'Judy Mackesy' },
+  { name: 'Harsh Kumar', expectedValid: true, expectedClean: 'Harsh Kumar' },
+  { name: 'Mughis Siddiqui', expectedValid: true, expectedClean: 'Mughis Siddiqui' },
+  { name: 'Ravinder Prakash', expectedValid: true, expectedClean: 'Ravinder Prakash' },
 ];
 
 console.log('================================================================================');
@@ -32,14 +38,15 @@ console.log('RUNNING UI ACTION & NOISE FILTER REGRESSION TEST');
 console.log('================================================================================');
 
 let passed = 0;
-tests.forEach(({ name, expectedValid }) => {
+tests.forEach(({ name, expectedValid, expectedClean }) => {
   const res = window.TalentScout.validateHumanName(name);
   const isValid = res.isValid;
-  if (isValid === expectedValid) {
-    console.log(`[PASS] "${name}" -> Valid: ${isValid} (Expected: ${expectedValid})`);
+  const matchesClean = expectedClean ? (res.cleanName === expectedClean) : true;
+  if (isValid === expectedValid && matchesClean) {
+    console.log(`[PASS] "${name}" -> Valid: ${isValid}, Clean: "${res.cleanName || 'N/A'}" (Expected: ${expectedValid}, "${expectedClean || 'N/A'}")`);
     passed++;
   } else {
-    console.error(`[FAIL] "${name}" -> Valid: ${isValid} (Expected: ${expectedValid}, Reason: ${res.reason})`);
+    console.error(`[FAIL] "${name}" -> Valid: ${isValid}, Clean: "${res.cleanName || 'N/A'}" (Expected: ${expectedValid}, "${expectedClean || 'N/A'}", Reason: ${res.reason})`);
   }
 });
 

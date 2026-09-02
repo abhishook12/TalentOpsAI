@@ -391,11 +391,11 @@ function _scrapeSingleProfile(pageCompanyContext) {
   // Cache active profile locally for popup immediate rendering
   try {
     if (chrome?.storage?.local) {
-      chrome.storage.local.set({ activeProfile: profileData });
+      chrome.storage.local.set({ activeProfile: leadEntity });
     }
   } catch (_) {}
 
-  return profileData;
+  return leadEntity;
 }
 
 function _scrapeFromTitleAndMeta(pageCompanyContext) {

@@ -66,7 +66,7 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
     const token = tokenData.authToken;
 
     try {
-      // 1. Send Screenshot to Backend Vision Analysis Engine with Immutable capture_id
+      // 1. Send Screenshot to Backend Gemini Vision Analysis Engine with Immutable capture_id
       const res = await fetch(`${PRODUCTION_API}${VISION_ENDPOINT}`, {
         method: 'POST',
         headers: {
@@ -86,28 +86,36 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
 
       if (res.ok) {
         const data = await res.json();
+        const geminiEntities = (data.entities || []).map(ent => ({
+          ...ent,
+          extraction_source: 'gemini_vision_ai',
+          capture_id: captureId,
+        }));
+
+        console.log(`%c[TalentOps Visual] 👁️ Gemini Vision AI Verified ${geminiEntities.length} Candidate(s) on Screen`, 'color:#6366f1;font-weight:bold;');
+
         return {
           status: 'SUCCESS',
           capture_id: captureId,
           page_type: pageCheck.page_type,
-          entities: data.entities || [],
+          entities: geminiEntities,
           metrics: data.metrics || {},
         };
+      } else {
+        console.warn('[TalentOps Visual] Vision endpoint returned status:', res.status);
       }
     } catch (e) {
-      // Backend vision offline fallback
+      console.warn('[TalentOps Visual] Vision API network error:', e);
     }
 
-    // 2. Client-Side Fallback Vision Heuristic Parser
-    return fallbackClientExtraction(metadata, captureId, pageCheck.page_type);
+    return {
+      status: 'AWAITING_VISION',
+      capture_id: captureId,
+      page_type: pageCheck.page_type,
+      entities: [],
+      metrics: { people_found: 0, reason: 'Enforcing strict Gemini Vision AI processing' },
+    };
   }
-
-  /**
-   * Fallback visual extraction when vision API is processing
-   */
-  function fallbackClientExtraction(metadata, captureId, pageType) {
-    const ts = window.TalentScout;
-    const results = [];
     const host = location.hostname.toLowerCase();
 
     // HARD INVARIANT: On a JOB_SEARCH_PAGE (SimplyHired, Indeed /jobs, ZipRecruiter /jobs),

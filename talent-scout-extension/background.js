@@ -19,7 +19,7 @@ let sessionLogs = [];
 
 async function loadQueueFromStorage() {
   try {
-    const local = await chrome.storage.local.get(['pendingContactQueue', 'sessionStats']);
+    const local = await chrome.storage.local.get(['pendingContactQueue', 'sessionStats', 'totalCaptured']);
     if (Array.isArray(local.pendingContactQueue) && local.pendingContactQueue.length > 0) {
       // Merge unique
       const existingIds = new Set(contactQueue.map(c => c.discovery_id || c.recruiter_name));
@@ -33,6 +33,12 @@ async function loadQueueFromStorage() {
     }
     if (local.sessionStats) {
       sessionStats = { ...sessionStats, ...local.sessionStats };
+    }
+    // Auto-wipe obsolete 20k+ screenshot backlog from previous sessions
+    if (local.totalCaptured && local.totalCaptured > 500) {
+      await chrome.storage.local.set({ totalCaptured: 0, recentCaptures: [] });
+      sessionStats.captured = 0;
+      addSessionLog({ type: 'PURGE_COMPLETE', detail: `Auto-purged ${local.totalCaptured} old screenshots & reset counter to 0` });
     }
   } catch (_) {}
 }

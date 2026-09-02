@@ -154,7 +154,18 @@ async function loadLiveStats() {
   const totalSent = statsRes?.totalSent ?? localData.totalSent ?? 0;
   const totalExtracted = statsRes?.totalCollected ?? localData.totalCollectedEver ?? 0;
   const pagesScanned = Math.max(0, statsRes?.pagesScanned ?? localData.pagesScanned ?? 0);
-  const totalCapturedScreens = statsRes?.totalCaptured ?? localData.totalCaptured ?? 0;
+  let totalCapturedScreens = statsRes?.totalCaptured ?? localData.totalCaptured ?? 0;
+
+  // Auto-wipe obsolete 20k+ backlog if detected
+  if (totalCapturedScreens > 500) {
+    try {
+      if (window.TalentScout?.Visual?.Store?.purgeExpiredScreenshots) {
+        await window.TalentScout.Visual.Store.purgeExpiredScreenshots(true);
+      }
+      await chrome.runtime.sendMessage({ type: 'PURGE_AND_RESET_SCREENSHOTS' });
+      totalCapturedScreens = 0;
+    } catch (_) {}
+  }
 
   // 1. Update Engine Telemetry Card
   const engineState = statsRes?.engineState || localData.engineState || 'ACTIVE_SAMPLING';

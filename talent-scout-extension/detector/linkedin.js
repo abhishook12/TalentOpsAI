@@ -221,15 +221,23 @@ function _scrapeSingleProfile(pageCompanyContext) {
 
   // Helper for modern LinkedIn DOM (closest section traversal)
   function getSectionListItems(sectionId) {
-    const anchor = document.getElementById(sectionId) || document.querySelector(`[data-section="${sectionId}"]`);
+    let anchor = null;
+    try {
+      anchor = document.querySelector('#' + sectionId) || document.querySelector(`[data-section="${sectionId}"]`);
+    } catch (e) {
+      // Mock environments or weird DOMs
+      anchor = document.querySelector(`[data-section="${sectionId}"]`);
+    }
     if (!anchor) return [];
-    const section = anchor.closest('section');
+    
+    const section = anchor.closest ? anchor.closest('section') : null;
     if (!section) return [];
+    
     // Return direct list items to avoid double-counting nested roles
     return Array.from(section.querySelectorAll('ul > li')).filter(li => {
       // Only include items that are part of the main section list, not sub-lists
       const parentUl = li.parentElement;
-      return parentUl && !parentUl.closest('li'); 
+      return parentUl && parentUl.closest && !parentUl.closest('li'); 
     });
   }
 

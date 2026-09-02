@@ -376,11 +376,7 @@
 
       lastDiscoveryTimestamp = new Date().toLocaleTimeString();
 
-      // 6. Update Captured Counter in Storage
-      try {
-        const capLocal = await new Promise(r => chrome.storage.local.get(['totalCaptured'], r));
-        await new Promise(r => chrome.storage.local.set({ totalCaptured: (capLocal.totalCaptured || 0) + leadsToProcess.length }, r));
-      } catch (_) {}
+      // 6. [Removed] Screenshot counter is managed exclusively by background.js
 
       // 7. Attach Full Forensic Audit Provenance (Algorithm 12 & Rule 21)
       const formattedContacts = leadsToProcess.map(r => ({

@@ -219,20 +219,36 @@ function _scrapeSingleProfile(pageCompanyContext) {
     connections = ts.extractConnectionCount(document.body ? document.body.innerText : '');
   }
 
+  // Helper for modern LinkedIn DOM (closest section traversal)
+  function getSectionListItems(sectionId) {
+    const anchor = document.getElementById(sectionId) || document.querySelector(`[data-section="${sectionId}"]`);
+    if (!anchor) return [];
+    const section = anchor.closest('section');
+    if (!section) return [];
+    // Return direct list items to avoid double-counting nested roles
+    return Array.from(section.querySelectorAll('ul > li')).filter(li => {
+      // Only include items that are part of the main section list, not sub-lists
+      const parentUl = li.parentElement;
+      return parentUl && !parentUl.closest('li'); 
+    });
+  }
+
   // 5. Education (School / University)
   let education = ts.text([
     'a[href*="/school/"] span[aria-hidden="true"]',
     'a[href*="/school/"] span',
     'a[href*="/school/"]',
-    '#education ~ div ul li .hoverable-link-text span[aria-hidden="true"]',
-    '#education ~ div ul li h3 span[aria-hidden="true"]',
-    '#education ~ div ul li h3',
-    '.education__list-item h3',
-    'section[data-section="education"] h3',
+    '.education__list-item h3'
   ]);
 
   if (!education) {
-    // Check right panel items for university keywords
+    const eduItems = getSectionListItems('education');
+    if (eduItems.length > 0) {
+      education = ts.text(['.hoverable-link-text span[aria-hidden="true"]', 'span[aria-hidden="true"]', 'h3', '.t-bold'], eduItems[0]);
+    }
+  }
+
+  if (!education) {
     const rightPanelAnchors = document.querySelectorAll('.pv-text-details__right-panel a, .pv-text-details__right-panel li');
     rightPanelAnchors.forEach(a => {
       const txt = a.textContent?.trim();
@@ -252,6 +268,13 @@ function _scrapeSingleProfile(pageCompanyContext) {
     '.pv-about-section .pv-about__summary-text',
     '.pv-about-section .inline-show-more-text',
   ]);
+  
+  if (!aboutSummary) {
+    const aboutAnchor = document.getElementById('about');
+    if (aboutAnchor && aboutAnchor.closest('section')) {
+      aboutSummary = ts.text(['span[aria-hidden="true"]', '.inline-show-more-text', 'p'], aboutAnchor.closest('section'));
+    }
+  }
   const aboutInsights = ts.decomposeAboutSection(aboutSummary);
 
   // 7. Full Experience Timeline (Current vs Previous Employers)
@@ -259,8 +282,15 @@ function _scrapeSingleProfile(pageCompanyContext) {
   let previousCompany = null;
   const experienceHistory = [];
 
-  const expSection = document.querySelectorAll('#experience ~ div ul > li, section[data-section="experience"] li, .pv-profile-section__list-item');
-  expSection.forEach((item, idx) => {
+  const expItems = getSectionListItems('experience');
+  if (expItems.length === 0) {
+    // Fallback for older DOMs
+    const oldExp = document.querySelectorAll('#experience ~ div ul > li, section[data-section="experience"] li, .pv-profile-section__list-item');
+    oldExp.forEach(e => expItems.push(e));
+  }
+
+  expItems.forEach((item, idx) => {
+    // LinkedIn often puts the company name in different places depending on if it's a single role or multiple roles at the same company
     const roleTitle = ts.text(['.hoverable-link-text span[aria-hidden="true"]', 'span[aria-hidden="true"]', '.t-bold'], item);
     const expComp = ts.text(['.t-normal span[aria-hidden="true"]', '.t-14.t-normal', '.pv-entity__secondary-title'], item);
     const dateRange = ts.text(['.t-black--light span[aria-hidden="true"]', '.pv-entity__date-range', '.t-14.t-black--light'], item);
@@ -314,8 +344,12 @@ function _scrapeSingleProfile(pageCompanyContext) {
 
   // 9. Skills & Core Competencies
   const skillsList = [];
-  const skillNodes = document.querySelectorAll('#skills ~ div ul > li, section[data-section="skills"] li, .pv-skill-categories-section li');
-  skillNodes.forEach(node => {
+  const skillItems = getSectionListItems('skills');
+  if (skillItems.length === 0) {
+    document.querySelectorAll('#skills ~ div ul > li, .pv-skill-categories-section li').forEach(e => skillItems.push(e));
+  }
+  
+  skillItems.forEach(node => {
     const skillName = ts.text(['.hoverable-link-text span[aria-hidden="true"]', 'span[aria-hidden="true"]', '.t-bold'], node);
     if (skillName && skillName.length >= 2 && skillName.length <= 40 && !ts.isUIAction(skillName)) {
       if (!skillsList.includes(skillName)) skillsList.push(skillName);
@@ -324,8 +358,12 @@ function _scrapeSingleProfile(pageCompanyContext) {
 
   // 10. Certifications & Licenses
   const certsList = [];
-  const certNodes = document.querySelectorAll('#licenses_and_certifications ~ div ul > li, section[data-section="certifications"] li');
-  certNodes.forEach(node => {
+  const certItems = getSectionListItems('licenses_and_certifications');
+  if (certItems.length === 0) {
+    document.querySelectorAll('#licenses_and_certifications ~ div ul > li').forEach(e => certItems.push(e));
+  }
+  
+  certItems.forEach(node => {
     const certTitle = ts.text(['.hoverable-link-text span[aria-hidden="true"]', 'span[aria-hidden="true"]', '.t-bold'], node);
     const certOrg = ts.text(['.t-normal span[aria-hidden="true"]', '.t-14.t-normal'], node);
     if (certTitle && !ts.isUIAction(certTitle)) {

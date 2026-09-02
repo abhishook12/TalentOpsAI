@@ -14,8 +14,41 @@ const BATCH_SIZE = 25;
 let contactQueue = [];
 let sessionStats = { captured: 0, sent: 0, duplicates: 0, errors: 0 };
 let deviceId = null;
-let fastFlushTimer = null;
+let isFlushing = false;
 let sessionLogs = [];
+
+async function loadQueueFromStorage() {
+  try {
+    const local = await chrome.storage.local.get(['pendingContactQueue', 'sessionStats']);
+    if (Array.isArray(local.pendingContactQueue) && local.pendingContactQueue.length > 0) {
+      // Merge unique
+      const existingIds = new Set(contactQueue.map(c => c.discovery_id || c.recruiter_name));
+      local.pendingContactQueue.forEach(c => {
+        const id = c.discovery_id || c.recruiter_name;
+        if (!existingIds.has(id)) {
+          contactQueue.push(c);
+          existingIds.add(id);
+        }
+      });
+    }
+    if (local.sessionStats) {
+      sessionStats = { ...sessionStats, ...local.sessionStats };
+    }
+  } catch (_) {}
+}
+
+async function saveQueueToStorage() {
+  try {
+    await chrome.storage.local.set({
+      pendingContactQueue: contactQueue,
+      sessionStats: sessionStats,
+      queueLength: contactQueue.length,
+    });
+  } catch (_) {}
+}
+
+// Restore queue on startup
+loadQueueFromStorage();
 
 function addSessionLog(evt) {
   sessionLogs.unshift({
@@ -165,7 +198,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           contactQueue.push(...contacts);
           sessionStats.captured += contacts.length;
 
-          // Save recent captures and cumulative total in local storage
+          // Save recent captures, cumulative total, and pending queue in local storage
           const local = await chrome.storage.local.get(['recentCaptures', 'totalCollectedEver']);
           const existingRecent = local.recentCaptures || [];
           const updatedRecent = [...contacts.slice(0, 5), ...existingRecent].slice(0, 15);
@@ -174,6 +207,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             recentCaptures: updatedRecent,
             totalCollectedEver: totalEver,
           });
+          await saveQueueToStorage();
 
           // High-Speed Real-Time Sync: Flush immediately
           flushQueue();
@@ -374,73 +408,91 @@ async function activateExtension(code) {
   }
 }
 
-// ── 6. Flush Queue to Database ────────────────────────────────
+// ── 6. Flush Queue to Database (Full Queue Drain Loop) ─────────
 
 async function flushQueue() {
-  if (contactQueue.length === 0) return 0;
+  if (isFlushing) return 0;
+  isFlushing = true;
 
-  const l = await chrome.storage.local.get(['authToken']);
-  const s = await chrome.storage.sync.get(['authToken']);
-  let token = l.authToken || s.authToken;
-
-  if (!token) {
-    token = await autoActivateExtension();
-  }
-  if (!token) return 0;
-
-  const batch = contactQueue.splice(0, BATCH_SIZE);
+  let totalFlushed = 0;
 
   try {
-    const res = await fetch(`${PRODUCTION_API}${BATCH_ENDPOINT}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        'X-Device-ID': deviceId || 'unknown',
-        'X-Extension-Version': chrome.runtime.getManifest().version,
-      },
-      body: JSON.stringify({
-        contacts: batch,
-        device_id: deviceId,
-        session_stats: sessionStats,
-      }),
-    });
+    await loadQueueFromStorage();
+    if (contactQueue.length === 0) return 0;
 
-    const data = await res.json().catch(() => ({}));
+    const l = await chrome.storage.local.get(['authToken']);
+    const s = await chrome.storage.sync.get(['authToken']);
+    let token = l.authToken || s.authToken;
 
-    if (res.ok) {
-      const stagedCount = data.staged || data.accepted || 0;
-      const processedCount = stagedCount + (data.duplicates || 0);
-      sessionStats.sent += processedCount;
-      sessionStats.duplicates += data.duplicates || 0;
-
-      const pStats = data.processor_stats || {};
-      const logDetail = pStats.processed !== undefined 
-        ? `Staged & Processed ${stagedCount} discoveries (${pStats.new || 0} new, ${pStats.enriched || 0} enriched, ${pStats.review || 0} review)`
-        : `Staged ${stagedCount} discoveries in batch intelligence queue`;
-
-      addSessionLog({
-        timestamp: new Date().toLocaleTimeString(),
-        type: 'DATABASE_SYNC_SUCCESS',
-        detail: logDetail,
-      });
-
-      const cur = await chrome.storage.local.get(['totalSent']);
-      await chrome.storage.local.set({
-        lastFlushAt: new Date().toISOString(),
-        lastAccepted: stagedCount,
-        totalSent: (cur.totalSent || 0) + processedCount,
-      });
-      return processedCount;
-    } else {
-      contactQueue.unshift(...batch);
-      sessionStats.errors += 1;
-      return 0;
+    if (!token) {
+      token = await autoActivateExtension();
     }
-  } catch (e) {
-    contactQueue.unshift(...batch);
-    return 0;
+    if (!token) return 0;
+
+    while (contactQueue.length > 0) {
+      const batch = contactQueue.splice(0, BATCH_SIZE);
+
+      try {
+        const res = await fetch(`${PRODUCTION_API}${BATCH_ENDPOINT}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'X-Device-ID': deviceId || 'unknown',
+            'X-Extension-Version': chrome.runtime.getManifest().version,
+          },
+          body: JSON.stringify({
+            contacts: batch,
+            device_id: deviceId,
+            session_stats: sessionStats,
+          }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok) {
+          const stagedCount = data.staged || data.accepted || batch.length;
+          const processedCount = stagedCount + (data.duplicates || 0);
+          sessionStats.sent += processedCount;
+          sessionStats.duplicates += data.duplicates || 0;
+          totalFlushed += processedCount;
+
+          const pStats = data.processor_stats || {};
+          const logDetail = pStats.processed !== undefined 
+            ? `Staged & Processed ${stagedCount} discoveries (${pStats.new || 0} new, ${pStats.enriched || 0} enriched, ${pStats.review || 0} review)`
+            : `Staged ${stagedCount} discoveries in batch intelligence queue`;
+
+          addSessionLog({
+            timestamp: new Date().toLocaleTimeString(),
+            type: 'DATABASE_SYNC_SUCCESS',
+            detail: logDetail,
+          });
+
+          const cur = await chrome.storage.local.get(['totalSent']);
+          const nextSent = (cur.totalSent || 0) + processedCount;
+          await chrome.storage.local.set({
+            lastFlushAt: new Date().toISOString(),
+            lastAccepted: stagedCount,
+            totalSent: nextSent,
+          });
+          await saveQueueToStorage();
+        } else {
+          contactQueue.unshift(...batch);
+          sessionStats.errors += 1;
+          await saveQueueToStorage();
+          break; // Stop loop on server error
+        }
+      } catch (netErr) {
+        contactQueue.unshift(...batch);
+        await saveQueueToStorage();
+        break; // Stop loop on network error
+      }
+    }
+  } finally {
+    isFlushing = false;
   }
+
+  return totalFlushed;
 }
 
 // ── 7. Heartbeat Telemetry ────────────────────────────────────

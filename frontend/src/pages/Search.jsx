@@ -1261,6 +1261,45 @@ export default function AISearch() {
                 </div>
               </div>
 
+              {/* Skills & Experience Deep Extraction Section */}
+              {((selected.skills && selected.skills.length > 0) || (selected.experience_history && selected.experience_history.length > 0) || selected.education) && (
+                <div style={{ border: '1px solid var(--card-border)', borderRadius: 6, padding: 12, background: 'var(--card-bg)' }}>
+                  <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
+                    Skills & Career History
+                  </div>
+                  {selected.education && (
+                    <div style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-secondary)' }}>
+                      🎓 <b>Education:</b> {selected.education}
+                    </div>
+                  )}
+                  {selected.skills && selected.skills.length > 0 && (
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, marginBottom: 4 }}>Skills ({selected.skills.length})</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {selected.skills.map((s, idx) => (
+                          <span key={idx} style={{ fontSize: 10, fontWeight: 600, background: 'rgba(56,189,248,0.1)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)', padding: '2px 6px', borderRadius: 4 }}>
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {selected.experience_history && selected.experience_history.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, marginBottom: 4 }}>Career History</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {selected.experience_history.map((exp, idx) => (
+                          <div key={idx} style={{ borderLeft: '2px solid #38bdf8', paddingLeft: 6, fontSize: 11 }}>
+                            <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{exp.title || 'Role'}</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{exp.company} {exp.date_range ? `(${exp.date_range})` : ''}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div style={{ border: '1px solid var(--card-border)', borderRadius: 6, padding: 12, background: 'var(--card-bg)' }}>
                 <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>Company / firm analysis</div>
 

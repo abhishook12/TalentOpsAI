@@ -311,6 +311,55 @@
     }
   });
 
+  let lastContactFetchUrl = null;
+  async function autonomousContactInfoFetch(cleanUrl) {
+    if (!cleanUrl || !cleanUrl.includes('/in/') || lastContactFetchUrl === cleanUrl) return null;
+    lastContactFetchUrl = cleanUrl;
+    try {
+      const overlayUrl = cleanUrl.replace(/\/+$/, '') + '/overlay/contact-info/';
+      const resp = await fetch(overlayUrl, {
+        credentials: 'include',
+        headers: { 'Accept': 'text/html,application/xhtml+xml,application/xml' }
+      });
+      if (!resp.ok) return null;
+      const html = await resp.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+
+      const email = doc.querySelector('.ci-email .pv-contact-info__contact-link, a[href^="mailto:"]')?.textContent?.trim();
+      const phone = doc.querySelector('.ci-phone .pv-contact-info__contact-link, .ci-phone span')?.textContent?.trim();
+      const websites = Array.from(doc.querySelectorAll('.ci-websites a, .pv-contact-info__contact-link[href*="http"]'))
+        .map(a => a.href)
+        .filter(u => u && !u.includes('linkedin.com'));
+      const twitter = doc.querySelector('a[href*="twitter.com"], a[href*="x.com"]')?.href;
+
+      return {
+        email: email ? email.replace(/^mailto:/i, '').trim() : null,
+        phone: phone ? phone.replace(/^tel:/i, '').trim() : null,
+        website: websites[0] || null,
+        twitter: twitter || null,
+      };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function autoExpandProfileSections() {
+    try {
+      const moreButtons = document.querySelectorAll([
+        '.inline-show-more-text__button',
+        'button[aria-label*="see more" i]',
+        'button.pv-profile-section__see-more-inline',
+        'button[aria-expanded="false"]',
+      ].join(','));
+      moreButtons.forEach(btn => {
+        if (btn && btn.offsetParent !== null && !btn.disabled) {
+          btn.click();
+        }
+      });
+    } catch (_) {}
+  }
+
   // ── Algorithm 6, 7, 8, 12: CORE FUSION, SCORING & GATING ENGINE ──
   async function runAutonomousFusionScan(force = false) {
     if (isScanning && !force) return;
@@ -318,12 +367,37 @@
     lastCaptureTimestamp = new Date().toLocaleTimeString();
 
     try {
+      // 0. Auto-expand collapsed DOM sections
+      autoExpandProfileSections();
+
       // 1. STAGE A: Fast DOM & Microdata Heuristic Scanners (< 3ms)
       let domLeads = [];
       try {
         domLeads = runDomDetectorPipeline();
       } catch (domErr) {
         logEvent('DOM_ERROR', String(domErr?.message || domErr).slice(0, 120));
+      }
+
+      // 1b. Autonomous Contact Info Overlay Resolution for Candidates
+      const cleanUrl = location.href.split('?')[0].split('#')[0];
+      if (/^\/(in|pub)\//.test(location.pathname) && (!activeCandidateSession.email || !activeCandidateSession.phone)) {
+        try {
+          const contactData = await autonomousContactInfoFetch(cleanUrl);
+          if (contactData) {
+            domLeads.forEach(d => {
+              if (d.entity_type !== 'COMPANY') {
+                if (contactData.email && !d.email) d.email = contactData.email;
+                if (contactData.phone && !d.phone) d.phone = contactData.phone;
+                if (contactData.website && !d.website) d.website = contactData.website;
+                if (contactData.twitter && !d.twitter) d.twitter = contactData.twitter;
+              }
+            });
+            if (contactData.email) activeCandidateSession.email = contactData.email;
+            if (contactData.phone) activeCandidateSession.phone = contactData.phone;
+            if (contactData.website) activeCandidateSession.website = contactData.website;
+            if (contactData.twitter) activeCandidateSession.twitter = contactData.twitter;
+          }
+        } catch (_) {}
       }
 
       // 2. STAGE B: Visual Screen Capture with Strict 1.5s Watchdog
@@ -354,8 +428,6 @@
       });
 
       // 4b. Multi-Frame Progressive Entity Lock (Candidate vs Company)
-      const cleanUrl = location.href.split('?')[0].split('#')[0];
-
       // A. Candidate Profile View (/in/ or /pub/)
       if (/^\/(in|pub)\//.test(location.pathname)) {
         if (activeCandidateSession.profileUrl !== cleanUrl) {
@@ -767,7 +839,7 @@
     return Array.from(mergedMap.values());
   }
 
-  // ── Algorithms 14 & 15: Field-Level Deduplication & Enrichment ──
+  // ── Algorithms 14 & 15: Field-Level Deduplication & Progressive Enrichment ──
   async function evaluateFieldLevelDeduplication(results) {
     const stored = await new Promise(r => chrome.storage.local.get(['knownEntityFieldMap'], r));
     const entityMap = stored.knownEntityFieldMap || {};
@@ -782,9 +854,14 @@
         : ('cand:' + (r.linkedin_url || r.email || `${r.recruiter_name}@${r.company_name}` || '')).toLowerCase();
       if (!entityKey || entityKey === 'co:' || entityKey === 'cand:') return;
 
-      const existingRecord = entityMap[entityKey];
+      const existing = entityMap[entityKey];
 
-      if (!existingRecord) {
+      const expCount = (r.experience_history && Array.isArray(r.experience_history)) ? r.experience_history.length : 0;
+      const skillCount = (r.skills && Array.isArray(r.skills)) ? r.skills.length : 0;
+      const certCount = (r.certifications && Array.isArray(r.certifications)) ? r.certifications.length : 0;
+      const aboutLen = (r.about_summary && typeof r.about_summary === 'string') ? r.about_summary.length : 0;
+
+      if (!existing) {
         // New Entity Sighting
         updatedMap[entityKey] = {
           entity_type: isComp ? 'COMPANY' : 'CANDIDATE',
@@ -794,34 +871,81 @@
           industry: r.industry,
           email: r.email,
           phone: r.phone,
+          website: r.website,
           linkedin: r.linkedin_url,
           location: r.location,
+          education: r.education,
+          about_length: aboutLen,
+          experience_count: expCount,
+          skills_count: skillCount,
+          certs_count: certCount,
+          employees_count: r.employees_count,
+          specialties: r.specialties,
+          founded: r.founded,
+          open_roles: r.open_roles,
+          overview: r.overview,
           lastSeen: Date.now(),
         };
         freshLeads.push({ ...r, db_action: 'NEW_DISCOVERY' });
       } else {
-        // Check for new fields (Algorithm 14 & 15: Field-Level Enrichment)
+        // Check for new fields (Algorithm 14 & 15: Progressive Field-Level Enrichment)
         let hasNewField = false;
         const fieldsAdded = [];
 
-        if (r.email && !existingRecord.email) { existingRecord.email = r.email; hasNewField = true; fieldsAdded.push('Email'); }
-        if (r.phone && !existingRecord.phone) { existingRecord.phone = r.phone; hasNewField = true; fieldsAdded.push('Phone'); }
-        if (r.title && !existingRecord.title) { existingRecord.title = r.title; hasNewField = true; fieldsAdded.push('Title'); }
-        if (r.company_name && !existingRecord.company) { existingRecord.company = r.company_name; hasNewField = true; fieldsAdded.push('Company'); }
-        if (r.location && !existingRecord.location) { existingRecord.location = r.location; hasNewField = true; fieldsAdded.push('Location'); }
-        if (r.linkedin_url && !existingRecord.linkedin) { existingRecord.linkedin = r.linkedin_url; hasNewField = true; fieldsAdded.push('LinkedIn'); }
-        
-        // Deep Profile Enrichment Triggers
-        if (r.education && !existingRecord.education) { existingRecord.education = r.education; hasNewField = true; fieldsAdded.push('Education'); }
-        if (r.about_summary && !existingRecord.about_summary) { existingRecord.about_summary = r.about_summary; hasNewField = true; fieldsAdded.push('About'); }
-        if (r.experience_history && !existingRecord.experience_history) { existingRecord.experience_history = r.experience_history; hasNewField = true; fieldsAdded.push('Experience'); }
-        if (r.skills && !existingRecord.skills) { existingRecord.skills = r.skills; hasNewField = true; fieldsAdded.push('Skills'); }
-        if (r.connections_count && !existingRecord.connections_count) { existingRecord.connections_count = r.connections_count; hasNewField = true; fieldsAdded.push('Connections'); }
-        if (r.certifications && !existingRecord.certifications) { existingRecord.certifications = r.certifications; hasNewField = true; fieldsAdded.push('Certifications'); }
+        // Basic Contact & Profile Fields
+        if (r.email && !existing.email) { existing.email = r.email; hasNewField = true; fieldsAdded.push('Email'); }
+        if (r.phone && !existing.phone) { existing.phone = r.phone; hasNewField = true; fieldsAdded.push('Phone'); }
+        if (r.website && !existing.website) { existing.website = r.website; hasNewField = true; fieldsAdded.push('Website'); }
+        if (r.title && (!existing.title || existing.title.toLowerCase() === 'professional')) { existing.title = r.title; hasNewField = true; fieldsAdded.push('Title'); }
+        if (r.company_name && (!existing.company || existing.company.toLowerCase() === 'company')) { existing.company = r.company_name; hasNewField = true; fieldsAdded.push('Company'); }
+        if (r.location && (!existing.location || existing.location === '—')) { existing.location = r.location; hasNewField = true; fieldsAdded.push('Location'); }
+        if (r.education && (!existing.education || existing.education === '—')) { existing.education = r.education; hasNewField = true; fieldsAdded.push('Education'); }
+        if (r.linkedin_url && !existing.linkedin) { existing.linkedin = r.linkedin_url; hasNewField = true; fieldsAdded.push('LinkedIn'); }
+
+        // Company Firmographics Enrichment Checks
+        if (isComp) {
+          if (r.employees_count && !existing.employees_count) { existing.employees_count = r.employees_count; hasNewField = true; fieldsAdded.push('Employees'); }
+          if (r.industry && !existing.industry) { existing.industry = r.industry; hasNewField = true; fieldsAdded.push('Industry'); }
+          if (r.specialties && (!existing.specialties || r.specialties.length > (existing.specialties?.length || 0))) {
+            existing.specialties = r.specialties; hasNewField = true; fieldsAdded.push('Specialties');
+          }
+          if (r.founded && !existing.founded) { existing.founded = r.founded; hasNewField = true; fieldsAdded.push('Founded'); }
+          if (r.open_roles && !existing.open_roles) { existing.open_roles = r.open_roles; hasNewField = true; fieldsAdded.push('Open Roles'); }
+          if (r.overview && !existing.overview) { existing.overview = r.overview; hasNewField = true; fieldsAdded.push('Overview'); }
+        }
+
+        // Candidate Deep Progressive Enrichments
+        if (!isComp) {
+          if (expCount > (existing.experience_count || 0)) {
+            existing.experience_count = expCount;
+            hasNewField = true;
+            fieldsAdded.push(`Experience (${expCount} roles)`);
+          }
+          if (skillCount > (existing.skills_count || 0)) {
+            existing.skills_count = skillCount;
+            hasNewField = true;
+            fieldsAdded.push(`Skills (${skillCount} skills)`);
+          }
+          if (certCount > (existing.certs_count || 0)) {
+            existing.certs_count = certCount;
+            hasNewField = true;
+            fieldsAdded.push(`Certifications (${certCount} certs)`);
+          }
+          if (aboutLen > ((existing.about_length || 0) + 20)) {
+            existing.about_length = aboutLen;
+            hasNewField = true;
+            fieldsAdded.push('Expanded About');
+          }
+          if (r.connections_count && !existing.connections_count) {
+            existing.connections_count = r.connections_count;
+            hasNewField = true;
+            fieldsAdded.push('Connections');
+          }
+        }
 
         if (hasNewField) {
-          existingRecord.lastSeen = Date.now();
-          updatedMap[entityKey] = existingRecord;
+          existing.lastSeen = Date.now();
+          updatedMap[entityKey] = existing;
           enrichedLeads.push({
             ...r,
             db_action: 'ENRICHED',

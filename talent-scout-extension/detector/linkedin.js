@@ -84,12 +84,14 @@ function _scrapeCompanyProfile(pageCompanyContext) {
   const ts = window.TalentScout;
   const cleanUrl = location.href.split('?')[0].split('#')[0];
 
-  // 1. Check Schema.org JSON-LD for official organization definition
+  // 1. Check Schema.org JSON-LD & Voyager Dash Embedded Data for official organization definition
   const jsonLdOrg = ts.extractJsonLd ? ts.extractJsonLd().organization : null;
+  const embeddedData = ts.extractEmbeddedLinkedInData ? ts.extractEmbeddedLinkedInData() : {};
+  const embeddedComp = embeddedData.company || null;
   const firmographics = ts.extractCompanyFirmographics ? ts.extractCompanyFirmographics() : {};
 
   // Company Name Extraction
-  let rawCompName = pageCompanyContext || (jsonLdOrg?.company_name) || ts.text([
+  let rawCompName = pageCompanyContext || embeddedComp?.name || (jsonLdOrg?.company_name) || ts.text([
     'h1.org-top-card-summary__title',
     'div[data-view-name="org-top-card"] h1',
     '.org-top-card-summary__title',
@@ -116,7 +118,7 @@ function _scrapeCompanyProfile(pageCompanyContext) {
   if (!compName || compName.toLowerCase() === 'linkedin' || compName.toLowerCase() === 'company name') return null;
 
   // 2. Headline / Tagline
-  let tagline = ts.text([
+  let tagline = embeddedComp?.tagline || ts.text([
     'p.org-top-card-summary__tagline',
     '.org-top-card-summary__tagline',
     'div[data-view-name="org-top-card"] p',
@@ -124,10 +126,10 @@ function _scrapeCompanyProfile(pageCompanyContext) {
     '.org-top-card-summary p'
   ]);
 
-  let industry = firmographics.industry || null;
-  let locationStr = firmographics.location || firmographics.headquarters || jsonLdOrg?.address || null;
+  let industry = embeddedComp?.industry || firmographics.industry || null;
+  let locationStr = embeddedComp?.location || firmographics.location || firmographics.headquarters || jsonLdOrg?.address || null;
   let followers = firmographics.followers || null;
-  let employees = firmographics.employees || jsonLdOrg?.numberOfEmployees || null;
+  let employees = embeddedComp?.employees || firmographics.employees || jsonLdOrg?.numberOfEmployees || null;
 
   // 3. Multi-Pass Modern LinkedIn Company Subline Scanner
   // e.g. "Staffing and Recruiting · Toledo, Ohio · 45K followers · 201-500 employees"
@@ -224,7 +226,7 @@ function _scrapeCompanyProfile(pageCompanyContext) {
     }
   }
 
-  const website = firmographics.website || jsonLdOrg?.url || ts.text([
+  const website = embeddedComp?.website || firmographics.website || jsonLdOrg?.url || ts.text([
     'a[data-control-name="topcard_website"]',
     'a.org-top-card-primary-actions__action',
     'a[href*="http"]:not([href*="linkedin.com"])',
@@ -241,11 +243,11 @@ function _scrapeCompanyProfile(pageCompanyContext) {
     followers_count: followers || null,
     employees_count: employees || null,
     website: website || null,
-    specialties: firmographics.specialties || null,
-    founded: firmographics.founded || null,
+    specialties: embeddedComp?.specialties || firmographics.specialties || null,
+    founded: embeddedComp?.founded || firmographics.founded || null,
     company_type: firmographics.company_type || null,
     open_roles: firmographics.open_roles || null,
-    overview: tagline || firmographics.overview || jsonLdOrg?.description || null,
+    overview: embeddedComp?.overview || tagline || firmographics.overview || jsonLdOrg?.description || null,
     linkedin_url: cleanUrl,
     source_platform: 'LinkedIn',
     source: 'linkedin_company_page',
@@ -349,11 +351,13 @@ function _scrapeSingleProfile(pageCompanyContext) {
   const ts = window.TalentScout;
   const cleanUrl = location.href.split('?')[0].split('#')[0];
 
-  // 0. Harvest Schema.org JSON-LD structured data (ground truth baseline)
+  // 0. Harvest Schema.org JSON-LD & Voyager Dash Embedded Data structured models
   const jsonLdPerson = ts.extractJsonLd ? ts.extractJsonLd().person : null;
+  const embeddedData = ts.extractEmbeddedLinkedInData ? ts.extractEmbeddedLinkedInData() : {};
+  const embeddedCand = embeddedData.candidate || null;
   const badges = ts.extractBadgesAndSignals ? ts.extractBadgesAndSignals() : {};
 
-  // 1. Name — try multiple modern and legacy LinkedIn DOM selectors + JSON-LD
+  // 1. Name — try multiple modern and legacy LinkedIn DOM selectors + JSON-LD + Embedded Data
   let name = ts.text([
     'h1.text-heading-xlarge',
     '.pv-text-details__left-panel h1',
@@ -368,7 +372,7 @@ function _scrapeSingleProfile(pageCompanyContext) {
     '.ph5 h1',
     '.mt2 h1',
     'h1',
-  ]) || jsonLdPerson?.name;
+  ]) || embeddedCand?.name || jsonLdPerson?.name;
 
   // 2. Title / Headline
   let rawTitle = ts.text([
@@ -381,7 +385,7 @@ function _scrapeSingleProfile(pageCompanyContext) {
     '[data-field="headline"]',
     '.artdeco-entity-lockup__subtitle',
     '.ph5 .text-body-medium',
-  ]) || jsonLdPerson?.jobTitle;
+  ]) || embeddedCand?.headline || jsonLdPerson?.jobTitle;
 
   // Harvest subtle small-text metadata (location, education, connections, followers, pronouns, talks about)
   const smallMeta = ts.extractSmallTextDetails ? ts.extractSmallTextDetails(document) : {};
@@ -458,7 +462,10 @@ function _scrapeSingleProfile(pageCompanyContext) {
     }
   }
 
-  // Strategy C: Small metadata / JSON-LD fallback
+  // Strategy C: Small metadata / Embedded Data / JSON-LD fallback
+  if (!candidateLocation && embeddedCand?.location && isValidLocation(embeddedCand.location)) {
+    candidateLocation = cleanLocationText(embeddedCand.location);
+  }
   if (!candidateLocation && smallMeta?.location && isValidLocation(smallMeta.location)) {
     candidateLocation = cleanLocationText(smallMeta.location);
   }
@@ -571,8 +578,17 @@ function _scrapeSingleProfile(pageCompanyContext) {
     }
   }
 
-  // 6. About / Summary Text & Semantic Decomposition
-  let aboutSummary = ts.text([
+  if (!education && embeddedData.educations && embeddedData.educations.length > 0) {
+    const e0 = embeddedData.educations[0];
+    education = `${e0.degree ? e0.degree + ' - ' : ''}${e0.school}${e0.field_of_study ? ' (' + e0.field_of_study + ')' : ''}`;
+  }
+
+  // 6. About / Summary Text & Semantic Decomposition (Prefers Un-truncated Embedded & Visually Hidden)
+  let aboutSummary = embeddedCand?.summary || ts.text([
+    '#about ~ div.display-flex .inline-show-more-text .visually-hidden',
+    'section[data-section="about"] .inline-show-more-text .visually-hidden',
+    '#about ~ div .inline-show-more-text .visually-hidden',
+    '.pv-about-section .inline-show-more-text .visually-hidden',
     '#about ~ div.display-flex span[aria-hidden="true"]',
     '#about ~ div .inline-show-more-text',
     '#about ~ div p',
@@ -585,7 +601,7 @@ function _scrapeSingleProfile(pageCompanyContext) {
   if (!aboutSummary) {
     const aboutAnchor = document.getElementById('about');
     if (aboutAnchor && aboutAnchor.closest('section')) {
-      aboutSummary = ts.text(['span[aria-hidden="true"]', '.inline-show-more-text', 'p'], aboutAnchor.closest('section'));
+      aboutSummary = ts.text(['.visually-hidden', 'span[aria-hidden="true"]', '.inline-show-more-text', 'p'], aboutAnchor.closest('section'));
     }
   }
   const aboutInsights = ts.decomposeAboutSection(aboutSummary);
@@ -630,6 +646,17 @@ function _scrapeSingleProfile(pageCompanyContext) {
     if (experienceHistory.length > 1 && !previousCompany) {
       const pastRole = experienceHistory.find((r, i) => i > 0 && r.company && r.company !== currentCompany);
       previousCompany = pastRole ? pastRole.company : null;
+    }
+  }
+
+  // Merge embedded Voyager Dash experience timeline if available
+  if (embeddedData.experiences && embeddedData.experiences.length > 0) {
+    embeddedData.experiences.forEach(e => {
+      const exists = experienceHistory.some(h => (h.title || '').toLowerCase() === (e.title || '').toLowerCase() && (h.company || '').toLowerCase() === (e.company || '').toLowerCase());
+      if (!exists) experienceHistory.push(e);
+    });
+    if (!currentCompany && experienceHistory.length > 0) {
+      currentCompany = experienceHistory[0].company || null;
     }
   }
 
@@ -687,17 +714,17 @@ function _scrapeSingleProfile(pageCompanyContext) {
     aboutSummary = null;
   }
 
-  // 8. Contact Info (Overlay & Deep Link Scanner)
-  let email = ts.text(['.ci-email .pv-contact-info__contact-link', 'a[href^="mailto:"]']);
+  // 8. Contact Info (Overlay & Deep Link Scanner & Embedded Voyager Data)
+  let email = embeddedData.contactInfo?.email || ts.text(['.ci-email .pv-contact-info__contact-link', 'a[href^="mailto:"]']);
   if (email && email.startsWith('mailto:')) email = email.replace(/^mailto:/i, '').trim();
-  let phone = ts.text(['.ci-phone .pv-contact-info__contact-link', '.ci-phone span']);
+  let phone = embeddedData.contactInfo?.phone || ts.text(['.ci-phone .pv-contact-info__contact-link', '.ci-phone span']);
   if (phone && phone.startsWith('tel:')) phone = phone.replace(/^tel:/i, '').trim();
-  let website = ts.text(['.ci-websites a', '.pv-contact-info__contact-link[href*="http"]']);
+  let website = embeddedData.contactInfo?.website || ts.text(['.ci-websites a', '.pv-contact-info__contact-link[href*="http"]']);
   let connectedDate = ts.text(['.ci-connected .t-14']);
 
   // Digital Presence Links
   const github = ts.text(['a[href*="github.com"]']);
-  const twitter = ts.text(['a[href*="twitter.com"]', 'a[href*="x.com"]']);
+  const twitter = embeddedData.contactInfo?.twitter || ts.text(['a[href*="twitter.com"]', 'a[href*="x.com"]']);
   const portfolio = ts.text(['a[href*="behance.net"]', 'a[href*="dribbble.com"]', 'a[href*="medium.com"]']);
 
   // Fallback body regex if not in overlay
@@ -718,6 +745,12 @@ function _scrapeSingleProfile(pageCompanyContext) {
 
   // 9. Skills & Core Competencies (Up to 50 skills)
   const skillsList = [];
+  if (embeddedData.skills && embeddedData.skills.length > 0) {
+    embeddedData.skills.forEach(s => {
+      if (!skillsList.includes(s) && !ts.isUIAction(s)) skillsList.push(s);
+    });
+  }
+
   const skillItems = getSectionListItems('skills');
   if (skillItems.length === 0) {
     document.querySelectorAll('#skills ~ div ul > li, .pv-skill-categories-section li').forEach(e => skillItems.push(e));
@@ -753,6 +786,12 @@ function _scrapeSingleProfile(pageCompanyContext) {
 
   // 10. Certifications & Licenses
   const certsList = [];
+  if (embeddedData.certifications && embeddedData.certifications.length > 0) {
+    embeddedData.certifications.forEach(c => {
+      if (!certsList.some(item => item.title === c.title)) certsList.push(c);
+    });
+  }
+
   const certItems = getSectionListItems('licenses_and_certifications');
   if (certItems.length === 0) {
     document.querySelectorAll('#licenses_and_certifications ~ div ul > li').forEach(e => certItems.push(e));
@@ -762,7 +801,9 @@ function _scrapeSingleProfile(pageCompanyContext) {
     const certTitle = ts.text(['.hoverable-link-text span[aria-hidden="true"]', 'span[aria-hidden="true"]', '.t-bold'], node);
     const certOrg = ts.text(['.t-normal span[aria-hidden="true"]', '.t-14.t-normal'], node);
     if (certTitle && !ts.isUIAction(certTitle)) {
-      certsList.push({ title: certTitle, issuer: certOrg || null });
+      if (!certsList.some(item => item.title === certTitle)) {
+        certsList.push({ title: certTitle, issuer: certOrg || null });
+      }
     }
   });
 

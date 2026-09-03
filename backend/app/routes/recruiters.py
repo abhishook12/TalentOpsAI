@@ -326,7 +326,8 @@ def serialize_recruiter(r):
         "all_emails": all_emails,
         "all_phones": all_phones,
         "linkedin": r.linkedin,
-        "specialization": r.specialization,
+        "title": getattr(r, "title", None) or r.specialization,
+        "specialization": r.specialization or getattr(r, "title", None),
         "notes": r.notes,
         "metadata_json": r.__dict__.get("metadata_json"),
         "raw_data": r.__dict__.get("raw_data"),
@@ -353,6 +354,16 @@ def serialize_recruiter(r):
         "is_active": r.is_active,
         "source_job_id": getattr(r, "source_job_id", None),
         "created_at": str(r.created_at) if getattr(r, "created_at", None) else None,
+        
+        # Deep Profile & Extraction Fields Unpacked
+        "skills": (json.loads(r.metadata_json).get("skills", []) if getattr(r, "metadata_json", None) and isinstance(r.metadata_json, str) and r.metadata_json.startswith("{") else []),
+        "experience_history": (json.loads(r.metadata_json).get("experience_history", []) if getattr(r, "metadata_json", None) and isinstance(r.metadata_json, str) and r.metadata_json.startswith("{") else []),
+        "education": (json.loads(r.metadata_json).get("education") if getattr(r, "metadata_json", None) and isinstance(r.metadata_json, str) and r.metadata_json.startswith("{") else None),
+        "about_summary": (json.loads(r.metadata_json).get("about_summary") if getattr(r, "metadata_json", None) and isinstance(r.metadata_json, str) and r.metadata_json.startswith("{") else None),
+        "is_open_to_work": bool(json.loads(r.metadata_json).get("is_open_to_work") if getattr(r, "metadata_json", None) and isinstance(r.metadata_json, str) and r.metadata_json.startswith("{") else False),
+        "is_hiring": bool(json.loads(r.metadata_json).get("is_hiring") if getattr(r, "metadata_json", None) and isinstance(r.metadata_json, str) and r.metadata_json.startswith("{") else False),
+        "pronouns": (json.loads(r.metadata_json).get("pronouns") if getattr(r, "metadata_json", None) and isinstance(r.metadata_json, str) and r.metadata_json.startswith("{") else None),
+        
         "structured_emails": [{
             "id": e.id, "email": e.email, "email_type": e.email_type, "status": e.status, 
             "confidence_score": e.confidence_score, "is_primary": e.is_primary, "source": e.source
@@ -474,6 +485,12 @@ def search_recruiters(
 
         pg_recs = pg_query.limit(25).all()
         for r in reversed(pg_recs):
+            meta = {}
+            if getattr(r, "metadata_json", None) and isinstance(r.metadata_json, str) and r.metadata_json.startswith("{"):
+                try:
+                    meta = json.loads(r.metadata_json)
+                except Exception:
+                    pass
             rec_dict = {
                 "recruiter_id": r.recruiter_id,
                 "recruiter_name": r.recruiter_name,
@@ -484,6 +501,13 @@ def search_recruiters(
                 "company_id": r.company_id,
                 "company_name": r.company.company_name if r.company else None,
                 "location": r.location,
+                "skills": meta.get("skills", []),
+                "experience_history": meta.get("experience_history", []),
+                "education": meta.get("education"),
+                "about_summary": meta.get("about_summary"),
+                "is_open_to_work": bool(meta.get("is_open_to_work", False)),
+                "is_hiring": bool(meta.get("is_hiring", False)),
+                "pronouns": meta.get("pronouns"),
                 "quality_score": 95,
                 "completeness_score": 90,
                 "relevance_score": 300,  # Top priority for live discoveries
@@ -606,6 +630,15 @@ def search_recruiters(
             "company_scale": row.get("company_scale", "Enterprise"),
             "is_deliverable": row.get("is_deliverable", True),
             "quality_tier": _search_quality_tier(row),
+
+            # Deep Profile & Provenance Attributes
+            "skills": row.get("skills", []),
+            "experience_history": row.get("experience_history", []),
+            "education": row.get("education"),
+            "about_summary": row.get("about_summary"),
+            "is_open_to_work": row.get("is_open_to_work"),
+            "is_hiring": row.get("is_hiring"),
+            "pronouns": row.get("pronouns"),
         })
 
     # ── Deduplicate by normalized name: merge contact info into highest-scoring record ──

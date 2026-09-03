@@ -53,6 +53,7 @@ class DiscoveryStaging(Base):
     experience_history = Column(Text, nullable=True)  # JSON-encoded array of past roles & dates
     skills = Column(Text, nullable=True)  # JSON-encoded array of skills
     field_provenance = Column(Text, nullable=True)  # JSON mapping of field -> capture_id
+    metadata_json = Column(Text, nullable=True)  # Badges, signals, firmographics, channels
 
     created_at = Column(TIMESTAMP, server_default=func.now(), index=True)
     processed_at = Column(TIMESTAMP, nullable=True)
@@ -84,6 +85,7 @@ class ResolvedPerson(Base):
     experience_history = Column(Text, nullable=True)  # JSON-encoded array of past roles & dates
     skills = Column(Text, nullable=True)
     field_provenance = Column(Text, nullable=True)
+    metadata_json = Column(Text, nullable=True)
 
     identity_confidence = Column(Float, default=0.0)
     observation_count = Column(Integer, default=1)

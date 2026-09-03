@@ -822,6 +822,174 @@ window.TalentScout.extractJsonLd = function(doc = document) {
 };
 
 /**
+ * Extract rich pre-hydrated Voyager Dash JSON data from <code id*="bpr-guid"> and <script> tags
+ */
+window.TalentScout.extractEmbeddedLinkedInData = function(doc = document) {
+  const result = {
+    candidate: null,
+    company: null,
+    experiences: [],
+    educations: [],
+    skills: [],
+    certifications: [],
+    languages: [],
+    contactInfo: { email: null, phone: null, website: null, twitter: null },
+  };
+
+  try {
+    const codeElements = doc.querySelectorAll('code[id*="bpr-guid"], script[type="application/json"]');
+    for (const el of codeElements) {
+      const raw = el.textContent?.trim();
+      if (!raw || !raw.startsWith('{') || (!raw.includes('"included"') && !raw.includes('"data"'))) continue;
+
+      try {
+        const json = JSON.parse(raw);
+        const included = Array.isArray(json.included) ? json.included : (json.data ? [json.data] : []);
+
+        for (const item of included) {
+          if (!item || typeof item !== 'object') continue;
+          const type = (item.$type || item['@type'] || '').toLowerCase();
+
+          // 1. Candidate Profile Model
+          if (type.includes('identity.profile.profile') || type.includes('identitydashprofile') || (item.firstName && item.lastName && item.headline)) {
+            const fName = (typeof item.firstName === 'string') ? item.firstName : (item.firstName?.text || '');
+            const lName = (typeof item.lastName === 'string') ? item.lastName : (item.lastName?.text || '');
+            const fullName = `${fName} ${lName}`.trim();
+            const hLine = (typeof item.headline === 'string') ? item.headline : (item.headline?.text || '');
+            const summary = (typeof item.summary === 'string') ? item.summary : (item.summary?.text || '');
+            const loc = item.geoRegionName || item.locationName || (typeof item.location === 'string' ? item.location : null);
+            const pronouns = item.pronoun || null;
+
+            if (fullName && (!result.candidate || !result.candidate.name)) {
+              result.candidate = {
+                name: fullName,
+                headline: hLine,
+                summary: summary || null,
+                location: loc || null,
+                pronouns: pronouns,
+                isOpenToWork: Boolean(item.openToWork || item.isOpenToWork),
+                isHiring: Boolean(item.hiring || item.isHiring),
+              };
+            }
+          }
+
+          // 2. Experience / Positions
+          if (type.includes('identity.profile.position') || type.includes('dashposition') || (item.companyName && item.title)) {
+            const roleTitle = (typeof item.title === 'string') ? item.title : (item.title?.text || '');
+            const comp = (typeof item.companyName === 'string') ? item.companyName : (item.companyName?.text || '');
+            const loc = (typeof item.locationName === 'string') ? item.locationName : (item.locationName?.text || '');
+            const desc = (typeof item.description === 'string') ? item.description : (item.description?.text || '');
+
+            let dateRange = null;
+            if (item.timePeriod) {
+              const start = item.timePeriod.startDate ? `${item.timePeriod.startDate.month ? item.timePeriod.startDate.month + '/' : ''}${item.timePeriod.startDate.year || ''}` : '';
+              const end = item.timePeriod.endDate ? `${item.timePeriod.endDate.month ? item.timePeriod.endDate.month + '/' : ''}${item.timePeriod.endDate.year || ''}` : 'Present';
+              if (start || end) dateRange = `${start} - ${end}`.trim();
+            }
+
+            if (roleTitle && !result.experiences.some(e => e.title === roleTitle && e.company === comp)) {
+              result.experiences.push({
+                title: roleTitle,
+                company: comp || null,
+                date_range: dateRange,
+                location: loc || null,
+                description: desc ? desc.slice(0, 500) : null,
+                is_current: !item.timePeriod?.endDate,
+              });
+            }
+          }
+
+          // 3. Education
+          if (type.includes('identity.profile.education') || type.includes('dasheducation') || item.schoolName) {
+            const school = (typeof item.schoolName === 'string') ? item.schoolName : (item.schoolName?.text || '');
+            const degree = (typeof item.degreeName === 'string') ? item.degreeName : (item.degreeName?.text || '');
+            const field = (typeof item.fieldOfStudy === 'string') ? item.fieldOfStudy : (item.fieldOfStudy?.text || '');
+
+            let dateRange = null;
+            if (item.timePeriod) {
+              const start = item.timePeriod.startDate?.year || '';
+              const end = item.timePeriod.endDate?.year || '';
+              if (start || end) dateRange = `${start} - ${end}`.trim();
+            }
+
+            if (school && !result.educations.some(e => e.school === school)) {
+              result.educations.push({
+                school: school,
+                degree: degree || null,
+                field_of_study: field || null,
+                date_range: dateRange,
+              });
+            }
+          }
+
+          // 4. Skills
+          if (type.includes('identity.profile.skill') || type.includes('dashskill') || (item.name && type.includes('skill'))) {
+            const skillName = (typeof item.name === 'string') ? item.name : (item.name?.text || '');
+            if (skillName && skillName.length >= 2 && !result.skills.includes(skillName)) {
+              result.skills.push(skillName);
+            }
+          }
+
+          // 5. Certifications
+          if (type.includes('identity.profile.certification') || (item.name && item.authority)) {
+            const certName = (typeof item.name === 'string') ? item.name : (item.name?.text || '');
+            const auth = (typeof item.authority === 'string') ? item.authority : (item.authority?.text || item.companyName || '');
+            if (certName && !result.certifications.some(c => c.title === certName)) {
+              result.certifications.push({ title: certName, issuer: auth || null });
+            }
+          }
+
+          // 6. Contact Info
+          if (type.includes('identity.profile.profilecontactinfo') || type.includes('contactinfo')) {
+            if (item.emailAddress) result.contactInfo.email = item.emailAddress;
+            if (item.phoneNumbers && Array.isArray(item.phoneNumbers) && item.phoneNumbers[0]?.number) {
+              result.contactInfo.phone = item.phoneNumbers[0].number;
+            }
+            if (item.websites && Array.isArray(item.websites) && item.websites[0]?.url) {
+              result.contactInfo.website = item.websites[0].url;
+            }
+            if (item.twitterHandles && Array.isArray(item.twitterHandles) && item.twitterHandles[0]?.name) {
+              result.contactInfo.twitter = `https://twitter.com/${item.twitterHandles[0].name}`;
+            }
+          }
+
+          // 7. Company Organization Model
+          if (type.includes('organization.company') || type.includes('dashcompany') || (item.name && (item.universalName || item.staffCountRange || item.industries))) {
+            const cName = (typeof item.name === 'string') ? item.name : (item.name?.text || '');
+            const tagline = (typeof item.tagline === 'string') ? item.tagline : (item.tagline?.text || '');
+            const desc = (typeof item.description === 'string') ? item.description : (item.description?.text || '');
+            const web = item.websiteUrl || item.url || null;
+            const staff = item.staffCount || item.employeeCountRange || (item.staffCountRange ? `${item.staffCountRange.start}-${item.staffCountRange.end} employees` : null);
+            const founded = item.foundedOn?.year || null;
+            const specialties = Array.isArray(item.specialities || item.specialties) ? (item.specialities || item.specialties) : null;
+            const ind = Array.isArray(item.industries) ? item.industries[0] : (typeof item.industry === 'string' ? item.industry : null);
+            const hq = item.confirmedLocations && Array.isArray(item.confirmedLocations) && item.confirmedLocations[0]
+              ? `${item.confirmedLocations[0].city || ''}, ${item.confirmedLocations[0].geographicArea || ''} ${item.confirmedLocations[0].country || ''}`.trim()
+              : null;
+
+            if (cName && (!result.company || !result.company.name)) {
+              result.company = {
+                name: cName,
+                tagline: tagline || null,
+                overview: desc || null,
+                website: web,
+                employees: staff ? String(staff) : null,
+                founded: founded ? String(founded) : null,
+                specialties: specialties,
+                industry: ind,
+                location: hq,
+              };
+            }
+          }
+        }
+      } catch (_) {}
+    }
+  } catch (_) {}
+
+  return result;
+};
+
+/**
  * Extract Badges and Status Signals (OpenToWork, Hiring, Verified, Pronouns)
  */
 window.TalentScout.extractBadgesAndSignals = function(root = document) {

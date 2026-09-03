@@ -141,15 +141,42 @@ class DiscoveryProcessor:
                             Company.company_name.ilike(comp_name)
                         ).first()
 
+                        comp_website = None
+                        if r.metadata_json:
+                            try:
+                                m_dict = json.loads(r.metadata_json)
+                                comp_website = m_dict.get('website')
+                            except Exception:
+                                pass
+
                         if not existing_comp:
                             new_comp = Company(
                                 company_name=comp_name,
                                 canonical_name=comp_name,
+                                industry=r.raw_title or None,
+                                location=r.raw_location or None,
+                                website=comp_website,
+                                linkedin_url=r.raw_linkedin or None,
+                                metadata_json=r.metadata_json or None,
                                 verification_status="verified_extension",
                                 trust_score=90,
                                 data_source="extension_company_extractor",
                             )
                             self.db.add(new_comp)
+                            self.db.flush()
+                        else:
+                            # Enrich existing company with incoming details
+                            if not existing_comp.industry and r.raw_title:
+                                existing_comp.industry = r.raw_title
+                            if not existing_comp.location and r.raw_location:
+                                existing_comp.location = r.raw_location
+                            if not existing_comp.website and comp_website:
+                                existing_comp.website = comp_website
+                            if not existing_comp.linkedin_url and r.raw_linkedin:
+                                existing_comp.linkedin_url = r.raw_linkedin
+                            if not existing_comp.metadata_json and r.metadata_json:
+                                existing_comp.metadata_json = r.metadata_json
+                            self.db.add(existing_comp)
                             self.db.flush()
 
                         r.processing_status = 'committed'
@@ -832,15 +859,31 @@ class DiscoveryProcessor:
                 if person.education and not meta.get("education"):
                     meta["education"] = person.education
                     fields_enriched.append("Education")
-                if person.skills and not meta.get("skills"):
-                    meta["skills"] = json.loads(person.skills)
-                    fields_enriched.append("Skills")
-                if person.experience_history and not meta.get("experience_history"):
-                    meta["experience_history"] = json.loads(person.experience_history)
-                    fields_enriched.append("Experience")
-                if person.about_summary and not meta.get("about_summary"):
-                    meta["about_summary"] = person.about_summary
-                    fields_enriched.append("About")
+                if person.skills:
+                    try:
+                        incoming_skills = json.loads(person.skills) if isinstance(person.skills, str) else person.skills
+                        existing_skills = meta.get("skills") or []
+                        if len(incoming_skills) > len(existing_skills):
+                            meta["skills"] = incoming_skills
+                            fields_enriched.append(f"Skills (+{len(incoming_skills) - len(existing_skills)})")
+                    except Exception:
+                        pass
+
+                if person.experience_history:
+                    try:
+                        incoming_exp = json.loads(person.experience_history) if isinstance(person.experience_history, str) else person.experience_history
+                        existing_exp = meta.get("experience_history") or []
+                        if len(incoming_exp) > len(existing_exp):
+                            meta["experience_history"] = incoming_exp
+                            fields_enriched.append(f"Experience (+{len(incoming_exp) - len(existing_exp)})")
+                    except Exception:
+                        pass
+
+                if person.about_summary:
+                    existing_about = meta.get("about_summary") or ""
+                    if len(person.about_summary) > len(existing_about) + 15:
+                        meta["about_summary"] = person.about_summary
+                        fields_enriched.append("Expanded About")
                 if person.connections_count and not meta.get("connections_count"):
                     meta["connections_count"] = person.connections_count
                 if person.followers_count and not meta.get("followers_count"):

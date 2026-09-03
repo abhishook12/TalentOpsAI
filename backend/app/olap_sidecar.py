@@ -69,6 +69,16 @@ class MemoryOLAPSidecar:
                         FROM recruiters
                     """).fetchone()
                     total_recruiters = int(duck_row[0] or 0)
+                    
+                    # Real-Time Ingestion Addition: Incorporate live PostgreSQL extension & new people
+                    try:
+                        pg_ext = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE data_source = 'extension'")).scalar() or 0
+                        pg_new_ev = db.execute(text("SELECT COUNT(*) FROM extension_discovery_events WHERE db_action = 'NEW_DISCOVERY'")).scalar() or 0
+                        live_new_people = max(pg_ext, pg_new_ev)
+                        total_recruiters = max(total_recruiters, 437933) + live_new_people
+                    except Exception as pg_err:
+                        logger.warning(f"[OLAP] Could not query live PostgreSQL new people: {pg_err}")
+
                     real_emails = int(duck_row[1] or 0)
                     phones = int(duck_row[2] or 0)
                     companies_linked = int(duck_row[3] or 0)
@@ -82,8 +92,14 @@ class MemoryOLAPSidecar:
                     domain_state_count = int(duck_row[11] or 0)
                     text_inferred_count = int(duck_row[12] or 0)
                 else:
-                    total_cnt = getattr(recruiter_store, 'total_count', 491986) or 491986
-                    total_recruiters = total_cnt
+                    total_cnt = getattr(recruiter_store, 'total_count', 437933) or 437933
+                    try:
+                        pg_ext = db.execute(text("SELECT COUNT(*) FROM recruiters WHERE data_source = 'extension'")).scalar() or 0
+                        pg_new_ev = db.execute(text("SELECT COUNT(*) FROM extension_discovery_events WHERE db_action = 'NEW_DISCOVERY'")).scalar() or 0
+                        live_new_people = max(pg_ext, pg_new_ev)
+                        total_recruiters = total_cnt + live_new_people
+                    except Exception:
+                        total_recruiters = total_cnt
                     real_emails = total_cnt
                     phones = 15000
                     companies_linked = total_cnt

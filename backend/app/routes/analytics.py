@@ -19,6 +19,7 @@ from ..services.auth_service import get_current_user_from_request, require_admin
 from ..services.recruiter_store import recruiter_store
 from ..models.auth_models import User
 from ..models.models import Company, PageVisit, Recruiter, Vendor
+from ..models.extension_models import ExtensionDiscoveryEvent
 from ..utils.logo_domains import select_logo_domain
 from ..utils.state_sql import EFFECTIVE_RECRUITER_STATE_SQL_R, UNKNOWN_STATE_SENTINEL
 
@@ -168,7 +169,7 @@ def get_analytics_root():
     return {"status": "Analytics engine active"}
 
 @router.get("/data-quality")
-@cached_endpoint(ttl_seconds=300)
+@cached_endpoint(ttl_seconds=5)
 def get_data_quality(current_user: User = Depends(get_current_user_from_request)):
     from ..olap_sidecar import olap_sidecar
     return olap_sidecar.get_data_quality(user_id=current_user.id)
@@ -219,9 +220,11 @@ def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depen
         logger.warning(f"Could not load recruiter store in dashboard KPIs: {ex}")
         duck_total = getattr(recruiter_store, 'total_count', 437933) or 437933
 
-    # Base total + live extension discoveries
+    # Base total + live extension discoveries & newly created people
+    pg_new_events = db.query(ExtensionDiscoveryEvent).filter(ExtensionDiscoveryEvent.db_action == 'NEW_DISCOVERY').count()
+    live_new_people = max(pg_extension, pg_new_events)
     base_total = max(duck_total, 437933)
-    total_recruiters = base_total + pg_extension
+    total_recruiters = base_total + live_new_people
     active_recruiters = duck_active + pg_active if duck_active > 0 else total_recruiters
     needs_review = duck_needs_review + pg_needs_review
     low_quality = duck_low_quality

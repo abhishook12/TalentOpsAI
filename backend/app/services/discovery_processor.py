@@ -27,6 +27,7 @@ from ..utils.normalizer import (
     SEMANTIC_TYPE_REGISTRY,
     UI_ACTION_TERMS,
     PLATFORM_NAMES,
+    is_company_name,
 )
 
 logger = logging.getLogger('talentops.discovery_processor')
@@ -90,6 +91,7 @@ class DiscoveryProcessor:
                     raw_company=r.raw_company,
                     page_url=r.source_url,
                     page_title=r.source_page_title,
+                    entity_type=getattr(r, 'entity_type', None),
                 )
 
                 if not grounding["is_grounded"]:
@@ -119,8 +121,51 @@ class DiscoveryProcessor:
                     'rejected': rejected_count,
                 }
 
-            # 2. Cluster observations into person identities
-            clusters = self._cluster_observations(grounded_records)
+            # 1b. HARD INVARIANT: Separate Company/Organization Entities from Person Observations
+            from ..utils.normalizer import is_company_name, is_company_industry
+            candidate_records = []
+            company_committed_count = 0
+
+            for r in grounded_records:
+                is_comp = (
+                    is_company_name(r.raw_name) or
+                    (r.source_url and '/company/' in r.source_url and not r.raw_email and not r.raw_phone and (not r.raw_linkedin or '/company/' in r.raw_linkedin))
+                )
+
+                if is_comp:
+                    # Commit directly to Company table (NEVER create a fake recruiter)
+                    comp_name = r.raw_name or r.raw_company
+                    if comp_name:
+                        comp_name = comp_name.strip()
+                        existing_comp = self.db.query(Company).filter(
+                            Company.company_name.ilike(comp_name)
+                        ).first()
+
+                        if not existing_comp:
+                            new_comp = Company(
+                                company_name=comp_name,
+                                canonical_name=comp_name,
+                                verification_status="verified_extension",
+                                trust_score=90,
+                                data_source="extension_company_extractor",
+                            )
+                            self.db.add(new_comp)
+                            self.db.flush()
+
+                        r.processing_status = 'committed'
+                        r.decision = 'COMPANY_COMMITTED'
+                        r.decision_reason = f'Recognized organizational entity: {comp_name}'
+                        r.identity_confidence = 1.0
+                        r.processed_at = datetime.now(timezone.utc)
+                        self.db.add(r)
+                        company_committed_count += 1
+                else:
+                    candidate_records.append(r)
+
+            self.db.flush()
+
+            # 2. Cluster candidate observations into person identities
+            clusters = self._cluster_observations(candidate_records)
             decisions = []
 
             # 3. Resolve each cluster & match against master DB
@@ -133,6 +178,7 @@ class DiscoveryProcessor:
             # 4. Execute decisions & commit
             stats = self._execute_decisions(decisions)
             stats['rejected'] = stats.get('rejected', 0) + rejected_count
+            stats['companies_committed'] = company_committed_count
 
             # 5. Mark all staging records with processed timestamp
             for record in grounded_records:
@@ -140,6 +186,20 @@ class DiscoveryProcessor:
                 self.db.add(record)
 
             self.db.commit()
+
+            # High-Speed Master DB Sync: Notify sync_manager so Parquet, DuckDB, and Search index refresh instantly
+            if stats.get('new', 0) > 0 or stats.get('enriched', 0) > 0 or stats.get('companies_committed', 0) > 0:
+                try:
+                    from ..olap_sidecar import olap_sidecar
+                    olap_sidecar.invalidate()
+                except Exception as ie:
+                    logger.debug("OlapSidecar invalidation note: %s", ie)
+                try:
+                    from .sync_layer import sync_manager
+                    sync_manager.request_sync()
+                    logger.info("Triggered real-time sync_manager reload for live search & DB consistency")
+                except Exception as se:
+                    logger.debug("SyncManager notification note: %s", se)
 
             stats['processed'] = len(records)
             logger.info("Discovery batch processed: %s", stats)
@@ -341,6 +401,19 @@ class DiscoveryProcessor:
         email_conf = int((sum(1 for r in cluster if r.raw_email) / obs_count) * 100)
         phone_conf = int((sum(1 for r in cluster if r.raw_phone) / obs_count) * 100)
 
+        # Aggregate metadata_json (badges, firmographics, channels)
+        meta_dict = {}
+        for r in cluster:
+            if getattr(r, "metadata_json", None) and isinstance(r.metadata_json, str) and r.metadata_json.startswith("{"):
+                try:
+                    m = json.loads(r.metadata_json)
+                    for k, v in m.items():
+                        if v is not None and k not in meta_dict:
+                            meta_dict[k] = v
+                except Exception:
+                    pass
+        metadata_json_str = json.dumps(meta_dict) if meta_dict else None
+
         owner_user_id = cluster[0].owner_user_id if cluster else 1
 
         person = ResolvedPerson(
@@ -360,6 +433,7 @@ class DiscoveryProcessor:
             about_summary=about_summary,
             skills=skills,
             experience_history=experience_history,
+            metadata_json=metadata_json_str,
             identity_confidence=round(conf, 2),
             observation_count=obs_count,
             name_confidence=name_conf,
@@ -624,6 +698,32 @@ class DiscoveryProcessor:
                         self.db.flush()
                         company_id = new_comp.company_id
 
+                # Guard: Never insert an organization/company as a human Recruiter
+                if is_company_name(person.canonical_name):
+                    c_name = person.canonical_name.strip()
+                    c_match = self.db.query(Company).filter(Company.company_name.ilike(c_name)).first()
+                    co_meta = {}
+                    if getattr(person, "metadata_json", None):
+                        try:
+                            co_meta = json.loads(person.metadata_json) if isinstance(person.metadata_json, str) else dict(person.metadata_json)
+                        except Exception:
+                            pass
+                    if not c_match:
+                        c_match = Company(
+                            company_name=c_name,
+                            canonical_name=c_name,
+                            verification_status="verified_extension",
+                            trust_score=90,
+                            data_source="extension_company_extractor",
+                            metadata_json=json.dumps(co_meta) if co_meta else None
+                        )
+                        self.db.add(c_match)
+                        self.db.flush()
+                    elif co_meta and not c_match.metadata_json:
+                        c_match.metadata_json = json.dumps(co_meta)
+                        self.db.add(c_match)
+                    continue
+
                 # Create master Recruiter
                 fallback_email = person.primary_email or f"ext_{secrets.token_hex(8)}@noemail.talentops"
                 
@@ -635,11 +735,19 @@ class DiscoveryProcessor:
                     "connections_count": person.connections_count,
                     "followers_count": person.followers_count,
                 }
+                if getattr(person, "metadata_json", None):
+                    try:
+                        p_meta = json.loads(person.metadata_json) if isinstance(person.metadata_json, str) else dict(person.metadata_json)
+                        for k, v in p_meta.items():
+                            if v is not None and (k not in metadata_dict or metadata_dict[k] is None):
+                                metadata_dict[k] = v
+                    except Exception:
+                        pass
                 
                 new_recruiter = Recruiter(
                     user_id=person.owner_user_id,
                     recruiter_name=person.canonical_name,
-                    title=person.current_title or "Recruiter / Talent Partner",
+                    title=person.current_title or "Recruiter / Talent Lead",
                     company_id=company_id,
                     email=fallback_email,
                     phone=person.primary_phone,

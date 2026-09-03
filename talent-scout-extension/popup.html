@@ -60,8 +60,8 @@
     <div class="engine-telemetry-card">
       <div class="engine-header">
         <span class="engine-title" id="engine-state-title">ENGINE: ACTIVE (1s LOOP)</span>
-        <button id="btn-test-capture" class="btn-xs" style="margin-left:auto; background:rgba(99,102,241,0.2); color:#818cf8; border:1px solid rgba(99,102,241,0.5); padding:2px 6px; border-radius:4px; font-size:9px; cursor:pointer;">FORCE SCAN</button>
-        <span class="engine-badge" id="engine-status-badge" style="margin-left:8px;">● 24/7 AUTONOMOUS</span>
+        <button id="btn-test-capture" class="btn-xs">FORCE SCAN</button>
+        <span class="engine-badge" id="engine-status-badge">● 24/7 AUTONOMOUS</span>
       </div>
       <div class="engine-grid">
         <div class="engine-item"><span class="engine-dot" id="dot-state"></span> State: <b id="val-engine-state">ACTIVE</b></div>
@@ -74,16 +74,16 @@
     <!-- Evidence-Based Live Metrics Grid -->
     <div class="stats-grid">
       <div class="stat-box">
+        <div class="stat-val" id="stat-candidates-count" style="color: #38bdf8;">0</div>
+        <div class="stat-lbl">👤 Candidates</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="stat-companies-count" style="color: #fbbf24;">0</div>
+        <div class="stat-lbl">🏢 Companies</div>
+      </div>
+      <div class="stat-box">
         <div class="stat-val" id="stat-scanned" style="color: #c084fc;">0</div>
         <div class="stat-lbl">👁️ Observed</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-val" id="stat-captured" style="color: #38bdf8;">0</div>
-        <div class="stat-lbl">📸 Captured (Total)</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-val" id="stat-collected" style="color: #60a5fa;">0</div>
-        <div class="stat-lbl">🎯 Extracted</div>
       </div>
       <div class="stat-box">
         <div class="stat-val" id="stat-synced" style="color: #4ade80;">0</div>
@@ -94,19 +94,29 @@
     <!-- Notification Toast / Alert Box -->
     <div id="scan-feedback" class="feedback-banner hidden"></div>
 
-    <!-- Active Profile Context Lock Card (Multi-Frame Accumulator & Live Extraction) -->
-    <div id="active-profile-card" class="active-profile-card hidden">
+    <!-- BOX 1: Active Candidate Profile Card -->
+    <div id="active-candidate-card" class="active-profile-card hidden">
       <div class="active-profile-header">
-        <span class="active-lock-badge" id="active-lock-title">⚡ LIVE CANDIDATE EXTRACTION</span>
-        <span id="active-profile-frames" class="active-frames-badge">Live Ground Truth</span>
+        <span class="active-lock-badge">
+          👤 LIVE CANDIDATE EXTRACTION
+        </span>
+        <span id="active-candidate-frames" class="active-frames-badge">Live Person Lock</span>
       </div>
       <div class="active-profile-body">
         <div class="active-name-row">
-          <span id="active-profile-name" class="active-profile-name">—</span>
-          <span id="active-profile-degree" class="active-degree-pill">—</span>
-          <span id="active-profile-platform" class="active-platform-pill">LinkedIn</span>
+          <span id="active-candidate-name" class="active-profile-name">—</span>
+          <span id="active-candidate-degree" class="active-degree-pill">—</span>
+          <span id="active-candidate-platform" class="active-platform-pill">LinkedIn</span>
         </div>
-        <div id="active-profile-headline" class="active-profile-headline">—</div>
+        <div id="active-candidate-headline" class="active-profile-headline">—</div>
+
+        <!-- Status Badges & Signals Row -->
+        <div id="active-candidate-badges-row" class="active-badges-row hidden">
+          <span id="active-candidate-opentowork" class="status-pill status-opentowork hidden">🟢 #OpenToWork</span>
+          <span id="active-candidate-hiring" class="status-pill status-hiring hidden">🟣 #Hiring</span>
+          <span id="active-candidate-verified" class="status-pill status-verified hidden">🛡️ Verified</span>
+          <span id="active-candidate-pronouns" class="active-pronoun-pill hidden"></span>
+        </div>
         
         <!-- Mandatory Structured Fields Breakdown -->
         <div class="active-meta-grid">
@@ -137,6 +147,25 @@
           </div>
         </div>
 
+        <!-- Skills & Core Competencies -->
+        <div id="active-candidate-skills-wrap" class="active-section-box hidden">
+          <div class="active-box-title">⚡ SKILLS & CORE COMPETENCIES (<span id="active-skills-count">0</span>)</div>
+          <div id="active-candidate-skills-list" class="skills-wrap"></div>
+        </div>
+
+        <!-- Career History Timeline -->
+        <div id="active-candidate-timeline-wrap" class="active-section-box hidden">
+          <div class="active-box-title">💼 CAREER HISTORY TIMELINE (<span id="active-exp-count">0</span>)</div>
+          <div id="active-candidate-timeline-list" class="timeline-wrap"></div>
+        </div>
+
+        <!-- Digital Links -->
+        <div id="active-candidate-links-row" class="active-links-row hidden">
+          <span id="link-github" class="cand-link hidden">🐙 GitHub</span>
+          <span id="link-twitter" class="cand-link hidden">🐦 Twitter/X</span>
+          <span id="link-portfolio" class="cand-link hidden">🌐 Portfolio</span>
+        </div>
+
         <!-- Field Verification Status Checklist -->
         <div class="active-checklist" id="active-field-checklist">
           <span class="chk-item chk-none" id="chk-field-name">○ Name</span>
@@ -151,10 +180,61 @@
       </div>
     </div>
 
+    <!-- BOX 2: Active Company Intelligence Card -->
+    <div id="active-company-card" class="active-profile-card active-company-card hidden">
+      <div class="active-profile-header">
+        <span class="active-lock-badge">
+          🏢 LIVE COMPANY INTELLIGENCE
+        </span>
+        <span id="active-company-frames" class="active-frames-badge">Org Verified</span>
+      </div>
+      <div class="active-profile-body">
+        <div class="active-name-row">
+          <span id="active-company-name" class="active-profile-name">—</span>
+          <span class="active-platform-pill">Company</span>
+        </div>
+        <div id="active-company-industry" class="active-profile-headline">—</div>
+        
+        <!-- Company Structured Fields Breakdown -->
+        <div class="active-meta-grid">
+          <div class="active-meta-item"><span class="meta-label">🏢 Industry / Sector:</span> <b id="active-co-industry">—</b></div>
+          <div class="active-meta-item"><span class="meta-label">📍 Headquarters:</span> <b id="active-co-location">—</b></div>
+          <div class="active-meta-item"><span class="meta-label">👥 Employees / Size:</span> <b id="active-co-employees">—</b></div>
+          <div class="active-meta-item"><span class="meta-label">🔔 Social Followers:</span> <b id="active-co-followers">—</b></div>
+          <div class="active-meta-item"><span class="meta-label">🌐 Web / Domain:</span> <b id="active-co-website">—</b></div>
+          <div class="active-meta-item"><span class="meta-label">💼 Associated Roles:</span> <b id="active-co-roles">—</b></div>
+          <div class="active-meta-item"><span class="meta-label">📅 Founded:</span> <b id="active-co-founded">—</b></div>
+          <div class="active-meta-item"><span class="meta-label">🏛️ Org Type:</span> <b id="active-co-type">—</b></div>
+        </div>
+
+        <!-- Company Specialties Wrap -->
+        <div id="active-company-specialties-wrap" class="active-section-box hidden">
+          <div class="active-box-title">🏢 CORE SPECIALTIES (<span id="active-co-spec-count">0</span>)</div>
+          <div id="active-company-specialties-list" class="skills-wrap"></div>
+        </div>
+
+        <!-- Company Verification Status Checklist -->
+        <div class="active-checklist" id="active-company-checklist">
+          <span class="chk-item chk-none" id="chk-co-name">○ Org Name</span>
+          <span class="chk-item chk-none" id="chk-co-industry">○ Industry</span>
+          <span class="chk-item chk-none" id="chk-co-hq">○ HQ Location</span>
+          <span class="chk-item chk-none" id="chk-co-scale">○ Scale</span>
+          <span class="chk-item chk-none" id="chk-co-url">○ Web / LinkedIn</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Tabs Navigation: Live Discoveries vs Real-Time Event Log -->
     <div class="tab-nav">
       <button id="tab-btn-feed" class="tab-btn active">⚡ Live Discoveries</button>
       <button id="tab-btn-logs" class="tab-btn">📋 Real-Time Event Log</button>
+    </div>
+
+    <!-- Entity Filter Chips for Feed (Separate Boxes View) -->
+    <div class="entity-filter-bar" id="entity-filter-bar">
+      <button class="filter-pill active" data-filter="all" id="filter-pill-all">⚡ All (<span id="count-pill-all">0</span>)</button>
+      <button class="filter-pill" data-filter="candidate" id="filter-pill-candidate">👤 Candidates (<span id="count-pill-candidate">0</span>)</button>
+      <button class="filter-pill" data-filter="company" id="filter-pill-company">🏢 Companies (<span id="count-pill-company">0</span>)</button>
     </div>
 
     <!-- TAB A: Live Discoveries Feed -->

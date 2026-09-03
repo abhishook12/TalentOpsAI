@@ -92,6 +92,22 @@ class ExtensionContact(BaseModel):
     experience_history: Optional[list] = None
     skills: Optional[list] = None
     certifications: Optional[list] = None
+    
+    # Badges & Signals
+    is_open_to_work: Optional[bool] = None
+    is_hiring: Optional[bool] = None
+    is_verified: Optional[bool] = None
+    pronouns: Optional[str] = None
+    
+    # Firmographics & Digital Channels
+    specialties: Optional[list] = None
+    founded: Optional[str] = None
+    company_type: Optional[str] = None
+    open_roles: Optional[str] = None
+    overview: Optional[str] = None
+    github: Optional[str] = None
+    twitter: Optional[str] = None
+    portfolio: Optional[str] = None
 
 
 class BatchRequest(BaseModel):
@@ -352,6 +368,26 @@ def ingest_extension_batch(
                 connections_count=contact.connections_count,
                 skills=json.dumps(contact.skills) if contact.skills else None,
                 experience_history=json.dumps(contact.experience_history) if contact.experience_history else None,
+                metadata_json=json.dumps({
+                    k: v for k, v in {
+                        "is_open_to_work": contact.is_open_to_work,
+                        "is_hiring": contact.is_hiring,
+                        "is_verified": contact.is_verified,
+                        "pronouns": contact.pronouns,
+                        "specialties": contact.specialties,
+                        "founded": contact.founded,
+                        "company_type": contact.company_type,
+                        "open_roles": contact.open_roles,
+                        "overview": contact.overview,
+                        "github": contact.github,
+                        "twitter": contact.twitter,
+                        "portfolio": contact.portfolio,
+                    }.items() if v is not None
+                }) if any([
+                    contact.is_open_to_work, contact.is_hiring, contact.is_verified, contact.pronouns,
+                    contact.specialties, contact.founded, contact.company_type, contact.open_roles,
+                    contact.overview, contact.github, contact.twitter, contact.portfolio
+                ]) else None,
             )
             db.add(staging_record)
             staged += 1

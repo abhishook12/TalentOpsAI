@@ -21,12 +21,13 @@
   let lastActivityTime = Date.now();
   let lastCaptureTimestamp = null;
   let lastDiscoveryTimestamp = null;
-  const INACTIVITY_THRESHOLD_MS = 10000; // Hard Rule 2: 10 seconds idle threshold
+  const INACTIVITY_THRESHOLD_MS = 120000; // 2 minutes active window (avoids premature pause while reading)
 
   let engineState = 'STARTING'; // 'STARTING' | 'ACTIVE_SAMPLING' | 'IDLE_WATCH'
 
-  // ── Active Profile Entity Lock (Multi-Frame Progressive Enrichment) ──
-  let activeProfileSession = {
+  // ── 1. Active Candidate Entity Lock (Person Multi-Frame Accumulation) ──
+  let activeCandidateSession = {
+    entity_type: 'CANDIDATE',
     profileUrl: null,
     recruiter_name: null,
     title: null,
@@ -34,13 +35,47 @@
     previous_company: null,
     location: null,
     education: null,
+    connection_degree: null,
     followers_count: null,
     connections_count: null,
     about_summary: null,
+    about_insights: null,
     experience_history: [],
     skills: [],
+    certifications: [],
+    languages: [],
+    is_open_to_work: false,
+    is_hiring: false,
+    is_verified: false,
+    pronouns: null,
     email: null,
     phone: null,
+    website: null,
+    github: null,
+    twitter: null,
+    portfolio: null,
+    linkedin_url: null,
+    source_platform: 'LinkedIn',
+    observation_count: 0,
+    capture_ids: [],
+    field_provenance: {},
+  };
+
+  // ── 2. Active Company Entity Lock (Organization Multi-Frame Accumulation) ──
+  let activeCompanySession = {
+    entity_type: 'COMPANY',
+    profileUrl: null,
+    company_name: null,
+    industry: null,
+    location: null,
+    employees_count: null,
+    followers_count: null,
+    website: null,
+    specialties: null,
+    founded: null,
+    company_type: null,
+    open_roles: null,
+    overview: null,
     linkedin_url: null,
     source_platform: 'LinkedIn',
     observation_count: 0,
@@ -50,12 +85,24 @@
 
   function syncActiveProfileToStorage() {
     try {
+      const isCompanyPage = location.pathname.includes('/company/');
+      const isCandidatePage = /^\/(in|pub)\//.test(location.pathname);
+
+      const candidateData = (!isCompanyPage && activeCandidateSession.recruiter_name) ? activeCandidateSession : null;
+      const companyData = (!isCandidatePage && activeCompanySession.company_name) ? activeCompanySession : null;
+
       chrome.storage.local.set({
-        currentActiveProfile: activeProfileSession.recruiter_name ? activeProfileSession : null,
+        currentActiveProfile: isCompanyPage ? (companyData || candidateData) : (candidateData || companyData),
+        activeProfile: isCompanyPage ? (companyData || candidateData) : (candidateData || companyData),
+        activeCandidate: isCompanyPage ? null : candidateData,
+        activeCompany: companyData,
       });
+
       chrome.runtime.sendMessage({
         type: 'ACTIVE_PROFILE_UPDATE',
-        profile: activeProfileSession.recruiter_name ? activeProfileSession : null,
+        profile: isCompanyPage ? (companyData || candidateData) : (candidateData || companyData),
+        candidate: isCompanyPage ? null : candidateData,
+        company: companyData,
       });
     } catch (_) {}
   }
@@ -132,46 +179,69 @@
     runAutonomousFusionScan(true);
   }, 250);
   setTimeout(() => runAutonomousFusionScan(true), 1200);
+  setTimeout(() => runAutonomousFusionScan(true), 2500);
+  setTimeout(() => runAutonomousFusionScan(true), 4500);
 
-  // ── Algorithm 2 & 3: 1-SECOND ACTIVE SAMPLING & 10s IDLE PAUSE ──
+  // ── Algorithm 2 & 3: 1-SECOND ACTIVE SAMPLING & PROFILE COMPLETION ENGINE ──
   setInterval(() => {
     const idleMs = Date.now() - lastActivityTime;
+    const isProfilePage = /^\/(in|pub|company)\//.test(location.pathname);
+    const isCandidateIncomplete = isProfilePage && (!activeCandidateSession.recruiter_name || !activeCandidateSession.recruiter_name.includes(' ') || !activeCandidateSession.company_name || !activeCandidateSession.location);
 
-    // Algorithm 3: Hard Rule 2 - No meaningful change / idle >= 10s -> STOP CAPTURING
-    if (idleMs >= INACTIVITY_THRESHOLD_MS) {
+    // Hard Rule 2: Inactivity pause — BUT keep scanning if candidate/company profile is still incomplete
+    if (idleMs >= INACTIVITY_THRESHOLD_MS && !isCandidateIncomplete) {
       if (engineState !== 'IDLE_WATCH') {
         updateEngineTelemetry('IDLE_WATCH');
-        logEvent('IDLE_PAUSE', `Paused after 10s inactivity — watching cheap change detector`);
+        logEvent('IDLE_PAUSE', `Paused after 120s inactivity — watching cheap change detector`);
       }
       return;
     }
 
     // Active sampling every 1 second
-    if (document.visibilityState === 'visible') {
+    if (document.visibilityState === 'visible' || isCandidateIncomplete) {
       updateEngineTelemetry('ACTIVE_SAMPLING');
       runAutonomousFusionScan(false);
     }
   }, 1000); // 1-second capture cadence
 
-  // ── Algorithm 4: Tab Switch & Window Focus Wakeup ────────────
-  window.addEventListener('focus', () => recordUserActivity('window_focus'));
+  // ── Algorithm 4: Tab Switch & Window Focus Instant Wakeup ────────────
+  window.addEventListener('focus', () => {
+    recordUserActivity('window_focus');
+    runAutonomousFusionScan(true);
+  });
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') recordUserActivity('tab_visibility');
+    if (document.visibilityState === 'visible') {
+      recordUserActivity('tab_visibility');
+      runAutonomousFusionScan(true);
+    }
   });
 
-  // ── Algorithm 20: SPA Navigation & Hashchange Wakeup ─────────
+  // ── Algorithm 20: SPA Navigation & Hashchange Instant Wakeup ─────────
   window.addEventListener('popstate', () => {
     lastUrl = location.href;
     if (ts.Visual?.Diff) ts.Visual.Diff.resetBaseline();
     chrome.storage.local.set({ seenKeysWithTime: {} });
     recordUserActivity('spa_navigation');
+    runAutonomousFusionScan(true);
   });
   window.addEventListener('hashchange', () => {
     lastUrl = location.href;
     if (ts.Visual?.Diff) ts.Visual.Diff.resetBaseline();
     chrome.storage.local.set({ seenKeysWithTime: {} });
     recordUserActivity('hash_change');
+    runAutonomousFusionScan(true);
   });
+
+  // Continuous URL polling watchdog (ensures 100% SPA navigation catch without page reload)
+  setInterval(() => {
+    if (location.href !== lastUrl) {
+      lastUrl = location.href;
+      if (ts.Visual?.Diff) ts.Visual.Diff.resetBaseline();
+      recordUserActivity('url_changed');
+      chrome.storage.local.set({ seenKeysWithTime: {} });
+      runAutonomousFusionScan(true);
+    }
+  }, 500);
 
   // ── Algorithm 22: Mutation Observer for Lazy-Loaded Content ──
   const observer = new MutationObserver(() => {
@@ -200,14 +270,34 @@
   // ── Message Listener for Manual Commands & Active Profile Query ──
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === 'GET_ACTIVE_PROFILE') {
+      recordUserActivity('popup_opened'); // Instantly reset inactivity timer and wake up engine
+      const isCompPage = location.pathname.includes('/company/');
       let leads = [];
       try {
         if (window.TalentScout?.detectLinkedIn) {
           leads = window.TalentScout.detectLinkedIn();
         }
       } catch (_) {}
-      const liveLead = leads.find(l => l.recruiter_name && l.recruiter_name !== 'LinkedIn Member') || leads[0] || (activeProfileSession.recruiter_name ? activeProfileSession : null);
-      sendResponse({ profile: liveLead });
+
+      if (isCompPage) {
+        const compLead = leads.find(l => l.entity_type === 'COMPANY') || leads[0] || (activeCompanySession.company_name ? activeCompanySession : null);
+        sendResponse({ profile: compLead, company: compLead, candidate: null });
+        return true;
+      }
+
+      // Prioritize full DOM-extracted profile (source === 'linkedin_profile') over URL slug / meta fallback
+      const fullProfile = leads.find(l => l.source === 'linkedin_profile' && l.recruiter_name && l.recruiter_name !== 'LinkedIn Member');
+      const liveLead = fullProfile || leads.find(l => l.recruiter_name && l.recruiter_name !== 'LinkedIn Member') || leads[0] || (activeCandidateSession.recruiter_name ? activeCandidateSession : null);
+
+      if (liveLead) {
+        // If liveLead is better than activeCandidateSession, immediately merge and sync
+        if (!activeCandidateSession.recruiter_name || activeCandidateSession.recruiter_name === 'Jamiegrab' || !activeCandidateSession.recruiter_name.includes(' ') || (fullProfile && liveLead.source === 'linkedin_profile')) {
+          Object.assign(activeCandidateSession, liveLead);
+          syncActiveProfileToStorage();
+        }
+      }
+
+      sendResponse({ profile: liveLead, candidate: liveLead, company: null });
       return true;
     }
 
@@ -253,18 +343,24 @@
       // 3. FUSE VISUAL + DOM Intelligence
       const fusedLeads = fuseVisualAndDomLeads(visualLeads, domLeads, captureId);
 
-      // 4. Algorithm 6 & 11: Hard Gate — Calculate Usefulness Score for Every Lead
+      // 4. Algorithm 6 & 11: Classify and Gate Useful Entities
       const usefulLeads = fusedLeads.filter(lead => {
-        const isUseful = ts.isUsefulDomainEntity ? ts.isUsefulDomainEntity(lead) : Boolean(lead.recruiter_name || lead.email || lead.linkedin_url);
+        // Tag entity type
+        const isComp = lead.entity_type === 'COMPANY' || (ts.isCompanyName && ts.isCompanyName(lead.recruiter_name));
+        lead.entity_type = isComp ? 'COMPANY' : 'CANDIDATE';
+
+        const isUseful = ts.isUsefulDomainEntity ? ts.isUsefulDomainEntity(lead) : Boolean(lead.recruiter_name || lead.email || lead.linkedin_url || lead.company_name);
         return isUseful;
       });
 
-      // 4b. Progressive Active Profile Entity Lock (Profile View Multi-Frame Accumulation)
+      // 4b. Multi-Frame Progressive Entity Lock (Candidate vs Company)
       const cleanUrl = location.href.split('?')[0].split('#')[0];
+
+      // A. Candidate Profile View (/in/ or /pub/)
       if (/^\/(in|pub)\//.test(location.pathname)) {
-        if (activeProfileSession.profileUrl !== cleanUrl) {
-          // Reset lock for new candidate profile
-          activeProfileSession = {
+        if (activeCandidateSession.profileUrl !== cleanUrl) {
+          activeCandidateSession = {
+            entity_type: 'CANDIDATE',
             profileUrl: cleanUrl,
             recruiter_name: null,
             title: null,
@@ -272,13 +368,25 @@
             previous_company: null,
             location: null,
             education: null,
+            connection_degree: null,
             followers_count: null,
             connections_count: null,
             about_summary: null,
+            about_insights: null,
             experience_history: [],
             skills: [],
+            certifications: [],
+            languages: [],
+            is_open_to_work: false,
+            is_hiring: false,
+            is_verified: false,
+            pronouns: null,
             email: null,
             phone: null,
+            website: null,
+            github: null,
+            twitter: null,
+            portfolio: null,
             linkedin_url: cleanUrl,
             source_platform: 'LinkedIn',
             observation_count: 0,
@@ -287,69 +395,228 @@
           };
         }
 
-        // Merge newly discovered fields into active profile session
-        usefulLeads.forEach(lead => {
-          if (lead.recruiter_name && (!activeProfileSession.recruiter_name || activeProfileSession.recruiter_name === 'LinkedIn Member')) {
-            activeProfileSession.recruiter_name = lead.recruiter_name;
-            activeProfileSession.field_provenance.name = captureId;
-          }
-          if (lead.title && !activeProfileSession.title) {
-            activeProfileSession.title = lead.title;
-            activeProfileSession.field_provenance.title = captureId;
-          }
-          if (lead.company_name && !activeProfileSession.company_name) {
-            activeProfileSession.company_name = lead.company_name;
-            activeProfileSession.field_provenance.company = captureId;
-          }
-          if (lead.previous_company && !activeProfileSession.previous_company) {
-            activeProfileSession.previous_company = lead.previous_company;
-            activeProfileSession.field_provenance.previous_company = captureId;
-          }
-          if (lead.location && !activeProfileSession.location) {
-            activeProfileSession.location = lead.location;
-            activeProfileSession.field_provenance.location = captureId;
-          }
-          if (lead.education && !activeProfileSession.education) {
-            activeProfileSession.education = lead.education;
-            activeProfileSession.field_provenance.education = captureId;
-          }
-          if (lead.followers_count && !activeProfileSession.followers_count) {
-            activeProfileSession.followers_count = lead.followers_count;
-            activeProfileSession.field_provenance.followers = captureId;
-          }
-          if (lead.connections_count && !activeProfileSession.connections_count) {
-            activeProfileSession.connections_count = lead.connections_count;
-            activeProfileSession.field_provenance.connections = captureId;
-          }
-          if (lead.about_summary && !activeProfileSession.about_summary) {
-            activeProfileSession.about_summary = lead.about_summary;
-            activeProfileSession.field_provenance.about = captureId;
-          }
-          if (lead.experience_history && lead.experience_history.length > 0) {
-            activeProfileSession.experience_history = lead.experience_history;
-            activeProfileSession.field_provenance.experience = captureId;
-          }
-          if (lead.email && !activeProfileSession.email) {
-            activeProfileSession.email = lead.email;
-            activeProfileSession.field_provenance.email = captureId;
-          }
-          if (lead.phone && !activeProfileSession.phone) {
-            activeProfileSession.phone = lead.phone;
-            activeProfileSession.field_provenance.phone = captureId;
-          }
+        const relevantCandidates = usefulLeads.filter(l => {
+          if (l.entity_type !== 'CANDIDATE') return false;
+          if (!l.linkedin_url) return true;
+          return l.linkedin_url === cleanUrl || l.source === 'linkedin_profile' || l.source === 'linkedin_meta';
         });
 
-        if (captureId && !activeProfileSession.capture_ids.includes(captureId)) {
-          activeProfileSession.capture_ids.push(captureId);
-          activeProfileSession.observation_count++;
+        // Fallback to all candidates if none matched current URL explicitly
+        const candidatesToProcess = relevantCandidates.length > 0 ? relevantCandidates : usefulLeads.filter(l => l.entity_type === 'CANDIDATE');
+
+        candidatesToProcess.forEach(lead => {
+          // Name Quality Upgrade: Prefer 2+ word human name over unspaced slug or 'LinkedIn Member'
+          const currName = activeCandidateSession.recruiter_name;
+          const newName = lead.recruiter_name;
+          const isCurrWeak = !currName || currName === 'LinkedIn Member' || !currName.includes(' ');
+          const isNewStrong = newName && newName !== 'LinkedIn Member' && newName.includes(' ');
+          if (isNewStrong && isCurrWeak) {
+            activeCandidateSession.recruiter_name = newName;
+            activeCandidateSession.field_provenance.name = captureId;
+          } else if (newName && !currName) {
+            activeCandidateSession.recruiter_name = newName;
+            activeCandidateSession.field_provenance.name = captureId;
+          }
+
+          // Title Quality Upgrade: Prefer descriptive headline over 'Professional'
+          const currTitle = activeCandidateSession.title;
+          const newTitle = lead.title;
+          const isCurrTitleWeak = !currTitle || currTitle.toLowerCase() === 'professional' || currTitle === '—';
+          const isNewTitleStrong = newTitle && newTitle.toLowerCase() !== 'professional';
+          if (isNewTitleStrong && isCurrTitleWeak) {
+            activeCandidateSession.title = newTitle;
+            activeCandidateSession.field_provenance.title = captureId;
+          } else if (newTitle && !currTitle) {
+            activeCandidateSession.title = newTitle;
+            activeCandidateSession.field_provenance.title = captureId;
+          }
+
+          if (lead.headline && (!activeCandidateSession.headline || activeCandidateSession.headline.toLowerCase() === 'professional')) {
+            activeCandidateSession.headline = lead.headline;
+          }
+
+          // Company Quality Upgrade: Prefer real company over 'Company' or '—'
+          const currComp = activeCandidateSession.company_name;
+          const newComp = lead.company_name;
+          const isCurrCompWeak = !currComp || currComp.toLowerCase() === 'company' || currComp === '—';
+          const isNewCompStrong = newComp && newComp.toLowerCase() !== 'company';
+          if (isNewCompStrong && isCurrCompWeak) {
+            activeCandidateSession.company_name = newComp;
+            activeCandidateSession.field_provenance.company = captureId;
+          } else if (newComp && !currComp) {
+            activeCandidateSession.company_name = newComp;
+            activeCandidateSession.field_provenance.company = captureId;
+          }
+
+          if (lead.previous_company && !activeCandidateSession.previous_company) {
+            activeCandidateSession.previous_company = lead.previous_company;
+            activeCandidateSession.field_provenance.previous_company = captureId;
+          }
+          if (lead.location && (!activeCandidateSession.location || activeCandidateSession.location === '—')) {
+            activeCandidateSession.location = lead.location;
+            activeCandidateSession.field_provenance.location = captureId;
+          }
+          if (lead.education && (!activeCandidateSession.education || activeCandidateSession.education === '—')) {
+            activeCandidateSession.education = lead.education;
+            activeCandidateSession.field_provenance.education = captureId;
+          }
+          if (lead.connection_degree && !activeCandidateSession.connection_degree) {
+            activeCandidateSession.connection_degree = lead.connection_degree;
+          }
+          if (lead.followers_count && !activeCandidateSession.followers_count) {
+            activeCandidateSession.followers_count = lead.followers_count;
+            activeCandidateSession.field_provenance.followers = captureId;
+          }
+          if (lead.connections_count && !activeCandidateSession.connections_count) {
+            activeCandidateSession.connections_count = lead.connections_count;
+            activeCandidateSession.field_provenance.connections = captureId;
+          }
+          if (lead.about_summary && !activeCandidateSession.about_summary) {
+            activeCandidateSession.about_summary = lead.about_summary;
+            activeCandidateSession.field_provenance.about = captureId;
+          }
+          if (lead.about_insights && !activeCandidateSession.about_insights) {
+            activeCandidateSession.about_insights = lead.about_insights;
+          }
+          if (lead.is_open_to_work) activeCandidateSession.is_open_to_work = true;
+          if (lead.is_hiring) activeCandidateSession.is_hiring = true;
+          if (lead.is_verified) activeCandidateSession.is_verified = true;
+          if (lead.pronouns && !activeCandidateSession.pronouns) activeCandidateSession.pronouns = lead.pronouns;
+
+          // Merge Experience History progressively
+          if (lead.experience_history && Array.isArray(lead.experience_history)) {
+            lead.experience_history.forEach(role => {
+              const exists = activeCandidateSession.experience_history.some(
+                r => (r.title || '').toLowerCase() === (role.title || '').toLowerCase() &&
+                     (r.company || '').toLowerCase() === (role.company || '').toLowerCase()
+              );
+              if (!exists) activeCandidateSession.experience_history.push(role);
+            });
+            activeCandidateSession.field_provenance.experience = captureId;
+          }
+
+          // Merge Skills progressively
+          if (lead.skills && Array.isArray(lead.skills)) {
+            lead.skills.forEach(s => {
+              if (!activeCandidateSession.skills.includes(s)) activeCandidateSession.skills.push(s);
+            });
+            activeCandidateSession.field_provenance.skills = captureId;
+          }
+
+          // Merge Certifications
+          if (lead.certifications && Array.isArray(lead.certifications)) {
+            lead.certifications.forEach(c => {
+              const exists = activeCandidateSession.certifications.some(
+                item => (item.title || '').toLowerCase() === (c.title || '').toLowerCase()
+              );
+              if (!exists) activeCandidateSession.certifications.push(c);
+            });
+          }
+
+          // Merge Languages
+          if (lead.languages && Array.isArray(lead.languages)) {
+            lead.languages.forEach(l => {
+              const exists = activeCandidateSession.languages.some(
+                item => (item.language || '').toLowerCase() === (l.language || '').toLowerCase()
+              );
+              if (!exists) activeCandidateSession.languages.push(l);
+            });
+          }
+
+          if (lead.email && !activeCandidateSession.email) {
+            activeCandidateSession.email = lead.email;
+            activeCandidateSession.field_provenance.email = captureId;
+          }
+          if (lead.phone && !activeCandidateSession.phone) {
+            activeCandidateSession.phone = lead.phone;
+            activeCandidateSession.field_provenance.phone = captureId;
+          }
+          if (lead.website && !activeCandidateSession.website) activeCandidateSession.website = lead.website;
+          if (lead.github && !activeCandidateSession.github) activeCandidateSession.github = lead.github;
+          if (lead.twitter && !activeCandidateSession.twitter) activeCandidateSession.twitter = lead.twitter;
+          if (lead.portfolio && !activeCandidateSession.portfolio) activeCandidateSession.portfolio = lead.portfolio;
+        });
+
+        if (captureId && !activeCandidateSession.capture_ids.includes(captureId)) {
+          activeCandidateSession.capture_ids.push(captureId);
+          activeCandidateSession.observation_count++;
         }
 
         syncActiveProfileToStorage();
-      } else {
-        if (activeProfileSession.profileUrl) {
-          activeProfileSession.profileUrl = null;
-          syncActiveProfileToStorage();
+      } 
+      // B. Company Profile View (/company/*)
+      else if (location.pathname.includes('/company/')) {
+        if (activeCompanySession.profileUrl !== cleanUrl) {
+          activeCompanySession = {
+            entity_type: 'COMPANY',
+            profileUrl: cleanUrl,
+            company_name: null,
+            industry: null,
+            location: null,
+            employees_count: null,
+            followers_count: null,
+            website: null,
+            specialties: null,
+            founded: null,
+            company_type: null,
+            open_roles: null,
+            overview: null,
+            linkedin_url: cleanUrl,
+            source_platform: 'LinkedIn',
+            observation_count: 0,
+            capture_ids: [],
+            field_provenance: {},
+          };
         }
+
+        usefulLeads.filter(l => l.entity_type === 'COMPANY').forEach(comp => {
+          if (comp.company_name && !activeCompanySession.company_name) {
+            activeCompanySession.company_name = comp.company_name;
+            activeCompanySession.field_provenance.name = captureId;
+          }
+          if (comp.industry && !activeCompanySession.industry) {
+            activeCompanySession.industry = comp.industry;
+            activeCompanySession.field_provenance.industry = captureId;
+          }
+          if (comp.location && !activeCompanySession.location) {
+            activeCompanySession.location = comp.location;
+            activeCompanySession.field_provenance.location = captureId;
+          }
+          if (comp.employees_count && !activeCompanySession.employees_count) {
+            activeCompanySession.employees_count = comp.employees_count;
+            activeCompanySession.field_provenance.employees = captureId;
+          }
+          if (comp.followers_count && !activeCompanySession.followers_count) {
+            activeCompanySession.followers_count = comp.followers_count;
+            activeCompanySession.field_provenance.followers = captureId;
+          }
+          if (comp.website && !activeCompanySession.website) {
+            activeCompanySession.website = comp.website;
+            activeCompanySession.field_provenance.website = captureId;
+          }
+          if (comp.specialties && !activeCompanySession.specialties) {
+            activeCompanySession.specialties = comp.specialties;
+          }
+          if (comp.founded && !activeCompanySession.founded) {
+            activeCompanySession.founded = comp.founded;
+          }
+          if (comp.company_type && !activeCompanySession.company_type) {
+            activeCompanySession.company_type = comp.company_type;
+          }
+          if (comp.open_roles && !activeCompanySession.open_roles) {
+            activeCompanySession.open_roles = comp.open_roles;
+          }
+          if (comp.overview && !activeCompanySession.overview) {
+            activeCompanySession.overview = comp.overview;
+          }
+        });
+
+        if (captureId && !activeCompanySession.capture_ids.includes(captureId)) {
+          activeCompanySession.capture_ids.push(captureId);
+          activeCompanySession.observation_count++;
+        }
+
+        syncActiveProfileToStorage();
       }
 
       // Hard Rule 12: If no useful domain data -> DISCARD immediately without DB operation
@@ -509,17 +776,22 @@
     const updatedMap = { ...entityMap };
 
     results.forEach(r => {
-      const entityKey = (r.linkedin_url || r.email || `${r.recruiter_name}@${r.company_name}` || '').toLowerCase();
-      if (!entityKey) return;
+      const isComp = r.entity_type === 'COMPANY' || (ts.isCompanyName && ts.isCompanyName(r.recruiter_name));
+      const entityKey = isComp
+        ? ('co:' + (r.linkedin_url || r.company_name || r.recruiter_name || '')).toLowerCase()
+        : ('cand:' + (r.linkedin_url || r.email || `${r.recruiter_name}@${r.company_name}` || '')).toLowerCase();
+      if (!entityKey || entityKey === 'co:' || entityKey === 'cand:') return;
 
       const existingRecord = entityMap[entityKey];
 
       if (!existingRecord) {
         // New Entity Sighting
         updatedMap[entityKey] = {
+          entity_type: isComp ? 'COMPANY' : 'CANDIDATE',
           name: r.recruiter_name,
           title: r.title,
           company: r.company_name,
+          industry: r.industry,
           email: r.email,
           phone: r.phone,
           linkedin: r.linkedin_url,

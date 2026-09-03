@@ -3,7 +3,33 @@
 // Continuous Background Listener + Zero-Touch Auto-Activation
 // ============================================================
 
-const PRODUCTION_API = 'https://talentopsai-1.onrender.com';
+const DEFAULT_PRODUCTION_API = 'https://talentopsai-1.onrender.com';
+let cachedApiUrl = null;
+
+async function getApiBase() {
+  if (cachedApiUrl) return cachedApiUrl;
+  try {
+    const local = await chrome.storage.local.get(['customApiUrl', 'activeApiUrl']);
+    if (local.customApiUrl && local.customApiUrl.startsWith('http')) {
+      cachedApiUrl = local.customApiUrl.replace(/\/$/, '');
+      return cachedApiUrl;
+    }
+    // High-speed local dev probe (600ms timeout)
+    const ctrl = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), 600);
+    const probe = await fetch('http://localhost:8000/health', { signal: ctrl.signal }).catch(() => null);
+    clearTimeout(timeout);
+    if (probe && probe.ok) {
+      cachedApiUrl = 'http://localhost:8000';
+      await chrome.storage.local.set({ activeApiUrl: cachedApiUrl });
+      return cachedApiUrl;
+    }
+  } catch (_) {}
+  cachedApiUrl = DEFAULT_PRODUCTION_API;
+  await chrome.storage.local.set({ activeApiUrl: cachedApiUrl });
+  return cachedApiUrl;
+}
+
 const BATCH_ENDPOINT = '/recruiters/extension/batch';
 const ACTIVATE_ENDPOINT = '/recruiters/extension/activate';
 const AUTO_ACTIVATE_ENDPOINT = '/recruiters/extension/auto-activate';
@@ -254,6 +280,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             'idleSeconds',
             'lastCapture',
             'lastDiscovery',
+            'candidatesSynced',
+            'companiesSynced',
           ]);
           sendResponse({
             ok: true,
@@ -261,6 +289,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             queueLength: contactQueue.length,
             pagesScanned: local.pagesScanned || 0,
             totalSent: local.totalSent || 0,
+            candidatesSynced: local.candidatesSynced || 0,
+            companiesSynced: local.companiesSynced || 0,
             totalCollected: local.totalCollectedEver || 0,
             totalCaptured: local.totalCaptured || 0,
             engineState: local.engineState || 'ACTIVE_SAMPLING',
@@ -322,6 +352,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
         // ── Visual Scraper Messages ──
         case 'CAPTURE_VISIBLE_TAB': {
+          try {
             const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true }).catch(() => []);
             let dataUrl = null;
             const winId = typeof sender.tab?.windowId === 'number' ? sender.tab.windowId : (typeof activeTab?.windowId === 'number' ? activeTab.windowId : null);
@@ -379,7 +410,8 @@ async function autoActivateExtension() {
   if (local.authToken) return local.authToken;
 
   try {
-    const res = await fetch(`${PRODUCTION_API}${AUTO_ACTIVATE_ENDPOINT}`, {
+    const apiBase = await getApiBase();
+    const res = await fetch(`${apiBase}${AUTO_ACTIVATE_ENDPOINT}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ device_id: devId }),
@@ -402,7 +434,8 @@ async function activateExtension(code) {
   const devId = local.device_id || deviceId;
 
   try {
-    const res = await fetch(`${PRODUCTION_API}${ACTIVATE_ENDPOINT}`, {
+    const apiBase = await getApiBase();
+    const res = await fetch(`${apiBase}${ACTIVATE_ENDPOINT}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -456,11 +489,13 @@ async function flushQueue() {
     }
     if (!token) return 0;
 
+    const apiBase = await getApiBase();
+
     while (contactQueue.length > 0) {
       const batch = contactQueue.splice(0, BATCH_SIZE);
 
       try {
-        const res = await fetch(`${PRODUCTION_API}${BATCH_ENDPOINT}`, {
+        const res = await fetch(`${apiBase}${BATCH_ENDPOINT}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -484,10 +519,20 @@ async function flushQueue() {
           sessionStats.duplicates += data.duplicates || 0;
           totalFlushed += processedCount;
 
+          let newCands = 0;
+          let newComps = 0;
+          batch.forEach(item => {
+            if (item.entity_type === 'COMPANY' || (item.company_name && !item.title)) {
+              newComps++;
+            } else {
+              newCands++;
+            }
+          });
+
           const pStats = data.processor_stats || {};
           const logDetail = pStats.processed !== undefined 
-            ? `Staged & Processed ${stagedCount} discoveries (${pStats.new || 0} new, ${pStats.enriched || 0} enriched, ${pStats.review || 0} review)`
-            : `Staged ${stagedCount} discoveries in batch intelligence queue`;
+            ? `Staged & Committed ${stagedCount} discoveries (${pStats.new || 0} new, ${pStats.enriched || 0} enriched, ${pStats.review || 0} review) to DB`
+            : `Committed ${stagedCount} discoveries to Master Database`;
 
           addSessionLog({
             timestamp: new Date().toLocaleTimeString(),
@@ -495,18 +540,22 @@ async function flushQueue() {
             detail: logDetail,
           });
 
-          const cur = await chrome.storage.local.get(['totalSent']);
+          const cur = await chrome.storage.local.get(['totalSent', 'candidatesSynced', 'companiesSynced']);
           const nextSent = (cur.totalSent || 0) + processedCount;
+          const nextCands = (cur.candidatesSynced || 0) + newCands;
+          const nextComps = (cur.companiesSynced || 0) + newComps;
+
           await chrome.storage.local.set({
             lastFlushAt: new Date().toISOString(),
             lastAccepted: stagedCount,
             totalSent: nextSent,
+            candidatesSynced: nextCands,
+            companiesSynced: nextComps,
           });
           await saveQueueToStorage();
         } else {
           sessionStats.errors += 1;
           if (res.status === 401 || res.status === 403) {
-            // Token expired or invalid — refresh token immediately
             await chrome.storage.local.remove(['authToken']);
             await chrome.storage.sync.remove(['authToken']);
             await autoActivateExtension();
@@ -523,7 +572,7 @@ async function flushQueue() {
             });
           }
           await saveQueueToStorage();
-          break; // Pause loop briefly until next flush cycle
+          break;
         }
       } catch (netErr) {
         sessionStats.errors += 1;
@@ -532,7 +581,7 @@ async function flushQueue() {
           contactQueue.unshift(...batch);
         }
         await saveQueueToStorage();
-        break; // Pause loop on network error
+        break;
       }
     }
   } finally {
@@ -551,9 +600,10 @@ async function sendHeartbeat() {
   if (!token) return;
 
   const localData = await chrome.storage.local.get(['totalSent', 'device_id']);
+  const apiBase = await getApiBase();
 
   try {
-    await fetch(`${PRODUCTION_API}${REPORT_ENDPOINT}`, {
+    await fetch(`${apiBase}${REPORT_ENDPOINT}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

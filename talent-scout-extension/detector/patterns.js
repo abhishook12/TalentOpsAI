@@ -95,6 +95,95 @@ window.TalentScout.PATTERNS = {
     'consultant', 'officer', 'principal', 'engineer', 'architect', 'developer',
     'analyst', 'account executive', 'business development', 'product manager'
   ],
+
+  // Legal/Corporate Entity Suffixes
+  companyLegalSuffixes: new Set([
+    'inc', 'inc.', 'llc', 'ltd', 'ltd.', 'corp', 'corp.', 'corporation',
+    'co', 'co.', 'company', 'gmbh', 'sa', 'plc', 'bv', 'pvt', 'private limited',
+    'group', 'holdings', 'enterprises', 'ventures', 'capital', 'partners', 'associates'
+  ]),
+
+  // Common Company/Organization Keywords (Never Human Names)
+  companyDomainTerms: new Set([
+    'global', 'services', 'technologies', 'technology', 'solutions', 'systems',
+    'consulting', 'consultancy', 'staffing', 'recruiting', 'recruitment', 'resources',
+    'workforce', 'personnel', 'search', 'labs', 'laboratories', 'studios', 'interactive',
+    'digital', 'media', 'software', 'networks', 'logistics', 'logix', 'infotech',
+    'analytics', 'intelligence', 'therapeutics', 'pharma', 'pharmaceuticals', 'health',
+    'healthcare', 'financial', 'bank', 'insurance', 'agency', 'foundation', 'institute',
+    'academy', 'university', 'college', 'school', 'enterprises', 'holdings', 'group',
+    'ventures', 'capital', 'international', 'worldwide', 'industries', 'management'
+  ]),
+
+  // Well-Known Staffing & Enterprise Organizations
+  knownCompanies: new Set([
+    'insight global', 'compunnel', 'compunnel inc', 'compunnel inc.', 'robert half',
+    'teksystems', 'randstad', 'manpower', 'adecco', 'kelly services', 'allegis group',
+    'allegis', 'apex systems', 'kforce', 'aerotek', 'collabera', 'cybercoders',
+    'lucas group', 'beacon hill', 'addison group', 'hays', 'michael page', 'modis',
+    'experis', 'judge group', 'mondo', 'vaco', 'disys', 'kellymitchell', 'aquent',
+    'creative circle', 'synergis', 'diverse lynx', 'pyramid consulting', 'e-solutions',
+    'infotree', 'artech', 'lancesoft', 'us tech solutions', 'eteam', 'nlb services',
+    'mindlance', 'rangam', 'spectraforce', 'tech mahindra', 'tata consultancy services',
+    'tcs', 'infosys', 'wipro', 'cognizant', 'hcl', 'accenture', 'deloitte', 'pwc',
+    'ey', 'kpmg', 'google', 'microsoft', 'apple', 'amazon', 'meta', 'netflix',
+    'salesforce', 'oracle', 'ibm', 'cisco', 'intel', 'nvidia'
+  ]),
+
+  // Standard Company Industry Descriptions (Never Job Titles)
+  companyIndustries: new Set([
+    'business consulting and services', 'staffing and recruiting',
+    'information technology & services', 'information technology and services',
+    'computer software', 'financial services', 'management consulting',
+    'marketing and advertising', 'hospital & health care', 'higher education',
+    'telecommunications', 'human resources', 'internet', 'consumer goods',
+    'real estate', 'automotive', 'construction', 'retail', 'pharmaceuticals',
+    'biotechnology', 'banking', 'insurance', 'accounting', 'legal services',
+    'design', 'architecture & planning', 'facilities services', 'logistics and supply chain'
+  ]),
+};
+
+/**
+ * Check if a text is an organization or company name rather than a person
+ */
+window.TalentScout.isCompanyName = function(text) {
+  if (!text) return false;
+  const clean = text.toLowerCase().trim().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, ' ').replace(/\s+/g, ' ');
+  if (!clean || clean.length < 2) return false;
+
+  // Direct match in known companies
+  if (window.TalentScout.PATTERNS.knownCompanies.has(clean)) return true;
+
+  const words = clean.split(' ').filter(Boolean);
+  if (words.length === 0) return false;
+
+  // Check last word for corporate legal suffixes (e.g. "Compunnel Inc", "Apex Staffing LLC")
+  const lastWord = words[words.length - 1];
+  if (window.TalentScout.PATTERNS.companyLegalSuffixes.has(lastWord)) return true;
+
+  // Check if any word is a distinct company domain keyword (e.g. "Insight Global", "Tech Solutions")
+  const hasCompanyTerm = words.some(w => window.TalentScout.PATTERNS.companyDomainTerms.has(w));
+  if (hasCompanyTerm) return true;
+
+  // Check if starts or ends with company words
+  if (words.length >= 2 && words.some(w => ['staffing', 'consulting', 'solutions', 'technologies', 'services', 'systems', 'global', 'group', 'holdings'].includes(w))) {
+    return true;
+  }
+
+  return false;
+};
+
+/**
+ * Check if a text is a company industry / sector descriptor rather than a personal job title
+ */
+window.TalentScout.isCompanyIndustry = function(text) {
+  if (!text) return false;
+  const clean = text.toLowerCase().trim().replace(/[•·]/g, ' ').replace(/\s+/g, ' ');
+  if (window.TalentScout.PATTERNS.companyIndustries.has(clean)) return true;
+  if (/business consulting and services|staffing and recruiting|information technology|computer software|financial services|management consulting/i.test(clean)) {
+    return true;
+  }
+  return false;
 };
 
 /**
@@ -144,17 +233,21 @@ window.TalentScout.validateHumanName = function(rawName) {
   if (!rawName) return { isValid: false, reason: 'empty_name' };
 
   let name = rawName.trim();
+  // Strip browser/tab notification count prefixes like "(14) ", "(2) ", "(99+) "
+  name = name.replace(/^\(\d+\+?\)\s*/, '');
   // Strip newlines / tabs (DOM concatenated subtitles)
   name = name.split(/[\r\n\t]+/)[0].trim();
 
-  // Strip degree bullets, numbers, pronouns, and degree credentials
+  // Strip degree bullets, numbers, pronouns (with or without parens), and degree credentials
   name = name.replace(/[·•]\s*\d*(?:st|nd|rd|th)?(?:\s*degree(?:\s+connection)?)?/gi, ' ');
   name = name.replace(/\b\d+(?:st|nd|rd|th)?\s+degree(?:\s+connection)?\b/gi, ' ');
   name = name.replace(/\b\d+(?:st|nd|rd|th)\b/gi, ' ');
   // Clean mashed ordinal suffixes attached to words (e.g. "2ndManaging" -> "Managing", "NdHuma" -> "Huma")
   name = name.replace(/\b\d*(?:st|nd|rd|th)([A-Z])/gi, ' $1');
   name = name.replace(/\b(?:st|nd|rd|th)([A-Z][a-z]+)/gi, ' $1');
-  name = name.replace(/\((?:he\/him|she\/her|they\/them|she\/they|he\/they|any)\)/gi, '');
+  // Strip pronouns with or without parentheses (e.g. "He/Him", "(He/Him)", "she/her")
+  name = name.replace(/\(?(?:he\/him|she\/her|they\/them|she\/they|he\/they|any\s*pronouns?)\)?/gi, ' ');
+  name = name.replace(/\b(?:verified|verification|shield|pronounce|listen|view)\b/gi, ' ');
   name = name.replace(/\b(?:MBA|SHRM-CP|PHR|SPHR|PMP|CPA|MD|JD|PhD|BSc|MSc|BA|BS|MA|MS)\b/gi, '');
   name = name.split(/[-–—|,]/)[0].replace(/[^\w\s\'.]/g, ' ').trim();
   name = name.replace(/\s+/g, ' ');
@@ -180,6 +273,11 @@ window.TalentScout.validateHumanName = function(rawName) {
   }
 
   const lower = name.toLowerCase();
+
+  // HARD INVARIANT: Reject Company / Organization names (e.g. 'Insight Global', 'Compunnel Inc')
+  if (window.TalentScout.isCompanyName(lower)) {
+    return { isValid: false, reason: `company_name_as_candidate:${name}` };
+  }
 
   if (window.TalentScout.isJobTitle(lower)) {
     return { isValid: false, reason: `job_title_as_name:${name}` };
@@ -652,7 +750,8 @@ window.TalentScout.inferNameFromLinkedInSlug = function(url) {
     const val = window.TalentScout.validateHumanName(raw);
     return val.isValid ? val.cleanName : null;
   }
-  return slug.charAt(0).toUpperCase() + slug.slice(1).toLowerCase();
+  // If slug is a solid unspaced block without delimiters, do not force as candidate name
+  return null;
 };
 
 /**
@@ -676,3 +775,417 @@ window.TalentScout.text = function(selector, root = document) {
     return null;
   }
 };
+
+/**
+ * Extract structured schema.org JSON-LD data from <script type="application/ld+json">
+ */
+window.TalentScout.extractJsonLd = function(doc = document) {
+  const result = { person: null, organization: null };
+  try {
+    const scripts = doc.querySelectorAll('script[type="application/ld+json"]');
+    scripts.forEach(s => {
+      try {
+        const raw = s.textContent?.trim();
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        const items = Array.isArray(parsed) ? parsed : (parsed['@graph'] || [parsed]);
+        
+        items.forEach(item => {
+          const type = item['@type'];
+          if (type === 'Person' || (Array.isArray(type) && type.includes('Person'))) {
+            result.person = {
+              name: item.name,
+              jobTitle: item.jobTitle,
+              worksFor: item.worksFor?.name || (typeof item.worksFor === 'string' ? item.worksFor : null),
+              companyUrl: item.worksFor?.sameAs || item.worksFor?.url || null,
+              address: item.address ? `${item.address.addressLocality || ''}, ${item.address.addressRegion || ''} ${item.address.addressCountry || ''}`.trim() : null,
+              description: item.description,
+              alumniOf: Array.isArray(item.alumniOf) ? item.alumniOf.map(a => a.name || a).join(', ') : (item.alumniOf?.name || item.alumniOf || null),
+              url: item.url,
+              sameAs: item.sameAs,
+            };
+          } else if (type === 'Organization' || type === 'Corporation' || (Array.isArray(type) && (type.includes('Organization') || type.includes('Corporation')))) {
+            result.organization = {
+              company_name: item.name,
+              description: item.description,
+              url: item.url,
+              sameAs: item.sameAs,
+              numberOfEmployees: item.numberOfEmployees?.value || item.numberOfEmployees || null,
+              address: item.address ? `${item.address.streetAddress || ''}, ${item.address.addressLocality || ''}, ${item.address.addressRegion || ''} ${item.address.postalCode || ''}`.trim() : null,
+            };
+          }
+        });
+      } catch (_) {}
+    });
+  } catch (_) {}
+  return result;
+};
+
+/**
+ * Extract Badges and Status Signals (OpenToWork, Hiring, Verified, Pronouns)
+ */
+window.TalentScout.extractBadgesAndSignals = function(root = document) {
+  const textBody = (root.body ? root.body.innerText : (root.textContent || '')) || '';
+  
+  // 1. Open to Work Signal
+  const hasOpenToWorkImg = Boolean(root.querySelector('img[alt*="Open to work" i], [data-test-icon="open-to-work"], .pv-top-card--open-to-work, [data-view-name*="open-to-work"]'));
+  const hasOpenToWorkText = /#opentowork\b|open to work\b/i.test(textBody);
+  const isOpenToWork = hasOpenToWorkImg || hasOpenToWorkText;
+
+  // 2. Hiring Signal
+  const hasHiringImg = Boolean(root.querySelector('img[alt*="Hiring" i], [data-test-icon="hiring"], .pv-top-card--hiring'));
+  const hasHiringText = /#hiring\b|we're hiring\b|actively hiring\b/i.test(textBody);
+  const isHiring = hasHiringImg || hasHiringText;
+
+  // 3. Verification Badge (Shield icons, verified badges, aria-label)
+  const isVerified = Boolean(root.querySelector([
+    '[data-test-icon*="verified" i]',
+    '[data-test-icon*="shield" i]',
+    'svg[data-test-icon*="shield"]',
+    'svg[data-test-icon*="verified"]',
+    '.pv-member-badge--verified',
+    '[aria-label*="Verified profile" i]',
+    '[aria-label*="Verified" i]',
+    '.artdeco-badge',
+  ].join(',')));
+
+  // 4. Pronouns (with or without parentheses)
+  let pronouns = null;
+  const pronounMatch = textBody.match(/\(?(he\/him|she\/her|they\/them|she\/they|he\/they|any\s*pronouns?)\)?/i);
+  if (pronounMatch) pronouns = pronounMatch[0].trim();
+
+  return {
+    isOpenToWork,
+    isHiring,
+    isVerified,
+    pronouns,
+  };
+};
+
+/**
+ * Extract Spoken Languages from #languages or language modules
+ */
+window.TalentScout.extractSpokenLanguages = function(root = document) {
+  const langs = [];
+  try {
+    const langSection = root.querySelector('#languages')?.closest('section, div.artdeco-card, [class*="card"]') || root.querySelector('[data-section="languages"]');
+    if (langSection) {
+      langSection.querySelectorAll('ul > li').forEach(li => {
+        const name = window.TalentScout.text(['.hoverable-link-text span[aria-hidden="true"]', 'span[aria-hidden="true"]', '.t-bold'], li);
+        const prof = window.TalentScout.text(['.t-normal span[aria-hidden="true"]', '.t-14.t-normal'], li);
+        if (name && !window.TalentScout.isUIAction(name)) {
+          langs.push({ language: name, proficiency: prof || 'Proficient' });
+        }
+      });
+    }
+  } catch (_) {}
+  return langs;
+};
+
+/**
+ * Extract Full Structured Experience Timeline (Handling Both Single Roles & Multi-Role Clusters)
+ */
+window.TalentScout.extractDetailedExperience = function(root = document) {
+  const experiences = [];
+  try {
+    const expAnchor = root.querySelector('#experience') || root.querySelector('div[id="experience"]');
+    const expSection = expAnchor?.closest('section, div.artdeco-card, [class*="card"], [data-view-name*="profile"]')
+      || root.querySelector('[data-section="experience"]')
+      || root.querySelector('#experience ~ div');
+    if (!expSection) return experiences;
+
+    // Get top-level list items (companies)
+    const topItems = Array.from(expSection.querySelectorAll('ul > li')).filter(li => {
+      const parentUl = li.parentElement;
+      return parentUl && !parentUl.closest('li');
+    });
+
+    topItems.forEach((li, idx) => {
+      // Check if this item is a multi-role parent container
+      const subList = li.querySelectorAll('ul > li');
+      if (subList.length > 0) {
+        // Multi-role employer: extract parent company name
+        const parentComp = window.TalentScout.text(['.hoverable-link-text span[aria-hidden="true"]', 'span[aria-hidden="true"]', '.t-bold'], li);
+        const cleanParentComp = parentComp ? parentComp.split('·')[0].trim() : null;
+
+        subList.forEach((subLi, sIdx) => {
+          const roleTitle = window.TalentScout.text(['.hoverable-link-text span[aria-hidden="true"]', 'span[aria-hidden="true"]', '.t-bold'], subLi);
+          const dateRange = window.TalentScout.text(['.t-black--light span[aria-hidden="true"]', '.pv-entity__date-range', '.t-14.t-black--light'], subLi);
+          const location = window.TalentScout.text(['.t-black--light:nth-child(2) span[aria-hidden="true"]', '.pv-entity__location'], subLi);
+          const desc = window.TalentScout.text(['.inline-show-more-text', 'p'], subLi);
+
+          if (roleTitle && !window.TalentScout.isUIAction(roleTitle)) {
+            experiences.push({
+              title: roleTitle,
+              company: cleanParentComp,
+              date_range: dateRange || null,
+              location: location || null,
+              description: desc ? desc.slice(0, 300) : null,
+              is_current: idx === 0 && sIdx === 0,
+            });
+          }
+        });
+      } else {
+        // Single role item
+        const roleTitle = window.TalentScout.text(['.hoverable-link-text span[aria-hidden="true"]', 'span[aria-hidden="true"]', '.t-bold'], li);
+        const expComp = window.TalentScout.text(['.t-normal span[aria-hidden="true"]', '.t-14.t-normal', '.pv-entity__secondary-title'], li);
+        const dateRange = window.TalentScout.text(['.t-black--light span[aria-hidden="true"]', '.pv-entity__date-range', '.t-14.t-black--light'], li);
+        const location = window.TalentScout.text(['.t-black--light:nth-child(2) span[aria-hidden="true"]', '.pv-entity__location'], li);
+        const desc = window.TalentScout.text(['.inline-show-more-text', 'p'], li);
+
+        if (roleTitle && !window.TalentScout.isUIAction(roleTitle)) {
+          const cleanComp = (expComp && !window.TalentScout.isPlatformName(expComp)) ? expComp.split('·')[0].trim() : null;
+          experiences.push({
+            title: roleTitle,
+            company: cleanComp,
+            date_range: dateRange || null,
+            location: location || null,
+            description: desc ? desc.slice(0, 300) : null,
+            is_current: idx === 0,
+          });
+        }
+      }
+    });
+  } catch (_) {}
+  return experiences;
+};
+
+/**
+ * Extract Full Company Firmographics (Specialties, Founded, Headquarters, Type, Open Roles)
+ */
+window.TalentScout.extractCompanyFirmographics = function(root = document) {
+  const result = {
+    specialties: null,
+    founded: null,
+    company_type: null,
+    headquarters: null,
+    location: null,
+    followers: null,
+    employees: null,
+    industry: null,
+    open_roles: null,
+    overview: null,
+  };
+
+  try {
+    const textBody = (root.body ? (root.body.innerText || root.body.textContent) : (root.textContent || '')) || '';
+
+    // 1. Followers Extraction (e.g. "45K followers", "1,240 followers", "2.1M followers")
+    const followersMatch = textBody.match(/\b(\d[\d,.]*[kKmMbB]?\+?\s*followers)\b/i);
+    if (followersMatch) {
+      result.followers = followersMatch[1].trim();
+    }
+
+    // 2. Employees / Scale Extraction (e.g. "201-500 employees", "10,001+ employees", "51-200 on LinkedIn")
+    const employeesMatch = textBody.match(/\b((?:\d[\d,.]*(?:-\d[\d,.]*)?|\d[\d,.]*\+?)\s*employees)\b/i) ||
+                           textBody.match(/\b(\d[\d,.]*\s+on linkedin)\b/i);
+    if (employeesMatch) {
+      result.employees = employeesMatch[1].trim();
+    }
+
+    // 3. Specialties
+    const specMatch = textBody.match(/Specialties\s*[\r\n\t]+([^\r\n]+)/i) || textBody.match(/Specialties:\s*([^\r\n]+)/i);
+    if (specMatch && specMatch[1]) {
+      result.specialties = specMatch[1].split(/[,;]/).map(s => s.trim()).filter(Boolean);
+    }
+
+    // 4. Founded Year
+    const foundMatch = textBody.match(/Founded\s*[\r\n\t]+(\d{4})/i) || textBody.match(/Founded:\s*(\d{4})/i) || textBody.match(/\bFounded\s+(\d{4})\b/i);
+    if (foundMatch && foundMatch[1]) {
+      result.founded = foundMatch[1];
+    }
+
+    // 5. Company Type
+    const typeMatch = textBody.match(/Type\s*[\r\n\t]+([^\r\n]+)/i) || textBody.match(/Company type\s*[\r\n\t]+([^\r\n]+)/i);
+    if (typeMatch && typeMatch[1]) {
+      result.company_type = typeMatch[1].trim();
+    }
+
+    // 6. Headquarters & Location
+    const hqMatch = textBody.match(/Headquarters\s*[\r\n\t]+([^\r\n]+)/i) || textBody.match(/Headquarters:\s*([^\r\n]+)/i);
+    if (hqMatch && hqMatch[1]) {
+      result.headquarters = hqMatch[1].trim();
+      result.location = result.headquarters;
+    }
+
+    // Multi-token subline scanner: "Staffing and Recruiting · Toledo, Ohio · 45K followers · 201-500 employees"
+    const lines = textBody.split(/[\r\n]+/).map(l => l.trim()).filter(Boolean);
+    for (const line of lines) {
+      if (/followers|employees/i.test(line) && /[·•\u00B7\u2022|]/.test(line)) {
+        const tokens = line.split(/[·•\u00B7\u2022|]/).map(t => t.replace(/[\u00C2\u00A0]+/g, ' ').trim()).filter(Boolean);
+        for (const tok of tokens) {
+          const lower = tok.toLowerCase();
+          if (!result.location && (/,/.test(tok) || /\b(?:Area|Greater|City|County|Region|District)\b/i.test(tok)) && !/followers|employees|connections/i.test(lower) && tok.length >= 3 && tok.length <= 80) {
+            result.location = tok;
+            if (!result.headquarters) result.headquarters = tok;
+          }
+          if (!result.industry && !/,/.test(tok) && !/\b(?:Area|Greater|City|County|Region|District)\b/i.test(tok) && !/followers|employees|connections|following/i.test(lower) && tok.length >= 3 && tok.length <= 60) {
+            result.industry = tok;
+          }
+        }
+      }
+      if (result.location && result.industry) break;
+    }
+
+    // 7. Open Roles
+    const jobMatch = textBody.match(/(\d[\d,]*)\s+(?:open jobs?|job openings?|jobs? posted)/i);
+    if (jobMatch && jobMatch[1]) {
+      result.open_roles = `${jobMatch[1]} Open Roles`;
+    }
+
+    // 8. Overview
+    const aboutSec = root.querySelector ? root.querySelector('section[data-test-id="about-us"], .org-grid__content-height-enforcer, .org-page-details-module__card-spacing') : null;
+    if (aboutSec && window.TalentScout?.text) {
+      result.overview = window.TalentScout.text(['p', '.break-words'], aboutSec);
+    }
+  } catch (_) {}
+
+  return result;
+};
+
+/**
+ * Extract Geographic Location from text or small elements
+ */
+window.TalentScout.extractLocation = function(text) {
+  if (!text || typeof text !== 'string') return null;
+  const cleaned = text.replace(/[\r\n\t]+/g, ' ').trim();
+
+  // Strip UI actions, degree badges, and contact info
+  const sanitized = cleaned
+    .replace(/\b(contact\s*info|see\s*more|1st|2nd|3rd|he\/him|she\/her|they\/them)\b/gi, '')
+    .replace(/[·•|]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Pattern A: City, State/Province, Country
+  // e.g. "Manchester Area, United Kingdom", "Greater London, England, United Kingdom", "Boston, MA", "Austin, Texas, United States"
+  const geoRegex = /\b([A-Z][a-zA-Z\s.-]+(?:Area|City|Greater|County|Region|District)?,\s*(?:[A-Z]{2}\b|[A-Z][a-zA-Z\s.-]+(?:,\s*[A-Z][a-zA-Z\s.-]+)?))\b/;
+  const match = sanitized.match(geoRegex);
+  if (match && match[1]) {
+    const loc = match[1].trim();
+    if (loc.length >= 4 && !/^(about|experience|education|skills|activity|interests)/i.test(loc)) {
+      return loc;
+    }
+  }
+
+  // Pattern B: Well-known countries/regions
+  const countryRegex = /\b([A-Z][a-zA-Z\s.-]+\s+(?:United Kingdom|United States|USA|UK|Canada|India|Australia|Germany|France|Netherlands|Singapore|Brazil|Japan|Switzerland))\b/i;
+  const cMatch = sanitized.match(countryRegex);
+  if (cMatch && cMatch[1]) {
+    return cMatch[1].trim();
+  }
+
+  return null;
+};
+
+/**
+ * Extract Small Text Metadata (Location, Education, Connections, Followers, Pronouns, Talks About)
+ * Designed to capture subtle metadata rendered in .text-body-small, .t-black--light, and top-card sublines
+ */
+window.TalentScout.extractSmallTextDetails = function(root = document) {
+  const result = {
+    location: null,
+    education: null,
+    connections: null,
+    followers: null,
+    pronouns: null,
+    talks_about: [],
+    degree: null
+  };
+
+  try {
+    // 1. Gather all small text elements in the top card / profile header
+    const topCard = root.querySelector('.pv-top-card, .pv-text-details__left-panel, div[data-view-name="profile-top-card"], .ph5, section.pv-top-card') || root;
+    const smallSpans = topCard.querySelectorAll('.text-body-small, .t-black--light, .t-14, .dist-value, [data-field="location"], span');
+
+    for (const el of smallSpans) {
+      let t = el.textContent ? el.textContent.trim() : '';
+      if (!t || t.length < 2) continue;
+
+      // Degree
+      const degMatch = t.match(/\b(1st|2nd|3rd|3rd\+)\b/i);
+      if (!result.degree && degMatch) {
+        result.degree = degMatch[1];
+        continue;
+      }
+
+      // Pronouns
+      if (!result.pronouns && /^(he\/him|she\/her|they\/them|xe\/xem)$/i.test(t)) {
+        result.pronouns = t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+        continue;
+      }
+
+      // Talks About
+      if (/talks about/i.test(t)) {
+        const topics = t.replace(/talks about/i, '').split(/[,#•]/).map(s => s.trim()).filter(s => s.length >= 2);
+        topics.forEach(tag => {
+          if (!result.talks_about.includes(tag) && !window.TalentScout.isUIAction(tag)) {
+            result.talks_about.push(tag);
+          }
+        });
+        continue;
+      }
+
+      // Followers
+      if (!result.followers && /\d[\d,]*\+?\s*followers/i.test(t)) {
+        result.followers = t.replace(/\s+/g, ' ');
+        continue;
+      }
+
+      // Connections
+      if (!result.connections && /\d[\d,]*\+?\s*connections/i.test(t)) {
+        result.connections = t.replace(/\s+/g, ' ');
+        continue;
+      }
+
+      // Location detection
+      if (!result.location && t.length >= 3 && t.length <= 80) {
+        if (/,\s*[A-Z]{2}\b|Area|United Kingdom|United States|USA|UK|Canada|India|Australia|Germany|France|Greater|County|City/i.test(t)) {
+          if (!/^(he\/him|she\/her|they\/them|\d+|mutual|talks about|contact info)/i.test(t)) {
+            let cleanLoc = t
+              .replace(/\bcontact\s*info\b/gi, '')
+              .replace(/[\u00C2\u00A0]*[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]+.*$/g, '')
+              .replace(/[\s\-_,·•\u00B7\u2022\u00C2\u00A0|]+$/, '')
+              .trim();
+            if (cleanLoc.length >= 3) {
+              result.location = cleanLoc;
+            }
+          }
+        }
+      }
+    }
+
+    // 2. Proximity Scan for Location via Contact Info Link
+    if (!result.location) {
+      const contactInfoLink = root.querySelector('a[href*="contact-info"], #top-card-text-details-contact-info');
+      if (contactInfoLink) {
+        const prev = contactInfoLink.previousElementSibling || contactInfoLink.parentElement?.previousElementSibling;
+        if (prev && prev.textContent) {
+          const t = prev.textContent
+            .replace(/\bcontact\s*info\b/gi, '')
+            .replace(/[\u00C2\u00A0]*[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]+.*$/g, '')
+            .replace(/[\s\-_,·•\u00B7\u2022\u00C2\u00A0|]+$/, '')
+            .trim();
+          if (t && t.length >= 3 && !/^(he\/him|she\/her|they\/them|\d+)/i.test(t)) {
+            result.location = t;
+          }
+        }
+      }
+    }
+
+    // 3. Top Card Right Panel School / Education Detection (Row 2 in small text)
+    if (!result.education) {
+      const rightPanelItems = root.querySelectorAll('.pv-text-details__right-panel li, .pv-text-details__right-panel a, button[aria-label*="Education" i]');
+      for (const item of rightPanelItems) {
+        const txt = item.textContent?.trim() || '';
+        if (/university|college|institute|school|polytechnic|academy|state|tech|bachelor|master/i.test(txt)) {
+          result.education = txt.replace(/\s+/g, ' ');
+          break;
+        }
+      }
+    }
+  } catch (_) {}
+
+  return result;
+};
+

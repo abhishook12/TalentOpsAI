@@ -70,23 +70,82 @@ JOB_ROLE_NOUNS = frozenset({
     'scientist', 'researcher', 'statistician', 'designer', 'writer'
 })
 
-# Common recruiting keywords
-RECRUITER_KEYWORDS = (
-    'recruiter', 'recruiting', 'talent', 'acquisition', 'hr', 'human resources',
-    'staffing', 'sourcer', 'sourcing', 'headhunter', 'hiring', 'people ops',
-    'workforce', 'placement', 'coordinator', 'talent partner', 'talent lead',
-    'talent manager', 'recruitment', 'technical recruiter', 'it recruiter',
-    'executive recruiter', 'head of talent', 'vp of people', 'people partner',
-    'talent scout', 'talent advisor', 'resource manager', 'staffing specialist'
-)
+# Legal/Corporate Entity Suffixes
+COMPANY_LEGAL_SUFFIXES = frozenset({
+    'inc', 'inc.', 'llc', 'ltd', 'ltd.', 'corp', 'corp.', 'corporation',
+    'co', 'co.', 'company', 'gmbh', 'sa', 'plc', 'bv', 'pvt', 'private limited',
+    'group', 'holdings', 'enterprises', 'ventures', 'capital', 'partners', 'associates'
+})
 
-# Common professional keywords
-PROFESSIONAL_KEYWORDS = (
-    'founder', 'co-founder', 'ceo', 'cto', 'cpo', 'coo', 'vp', 'vice president',
-    'director', 'head of', 'partner', 'lead', 'manager', 'specialist',
-    'consultant', 'officer', 'principal', 'engineer', 'architect', 'developer',
-    'analyst', 'account executive', 'business development', 'product manager'
-)
+# Common Company/Organization Keywords (Never Human Names)
+COMPANY_DOMAIN_TERMS = frozenset({
+    'global', 'services', 'technologies', 'technology', 'solutions', 'systems',
+    'consulting', 'consultancy', 'staffing', 'recruiting', 'recruitment', 'resources',
+    'workforce', 'personnel', 'search', 'labs', 'laboratories', 'studios', 'interactive',
+    'digital', 'media', 'software', 'networks', 'logistics', 'logix', 'infotech',
+    'analytics', 'intelligence', 'therapeutics', 'pharma', 'pharmaceuticals', 'health',
+    'healthcare', 'financial', 'bank', 'insurance', 'agency', 'foundation', 'institute',
+    'academy', 'university', 'college', 'school', 'enterprises', 'holdings', 'group',
+    'ventures', 'capital', 'international', 'worldwide', 'industries', 'management'
+})
+
+# Well-Known Staffing & Enterprise Organizations
+KNOWN_COMPANIES = frozenset({
+    'insight global', 'compunnel', 'compunnel inc', 'compunnel inc.', 'robert half',
+    'teksystems', 'randstad', 'manpower', 'adecco', 'kelly services', 'allegis group',
+    'allegis', 'apex systems', 'kforce', 'aerotek', 'collabera', 'cybercoders',
+    'lucas group', 'beacon hill', 'addison group', 'hays', 'michael page', 'modis',
+    'experis', 'judge group', 'mondo', 'vaco', 'disys', 'kellymitchell', 'aquent',
+    'creative circle', 'synergis', 'diverse lynx', 'pyramid consulting', 'e-solutions',
+    'infotree', 'artech', 'lancesoft', 'us tech solutions', 'eteam', 'nlb services',
+    'mindlance', 'rangam', 'spectraforce', 'tech mahindra', 'tata consultancy services',
+    'tcs', 'infosys', 'wipro', 'cognizant', 'hcl', 'accenture', 'deloitte', 'pwc',
+    'ey', 'kpmg', 'google', 'microsoft', 'apple', 'amazon', 'meta', 'netflix',
+    'salesforce', 'oracle', 'ibm', 'cisco', 'intel', 'nvidia'
+})
+
+# Standard Company Industry Descriptions (Never Job Titles)
+COMPANY_INDUSTRIES = frozenset({
+    'business consulting and services', 'staffing and recruiting',
+    'information technology & services', 'information technology and services',
+    'computer software', 'financial services', 'management consulting',
+    'marketing and advertising', 'hospital & health care', 'higher education',
+    'telecommunications', 'human resources', 'internet', 'consumer goods',
+    'real estate', 'automotive', 'construction', 'retail', 'pharmaceuticals',
+    'biotechnology', 'banking', 'insurance', 'accounting', 'legal services',
+    'design', 'architecture & planning', 'facilities services', 'logistics and supply chain'
+})
+
+def is_company_name(text: Optional[str]) -> bool:
+    """Checks if a text is an organization / company name rather than a human individual."""
+    if not text:
+        return False
+    clean = re.sub(r'[^\w\s]', ' ', str(text).lower()).strip()
+    clean = " ".join(clean.split())
+    if not clean or len(clean) < 2:
+        return False
+    if clean in KNOWN_COMPANIES:
+        return True
+    words = clean.split()
+    if not words:
+        return False
+    if words[-1] in COMPANY_LEGAL_SUFFIXES:
+        return True
+    if any(w in COMPANY_DOMAIN_TERMS for w in words):
+        return True
+    return False
+
+def is_company_industry(text: Optional[str]) -> bool:
+    """Checks if a text is a corporate industry descriptor rather than a person's title."""
+    if not text:
+        return False
+    clean = re.sub(r'[^\w\s]', ' ', str(text).lower()).strip()
+    clean = " ".join(clean.split())
+    if clean in COMPANY_INDUSTRIES:
+        return True
+    if re.search(r'business consulting and services|staffing and recruiting|information technology|computer software|financial services|management consulting', clean):
+        return True
+    return False
 
 def normalize_text(text: Optional[str]) -> str:
     """Aggressively strips spaces, punctuation, and non-alphanumerics."""
@@ -190,6 +249,10 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
         return False, None, "Invalid length for person name"
 
     lower = cleaned.lower()
+
+    # 0. Reject Company / Organization names
+    if is_company_name(cleaned):
+        return False, None, f"Name is an organization/company ('{cleaned}'), not a human individual"
 
     # 1. Reject UI actions
     if is_ui_action(lower):
@@ -374,35 +437,56 @@ def evaluate_evidence_grounding(
     raw_title: Optional[str],
     raw_company: Optional[str],
     page_url: Optional[str] = None,
-    page_title: Optional[str] = None
+    page_title: Optional[str] = None,
+    entity_type: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Strict Evidence Grounding Gate.
-    Verifies that the extracted entity represents a real, grounded individual rather
+    Verifies that the extracted entity represents a real, grounded individual or organization rather
     than a job posting or platform artifact.
     """
     page_type = classify_page_type(page_url, page_title)
-    is_valid_name, clean_n, name_reason = validate_human_name(raw_name)
-    is_plat = is_platform_name(raw_company)
-    is_ui = is_ui_action(raw_title)
+    is_org = (
+        entity_type == 'COMPANY' or
+        is_company_name(raw_name) or
+        (page_url and '/company/' in page_url and (not raw_name or is_company_name(raw_name)))
+    )
 
     rejections = []
-    if not is_valid_name:
-        rejections.append(f"Name validation failed: {name_reason}")
-    if is_plat:
-        rejections.append(f"Employer company '{raw_company}' is a job platform name, not a real employer")
-    if is_ui:
-        rejections.append(f"Title '{raw_title}' is a UI action control")
 
-    # On Job Board search pages, ungrounded person creations are strictly rejected
-    if page_type == 'JOB_SEARCH_PAGE' and (not is_valid_name or is_job_posting_title(raw_name)):
-        rejections.append("Job Search Page: Job posting item cannot be created as a person record without explicit recruiter evidence")
+    if is_org:
+        # Organization Grounding Rules
+        org_name = raw_name or raw_company
+        if not org_name or len(org_name.strip()) < 2:
+            rejections.append("Missing organization name")
+        elif is_platform_name(org_name):
+            rejections.append(f"Organization name '{org_name}' is a platform name")
+        elif is_ui_action(org_name):
+            rejections.append(f"Organization name '{org_name}' is a UI action control")
+        clean_n = org_name.strip() if org_name else ""
+    else:
+        # Person Grounding Rules
+        is_valid_name, clean_n, name_reason = validate_human_name(raw_name)
+        is_plat = is_platform_name(raw_company)
+        is_ui = is_ui_action(raw_title)
+
+        if not is_valid_name:
+            rejections.append(f"Name validation failed: {name_reason}")
+        if is_plat:
+            rejections.append(f"Employer company '{raw_company}' is a job platform name, not a real employer")
+        if is_ui:
+            rejections.append(f"Title '{raw_title}' is a UI action control")
+
+        # On Job Board search pages, ungrounded person creations are strictly rejected
+        if page_type == 'JOB_SEARCH_PAGE' and (not is_valid_name or is_job_posting_title(raw_name)):
+            rejections.append("Job Search Page: Job posting item cannot be created as a person record without explicit recruiter evidence")
 
     grounding_score = 100 if len(rejections) == 0 else 0
     is_grounded = len(rejections) == 0
 
     return {
         "is_grounded": is_grounded,
+        "is_organization": is_org,
         "grounding_score": grounding_score,
         "page_type": page_type,
         "clean_name": clean_n,

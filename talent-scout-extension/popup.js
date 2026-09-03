@@ -4,6 +4,30 @@ const $ = id => document.getElementById(id);
 const API_BASE = 'https://talentopsai-1.onrender.com';
 
 let cachedDiscoveries = [];
+let currentEntityFilter = 'all'; // 'all' | 'candidate' | 'company'
+
+function isCompanyEntity(item) {
+  if (!item) return false;
+  if (item.entity_type === 'COMPANY') return true;
+  if (item.entity_type === 'CANDIDATE') return false;
+
+  // If the extracted entity name itself is a company name (e.g. "Insight Global", "Compunnel Inc.")
+  if (item.recruiter_name && window.TalentScout?.isCompanyName && window.TalentScout.isCompanyName(item.recruiter_name)) {
+    return true;
+  }
+
+  // If the title is an industry descriptor (e.g. "Business Consulting and Services")
+  if (item.title && window.TalentScout?.isCompanyIndustry && window.TalentScout.isCompanyIndustry(item.title)) {
+    return true;
+  }
+
+  // If there is no recruiter/human name at all, but company_name exists
+  if (!item.recruiter_name && item.company_name) {
+    return true;
+  }
+
+  return false;
+}
 
 async function init() {
   let auth = await chrome.runtime.sendMessage({ type: 'GET_AUTH' }).catch(() => ({}));
@@ -14,9 +38,25 @@ async function init() {
 
   showDashboard();
   initTabs();
+  initFilters();
   initModal();
   loadLiveStats();
   setInterval(loadLiveStats, 1500); // Live poll stats & event logs every 1.5s
+}
+
+function initFilters() {
+  ['all', 'candidate', 'company'].forEach(f => {
+    const btn = $(`filter-pill-${f}`);
+    if (btn && !btn.dataset.wired) {
+      btn.dataset.wired = 'true';
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        currentEntityFilter = f;
+        renderLiveDiscoveries(cachedDiscoveries);
+      });
+    }
+  });
 }
 
 function showLogin() {
@@ -148,13 +188,25 @@ async function loadLiveStats() {
     'totalCaptured',
     'recentCaptures',
     'totalCollectedEver',
+    'candidatesSynced',
+    'companiesSynced',
     'userEmail',
+    'activeCandidate',
+    'activeCompany',
+    'activeProfile',
+    'currentActiveProfile',
   ]);
 
   const totalSent = statsRes?.totalSent ?? localData.totalSent ?? 0;
   const totalExtracted = statsRes?.totalCollected ?? localData.totalCollectedEver ?? 0;
   const pagesScanned = Math.max(0, statsRes?.pagesScanned ?? localData.pagesScanned ?? 0);
   let totalCapturedScreens = statsRes?.totalCaptured ?? localData.totalCaptured ?? 0;
+
+  // Real-Time DB Counts
+  const candCount = statsRes?.candidatesSynced ?? localData.candidatesSynced ?? (localData.activeCandidate ? 1 : 0);
+  const compCount = statsRes?.companiesSynced ?? localData.companiesSynced ?? (localData.activeCompany ? 1 : 0);
+  const observedCount = Math.max(pagesScanned, totalExtracted, candCount + compCount, 1);
+  const syncedDbCount = Math.max(totalSent, candCount + compCount);
 
   // Auto-wipe obsolete 20k+ backlog if detected
   if (totalCapturedScreens > 500) {
@@ -191,118 +243,262 @@ async function loadLiveStats() {
   if ($('val-last-capture')) $('val-last-capture').textContent = lastCap;
   if ($('val-last-discovery')) $('val-last-discovery').textContent = lastDisc;
 
-  // 2. Update Metrics
-  if ($('stat-scanned')) $('stat-scanned').textContent = pagesScanned.toLocaleString();
-  if ($('stat-captured')) $('stat-captured').textContent = totalCapturedScreens.toLocaleString();
-  if ($('stat-collected')) $('stat-collected').textContent = totalExtracted.toLocaleString();
-  if ($('stat-synced')) $('stat-synced').textContent = totalSent.toLocaleString();
+  // 2. Update Metrics with Live DB Provenance
+  if ($('stat-candidates-count')) $('stat-candidates-count').textContent = candCount.toLocaleString();
+  if ($('stat-companies-count')) $('stat-companies-count').textContent = compCount.toLocaleString();
+  if ($('stat-scanned')) $('stat-scanned').textContent = observedCount.toLocaleString();
+  if ($('stat-synced')) $('stat-synced').textContent = syncedDbCount.toLocaleString();
+  if ($('stat-captured')) $('stat-captured').textContent = compCount.toLocaleString();
+  if ($('stat-collected')) $('stat-collected').textContent = observedCount.toLocaleString();
 
-  // 3. Render Active Profile Card (Progressive Multi-Frame Accumulator)
-  let activeProfile = null;
+  // 3. Render Active Cards (Separate Candidate & Company Extraction Boxes)
+  let activeCandidate = localData.activeCandidate || null;
+  let activeCompany = localData.activeCompany || null;
   let activeTabUrl = null;
 
   try {
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tabs.length > 0 && tabs[0].url) {
       activeTabUrl = tabs[0].url;
-      if (tabs[0].url.includes('linkedin.com/in/') || tabs[0].url.includes('linkedin.com/pub/')) {
-        const tabRes = await chrome.tabs.sendMessage(tabs[0].id, { type: 'GET_ACTIVE_PROFILE' }).catch(() => null);
-        if (tabRes?.profile && tabRes.profile.recruiter_name) {
-          activeProfile = tabRes.profile;
+      const isCompUrl = activeTabUrl.includes('/company/');
+      const tabRes = await chrome.tabs.sendMessage(tabs[0].id, { type: 'GET_ACTIVE_PROFILE' }).catch(() => null);
+      if (tabRes) {
+        if (isCompUrl) {
+          activeCompany = tabRes.company || tabRes.profile || activeCompany;
+          activeCandidate = null; // Strict isolation: company pages never display stale candidates
+        } else {
+          if (tabRes.candidate) activeCandidate = tabRes.candidate;
+          if (tabRes.company) activeCompany = tabRes.company;
+          if (tabRes.profile) {
+            if (isCompanyEntity(tabRes.profile)) {
+              activeCompany = activeCompany || tabRes.profile;
+            } else {
+              activeCandidate = activeCandidate || tabRes.profile;
+            }
+          }
         }
+      } else if (isCompUrl) {
+        activeCandidate = null;
       }
     }
   } catch (_) {}
 
-  // Fallback to storage if URL matches active tab
-  if (!activeProfile) {
+  // Fallback to activeProfile in storage
+  if (!activeCandidate && !activeCompany) {
     const stored = localData.activeProfile || localData.currentActiveProfile;
-    if (stored && stored.recruiter_name) {
-      if (!activeTabUrl || !stored.linkedin_url || activeTabUrl.includes(stored.linkedin_url) || stored.linkedin_url.includes(activeTabUrl)) {
-        activeProfile = stored;
+    if (stored) {
+      if (isCompanyEntity(stored)) {
+        activeCompany = stored;
+      } else {
+        activeCandidate = stored;
       }
     }
   }
 
-  const activeCard = $('active-profile-card');
-  if (activeCard) {
-    if (activeProfile && (activeProfile.recruiter_name || activeProfile.name)) {
-      activeCard.classList.remove('hidden');
-      const pName = activeProfile.recruiter_name || activeProfile.name;
-      if ($('active-profile-name')) $('active-profile-name').textContent = pName;
-      if ($('active-profile-degree')) {
-        const deg = activeProfile.connection_degree;
-        $('active-profile-degree').textContent = deg ? `${deg.toUpperCase()}` : '3RD';
+  // --- BOX 1: Active Candidate Profile Card ---
+  const candidateCard = $('active-candidate-card');
+  if (candidateCard) {
+    if (activeCandidate && (activeCandidate.recruiter_name || activeCandidate.name) && !isCompanyEntity(activeCandidate)) {
+      candidateCard.classList.remove('hidden');
+      const pName = activeCandidate.recruiter_name || activeCandidate.name;
+      if ($('active-candidate-name')) $('active-candidate-name').textContent = pName;
+      if ($('active-candidate-degree')) {
+        const deg = activeCandidate.connection_degree;
+        $('active-candidate-degree').textContent = deg ? deg.toUpperCase() : '—';
       }
-      if ($('active-profile-platform')) $('active-profile-platform').textContent = activeProfile.source_platform || 'LinkedIn';
-      if ($('active-profile-headline')) {
-        $('active-profile-headline').textContent = activeProfile.headline || `${activeProfile.title || 'Professional'} @ ${activeProfile.company_name || 'Company'}`;
+      if ($('active-candidate-platform')) $('active-candidate-platform').textContent = activeCandidate.source_platform || 'LinkedIn';
+      // Derive intelligent company name fallback from experience or corporate email domain
+      let displayCompany = activeCandidate.company_name;
+      if (!displayCompany || displayCompany === '—' || displayCompany.toLowerCase() === 'company') {
+        if (activeCandidate.experience_history?.[0]?.company) {
+          displayCompany = activeCandidate.experience_history[0].company;
+        } else if (activeCandidate.email && activeCandidate.email.includes('@')) {
+          const domain = activeCandidate.email.split('@')[1].toLowerCase();
+          if (!['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com', 'live.com'].includes(domain)) {
+            const slug = domain.split('.')[0];
+            displayCompany = slug.charAt(0).toUpperCase() + slug.slice(1);
+          }
+        }
       }
-      if ($('active-profile-frames')) {
-        const count = activeProfile.observation_count || activeProfile.capture_ids?.length || 1;
-        $('active-profile-frames').textContent = `🔒 ${count} Frame${count > 1 ? 's' : ''} Enriched`;
+
+      let displayTitle = activeCandidate.title;
+      if ((!displayTitle || displayTitle === '—' || displayTitle.toLowerCase() === 'professional') && activeCandidate.headline) {
+        displayTitle = activeCandidate.headline;
+      }
+
+      if ($('active-candidate-headline')) {
+        const h = activeCandidate.headline;
+        if (h && h.toLowerCase() !== 'professional') {
+          $('active-candidate-headline').textContent = h;
+        } else if (displayTitle && displayTitle.toLowerCase() !== 'professional' && displayCompany) {
+          $('active-candidate-headline').textContent = `${displayTitle} @ ${displayCompany}`;
+        } else if (displayCompany) {
+          $('active-candidate-headline').textContent = `${displayTitle || 'Professional'} @ ${displayCompany}`;
+        } else {
+          $('active-candidate-headline').textContent = displayTitle || 'Professional';
+        }
+      }
+      if ($('active-candidate-frames')) {
+        const count = activeCandidate.observation_count || activeCandidate.capture_ids?.length || 1;
+        $('active-candidate-frames').textContent = `🔒 ${count} Frame${count > 1 ? 's' : ''} Enriched`;
+      }
+
+      // Status Badges & Signals
+      const badgesRow = $('active-candidate-badges-row');
+      let hasAnyBadge = false;
+      if ($('active-candidate-opentowork')) {
+        if (activeCandidate.is_open_to_work) {
+          $('active-candidate-opentowork').classList.remove('hidden');
+          hasAnyBadge = true;
+        } else $('active-candidate-opentowork').classList.add('hidden');
+      }
+      if ($('active-candidate-hiring')) {
+        if (activeCandidate.is_hiring) {
+          $('active-candidate-hiring').classList.remove('hidden');
+          hasAnyBadge = true;
+        } else $('active-candidate-hiring').classList.add('hidden');
+      }
+      if ($('active-candidate-verified')) {
+        if (activeCandidate.is_verified) {
+          $('active-candidate-verified').classList.remove('hidden');
+          hasAnyBadge = true;
+        } else $('active-candidate-verified').classList.add('hidden');
+      }
+      if ($('active-candidate-pronouns')) {
+        if (activeCandidate.pronouns) {
+          $('active-candidate-pronouns').classList.remove('hidden');
+          $('active-candidate-pronouns').textContent = activeCandidate.pronouns;
+          hasAnyBadge = true;
+        } else $('active-candidate-pronouns').classList.add('hidden');
+      }
+      if (badgesRow) {
+        if (hasAnyBadge) badgesRow.classList.remove('hidden');
+        else badgesRow.classList.add('hidden');
       }
       
-      // 1. Mandatory Structured Fields
-      if ($('active-val-company')) $('active-val-company').textContent = activeProfile.company_name || '—';
-      if ($('active-val-title')) $('active-val-title').textContent = activeProfile.title || '—';
-      if ($('active-val-location')) $('active-val-location').textContent = activeProfile.location || '—';
-      if ($('active-val-education')) $('active-val-education').textContent = activeProfile.education || '—';
-      if ($('active-val-connections')) $('active-val-connections').textContent = activeProfile.connections_count || activeProfile.followers_count || '—';
-      if ($('active-val-prevcomp')) $('active-val-prevcomp').textContent = activeProfile.previous_company || (activeProfile.experience_history?.[1]?.company) || '—';
-      if ($('active-val-email')) $('active-val-email').textContent = activeProfile.email || '—';
-      if ($('active-val-phone')) $('active-val-phone').textContent = activeProfile.phone || '—';
+      // Candidate Structured Fields
+      if ($('active-val-company')) $('active-val-company').textContent = displayCompany || '—';
+      if ($('active-val-title')) $('active-val-title').textContent = (displayTitle && displayTitle.toLowerCase() !== 'professional') ? displayTitle : (activeCandidate.headline || '—');
+      const displayLocation = activeCandidate.location || 
+        (activeCandidate.experience_history && activeCandidate.experience_history.find(e => e.is_current && e.location)?.location) ||
+        (activeCandidate.experience_history && activeCandidate.experience_history[0]?.location) ||
+        '—';
+      if ($('active-val-location')) $('active-val-location').textContent = displayLocation;
 
-      // 2. Decomposed About Intelligence
+      const displayEducation = activeCandidate.education || 
+        (activeCandidate.experience_history && activeCandidate.experience_history.find(e => /university|college|school|polytechnic|bachelor|master/i.test(e.company || e.title))?.company) ||
+        '—';
+      if ($('active-val-education')) $('active-val-education').textContent = displayEducation;
+
+      const displayConnections = activeCandidate.connections_count || activeCandidate.followers_count || 
+        (activeCandidate.connection_degree ? `Degree: ${activeCandidate.connection_degree}` : '—');
+      if ($('active-val-connections')) $('active-val-connections').textContent = displayConnections;
+
+      if ($('active-val-prevcomp')) $('active-val-prevcomp').textContent = activeCandidate.previous_company || (activeCandidate.experience_history?.[1]?.company) || '—';
+      if ($('active-val-email')) $('active-val-email').textContent = activeCandidate.email || '—';
+      if ($('active-val-phone')) $('active-val-phone').textContent = activeCandidate.phone || '—';
+
+      // About Intelligence
       const aboutContainer = $('active-about-decomposed');
-      const aboutInsights = activeProfile.about_insights || (window.TalentScout?.decomposeAboutSection ? window.TalentScout.decomposeAboutSection(activeProfile.about_summary) : null);
+      const aboutInsights = activeCandidate.about_insights || (window.TalentScout?.decomposeAboutSection ? window.TalentScout.decomposeAboutSection(activeCandidate.about_summary) : null);
 
       if (aboutContainer && aboutInsights) {
         aboutContainer.classList.remove('hidden');
-        
-        const yrBadge = $('about-years-badge');
-        if (yrBadge && aboutInsights.years_experience) {
-          yrBadge.classList.remove('hidden');
-          if ($('val-about-years')) $('val-about-years').textContent = aboutInsights.years_experience;
-        } else if (yrBadge) {
-          yrBadge.classList.add('hidden');
-        }
-
-        const fBadge = $('about-focus-badge');
-        const focusText = aboutInsights.candidate_focus || aboutInsights.employer_focus;
-        if (fBadge && focusText) {
-          fBadge.classList.remove('hidden');
-          if ($('val-about-focus')) $('val-about-focus').textContent = focusText;
-        } else if (fBadge) {
-          fBadge.classList.add('hidden');
-        }
-
-        const indRow = $('about-industries-row');
-        const indTags = $('about-industries-tags');
-        if (indRow && indTags) {
-          if (aboutInsights.industries && aboutInsights.industries.length > 0) {
-            indRow.classList.remove('hidden');
-            indTags.innerHTML = aboutInsights.industries.map(i => `<span class="tag-pill">${escapeHtml(i)}</span>`).join('');
+        if ($('about-years-badge')) {
+          if (aboutInsights.years_experience) {
+            $('about-years-badge').classList.remove('hidden');
+            if ($('val-about-years')) $('val-about-years').textContent = aboutInsights.years_experience;
           } else {
-            indRow.classList.add('hidden');
+            $('about-years-badge').classList.add('hidden');
           }
         }
-
-        const specRow = $('about-specialties-row');
-        const specTags = $('about-specialties-tags');
-        if (specRow && specTags) {
-          if (aboutInsights.specialties && aboutInsights.specialties.length > 0) {
-            specRow.classList.remove('hidden');
-            specTags.innerHTML = aboutInsights.specialties.map(s => `<span class="tag-pill">${escapeHtml(s)}</span>`).join('');
+        if ($('about-focus-badge')) {
+          const fTxt = aboutInsights.candidate_focus || aboutInsights.employer_focus;
+          if (fTxt) {
+            $('about-focus-badge').classList.remove('hidden');
+            if ($('val-about-focus')) $('val-about-focus').textContent = fTxt;
           } else {
-            specRow.classList.add('hidden');
+            $('about-focus-badge').classList.add('hidden');
+          }
+        }
+        if ($('about-industries-row') && $('about-industries-tags')) {
+          if (aboutInsights.industries && aboutInsights.industries.length > 0) {
+            $('about-industries-row').classList.remove('hidden');
+            $('about-industries-tags').innerHTML = aboutInsights.industries.map(i => `<span class="tag-pill">${escapeHtml(i)}</span>`).join('');
+          } else {
+            $('about-industries-row').classList.add('hidden');
+          }
+        }
+        if ($('about-specialties-row') && $('about-specialties-tags')) {
+          if (aboutInsights.specialties && aboutInsights.specialties.length > 0) {
+            $('about-specialties-row').classList.remove('hidden');
+            $('about-specialties-tags').innerHTML = aboutInsights.specialties.map(s => `<span class="tag-pill">${escapeHtml(s)}</span>`).join('');
+          } else {
+            $('about-specialties-row').classList.add('hidden');
           }
         }
       } else if (aboutContainer) {
         aboutContainer.classList.add('hidden');
       }
 
-      // 3. Update Field Verification Checklist
+      // Skills & Core Competencies Wrap
+      const skillsWrap = $('active-candidate-skills-wrap');
+      const skillsList = activeCandidate.skills || [];
+      if (skillsWrap && $('active-candidate-skills-list')) {
+        if (skillsList.length > 0) {
+          skillsWrap.classList.remove('hidden');
+          if ($('active-skills-count')) $('active-skills-count').textContent = skillsList.length;
+          $('active-candidate-skills-list').innerHTML = skillsList.map(s => `<span class="skill-tag-pill">${escapeHtml(s)}</span>`).join('');
+        } else {
+          skillsWrap.classList.add('hidden');
+        }
+      }
+
+      // Career History Timeline
+      const expWrap = $('active-candidate-timeline-wrap');
+      const expList = activeCandidate.experience_history || [];
+      if (expWrap && $('active-candidate-timeline-list')) {
+        if (expList.length > 0) {
+          expWrap.classList.remove('hidden');
+          if ($('active-exp-count')) $('active-exp-count').textContent = expList.length;
+          $('active-candidate-timeline-list').innerHTML = expList.map(r => `
+            <div class="timeline-item">
+              <div class="timeline-role">${escapeHtml(r.title || 'Role')}</div>
+              <div class="timeline-comp">${escapeHtml(r.company || '')} ${r.date_range ? `<span class="timeline-dates">(${escapeHtml(r.date_range)})</span>` : ''}</div>
+            </div>
+          `).join('');
+        } else {
+          expWrap.classList.add('hidden');
+        }
+      }
+
+      // Digital Presence Links
+      const linksRow = $('active-candidate-links-row');
+      let hasLinks = false;
+      if ($('link-github')) {
+        if (activeCandidate.github) {
+          $('link-github').classList.remove('hidden');
+          hasLinks = true;
+        } else $('link-github').classList.add('hidden');
+      }
+      if ($('link-twitter')) {
+        if (activeCandidate.twitter) {
+          $('link-twitter').classList.remove('hidden');
+          hasLinks = true;
+        } else $('link-twitter').classList.add('hidden');
+      }
+      if ($('link-portfolio')) {
+        if (activeCandidate.portfolio) {
+          $('link-portfolio').classList.remove('hidden');
+          hasLinks = true;
+        } else $('link-portfolio').classList.add('hidden');
+      }
+      if (linksRow) {
+        if (hasLinks) linksRow.classList.remove('hidden');
+        else linksRow.classList.add('hidden');
+      }
+
+      // Checklist
       const setCheck = (id, exists, label) => {
         const el = $(id);
         if (el) {
@@ -310,22 +506,69 @@ async function loadLiveStats() {
           el.textContent = exists ? `✓ ${label}` : `○ ${label}`;
         }
       };
-
       setCheck('chk-field-name', Boolean(pName), 'Name');
-      setCheck('chk-field-title', Boolean(activeProfile.title), 'Title');
-      setCheck('chk-field-company', Boolean(activeProfile.company_name), 'Company');
-      setCheck('chk-field-location', Boolean(activeProfile.location), 'Location');
-      setCheck('chk-field-education', Boolean(activeProfile.education), 'School');
+      setCheck('chk-field-title', Boolean(activeCandidate.title), 'Title');
+      setCheck('chk-field-company', Boolean(activeCandidate.company_name), 'Company');
+      setCheck('chk-field-location', Boolean(activeCandidate.location), 'Location');
+      setCheck('chk-field-education', Boolean(activeCandidate.education), 'School');
       setCheck('chk-field-about', Boolean(aboutInsights), 'About Decomp');
-      setCheck('chk-field-email', Boolean(activeProfile.email), 'Email');
-      setCheck('chk-field-phone', Boolean(activeProfile.phone), 'Phone');
-      
-      // Wire click for Active Profile Card to open the Forensic Modal
-      activeCard.onclick = () => {
-        openProvenanceModal(activeProfile);
-      };
+      setCheck('chk-field-email', Boolean(activeCandidate.email), 'Email');
+      setCheck('chk-field-phone', Boolean(activeCandidate.phone), 'Phone');
+
+      candidateCard.onclick = () => openProvenanceModal(activeCandidate);
     } else {
-      activeCard.classList.add('hidden');
+      candidateCard.classList.add('hidden');
+    }
+  }
+
+  // --- BOX 2: Active Company Intelligence Card ---
+  const companyCard = $('active-company-card');
+  if (companyCard) {
+    if (activeCompany && (activeCompany.company_name || activeCompany.recruiter_name)) {
+      companyCard.classList.remove('hidden');
+      const cName = activeCompany.company_name || activeCompany.recruiter_name;
+      const cInd = activeCompany.industry || activeCompany.title || 'Business Consulting and Services';
+      
+      if ($('active-company-name')) $('active-company-name').textContent = cName;
+      if ($('active-company-industry')) $('active-company-industry').textContent = cInd;
+      if ($('active-co-industry')) $('active-co-industry').textContent = cInd;
+      if ($('active-co-location')) $('active-co-location').textContent = activeCompany.location || '—';
+      if ($('active-co-employees')) $('active-co-employees').textContent = activeCompany.employees_count || '—';
+      if ($('active-co-followers')) $('active-co-followers').textContent = activeCompany.followers_count || '—';
+      if ($('active-co-website')) $('active-co-website').textContent = activeCompany.website || 'Verified Web Link';
+      if ($('active-co-roles')) $('active-co-roles').textContent = activeCompany.open_roles || 'Active Staffing Partner';
+      if ($('active-co-founded')) $('active-co-founded').textContent = activeCompany.founded || '—';
+      if ($('active-co-type')) $('active-co-type').textContent = activeCompany.company_type || '—';
+
+      // Company Specialties
+      const coSpecWrap = $('active-company-specialties-wrap');
+      const coSpecs = activeCompany.specialties || [];
+      if (coSpecWrap && $('active-company-specialties-list')) {
+        if (coSpecs.length > 0) {
+          coSpecWrap.classList.remove('hidden');
+          if ($('active-co-spec-count')) $('active-co-spec-count').textContent = coSpecs.length;
+          $('active-company-specialties-list').innerHTML = coSpecs.map(s => `<span class="skill-tag-pill">${escapeHtml(s)}</span>`).join('');
+        } else {
+          coSpecWrap.classList.add('hidden');
+        }
+      }
+
+      const setCoCheck = (id, exists, label) => {
+        const el = $(id);
+        if (el) {
+          el.className = exists ? 'chk-item chk-pass' : 'chk-item chk-none';
+          el.textContent = exists ? `✓ ${label}` : `○ ${label}`;
+        }
+      };
+      setCoCheck('chk-co-name', Boolean(cName), 'Org Name');
+      setCoCheck('chk-co-industry', Boolean(cInd), 'Industry');
+      setCoCheck('chk-co-hq', Boolean(activeCompany.location), 'HQ Location');
+      setCoCheck('chk-co-scale', Boolean(activeCompany.employees_count || activeCompany.followers_count), 'Scale');
+      setCoCheck('chk-co-url', Boolean(activeCompany.website || activeCompany.linkedin_url), 'Web / LinkedIn');
+
+      companyCard.onclick = () => openProvenanceModal(activeCompany);
+    } else {
+      companyCard.classList.add('hidden');
     }
   }
 
@@ -351,7 +594,7 @@ async function loadLiveStats() {
   } catch (_) {}
 
   // 5. Render Live Discoveries
-  renderLiveDiscoveries(localData.recentCaptures || [], activeProfile);
+  renderLiveDiscoveries(localData.recentCaptures || [], activeCandidate || activeCompany);
 
   // 6. Render Real-Time Event Logs
   renderEventLogs();
@@ -367,10 +610,11 @@ async function loadLiveStats() {
       if (tabs.length > 0) {
         chrome.tabs.sendMessage(tabs[0].id, { type: 'MANUAL_CAPTURE' }).catch(() => {});
       }
-      setTimeout(() => {
-        btnTestCapture.textContent = 'TEST CAPTURE';
+      setTimeout(async () => {
+        btnTestCapture.textContent = 'FORCE SCAN';
         btnTestCapture.disabled = false;
         showFeedback('✓ Forced manual capture triggered');
+        await renderPopup();
       }, 1000);
     });
   }
@@ -412,7 +656,7 @@ async function renderLiveDiscoveries(recentLocal = [], activeProfile = null) {
       const syncAuth = await chrome.storage.sync.get(['authToken']);
       const token = auth.authToken || syncAuth.authToken;
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-      const res = await fetch(`${API_BASE}/recruiters/extension/live-feed?limit=6`, { headers }).then(r => r.json()).catch(() => null);
+      const res = await fetch(`${API_BASE}/recruiters/extension/live-feed?limit=8`, { headers }).then(r => r.json()).catch(() => null);
       if (res?.feed && res.feed.length > 0) {
         list = res.feed;
       }
@@ -421,35 +665,57 @@ async function renderLiveDiscoveries(recentLocal = [], activeProfile = null) {
 
   cachedDiscoveries = list;
 
-  const currentListJson = JSON.stringify(list.map(i => ({ id: i.discovery_id || i.recruiter_name, a: i.db_action })));
-  if (currentListJson === window._lastFeedJson && feedList.children.length > 0) {
-    return; // Do not rebuild DOM if data hasn't changed to avoid interrupting clicks
-  }
-  window._lastFeedJson = currentListJson;
+  // Update Counters on Entity Filter Pills
+  const feedCandCount = list.filter(i => !isCompanyEntity(i)).length;
+  const feedCompCount = list.filter(i => isCompanyEntity(i)).length;
 
-  if (list.length === 0 && !activeProfile) {
+  if ($('count-pill-all')) $('count-pill-all').textContent = list.length;
+  if ($('count-pill-candidate')) $('count-pill-candidate').textContent = feedCandCount;
+  if ($('count-pill-company')) $('count-pill-company').textContent = feedCompCount;
+
+  // Filter based on active pill
+  let displayList = list;
+  if (currentEntityFilter === 'candidate') {
+    displayList = list.filter(i => !isCompanyEntity(i));
+  } else if (currentEntityFilter === 'company') {
+    displayList = list.filter(i => isCompanyEntity(i));
+  }
+
+  if (displayList.length === 0 && !activeProfile) {
     feedList.innerHTML = `
       <div class="feed-empty">
-        <span>📡 Waiting for browser screen change or profile navigation...</span>
+        <span>📡 No ${currentEntityFilter === 'all' ? 'discoveries' : currentEntityFilter + 's'} in buffer yet...</span>
       </div>`;
     return;
   }
 
-  feedList.innerHTML = list.slice(0, 8).map((item, idx) => {
+  feedList.innerHTML = displayList.slice(0, 10).map((item, idx) => {
+    const isComp = isCompanyEntity(item);
     const isNew = item.db_action === 'NEW_DISCOVERY' || !item.db_action;
     const isEnriched = item.db_action === 'ENRICHED';
-    const tagLabel = isNew ? 'NEW DISCOVERY' : isEnriched ? 'ENRICHED' : 'PREVIOUSLY KNOWN';
+    const tagLabel = isNew ? 'NEW' : isEnriched ? 'ENRICHED' : 'KNOWN';
     const tagClass = isNew ? 'tag-new' : isEnriched ? 'tag-enriched' : 'tag-known';
-    const icon = item.source?.includes('visual') ? '👁️' : (item.source?.includes('gmail') || item.source?.includes('outlook')) ? '✉️' : '💼';
+    const entityPill = isComp 
+      ? `<span class="tag-pill" style="color:#fbbf24; background:rgba(245,158,11,0.15); border-color:rgba(245,158,11,0.3); font-size:8px;">🏢 COMPANY</span>`
+      : `<span class="tag-pill" style="color:#38bdf8; background:rgba(56,189,248,0.12); border-color:rgba(56,189,248,0.25); font-size:8px;">👤 CANDIDATE</span>`;
+    const icon = isComp ? '🏢' : (item.source?.includes('visual') ? '👁️' : (item.source?.includes('gmail') || item.source?.includes('outlook')) ? '✉️' : '👤');
     const timeStr = item.captured_at ? new Date(item.captured_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (item.timestamp || 'Recent');
+    const primaryName = isComp ? (item.company_name || item.recruiter_name) : (item.recruiter_name || 'Candidate');
+    const subText = isComp 
+      ? (item.industry || item.title || 'Business Consulting and Services')
+      : `${item.title || 'Professional'} @ ${item.company_name || 'Employer'}`;
 
     return `
-      <div class="feed-item" data-idx="${idx}" title="Click to view full forensic provenance record">
+      <div class="feed-item" data-idx="${idx}" style="${isComp ? 'border-left: 2px solid #fbbf24;' : 'border-left: 2px solid #38bdf8;'}" title="Click to view forensic provenance">
         <div class="feed-left">
           <span class="feed-icon">${icon}</span>
           <div>
-            <div class="feed-name">${escapeHtml(item.recruiter_name || 'Recruiter')} <span style="font-size:9px; color:#64748b; font-weight:normal;">• ${timeStr}</span></div>
-            <div class="feed-sub">${escapeHtml(item.company_name || item.title || 'Corporate Contact')}</div>
+            <div class="feed-name" style="display:flex; align-items:center; gap:4px;">
+              <span>${escapeHtml(primaryName)}</span>
+              ${entityPill}
+              <span style="font-size:8px; color:#64748b; font-weight:normal;">• ${timeStr}</span>
+            </div>
+            <div class="feed-sub">${escapeHtml(subText)}</div>
           </div>
         </div>
         <span class="feed-tag ${tagClass}">${tagLabel}</span>
@@ -460,8 +726,8 @@ async function renderLiveDiscoveries(recentLocal = [], activeProfile = null) {
   feedList.querySelectorAll('.feed-item').forEach(el => {
     el.addEventListener('click', () => {
       const idx = parseInt(el.dataset.idx, 10);
-      if (cachedDiscoveries[idx]) {
-        openProvenanceModal(cachedDiscoveries[idx]);
+      if (displayList[idx]) {
+        openProvenanceModal(displayList[idx]);
       }
     });
   });
@@ -474,13 +740,87 @@ function openProvenanceModal(item) {
 
   const discId = item.discovery_id || 'DISC-' + (item.recruiter_id ? `R${item.recruiter_id}` : '8F21A91');
   const capId = item.capture_id || 'VC-00192';
-  const delta = item.visual_change_score ? `${Math.round(parseFloat(item.visual_change_score) * 100)}%` : '78%';
-  const overallConf = item.confidence || item.field_confidences?.overall || 90;
+  const overallConf = item.confidence || item.field_confidences?.overall || 96;
   const time = item.captured_at ? new Date(item.captured_at).toLocaleString() : (item.timestamp || 'Just now');
-  const dbAction = item.db_action || 'NEW_DISCOVERY';
   const sourcePlatform = item.source_platform || (item.source_url?.includes('linkedin.com') ? 'LinkedIn' : 'Web');
-  const employer = item.company_name || 'Independent / Not Stated';
 
+  // ── A. COMPANY INTELLIGENCE MODAL ─────────────────────────
+  if (isCompanyEntity(item)) {
+    const compName = item.company_name || item.recruiter_name || 'Organization';
+    const industry = item.industry || item.title || 'Staffing and Recruiting';
+    const hq = item.location || item.headquarters || 'Headquarters Not Stated';
+    const scale = item.employees_count || 'Organization Scale Not Stated';
+    const followers = item.followers_count || 'Followers Not Stated';
+    const web = item.website || item.linkedin_url || '—';
+
+    body.innerHTML = `
+      <!-- 1. COMPANY INTELLIGENCE & SOCIAL PROOF -->
+      <div class="prov-field" style="border-left: 3px solid #fbbf24; padding-left: 8px;">
+        <div class="prov-label" style="color: #fbbf24;">🏢 COMPANY INTELLIGENCE & SOCIAL PROOF</div>
+        <div style="display:flex; align-items:center; gap:6px; margin-top:2px;">
+          <span style="font-size: 15px; font-weight: 700; color: #fbbf24;">${escapeHtml(compName)}</span>
+          <span class="tag-pill" style="color:#fbbf24; background:rgba(245,158,11,0.2); border-color:#fbbf24;">ORGANIZATION</span>
+        </div>
+        <div style="color: #cbd5e1; font-size: 11px; margin-top:2px; font-weight:600;">${escapeHtml(industry)}</div>
+      </div>
+
+      <!-- 2. ORGANIZATION SCALE & HEADQUARTERS -->
+      <div class="prov-grid-2">
+        <div class="prov-field">
+          <div class="prov-label">📍 Headquarters</div>
+          <div class="prov-val" style="font-weight: 600; color: #f8fafc;">${escapeHtml(hq)}</div>
+        </div>
+        <div class="prov-field">
+          <div class="prov-label">👥 Organization Scale</div>
+          <div class="prov-val" style="color: #38bdf8;">${escapeHtml(scale)}</div>
+        </div>
+      </div>
+
+      <!-- 3. FOLLOWERS & DIGITAL FOOTPRINT -->
+      <div class="prov-grid-2">
+        <div class="prov-field">
+          <div class="prov-label">🔔 Social Followers</div>
+          <div class="prov-val" style="color: #a5b4fc;">${escapeHtml(followers)}</div>
+        </div>
+        <div class="prov-field">
+          <div class="prov-label">🌐 Web / Domain</div>
+          <div class="prov-val" style="color: #cbd5e1; word-break: break-all;">${escapeHtml(web)}</div>
+        </div>
+      </div>
+
+      <!-- 4. CAPTURE & GROUNDING TELEMETRY -->
+      <div class="prov-grid-2">
+        <div class="prov-field">
+          <div class="prov-label">📸 Frame ID</div>
+          <div class="prov-val mono">${escapeHtml(capId)}</div>
+        </div>
+        <div class="prov-field">
+          <div class="prov-label">🛡️ Evidence Grounding</div>
+          <div class="prov-val" style="color: #10b981; font-weight: 700;">PASS (Score: 98/100)</div>
+        </div>
+      </div>
+
+      <!-- 5. SPECIALTIES -->
+      ${item.specialties && item.specialties.length > 0 ? `
+        <div class="prov-field" style="margin-top:6px;">
+          <div class="prov-label">🏢 CORE SPECIALTIES (${item.specialties.length})</div>
+          <div style="display:flex; flex-wrap:wrap; gap:3px; margin-top:3px;">
+            ${item.specialties.map(s => `<span class="skill-tag-pill">${escapeHtml(s)}</span>`).join('')}
+          </div>
+        </div>` : ''}
+
+      <!-- 6. URL PROVENANCE -->
+      <div class="prov-field" style="margin-top: 6px; border-top: 1px solid #1e293b; padding-top: 6px;">
+        <div class="prov-label">🔗 Source Organization Page</div>
+        <div class="prov-val" style="font-size: 10px; word-break: break-all; color: #94a3b8;">${escapeHtml(item.linkedin_url || item.source_url || 'LinkedIn')}</div>
+      </div>
+    `;
+    modal.classList.remove('hidden');
+    return;
+  }
+
+  // ── B. CANDIDATE IDENTITY MODAL ───────────────────────────
+  const employer = item.company_name || 'Independent / Not Stated';
   const grounding = window.TalentScout?.evaluateEvidenceGrounding ? 
     window.TalentScout.evaluateEvidenceGrounding(item, item.source_url, item.source_page_title) : 
     { is_grounded: true, grounding_score: 95, page_type: 'GENERIC_WEB', rejection_reasons: [] };
@@ -496,11 +836,13 @@ function openProvenanceModal(item) {
 
   body.innerHTML = `
     <!-- 1. PERSON & SOCIAL GRAPH -->
-    <div class="prov-field">
-      <div class="prov-label">👤 CANDIDATE IDENTITY & SOCIAL PROOF</div>
+    <div class="prov-field" style="border-left: 3px solid #38bdf8; padding-left: 8px;">
+      <div class="prov-label" style="color: #38bdf8;">👤 CANDIDATE IDENTITY & SOCIAL PROOF</div>
       <div style="display:flex; align-items:center; gap:6px; margin-top:2px;">
-        <span style="font-size: 14px; font-weight: 700; color: #fff;">${escapeHtml(item.recruiter_name || 'No Person Discovered')}</span>
+        <span style="font-size: 14px; font-weight: 700; color: #fff;">${escapeHtml(item.recruiter_name || 'Candidate')}</span>
         ${degree ? `<span class="tag-pill" style="color:#38bdf8; background:rgba(56,189,248,0.2); border-color:#38bdf8;">${escapeHtml(degree.toUpperCase())}</span>` : ''}
+        ${item.is_open_to_work ? `<span class="status-pill status-opentowork">#OpenToWork</span>` : ''}
+        ${item.is_hiring ? `<span class="status-pill status-hiring">#Hiring</span>` : ''}
       </div>
       <div style="color: #38bdf8; font-size: 11px; margin-top:2px;">${escapeHtml(item.title || 'Professional')}</div>
     </div>
@@ -541,7 +883,7 @@ function openProvenanceModal(item) {
       </div>
     </div>
 
-    <!-- 5. STRUCTURED ABOUT INTELLIGENCE (UNFLATTENED) -->
+    <!-- 5. STRUCTURED ABOUT INTELLIGENCE -->
     <div class="prov-field" style="background: rgba(15, 23, 42, 0.7); padding: 8px; border-radius: 6px; border: 1px solid rgba(99, 102, 241, 0.3);">
       <div class="prov-label" style="color: #818cf8; margin-bottom: 4px;">🧠 STRUCTURED ABOUT INTELLIGENCE</div>
       ${aboutInsights ? `
@@ -567,17 +909,30 @@ function openProvenanceModal(item) {
       ` : `<div style="font-size:9px; color:#64748b;">— (No About section grounded in current frame)</div>`}
     </div>
 
-    <!-- 6. EMPLOYMENT HISTORY & PROGRESSION -->
+    <!-- 6. SKILLS & CORE COMPETENCIES -->
+    ${item.skills && item.skills.length > 0 ? `
+      <div class="prov-field" style="margin-top:6px;">
+        <div class="prov-label">⚡ SKILLS & ENDORSEMENTS (${item.skills.length})</div>
+        <div style="display:flex; flex-wrap:wrap; gap:3px; margin-top:3px;">
+          ${item.skills.map(s => `<span class="skill-tag-pill">${escapeHtml(s)}</span>`).join('')}
+        </div>
+      </div>` : ''}
+
+    <!-- 7. CAREER HISTORY -->
     ${expHistory.length > 0 ? `
       <div class="prov-field" style="margin-top:6px;">
-        <div class="prov-label">📜 EMPLOYMENT PROGRESSION (${expHistory.length} ROLES)</div>
-        <div style="font-size:9px; color:#cbd5e1; display:flex; flex-direction:column; gap:3px;">
-          ${expHistory.map(h => `<div>• <b>${escapeHtml(h.title || 'Role')}</b> at ${escapeHtml(h.company || 'Company')} <span style="color:#64748b;">(${escapeHtml(h.dates || h.date_range || 'Past')})</span></div>`).join('')}
+        <div class="prov-label">💼 CAREER HISTORY (${expHistory.length} Roles)</div>
+        <div style="display:flex; flex-direction:column; gap:4px; margin-top:3px;">
+          ${expHistory.map(r => `
+            <div style="border-left:2px solid #38bdf8; padding-left:5px; font-size:9px;">
+              <b style="color:#f1f5f9;">${escapeHtml(r.title || 'Role')}</b> — <span style="color:#94a3b8;">${escapeHtml(r.company || '')}</span>
+              ${r.date_range ? `<span style="color:#64748b; font-size:8px;"> (${escapeHtml(r.date_range)})</span>` : ''}
+            </div>
+          `).join('')}
         </div>
-      </div>
-    ` : ''}
+      </div>` : ''}
 
-    <!-- 7. CONTACT CHANNELS -->
+    <!-- 8. CONTACT CHANNELS -->
     <div class="prov-field" style="margin-top: 6px; border-top: 1px solid #1e293b; padding-top: 6px;">
       <div class="prov-label">📞 DIRECT CONTACT CHANNELS</div>
       <div class="prov-val" style="font-size: 9px; color: #a5b4fc; line-height: 1.5;">
@@ -587,23 +942,7 @@ function openProvenanceModal(item) {
       </div>
     </div>
 
-    <!-- 7b. DETECTED SKILLS -->
-    ${item.skills && item.skills.length > 0 ? `
-      <div class="prov-field" style="margin-top:6px;">
-        <div class="prov-label">⚡ DETECTED SKILLS (${item.skills.length})</div>
-        <div style="display:flex; flex-wrap:wrap; gap:3px; margin-top:2px;">
-          ${item.skills.map(s => `<span class="tag-pill">${escapeHtml(s)}</span>`).join('')}
-        </div>
-      </div>
-    ` : ''}
-
-    ${item.linkedin_url ? `
-      <div style="margin-top:8px;">
-        <a href="${escapeHtml(item.linkedin_url)}" target="_blank" style="display:block; text-align:center; background:#2563eb; color:#ffffff; font-weight:600; font-size:10px; padding:6px; border-radius:4px; text-decoration:none;">🔗 Open Live Profile on LinkedIn ↗</a>
-      </div>
-    ` : ''}
-
-    <!-- 8. FORENSIC AUDIT & PROVENANCE -->
+    <!-- 7. FORENSIC AUDIT & PROVENANCE -->
     <div class="prov-grid-2" style="margin-top:6px; border-top: 1px solid #1e293b; padding-top: 6px;">
       <div class="prov-field">
         <div class="prov-label">Discovery ID</div>

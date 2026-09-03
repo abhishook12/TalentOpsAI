@@ -475,6 +475,7 @@ async def timeout_stuck_emails_sweep():
 
 async def discovery_batch_processor_loop():
     """Periodic background runner for the Discovery Staging Batch Intelligence Engine."""
+    await asyncio.sleep(15)  # Wait for server startup and initial health checks to complete
     while True:
         try:
             from .database import SessionLocal

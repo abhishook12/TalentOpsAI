@@ -26,3 +26,4 @@ pytest-cov
 duckdb
 google-genai==2.11.0
 pytest-env
+Pillow

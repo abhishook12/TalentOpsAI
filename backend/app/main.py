@@ -19,7 +19,7 @@ from .config import (
     ENABLE_SENTINEL_ENGINE,
 )
 from .routes import recruiters, companies, vendors, candidates, submissions, analytics, admin, auth, actions, updates, ai, campaigns, harvester, users, visitor_analytics, notifications, bridge, accounts, extension, staging
-from .database import get_db, engine
+from .database import get_db, engine, Base
 from .models import models, auth_models, staging_models
 from .models import extension_models  # Extension device/activation tracking
 from .create_indexes import create_performance_indexes
@@ -28,7 +28,7 @@ from .create_indexes import create_performance_indexes
 from .core.logger import setup_logger
 logger = setup_logger(level=logging.INFO if IS_PRODUCTION else logging.DEBUG)
 
-RUN_STARTUP_MIGRATIONS = os.getenv("RUN_STARTUP_MIGRATIONS", "true").lower() in ("1", "true", "yes")
+RUN_STARTUP_MIGRATIONS = os.getenv("RUN_STARTUP_MIGRATIONS", "false").lower() in ("1", "true", "yes")
 
 if RUN_STARTUP_MIGRATIONS:
     try:
@@ -72,10 +72,10 @@ if RUN_STARTUP_MIGRATIONS:
                 logger.error("Error seeding roles: %s", e)
 
             try:
-                from .services.backup_service import start_backup_service
-                start_backup_service(interval_hours=24)
+                from .services.backup_service import BackupService
+                BackupService()
             except Exception as e:
-                logger.error("Error starting backup service: %s", e)
+                logger.warning("Backup service skipped: %s", e)
 
             admin.migrate_page_visits(_db)
             try:

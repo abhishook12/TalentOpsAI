@@ -322,10 +322,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
         // ── Visual Scraper Messages ──
         case 'CAPTURE_VISIBLE_TAB': {
-          try {
-            const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            const targetWinId = sender.tab?.windowId || activeTab?.windowId || null;
-            const dataUrl = await chrome.tabs.captureVisibleTab(targetWinId, { format: 'jpeg', quality: 75 });
+            const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true }).catch(() => []);
+            let dataUrl = null;
+            const winId = typeof sender.tab?.windowId === 'number' ? sender.tab.windowId : (typeof activeTab?.windowId === 'number' ? activeTab.windowId : null);
+            
+            if (winId !== null) {
+              dataUrl = await chrome.tabs.captureVisibleTab(winId, { format: 'jpeg', quality: 75 });
+            } else {
+              dataUrl = await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 75 });
+            }
             
             // Increment totalCaptured metric
             const local = await chrome.storage.local.get(['totalCaptured']);
@@ -499,15 +504,35 @@ async function flushQueue() {
           });
           await saveQueueToStorage();
         } else {
-          contactQueue.unshift(...batch);
           sessionStats.errors += 1;
+          if (res.status === 401 || res.status === 403) {
+            // Token expired or invalid — refresh token immediately
+            await chrome.storage.local.remove(['authToken']);
+            await chrome.storage.sync.remove(['authToken']);
+            await autoActivateExtension();
+          }
+
+          batch._retries = (batch._retries || 0) + 1;
+          if (batch._retries < 3) {
+            contactQueue.unshift(...batch);
+          } else {
+            addSessionLog({
+              timestamp: new Date().toLocaleTimeString(),
+              type: 'DATABASE_SYNC_DROPPED',
+              detail: `Dropped ${batch.length} contacts after 3 failed attempts (HTTP ${res.status}). Continuing queue.`,
+            });
+          }
           await saveQueueToStorage();
-          break; // Stop loop on server error
+          break; // Pause loop briefly until next flush cycle
         }
       } catch (netErr) {
-        contactQueue.unshift(...batch);
+        sessionStats.errors += 1;
+        batch._retries = (batch._retries || 0) + 1;
+        if (batch._retries < 3) {
+          contactQueue.unshift(...batch);
+        }
         await saveQueueToStorage();
-        break; // Stop loop on network error
+        break; // Pause loop on network error
       }
     }
   } finally {

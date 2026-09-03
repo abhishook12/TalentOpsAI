@@ -212,9 +212,28 @@ window.TalentScout.validateHumanName = function(rawName) {
     return { isValid: false, reason: `notification_noise:${name}` };
   }
 
-  // Must contain at least one letter, no emojis, and between 2 to 4 words
-  if (!/^[a-zA-Z\s'.\-]+$/.test(name) || name.split(' ').length > 4) {
+  // Reject domain names or email fragments (e.g. "cwood atominc.com", "user@site")
+  if (/\b(?:com|org|net|io|ai|co|edu|gov|in|biz|info)\b/i.test(name) && name.includes('.')) {
+    return { isValid: false, reason: `domain_name:${name}` };
+  }
+  if (/@|\.com|\.net|\.org|\.io|\.ai/i.test(lower)) {
+    return { isValid: false, reason: `domain_pattern:${name}` };
+  }
+
+  // Reject standalone platform / tool names
+  if (/^(linkedin|google|microsoft|indeed|glassdoor|ziprecruiter|github|twitter|facebook|instagram|chat|search|messaging)$/i.test(lower)) {
+    return { isValid: false, reason: `site_name:${name}` };
+  }
+
+  // Must contain at least two words (First Name + Last Name) for human candidate verification
+  const wordTokens = name.split(' ').filter(w => w.length > 0);
+  if (wordTokens.length < 2 || wordTokens.length > 4) {
     return { isValid: false, reason: 'unnatural_name_structure' };
+  }
+
+  // Must contain only letters and standard name punctuation
+  if (!/^[a-zA-Z\s'.\-]+$/.test(name)) {
+    return { isValid: false, reason: 'unnatural_characters' };
   }
 
   // Capitalize properly

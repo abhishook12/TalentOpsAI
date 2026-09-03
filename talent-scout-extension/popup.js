@@ -421,6 +421,12 @@ async function renderLiveDiscoveries(recentLocal = [], activeProfile = null) {
 
   cachedDiscoveries = list;
 
+  const currentListJson = JSON.stringify(list.map(i => ({ id: i.discovery_id || i.recruiter_name, a: i.db_action })));
+  if (currentListJson === window._lastFeedJson && feedList.children.length > 0) {
+    return; // Do not rebuild DOM if data hasn't changed to avoid interrupting clicks
+  }
+  window._lastFeedJson = currentListJson;
+
   if (list.length === 0 && !activeProfile) {
     feedList.innerHTML = `
       <div class="feed-empty">
@@ -580,6 +586,22 @@ function openProvenanceModal(item) {
         ${item.linkedin_url ? `🔗 Profile: <span style="color:#38bdf8;">${escapeHtml(item.linkedin_url)}</span>` : ''}
       </div>
     </div>
+
+    <!-- 7b. DETECTED SKILLS -->
+    ${item.skills && item.skills.length > 0 ? `
+      <div class="prov-field" style="margin-top:6px;">
+        <div class="prov-label">⚡ DETECTED SKILLS (${item.skills.length})</div>
+        <div style="display:flex; flex-wrap:wrap; gap:3px; margin-top:2px;">
+          ${item.skills.map(s => `<span class="tag-pill">${escapeHtml(s)}</span>`).join('')}
+        </div>
+      </div>
+    ` : ''}
+
+    ${item.linkedin_url ? `
+      <div style="margin-top:8px;">
+        <a href="${escapeHtml(item.linkedin_url)}" target="_blank" style="display:block; text-align:center; background:#2563eb; color:#ffffff; font-weight:600; font-size:10px; padding:6px; border-radius:4px; text-decoration:none;">🔗 Open Live Profile on LinkedIn ↗</a>
+      </div>
+    ` : ''}
 
     <!-- 8. FORENSIC AUDIT & PROVENANCE -->
     <div class="prov-grid-2" style="margin-top:6px; border-top: 1px solid #1e293b; padding-top: 6px;">

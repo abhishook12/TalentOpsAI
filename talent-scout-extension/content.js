@@ -755,9 +755,25 @@
     }
   }
 
+  let lastVisualCaptureTime = 0;
+  function isRecruitingDomain() {
+    const host = location.hostname.toLowerCase();
+    return host.includes('linkedin.com') ||
+           host.includes('indeed.com') ||
+           host.includes('glassdoor.com') ||
+           host.includes('ziprecruiter.com') ||
+           host.includes('wellfound.com') ||
+           host.includes('dice.com');
+  }
+
   // ── Stage B: Visual-First Frame Capture Pipeline ─────────────
   async function runVisualCapturePipeline(force = false) {
+    if (!document.hasFocus() || document.visibilityState !== 'visible') return { entities: [], captureId: null };
+    if (!isRecruitingDomain()) return { entities: [], captureId: null };
+    if (!force && (Date.now() - lastVisualCaptureTime) < 4000) return { entities: [], captureId: null };
     if (!ts.Visual?.Diff || !ts.Visual?.Store || !ts.Visual?.Engine) return { entities: [], captureId: null };
+
+    lastVisualCaptureTime = Date.now();
 
     const capRes = await new Promise(r => {
       chrome.runtime.sendMessage({ type: 'CAPTURE_VISIBLE_TAB' }, res => r(res || null));

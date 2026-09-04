@@ -14,9 +14,9 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
   const STORE_NAME = 'temporary_screenshots';
   const PROVENANCE_STORE_NAME = 'permanent_provenance_index';
 
-  const AUDIT_RETENTION_MS = 60 * 60 * 1000;  // 1-Hour Rolling Evidence Retention Window
-  const HARD_MAX_RETENTION_MS = 60 * 60 * 1000; // 1-Hour Hard Retention Ceiling
-  const MAX_BUFFER_IMAGES = 200; // Retains full active 1-hour session frames
+  const AUDIT_RETENTION_MS = 15 * 1000;       // 15-Second Lightweight Evidence Window
+  const HARD_MAX_RETENTION_MS = 30 * 1000;    // 30-Second Hard Retention Ceiling
+  const MAX_BUFFER_IMAGES = 10;               // Capped at 10 frames to keep Chrome ultra-light
 
   let dbPromise = null;
   let lastPurgeTimestamp = null;
@@ -127,10 +127,11 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
           return resolve({ ...item, status: 'PURGED' });
         }
 
-        // Rule 4 & 5: If extracted / synced -> transition to CLEANUP_PENDING with 2m audit retention
+        // Rule 4 & 5: If extracted / synced -> transition to CLEANUP_PENDING with lightweight retention
         if (newStatus === 'EXTRACTION_COMPLETE' || newStatus === 'SYNC_COMPLETE' || newStatus === 'STAGED') {
           item.status = 'CLEANUP_PENDING';
           item.expires_at = now + AUDIT_RETENTION_MS;
+          item.image_data = null; // Free heavy base64 image data immediately from RAM and IndexedDB!
 
           // Rule 17: Save persistent lightweight provenance metadata BEFORE image deletion
           const provItem = {
@@ -265,9 +266,8 @@ window.TalentScout.Visual = window.TalentScout.Visual || {};
         const cursor = e.target.result;
         if (cursor) {
           const item = cursor.value;
-          // If created more than 1 hour ago
           const ageMs = now - (item.created_timestamp || 0);
-          if (ageMs >= HARD_MAX_RETENTION_MS) {
+          if (ageMs >= HARD_MAX_RETENTION_MS || (item.status !== 'PROCESSING' && ageMs >= 15000)) {
             cursor.delete();
             staleCount++;
           }

@@ -259,9 +259,13 @@ class RecruiterStore:
 
     def _ensure_loaded(self):
         """Load Parquet into DuckDB if not already loaded, or if local file changed."""
-        # If already loaded and using httpfs (no local file), stay loaded — nothing to compare.
+        # If already loaded and using httpfs (no local file), verify connection is still alive
         if self._loaded and self._conn is not None and not os.path.exists(PARQUET_FILE):
-            return
+            try:
+                self._conn.execute("SELECT 1")
+                return
+            except Exception:
+                logger.warning("DuckDB connection was closed/lost; reloading store")
 
         current_mtime = 0
         try:
@@ -872,8 +876,14 @@ class RecruiterStore:
         score_params = [q_lower, q_lower, q_like, q_lower, q_like, q_like, q_like, q_like, q_like]
         all_params = score_params + params + [limit]
 
-        cur = self._conn.cursor()
-        df = cur.execute(sql, all_params).fetchdf()
+        try:
+            cur = self._conn.cursor()
+            df = cur.execute(sql, all_params).fetchdf()
+        except Exception as e:
+            logger.warning("DuckDB query failed (%s); attempting reload and retry", e)
+            self.reload()
+            cur = self._conn.cursor()
+            df = cur.execute(sql, all_params).fetchdf()
         return self._df_to_dict(df)
 
     def count_by_company(self, company_id: int) -> int:

@@ -458,13 +458,29 @@ def search_recruiters(
 
     from sqlalchemy import or_
 
-    results = recruiter_store.search(
-        q=q if isinstance(q, str) else str(q),
-        company=comp_str,
-        location=loc_str,
-        specialization=spec_str,
-        limit=lim_int
-    )
+    results = []
+    try:
+        results = recruiter_store.search(
+            q=q if isinstance(q, str) else str(q),
+            company=comp_str,
+            location=loc_str,
+            specialization=spec_str,
+            limit=lim_int
+        )
+    except Exception as e:
+        logger.warning("RecruiterStore search exception: %s. Trying reload...", e)
+        try:
+            recruiter_store.reload()
+            results = recruiter_store.search(
+                q=q if isinstance(q, str) else str(q),
+                company=comp_str,
+                location=loc_str,
+                specialization=spec_str,
+                limit=lim_int
+            )
+        except Exception as e2:
+            logger.error("RecruiterStore fallback search also failed: %s", e2)
+            results = []
 
     # ── Live PostgreSQL Real-Time Discovery Merge ───────────────
     try:

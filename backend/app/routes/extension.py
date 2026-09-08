@@ -17,7 +17,7 @@ import re
 import secrets
 import string
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from typing import List, Optional, Union, Dict, Any
 
 import io
 import os
@@ -81,8 +81,8 @@ class ExtensionContact(BaseModel):
     device_id: Optional[str] = None
     captured_at: Optional[str] = None
     visual_change_score: Optional[float] = None
-    confidence: Optional[int] = None
-    _relevance_score: Optional[int] = None
+    confidence: Optional[Union[int, float]] = None
+    _relevance_score: Optional[Union[int, float]] = None
     
     # Progressive Deep Profile Fields
     education: Optional[str] = None

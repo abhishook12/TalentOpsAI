@@ -84,6 +84,10 @@ def post_heartbeat(
     Heartbeat ping sent by active Scout Desktop nodes every 15-30 seconds.
     Verifies that the device is active, tracks recent capture and page context.
     """
+    device = db.query(ExtensionDevice).filter(ExtensionDevice.device_id == payload.device_id).first()
+    if device and not device.is_active:
+        raise HTTPException(status_code=403, detail="Device access has been revoked by administrator")
+
     return record_scout_heartbeat(
         db=db,
         user_id=current_user.id,
@@ -208,8 +212,10 @@ def activate_scout_desktop(
     if code_record.max_uses != -1 and code_record.use_count >= code_record.max_uses:
         raise HTTPException(status_code=403, detail="Activation code has already been used")
 
-    if code_record.expires_at and code_record.expires_at < datetime.now(timezone.utc):
-        raise HTTPException(status_code=403, detail="Activation code has expired. Please generate a new one.")
+    if code_record.expires_at:
+        exp_aware = code_record.expires_at.replace(tzinfo=timezone.utc) if code_record.expires_at.tzinfo is None else code_record.expires_at
+        if exp_aware < datetime.now(timezone.utc):
+            raise HTTPException(status_code=403, detail="Activation code has expired. Please generate a new one.")
 
     owner = db.query(User).filter(User.id == code_record.owner_user_id).first()
     if not owner:

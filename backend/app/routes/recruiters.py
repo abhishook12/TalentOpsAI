@@ -927,6 +927,15 @@ def get_recruiters(
         else:
             c_name = "Unknown Company" if raw_key and raw_key.isdigit() else (raw_key or "Unknown Company")
 
+        # Sanitize company display name against notification noise or self-referential names
+        if c_name:
+            c_name = re.sub(r'^\(\d+\)\s*', '', c_name).strip()
+            rec_n = (r.get('recruiter_name') or '').strip().lower()
+            if rec_n and c_name.lower() == rec_n:
+                c_name = "Independent / Self-Employed"
+            elif any(noise in c_name.lower() for noise in ('ask gemini', 'chatgpt', '(2) feed', 'new tab', 'outlook')):
+                c_name = "Independent / Self-Employed"
+
         company_obj = _basic_company(comp)
         if not company_obj and (c_name or company_domain):
             company_obj = {

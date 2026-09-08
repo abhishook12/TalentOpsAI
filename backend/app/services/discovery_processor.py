@@ -17,6 +17,7 @@ from ..utils.normalizer import (
     is_platform_name,
     is_job_posting_title,
     validate_human_name,
+    validate_company_for_person,
     classify_page_type,
     clean_title,
     clean_company,
@@ -104,8 +105,21 @@ class DiscoveryProcessor:
                     self.db.add(r)
                     rejected_count += 1
                 else:
-                    r.processing_status = 'batched'
-                    grounded_records.append(r)
+                    # Additional: Validate company name isn't system noise
+                    comp_valid, comp_reason = validate_company_for_person(
+                        r.raw_company, person_name=r.raw_name
+                    )
+                    if not comp_valid:
+                        r.processing_status = 'rejected'
+                        r.decision = 'REJECT_SYSTEM_NOISE'
+                        r.decision_reason = f"Company noise: {comp_reason}"
+                        r.identity_confidence = 0.0
+                        r.processed_at = datetime.now(timezone.utc)
+                        self.db.add(r)
+                        rejected_count += 1
+                    else:
+                        r.processing_status = 'batched'
+                        grounded_records.append(r)
 
             self.db.commit()
 

@@ -161,20 +161,30 @@ class ProfileJudge:
 
         combined_context = (window_title + " " + " ".join(clean_lines[:12])).lower()
 
-        # 1. HARD REJECTION: Check for explicit system noise indicators
+        # 1. NOISE KEYWORD ANALYSIS: Count noise signals vs profile signals
+        noise_hits = []
         for noise in SYSTEM_NOISE_TERMS:
             # Word boundary search to prevent substring collisions
             if re.search(rf"\b{re.escape(noise)}\b", combined_context):
-                # Ensure it's not a candidate named "Gemini" who actually has an experience section
-                has_experience = any(re.match(r"^(?:Experience|Work\s*experience)\b", l, re.IGNORECASE) for l in clean_lines)
-                has_education = any(re.match(r"^(?:Education)\b", l, re.IGNORECASE) for l in clean_lines)
-                if not (has_experience and has_education):
-                    return JudgmentResult(
-                        category="SYSTEM_NOISE",
-                        is_candidate_profile=False,
-                        confidence=0.95,
-                        rejection_reason=f"Matched system noise keyword '{noise}' in window/header context without profile sections",
-                    )
+                noise_hits.append(noise)
+
+        if noise_hits:
+            # Check if ANY profile section header is visible (scrolling shows partial profiles)
+            has_profile_section = any(
+                re.match(r"^(?:Experience|Work\s*experience|Education|Skills|About|Activity|Featured)\b", l, re.IGNORECASE)
+                for l in clean_lines
+            )
+            # Also check for profile-like structural signals
+            has_connections = any(re.search(r"\b(?:followers?|connections?|mutual connections?)\b", l, re.IGNORECASE) for l in clean_lines[:10])
+            has_linkedin_url = any("linkedin.com/in/" in l.lower() for l in clean_lines)
+
+            if not (has_profile_section or has_connections or has_linkedin_url):
+                return JudgmentResult(
+                    category="SYSTEM_NOISE",
+                    is_candidate_profile=False,
+                    confidence=0.95,
+                    rejection_reason=f"Matched noise keywords {noise_hits[:3]} without any profile sections",
+                )
 
         # 2. JOB POSTING CLASSIFICATION
         job_signals = 0
@@ -206,19 +216,41 @@ class ProfileJudge:
                 signals_detected=[f"{card_indicators}_profile_action_cards"],
             )
 
-        # 4. CANDIDATE PROFILE CHECK (Header + Sections)
+        # 4. CANDIDATE PROFILE CHECK (Header + Sections + Career Signals)
         profile_signals = []
         for l in clean_lines:
             if re.match(r"^(?:Experience|Work\s*experience)\b", l, re.IGNORECASE):
-                profile_signals.append("experience_section")
+                if "experience_section" not in profile_signals:
+                    profile_signals.append("experience_section")
             elif re.match(r"^(?:Education)\b", l, re.IGNORECASE):
-                profile_signals.append("education_section")
+                if "education_section" not in profile_signals:
+                    profile_signals.append("education_section")
             elif re.match(r"^(?:Skills)\b", l, re.IGNORECASE):
-                profile_signals.append("skills_section")
+                if "skills_section" not in profile_signals:
+                    profile_signals.append("skills_section")
             elif re.match(r"^(?:About)\b", l, re.IGNORECASE):
-                profile_signals.append("about_section")
+                if "about_section" not in profile_signals:
+                    profile_signals.append("about_section")
             elif re.search(r"\b(?:followers?|connections?|mutual connections?)\b", l, re.IGNORECASE):
-                profile_signals.append("network_metrics")
+                if "network_metrics" not in profile_signals:
+                    profile_signals.append("network_metrics")
+            elif re.search(r"\b\d+\+?\s+endorsements?\b", l, re.IGNORECASE):
+                if "endorsements_signal" not in profile_signals:
+                    profile_signals.append("endorsements_signal")
+            elif DATE_RANGE_PATTERN.search(l) or re.search(r"\b(?:present|\d{4}\s*[-–—]\s*(?:\d{4}|present))\b", l, re.IGNORECASE):
+                if "employment_dates" not in profile_signals:
+                    profile_signals.append("employment_dates")
+            elif is_valid_location(l):
+                if "location_signal" not in profile_signals:
+                    profile_signals.append("location_signal")
+            elif is_plausible_title(l) and not is_noise_text(l):
+                if "job_title_signal" not in profile_signals:
+                    profile_signals.append("job_title_signal")
+
+        if "skills_section" in profile_signals:
+            skills_count = sum(1 for l in clean_lines if is_valid_skill(l) and l.lower() != "skills")
+            if skills_count >= 2 and "skills_detected" not in profile_signals:
+                profile_signals.append("skills_detected")
 
         # Check URL or window title
         if "linkedin.com/in/" in source_url.lower() or " | linkedin" in window_title.lower() or " - linkedin" in window_title.lower():

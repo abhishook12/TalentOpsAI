@@ -210,6 +210,53 @@ def is_job_posting_title(text: Optional[str]) -> bool:
 
     return has_role_noun or (len(words) >= 3 and has_discipline)
 
+COMPANY_NOISE_PATTERNS = {
+    'ask gemini', 'chatgpt', 'copilot', 'claude', 'signalhire', 'contactout',
+    'linkedin', 'new tab', 'inbox', 'outlook', 'gmail', 'chrome', 'firefox',
+    'edge', 'safari', 'brave', 'windows', 'desktop', 'start a post',
+    'corporate email', 'corporate contact', '7 profiles', 'professional',
+}
+
+def validate_company_for_person(company_name: Optional[str], person_name: Optional[str] = None) -> Tuple[bool, Optional[str]]:
+    """
+    Validates whether a company name field is legitimate or noise.
+    Returns (is_valid, rejection_reason).
+    """
+    if not company_name:
+        return True, None  # Empty company is fine
+
+    raw = str(company_name).strip()
+    if not raw:
+        return True, None
+
+    lower = raw.lower()
+
+    # Reject LinkedIn notification count patterns like "(1) Rachel Pitrolo", "(2) Feed"
+    if re.match(r'^\(\d+\)\s+', raw):
+        return False, f"Company starts with notification count pattern: '{raw}'"
+
+    # Reject if company name IS the person's own name
+    if person_name:
+        person_clean = person_name.strip().lower()
+        company_clean = re.sub(r'^\(\d+\)\s*', '', lower).strip()
+        if company_clean == person_clean:
+            return False, f"Company name is same as person name: '{raw}'"
+
+    # Reject known noise patterns
+    for noise in COMPANY_NOISE_PATTERNS:
+        if noise == lower or noise in lower:
+            return False, f"Company is system/application noise: '{raw}'"
+
+    # Reject if it looks like a URL but not a real company website
+    if re.match(r'^https?://', raw) or re.match(r'^www\.', raw, re.IGNORECASE):
+        return False, f"Company is a URL, not a name: '{raw}'"
+
+    # Reject if it contains pipe or bracket noise like "rOP-GMM7KIN (13001427)"
+    if re.search(r'[A-Z]{2,}-[A-Z0-9]{3,}\s*\(\d+\)', raw):
+        return False, f"Company contains identifier noise: '{raw}'"
+
+    return True, None
+
 def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], Optional[str]]:
     """
     Validates whether a raw name string is a genuine human name.
@@ -258,9 +305,11 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
         'tab', 'browser', 'feed', 'apply', 'contactout', 'signalhire', 'chrome',
         'windows', 'zoom', 'teams', 'slack', 'search', 'home', 'save', 'saved',
         'results', 'followers', 'connections', 'connection', 'prompt', 'notification',
-        'post', 'posts', 'pipeline', 'scout', 'lead', 'leads'
+        'post', 'posts', 'pipeline', 'scout', 'lead', 'leads',
+        'history', 'conversation', 'conversations', 'profile', 'profiles',
+        'message', 'messages', 'filter', 'filters', 'dialog', 'session', 'menu',
     }
-    if any(w in SYSTEM_NOISE_TOKENS or any(b in w for b in SYSTEM_NOISE_TOKENS) for w in lower_words):
+    if any(w in SYSTEM_NOISE_TOKENS for w in lower_words):
         return False, None, f"Name contains system or application noise ('{cleaned}')"
 
     # Reject single-letter tokens (e.g. 'M Inbox', 'Ana R Billios 0')

@@ -349,7 +349,7 @@ def ingest_extension_batch(
                 raw_company=contact.company_name,
                 raw_email=contact.email,
                 raw_phone=contact.phone,
-                raw_linkedin=contact.linkedin_url,
+                raw_linkedin=contact.linkedin_url or (contact.source_url if contact.source_url and "linkedin.com/in/" in contact.source_url else None),
                 raw_location=contact.location,
                 source_url=contact.source_url,
                 source_page_title=contact.source_page_title,
@@ -393,6 +393,7 @@ def ingest_extension_batch(
             staged += 1
 
         except Exception as e:
+            db.rollback()
             errors.append(str(e)[:100])
             logger.warning("Extension staging error: %s", e)
 

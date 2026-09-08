@@ -36,30 +36,23 @@ from scout_desktop.extractor.patterns import (
     EMAIL_REGEX,
     PHONE_REGEX,
 )
+from scout_desktop.extractor.title_normalizer import classify_title
 
 logger = logging.getLogger("scout.semantic_factorizer")
 
 
 # ==============================================================================
-# SYSTEM NOISE BLACKLIST (AI Assistants, Email Clients, OS UI, Generic Words)
+# SYSTEM NOISE BLACKLIST (Standalone Non-Talent Apps, Footers, Generic Noise)
 # ==============================================================================
 SYSTEM_NOISE_TERMS = {
-    # AI Chat & LLMs
-    "gemini", "ask gemini", "chatgpt", "claude", "copilot", "chat", "assistant",
-    "prompt", "model", "response", "generate", "deepseek", "meta ai",
-    # Mail Clients
-    "inbox", "sent", "drafts", "trash", "junk", "outlook", "gmail", "mailbox",
-    "unread", "compose", "conversations", "thunderbird", "mail",
-    # Browser UI & Tabs
-    "new tab", "chrome", "firefox", "edge", "safari", "brave", "history",
-    "downloads", "settings", "extensions", "bookmarks", "devtools",
-    # Operating System & Editors
-    "powershell", "terminal", "command prompt", "visual studio", "vscode",
-    "sublime", "task manager", "file explorer", "desktop", "recycle bin",
-    # Generic Job UI Buttons & Headings
-    "quick apply", "easy apply", "apply now", "save job", "job alert",
-    "top jobs", "jobs in", "search results", "recommended for you",
+    # Non-browser application windows
+    "powershell", "command prompt", "visual studio code", "vscode", "sublime",
+    "task manager", "file explorer", "recycle bin",
+    # External email client windows
+    "thunderbird",
+    # Generic Job Board search result footers
     "cookie notice", "privacy policy", "terms of use", "all rights reserved",
+    "404 not found", "page not found",
 }
 
 
@@ -95,14 +88,30 @@ class FactorizedCandidate:
     identity_confidence: float = 0.0
     field_provenance: Dict[str, str] = field(default_factory=dict)
     factorization_notes: List[str] = field(default_factory=list)
+    title_intel: Optional[Dict[str, Any]] = None
 
     def to_staged_dict(self) -> Dict[str, Any]:
         """Serializes candidate to the format required by /recruiters/extension/batch."""
+        meta = {
+            "pronouns": self.pronouns,
+            "previous_title": self.previous_title,
+            "previous_company": self.previous_company,
+            "education_history": self.education_history,
+            "factorization_notes": self.factorization_notes,
+        }
+        if self.title_intel:
+            meta["title_intel"] = self.title_intel
+            meta["seniority_level"] = self.title_intel.get("legacy_seniority")
+            meta["granular_seniority"] = self.title_intel.get("seniority_level")
+            meta["seniority_score"] = self.title_intel.get("seniority_score")
+            meta["domain_specialization"] = self.title_intel.get("domain_specialization")
+            meta["specialization_label"] = self.title_intel.get("specialization_label")
+
         return {
             "recruiter_name": self.canonical_name,
             "raw_name": self.canonical_name,
             "title": self.current_title or "Professional",
-            "raw_title": self.current_title or "",
+            "raw_title": (self.title_intel.get("raw_title") if self.title_intel else None) or self.current_title or "",
             "company_name": self.current_company or "",
             "raw_company": self.current_company or "",
             "previous_company": self.previous_company or "",
@@ -121,13 +130,7 @@ class FactorizedCandidate:
             "confidence": int(self.identity_confidence * 100),
             "quality_score": self.quality_score,
             "observations_count": max(1, len(self.skills) + len(self.experience_history) + 2),
-            "metadata_json": {
-                "pronouns": self.pronouns,
-                "previous_title": self.previous_title,
-                "previous_company": self.previous_company,
-                "education_history": self.education_history,
-                "factorization_notes": self.factorization_notes,
-            }
+            "metadata_json": meta
         }
 
 
@@ -159,32 +162,44 @@ class ProfileJudge:
                 rejection_reason="Empty text capture",
             )
 
+        wt_lower = window_title.lower()
+        if any(term in wt_lower for term in ["feed |", "messaging |", "notifications |", "linkedin learning"]):
+            return JudgmentResult(
+                category="SYSTEM_NOISE",
+                is_candidate_profile=False,
+                confidence=1.0,
+                rejection_reason="Excluded non-talent LinkedIn page (Feed/Messaging/Notifications)",
+            )
+
+        is_verified_linkedin = (
+            any(k in wt_lower for k in ["| linkedin", "- linkedin", "linkedin recruiter", "sales navigator", "company: people"])
+            or "linkedin.com/in/" in source_url.lower()
+        )
+
         combined_context = (window_title + " " + " ".join(clean_lines[:12])).lower()
 
-        # 1. NOISE KEYWORD ANALYSIS: Count noise signals vs profile signals
-        noise_hits = []
-        for noise in SYSTEM_NOISE_TERMS:
-            # Word boundary search to prevent substring collisions
-            if re.search(rf"\b{re.escape(noise)}\b", combined_context):
-                noise_hits.append(noise)
+        # 1. NOISE KEYWORD ANALYSIS: Only applies if NOT on a verified LinkedIn profile window
+        if not is_verified_linkedin:
+            noise_hits = []
+            for noise in SYSTEM_NOISE_TERMS:
+                if re.search(rf"\b{re.escape(noise)}\b", combined_context):
+                    noise_hits.append(noise)
 
-        if noise_hits:
-            # Check if ANY profile section header is visible (scrolling shows partial profiles)
-            has_profile_section = any(
-                re.match(r"^(?:Experience|Work\s*experience|Education|Skills|About|Activity|Featured)\b", l, re.IGNORECASE)
-                for l in clean_lines
-            )
-            # Also check for profile-like structural signals
-            has_connections = any(re.search(r"\b(?:followers?|connections?|mutual connections?)\b", l, re.IGNORECASE) for l in clean_lines[:10])
-            has_linkedin_url = any("linkedin.com/in/" in l.lower() for l in clean_lines)
-
-            if not (has_profile_section or has_connections or has_linkedin_url):
-                return JudgmentResult(
-                    category="SYSTEM_NOISE",
-                    is_candidate_profile=False,
-                    confidence=0.95,
-                    rejection_reason=f"Matched noise keywords {noise_hits[:3]} without any profile sections",
+            if noise_hits:
+                has_profile_section = any(
+                    re.match(r"^(?:Experience|Work\s*experience|Education|Skills|About|Activity|Featured)\b", l, re.IGNORECASE)
+                    for l in clean_lines
                 )
+                has_connections = any(re.search(r"\b(?:followers?|connections?|mutual connections?)\b", l, re.IGNORECASE) for l in clean_lines[:10])
+                has_linkedin_url = any("linkedin.com/in/" in l.lower() for l in clean_lines)
+
+                if not (has_profile_section or has_connections or has_linkedin_url):
+                    return JudgmentResult(
+                        category="SYSTEM_NOISE",
+                        is_candidate_profile=False,
+                        confidence=0.95,
+                        rejection_reason=f"Matched noise keywords {noise_hits[:3]} without any profile sections",
+                    )
 
         # 2. JOB POSTING CLASSIFICATION
         job_signals = 0
@@ -253,15 +268,15 @@ class ProfileJudge:
                 profile_signals.append("skills_detected")
 
         # Check URL or window title
-        if "linkedin.com/in/" in source_url.lower() or " | linkedin" in window_title.lower() or " - linkedin" in window_title.lower():
+        if is_verified_linkedin:
             profile_signals.append("linkedin_profile_context")
 
-        # Candidate profile requires at least 2 distinct profile signals or a direct profile URL
-        if len(profile_signals) >= 2 or "linkedin.com/in/" in source_url.lower():
+        # Candidate profile accepted if verified LinkedIn context OR at least 2 profile signals
+        if is_verified_linkedin or len(profile_signals) >= 2 or "linkedin.com/in/" in source_url.lower():
             return JudgmentResult(
                 category="CANDIDATE_PROFILE",
                 is_candidate_profile=True,
-                confidence=min(1.0, 0.5 + (len(profile_signals) * 0.15)),
+                confidence=min(1.0, 0.6 + (len(profile_signals) * 0.1)),
                 signals_detected=profile_signals,
             )
 
@@ -326,6 +341,15 @@ class SemanticFactorizer:
             window_title=window_title,
         )
 
+        # Semantic Title Canonicalization & Seniority Classification
+        title_intel = None
+        if cur_title:
+            title_intel = classify_title(cur_title)
+            cur_title = title_intel["canonical_title"]
+        if prev_title:
+            prev_intel = classify_title(prev_title)
+            prev_title = prev_intel["canonical_title"]
+
         # 6. Factorize Location
         location = self._factorize_location(zones["header"], clean_lines)
 
@@ -361,6 +385,8 @@ class SemanticFactorizer:
             notes.append(f"Pronouns: {pronouns}")
         if prev_comp:
             notes.append(f"Career progression: {prev_comp} -> {cur_comp}")
+        if title_intel:
+            notes.append(f"Level: {title_intel['seniority_level']} | Spec: {title_intel['domain_specialization']}")
 
         return FactorizedCandidate(
             canonical_name=candidate_name,
@@ -382,6 +408,7 @@ class SemanticFactorizer:
             identity_confidence=identity_confidence,
             field_provenance={"capture_id": capture_id},
             factorization_notes=notes,
+            title_intel=title_intel,
         )
 
     def _segment_zones(self, lines: List[str]) -> Dict[str, List[str]]:

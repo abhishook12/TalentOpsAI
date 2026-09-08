@@ -90,18 +90,66 @@ class BackendClient:
             except Exception:
                 pass
 
-    def _save_token_to_config(self, token: str):
+    def _save_credentials_to_config(self, token: str, scout_id: Optional[str] = None, user_email: Optional[str] = None, user_name: Optional[str] = None):
         self.auth_token = token
+        if scout_id:
+            self.scout_id = scout_id
         try:
             data = {}
             if os.path.exists(self.config_path):
                 with open(self.config_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
             data["auth_token"] = token
+            if scout_id:
+                data["scout_id"] = scout_id
+            if user_email:
+                data["user_email"] = user_email
+            if user_name:
+                data["user_name"] = user_name
             with open(self.config_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
         except Exception as e:
-            logger.debug("Failed to persist auth token: %s", e)
+            logger.debug("Failed to persist credentials: %s", e)
+
+    def _save_token_to_config(self, token: str):
+        self._save_credentials_to_config(token)
+
+    def is_authenticated(self) -> bool:
+        """Returns True if device has a stored authentication token."""
+        return bool(self.auth_token)
+
+    def activate_with_code(self, activation_code: str, hostname: Optional[str] = None) -> Tuple[bool, Dict[str, Any]]:
+        """
+        Activates this Scout Desktop instance using a short-lived code (TOS-XXXX-XXXX).
+        Saves issued JWT token, scout_id, and user metadata to config.
+        """
+        url = f"{self.active_api_base}/scout/activate"
+        host = hostname or os.environ.get("COMPUTERNAME", "Windows Desktop")
+        payload = {
+            "activation_code": activation_code.strip(),
+            "device_id": self.device_id,
+            "hostname": host,
+            "os_info": sys.platform,
+            "scout_version": "2.0.0",
+        }
+
+        try:
+            res = requests.post(url, json=payload, timeout=10.0)
+            data = res.json() if res.content else {}
+            if res.status_code == 200 and data.get("access_token"):
+                token = data["access_token"]
+                scout_id = data.get("scout_id", self.scout_id)
+                u_email = data.get("user_email")
+                u_name = data.get("user_name")
+                self._save_credentials_to_config(token, scout_id=scout_id, user_email=u_email, user_name=u_name)
+                logger.info("🎉 Scout Desktop successfully activated via code! scout_id=%s user=%s", scout_id, u_email)
+                return True, data
+            else:
+                err_msg = data.get("detail") or f"Activation failed (HTTP {res.status_code})"
+                return False, {"error": err_msg}
+        except Exception as e:
+            logger.warning("Activation request error: %s", e)
+            return False, {"error": f"Connection error: {e}"}
 
     def ensure_authenticated(self) -> bool:
         """Auto-activates device to acquire valid JWT token if needed."""
@@ -112,7 +160,7 @@ class BackendClient:
         payload = {
             "device_id": self.device_id,
             "browser_info": "TalentOps Scout Desktop / Windows Native",
-            "extension_version": "1.0.0-desktop",
+            "extension_version": "2.0.0-desktop",
         }
         try:
             res = requests.post(url, json=payload, timeout=5.0)
@@ -196,7 +244,8 @@ class BackendClient:
         if not self.ensure_authenticated():
             return False, {"error": "unauthenticated"}
 
-        url = f"{self.active_api_base}/recruiters/extension/batch"
+        url = f"{self.active_api_base}/scout/ingest/batch"
+        fallback_url = f"{self.active_api_base}/recruiters/extension/batch"
         payload = {
             "device_id": self.device_id,
             "contacts": contacts,
@@ -209,24 +258,36 @@ class BackendClient:
             raw_data = json.dumps(payload).encode("utf-8")
 
             # Gzip compress if large
+            target_url = url
             if len(raw_data) > 8192:
                 compressed_data = gzip.compress(raw_data)
                 headers["Content-Encoding"] = "gzip"
                 headers["Content-Length"] = str(len(compressed_data))
-                res = requests.post(url, data=compressed_data, headers=headers, timeout=30.0)
-                # If server doesn't support gzip content encoding, retry raw
+                res = requests.post(target_url, data=compressed_data, headers=headers, timeout=30.0)
+                if res.status_code == 404:
+                    target_url = fallback_url
+                    res = requests.post(target_url, data=compressed_data, headers=headers, timeout=30.0)
                 if res.status_code in [415, 400]:
                     headers.pop("Content-Encoding", None)
                     headers.pop("Content-Length", None)
-                    res = requests.post(url, json=payload, headers=headers, timeout=30.0)
+                    res = requests.post(target_url, json=payload, headers=headers, timeout=30.0)
             else:
-                res = requests.post(url, json=payload, headers=headers, timeout=30.0)
+                res = requests.post(target_url, json=payload, headers=headers, timeout=30.0)
+                if res.status_code == 404:
+                    target_url = fallback_url
+                    res = requests.post(target_url, json=payload, headers=headers, timeout=30.0)
+
+            if res.status_code == 403:
+                logger.warning("🚨 Device access REVOKED by backend (HTTP 403). Disabling auto-retry.")
+                self.last_response_status = "REVOKED (HTTP 403)"
+                self.last_db_write_result = "ACCESS REVOKED"
+                return False, {"error": "device_revoked", "detail": "Device access revoked by administrator"}
 
             if res.status_code == 401:
                 logger.info("Batch staging received 401; auto-reactivating device and retrying...")
                 self.auth_token = None
                 if self.ensure_authenticated():
-                    res = requests.post(url, json=payload, headers=self._get_headers(), timeout=30.0)
+                    res = requests.post(target_url, json=payload, headers=self._get_headers(), timeout=30.0)
 
             if res.status_code == 200:
                 data = res.json()

@@ -30,6 +30,8 @@ class OcrEngine:
         self.helper_path = helper_path or os.path.join(os.path.dirname(__file__), "ocr_helper.ps1")
         self._ocr_cache: Dict[str, List[str]] = {}
         self._last_lines: List[str] = []
+        self._last_ocr_time: float = 0.0
+        self.cooldown_sec: float = 1.5
         self._lock = threading.Lock()
 
     def _file_hash(self, path: str) -> str:
@@ -44,7 +46,7 @@ class OcrEngine:
         """
         Runs Windows Media OCR on the given image file path completely silently.
         Guaranteed ZERO console window popups via CREATE_NO_WINDOW and SW_HIDE.
-        Prevents concurrent subprocess pile-ups via execution lock.
+        Prevents concurrent subprocess pile-ups via execution lock and cooldown.
         """
         if not os.path.exists(image_path):
             return []
@@ -53,6 +55,12 @@ class OcrEngine:
         if cache_key in self._ocr_cache:
             return list(self._ocr_cache[cache_key])
 
+        import time
+        now = time.time()
+        if now - self._last_ocr_time < self.cooldown_sec:
+            logger.debug("OCR debounced (cooldown active); returning cached lines.")
+            return list(self._last_lines)
+
         # Prevent concurrent PowerShell executions piling up
         acquired = self._lock.acquire(blocking=False)
         if not acquired:
@@ -60,6 +68,7 @@ class OcrEngine:
             return list(self._last_lines)
 
         try:
+            self._last_ocr_time = time.time()
             cmd = [
                 "powershell",
                 "-WindowStyle", "Hidden",
@@ -83,6 +92,8 @@ class OcrEngine:
                 cmd,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=8.0,
                 startupinfo=startupinfo,
                 creationflags=creationflags,

@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
-import { User, Bell, Lock, Key, Globe, Shield, Smartphone, ArrowRight, Laptop, LogOut, Mail, Server, MoreVertical, ExternalLink, Star, Loader2, Puzzle, Download, CheckCircle, Copy } from 'lucide-react';
+import { User, Bell, Lock, Key, Globe, Shield, Smartphone, ArrowRight, Laptop, LogOut, Mail, Server, MoreVertical, ExternalLink, Star, Loader2, Puzzle, Download, CheckCircle, Copy, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { API } from '../services/api';
 import { useSessionState } from '../hooks/useSessionState';
 import ConnectionWizard from '../components/ConnectionWizard';
+import AddScoutModal from '../components/AddScoutModal';
 
 export default function Settings() {
   const { user, checkAuthStatus } = useAuth();
@@ -16,6 +17,7 @@ export default function Settings() {
   const [accounts, setAccounts] = useState([]);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
   const [showConnectionWizard, setShowConnectionWizard] = useState(false);
+  const [showAddScoutModal, setShowAddScoutModal] = useState(false);
   
   const [formData, setFormData] = useState({
     firstName: user?.first_name || '',
@@ -142,7 +144,7 @@ export default function Settings() {
     { id: 'notifications', label: 'Notifications' },
     { id: 'security', label: 'Privacy & Security' },
     { id: 'integrations', label: 'API & Integrations' },
-    { id: 'extension', label: 'Talent Scout Extension' },
+    { id: 'extension', label: 'TalentOps Scout Desktop' },
   ];
 
   return (
@@ -597,64 +599,94 @@ export default function Settings() {
             <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
               {/* Banner */}
               <div style={{
-                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(56, 189, 248, 0.08) 100%)',
-                border: '1px solid rgba(99, 102, 241, 0.35)', borderRadius: 12, padding: '24px 28px',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(56, 189, 248, 0.08) 100%)',
+                border: '1px solid rgba(16, 185, 129, 0.35)', borderRadius: 12, padding: '24px 28px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16
               }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                    <Puzzle size={22} color="#818cf8" />
+                    <Laptop size={22} color="#10b981" />
                     <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                      Talent Scout Chrome Extension
+                      TalentOps Scout Desktop (Windows)
                     </h2>
+                    <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(16, 185, 129, 0.2)', color: '#4ade80', padding: '2px 8px', borderRadius: 12 }}>
+                      v2.0 PRODUCTION
+                    </span>
                   </div>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: 13, margin: 0, lineHeight: 1.5, maxWidth: 520 }}>
-                    Automatically capture and enrich recruiter profiles from LinkedIn, Gmail, Outlook, and job sites as you browse the web.
+                  <p style={{ color: 'var(--text-secondary)', fontSize: 13, margin: 0, lineHeight: 1.5, maxWidth: 540 }}>
+                    Official production desktop client. Operates silently in the background, extracts recruiter intelligence via native Windows OCR, and streams verified leads directly to your account.
                   </p>
                 </div>
-                <button
-                  onClick={() => {
-                    const downloadUrl = 'https://talentopsai-1.onrender.com/recruiters/extension/download';
-                    const a = document.createElement('a');
-                    a.href = downloadUrl;
-                    a.download = 'talentops-scout-extension.zip';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    toast.success('Extension package downloaded!');
-                  }}
-                  style={{
-                    padding: '10px 22px', background: '#6366f1', color: '#ffffff', border: 'none',
-                    borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex',
-                    alignItems: 'center', gap: 8, boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  <Download size={16} />
-                  <span>⚡ 1-Click Download</span>
-                </button>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <button
+                    onClick={() => {
+                      const downloadUrl = 'https://talentopsai-1.onrender.com/scout/download/setup';
+                      const a = document.createElement('a');
+                      a.href = downloadUrl;
+                      a.download = 'TalentOpsScoutSetup.exe';
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      toast.success('Desktop Installer download started!');
+                    }}
+                    style={{
+                      padding: '10px 20px', background: '#10b981', color: '#ffffff', border: 'none',
+                      borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex',
+                      alignItems: 'center', gap: 8, boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    <Download size={16} />
+                    <span>Download Windows Installer</span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowAddScoutModal(true)}
+                    style={{
+                      padding: '10px 18px', background: '#1e293b', color: '#38bdf8', border: '1px solid #334155',
+                      borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex',
+                      alignItems: 'center', gap: 8, whiteSpace: 'nowrap'
+                    }}
+                  >
+                    <Zap size={15} />
+                    <span>Pair Device (10m Code)</span>
+                  </button>
+                </div>
               </div>
 
-              {/* 3 Steps */}
+              {/* 3 Steps Setup */}
               <div style={{ background: 'var(--bg-panel)', borderRadius: 12, border: '1px solid var(--card-border)', padding: 24 }}>
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 16px' }}>
                   Quick 3-Step Setup
                 </h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
                   <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#818cf8', marginBottom: 4 }}>1. Download ZIP</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Click the button above and unzip the downloaded folder.</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#10b981', marginBottom: 4 }}>1. Download Setup</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Download <code>TalentOpsScoutSetup.exe</code> and install in 10 seconds.</div>
                   </div>
                   <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8', marginBottom: 4 }}>2. Open Extensions</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Go to <code>chrome://extensions/</code> and enable Developer mode.</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8', marginBottom: 4 }}>2. Generate Code</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Click "Pair Device" above to get your single-use 10-minute activation code.</div>
                   </div>
                   <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#4ade80', marginBottom: 4 }}>3. Load & Activate</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Click <b>Load unpacked</b>, select the folder, and enter your activation code.</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#a855f7', marginBottom: 4 }}>3. Background Run</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Scout launches silently to system tray and continuously streams verified leads.</div>
                   </div>
                 </div>
+
+                <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                    Looking for full architecture guides, diagnostic logs, and live telemetry?
+                  </span>
+                  <a href="/download-scout" style={{ color: '#38bdf8', fontSize: 13, fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    Go to Scout Hub <ArrowRight size={14} />
+                  </a>
+                </div>
               </div>
+
+              {showAddScoutModal && (
+                <AddScoutModal onClose={() => setShowAddScoutModal(false)} />
+              )}
             </div>
           )}
 

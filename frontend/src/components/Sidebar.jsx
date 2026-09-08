@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link as NavLink, useLocation } from '@tanstack/react-router'
 import api, { clearStoredToken } from '../services/api'
-import { LayoutDashboard, Activity, Users, Map, BarChart2, Search, Eye, Radar, LogOut, ShieldCheck, Settings, UserCircle, HeartPulse, UserCog, Server, Shield, Mail, Puzzle, Layers } from 'lucide-react'
+import { LayoutDashboard, Activity, Users, Map, BarChart2, Search, Eye, Radar, LogOut, ShieldCheck, Settings, UserCircle, HeartPulse, UserCog, Server, Shield, Mail, Puzzle, Layers, Laptop } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 export default function Sidebar() {
@@ -44,7 +44,7 @@ export default function Sidebar() {
     { to: '/directory', label: 'Directory', icon: Map, aliases: ['/states', '/companies'] },
     { to: '/analytics', label: 'Analytics', icon: BarChart2 },
     { to: '/search', label: 'AI Search', icon: Search },
-    { to: '/extension', label: 'Talent Scout', icon: Puzzle, badge: 'New' },
+    { to: '/download-scout', label: 'Desktop Scout', icon: Laptop, badge: 'v2.0' },
     { isGroupHeader: true, label: 'Account' },
     { to: '/profile', label: 'Profile', icon: UserCircle },
     { to: '/settings', label: 'Settings', icon: Settings },
@@ -90,26 +90,37 @@ export default function Sidebar() {
     }}>
       <div style={{ padding: '32px 24px', flexShrink: 0 }}>
         
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 32 }}>
-          <div style={{
-            fontSize: 24,
-            fontWeight: 700,
-            lineHeight: 1,
-            letterSpacing: '-0.04em',
-            color: 'var(--text-primary)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2
-          }}>
-            <span>T</span><span style={{ fontWeight: 400 }}>O</span>
-          </div>
-          <div style={{ 
-            fontSize: 10, 
-            fontWeight: 600, 
-            letterSpacing: '0.25em', 
-            color: 'var(--text-primary)' 
-          }}>
-            TALENT OPS
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
+          <img 
+            src="/talentops-logo.png" 
+            alt="TalentOps" 
+            style={{ 
+              width: 36, 
+              height: 36, 
+              borderRadius: 8, 
+              objectFit: 'contain',
+              flexShrink: 0,
+              boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3)'
+            }} 
+          />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <div style={{
+              fontSize: 18,
+              fontWeight: 700,
+              lineHeight: 1.1,
+              letterSpacing: '-0.02em',
+              color: 'var(--text-primary)',
+            }}>
+              TalentOps
+            </div>
+            <div style={{ 
+              fontSize: 9, 
+              fontWeight: 600, 
+              letterSpacing: '0.22em', 
+              color: 'var(--text-muted)' 
+            }}>
+              AI SCOUT
+            </div>
           </div>
         </div>
 

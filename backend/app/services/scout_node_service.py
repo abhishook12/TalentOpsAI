@@ -104,13 +104,16 @@ def get_all_scout_nodes_telemetry(db: Session) -> Dict[str, Any]:
             heartbeat_sec = int((now - hb_aware).total_seconds())
 
         # Determine true status
-        if heartbeat_sec is not None and heartbeat_sec < 45:
+        if latest_device and not latest_device.is_active:
+            node_status = "REVOKED"
+            status_desc = "Device access revoked by administrator"
+        elif heartbeat_sec is not None and heartbeat_sec < 45:
             if latest_evt and (now - (latest_evt.created_at.replace(tzinfo=timezone.utc) if latest_evt.created_at.tzinfo is None else latest_evt.created_at)).total_seconds() < 180:
                 node_status = "LIVE_STREAMING"
                 status_desc = "Streaming live captures & database updates"
             else:
                 node_status = "CONNECTED_IDLE"
-                status_desc = "Browser connected with heartbeat; waiting for candidate profile"
+                status_desc = "Desktop Scout connected with heartbeat; waiting for candidate profile"
         elif heartbeat_sec is not None and heartbeat_sec < 300:
             node_status = "IDLE_NO_INGESTION"
             status_desc = f"Last heartbeat {heartbeat_sec // 60}m ago; no recent stream"
@@ -119,7 +122,7 @@ def get_all_scout_nodes_telemetry(db: Session) -> Dict[str, Any]:
             status_desc = f"Historical activity recorded ({len(u_events)} discoveries)"
         else:
             node_status = "AWAITING_CONNECTION"
-            status_desc = "Extension not yet paired or active"
+            status_desc = "Desktop Scout not yet paired or active"
 
         # Count stats
         captures_count = len(u_today_events) or len(u_events)

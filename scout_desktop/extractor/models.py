@@ -13,6 +13,8 @@ import uuid
 import re
 from typing import Optional, Dict, Any, List
 
+from .title_normalizer import classify_title
+
 
 class Observation:
     def __init__(
@@ -452,13 +454,66 @@ class EntityCluster:
         if clean_comp and (" | linkedin" in clean_comp.lower() or clean_comp.lower().endswith("linkedin")):
             clean_comp = None
 
+        # Semantic title intelligence & seniority decomposition
+        title_intel = None
+        canonical_title = self.current_title
+        if self.current_title:
+            try:
+                title_intel = classify_title(self.current_title)
+                if title_intel and title_intel.get("canonical_title"):
+                    canonical_title = title_intel["canonical_title"]
+            except Exception:
+                pass
+
+        # Structured past experience
+        prev_comp = None
+        prev_title = None
+        for r in exp_list:
+            if not r.get("is_current"):
+                if not prev_comp and r.get("company"):
+                    prev_comp = r.get("company")
+                if not prev_title and r.get("title"):
+                    prev_title = r.get("title")
+
+        # Structured education history
+        edu_history = []
+        for o in self.observations:
+            if o.predicate == "STUDIED_AT":
+                school = str(o.object_value)
+                degree = (o.attributes or {}).get("degree") or ""
+                dates = (o.attributes or {}).get("dates") or ""
+                if not any(e["school"] == school for e in edu_history):
+                    edu_history.append({"school": school, "degree": degree, "dates": dates})
+
+        pronouns = self.metadata.get("pronouns")
+        is_open_to_work = any("open to work" in s.lower() for s in self.signals)
+        is_hiring = any("hiring" in s.lower() for s in self.signals)
+
+        meta = {
+            "pronouns": pronouns,
+            "previous_title": prev_title,
+            "previous_company": prev_comp,
+            "education_history": edu_history,
+            "connection_degree": self.connection_degree,
+        }
+        if title_intel:
+            meta["title_intel"] = title_intel
+            meta["seniority_level"] = title_intel.get("legacy_seniority")
+            meta["granular_seniority"] = title_intel.get("seniority_level")
+            meta["seniority_score"] = title_intel.get("seniority_score")
+            meta["domain_specialization"] = title_intel.get("domain_specialization")
+            meta["specialization_label"] = title_intel.get("specialization_label")
+
         return {
             "recruiter_name": clean_name or self.canonical_name,
             "raw_name": self.canonical_name,
-            "title": self.current_title,
-            "raw_title": self.current_title,
+            "title": canonical_title or self.current_title or "",
+            "raw_title": self.current_title or "",
             "company_name": clean_comp,
-            "raw_company": self.current_company,
+            "raw_company": self.current_company or "",
+            "previous_company": prev_comp or "",
+            "previous_title": prev_title or "",
+            "pronouns": pronouns,
             "email": self.email,
             "raw_email": self.email,
             "phone": self.phone,
@@ -468,13 +523,20 @@ class EntityCluster:
             "location": self.location,
             "raw_location": self.location,
             "education": self.education,
+            "education_history": edu_history,
             "about_summary": self.about_summary,
             "skills": self.skills,
             "experience_history": exp_list,
-            "is_open_to_work": any("open to work" in s.lower() for s in self.signals),
-            "is_hiring": any("hiring" in s.lower() for s in self.signals),
+            "is_open_to_work": is_open_to_work,
+            "is_hiring": is_hiring,
             "confidence": 95 if self.linkedin_url or self.email else 85,
             "observations_count": len(self.observations),
+            "metadata_json": meta,
+            "seniority_level": title_intel.get("legacy_seniority") if title_intel else None,
+            "granular_seniority": title_intel.get("seniority_level") if title_intel else None,
+            "seniority_score": title_intel.get("seniority_score") if title_intel else None,
+            "domain_specialization": title_intel.get("domain_specialization") if title_intel else None,
+            "specialization_label": title_intel.get("specialization_label") if title_intel else None,
         }
 
 

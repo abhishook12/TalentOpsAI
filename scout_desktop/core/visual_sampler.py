@@ -22,11 +22,11 @@ logger = logging.getLogger("scout.visual_sampler")
 
 DOWNSCALE_WIDTH = 64
 DOWNSCALE_HEIGHT = 64
-DEFAULT_DELTA_THRESHOLD = 0.035  # 3.5% meaningful regional change
-PIXEL_TOLERANCE = 16            # Ignore micro compression noise
-IDLE_TIMEOUT_SEC = 10.0         # 10 continuous seconds static -> IDLE WATCH
+DEFAULT_DELTA_THRESHOLD = 0.048  # 4.8% meaningful regional change (filters typing/blinking cursor)
+PIXEL_TOLERANCE = 18            # Ignore micro compression noise
+IDLE_TIMEOUT_SEC = 6.0          # 6 continuous seconds static -> IDLE WATCH
 ACTIVE_INTERVAL_SEC = 1.0       # 1s active sampling
-IDLE_POLL_INTERVAL_SEC = 1.5    # Low-power idle poll
+IDLE_POLL_INTERVAL_SEC = 1.8    # Low-power idle poll
 
 
 def downscale_to_grayscale(img: Image.Image) -> np.ndarray:
@@ -78,16 +78,24 @@ class VisualSampler:
         on_state_change: Optional[Callable[[str], None]] = None,
         delta_threshold: float = DEFAULT_DELTA_THRESHOLD,
         idle_timeout_sec: float = IDLE_TIMEOUT_SEC,
+        autonomous_scan_interval_sec: float = 3.0,
+        active_interval_sec: float = ACTIVE_INTERVAL_SEC,
+        idle_poll_interval_sec: float = IDLE_POLL_INTERVAL_SEC,
     ):
         self.on_meaningful_frame = on_meaningful_frame
         self.on_state_change = on_state_change
         self.delta_threshold = delta_threshold
         self.idle_timeout_sec = idle_timeout_sec
+        self.autonomous_scan_interval_sec = autonomous_scan_interval_sec
+        self.active_interval_sec = active_interval_sec
+        self.idle_poll_interval_sec = idle_poll_interval_sec
 
-        self._state = "ACTIVE_SAMPLING"  # ACTIVE_SAMPLING | IDLE_WATCH | PAUSED
+        self._state = "RESTING_NON_TARGET"  # ACTIVE_SAMPLING | IDLE_WATCH | PAUSED | RESTING_NON_TARGET
+        self._is_target_allowed = False
         self._prev_pixels = None
         self._last_active_time = time.time()
         self._last_capture_time = 0.0
+        self._last_autonomous_scan_time = 0.0
         self._current_window_info = None
 
         self._stop_event = threading.Event()
@@ -100,9 +108,28 @@ class VisualSampler:
             "total_samples": 0,
             "meaningful_frames": 0,
             "idle_skips": 0,
+            "autonomous_scans": 0,
             "last_delta": 0.0,
-            "current_state": "STOPPED",
+            "current_state": "RESTING_NON_TARGET",
         }
+
+    @property
+    def is_target_allowed(self) -> bool:
+        return self._is_target_allowed
+
+    def set_target_allowed(self, allowed: bool):
+        """Sets whether the currently active window is on the strict target allowlist."""
+        with self._lock:
+            self._is_target_allowed = allowed
+            if not allowed:
+                self._prev_pixels = None
+                self._set_state("RESTING_NON_TARGET")
+            else:
+                if self._state == "RESTING_NON_TARGET":
+                    now = time.time()
+                    self._last_active_time = now
+                    self._last_autonomous_scan_time = now
+                    self._set_state("ACTIVE_SAMPLING")
 
     @property
     def state(self):
@@ -148,11 +175,17 @@ class VisualSampler:
     def trigger_immediate_capture(self, window_info: WindowInfo, reason: str = "window_switched"):
         """
         Forces an immediate capture (e.g. upon window change or wake event).
-        Bypasses idle mode and resets baseline.
+        Strictly gated: Only executes if active window is an allowed target.
         """
         with self._lock:
+            if not self._is_target_allowed:
+                logger.debug("Immediate capture skipped: Window outside strict allowlist (%s)", reason)
+                return
+
             self._current_window_info = window_info
-            self._last_active_time = time.time()
+            now = time.time()
+            self._last_active_time = now
+            self._last_autonomous_scan_time = now
             self._set_state("ACTIVE_SAMPLING")
 
             img = self.grab_window_or_screen(window_info)
@@ -209,6 +242,13 @@ class VisualSampler:
                 time.sleep(0.5)
                 continue
 
+            # Strict Whitelist Rule: If current window is outside allowlist, rest completely (0% CPU)
+            if not self._is_target_allowed:
+                if self._state != "RESTING_NON_TARGET":
+                    self._set_state("RESTING_NON_TARGET")
+                time.sleep(1.0)
+                continue
+
             now = time.time()
             time_since_active = now - self._last_active_time
 
@@ -217,7 +257,7 @@ class VisualSampler:
                 self._set_state("IDLE_WATCH")
 
             # Determine sleep duration based on state
-            sleep_duration = IDLE_POLL_INTERVAL_SEC if self._state == "IDLE_WATCH" else ACTIVE_INTERVAL_SEC
+            sleep_duration = self.idle_poll_interval_sec if self._state == "IDLE_WATCH" else self.active_interval_sec
 
             # Perform grab
             win_info = self._current_window_info
@@ -246,17 +286,22 @@ class VisualSampler:
                     delta = compute_weighted_regional_delta(self._prev_pixels, current_pixels)
                     self.stats["last_delta"] = delta
                     is_meaningful = delta >= self.delta_threshold
+                    is_autonomous_scan = (now - self._last_autonomous_scan_time) >= self.autonomous_scan_interval_sec
 
-                    if is_meaningful:
-                        # WAKE UP IMMEDIATELY if in IDLE WATCH
+                    if is_meaningful or is_autonomous_scan:
+                        # WAKE UP IMMEDIATELY if in IDLE WATCH or trigger autonomous scan
                         self._last_active_time = now
+                        self._last_autonomous_scan_time = now
                         self._prev_pixels = current_pixels
                         self._set_state("ACTIVE_SAMPLING")
                         self.stats["meaningful_frames"] += 1
+                        if is_autonomous_scan and not is_meaningful:
+                            self.stats["autonomous_scans"] = self.stats.get("autonomous_scans", 0) + 1
 
+                        effective_delta = delta if is_meaningful else 0.05
                         if self.on_meaningful_frame and win_info:
                             try:
-                                self.on_meaningful_frame(img, delta, win_info)
+                                self.on_meaningful_frame(img, effective_delta, win_info)
                             except Exception as e:
                                 logger.error("Frame dispatch error: %s", e)
                     else:

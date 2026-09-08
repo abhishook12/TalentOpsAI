@@ -40,6 +40,7 @@ from .patterns import (
     PHONE_REGEX,
 )
 from .timeline_parser import TimelineParser
+from .title_normalizer import classify_title
 from scout_desktop.extractor.semantic_factorizer import ProfileJudge, SemanticFactorizer
 
 logger = logging.getLogger("scout.entity_extractor")
@@ -113,9 +114,9 @@ class EntityExtractor:
         if not clean_lines:
             return []
 
-        # 0. Intelligent AI Triage: Judge if frame is a valid candidate profile vs system noise
+        # 0. Intelligent AI Triage: Judge if frame is a valid candidate profile/job vs system noise
         judgment = ProfileJudge.judge_frame(clean_lines, window_title, source_url)
-        if not judgment.is_candidate_profile:
+        if not judgment.is_candidate_profile and judgment.category != "JOB_POSTING":
             logger.info("ProfileJudge: Frame rejected as %s (%s)", judgment.category, judgment.rejection_reason)
             return []
 
@@ -190,6 +191,15 @@ class EntityExtractor:
         if not target_name:
             return []
 
+        # Always scan for pronouns across header/top lines
+        if not pronouns_found:
+            search_pool = header_lines if header_lines else clean_lines[:15]
+            for line in search_pool:
+                pro_m = re.search(r"\b(she/her|he/him|they/them|she/they|he/they)\b", line, re.IGNORECASE)
+                if pro_m:
+                    pronouns_found = pro_m.group(1).lower()
+                    break
+
         if name_line_idx == -1:
             for idx, line in enumerate(clean_lines):
                 if target_name.lower() in line.strip().lower():
@@ -227,6 +237,19 @@ class EntityExtractor:
                 object_value=target_name,
                 confidence=0.98,
                 evidence=target_name,
+                capture_id=capture_id,
+                source_url=source_url,
+            ))
+
+        # Add Pronouns observation if detected
+        if pronouns_found and not any(obs.predicate == "HAS_PRONOUNS" for obs in cluster.observations):
+            cluster.add_observation(Observation(
+                semantic_type="PERSON",
+                subject=target_name,
+                predicate="HAS_PRONOUNS",
+                object_value=pronouns_found,
+                confidence=0.95,
+                evidence=pronouns_found,
                 capture_id=capture_id,
                 source_url=source_url,
             ))
@@ -278,16 +301,41 @@ class EntityExtractor:
                     title, comp = clean_title_and_company(line)
                     if title and title.lower() != target_name.lower() and is_plausible_title(title):
                         if not cluster.current_title:
+                            intel = classify_title(title)
+                            canonical = (intel.get("canonical_title") if intel else None) or title
                             cluster.add_observation(Observation(
                                 semantic_type="PERSON",
                                 subject=target_name,
                                 predicate="HAS_TITLE",
-                                object_value=title,
-                                confidence=0.90,
+                                object_value=canonical,
+                                confidence=0.92,
                                 evidence=line,
                                 capture_id=capture_id,
                                 source_url=source_url,
                             ))
+                            if intel:
+                                if intel.get("seniority_level"):
+                                    cluster.add_observation(Observation(
+                                        semantic_type="SENIORITY",
+                                        subject=target_name,
+                                        predicate="HAS_SENIORITY_LEVEL",
+                                        object_value=intel["seniority_level"],
+                                        confidence=0.92,
+                                        evidence=title,
+                                        capture_id=capture_id,
+                                        source_url=source_url,
+                                    ))
+                                if intel.get("domain_specialization"):
+                                    cluster.add_observation(Observation(
+                                        semantic_type="SPECIALIZATION",
+                                        subject=target_name,
+                                        predicate="HAS_SPECIALIZATION",
+                                        object_value=intel.get("specialization_label") or intel["domain_specialization"],
+                                        confidence=0.88,
+                                        evidence=title,
+                                        capture_id=capture_id,
+                                        source_url=source_url,
+                                    ))
                     if comp and is_valid_company_name(comp):
                         if not cluster.current_company:
                             cluster.add_observation(Observation(
@@ -406,6 +454,32 @@ class EntityExtractor:
                     capture_id=capture_id,
                     source_url=source_url,
                 ))
+            if "linkedin.com/in/" in line and not any(o.predicate == "HAS_LINKEDIN" for o in cluster.observations):
+                m_li = re.search(r"https?://(?:www\.)?linkedin\.com/in/[a-zA-Z0-9_\-\.]+/?", line)
+                li_url = m_li.group(0) if m_li else line.strip()
+                cluster.add_observation(Observation(
+                    semantic_type="PERSON",
+                    subject=target_name,
+                    predicate="HAS_LINKEDIN",
+                    object_value=li_url,
+                    confidence=0.98,
+                    evidence=line,
+                    capture_id=capture_id,
+                    source_url=source_url,
+                ))
+
+        # Fallback LinkedIn URL from source_url
+        if not any(o.predicate == "HAS_LINKEDIN" for o in cluster.observations) and source_url and "linkedin.com/in/" in source_url:
+            cluster.add_observation(Observation(
+                semantic_type="PERSON",
+                subject=target_name,
+                predicate="HAS_LINKEDIN",
+                object_value=source_url,
+                confidence=0.98,
+                evidence=source_url,
+                capture_id=capture_id,
+                source_url=source_url,
+            ))
 
         # Signals
         full_text = " ".join(clean_lines).lower()
@@ -807,9 +881,11 @@ class EntityExtractor:
             if re.match(r"^Skills\b", line, re.IGNORECASE):
                 in_skills = True
                 continue
-            if in_skills and re.match(r"^(?:Experience|Education|About|Activity|Featured|Licenses|Recommendations|Interests|Languages|Volunteer)\b", line, re.IGNORECASE):
+            if in_skills and re.match(r"^(?:Experience|Education|About|Activity|Featured|Licenses|Recommendations|Interests|Languages|Volunteer|Contact|Causes|Honors|Publications|Organizations)\b", line, re.IGNORECASE):
                 break
             if in_skills:
+                if any(k in line.lower() for k in ["email:", "phone:", "http://", "https://", "linkedin.com", "contact info"]):
+                    continue
                 skill_lines.append(line)
 
         if not skill_lines:
@@ -820,6 +896,8 @@ class EntityExtractor:
             parts = re.split(r"\s*[·•|]\s*", line)
             for part in parts:
                 p = part.strip()
+                if any(k in p.lower() for k in ["email:", "phone:", "http://", "https://", "@", "contact"]):
+                    continue
                 if is_valid_skill(p):
                     cluster.add_observation(Observation(
                         semantic_type="SKILL",
@@ -979,7 +1057,8 @@ class EntityExtractor:
 
         boundaries = []
         for idx, line in enumerate(clean_lines):
-            if not is_valid_person_name(line):
+            cand_name = clean_person_name(line)
+            if not cand_name or not is_valid_person_name(cand_name):
                 continue
             has_card_follower = False
             for follower in clean_lines[idx + 1 : min(idx + 5, len(clean_lines))]:
@@ -988,8 +1067,7 @@ class EntityExtractor:
                     or " at " in follower
                     or " @ " in follower
                     or is_valid_location(clean_location_text(follower))
-                    or is_plausible_title(follower)
-                    or any(kw in follower.lower() for kw in ["recruiter", "sourcer", "engineer", "director", "manager", "lead", "specialist"])
+                    or (is_plausible_title(follower) and not is_noise_text(follower))
                 ):
                     has_card_follower = True
                     break
@@ -1005,7 +1083,11 @@ class EntityExtractor:
     ) -> Optional[EntityCluster]:
         if not card_lines:
             return None
-        candidate_name = card_lines[0]
+        raw_first_line = card_lines[0]
+        candidate_name = clean_person_name(raw_first_line)
+        if not candidate_name or not is_valid_person_name(candidate_name):
+            return None
+
         cluster = EntityCluster(canonical_name=candidate_name, entity_type="PERSON")
         cluster.add_observation(Observation(
             semantic_type="PERSON",
@@ -1013,7 +1095,7 @@ class EntityExtractor:
             predicate="IDENTIFIED_AS",
             object_value=candidate_name,
             confidence=0.98,
-            evidence=candidate_name,
+            evidence=raw_first_line,
             capture_id=capture_id,
             source_url=source_url,
         ))
@@ -1038,7 +1120,7 @@ class EntityExtractor:
 
             if not cluster.current_title and len(line) >= 4 and not is_valid_location(line) and not SCHOOL_KEYWORDS.search(line):
                 t, c = clean_title_and_company(line)
-                if t:
+                if t and is_plausible_title(t):
                     cluster.add_observation(Observation(
                         semantic_type="PERSON",
                         subject=candidate_name,
@@ -1088,5 +1170,9 @@ class EntityExtractor:
                         capture_id=capture_id,
                         source_url=source_url,
                     ))
+
+        # Strict Mandate: Candidate must have at least one verified professional attribute (title, company, or location)
+        if not cluster.current_title and not cluster.current_company and not cluster.location:
+            return None
 
         return cluster

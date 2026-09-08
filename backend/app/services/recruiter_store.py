@@ -814,6 +814,7 @@ class RecruiterStore:
         company: Optional[str] = None,
         location: Optional[str] = None,
         specialization: Optional[str] = None,
+        seniority_level: Optional[str] = None,
         limit: int = 50,
     ) -> List[Dict[str, Any]]:
         """
@@ -847,6 +848,13 @@ class RecruiterStore:
         if specialization:
             where_parts.append("(LOWER(COALESCE(specialization, '')) LIKE ? OR LOWER(COALESCE(taxonomy_category, '')) LIKE ?)")
             params.extend([f"%{specialization.lower()}%", f"%{specialization.lower()}%"])
+
+        if seniority_level:
+            from ..utils.title_normalizer import normalize_seniority_query_param, SENIORITY_LEGACY_MAP
+            gran = normalize_seniority_query_param(seniority_level)
+            leg = SENIORITY_LEGACY_MAP.get(gran, seniority_level)
+            where_parts.append("(seniority_level = ? OR seniority_level = ? OR LOWER(COALESCE(seniority_level, '')) = ?)")
+            params.extend([leg, gran, seniority_level.lower()])
 
         where_sql = " AND ".join(where_parts)
 

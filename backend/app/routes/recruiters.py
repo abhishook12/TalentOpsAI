@@ -447,6 +447,7 @@ def search_recruiters(
     company: Optional[str] = Query(None, description="Filter by company"),
     location: Optional[str] = Query(None, description="Filter by location"),
     specialization: Optional[str] = Query(None, description="Filter by specialization"),
+    seniority_level: Optional[str] = Query(None, description="Filter by seniority level"),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_request)
@@ -454,6 +455,7 @@ def search_recruiters(
     comp_str = company if isinstance(company, str) and company.strip() else None
     loc_str = location if isinstance(location, str) and location.strip() else None
     spec_str = specialization if isinstance(specialization, str) and specialization.strip() else None
+    sen_str = seniority_level if isinstance(seniority_level, str) and seniority_level.strip() else None
     lim_int = limit if isinstance(limit, int) else 50
 
     from sqlalchemy import or_
@@ -465,6 +467,7 @@ def search_recruiters(
             company=comp_str,
             location=loc_str,
             specialization=spec_str,
+            seniority_level=sen_str,
             limit=lim_int
         )
     except Exception as e:
@@ -476,6 +479,7 @@ def search_recruiters(
                 company=comp_str,
                 location=loc_str,
                 specialization=spec_str,
+                seniority_level=sen_str,
                 limit=lim_int
             )
         except Exception as e2:
@@ -498,6 +502,25 @@ def search_recruiters(
             pg_query = pg_query.filter(Company.company_name.ilike(f"%{comp_str}%"))
         if loc_str:
             pg_query = pg_query.filter(Recruiter.location.ilike(f"%{loc_str}%"))
+        if spec_str:
+            pg_query = pg_query.filter(
+                or_(
+                    Recruiter.specialization.ilike(f"%{spec_str}%"),
+                    Recruiter.taxonomy_category.ilike(f"%{spec_str}%"),
+                    Recruiter.title.ilike(f"%{spec_str}%")
+                )
+            )
+        if sen_str:
+            from ..utils.title_normalizer import normalize_seniority_query_param, SENIORITY_LEGACY_MAP
+            gran = normalize_seniority_query_param(sen_str)
+            leg = SENIORITY_LEGACY_MAP.get(gran, sen_str)
+            pg_query = pg_query.filter(
+                or_(
+                    Recruiter.metadata_json.ilike(f'%"seniority_level": "{leg}"%'),
+                    Recruiter.metadata_json.ilike(f'%"granular_seniority": "{gran}"%'),
+                    Recruiter.title.ilike(f'%{sen_str}%')
+                )
+            )
 
         pg_recs = pg_query.limit(25).all()
         for r in reversed(pg_recs):
@@ -507,13 +530,20 @@ def search_recruiters(
                     meta = json.loads(r.metadata_json)
                 except Exception:
                     pass
+
+            from ..utils.title_normalizer import classify_title
+            t_intel = meta.get("title_intel")
+            if not t_intel and r.title:
+                t_intel = classify_title(r.title)
+
             rec_dict = {
                 "recruiter_id": r.recruiter_id,
                 "recruiter_name": r.recruiter_name,
                 "email": r.email if not (r.email and r.email.endswith("@noemail.talentops")) else None,
                 "phone": r.phone,
                 "linkedin": r.linkedin,
-                "title": r.title or "Recruiter / Talent Lead",
+                "title": (t_intel.get("canonical_title") if t_intel else None) or r.title or "Recruiter / Talent Lead",
+                "specialization": r.specialization or (t_intel.get("specialization_label") if t_intel else "Talent & People Operations"),
                 "company_id": r.company_id,
                 "company_name": r.company.company_name if r.company else None,
                 "location": r.location,
@@ -527,6 +557,10 @@ def search_recruiters(
                 "quality_score": 95,
                 "completeness_score": 90,
                 "relevance_score": 300,  # Top priority for live discoveries
+                "seniority_level": (t_intel.get("legacy_seniority") if t_intel else None) or meta.get("seniority_level", "Specialist"),
+                "granular_seniority": (t_intel.get("seniority_level") if t_intel else None) or meta.get("granular_seniority", "MID"),
+                "seniority_score": (t_intel.get("seniority_score") if t_intel else None) or meta.get("seniority_score", 2),
+                "domain_specialization": (t_intel.get("domain_specialization") if t_intel else None) or meta.get("domain_specialization", "OPERATIONS_GENERAL"),
                 "is_active": r.is_active,
                 "created_at": r.created_at,
             }
@@ -608,6 +642,26 @@ def search_recruiters(
             "state": comp.state if comp else row.get("state"),
         }
 
+        # Dynamic title classification for legacy records lacking granular intelligence
+        r_sen = row.get("seniority_level")
+        r_gran = row.get("granular_seniority")
+        r_score = row.get("seniority_score")
+        r_dom = row.get("domain_specialization")
+
+        if not r_gran or not r_dom or not r_score:
+            from ..utils.title_normalizer import classify_title
+            raw_title = row.get("title") or row.get("specialization") or ""
+            if raw_title:
+                classified = classify_title(raw_title)
+                if not r_sen or r_sen == "Specialist":
+                    r_sen = classified["legacy_seniority"]
+                if not r_gran:
+                    r_gran = classified["seniority_level"]
+                if not r_score:
+                    r_score = classified["seniority_score"]
+                if not r_dom:
+                    r_dom = classified["domain_specialization"]
+
         formatted.append({
             "recruiter_id": row.get("recruiter_id"),
             "recruiter_name": row.get("recruiter_name"),
@@ -640,7 +694,10 @@ def search_recruiters(
             "state_source": row.get("state_source"),
             "created_at": str(row.get("created_at")) if row.get("created_at") else None,
             "relevance_score": int(row.get("relevance_score", 0)),
-            "seniority_level": row.get("seniority_level", "Specialist"),
+            "seniority_level": r_sen or "Specialist",
+            "granular_seniority": r_gran or "MID",
+            "seniority_score": r_score or 2,
+            "domain_specialization": r_dom or "OPERATIONS_GENERAL",
             "timezone": row.get("timezone", "America/New_York"),
             "timezone_code": row.get("timezone_code", "ET"),
             "company_scale": row.get("company_scale", "Enterprise"),

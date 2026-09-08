@@ -82,7 +82,11 @@ TITLE_KEYWORDS = re.compile(
     r"developer|specialist|consultant|analyst|officer|lead|head|vp|president|"
     r"designer|scientist|architect|advisor|partner|technician|intern|assistant|"
     r"chairman|chairperson|chair|executive|founder|co-founder|chief|ceo|cto|cfo|coo|cro|cmo|"
-    r"principal|fellow|associate|administrator|coordinator|strategist|leader|counsel)\b",
+    r"principal|fellow|associate|administrator|coordinator|strategist|leader|counsel|"
+    r"supervisor|expert|educator|instructor|teacher|professor|trainer|coach|"
+    r"writer|editor|producer|artist|marketer|accountant|auditor|lawyer|attorney|"
+    r"physician|doctor|nurse|therapist|pharmacist|practitioner|operator|representative|"
+    r"advocate|agent|buyer|trader|underwriter|broker|investor|statistician|economist|researcher|scholar)\b",
     re.IGNORECASE,
 )
 
@@ -255,9 +259,61 @@ def is_valid_company_name(text: Optional[str]) -> bool:
     t = text.strip()
     if len(t) < 2 or len(t) > 60:
         return False
+
+    t_lower = t.lower()
+
     # Reject window titles and platform URLs
-    if " | linkedin" in t.lower() or " - linkedin" in t.lower() or t.lower().endswith("linkedin") or "linkedin.com" in t.lower():
+    if " | linkedin" in t_lower or " - linkedin" in t_lower or t_lower.endswith("linkedin") or "linkedin.com" in t_lower:
         return False
+
+    # ===== Chrome / Browser / System UI Noise Blocklist =====
+    # These are UI elements that OCR frequently misreads as company names
+    chrome_ui_noise = {
+        "ask gemini", "gemini", "apps", "search", "more tools", "new tab",
+        "bookmarks", "downloads", "history", "extensions", "settings",
+        "reading list", "side panel", "tab groups", "chrome web store",
+        "customize chrome", "incognito", "cast", "print", "find",
+        "zoom", "translate", "passwords", "autofill", "privacy",
+        "sync", "about chrome", "help", "exit", "quit",
+        "admin settings", "find people", "more actions",
+        # LinkedIn UI noise
+        "rmt (you)", "(you)", "connect", "message", "follow",
+        "linkedin premium", "linkedin recruiter", "try premium",
+        # System / taskbar noise
+        "ultraviewer", "teamviewer", "anydesk", "task manager",
+        "file explorer", "command prompt", "powershell", "terminal",
+    }
+    if t_lower in chrome_ui_noise:
+        return False
+
+    # Reject strings starting or ending with special characters (OCR artifacts like "%iApps", "-5", "System;")
+    if t[0] in "-%#@!~`^&*()[]{}<>|\\;:\"'" or t[-1] in ";:?!~*=<>[{]}":
+        return False
+    if any(c in t for c in [";", ":", "?", "!", "~", "*", "=", "<", ">"]):
+        return False
+
+    # Reject standalone department abbreviations or isolated 2-letter tokens
+    if t_lower in {"it", "hr", "qa", "pr", "ai", "ml", "bi", "ui", "ux", "rd", "pm", "is"}:
+        return False
+
+    # Reject pure numeric or very short alphanumeric strings (like "-5", "IT", "aa")
+    stripped_alpha = re.sub(r"[^a-zA-Z]", "", t)
+    if len(stripped_alpha) < 2:
+        return False
+
+    # Reject system/desktop identifiers (e.g. "DESKTOP-GMM7KIN (130891427) UltraViewer")
+    if re.match(r"^DESKTOP-", t, re.IGNORECASE):
+        return False
+
+    # Reject strings containing system/remote desktop identifiers
+    if any(sw in t_lower for sw in ["ultraviewer", "teamviewer", "anydesk", "desktop-"]):
+        return False
+
+    # Reject OCR artifacts with excessive special characters (>30% non-alphanumeric)
+    non_alpha = sum(1 for c in t if not c.isalnum() and c not in " &.,'-/")
+    if len(t) > 0 and non_alpha / len(t) > 0.3:
+        return False
+
     # Civic, government, institutional organizations that may contain geographic names (e.g. City and County of San Francisco, Port of Oakland)
     is_civic_or_org = bool(re.search(
         r"\b(?:city\s+and\s+county|city\s+of|county\s+of|state\s+of|port\s+of|department\s+of|"
@@ -329,46 +385,75 @@ def is_noise_text(text: Optional[str]) -> bool:
         "people also viewed", "more profiles for", "show all", "show more",
         "connections", "followers", "activity", "highlights", "interests",
         "send message", "more actions", "pending", "open to",
+        # Chrome / Browser UI noise
+        "ask gemini", "more tools", "new tab", "bookmarks bar",
+        "reading list", "side panel", "chrome web store", "customize chrome",
+        "admin settings", "find people", "cast to",
+        # System tray / taskbar
+        "ultraviewer", "teamviewer", "anydesk", "task manager",
     ]
     return any(p in t for p in noise_phrases)
 
 
 def is_valid_person_name(text: Optional[str]) -> bool:
     """
-    Validates if a text string is a plausible candidate person name.
-    Rejects connection degrees ('· 1st', '2nd'), company names, UI actions, locations, headings.
-    Requires at least two capitalized alphabetic name parts.
+    Strict Semantic Person Name Validation.
+    Validates if a text string is a genuine individual candidate name.
+    Rejects:
+    - Job Titles ("Facilities Coordinator", "Contract Mid-level", "Senior Engineer")
+    - Corporate / Vendor entities ("Cloud Destinations LLC", "InnovaWorkforce Inc", "Fastnet Staffing")
+    - UI / Browser / Document artifacts ("All Bookmarks", "Full Job Description", "Business Management Spreadsheets")
+    - Text with special symbols ("Qlick Ap*y") or numbers
+    - Connection degrees ('· 1st', '2nd'), locations, pronouns, and actions.
+    Requires 2 to 4 properly capitalized human name parts.
     """
     if not text or not isinstance(text, str):
         return False
     t = text.strip()
-    # Strip pronouns first before validation
+    # Strip pronouns and connection degree badges first
+    t = re.sub(r"\s*[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]+\s*(?:1st|2nd|3rd(?:\+)?).*$", "", t, flags=re.IGNORECASE).strip()
     t = re.sub(r"\s*[\(\[]?\b(?:she/her|he/him|they/them|she/they|he/they)\b[\)\]]?", "", t, flags=re.IGNORECASE).strip()
-    if len(t) < 3 or len(t) > 50:
+    if len(t) < 3 or len(t) > 40:
         return False
     if is_noise_text(t) or is_valid_location(t) or extract_connection_degree(t):
         return False
     if UI_ACTIONS.match(t) or re.search(r"^[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]", t):
         return False
 
-    if any(c.isdigit() for c in t):
+    # A person name cannot contain digits or punctuation/math/wildcard symbols
+    if any(c.isdigit() or c in "*@/\\()_~!+=<>[]{}^%$#:;?\"" for c in t):
+        return False
+
+    # A person name CANNOT be a job title!
+    if is_plausible_title(t):
+        return False
+
+    # A person name CANNOT be a company name or contain corporate designators!
+    corp_designators = ["inc", "llc", "corp", "corporation", "gmbh", "technologies", "technology", "solutions", "services", "consulting", "staffing", "workforce", "group", "holdings", "partners", "agency", "labs", "software", "international", "enterprises"]
+    if is_valid_company_name(t) and any(re.search(rf"\b{re.escape(d)}\b", t, re.IGNORECASE) for d in corp_designators):
         return False
 
     words = t.split()
-    # Filter for alphabetic words (allowing hyphens or apostrophes in names e.g. O'Connor, Anne-Marie)
+    # Filter for alphabetic words (allowing standard hyphens or apostrophes in names e.g. O'Connor, Anne-Marie)
     clean_words = [re.sub(r"[^a-zA-Z\'-]", "", w) for w in words]
     clean_words = [w for w in clean_words if w and any(c.isalpha() for c in w)]
     if len(clean_words) < 2 or len(clean_words) > 4:
         return False
-    # Avoid single letter abbreviations as full first name (e.g. 'M Inbox' from mail icons)
     if any(len(w) < 2 for w in clean_words):
         return False
-    # Every word must start with an uppercase letter
-    if not all(w[0].isupper() for w in clean_words):
-        return False
-    # Check for non-name title/role/section/system words
+
+    # Every word must be capitalized: First char upper, rest lower or hyphenated (e.g. 'John', 'O'Neill', 'Mary-Jane')
+    for w in clean_words:
+        if not w[0].isupper():
+            return False
+        # Reject ALL-CAPS words that look like acronyms or UI labels (e.g. 'LLC', 'INC', 'D365', 'MDG')
+        if len(w) > 2 and w.isupper():
+            return False
+
+    # Check for non-name title/role/section/system/document words
     lower_words = [w.lower() for w in clean_words]
     blacklisted = {
+        # Navigation & UI
         "experience", "education", "skills", "about", "activity", "interests",
         "recommendations", "people", "results", "search", "connections", "followers",
         "director", "recruiter", "manager", "engineer", "sourcer", "specialist",
@@ -380,6 +465,20 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         "post", "posts", "quick", "easy", "prompt", "top", "united", "states",
         "history", "conversation", "conversations", "profile", "profiles",
         "message", "messages", "filter", "filters", "dialog", "session", "menu",
+        # Web / Browser & Document Noise
+        "bookmarks", "all", "description", "spreadsheets", "management", "contract",
+        "mid-level", "senior", "junior", "full", "part-time", "temporary", "remote",
+        "hybrid", "on-site", "overview", "hiring", "job", "career", "careers",
+        "talent", "staffing", "recruitment", "employee", "employees", "software",
+        "international", "business", "development", "lead", "services", "solutions",
+        "destinations", "workforce", "work", "worker", "employment", "document",
+        "spreadsheet", "file", "download", "summary", "workflow", "data", "report",
+        "candidate", "candidates", "applicant", "applicants", "resume", "cv",
+        "open", "closed", "level", "hourly", "salary", "annually", "rate",
+        "click", "skip", "badge", "icon", "logo", "search", "google", "meet",
+        "tools", "tool", "admin", "settings", "setting", "app", "apps", "more",
+        "desktop", "find", "spark", "planet", "seasoned", "tv", "options", "option",
+        "device", "devices", "help", "support", "sign", "login", "logout", "portal",
     }
     if any(w in blacklisted for w in lower_words):
         return False
@@ -392,7 +491,7 @@ PHONE_REGEX = re.compile(r"(?:\+?1[-.\s]?)?\(?[2-9]\d{2}\)?[-.\s]?\d{3}[-.\s]?\d
 
 def clean_person_name(text: Optional[str]) -> Optional[str]:
     """
-    Strips degree badges (• 2nd, · 1st), pronouns, bullets, and validates clean candidate name.
+    Strips degree badges (• 2nd, · 1st), pronouns, honorifics (Dr., Mr.), bullets, and validates clean candidate name.
     Example: 'Mariam Nguyen • 2nd' -> 'Mariam Nguyen'
     """
     if not text:
@@ -402,6 +501,8 @@ def clean_person_name(text: Optional[str]) -> Optional[str]:
     t = re.sub(r"\s*[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]+\s*(?:1st|2nd|3rd(?:\+)?).*$", "", t, flags=re.IGNORECASE).strip()
     # Strip pronouns in parens/brackets/free: (she/her), [she/her], (he/him), etc.
     t = re.sub(r"\s*[\(\[]?\b(?:she/her|he/him|they/them|she/they|he/they)\b[\)\]]?", "", t, flags=re.IGNORECASE).strip()
+    # Strip honorific prefixes (Dr., Mr., Ms., Mrs., Prof.)
+    t = re.sub(r"^(?:Dr|Mr|Ms|Mrs|Prof)\.?\s+", "", t, flags=re.IGNORECASE).strip()
     # Strip trailing badges / dots / icons
     t = re.sub(r"[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]+.*$", "", t).strip()
     return t if is_valid_person_name(t) else None

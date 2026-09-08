@@ -11,6 +11,7 @@ import urllib.parse
 import logging
 from typing import Optional, Dict, Any
 
+import time
 logger = logging.getLogger("scout.browser_tracker")
 
 # Domain classification heuristics
@@ -31,8 +32,7 @@ KNOWN_PLATFORMS = {
 class BrowserTracker:
     def __init__(self):
         self._uia = None
-        self._cached_url = None
-        self._last_hwnd = None
+        self._cache = {}
         self._init_uia()
 
     def _init_uia(self):
@@ -180,7 +180,21 @@ class BrowserTracker:
 
         # Check known platforms
         title_lower = title_clean.lower()
-        if "linkedin" in title_lower:
+        if "google search" in title_lower or " - google search" in title_lower:
+            return {
+                "platform": "GOOGLE_SEARCH",
+                "clean_title": title_clean,
+                "probable_domain": "google.com",
+                "candidate_name": None,
+            }
+        elif " - chat" in title_lower or title_lower.endswith(" - chat"):
+            return {
+                "platform": "CHAT",
+                "clean_title": title_clean,
+                "probable_domain": "",
+                "candidate_name": None,
+            }
+        elif "linkedin" in title_lower:
             platform = "LINKEDIN"
             probable_domain = "linkedin.com"
             # LinkedIn profile title: 'Name | LinkedIn' or '(14) Name | LinkedIn'
@@ -221,14 +235,28 @@ class BrowserTracker:
     def resolve_browser_context(self, hwnd: int, window_title: str) -> Dict[str, Any]:
         """
         Resolves the comprehensive browser context using UIA + Title heuristics and page type classification.
+        Cached by (hwnd, window_title) with 5.0s TTL to prevent freezing the UI thread.
         """
+        cache_key = (hwnd, window_title)
+        now = time.time()
+        if cache_key in self._cache:
+            ts, res = self._cache[cache_key]
+            if now - ts < 5.0:
+                return res
+
         inferred = self.infer_context_from_title(window_title)
         
         # Try reading UIA address bar
         active_url = self.get_url_from_window_uia(hwnd)
         domain = inferred["probable_domain"]
 
-        if active_url:
+        # Protect against stale UIA address bar: If title is Google Search, Chat, or non-LinkedIn,
+        # do not let a stale UIA URL from another tab re-classify it as LinkedIn.
+        if inferred["platform"] in ("GOOGLE_SEARCH", "CHAT", "SIMPLYHIRED", "INDEED", "GLASSDOOR"):
+            if active_url and "linkedin.com" in active_url.lower():
+                active_url = None
+                domain = inferred["probable_domain"]
+        elif active_url:
             try:
                 parsed = urllib.parse.urlparse(active_url)
                 domain = parsed.hostname or domain
@@ -241,7 +269,7 @@ class BrowserTracker:
 
         page_type = self.classify_page_type(active_url, inferred["clean_title"], inferred["platform"])
 
-        return {
+        result = {
             "url": active_url,
             "domain": domain,
             "platform": inferred["platform"],
@@ -249,3 +277,9 @@ class BrowserTracker:
             "title": inferred["clean_title"],
             "candidate_name": inferred["candidate_name"],
         }
+
+        # Keep cache size bounded
+        if len(self._cache) > 50:
+            self._cache.clear()
+        self._cache[cache_key] = (now, result)
+        return result

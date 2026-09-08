@@ -154,20 +154,20 @@ class EdgeHandleWidget(QWidget):
         path.lineTo(w, h)
         path.closeSubpath()
 
-        # Background color
+        # Background color - Minimalist Obsidian Dark Palette
         if self._is_hovered:
-            bg_color = QColor(255, 255, 255, 250)
-            border_color = QColor(56, 189, 248, 220)  # cyan glow
+            bg_color = QColor(19, 23, 34, 250)        # #131722 elevated surface
+            border_color = QColor(2, 132, 199, 240)    # #0284C7 sky border
         else:
-            bg_color = QColor(241, 245, 249, 235)  # clean slate white (#f1f5f9)
-            border_color = QColor(203, 213, 225, 200)
+            bg_color = QColor(11, 14, 20, 240)        # #0B0E14 obsidian black
+            border_color = QColor(30, 36, 51, 220)    # #1E2433 hairline border
 
         painter.setBrush(QBrush(bg_color))
         painter.setPen(QPen(border_color, 1.2))
         painter.drawPath(path)
 
-        # Draw left chevron `<` (matching media_1788544064790.png exactly)
-        chevron_color = QColor(14, 165, 233) if not self._is_hovered else QColor(2, 132, 199)
+        # Draw left chevron `<`
+        chevron_color = QColor(56, 189, 248) if not self._is_hovered else QColor(125, 211, 252)
         chevron_pen = QPen(chevron_color, 3.2, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
         painter.setPen(chevron_pen)
 

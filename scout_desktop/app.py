@@ -25,7 +25,7 @@ from PySide6.QtWidgets import QApplication, QTabWidget
 from PySide6.QtCore import QObject, Signal, QTimer, Slot
 from PySide6.QtGui import QIcon
 
-from .core.window_tracker import WindowTracker, WindowInfo
+from .core.window_tracker import WindowTracker, WindowInfo, is_allowed_scout_target
 from .core.browser_tracker import BrowserTracker
 from .core.visual_sampler import VisualSampler
 from .core.evidence_store import EvidenceStore
@@ -33,6 +33,7 @@ from .core.ocr_engine import OcrEngine
 from .core.intelligence_levels import IntelligenceRouter, FrameQueue, FrameContext
 from .core.context_memory import ContextMemory
 from .extractor.entity_extractor import EntityExtractor
+from .extractor.patterns import is_valid_person_name, is_valid_company_name
 from .extractor.grounding_gate import GroundingGate
 from .extractor.identity_resolver import IdentityResolver
 from .extractor.timeline_parser import TimelineParser
@@ -44,6 +45,16 @@ from .ui.main_window import MainWindow
 from .ui.edge_handle import EdgeHandleWidget
 from .ui.diagnostics_window import DiagnosticsWindow
 from .ui.settings_window import SettingsWindow
+from .ui.activation_window import ActivationWindow
+
+class NullWriter:
+    def write(self, text): pass
+    def flush(self): pass
+
+if sys.stdout is None:
+    sys.stdout = NullWriter()
+if sys.stderr is None:
+    sys.stderr = NullWriter()
 
 logging.basicConfig(
     level=logging.INFO,
@@ -54,7 +65,7 @@ logger = logging.getLogger("scout.app")
 
 class AppBridge(QObject):
     """Thread-safe signal bridge for Qt UI updates."""
-    window_updated = Signal(object, dict)         # (WindowInfo, browser_dict)
+    window_updated = Signal(object, dict, bool, str)         # (WindowInfo, browser_dict, is_allowed, target_type)
     state_updated = Signal(str)                   # "ACTIVE_SAMPLING" | "IDLE_WATCH" | "PAUSED"
     frame_processed = Signal(str, float, object, object, str, object) # (capture_id, delta, img, win_info, url, entities)
     metrics_updated = Signal(dict)
@@ -62,6 +73,7 @@ class AppBridge(QObject):
     capture_view_updated = Signal(str, float, str, object, dict, str) # (capture_id, delta, reason, img, breakdown, status)
     extraction_proof_updated = Signal(list)       # (observations)
     db_proof_updated = Signal(str, dict, str)     # (status, response_dict, result_str)
+    candidate_card_updated = Signal(str, str, str, str, str, str) # (name, title, company, location, status, desc)
 
 
 class ScoutDesktopApp:
@@ -131,6 +143,7 @@ class ScoutDesktopApp:
         self.bridge.capture_view_updated.connect(self.main_window.update_latest_capture)
         self.bridge.extraction_proof_updated.connect(self.main_window.update_extraction_proof)
         self.bridge.db_proof_updated.connect(self.main_window.update_database_proof)
+        self.bridge.candidate_card_updated.connect(self._handle_candidate_card_update)
         self.bridge.frame_processed.connect(self.diagnostics.update_diagnostics)
 
         # Level 2 Edge Handle action -> Toggle Main Window
@@ -151,6 +164,8 @@ class ScoutDesktopApp:
         self.main_window.open_settings_requested.connect(self.settings_window.show)
         self.main_window.shutdown_requested.connect(self.shutdown)
         self.main_window.dock_to_edge_requested.connect(self._dock_to_edge)
+        self.main_window.toggle_pause_requested.connect(self.toggle_pause)
+        self.main_window.sync_now_requested.connect(self._flush_queue_to_backend)
 
         # Settings actions
         self.settings_window.force_sync_requested.connect(self._flush_queue_to_backend)
@@ -182,10 +197,10 @@ class ScoutDesktopApp:
             tab.setCurrentIndex(2)
 
     def _init_timers(self):
-        # 1. Window Monitor Timer (polls active window every 400ms)
+        # 1. Window Monitor Timer (polls active window every 600ms)
         self.window_timer = QTimer()
         self.window_timer.timeout.connect(self._poll_active_window)
-        self.window_timer.start(400)
+        self.window_timer.start(600)
 
         # 2. Auto-Purge Timer (cleans expired screenshots every 15 seconds)
         self.purge_timer = QTimer()
@@ -211,6 +226,31 @@ class ScoutDesktopApp:
         self.tray.show()
         self.edge_handle.show()
         self.main_window.show()
+
+        # Check deep link or CLI activation code
+        deep_code = None
+        for arg in sys.argv[1:]:
+            if "talentopsscout://" in arg:
+                import urllib.parse
+                try:
+                    parsed = urllib.parse.urlparse(arg)
+                    qs = urllib.parse.parse_qs(parsed.query)
+                    if "code" in qs:
+                        deep_code = qs["code"][0]
+                except Exception as e:
+                    logger.debug("Failed to parse deep link: %s", e)
+            elif arg.startswith("TOS-"):
+                deep_code = arg
+
+        if deep_code:
+            logger.info("Found activation code in launch argument: %s", deep_code)
+            self.backend_client.activate_with_code(deep_code)
+
+        if not self.backend_client.is_authenticated():
+            logger.info("Scout unauthenticated: displaying first-run activation modal")
+            self.activation_window = ActivationWindow(self.backend_client, parent=self.main_window)
+            self.activation_window.activation_successful.connect(self._on_activation_complete)
+            self.activation_window.show()
 
         # Update environment badge
         self.main_window.update_environment(
@@ -244,66 +284,137 @@ class ScoutDesktopApp:
         win = self.window_tracker.get_active_window()
         if win.is_valid:
             self.current_window = win
-            self.main_window.update_status_state("WINDOW DETECTED")
-            self.main_window.ind_window.set_state("DETECTED")
             b_ctx = {}
             if win.is_browser:
                 b_ctx = self.browser_tracker.resolve_browser_context(win.hwnd, win.title)
                 self.current_browser_context = b_ctx
-            self.bridge.window_updated.emit(win, b_ctx)
+
+            is_allowed, target_type = is_allowed_scout_target(win, b_ctx)
+            self.sampler.set_target_allowed(is_allowed)
+
+            if is_allowed:
+                self.main_window.update_status_state(f"ACTIVE ({target_type})")
+                self.main_window.ind_window.set_state("DETECTED")
+            else:
+                self.main_window.update_status_state("RESTING (NON-TARGET)")
+                self.main_window.ind_window.set_state("IDLE")
+
+            self.bridge.window_updated.emit(win, b_ctx, is_allowed, target_type)
             self.bridge.event_logged.emit("WINDOW_DETECTED", f"[{win.process_name}] {win.title[:30]}")
             QApplication.processEvents()
 
-        # Step 5: SCOUT ACTIVE
+        # Step 5: SCOUT ACTIVE / STANDBY
         self.sampler.start(initial_window=self.current_window)
-        self.main_window.update_status_state("ACTIVE")
-        self.edge_handle.set_status_state("ACTIVE")
-        self.tray.update_icon_status("ACTIVE")
-        self.bridge.event_logged.emit("SCOUT_ACTIVE", "Autonomous visual watch loop running")
-
-        # Initial immediate capture if valid window is already active
-        if self.current_window and self.current_window.is_valid:
+        if self.current_window and self.current_window.is_valid and self.sampler.is_target_allowed:
+            self.main_window.update_status_state("ACTIVE")
+            self.edge_handle.set_status_state("ACTIVE")
+            self.tray.update_icon_status("ACTIVE")
+            self.bridge.event_logged.emit("SCOUT_ACTIVE", "Autonomous visual watch loop running")
             self.sampler.trigger_immediate_capture(self.current_window, reason="startup_initial")
+        else:
+            self.main_window.update_status_state("RESTING (NON-TARGET)")
+            self.edge_handle.set_status_state("IDLE")
+            self.tray.update_icon_status("IDLE")
+            self.bridge.event_logged.emit("SCOUT_RESTING", "Resting — Active window is outside allowed targets")
 
         self._emit_telemetry()
 
     def _poll_active_window(self):
-        """Checks foreground window and triggers immediate capture on change."""
+        """Checks foreground window and enforces strict targeting rule (LinkedIn on Chrome or MS Teams only)."""
         try:
             win = self.window_tracker.get_active_window()
             if not win.is_valid:
                 return
 
-            if self.window_tracker.has_active_window_changed(win):
+            has_changed = self.window_tracker.has_active_window_changed(win)
+            b_ctx = {}
+            if win.is_browser:
+                b_ctx = self.browser_tracker.resolve_browser_context(win.hwnd, win.title)
+                self.current_browser_context = b_ctx
+
+            is_allowed, target_type = is_allowed_scout_target(win, b_ctx)
+            self.sampler.set_target_allowed(is_allowed)
+
+            if has_changed:
                 self.current_window = win
                 self.sampler.set_current_window(win)
-                b_ctx = {}
-                if win.is_browser:
-                    b_ctx = self.browser_tracker.resolve_browser_context(win.hwnd, win.title)
-                    self.current_browser_context = b_ctx
 
-                logger.info("Active window switched: [%s] '%s'", win.process_name, win.title[:40])
-                self.bridge.window_updated.emit(win, b_ctx)
-                self.bridge.event_logged.emit("WINDOW_DETECTED", f"[{win.process_name}] {win.title[:35]}")
+                logger.info("Active window switched: [%s] '%s' (Allowed: %s, Type: %s)",
+                            win.process_name, win.title[:40], is_allowed, target_type)
+                self.bridge.window_updated.emit(win, b_ctx, is_allowed, target_type)
 
-                if win.is_browser and b_ctx.get("platform"):
-                    self.bridge.event_logged.emit("PAGE_CONTEXT_DETECTED", f"Platform: {b_ctx.get('platform')}")
-
-                # Immediate capture on window change (Zero wait!)
-                self.sampler.trigger_immediate_capture(win, reason="window_changed")
+                if is_allowed:
+                    self.bridge.event_logged.emit("TARGET_ACTIVE", f"[{target_type}] {win.title[:35]}")
+                    self.sampler.trigger_immediate_capture(win, reason="window_changed")
+                else:
+                    self.bridge.event_logged.emit("TARGET_RESTING", f"Outside allowed target ({target_type})")
         except Exception as e:
             logger.debug("Active window poll error: %s", e)
 
     def _on_meaningful_frame(self, img: Image.Image, delta: float, win_info: WindowInfo):
         """
         Invoked by VisualSampler when meaningful visual change occurs.
+        Strict Whitelist Gatekeeper: Only processes frames from LinkedIn (Chrome) or MS Teams.
+        Includes real-time window re-validation to prevent stale win_info race conditions.
         """
+        # Gate 1: Check the passed (potentially stale) win_info
+        is_allowed, target_type = is_allowed_scout_target(win_info, self.current_browser_context)
+        if not is_allowed:
+            logger.debug("Frame rejected by strict allowlist gatekeeper: %s", target_type)
+            return
+
+        # Gate 2: Real-time foreground window re-validation
+        # Prevents race condition where sampler fires with stale LinkedIn win_info
+        # but user has already switched to Chat/other tabs
+        try:
+            live_win = self.window_tracker.get_active_window()
+            if live_win and live_win.is_valid:
+                live_allowed, live_type = is_allowed_scout_target(live_win, self.current_browser_context)
+                if not live_allowed:
+                    logger.info("Frame rejected by LIVE window re-check: stale=%s, live=%s (%s)",
+                                win_info.title[:30], live_win.title[:30], live_type)
+                    return
+        except Exception as e:
+            logger.debug("Live window re-check failed (proceeding with original): %s", e)
+
         self.cnt_captured += 1
         capture_id = f"VC-{uuid.uuid4().hex[:6].upper()}"
         b_ctx = self.current_browser_context
         page_url = b_ctx.get("url", "")
         page_title = b_ctx.get("title", win_info.title)
         cand_name = b_ctx.get("candidate_name")
+
+        # Gate 3: URL hard-block — if we have a URL, it MUST be from an allowed domain
+        if page_url:
+            url_lower = page_url.lower()
+            if "linkedin.com" not in url_lower and "teams" not in url_lower:
+                logger.info("Frame rejected by URL hard-block: %s", page_url[:60])
+                return
+
+        # Gate 4: Page title validation — reject Chat, Search engine, and other non-data pages
+        if page_title:
+            pt_lower = page_title.lower().strip()
+            disallowed_page_titles = [
+                " - chat", "messaged you", "chat - google",
+                "google search", "new tab", "extensions",
+                "downloads", "history", "bookmarks",
+            ]
+            if any(d in pt_lower for d in disallowed_page_titles):
+                logger.info("Frame rejected by page title validation: %s", page_title[:40])
+                return
+
+        # Performance optimization for autonomous periodic scanning:
+        # If delta is small (static screen) and we already successfully extracted candidates from this identical view, skip re-OCR
+        import hashlib
+        img_thumb_hash = hashlib.md5(img.resize((64, 64)).tobytes()).hexdigest()
+        is_static_scan = delta <= 0.05
+        if (
+            is_static_scan
+            and hasattr(self, "_last_successful_view_hash")
+            and self._last_successful_view_hash == (win_info.title, img_thumb_hash)
+        ):
+            logger.debug("Autonomous scan: Static view already extracted (%s), skipping duplicate OCR", win_info.title[:30])
+            return
 
         self.bridge.event_logged.emit("SCREENSHOT_CAPTURED", f"ID: {capture_id} (Delta: {delta*100:.1f}%)")
 
@@ -339,6 +450,7 @@ class ScoutDesktopApp:
         proof_items = []
 
         if clusters:
+            self._last_successful_view_hash = (win_info.title, img_thumb_hash)
             self.cnt_useful += 1
             self.evidence_store.update_status(capture_id, "EXTRACTED", clusters)
 
@@ -392,8 +504,38 @@ class ScoutDesktopApp:
                 staged_contact["visual_change_score"] = delta
                 if not staged_contact.get("linkedin_url") and page_url and "linkedin.com/in/" in page_url:
                     staged_contact["linkedin_url"] = page_url
-                self.local_queue.enqueue_cluster(staged_contact)
-                self.cnt_staged += 1
+
+                # Data Quality Gate: Validate person name, clean company noise, and check signals
+                cand_name = staged_contact.get("recruiter_name") or staged_contact.get("raw_name")
+                if c.entity_type != "JOB":
+                    if not cand_name or not is_valid_person_name(cand_name):
+                        logger.info("Quality Gate: Rejected invalid candidate name '%s'", cand_name)
+                        continue
+
+                    # Clean invalid company name to None
+                    cur_comp = staged_contact.get("company_name")
+                    if cur_comp and not is_valid_company_name(cur_comp):
+                        logger.info("Quality Gate: Stripped invalid company noise '%s'", cur_comp)
+                        staged_contact["company_name"] = None
+                        staged_contact["raw_company"] = ""
+
+                    # Require at least one meaningful signal (title, company, contact, skills, or education)
+                    has_signals = bool(
+                        staged_contact.get("title")
+                        or staged_contact.get("company_name")
+                        or staged_contact.get("email")
+                        or staged_contact.get("phone")
+                        or staged_contact.get("linkedin_url")
+                        or staged_contact.get("skills")
+                        or staged_contact.get("education")
+                    )
+                    if not has_signals:
+                        logger.info("Quality Gate: Rejected candidate with zero professional signals '%s'", cand_name)
+                        continue
+
+                qid = self.local_queue.enqueue_cluster(staged_contact)
+                if qid != -1:
+                    self.cnt_staged += 1
 
                 if c.entity_type == "JOB":
                     breakdown["jobs"] += 1
@@ -417,7 +559,14 @@ class ScoutDesktopApp:
                 desc += f" @ {first.current_company}"
             if first.location:
                 desc += f" ({first.location})"
-            self.main_window.lbl_target_desc.setText(f"Extracted: {desc}")
+            self.bridge.candidate_card_updated.emit(
+                first.canonical_name,
+                first.current_title or "",
+                first.current_company or "",
+                first.location or "",
+                "STAGED",
+                desc
+            )
         else:
             # Discard immediately on NO_USEFUL_DATA (0ms)
             self.evidence_store.update_status(capture_id, "NO_USEFUL_DATA")
@@ -475,6 +624,9 @@ class ScoutDesktopApp:
 
             self.bridge.event_logged.emit("DB_SYNC_SUCCESS", f"Backend accepted {staged_cnt} staged record(s)")
             self.bridge.db_proof_updated.emit("STAGED", res, f"SUCCESS (Staged: {staged_cnt})")
+            if hasattr(self.main_window, "lbl_hero_pill") and self.main_window.lbl_hero_pill.text() == "STAGED":
+                self.main_window.lbl_hero_pill.setText("CLOUD COMMITTED")
+                self.main_window.lbl_hero_pill.setStyleSheet("background: #0F2520; color: #34D399; border: 1px solid #059669; border-radius: 10px; padding: 2px 8px; font-size: 8px; font-weight: 800;")
         else:
             err = res.get("error", "Network error")
             self.local_queue.mark_batch_failed(queue_ids, err)
@@ -522,14 +674,38 @@ class ScoutDesktopApp:
         }
         self.bridge.metrics_updated.emit(metrics)
 
-    @Slot(object, dict)
-    def _handle_window_ui_update(self, win: WindowInfo, b_ctx: dict):
+    @Slot(dict)
+    def _on_activation_complete(self, data: dict):
+        logger.info("Scout successfully activated as user: %s (scout_id: %s)", data.get("user_email"), data.get("scout_id"))
+        self.bridge.event_logged.emit("DEVICE_ACTIVATED", f"Connected as {data.get('user_email')}")
+        self.main_window.update_status_state("ACTIVE_SAMPLING")
+        self._send_heartbeat()
+
+    @Slot(object, dict, bool, str)
+    def _handle_window_ui_update(self, win: WindowInfo, b_ctx: dict, is_allowed: bool = True, target_type: str = ""):
         app_name = win.process_name
         title = b_ctx.get("title", win.title)
         url = b_ctx.get("url", "")
         cand = b_ctx.get("candidate_name")
         context_str = f"Candidate: {cand}" if cand else (b_ctx.get("platform") or "Active Screen")
-        self.main_window.update_window_context(app_name, title, url, context_str)
+        self.main_window.update_window_context(app_name, title, url, context_str, is_allowed, target_type)
+        if is_allowed:
+            self.edge_handle.set_status_state("ACTIVE")
+            self.tray.update_icon_status("ACTIVE")
+        else:
+            self.edge_handle.set_status_state("IDLE")
+            self.tray.update_icon_status("IDLE")
+
+    @Slot(str, str, str, str, str, str)
+    def _handle_candidate_card_update(self, name: str, title: str, company: str, location: str, status: str, desc: str):
+        self.main_window.lbl_target_desc.setText(f"Extracted: {desc}")
+        self.main_window.update_candidate_card(
+            name=name,
+            title=title,
+            company=company,
+            location=location,
+            status=status
+        )
 
     @Slot(str)
     def _handle_state_ui_update(self, state: str):
@@ -591,18 +767,61 @@ class ScoutDesktopApp:
 
 
 def main():
+    if sys.platform == "win32":
+        # 1. Single-instance guard: Prevent duplicate instances from fighting over resources
+        try:
+            import ctypes
+            kernel32 = ctypes.windll.kernel32
+            ERROR_ALREADY_EXISTS = 183
+            mutex_name = "Local\\TalentOps_Scout_Desktop_SingleInstance_Mutex"
+            h_mutex = kernel32.CreateMutexW(None, True, mutex_name)
+            if kernel32.GetLastError() == ERROR_ALREADY_EXISTS:
+                logger.warning("TalentOps Scout is already running. Focusing existing window...")
+                user32 = ctypes.windll.user32
+                hwnd = user32.FindWindowW(None, "TalentOps Scout")
+                if hwnd:
+                    user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+                    user32.SetForegroundWindow(hwnd)
+                sys.exit(0)
+        except Exception as e:
+            logger.debug("Mutex check failed: %s", e)
+
+        # 2. Attach to the interactive user desktop and close the open handle immediately
+        try:
+            import ctypes
+            user32 = ctypes.windll.user32
+            h_default = user32.OpenDesktopW("default", 0, False, 0x01FF)
+            if h_default:
+                user32.SetThreadDesktop(h_default)
+                user32.CloseDesktop(h_default)
+        except Exception as e:
+            logger.debug("Failed to set thread desktop: %s", e)
+
+        # 3. Crucial for Windows Taskbar: Set explicit AppUserModelID so Windows taskbar
+        # groups and displays the TalentOps logo instead of the generic python.exe icon.
+        try:
+            import ctypes
+            app_id = "TalentOps.Scout.Desktop.Companion"
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
+        except Exception as e:
+            logger.debug("Failed to set AppUserModelID: %s", e)
+
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
 
     candidate_paths = [
-        os.path.join(os.path.dirname(__file__), "assets", "logo.ico"),
-        os.path.join(os.path.dirname(__file__), "assets", "logo.png"),
-        r"c:\TalentOpsAI\talentops-logo.png",
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "assets", "logo.ico")),
+        os.path.abspath(r"c:\TalentOpsAI\scout_desktop\assets\logo.ico"),
+        os.path.abspath(r"c:\TalentOpsAI\talentops.ico"),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "assets", "logo.png")),
+        os.path.abspath(r"c:\TalentOpsAI\talentops-logo.png"),
     ]
     for p in candidate_paths:
         if os.path.exists(p):
-            app.setWindowIcon(QIcon(p))
-            break
+            app_icon = QIcon(p)
+            if not app_icon.isNull():
+                app.setWindowIcon(app_icon)
+                break
 
     scout = ScoutDesktopApp()
     scout.start()

@@ -1,9 +1,16 @@
+import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Plus, Download, RefreshCw, Trash2, Edit3, Laptop, ShieldAlert, Zap } from 'lucide-react'
 import api from '../services/api'
+import toast from 'react-hot-toast'
 import { ShellCard, Badge, GhostButton } from './CommandCenter'
 import AnimatedNumber from './ui/AnimatedNumber'
+import AddScoutModal from './AddScoutModal'
 
 export default function ScoutNodesPanel() {
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [actionLoading, setActionLoading] = useState(null)
+
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['scout-nodes-telemetry'],
     queryFn: async () => {
@@ -25,16 +32,98 @@ export default function ScoutNodesPanel() {
     IDLE_NO_INGESTION: { text: '⚠ NO INGESTION (>5m)', color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
     PREVIOUSLY_ACTIVE: { text: '○ HISTORICAL (OFFLINE)', color: '#9ca3af', bg: 'rgba(156,163,175,0.15)' },
     AWAITING_CONNECTION: { text: '○ AWAITING PAIRING', color: '#64748b', bg: 'rgba(100,116,139,0.15)' },
+    REVOKED: { text: '🔴 REVOKED', color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
+  }
+
+  const handleRevoke = async (deviceId) => {
+    if (!window.confirm(`Are you sure you want to revoke device ${deviceId}? This device will immediately lose access to sync.`)) {
+      return
+    }
+    setActionLoading(deviceId)
+    try {
+      await api.post(`/scout/devices/${deviceId}/revoke`)
+      toast.success(`Device ${deviceId} revoked successfully`)
+      refetch()
+    } catch (err) {
+      toast.error('Failed to revoke device')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleRename = async (deviceId, currentName) => {
+    const newName = window.prompt('Enter new device name:', currentName)
+    if (!newName || newName.trim() === currentName) return
+
+    try {
+      await api.post(`/scout/devices/${deviceId}/rename`, { name: newName.trim() })
+      toast.success('Device renamed')
+      refetch()
+    } catch (err) {
+      toast.error('Failed to rename device')
+    }
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Action Bar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+            Scout Node Fleet Management
+          </h3>
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '2px 0 0' }}>
+            Active native desktop companion nodes streaming real-time candidate profiles.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <button
+            onClick={() => refetch()}
+            style={{
+              padding: '8px 12px', background: '#1e293b', color: '#94a3b8',
+              border: '1px solid #334155', borderRadius: 8, fontSize: 12, fontWeight: 600,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
+            }}
+          >
+            <RefreshCw size={13} />
+            <span>Refresh</span>
+          </button>
+
+          <a
+            href="https://talentopsai-1.onrender.com/scout/download/setup"
+            download="TalentOpsScoutSetup.exe"
+            style={{
+              padding: '8px 14px', background: '#334155', color: '#f8fafc',
+              borderRadius: 8, fontSize: 12, fontWeight: 700, textDecoration: 'none',
+              display: 'flex', alignItems: 'center', gap: 6, border: '1px solid #475569'
+            }}
+          >
+            <Download size={13} />
+            <span>Download Desktop Installer</span>
+          </a>
+
+          <button
+            onClick={() => setShowAddModal(true)}
+            style={{
+              padding: '8px 16px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+              boxShadow: '0 2px 8px rgba(16, 185, 129, 0.35)'
+            }}
+          >
+            <Plus size={14} />
+            <span>Add Scout Node</span>
+          </button>
+        </div>
+      </div>
+
       {/* Summary Header */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
         <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 18px' }}>
           <div style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 2 }}>TOTAL SCOUT NODES</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}><AnimatedNumber value={totalNodes} /></div>
-          <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>Registered User Browsers</div>
+          <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>Registered Desktop Clients</div>
         </div>
 
         <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 18px' }}>
@@ -105,7 +194,7 @@ export default function ScoutNodesPanel() {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span
                     style={{
                       padding: '4px 10px',
@@ -119,6 +208,33 @@ export default function ScoutNodesPanel() {
                   >
                     {cfg.text}
                   </span>
+
+                  {node.device_id && node.node_status !== 'REVOKED' && (
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        onClick={() => handleRename(node.device_id, node.device_name)}
+                        title="Rename Device"
+                        style={{
+                          background: '#1e293b', border: '1px solid #334155', color: '#94a3b8',
+                          borderRadius: 6, padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center'
+                        }}
+                      >
+                        <Edit3 size={12} />
+                      </button>
+
+                      <button
+                        onClick={() => handleRevoke(node.device_id)}
+                        disabled={actionLoading === node.device_id}
+                        title="Revoke Device"
+                        style={{
+                          background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)',
+                          color: '#ef4444', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center'
+                        }}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -157,7 +273,36 @@ export default function ScoutNodesPanel() {
             </div>
           )
         })}
+
+        {nodes.length === 0 && !isLoading && (
+          <div style={{ textAlign: 'center', padding: '40px 20px', background: 'var(--card-bg)', borderRadius: 12, border: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 32, marginBottom: 10 }}>🛰️</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>No Scout Desktop Nodes Connected</div>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', maxWidth: 460, margin: '6px auto 18px' }}>
+              Connect your Windows computer with the new native TalentOps Scout Desktop app to begin autonomous background intelligence.
+            </p>
+            <button
+              onClick={() => setShowAddModal(true)}
+              style={{
+                padding: '9px 18px', background: '#10b981', color: '#fff', border: 'none',
+                borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer'
+              }}
+            >
+              + Add Your First Scout
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Add Scout Modal */}
+      <AddScoutModal
+        isOpen={showAddModal}
+        onClose={() => {
+          setShowAddModal(false)
+          refetch()
+        }}
+      />
     </div>
   )
 }
+

@@ -30,6 +30,7 @@ from ..utils.normalizer import (
     PLATFORM_NAMES,
     is_company_name,
 )
+from ..utils.title_normalizer import classify_title
 
 logger = logging.getLogger('talentops.discovery_processor')
 
@@ -408,12 +409,16 @@ class DiscoveryProcessor:
                     previous_company = comp
                     break
 
-        current_title = clean_titles[-1] if clean_titles else "Professional"
+        raw_current_title = clean_titles[-1] if clean_titles else "Professional"
+        current_title_intel = classify_title(raw_current_title)
+        current_title = current_title_intel["canonical_title"]
+
         previous_title = None
         if clean_titles and len(set(clean_titles)) > 1:
             for tit in reversed(clean_titles[:-1]):
-                if tit.lower() != current_title.lower():
-                    previous_title = tit
+                if tit.lower() != raw_current_title.lower() and tit.lower() != current_title.lower():
+                    prev_intel = classify_title(tit)
+                    previous_title = prev_intel["canonical_title"]
                     break
 
         # Fallback: if linkedin_url is not set, infer from source_url if individual profile URL
@@ -456,7 +461,7 @@ class DiscoveryProcessor:
         email_conf = int((sum(1 for r in cluster if r.raw_email) / obs_count) * 100)
         phone_conf = int((sum(1 for r in cluster if r.raw_phone) / obs_count) * 100)
 
-        # Aggregate metadata_json (badges, firmographics, channels)
+        # Aggregate metadata_json (badges, firmographics, channels, title intelligence)
         meta_dict = {}
         for r in cluster:
             if getattr(r, "metadata_json", None) and isinstance(r.metadata_json, str) and r.metadata_json.startswith("{"):
@@ -467,7 +472,20 @@ class DiscoveryProcessor:
                             meta_dict[k] = v
                 except Exception:
                     pass
-        metadata_json_str = json.dumps(meta_dict) if meta_dict else None
+
+        # Attach structured Title Intelligence to ResolvedPerson
+        meta_dict["title_intel"] = {
+            "canonical_title": current_title_intel["canonical_title"],
+            "raw_title": raw_current_title,
+            "seniority_level": current_title_intel["seniority_level"],
+            "seniority_score": current_title_intel["seniority_score"],
+            "legacy_seniority": current_title_intel["legacy_seniority"],
+            "domain_specialization": current_title_intel["domain_specialization"],
+            "specialization_label": current_title_intel["specialization_label"],
+            "role_family": current_title_intel["role_family"],
+            "is_people_manager": current_title_intel["is_people_manager"],
+        }
+        metadata_json_str = json.dumps(meta_dict)
 
         owner_user_id = cluster[0].owner_user_id if cluster else 1
 
@@ -544,24 +562,37 @@ class DiscoveryProcessor:
             for c in candidates:
                 c_norm_name = normalize_text(c.recruiter_name)
                 if c_norm_name == norm_name:
+                    # If both have LinkedIn profiles and they differ, they are definitively distinct people!
+                    if c.linkedin and person.linkedin_url:
+                        c_slug = self._normalize_linkedin(c.linkedin)
+                        p_slug = self._normalize_linkedin(person.linkedin_url)
+                        if c_slug and p_slug and c_slug != p_slug:
+                            continue
+
+                    # If both have corporate emails and domains differ, and companies differ
+                    if c.email and person.primary_email:
+                        c_domain = c.email.split('@')[-1].lower() if '@' in c.email else ''
+                        p_domain = person.primary_email.split('@')[-1].lower() if '@' in person.primary_email else ''
+                        if c_domain and p_domain and c_domain != p_domain and c_domain not in FREE_EMAIL_DOMAINS and p_domain not in FREE_EMAIL_DOMAINS:
+                            c_comp = c.company.company_name if c.company else None
+                            if person.current_company and c_comp and normalize_text(person.current_company) != normalize_text(c_comp):
+                                continue
+
                     # Same phone match -> 0.80
                     if person.primary_phone and c.phone and normalize_text(c.phone) == normalize_text(person.primary_phone):
                         return c, CONFIDENCE_STRONG
 
-                    # Same company match
+                    # Same company match -> 0.75
                     c_comp_name = c.company.company_name if c.company else None
                     if person.current_company and c_comp_name:
                         if normalize_text(person.current_company) == normalize_text(c_comp_name):
-                            # Conflict check: Different LinkedIn profiles
-                            if c.linkedin and person.linkedin_url:
-                                if self._normalize_linkedin(c.linkedin) != self._normalize_linkedin(person.linkedin_url):
-                                    return c, 0.50  # Downgrade match confidence
                             return c, 0.75
 
-            # Weak name-only matches
-            for c in candidates:
-                if normalize_text(c.recruiter_name) == norm_name:
-                    return c, CONFIDENCE_WEAK
+            # Weak name-only matches (only if person has NO unique identifiers like LinkedIn or verified email)
+            if not person.linkedin_url and not person.primary_email:
+                for c in candidates:
+                    if normalize_text(c.recruiter_name) == norm_name:
+                        return c, CONFIDENCE_WEAK
 
         return None, 0.0
 
@@ -603,7 +634,14 @@ class DiscoveryProcessor:
             new_fields.append('phone')
         if person.linkedin_url and not master_match.linkedin:
             new_fields.append('linkedin')
-        if person.current_title and not master_match.title:
+        # Title change / promotion detection
+        has_new_title = False
+        if person.current_title and master_match.title:
+            if normalize_text(person.current_title) != normalize_text(master_match.title):
+                has_new_title = True
+                new_fields.append('title')
+        elif person.current_title and not master_match.title:
+            has_new_title = True
             new_fields.append('title')
         if person.location and not master_match.location:
             new_fields.append('location')
@@ -783,7 +821,10 @@ class DiscoveryProcessor:
 
                 # Create master Recruiter
                 fallback_email = person.primary_email or f"ext_{secrets.token_hex(8)}@noemail.talentops"
-                
+
+                # Calculate comprehensive title intelligence
+                t_intel = classify_title(person.current_title or "Recruiter")
+
                 metadata_dict = {
                     "education": person.education,
                     "skills": json.loads(person.skills) if person.skills else None,
@@ -791,6 +832,14 @@ class DiscoveryProcessor:
                     "about_summary": person.about_summary,
                     "connections_count": person.connections_count,
                     "followers_count": person.followers_count,
+                    "seniority_level": t_intel["legacy_seniority"],
+                    "granular_seniority": t_intel["seniority_level"],
+                    "seniority_score": t_intel["seniority_score"],
+                    "domain_specialization": t_intel["domain_specialization"],
+                    "specialization_label": t_intel["specialization_label"],
+                    "role_family": t_intel["role_family"],
+                    "is_people_manager": t_intel["is_people_manager"],
+                    "canonical_title": t_intel["canonical_title"],
                 }
                 if getattr(person, "metadata_json", None):
                     try:
@@ -804,7 +853,9 @@ class DiscoveryProcessor:
                 new_recruiter = Recruiter(
                     user_id=person.owner_user_id,
                     recruiter_name=person.canonical_name,
-                    title=person.current_title or "Recruiter / Talent Lead",
+                    title=t_intel["canonical_title"],
+                    specialization=t_intel["specialization_label"],
+                    taxonomy_category=t_intel["domain_specialization"],
                     company_id=company_id,
                     email=fallback_email,
                     phone=person.primary_phone,
@@ -858,9 +909,28 @@ class DiscoveryProcessor:
                 if person.linkedin_url and not recruiter.linkedin:
                     recruiter.linkedin = person.linkedin_url
                     fields_enriched.append("LinkedIn")
-                if person.current_title and (not recruiter.title or recruiter.title == "Recruiter"):
-                    recruiter.title = person.current_title
-                    fields_enriched.append("Title")
+                if person.current_title:
+                    t_enrich = classify_title(person.current_title)
+                    if not recruiter.title or recruiter.title in ("Recruiter", "Professional", "Recruiter / Talent Lead") or t_enrich["canonical_title"] != recruiter.title:
+                        recruiter.title = t_enrich["canonical_title"]
+                        recruiter.specialization = t_enrich["specialization_label"]
+                        recruiter.taxonomy_category = t_enrich["domain_specialization"]
+                        fields_enriched.append("Title")
+                        fields_enriched.append("Specialization")
+
+                        # Update metadata_json with enriched title intelligence
+                        try:
+                            r_meta = json.loads(recruiter.metadata_json) if recruiter.metadata_json else {}
+                            r_meta["seniority_level"] = t_enrich["legacy_seniority"]
+                            r_meta["granular_seniority"] = t_enrich["seniority_level"]
+                            r_meta["seniority_score"] = t_enrich["seniority_score"]
+                            r_meta["domain_specialization"] = t_enrich["domain_specialization"]
+                            r_meta["specialization_label"] = t_enrich["specialization_label"]
+                            r_meta["role_family"] = t_enrich["role_family"]
+                            r_meta["is_people_manager"] = t_enrich["is_people_manager"]
+                            recruiter.metadata_json = json.dumps(r_meta)
+                        except Exception:
+                            pass
                 if person.location and not recruiter.location:
                     recruiter.location = person.location
                     fields_enriched.append("Location")

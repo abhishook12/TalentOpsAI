@@ -22,18 +22,43 @@ from ..models.knowledge_models import KnowledgeEntity, KnowledgeRelationship, Kn
 from ..models.models import Recruiter
 
 
-def get_live_scraper_ingestion_summary(db: Session, user_id: int) -> Dict[str, Any]:
+def get_live_scraper_ingestion_summary(
+    db: Session,
+    user_id: Optional[int] = None,
+    is_admin: bool = False,
+    org_id: Optional[int] = None,
+) -> Dict[str, Any]:
     """
     Computes real-time ingestion, enrichment, and field modification metrics.
+    When is_admin=True, aggregates operational command center metrics across the entire platform.
+    When is_admin=False, provides personal/organization metrics with graceful platform fallback.
     """
     now = datetime.now(timezone.utc)
-    today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
+    # Rolling cutoff: Earlier of calendar day start (UTC) or rolling 24 hours to prevent timezone gaps
+    today_cutoff = min(
+        datetime(now.year, now.month, now.day),
+        now.replace(tzinfo=None) - timedelta(hours=24)
+    )
+
+    # Determine user filtering scope
+    filter_by_user = not is_admin and user_id is not None
+    if filter_by_user:
+        # Check if user has personal events; if zero, fallback to platform operational data
+        has_personal_events = db.query(ExtensionDiscoveryEvent.id).filter(
+            ExtensionDiscoveryEvent.owner_user_id == user_id
+        ).first() is not None or db.query(DiscoveryStaging.id).filter(
+            DiscoveryStaging.owner_user_id == user_id
+        ).first() is not None
+        if not has_personal_events:
+            filter_by_user = False
 
     # 1. Query Extension Events for Today
-    today_events = db.query(ExtensionDiscoveryEvent).filter(
-        ExtensionDiscoveryEvent.owner_user_id == user_id,
-        ExtensionDiscoveryEvent.created_at >= today_start
-    ).all()
+    event_query = db.query(ExtensionDiscoveryEvent).filter(
+        ExtensionDiscoveryEvent.created_at >= today_cutoff
+    )
+    if filter_by_user:
+        event_query = event_query.filter(ExtensionDiscoveryEvent.owner_user_id == user_id)
+    today_events = event_query.all()
 
     new_people_today = sum(1 for e in today_events if e.db_action == "NEW_DISCOVERY")
     enriched_today = sum(1 for e in today_events if e.db_action == "ENRICHED")
@@ -54,9 +79,10 @@ def get_live_scraper_ingestion_summary(db: Session, user_id: int) -> Dict[str, A
 
     # If no events today, query all-time to show historical capability
     if len(today_events) == 0:
-        recent_events = db.query(ExtensionDiscoveryEvent).filter(
-            ExtensionDiscoveryEvent.owner_user_id == user_id
-        ).order_by(desc(ExtensionDiscoveryEvent.created_at)).limit(100).all()
+        recent_q = db.query(ExtensionDiscoveryEvent)
+        if filter_by_user:
+            recent_q = recent_q.filter(ExtensionDiscoveryEvent.owner_user_id == user_id)
+        recent_events = recent_q.order_by(desc(ExtensionDiscoveryEvent.created_at)).limit(100).all()
         all_time_new = sum(1 for e in recent_events if e.db_action == "NEW_DISCOVERY")
         all_time_enriched = sum(1 for e in recent_events if e.db_action == "ENRICHED")
     else:
@@ -65,63 +91,63 @@ def get_live_scraper_ingestion_summary(db: Session, user_id: int) -> Dict[str, A
         all_time_enriched = enriched_today
 
     # 2. Staging & Raw Observation Counts
-    total_staged_today = db.query(sqlfunc.count(DiscoveryStaging.id)).filter(
-        DiscoveryStaging.owner_user_id == user_id,
-        DiscoveryStaging.created_at >= today_start
-    ).scalar() or 0
-
-    total_staged_all = db.query(sqlfunc.count(DiscoveryStaging.id)).filter(
-        DiscoveryStaging.owner_user_id == user_id
-    ).scalar() or 0
-
-    pending_staging = db.query(sqlfunc.count(DiscoveryStaging.id)).filter(
-        DiscoveryStaging.owner_user_id == user_id,
+    staged_today_q = db.query(sqlfunc.count(DiscoveryStaging.id)).filter(
+        DiscoveryStaging.created_at >= today_cutoff
+    )
+    staged_all_q = db.query(sqlfunc.count(DiscoveryStaging.id))
+    pending_q = db.query(sqlfunc.count(DiscoveryStaging.id)).filter(
         DiscoveryStaging.processing_status == "pending"
-    ).scalar() or 0
-
-    validated_staging = db.query(sqlfunc.count(DiscoveryStaging.id)).filter(
-        DiscoveryStaging.owner_user_id == user_id,
+    )
+    validated_q = db.query(sqlfunc.count(DiscoveryStaging.id)).filter(
         DiscoveryStaging.processing_status.in_(["committed", "resolved", "batched"])
-    ).scalar() or 0
-
-    rejected_staging = db.query(sqlfunc.count(DiscoveryStaging.id)).filter(
-        DiscoveryStaging.owner_user_id == user_id,
+    )
+    rejected_q = db.query(sqlfunc.count(DiscoveryStaging.id)).filter(
         DiscoveryStaging.processing_status == "rejected"
-    ).scalar() or 0
+    )
+
+    if filter_by_user:
+        staged_today_q = staged_today_q.filter(DiscoveryStaging.owner_user_id == user_id)
+        staged_all_q = staged_all_q.filter(DiscoveryStaging.owner_user_id == user_id)
+        pending_q = pending_q.filter(DiscoveryStaging.owner_user_id == user_id)
+        validated_q = validated_q.filter(DiscoveryStaging.owner_user_id == user_id)
+        rejected_q = rejected_q.filter(DiscoveryStaging.owner_user_id == user_id)
+
+    total_staged_today = staged_today_q.scalar() or 0
+    total_staged_all = staged_all_q.scalar() or 0
+    pending_staging = pending_q.scalar() or 0
+    validated_staging = validated_q.scalar() or 0
+    rejected_staging = rejected_q.scalar() or 0
 
     # 3. Knowledge Graph Entity & Signal Counts
-    companies_discovered = db.query(sqlfunc.count(KnowledgeEntity.id)).filter(
-        KnowledgeEntity.owner_user_id == user_id,
-        KnowledgeEntity.entity_type == "COMPANY"
-    ).scalar() or 0
+    kg_comp_q = db.query(sqlfunc.count(KnowledgeEntity.id)).filter(KnowledgeEntity.entity_type == "COMPANY")
+    kg_jobs_q = db.query(sqlfunc.count(KnowledgeEntity.id)).filter(KnowledgeEntity.entity_type == "JOB")
+    kg_sig_q = db.query(sqlfunc.count(KnowledgeSignal.id))
 
-    jobs_discovered = db.query(sqlfunc.count(KnowledgeEntity.id)).filter(
-        KnowledgeEntity.owner_user_id == user_id,
-        KnowledgeEntity.entity_type == "JOB"
-    ).scalar() or 0
+    if filter_by_user:
+        kg_comp_q = kg_comp_q.filter(KnowledgeEntity.owner_user_id == user_id)
+        kg_jobs_q = kg_jobs_q.filter(KnowledgeEntity.owner_user_id == user_id)
+        kg_sig_q = kg_sig_q.filter(KnowledgeSignal.owner_user_id == user_id)
 
-    signals_discovered = db.query(sqlfunc.count(KnowledgeSignal.id)).filter(
-        KnowledgeSignal.owner_user_id == user_id
-    ).scalar() or 0
+    companies_discovered = kg_comp_q.scalar() or 0
+    jobs_discovered = kg_jobs_q.scalar() or 0
+    signals_discovered = kg_sig_q.scalar() or 0
 
     # 4. Forensic Timestamps
-    latest_stg = db.query(DiscoveryStaging).filter(
-        DiscoveryStaging.owner_user_id == user_id
-    ).order_by(desc(DiscoveryStaging.created_at)).first()
+    stg_dt_q = db.query(DiscoveryStaging)
+    evt_dt_q = db.query(ExtensionDiscoveryEvent)
+    enrich_dt_q = db.query(ExtensionDiscoveryEvent).filter(ExtensionDiscoveryEvent.db_action == "ENRICHED")
+    new_dt_q = db.query(ExtensionDiscoveryEvent).filter(ExtensionDiscoveryEvent.db_action == "NEW_DISCOVERY")
 
-    latest_event = db.query(ExtensionDiscoveryEvent).filter(
-        ExtensionDiscoveryEvent.owner_user_id == user_id
-    ).order_by(desc(ExtensionDiscoveryEvent.created_at)).first()
+    if filter_by_user:
+        stg_dt_q = stg_dt_q.filter(DiscoveryStaging.owner_user_id == user_id)
+        evt_dt_q = evt_dt_q.filter(ExtensionDiscoveryEvent.owner_user_id == user_id)
+        enrich_dt_q = enrich_dt_q.filter(ExtensionDiscoveryEvent.owner_user_id == user_id)
+        new_dt_q = new_dt_q.filter(ExtensionDiscoveryEvent.owner_user_id == user_id)
 
-    latest_enrich = db.query(ExtensionDiscoveryEvent).filter(
-        ExtensionDiscoveryEvent.owner_user_id == user_id,
-        ExtensionDiscoveryEvent.db_action == "ENRICHED"
-    ).order_by(desc(ExtensionDiscoveryEvent.created_at)).first()
-
-    latest_new = db.query(ExtensionDiscoveryEvent).filter(
-        ExtensionDiscoveryEvent.owner_user_id == user_id,
-        ExtensionDiscoveryEvent.db_action == "NEW_DISCOVERY"
-    ).order_by(desc(ExtensionDiscoveryEvent.created_at)).first()
+    latest_stg = stg_dt_q.order_by(desc(DiscoveryStaging.created_at)).first()
+    latest_event = evt_dt_q.order_by(desc(ExtensionDiscoveryEvent.created_at)).first()
+    latest_enrich = enrich_dt_q.order_by(desc(ExtensionDiscoveryEvent.created_at)).first()
+    latest_new = new_dt_q.order_by(desc(ExtensionDiscoveryEvent.created_at)).first()
 
     last_obs_dt = latest_stg.created_at if latest_stg else (latest_event.created_at if latest_event else None)
     last_enrich_dt = latest_enrich.created_at if latest_enrich else None

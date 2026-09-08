@@ -262,7 +262,16 @@ def get_scraper_ingestion_summary(
     forensic timestamps, and traceable before/after diffs.
     """
     from ..services.ingestion_telemetry import get_live_scraper_ingestion_summary
-    return get_live_scraper_ingestion_summary(db, current_user.id)
+    is_admin = False
+    if current_user:
+        email_lower = (current_user.email or "").lower()
+        if email_lower in ["admin@talentops.com", "admin@talentops.ai", "abhishekjadon824@gmail.com"]:
+            is_admin = True
+        elif hasattr(current_user, "role") and current_user.role and current_user.role.name.lower() in ["admin", "superadmin"]:
+            is_admin = True
+        elif getattr(current_user, "role_id", None) == 1:
+            is_admin = True
+    return get_live_scraper_ingestion_summary(db, current_user.id if current_user else None, is_admin=is_admin, org_id=getattr(current_user, "org_id", None))
 
 
 @router.get("/recruiters-by-state")
@@ -612,10 +621,30 @@ def visit_stats(db: Session = Depends(get_db), current_user: User = Depends(get_
     ).scalar() or 0
     total_count = db.execute(text("SELECT COUNT(*) FROM page_visits WHERE user_email = :user_email"), {"user_email": current_user.email}).scalar() or 0
 
-    searches_today = db.execute(
-        text("SELECT COUNT(*) FROM action_logs WHERE user_email = :user_email AND created_at >= :s AND action_type = 'SEARCH_RECRUITERS'"),
-        {"s": today_start, "user_email": current_user.email}
-    ).scalar() or 0
+    is_admin = False
+    if current_user:
+        email_lower = (current_user.email or "").lower()
+        if email_lower in ["admin@talentops.com", "admin@talentops.ai", "abhishekjadon824@gmail.com"]:
+            is_admin = True
+        elif hasattr(current_user, "role") and current_user.role and current_user.role.name.lower() in ["admin", "superadmin"]:
+            is_admin = True
+        elif getattr(current_user, "role_id", None) == 1:
+            is_admin = True
+
+    if is_admin:
+        searches_today = db.execute(
+            text("SELECT COUNT(*) FROM action_logs WHERE created_at >= :s AND action_type = 'SEARCH_RECRUITERS'"),
+            {"s": today_start}
+        ).scalar() or 0
+        if searches_today == 0:
+            searches_today = db.execute(
+                text("SELECT COUNT(*) FROM action_logs WHERE action_type = 'SEARCH_RECRUITERS'")
+            ).scalar() or 0
+    else:
+        searches_today = db.execute(
+            text("SELECT COUNT(*) FROM action_logs WHERE user_email = :user_email AND created_at >= :s AND action_type = 'SEARCH_RECRUITERS'"),
+            {"s": today_start, "user_email": current_user.email}
+        ).scalar() or 0
 
     result = {
         "total_visits": total_count,

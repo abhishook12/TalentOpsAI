@@ -378,8 +378,10 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         "chat", "assistant", "jobs", "apply", "feed", "home", "notifications",
         "network", "windows", "tab", "chrome", "firefox", "edge", "safari",
         "post", "posts", "quick", "easy", "prompt", "top", "united", "states",
+        "history", "conversation", "conversations", "profile", "profiles",
+        "message", "messages", "filter", "filters", "dialog", "session", "menu",
     }
-    if any(w in blacklisted or any(b in w for b in blacklisted) for w in lower_words):
+    if any(w in blacklisted for w in lower_words):
         return False
     return True
 

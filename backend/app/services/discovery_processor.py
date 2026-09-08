@@ -65,7 +65,7 @@ class DiscoveryProcessor:
         """
         try:
             records = self.db.query(DiscoveryStaging).filter(
-                DiscoveryStaging.processing_status == 'pending'
+                DiscoveryStaging.processing_status.in_(['pending', 'batched'])
             ).order_by(DiscoveryStaging.created_at.asc()).limit(limit).all()
 
             if not records:
@@ -402,6 +402,13 @@ class DiscoveryProcessor:
                     previous_title = tit
                     break
 
+        # Fallback: if linkedin_url is not set, infer from source_url if individual profile URL
+        if not linkedin_url:
+            for r in cluster:
+                if r.source_url and 'linkedin.com/in/' in r.source_url:
+                    linkedin_url = r.source_url
+                    break
+
         # Calculate Identity Confidence Score
         conf = 0.0
         if canonical_name and canonical_name != "Unknown Professional":
@@ -417,6 +424,13 @@ class DiscoveryProcessor:
         if primary_phone:
             conf += 0.10
         if location:
+            conf += 0.05
+        # Progressive profile attributes boost identity confidence
+        if education:
+            conf += 0.05
+        if skills:
+            conf += 0.05
+        if experience_history:
             conf += 0.05
         conf = min(conf, 1.0)
 
@@ -478,6 +492,8 @@ class DiscoveryProcessor:
             r.resolved_person_id = person.id
             r.identity_confidence = round(conf, 2)
             r.quality_score = self._calculate_usefulness(r)
+            self.db.add(r)
+        self.db.flush()
 
         return person
 

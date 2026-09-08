@@ -772,6 +772,62 @@ def get_recruiters(
         sort_desc=sort_desc
     )
     
+    # ── Live PostgreSQL Extension Discovery Merge ───────────────
+    try:
+        from sqlalchemy import or_
+        pg_query = None
+        if search:
+            q_like = f"%{str(search).strip().lower()}%"
+            pg_query = db.query(Recruiter).filter(
+                or_(
+                    Recruiter.recruiter_name.ilike(q_like),
+                    Recruiter.email.ilike(q_like),
+                    Recruiter.title.ilike(q_like),
+                    Recruiter.linkedin.ilike(q_like)
+                )
+            )
+        elif page == 1:
+            pg_query = db.query(Recruiter).filter(
+                Recruiter.data_source == 'extension'
+            ).order_by(Recruiter.recruiter_id.desc()).limit(15)
+
+        if pg_query:
+            pg_recs = pg_query.all()
+            for r in reversed(pg_recs):
+                meta = {}
+                if getattr(r, "metadata_json", None) and isinstance(r.metadata_json, str) and r.metadata_json.startswith("{"):
+                    try:
+                        meta = json.loads(r.metadata_json)
+                    except Exception:
+                        pass
+                rec_dict = {
+                    "recruiter_id": r.recruiter_id,
+                    "recruiter_name": r.recruiter_name,
+                    "email": r.email if not (r.email and r.email.endswith("@noemail.talentops")) else None,
+                    "phone": r.phone,
+                    "linkedin": r.linkedin,
+                    "specialization": r.title or "Recruiter / Talent Lead",
+                    "company_id": r.company_id,
+                    "location": r.location,
+                    "skills": meta.get("skills", []),
+                    "experience_history": meta.get("experience_history", []),
+                    "education": meta.get("education"),
+                    "about_summary": meta.get("about_summary"),
+                    "is_open_to_work": bool(meta.get("is_open_to_work", False)),
+                    "is_hiring": bool(meta.get("is_hiring", False)),
+                    "pronouns": meta.get("pronouns"),
+                    "quality_score": 95,
+                    "completeness_score": 90,
+                    "is_active": r.is_active,
+                    "created_at": r.created_at,
+                    "data_source": "extension",
+                }
+                if not any(str(x.get("recruiter_id")) == str(r.recruiter_id) for x in results):
+                    results.insert(0, rec_dict)
+                    total_count += 1
+    except Exception as e:
+        logger.warning("Error merging live PostgreSQL recruiters: %s", e)
+
     response.headers["X-Total-Count"] = str(total_count)
     
     import math

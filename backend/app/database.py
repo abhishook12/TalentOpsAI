@@ -20,6 +20,7 @@ if DATABASE_URL.startswith("postgresql"):
     connect_args = {
         "connect_timeout": 10,
         "prepare_threshold": None,
+        "autocommit": True,
         "options": "-c statement_timeout=30000"
     }
 else:

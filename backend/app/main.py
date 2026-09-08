@@ -58,12 +58,12 @@ if RUN_STARTUP_MIGRATIONS:
             except Exception:
                 _db.rollback()
 
-            # Ensure any missing tables (like extension_discovery_events, discovery_staging, resolved_persons) are created
+            # Ensure critical tables (like extension_discovery_events, discovery_staging, resolved_persons) are created
             try:
                 from .models import extension_models, staging_models
                 Base.metadata.create_all(bind=_db.get_bind())
             except Exception as e:
-                logger.warning("Error creating missing model tables: %s", e)
+                logger.warning("Error ensuring model tables: %s", e)
             
             try:
                 from .seed_roles import seed_roles_and_permissions

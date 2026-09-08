@@ -111,9 +111,9 @@ def get_staging_records(
     """
     try:
         q = db.query(DiscoveryStaging)
-        if status:
+        if status and isinstance(status, str):
             q = q.filter(DiscoveryStaging.processing_status == status)
-        if batch_id:
+        if batch_id and isinstance(batch_id, str):
             q = q.filter(DiscoveryStaging.batch_id == batch_id)
 
         total = q.count()

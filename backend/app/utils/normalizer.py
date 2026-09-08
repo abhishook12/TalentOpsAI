@@ -249,17 +249,38 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
         return False, None, "Invalid length for person name"
 
     lower = cleaned.lower()
+    words = cleaned.split()
+    lower_words = [w.lower() for w in words]
+
+    # Reject system noise tokens (e.g. Gemini, Outlook, Inbox, Tab, Apply, etc.)
+    SYSTEM_NOISE_TOKENS = {
+        'gemini', 'chatgpt', 'copilot', 'claude', 'outlook', 'inbox', 'gmail', 'mail',
+        'tab', 'browser', 'feed', 'apply', 'contactout', 'signalhire', 'chrome',
+        'windows', 'zoom', 'teams', 'slack', 'search', 'home', 'save', 'saved',
+        'results', 'followers', 'connections', 'connection', 'prompt', 'notification',
+        'post', 'posts', 'pipeline', 'scout', 'lead', 'leads'
+    }
+    if any(w in SYSTEM_NOISE_TOKENS or any(b in w for b in SYSTEM_NOISE_TOKENS) for w in lower_words):
+        return False, None, f"Name contains system or application noise ('{cleaned}')"
+
+    # Reject single-letter tokens (e.g. 'M Inbox', 'Ana R Billios 0')
+    if any(len(w) < 2 for w in words):
+        return False, None, f"Name contains single-letter token ('{cleaned}')"
+
+    # Must be 2 to 4 tokens
+    if len(words) < 2 or len(words) > 4:
+        return False, None, f"Name must be 2-4 words, got {len(words)} ('{cleaned}')"
 
     # 0. Reject Company / Organization names
     if is_company_name(cleaned):
         return False, None, f"Name is an organization/company ('{cleaned}'), not a human individual"
 
     # 1. Reject UI actions
-    if is_ui_action(lower):
+    if is_ui_action(lower) or any(w in UI_ACTION_TERMS for w in lower_words):
         return False, None, f"Name is a UI action control ('{cleaned}')"
 
     # 2. Reject platform names
-    if is_platform_name(lower):
+    if is_platform_name(lower) or any(w in PLATFORM_NAMES for w in lower_words):
         return False, None, f"Name is a platform name ('{cleaned}')"
 
     # 3. Reject job posting titles
@@ -283,7 +304,7 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
         return False, None, f"Name is notification or feed noise ('{cleaned}')"
 
     # 8. Must be alphabetic words (2 to 4 words max)
-    if not re.match(r'^[a-zA-Z\s\'.\-]+$', cleaned) or len(cleaned.split()) > 4:
+    if not re.match(r'^[a-zA-Z\s\'.\-]+$', cleaned):
         return False, None, f"Name structure is unnatural ('{cleaned}')"
 
     return True, cleaned.title(), None

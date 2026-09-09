@@ -11,10 +11,12 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 
+import requests
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
@@ -281,7 +283,14 @@ class DQDaemon:
                 }),
             )
             self.db.add(alert)
-            alerts_raised.append({"code": alert_code, "type": "DELIVERABILITY_DROP", "message": msg})
+            alerts_raised.append({
+                "code": alert_code,
+                "type": "DELIVERABILITY_DROP",
+                "message": msg,
+                "metric_name": "deliverability_pct",
+                "metric_value": deliverability_pct,
+                "threshold": MIN_DELIVERABILITY_SLA_PCT,
+            })
 
         # 2. Quarantine Spike Check
         if quarantine_pct > MAX_QUARANTINE_SLA_PCT:
@@ -306,7 +315,14 @@ class DQDaemon:
                 }),
             )
             self.db.add(alert)
-            alerts_raised.append({"code": alert_code, "type": "QUARANTINE_SPIKE", "message": msg})
+            alerts_raised.append({
+                "code": alert_code,
+                "type": "QUARANTINE_SPIKE",
+                "message": msg,
+                "metric_name": "quarantine_pct",
+                "metric_value": quarantine_pct,
+                "threshold": MAX_QUARANTINE_SLA_PCT,
+            })
 
         # 3. Guardrail Action: Auto-Pause Active Campaigns
         campaigns_paused = 0
@@ -334,11 +350,30 @@ class DQDaemon:
                         message=msg,
                     )
                     self.db.add(alert)
-                    alerts_raised.append({"code": alert_code, "type": "CAMPAIGN_AUTO_PAUSED", "message": msg})
+                    alerts_raised.append({
+                        "code": alert_code,
+                        "type": "CAMPAIGN_AUTO_PAUSED",
+                        "message": msg,
+                        "metric_name": "campaigns_paused",
+                        "metric_value": float(campaigns_paused),
+                        "threshold": 0.0,
+                    })
             except Exception as e:
                 logger.warning("Could not check/pause campaigns: %s", e)
 
         self.db.commit()
+
+        # 4. Dispatch Outbound Webhook Notifications for triggered SLA alerts
+        for alert_item in alerts_raised:
+            self.send_sla_alert_webhook({
+                "code": alert_item["code"],
+                "type": alert_item["type"],
+                "tenant_id": owner_user_id,
+                "metric_name": alert_item.get("metric_name", "sla_metric"),
+                "metric_value": alert_item.get("metric_value", 0.0),
+                "threshold": alert_item.get("threshold", 0.0),
+                "message": alert_item["message"],
+            })
 
         return {
             "deliverability_pct": deliverability_pct,
@@ -349,6 +384,95 @@ class DQDaemon:
             "campaigns_paused": campaigns_paused,
             "alerts": alerts_raised,
         }
+
+    # ── Outbound Webhook Dispatch ─────────────────────────────────────────────
+
+    @classmethod
+    def send_sla_alert_webhook(
+        cls, alert_data: Dict[str, Any], webhook_url: Optional[str] = None
+    ) -> bool:
+        """
+        Dispatches outbound HTTP webhook notification for Data Quality SLA alerts.
+        Integrates with Slack, Microsoft Teams, or custom webhook endpoints.
+        Safe and non-blocking: never raises exceptions to disrupt daemon operations.
+        """
+        url = (
+            webhook_url
+            or os.getenv("DQ_ALERT_WEBHOOK_URL")
+            or os.getenv("SLACK_WEBHOOK_URL")
+            or os.getenv("TEAMS_WEBHOOK_URL")
+        )
+
+        if not url:
+            logger.debug(
+                "DQDaemon: No external alert webhook URL configured. SLA alert logged to DB: %s",
+                alert_data.get("code"),
+            )
+            return False
+
+        try:
+            # Build payload depending on service
+            if "hooks.slack.com" in url:
+                payload = {
+                    "text": f":warning: *TalentOps SLA Alert*: {alert_data.get('type')}",
+                    "blocks": [
+                        {
+                            "type": "section",
+                            "text": {
+                                "type": "mrkdwn",
+                                "text": (
+                                    f"*TALENTOPS SLA ALERT: {alert_data.get('type')}*\n"
+                                    f"*Alert Code:* `{alert_data.get('code')}`\n"
+                                    f"*Message:* {alert_data.get('message')}\n"
+                                    f"*Metric:* `{alert_data.get('metric_name')}` = "
+                                    f"{alert_data.get('metric_value')} (Threshold: {alert_data.get('threshold')})"
+                                ),
+                            },
+                        }
+                    ],
+                }
+            elif "office.com" in url:
+                payload = {
+                    "@type": "MessageCard",
+                    "@context": "http://schema.org/extensions",
+                    "themeColor": "FF0000",
+                    "summary": f"TalentOps SLA Alert: {alert_data.get('type')}",
+                    "sections": [
+                        {
+                            "activityTitle": f"TalentOps SLA Alert: {alert_data.get('type')}",
+                            "activitySubtitle": f"Alert Code: {alert_data.get('code')}",
+                            "text": alert_data.get("message"),
+                            "facts": [
+                                {"name": "Metric", "value": str(alert_data.get("metric_name"))},
+                                {"name": "Value", "value": str(alert_data.get("metric_value"))},
+                                {"name": "Threshold", "value": str(alert_data.get("threshold"))},
+                            ],
+                        }
+                    ],
+                }
+            else:
+                payload = {
+                    "event": "DATA_QUALITY_SLA_ALERT",
+                    "alert_code": alert_data.get("code"),
+                    "alert_type": alert_data.get("type"),
+                    "tenant_id": alert_data.get("tenant_id"),
+                    "metric_name": alert_data.get("metric_name"),
+                    "metric_value": alert_data.get("metric_value"),
+                    "threshold": alert_data.get("threshold"),
+                    "message": alert_data.get("message"),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+
+            resp = requests.post(url, json=payload, timeout=5)
+            logger.info(
+                "DQDaemon: SLA alert webhook dispatched to %s (Status: %s)",
+                url.split("?")[0],
+                resp.status_code,
+            )
+            return resp.status_code in (200, 201, 202, 204)
+        except Exception as e:
+            logger.warning("DQDaemon: Failed to dispatch SLA alert webhook: %s", e)
+            return False
 
     # ── Master Orchestrator ───────────────────────────────────────────────────
 

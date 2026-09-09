@@ -15,7 +15,7 @@ import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -726,8 +726,15 @@ def get_candidate_timeline(
         "description": f"Initial ingestion of '{person.canonical_name}'",
     })
 
-    # 2. Historical contact history changes
-    contacts = db.query(PersonContactHistory).filter(
+    # 2. Historical contact history changes (Optimized projection)
+    contacts = db.query(
+        PersonContactHistory.valid_to,
+        PersonContactHistory.created_at,
+        PersonContactHistory.contact_type,
+        PersonContactHistory.contact_value,
+        PersonContactHistory.status,
+        PersonContactHistory.reason,
+    ).filter(
         PersonContactHistory.person_identity_id == candidate_id
     ).order_by(PersonContactHistory.created_at.asc()).all()
 
@@ -743,8 +750,16 @@ def get_candidate_timeline(
             "description": c.reason or f"Archived {c.contact_type} value",
         })
 
-    # 3. Data Change Audits
-    audits = db.query(DataChangeAudit).filter(
+    # 3. Data Change Audits (Optimized projection)
+    audits = db.query(
+        DataChangeAudit.created_at,
+        DataChangeAudit.change_id,
+        DataChangeAudit.field_name,
+        DataChangeAudit.old_value,
+        DataChangeAudit.new_value,
+        DataChangeAudit.reason,
+        DataChangeAudit.actor,
+    ).filter(
         DataChangeAudit.entity_type == "PERSON",
         DataChangeAudit.entity_id == candidate_id,
     ).order_by(DataChangeAudit.created_at.asc()).all()
@@ -898,15 +913,34 @@ def run_autonomous_daemon_tier(
 
 @router.post("/self-heal/scan")
 def run_self_healing_probe(
+    background: bool = Query(False, description="Run probe sweep asynchronously in background"),
+    limit: int = Query(50, description="Max candidates to probe"),
+    background_tasks: BackgroundTasks = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_request),
 ):
     """
     Scans for employment transitions and missing contacts,
     auto-derives patterns, and stages Level 3 repair proposals.
+    Supports asynchronous background execution and chunked limits.
     """
     from ..services.self_healing_probe import SelfHealingProbe
+
+    if background and background_tasks:
+        def _bg_scan(uid: int, lim: int):
+            from ..database import SessionLocal
+            with SessionLocal() as bg_db:
+                p = SelfHealingProbe(bg_db)
+                p.scan_and_heal_transitions(owner_user_id=uid, limit=lim)
+
+        background_tasks.add_task(_bg_scan, current_user.id, limit)
+        return {
+            "status": "QUEUED",
+            "message": "Self-healing contact probe scheduled in background task",
+            "limit": limit,
+        }
+
     probe = SelfHealingProbe(db)
-    return probe.scan_and_heal_transitions(owner_user_id=current_user.id)
+    return probe.scan_and_heal_transitions(owner_user_id=current_user.id, limit=limit)
 
 

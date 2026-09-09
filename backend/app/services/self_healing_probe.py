@@ -39,12 +39,19 @@ class SelfHealingProbe:
         self.reconciler = TemporalReconciler()
 
     def probe_and_heal_person(
-        self, person_id: int, new_company: Optional[str] = None
+        self,
+        person_id: int,
+        new_company: Optional[str] = None,
+        person_obj: Optional[PersonIdentity] = None,
+        company_cache: Optional[Dict[str, Any]] = None,
+        existing_props_set: Optional[set] = None,
+        auto_commit: bool = True,
     ) -> Dict[str, Any]:
         """
         Runs proactive probe for a person experiencing a career shift or missing contact info.
+        Supports caching and batch commits for ultra-low latency.
         """
-        person = self.db.query(PersonIdentity).filter(PersonIdentity.id == person_id).first()
+        person = person_obj or self.db.query(PersonIdentity).filter(PersonIdentity.id == person_id).first()
         if not person:
             return {"status": "ERROR", "message": "Person not found"}
 
@@ -52,10 +59,17 @@ class SelfHealingProbe:
         if not target_company_name:
             return {"status": "SKIPPED", "reason": "No target company available to probe"}
 
-        # 1. Identify canonical company & domain
-        company = self.db.query(CompanyMaster).filter(
-            CompanyMaster.canonical_name.ilike(target_company_name)
-        ).first()
+        # 1. Identify canonical company & domain (with cache support)
+        comp_key = target_company_name.lower()
+        company = None
+        if company_cache is not None and comp_key in company_cache:
+            company = company_cache[comp_key]
+        else:
+            company = self.db.query(CompanyMaster).filter(
+                CompanyMaster.canonical_name.ilike(target_company_name)
+            ).first()
+            if company_cache is not None:
+                company_cache[comp_key] = company
 
         domain = None
         known_pattern = None
@@ -105,7 +119,7 @@ class SelfHealingProbe:
 
         proposals_generated: List[Dict[str, Any]] = []
 
-        # 4. Probe each candidate email via EmailQualityEngine
+        # 4. Probe each candidate email via EmailQualityEngine (fast-path)
         best_candidate = None
         best_result = None
 
@@ -125,16 +139,20 @@ class SelfHealingProbe:
 
         # 5. Stage DataCorrectionProposal if high confidence candidate found
         if best_candidate and best_result:
-            # Check if this proposal already exists to avoid duplicates
-            existing_prop = self.db.query(DataCorrectionProposal).filter(
-                DataCorrectionProposal.entity_type == "PERSON",
-                DataCorrectionProposal.entity_id == person.id,
-                DataCorrectionProposal.field_name == "primary_email",
-                DataCorrectionProposal.proposed_value == best_candidate,
-                DataCorrectionProposal.status.in_(["PROPOSED", "APPROVED", "PROMOTED"]),
-            ).first()
+            already_exists = False
+            if existing_props_set is not None:
+                already_exists = (person.id, best_candidate) in existing_props_set
+            else:
+                existing_prop = self.db.query(DataCorrectionProposal).filter(
+                    DataCorrectionProposal.entity_type == "PERSON",
+                    DataCorrectionProposal.entity_id == person.id,
+                    DataCorrectionProposal.field_name == "primary_email",
+                    DataCorrectionProposal.proposed_value == best_candidate,
+                    DataCorrectionProposal.status.in_(["PROPOSED", "APPROVED", "PROMOTED"]),
+                ).first()
+                already_exists = existing_prop is not None
 
-            if not existing_prop:
+            if not already_exists:
                 prop_code = f"PROP-HEAL-{uuid.uuid4().hex[:6].upper()}"
                 prop = DataCorrectionProposal(
                     proposal_id=prop_code,
@@ -156,7 +174,11 @@ class SelfHealingProbe:
                     owner_user_id=person.owner_user_id,
                 )
                 self.db.add(prop)
-                self.db.commit()
+                if auto_commit:
+                    self.db.commit()
+
+                if existing_props_set is not None:
+                    existing_props_set.add((person.id, best_candidate))
 
                 proposals_generated.append({
                     "proposal_id": prop_code,
@@ -174,10 +196,12 @@ class SelfHealingProbe:
             "proposals_generated": proposals_generated,
         }
 
-    def scan_and_heal_transitions(self, owner_user_id: int = 1) -> Dict[str, Any]:
+    def scan_and_heal_transitions(
+        self, owner_user_id: int = 1, limit: int = 50
+    ) -> Dict[str, Any]:
         """
-        Scans all people with detected career transitions or missing work emails
-        and runs proactive self-healing probes.
+        Scans candidates with detected career transitions or missing work emails
+        and runs proactive self-healing probes using high-performance batch operations.
         """
         # Find candidates who have a current company but missing/undeliverable email
         candidates = self.db.query(PersonIdentity).filter(
@@ -187,16 +211,48 @@ class SelfHealingProbe:
                 (PersonIdentity.primary_email.is_(None)) |
                 (PersonIdentity.email_status.in_(["UNDELIVERABLE", "RISKY", "UNKNOWN"]))
             ),
-        ).limit(50).all()
+        ).limit(limit).all()
+
+        if not candidates:
+            return {
+                "candidates_evaluated": 0,
+                "proposals_staged": 0,
+                "details": [],
+            }
+
+        # Preload existing proposals into a memory set for O(1) duplicate checks
+        candidate_ids = [c.id for c in candidates]
+        existing_props = self.db.query(
+            DataCorrectionProposal.entity_id, DataCorrectionProposal.proposed_value
+        ).filter(
+            DataCorrectionProposal.entity_type == "PERSON",
+            DataCorrectionProposal.entity_id.in_(candidate_ids),
+            DataCorrectionProposal.field_name == "primary_email",
+            DataCorrectionProposal.status.in_(["PROPOSED", "APPROVED", "PROMOTED"]),
+        ).all()
+        existing_props_set = {(p.entity_id, p.proposed_value) for p in existing_props}
+
+        # Company cache to eliminate redundant ILIKE searches
+        company_cache: Dict[str, Any] = {}
 
         healed_count = 0
         details = []
 
         for p in candidates:
-            res = self.probe_and_heal_person(p.id)
+            res = self.probe_and_heal_person(
+                person_id=p.id,
+                person_obj=p,
+                company_cache=company_cache,
+                existing_props_set=existing_props_set,
+                auto_commit=False,
+            )
             if res.get("proposals_generated"):
                 healed_count += len(res["proposals_generated"])
                 details.append(res)
+
+        # Single batch commit for all staged proposals
+        if healed_count > 0:
+            self.db.commit()
 
         return {
             "candidates_evaluated": len(candidates),

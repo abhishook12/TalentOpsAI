@@ -16,6 +16,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     DateTime,
+    Index,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -151,6 +152,10 @@ class PersonContactHistory(Base):
     reason = Column(String(255), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
 
+    __table_args__ = (
+        Index("idx_contact_hist_person_time", "person_identity_id", "created_at"),
+    )
+
     person = relationship("PersonIdentity", back_populates="contact_history")
 
 
@@ -168,6 +173,10 @@ class FieldObservation(Base):
     source = Column(String(100), nullable=False)
     confidence = Column(Float, default=0.85)
     observed_at = Column(DateTime, server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_field_obs_entity_time", "entity_type", "entity_id", "observed_at"),
+    )
 
 
 class DataQualityIssue(Base):
@@ -269,6 +278,10 @@ class DataChangeAudit(Base):
     batch_id = Column(String(64), nullable=True, index=True)
     created_at = Column(DateTime, server_default=func.now())
 
+    __table_args__ = (
+        Index("idx_audit_entity_time", "entity_type", "entity_id", "created_at"),
+    )
+
 
 class RepairBatchSnapshot(Base):
     """
@@ -301,6 +314,10 @@ class DissimilarityBlocklist(Base):
     reason = Column(String(255), default="HUMAN_REJECTED_MERGE")
     created_at = Column(DateTime, server_default=func.now())
 
+    __table_args__ = (
+        Index("idx_dissimilarity_pair", "entity_type", "entity_a_id", "entity_b_id"),
+    )
+
 
 class SLAHealthAlert(Base):
     """
@@ -321,5 +338,9 @@ class SLAHealthAlert(Base):
     payload_json = Column(Text, nullable=True)
     triggered_at = Column(DateTime, server_default=func.now())
     resolved_at = Column(DateTime, nullable=True)
+
+    __table_args__ = (
+        Index("idx_sla_alert_tenant_time", "tenant_id", "triggered_at"),
+    )
 
 

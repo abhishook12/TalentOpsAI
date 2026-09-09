@@ -73,6 +73,14 @@ def create_performance_indexes():
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_recruiters_norm_name ON recruiters (normalized_recruiter_name)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_recruiters_source_job_id ON recruiters (source_job_id)"))
 
+        # 7. Data Quality & Identity Resolution 2.0 Composite Indexes
+        print("Creating Data Quality 2.0 composite indexes...")
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_audit_entity_time ON data_change_audits (entity_type, entity_id, created_at)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_contact_hist_person_time ON person_contact_history (person_identity_id, created_at)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_field_obs_entity_time ON field_observations (entity_type, entity_id, observed_at)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_dissimilarity_pair ON dissimilarity_blocklist (entity_type, entity_a_id, entity_b_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_sla_alert_tenant_time ON sla_health_alerts (tenant_id, triggered_at)"))
+
         print("All indexes created successfully!")
 
 if __name__ == "__main__":

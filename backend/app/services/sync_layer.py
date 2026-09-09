@@ -5,8 +5,8 @@ import threading
 import shutil
 import glob
 import pandas as pd
-from app.database import engine
-from app.services.recruiter_store import _get_duckdb, PARQUET_FILE, recruiter_store
+from ..database import engine
+from .recruiter_store import _get_duckdb, PARQUET_FILE, recruiter_store
 
 logger = logging.getLogger("sync_layer")
 

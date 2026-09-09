@@ -177,13 +177,110 @@ class DataQualityIssue(Base):
     __tablename__ = "data_quality_issues"
 
     id = Column(Integer, primary_key=True, index=True)
-    issue_type = Column(String(50), nullable=False, index=True)  # UNDELIVERABLE_EMAIL, STALE_PROFILE, UNCERTAIN_IDENTITY, COMPANY_MISMATCH, DUPLICATE_PERSON
-    severity = Column(String(20), default="MEDIUM")  # HIGH, MEDIUM, LOW
-    entity_type = Column(String(30), nullable=False)
+    issue_code = Column(String(64), unique=True, index=True, nullable=True)  # DQ-xxxxx
+    issue_type = Column(String(50), nullable=False, index=True)  # INVALID_EMAIL, COMPANY_EMAIL_MISMATCH, TIMELINE_CONFLICT, etc.
+    problem_type = Column(String(30), default="BAD", index=True)  # BAD, MISSING, SUSPICIOUS, CONFLICTING, STALE, DUPLICATE
+    severity = Column(String(20), default="MEDIUM")  # CRITICAL, HIGH, MEDIUM, LOW
+    entity_type = Column(String(30), nullable=False)  # PERSON, COMPANY
     entity_id = Column(Integer, nullable=False, index=True)
+    field_name = Column(String(50), nullable=True)
+    raw_value = Column(Text, nullable=True)
     description = Column(Text, nullable=False)
     remediation_action = Column(String(100), nullable=True)
-    status = Column(String(30), default="OPEN", index=True)  # OPEN, RESOLVED, IGNORED
+    evidence_ladder_level = Column(Integer, default=1)  # 1 to 5
+    quarantine_id = Column(Integer, nullable=True, index=True)
+    status = Column(String(30), default="OPEN", index=True)  # OPEN, QUARANTINED, IN_REPAIR, RESOLVED, DISMISSED
     owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime, server_default=func.now())
     resolved_at = Column(DateTime, nullable=True)
+
+
+class QuarantineRecord(Base):
+    """
+    Hospital isolation room for bad, suspicious, or disputed data.
+    Isolates records from downstream production intelligence without destroying data.
+    """
+    __tablename__ = "quarantine_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    quarantine_id = Column(String(64), unique=True, index=True, nullable=False)  # QRN-xxxxx
+    entity_type = Column(String(30), nullable=False, index=True)  # PERSON, COMPANY
+    entity_id = Column(Integer, nullable=False, index=True)
+    field_name = Column(String(50), default="__RECORD__", nullable=False)
+    raw_value = Column(Text, nullable=True)
+    quarantine_reason = Column(Text, nullable=False)
+    problem_type = Column(String(30), default="BAD", index=True)  # BAD, MISSING, SUSPICIOUS, CONFLICTING, STALE, DUPLICATE
+    severity = Column(String(20), default="HIGH")  # CRITICAL, HIGH, MEDIUM, LOW
+    status = Column(String(30), default="QUARANTINED", index=True)  # QUARANTINED, UNDER_INVESTIGATION, RELEASED, REPAIRED
+    quarantined_at = Column(DateTime, server_default=func.now())
+    released_at = Column(DateTime, nullable=True)
+    metadata_json = Column(Text, nullable=True)
+    owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+
+class DataCorrectionProposal(Base):
+    """
+    Shadow writes layer. Proposals are generated, validated, and approved
+    before ever mutating canonical production rows.
+    """
+    __tablename__ = "data_correction_proposals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    proposal_id = Column(String(64), unique=True, index=True, nullable=False)  # PROP-xxxxx
+    entity_type = Column(String(30), nullable=False, index=True)  # PERSON, COMPANY
+    entity_id = Column(Integer, nullable=False, index=True)
+    field_name = Column(String(50), nullable=False, index=True)
+    old_value = Column(Text, nullable=True)
+    proposed_value = Column(Text, nullable=False)
+    reason = Column(Text, nullable=False)
+    evidence_ids = Column(Text, nullable=True)  # JSON array of observation/evidence IDs
+    evidence_ladder_level = Column(Integer, default=2)  # 1 to 5
+    confidence = Column(Float, default=0.80)  # 0.0 to 1.0
+    source = Column(String(100), default="dq_engine")
+    category = Column(String(50), default="SAFE_AUTO_FIX", index=True)  # SAFE_AUTO_FIX, VALIDATED_AUTO_FIX, HUMAN_REVIEW
+    status = Column(String(30), default="PROPOSED", index=True)  # PROPOSED, VALIDATING, APPROVED, PROMOTED, REJECTED, REVERTED
+    batch_id = Column(String(64), nullable=True, index=True)
+    created_at = Column(DateTime, server_default=func.now())
+    promoted_at = Column(DateTime, nullable=True)
+    reverted_at = Column(DateTime, nullable=True)
+    owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+
+class DataChangeAudit(Base):
+    """
+    Immutable audit ledger answering: Who changed this, why, and what evidence was used?
+    """
+    __tablename__ = "data_change_audits"
+
+    id = Column(Integer, primary_key=True, index=True)
+    change_id = Column(String(64), unique=True, index=True, nullable=False)  # CHANGE-xxxxx
+    entity_type = Column(String(30), nullable=False, index=True)
+    entity_id = Column(Integer, nullable=False, index=True)
+    field_name = Column(String(50), nullable=False)
+    old_value = Column(Text, nullable=True)
+    new_value = Column(Text, nullable=True)
+    reason = Column(Text, nullable=False)
+    evidence_ids = Column(Text, nullable=True)  # JSON array
+    confidence = Column(Float, default=0.90)
+    model_version = Column(String(50), default="dq_engine_v3.4")
+    rule_version = Column(String(50), default="rule_v1.0")
+    actor = Column(String(100), default="DQ_ENGINE")
+    reverted = Column(Boolean, default=False)
+    batch_id = Column(String(64), nullable=True, index=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+
+class RepairBatchSnapshot(Base):
+    """
+    Pre-repair database snapshot enabling safe, lossless rollback of batch cleanups.
+    """
+    __tablename__ = "repair_batch_snapshots"
+
+    id = Column(Integer, primary_key=True, index=True)
+    batch_id = Column(String(64), unique=True, index=True, nullable=False)  # BATCH-xxxxx
+    records_count = Column(Integer, default=0)
+    snapshot_data = Column(Text, nullable=False)  # JSON map of pre-repair values per record/field
+    status = Column(String(30), default="COMMITTED", index=True)  # COMMITTED, ROLLED_BACK
+    created_at = Column(DateTime, server_default=func.now())
+    rolled_back_at = Column(DateTime, nullable=True)
+

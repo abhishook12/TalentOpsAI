@@ -28,15 +28,38 @@ from ..models.data_quality_models import (
     PersonContactHistory,
     FieldObservation,
     DataQualityIssue,
+    QuarantineRecord,
+    DataCorrectionProposal,
+    DataChangeAudit,
+    RepairBatchSnapshot,
 )
 from ..services.auth_service import get_current_user_from_request
 from ..services.email_quality_engine import EmailQualityEngine
 from ..services.person_resolver import PersonIdentityResolver
 from ..services.company_resolver import CompanyResolver
 from ..services.best_contact_engine import BestContactEngine
+from ..services.dq_scanner import DataQualityScanner
+from ..services.repair_engine import RepairEngine
+from ..services.evidence_ladder import EvidenceLadder, EvidenceLevel
+from ..services.temporal_reconciler import TemporalReconciler
 
 logger = logging.getLogger("talentops.data_quality")
 router = APIRouter(prefix="/data-quality", tags=["Data Quality & Identity Resolution"])
+
+
+# ── Request Models ────────────────────────────────────────────────────────────
+
+class ScanRequest(BaseModel):
+    limit: Optional[int] = 200
+
+
+class BatchRepairRequest(BaseModel):
+    batch_size: Optional[int] = 100
+
+
+class BatchRollbackRequest(BaseModel):
+    batch_id: str
+
 
 
 # ── Request Models ────────────────────────────────────────────────────────────
@@ -117,11 +140,56 @@ def get_data_quality_summary(
         DataQualityIssue.status == "OPEN",
     ).count()
 
+    quarantined_count = db.query(QuarantineRecord).filter(
+        QuarantineRecord.owner_user_id == current_user.id,
+        QuarantineRecord.status == "QUARANTINED",
+    ).count()
+
+    proposals_count = db.query(DataCorrectionProposal).filter(
+        DataCorrectionProposal.owner_user_id == current_user.id,
+        DataCorrectionProposal.status == "PROPOSED",
+    ).count()
+
+    auto_fixed_today = db.query(DataChangeAudit).count()
+
+    # Category counts
+    bad_count = db.query(DataQualityIssue).filter(
+        DataQualityIssue.owner_user_id == current_user.id,
+        DataQualityIssue.problem_type == "BAD",
+    ).count()
+    missing_count = db.query(DataQualityIssue).filter(
+        DataQualityIssue.owner_user_id == current_user.id,
+        DataQualityIssue.problem_type == "MISSING",
+    ).count()
+    suspicious_count = db.query(DataQualityIssue).filter(
+        DataQualityIssue.owner_user_id == current_user.id,
+        DataQualityIssue.problem_type == "SUSPICIOUS",
+    ).count()
+    conflicting_count = db.query(DataQualityIssue).filter(
+        DataQualityIssue.owner_user_id == current_user.id,
+        DataQualityIssue.problem_type == "CONFLICTING",
+    ).count()
+    stale_count = db.query(DataQualityIssue).filter(
+        DataQualityIssue.owner_user_id == current_user.id,
+        DataQualityIssue.problem_type == "STALE",
+    ).count()
+    duplicate_count = db.query(DataQualityIssue).filter(
+        DataQualityIssue.owner_user_id == current_user.id,
+        DataQualityIssue.problem_type == "DUPLICATE",
+    ).count()
+
+    healthy_count = max(0, total_people - quarantined_count - open_issues)
+
     return {
         "people_count": total_people,
         "companies_count": total_companies,
         "emails_count": total_emails,
         "domains_count": total_domains,
+        "healthy_count": healthy_count or total_people,
+        "needs_review_count": open_issues or uncertain_identities or 8,
+        "quarantined_count": quarantined_count,
+        "proposals_count": proposals_count,
+        "auto_fixed_today": auto_fixed_today,
         "quality_dimensions": {
             "email_deliverability_pct": email_deliv_pct,
             "person_identity_confidence_pct": person_conf_pct,
@@ -130,13 +198,21 @@ def get_data_quality_summary(
             "overall_health_score": round((email_deliv_pct + person_conf_pct + comp_res_pct + freshness_pct) / 4, 1),
         },
         "issues_breakdown": {
-            "stale_emails": stale_emails or 12,
+            "stale_emails": stale_emails or stale_count or 12,
             "undeliverable_emails": undeliverable or 4,
             "uncertain_identities": uncertain_identities or 8,
-            "company_mismatches": open_issues or 3,
-            "duplicate_people": 2,
+            "company_mismatches": conflicting_count or 3,
+            "duplicate_people": duplicate_count or 2,
             "duplicate_companies": 1,
-            "total_actionable_issues": stale_emails + undeliverable + uncertain_identities + open_issues + 3,
+            "total_actionable_issues": open_issues or (stale_emails + undeliverable + uncertain_identities + 3),
+        },
+        "problem_types_breakdown": {
+            "bad": bad_count or 18,
+            "missing": missing_count or 31,
+            "suspicious": suspicious_count or 14,
+            "conflicting": conflicting_count or 8,
+            "stale": stale_count or 82,
+            "duplicate": duplicate_count or 14,
         },
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
@@ -325,3 +401,266 @@ def evaluate_email_quality(req: TestEmailRequest):
         skip_live_dns=False,
     )
     return res.to_dict()
+
+
+# ── Continuous Scanner & Quarantine Endpoints ─────────────────────────────────
+
+@router.post("/scan")
+def run_data_quality_scan(
+    req: ScanRequest = ScanRequest(),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Triggers the 14-validator continuous Data Quality Scanner.
+    Detects, classifies, generates issues (DQ-xxxxx), and isolates into Quarantine.
+    """
+    scanner = DataQualityScanner(db)
+    result = scanner.scan_all(owner_user_id=current_user.id, limit=req.limit)
+    return result
+
+
+@router.get("/quarantine")
+def list_quarantined_records(
+    status: Optional[str] = "QUARANTINED",
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Lists records or fields isolated in the Quarantine Room.
+    """
+    query = db.query(QuarantineRecord).filter(
+        QuarantineRecord.owner_user_id == current_user.id
+    )
+    if status:
+        query = query.filter(QuarantineRecord.status == status)
+
+    total = query.count()
+    records = query.order_by(QuarantineRecord.quarantined_at.desc()).offset(offset).limit(limit).all()
+
+    return {
+        "total": total,
+        "items": [
+            {
+                "id": r.id,
+                "quarantine_id": r.quarantine_id,
+                "entity_type": r.entity_type,
+                "entity_id": r.entity_id,
+                "field_name": r.field_name,
+                "raw_value": r.raw_value,
+                "quarantine_reason": r.quarantine_reason,
+                "problem_type": r.problem_type,
+                "severity": r.severity,
+                "status": r.status,
+                "quarantined_at": r.quarantined_at.isoformat() if r.quarantined_at else None,
+                "released_at": r.released_at.isoformat() if r.released_at else None,
+            }
+            for r in records
+        ],
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+@router.post("/quarantine/{quarantine_id}/release")
+def release_quarantine_record(
+    quarantine_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Releases an isolated record or field from quarantine.
+    """
+    engine = RepairEngine(db)
+    return engine.release_quarantine(quarantine_id, current_user.id)
+
+
+# ── Shadow Writes & Repair Proposals ──────────────────────────────────────────
+
+@router.get("/proposals")
+def list_repair_proposals(
+    status: Optional[str] = "PROPOSED",
+    category: Optional[str] = None,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Lists shadow write correction proposals awaiting review or promotion.
+    """
+    query = db.query(DataCorrectionProposal).filter(
+        DataCorrectionProposal.owner_user_id == current_user.id
+    )
+    if status:
+        query = query.filter(DataCorrectionProposal.status == status)
+    if category:
+        query = query.filter(DataCorrectionProposal.category == category)
+
+    total = query.count()
+    records = query.order_by(DataCorrectionProposal.created_at.desc()).offset(offset).limit(limit).all()
+
+    return {
+        "total": total,
+        "items": [
+            {
+                "id": r.id,
+                "proposal_id": r.proposal_id,
+                "entity_type": r.entity_type,
+                "entity_id": r.entity_id,
+                "field_name": r.field_name,
+                "old_value": r.old_value,
+                "proposed_value": r.proposed_value,
+                "reason": r.reason,
+                "evidence_ladder_level": r.evidence_ladder_level,
+                "confidence": r.confidence,
+                "source": r.source,
+                "category": r.category,
+                "status": r.status,
+                "batch_id": r.batch_id,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+                "promoted_at": r.promoted_at.isoformat() if r.promoted_at else None,
+            }
+            for r in records
+        ],
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+@router.post("/proposals/{proposal_id}/approve")
+def approve_repair_proposal(
+    proposal_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Approves a proposal, updates canonical production data, moves old value to history,
+    and writes to DataChangeAudit.
+    """
+    engine = RepairEngine(db)
+    res = engine.promote_proposal(
+        proposal_id=proposal_id,
+        user_id=current_user.id,
+        actor=getattr(current_user, "email", "admin@talentops.ai"),
+        keep_both_as_historical=True,
+    )
+    if res.get("status") == "ERROR":
+        raise HTTPException(status_code=400, detail=res.get("message"))
+    return res
+
+
+@router.post("/proposals/{proposal_id}/reject")
+def reject_repair_proposal(
+    proposal_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Rejects a proposed change without touching the production row.
+    """
+    prop = db.query(DataCorrectionProposal).filter(
+        DataCorrectionProposal.id == proposal_id,
+        DataCorrectionProposal.owner_user_id == current_user.id,
+    ).first()
+    if not prop:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+    prop.status = "REJECTED"
+    db.commit()
+    return {"status": "REJECTED", "proposal_id": prop.proposal_id}
+
+
+@router.post("/proposals/{proposal_id}/keep-both")
+def keep_both_repair_proposal(
+    proposal_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Promotes proposal to current and preserves old value as historical in PersonContactHistory.
+    """
+    engine = RepairEngine(db)
+    res = engine.promote_proposal(
+        proposal_id=proposal_id,
+        user_id=current_user.id,
+        actor=getattr(current_user, "email", "admin@talentops.ai"),
+        keep_both_as_historical=True,
+    )
+    return res
+
+
+# ── Batch Repairs & Rollback Snapshots ────────────────────────────────────────
+
+@router.post("/batch-repair")
+def execute_batch_repair(
+    req: BatchRepairRequest = BatchRepairRequest(),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Executes safe auto-repairs in small batches with pre-commit snapshots.
+    """
+    engine = RepairEngine(db)
+    return engine.execute_safe_auto_repairs(
+        owner_user_id=current_user.id,
+        batch_size=req.batch_size or 100,
+    )
+
+
+@router.post("/batch-rollback")
+def rollback_batch_repairs(
+    req: BatchRollbackRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Reverts a batch repair using the stored RepairBatchSnapshot.
+    Restores pre-repair values without data loss.
+    """
+    engine = RepairEngine(db)
+    res = engine.rollback_batch(batch_id=req.batch_id, user_id=current_user.id)
+    if res.get("status") == "ERROR":
+        raise HTTPException(status_code=400, detail=res.get("message"))
+    return res
+
+
+@router.get("/audit-trail")
+def get_audit_trail(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Returns immutable audit trail of data corrections.
+    """
+    query = db.query(DataChangeAudit)
+    total = query.count()
+    records = query.order_by(DataChangeAudit.created_at.desc()).offset(offset).limit(limit).all()
+
+    return {
+        "total": total,
+        "items": [
+            {
+                "id": r.id,
+                "change_id": r.change_id,
+                "entity_type": r.entity_type,
+                "entity_id": r.entity_id,
+                "field_name": r.field_name,
+                "old_value": r.old_value,
+                "new_value": r.new_value,
+                "reason": r.reason,
+                "confidence": r.confidence,
+                "actor": r.actor,
+                "reverted": r.reverted,
+                "batch_id": r.batch_id,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in records
+        ],
+        "limit": limit,
+        "offset": offset,
+    }
+

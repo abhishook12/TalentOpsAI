@@ -5,7 +5,7 @@ import {
   Database, RefreshCw, Layers, Terminal, Sparkles, AlertCircle, HelpCircle,
   Users, Activity, Server, FileText, Check, Shield, Search, Filter,
   ChevronRight, ArrowUpDown, Cpu, Clock, AlertTriangle, ShieldAlert, Award,
-  ChevronDown, ChevronUp, ExternalLink, Info
+  ChevronDown, ChevronUp, ExternalLink, Info, UserCheck
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -227,6 +227,7 @@ export default function DownloadScout() {
   const canonicalCreated = summary.total_canonical_created ?? summary.total_people_contributed ?? 0;
   const canonicalEnriched = summary.total_canonical_enriched ?? summary.total_contacts_contributed ?? 0;
   const avgQualScore = summary.avg_quality_score ?? summary.average_quality_score ?? 0;
+  const latestProdVer = contribData?.latest_production_version || releaseInfo?.version || '2.0.0';
 
   const displayVersion = releaseInfo.version ? `v${releaseInfo.version}` : 'v2.0.0';
   const displaySize = releaseInfo.size_bytes

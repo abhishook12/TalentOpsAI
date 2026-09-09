@@ -33,7 +33,7 @@ from .core.browser_tracker import BrowserTracker
 from .core.visual_sampler import VisualSampler
 from .core.evidence_store import EvidenceStore
 from .core.ocr_engine import OcrEngine
-from .core.updater import AutoUpdater
+from .core.updater import AutoUpdater, CURRENT_VERSION
 from .core.intelligence_levels import IntelligenceRouter, FrameQueue, FrameContext
 from .core.context_memory import ContextMemory
 from .extractor.entity_extractor import EntityExtractor
@@ -51,7 +51,6 @@ from .ui.edge_handle import EdgeHandleWidget
 from .ui.diagnostics_window import DiagnosticsWindow
 from .ui.settings_window import SettingsWindow
 from .ui.activation_window import ActivationWindow
-from .core.updater import AutoUpdater
 
 class NullWriter:
     def write(self, text): pass
@@ -95,11 +94,18 @@ class ScoutDesktopApp:
         self.local_queue = LocalQueue()
         self.backend_client = BackendClient()
 
-        # Auto-Updater Subsystem
+        # Auto-Updater Subsystem (Centralized Single Instance)
+        self._pending_update_version = None
+        self._pending_installer_path = None
+        self._is_update_required = False
         self.updater = AutoUpdater(
             api_base=self.backend_client.active_api_base,
-            on_update_ready=self._on_update_ready
+            current_version=CURRENT_VERSION,
+            device_id=self.backend_client.device_id,
+            on_update_ready=self._on_update_ready,
+            on_mandatory_update_required=self._on_mandatory_update_required,
         )
+        self.updater.start()
 
         # New Intelligence Subsystems (Phases 3-9)
         self.intelligence_router = IntelligenceRouter()
@@ -144,11 +150,6 @@ class ScoutDesktopApp:
         self.edge_handle = EdgeHandleWidget()
         self.tray = SystemTrayManager()
         self.diagnostics = DiagnosticsWindow()
-        self.updater = AutoUpdater(
-            api_base=self.backend_client.base_url,
-            device_id=self.backend_client.device_id,
-        )
-        self.updater.start()
         self.settings_window = SettingsWindow(self.backend_client, self.local_queue, auto_updater=self.updater)
 
         self._connect_signals()
@@ -504,7 +505,10 @@ class ScoutDesktopApp:
             self.tray.update_icon_status("IDLE")
             self.bridge.event_logged.emit("SCOUT_RESTING", "Resting — Active window is outside allowed targets")
 
-        # Step 6: Global Hotkey & Auto-Updater
+        # Step 6: Check for recent update notification
+        self._check_and_notify_recent_update()
+
+        # Step 7: Global Hotkey & Auto-Updater
         self._init_global_hotkey()
         self.updater.start()
 
@@ -525,19 +529,86 @@ class ScoutDesktopApp:
         QTimer.singleShot(0, self.force_capture)
 
     def _on_update_ready(self, version: str, installer_path: str):
-        """Invoked by AutoUpdater when a new installer binary is downloaded and ready."""
+        """Invoked by AutoUpdater when a new installer binary is downloaded and verified."""
         logger.info("Update ready to install: v%s (%s)", version, installer_path)
-        self.bridge.event_logged.emit("UPDATE_READY", f"TalentOps Scout v{version} downloaded & ready to apply")
+        self._pending_update_version = version
+        self._pending_installer_path = installer_path
+        self.bridge.event_logged.emit("UPDATE_READY", f"TalentOps Scout v{version} verified. Preparing safe background installation.")
+        # Attempt safe installation or schedule on idle
+        self._evaluate_safe_install_point()
+
+    def _on_mandatory_update_required(self, min_version: str, remote_version: str):
+        """Invoked when local Scout version is below the minimum allowed version."""
+        logger.warning("🚨 [MANDATORY UPDATE] Local v%s < minimum v%s. Pausing network uploads.", CURRENT_VERSION, min_version)
+        self._is_update_required = True
+        self.main_window.update_status_state("UPDATE_REQUIRED")
+        self.edge_handle.set_status_state("UPDATE_REQUIRED")
+        self.tray.update_icon_status("PENDING")
+        self.bridge.event_logged.emit("UPDATE_REQUIRED", f"Critical update required: v{remote_version} (minimum: v{min_version})")
         try:
             if hasattr(self, "tray") and hasattr(self.tray, "tray"):
                 self.tray.tray.showMessage(
-                    "TalentOps Scout Update Ready",
-                    f"Version {version} downloaded. Restart to apply update.",
-                    QSystemTrayIcon.Information,
-                    6000
+                    "Critical Update Required",
+                    f"TalentOps Scout v{remote_version} is required. Installing update automatically...",
+                    QSystemTrayIcon.Warning,
+                    8000
                 )
         except Exception as e:
             logger.debug("Tray message error: %s", e)
+
+    def _evaluate_safe_install_point(self):
+        """
+        Evaluates whether Scout is in a safe idle state to perform autonomous background update:
+        1. No active capture or extraction in flight
+        2. Sampler is in IDLE, PAUSED, or STANDBY state
+        3. Network queue flush worker is not actively uploading
+        If safe: triggers `updater.apply_update_and_restart()`
+        If busy: schedules a re-check via QTimer when idle
+        """
+        if not getattr(self, "_pending_installer_path", None):
+            return
+
+        is_idle = getattr(self.sampler, "state", "IDLE") in ("IDLE", "PAUSED", "STANDBY")
+        is_safe = is_idle and not self._is_flushing
+
+        if is_safe:
+            logger.info("⚡ Safe install point reached: Sampler is IDLE. Applying update v%s...", self._pending_update_version)
+            self.bridge.event_logged.emit("APPLYING_UPDATE", f"Applying update v{self._pending_update_version} in background...")
+            pkg = self._pending_installer_path
+            self._pending_installer_path = None
+            QTimer.singleShot(500, lambda: self.updater.apply_update_and_restart(pkg))
+        else:
+            logger.debug("Scout busy (state=%s, flushing=%s). Waiting for safe install point...", getattr(self.sampler, "state", ""), self._is_flushing)
+            QTimer.singleShot(10000, self._evaluate_safe_install_point)
+
+    def _check_and_notify_recent_update(self):
+        """Checks if Scout just restarted after an autonomous background update."""
+        try:
+            from .core.paths import get_state_dir
+            state_file = os.path.join(get_state_dir(), "update_state.json")
+            if os.path.exists(state_file):
+                with open(state_file, "r", encoding="utf-8") as f:
+                    st = json.load(f)
+                last_state = st.get("current_state")
+                if last_state in ("SUCCESS", "APPLYING", "STABLE"):
+                    logger.info("🎉 Scout Desktop successfully booted after update to v%s!", CURRENT_VERSION)
+                    self.bridge.event_logged.emit("UPDATE_SUCCESS", f"Scout successfully updated to version {CURRENT_VERSION}")
+                    self.updater.report_status_to_server(
+                        self.backend_client.device_id,
+                        status="SUCCESS",
+                        target_version=CURRENT_VERSION,
+                    )
+                    if hasattr(self, "tray") and hasattr(self.tray, "tray"):
+                        self.tray.tray.showMessage(
+                            "TalentOps Scout Updated",
+                            f"Scout updated to {CURRENT_VERSION}",
+                            QSystemTrayIcon.Information,
+                            4000
+                        )
+                    with open(state_file, "w", encoding="utf-8") as f:
+                        json.dump({"current_state": "UP_TO_DATE", "version": CURRENT_VERSION, "updated_at": time.time()}, f)
+        except Exception as e:
+            logger.debug("Error checking recent update state: %s", e)
 
     def _poll_active_window(self):
         """Checks foreground window and enforces strict targeting rule (LinkedIn on Chrome or MS Teams only)."""
@@ -917,6 +988,10 @@ class ScoutDesktopApp:
         """Executes HTTP network flush in background worker thread."""
         if not self.backend_client.is_authenticated():
             logger.debug("Database upload deferred: Scout Desktop is in REGISTRATION_PENDING state")
+            return
+
+        if getattr(self, "_is_update_required", False):
+            logger.warning("Database upload paused: Scout version is below minimum_version. Preserving local SQLite queue.")
             return
 
         self._is_flushing = True

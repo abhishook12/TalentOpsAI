@@ -51,11 +51,13 @@ class ScoutRelease(Base):
     success_count = Column(Integer, default=0)
 
     # Canonical Release Attributes
-    is_current = Column(Boolean, default=True)
+    is_current = Column(Boolean, default=True, index=True)
     is_public = Column(Boolean, default=True)
     artifact = Column(String(100), default="TalentOpsScoutSetup.exe")
     artifact_url = Column(String(500), nullable=True)
     approved_at = Column(TIMESTAMP, nullable=True)
+    approved_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    approval_checklist_json = Column(Text, default="{}")
     released_at = Column(TIMESTAMP, nullable=True)
 
     created_at = Column(TIMESTAMP, server_default=func.now(), index=True)
@@ -141,4 +143,24 @@ class ScoutInstallationClaim(Base):
     created_at = Column(TIMESTAMP, server_default=func.now(), index=True)
     expires_at = Column(TIMESTAMP, nullable=False, index=True)
     used_at = Column(TIMESTAMP, nullable=True)
+
+
+class ScoutRemoteConfig(Base):
+    """
+    Centralized Remote Configuration (Type 3 changes).
+    Allows dynamic adjustment of Scout behavior (batch sizes, sync intervals, feature flags, AI capture rules)
+    without recompilation or binary distribution.
+    """
+    __tablename__ = "scout_remote_configs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    config_key = Column(String(64), unique=True, index=True, nullable=False)   # e.g. "global", "stable_cohort", "beta"
+    channel = Column(String(32), default="stable", index=True, nullable=False)
+    features_json = Column(Text, default="{}")                                  # Feature toggles
+    config_json = Column(Text, default="{}")                                    # Runtime parameters (batch_size, intervals)
+    description = Column(String(255), nullable=True)
+    updated_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+
 

@@ -12,6 +12,7 @@ import api from '../services/api';
 import AddScoutModal from '../components/AddScoutModal';
 import ScoutUserProfileDrawer from '../components/ScoutUserProfileDrawer';
 import ScoutNodesPanel from '../components/ScoutNodesPanel';
+import ScoutReleaseGovernance from '../components/ScoutReleaseGovernance';
 
 export default function DownloadScout() {
   const [showAddModal, setShowAddModal] = useState(false);
@@ -283,6 +284,18 @@ export default function DownloadScout() {
               >
                 <Laptop size={13} />
                 <span>Device Fleet &amp; Nodes</span>
+              </button>
+              <button
+                onClick={() => setActiveView('governance')}
+                style={{
+                  padding: '6px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                  border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+                  background: activeView === 'governance' ? '#1e293b' : 'transparent',
+                  color: activeView === 'governance' ? '#38bdf8' : '#94a3b8',
+                }}
+              >
+                <ShieldCheck size={13} />
+                <span>Release Governance &amp; Rollout</span>
               </button>
             </div>
 
@@ -856,6 +869,24 @@ export default function DownloadScout() {
       {activeView === 'fleet_nodes' && (
         <div style={{ marginTop: 8 }}>
           <ScoutNodesPanel />
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* PRIMARY VIEW 3: RELEASE & ROLLOUT GOVERNANCE                              */}
+      {/* ========================================================================= */}
+      {activeView === 'governance' && (
+        <div style={{ marginTop: 8 }}>
+          <ScoutReleaseGovernance
+            onReleaseChanged={() => {
+              api.get('/scout/updates/latest')
+                .then(res => {
+                  if (res?.data?.version) setReleaseInfo(prev => ({ ...prev, ...res.data }));
+                })
+                .catch(() => {});
+              refetch();
+            }}
+          />
         </div>
       )}
 

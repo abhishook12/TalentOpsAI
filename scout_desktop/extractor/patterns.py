@@ -486,7 +486,7 @@ def is_valid_person_name(text: Optional[str]) -> bool:
 
 
 EMAIL_REGEX = re.compile(r"\b[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+\b")
-PHONE_REGEX = re.compile(r"(?:\+?1[-.\s]?)?\(?[2-9]\d{2}\)?[-.\s]?\d{3}[-.\s]?\d{4}")
+PHONE_REGEX = re.compile(r"(?:\+\d{1,3}[-.\s]?)?\(?[2-9]\d{2}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\+\d{10,14}|\b[2-9]\d{9}\b")
 
 
 def clean_person_name(text: Optional[str]) -> Optional[str]:

@@ -1127,6 +1127,14 @@ class MainWindow(QMainWindow):
                 self.lbl_main_status.setText(f"ACTIVE ({ats_name})")
                 self.status_dot.setStyleSheet("color: #F59E0B; font-size: 10px;")
                 self.lbl_main_status.setStyleSheet("color: #F59E0B; font-size: 9px; font-weight: 800;")
+            elif target_type in ("GOOGLE_CHAT", "CHAT"):
+                self.lbl_target_desc.setText(f"Watching Google Chat — {clean_title}")
+                self.lbl_target_url.setText(f"Target: Google Chat ({url or 'Workspace Chat'})")
+                self.lbl_sampling_pulse.setText("● SCANNING CHAT")
+                self.lbl_sampling_pulse.setStyleSheet("color: #3B82F6; font-size: 9px; font-weight: 700;")
+                self.lbl_main_status.setText("ACTIVE (GOOGLE CHAT)")
+                self.status_dot.setStyleSheet("color: #3B82F6; font-size: 10px;")
+                self.lbl_main_status.setStyleSheet("color: #3B82F6; font-size: 9px; font-weight: 800;")
             elif target_type == "TEAMS":
                 self.lbl_target_desc.setText(f"Watching Microsoft Teams — {clean_title}")
                 self.lbl_target_url.setText("Target: Microsoft Teams (Chat/Meeting/Channel)")
@@ -1145,7 +1153,7 @@ class MainWindow(QMainWindow):
                 self.lbl_target_url.setText(f"Scanner ignores search engines & non-talent pages ({url or 'web content'})")
             else:
                 self.lbl_target_desc.setText(f"Resting [{app_name}] — Outside target allowlist")
-                self.lbl_target_url.setText("Scanner active on LinkedIn, GitHub, ATS systems (Greenhouse/Lever/Ashby) & Teams")
+                self.lbl_target_url.setText("Scanner active on LinkedIn, GitHub, ATS systems (Greenhouse/Lever/Ashby), Teams & Google Chat")
             
             self.lbl_sampling_pulse.setText("💤 RESTING (0% CPU)")
             self.lbl_sampling_pulse.setStyleSheet("color: #64748B; font-size: 9px; font-weight: 700;")

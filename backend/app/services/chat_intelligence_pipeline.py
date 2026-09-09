@@ -27,7 +27,7 @@ logger = logging.getLogger("talentops.chat_intelligence")
 
 EMAIL_REGEX = re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", re.IGNORECASE)
 PHONE_REGEX = re.compile(
-    r"(?:\+?\d{1,3}[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}(?:\s*(?:ext|x|extension)\s*\d+)?",
+    r"(?:\+\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\+\d{10,14}|\b\d{10}\b",
     re.IGNORECASE,
 )
 URL_REGEX = re.compile(r"https?://[^\s<>\"'()]+", re.IGNORECASE)

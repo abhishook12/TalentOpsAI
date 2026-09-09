@@ -17,6 +17,11 @@ logger = logging.getLogger("scout.browser_tracker")
 # Domain classification heuristics
 KNOWN_PLATFORMS = {
     "linkedin.com": "LINKEDIN",
+    "chat.google.com": "GOOGLE_CHAT",
+    "mail.google.com": "GOOGLE_CHAT",
+    "teams.microsoft.com": "TEAMS",
+    "teams.live.com": "TEAMS",
+    "teams.cloud.microsoft": "TEAMS",
     "indeed.com": "INDEED",
     "simplyhired.com": "SIMPLYHIRED",
     "glassdoor.com": "GLASSDOOR",
@@ -143,6 +148,18 @@ class BrowserTracker:
                 return "SEARCH_RESULTS"
             return "JOB_POSTING"
 
+        # Google Chat & Microsoft Teams
+        if (
+            platform in ["GOOGLE_CHAT", "CHAT"]
+            or "chat.google.com" in url_lower
+            or "/mail/u/" in url_lower and "/chat" in url_lower
+            or title_lower.endswith(" - chat")
+            or " - chat" in title_lower
+        ):
+            return "CHAT_CONVERSATION"
+        if platform == "TEAMS" or "teams.microsoft.com" in url_lower or "teams.live.com" in url_lower or "microsoft teams" in title_lower:
+            return "CHAT_CONVERSATION"
+
         # GitHub Profile
         if "github.com" in url_lower:
             parts = [p for p in urllib.parse.urlparse(url_lower).path.split("/") if p]
@@ -162,6 +179,7 @@ class BrowserTracker:
         Extracts candidate name, platform, and probable URL domain from window title.
         Examples:
           'Tony Vitulli | LinkedIn - Google Chrome' -> Person: Tony Vitulli, Platform: LinkedIn
+          'Technovion | Greater Noida - Chat - Google Chrome' -> Platform: GOOGLE_CHAT
           'Top 3646 Jobs in United States | SimplyHired - Google Chrome' -> Platform: SimplyHired
           'Director of Talent - Cyberdyne Systems | Indeed.com' -> Platform: Indeed
         """
@@ -187,11 +205,18 @@ class BrowserTracker:
                 "probable_domain": "google.com",
                 "candidate_name": None,
             }
-        elif " - chat" in title_lower or title_lower.endswith(" - chat"):
+        elif " - chat" in title_lower or title_lower.endswith(" - chat") or "google chat" in title_lower:
             return {
-                "platform": "CHAT",
+                "platform": "GOOGLE_CHAT",
                 "clean_title": title_clean,
-                "probable_domain": "",
+                "probable_domain": "chat.google.com",
+                "candidate_name": None,
+            }
+        elif "microsoft teams" in title_lower or "teams | microsoft" in title_lower:
+            return {
+                "platform": "TEAMS",
+                "clean_title": title_clean,
+                "probable_domain": "teams.microsoft.com",
                 "candidate_name": None,
             }
         elif "linkedin" in title_lower:
@@ -250,9 +275,9 @@ class BrowserTracker:
         active_url = self.get_url_from_window_uia(hwnd)
         domain = inferred["probable_domain"]
 
-        # Protect against stale UIA address bar: If title is Google Search, Chat, or non-LinkedIn,
+        # Protect against stale UIA address bar: If title is Google Search or non-LinkedIn,
         # do not let a stale UIA URL from another tab re-classify it as LinkedIn.
-        if inferred["platform"] in ("GOOGLE_SEARCH", "CHAT", "SIMPLYHIRED", "INDEED", "GLASSDOOR"):
+        if inferred["platform"] in ("GOOGLE_SEARCH", "SIMPLYHIRED", "INDEED", "GLASSDOOR"):
             if active_url and "linkedin.com" in active_url.lower():
                 active_url = None
                 domain = inferred["probable_domain"]

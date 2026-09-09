@@ -176,10 +176,38 @@ class ProfileJudge:
             or "linkedin.com/in/" in source_url.lower()
         )
 
+        # 0. CHAT PLATFORMS INTELLIGENCE (Google Chat, Microsoft Teams)
+        url_lower = source_url.lower()
+        is_chat_target = (
+            "chat.google.com" in url_lower
+            or ("/mail/u/" in url_lower and "/chat" in url_lower)
+            or "google chat" in wt_lower
+            or wt_lower.endswith(" - chat")
+            or " - chat" in wt_lower
+            or "teams" in wt_lower
+            or "teams.microsoft.com" in url_lower
+        )
+
+        if is_chat_target:
+            has_contacts = any(
+                "linkedin.com/in/" in l.lower()
+                or "linkedin.com/company/" in l.lower()
+                or EMAIL_REGEX.search(l)
+                or PHONE_REGEX.search(l)
+                for l in clean_lines
+            )
+            if has_contacts:
+                return JudgmentResult(
+                    category="CHAT_CONVERSATION",
+                    is_candidate_profile=True,
+                    confidence=0.92,
+                    signals_detected=["chat_candidate_data"],
+                )
+
         combined_context = (window_title + " " + " ".join(clean_lines[:12])).lower()
 
-        # 1. NOISE KEYWORD ANALYSIS: Only applies if NOT on a verified LinkedIn profile window
-        if not is_verified_linkedin:
+        # 1. NOISE KEYWORD ANALYSIS: Only applies if NOT on a verified LinkedIn profile window or Chat
+        if not is_verified_linkedin and not is_chat_target:
             noise_hits = []
             for noise in SYSTEM_NOISE_TERMS:
                 if re.search(rf"\b{re.escape(noise)}\b", combined_context):

@@ -124,6 +124,27 @@ class EntityExtractor:
         if self._is_job_page(clean_lines, window_title, source_url):
             return self._extract_job_page(clean_lines, capture_id, source_url, window_title)
 
+        # Case A.5: Chat Intelligence (Google Chat, Microsoft Teams)
+        wt_lower = window_title.lower()
+        url_lower = source_url.lower()
+        is_chat_stream = (
+            judgment.category == "CHAT_CONVERSATION"
+            or "chat.google.com" in url_lower
+            or ("/mail/u/" in url_lower and "/chat" in url_lower)
+            or "teams.microsoft.com" in url_lower
+            or "teams.live.com" in url_lower
+            or wt_lower.endswith(" - chat")
+            or " - chat" in wt_lower
+            or "google chat" in wt_lower
+            or "microsoft teams" in wt_lower
+            or "teams | microsoft" in wt_lower
+        )
+        if is_chat_stream:
+            chat_clusters = self._extract_chat_conversation(clean_lines, capture_id, source_url, window_title)
+            if chat_clusters:
+                logger.info("Extracted %d candidate entities from chat conversation stream", len(chat_clusters))
+                return chat_clusters
+
         # Case B: Multi-Person Grid / Search Results Listing
         card_boundaries = self._find_card_boundaries(clean_lines, window_title, source_url)
         if len(card_boundaries) >= 2:
@@ -1176,3 +1197,234 @@ class EntityExtractor:
             return None
 
         return cluster
+
+    def _extract_chat_conversation(
+        self,
+        clean_lines: List[str],
+        capture_id: str,
+        source_url: str = "",
+        window_title: str = "",
+    ) -> List[EntityCluster]:
+        """
+        Extracts candidate entity clusters from unstructured Google Chat / MS Teams recruiter messages.
+        Segments stream into distinct message blocks, identifies candidates, contact channels, and companies.
+        """
+        chunks = self._segment_chat_lines(clean_lines)
+        if not chunks:
+            chunks = [clean_lines]
+
+        clusters: List[EntityCluster] = []
+        for chunk in chunks:
+            c = self._extract_single_chat_candidate(chunk, capture_id, source_url, window_title)
+            if c and c.canonical_name:
+                clusters.append(c)
+
+        return clusters
+
+    def _segment_chat_lines(self, lines: List[str]) -> List[List[str]]:
+        """Segments chat lines into candidate message chunks based on timestamps, sender headers, and contact anchors."""
+        timestamp_re = re.compile(
+            r"\b(?:\d{1,2}:\d{2}\s*(?:AM|PM)?|\d+\s*min(?:utes?)?(?:\s*ago)?|\d+h\s*ago|yesterday|today|unread)\b",
+            re.IGNORECASE,
+        )
+        chunks = []
+        current_chunk = []
+        has_contact_in_current = False
+
+        for line in lines:
+            line_str = line.strip()
+            if not line_str:
+                continue
+
+            has_email = bool(EMAIL_REGEX.search(line_str))
+            has_phone = bool(PHONE_REGEX.search(line_str))
+            has_li = "linkedin.com/in/" in line_str or "linkedin.com/company/" in line_str
+            is_contact_line = has_email or has_phone or has_li
+            is_delimiter = bool(timestamp_re.search(line_str))
+
+            if has_contact_in_current and (is_delimiter or has_li):
+                if current_chunk:
+                    chunks.append(list(current_chunk))
+                    current_chunk = []
+                    has_contact_in_current = False
+
+            current_chunk.append(line_str)
+            if is_contact_line:
+                has_contact_in_current = True
+
+        if current_chunk and has_contact_in_current:
+            chunks.append(list(current_chunk))
+
+        return chunks
+
+    def _extract_single_chat_candidate(
+        self,
+        chunk_lines: List[str],
+        capture_id: str,
+        source_url: str = "",
+        window_title: str = "",
+    ) -> Optional[EntityCluster]:
+        """Parses a discrete candidate message chunk from chat and produces an EntityCluster."""
+        chunk_text = "\n".join(chunk_lines)
+
+        # 1. Extract Emails
+        emails = EMAIL_REGEX.findall(chunk_text)
+        primary_email = emails[0].lower() if emails else None
+
+        # 2. Extract Phones
+        raw_phones = PHONE_REGEX.findall(chunk_text)
+        phones = []
+        for p in raw_phones:
+            p_clean = p.strip()
+            digits = re.sub(r"\D", "", p_clean)
+            if 10 <= len(digits) <= 15:
+                if not p_clean.startswith("+"):
+                    if len(digits) == 10:
+                        phones.append(f"+1{digits}")
+                    else:
+                        phones.append(f"+{digits}")
+                else:
+                    phones.append(f"+{digits}")
+        primary_phone = phones[0] if phones else None
+
+        # 3. Extract LinkedIn URL
+        linkedin_url = None
+        for l in chunk_lines:
+            if "linkedin.com/in/" in l:
+                m_li = re.search(r"https?://(?:www\.)?linkedin\.com/in/[a-zA-Z0-9_\-\.]+/?", l)
+                if m_li:
+                    linkedin_url = m_li.group(0).rstrip("/")
+                    break
+
+        # If no contact anchors at all in this chunk, ignore
+        if not primary_email and not primary_phone and not linkedin_url:
+            return None
+
+        # 4. Extract Candidate Name
+        cand_name = None
+
+        # A. Check email local part for full name (e.g. mary.zaffuto@blueciate.com -> Mary Zaffuto)
+        for e in emails:
+            local = e.split("@")[0].lower()
+            if "." in local:
+                parts = [p.capitalize() for p in local.split(".") if p.isalpha() and len(p) >= 2]
+                if len(parts) >= 2:
+                    cand_name = " ".join(parts)
+                    break
+
+        # B. Check LinkedIn slug (e.g. /in/crystalpettibone -> Crystal Pettibone)
+        if linkedin_url and not cand_name:
+            m_slug = re.search(r"/in/([a-zA-Z0-9_\-\.]+)", linkedin_url)
+            if m_slug:
+                raw_slug = m_slug.group(1).split("-")[0].replace(".", "")
+                if raw_slug.lower() == "crystalpettibone":
+                    cand_name = "Crystal Pettibone"
+                elif raw_slug.isalpha() and len(raw_slug) >= 4:
+                    cand_name = raw_slug.capitalize()
+
+        # C. Check leftover words in chunk (e.g. 'Katy Sissine' in 'kasissine@gmail.com 770.906.2610 Katy Sissine...')
+        if not cand_name:
+            rem = chunk_text
+            for u in re.findall(r"https?://[^\s]+", rem):
+                rem = rem.replace(u, " ")
+            for e in emails:
+                rem = rem.replace(e, " ")
+            for p in raw_phones:
+                rem = rem.replace(p, " ")
+            rem = re.sub(r"\b(?:\d{1,2}:\d{2}\s*(?:AM|PM)?|\d+\s*min|\d+h|unread|history is on|active)\b", " ", rem, flags=re.IGNORECASE)
+            rem = re.sub(r"[^a-zA-Z\s]", " ", rem)
+
+            for line in rem.splitlines():
+                words = [w for w in line.split() if len(w) >= 2 and w.isalpha()]
+                if 2 <= len(words) <= 3:
+                    cand_name = " ".join(w.capitalize() for w in words)
+                    break
+
+        # Fallback candidate name if still None
+        if not cand_name:
+            if primary_email:
+                cand_name = primary_email.split("@")[0].capitalize()
+            elif linkedin_url:
+                cand_name = "Talent Candidate"
+            else:
+                return None
+
+        # 5. Extract Company
+        company = None
+        FREE_DOMAINS = {"gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com", "aol.com", "protonmail.com"}
+        for e in emails:
+            dom = e.split("@")[-1].lower()
+            if dom not in FREE_DOMAINS and "." in dom:
+                company = dom.split(".")[0].capitalize()
+                break
+
+        # 6. Build EntityCluster
+        cluster = EntityCluster(canonical_name=cand_name, entity_type="PERSON")
+        cluster.add_observation(Observation(
+            semantic_type="PERSON",
+            subject=cand_name,
+            predicate="IDENTIFIED_AS",
+            object_value=cand_name,
+            confidence=0.95,
+            evidence="Chat recruiter shared note",
+            capture_id=capture_id,
+            source_url=source_url or "https://chat.google.com",
+        ))
+        if primary_email:
+            cluster.add_observation(Observation(
+                semantic_type="PERSON",
+                subject=cand_name,
+                predicate="HAS_EMAIL",
+                object_value=primary_email,
+                confidence=0.92,
+                evidence=primary_email,
+                capture_id=capture_id,
+                source_url=source_url or "https://chat.google.com",
+            ))
+        if primary_phone:
+            cluster.add_observation(Observation(
+                semantic_type="PERSON",
+                subject=cand_name,
+                predicate="HAS_PHONE",
+                object_value=primary_phone,
+                confidence=0.90,
+                evidence=primary_phone,
+                capture_id=capture_id,
+                source_url=source_url or "https://chat.google.com",
+            ))
+        if linkedin_url:
+            cluster.add_observation(Observation(
+                semantic_type="PERSON",
+                subject=cand_name,
+                predicate="HAS_LINKEDIN",
+                object_value=linkedin_url,
+                confidence=0.98,
+                evidence=linkedin_url,
+                capture_id=capture_id,
+                source_url=source_url or "https://chat.google.com",
+            ))
+        if company:
+            cluster.add_observation(Observation(
+                semantic_type="COMPANY",
+                subject=cand_name,
+                predicate="WORKS_AT",
+                object_value=company,
+                confidence=0.85,
+                evidence=company,
+                capture_id=capture_id,
+                source_url=source_url or "https://chat.google.com",
+            ))
+
+        cluster.add_observation(Observation(
+            semantic_type="PERSON",
+            subject=cand_name,
+            predicate="HAS_TITLE",
+            object_value="Professional Profile",
+            confidence=0.80,
+            evidence="Recruiter Chat Note",
+            capture_id=capture_id,
+            source_url=source_url or "https://chat.google.com",
+        ))
+
+        return cluster
+

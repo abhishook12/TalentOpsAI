@@ -435,23 +435,33 @@ class ScoutDesktopApp:
             url_lower = page_url.lower()
             allowed_domains = (
                 "linkedin.com", "teams", "github.com",
+                "chat.google.com", "mail.google.com",
                 "greenhouse.io", "lever.co", "ashbyhq.com", "myworkday.com", "workday.com"
             )
             if not any(d in url_lower for d in allowed_domains):
                 logger.info("Frame rejected by URL hard-block: %s", page_url[:60])
                 return
 
-        # Gate 4: Page title validation — reject Chat, Search engine, and other non-data pages
+        # Gate 4: Page title validation — reject Search engine, browser chrome, and non-data pages
         if page_title:
             pt_lower = page_title.lower().strip()
-            disallowed_page_titles = [
-                " - chat", "messaged you", "chat - google",
-                "google search", "new tab", "extensions",
-                "downloads", "history", "bookmarks",
-            ]
-            if any(d in pt_lower for d in disallowed_page_titles):
-                logger.info("Frame rejected by page title validation: %s", page_title[:40])
-                return
+            is_chat_window = (
+                target_type in ("GOOGLE_CHAT", "TEAMS")
+                or "chat.google.com" in (page_url or "").lower()
+                or "teams.microsoft.com" in (page_url or "").lower()
+                or pt_lower.endswith(" - chat")
+                or " - chat" in pt_lower
+                or "google chat" in pt_lower
+                or "microsoft teams" in pt_lower
+            )
+            if not is_chat_window:
+                disallowed_page_titles = [
+                    "google search", "new tab", "extensions",
+                    "downloads", "history", "bookmarks",
+                ]
+                if any(d in pt_lower for d in disallowed_page_titles):
+                    logger.info("Frame rejected by page title validation: %s", page_title[:40])
+                    return
 
         # Performance optimization for autonomous periodic scanning:
         # If delta is small (static screen) and we already successfully extracted candidates from this identical view, skip re-OCR

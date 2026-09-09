@@ -68,19 +68,39 @@ def is_allowed_scout_target(win_info: Optional['WindowInfo'], b_ctx: Optional[Di
     title = (win_info.title or "").strip()
     title_lower = title.lower()
 
-    # Rule 1: Microsoft Teams (all chats, channels, meetings, people searches)
-    if proc in ("teams.exe", "ms-teams.exe") or "microsoft teams" in title_lower:
+    # Rule 1: Microsoft Teams (Desktop app or Web in browser)
+    if (
+        proc in ("teams.exe", "ms-teams.exe")
+        or "microsoft teams" in title_lower
+        or "teams | microsoft" in title_lower
+    ):
         return True, "TEAMS"
 
-    # Rule 2: Browsers — Sourcing & ATS Targets (Chrome, Edge, Brave)
+    # Rule 2: Browsers — Sourcing, ATS & Chat Targets (Chrome, Edge, Brave)
     if proc in ("chrome.exe", "msedge.exe", "brave.exe"):
         b_ctx = b_ctx or {}
         url = (b_ctx.get("url") or "").lower()
 
-        # Reject generic search engine queries and blank tabs
+        # Target A1: Google Chat (Workspace Web & PWA)
+        if (
+            "chat.google.com" in url
+            or ("/mail/u/" in url and "/chat" in url)
+            or "google chat" in title_lower
+            or title_lower.endswith(" - chat")
+            or " - chat" in title_lower
+        ):
+            # Exclude media/entertainment that happens to have chat
+            if not any(m in title_lower for m in ["youtube", "twitch", "facebook", "tiktok", "netflix", "reddit"]):
+                return True, "GOOGLE_CHAT"
+
+        # Target A2: Microsoft Teams (Web)
+        if "teams.microsoft.com" in url or "teams.live.com" in url or "teams.cloud.microsoft" in url:
+            return True, "TEAMS"
+
+        # Reject generic search engine queries, blank tabs, and media
         disallowed_title_substrings = [
             "google search", "- google search", "search - google chrome", "search - microsoft edge",
-            " - chat", "chat - google chrome", "untitled", "new tab", "youtube",
+            "untitled", "new tab", "youtube",
             "facebook", "instagram", "tiktok", "netflix", "reddit",
         ]
         if any(s in title_lower for s in disallowed_title_substrings):

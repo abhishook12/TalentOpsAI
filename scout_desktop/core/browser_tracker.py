@@ -18,16 +18,31 @@ logger = logging.getLogger("scout.browser_tracker")
 KNOWN_PLATFORMS = {
     "linkedin.com": "LINKEDIN",
     "chat.google.com": "GOOGLE_CHAT",
-    "mail.google.com": "GOOGLE_CHAT",
+    "mail.google.com": "GMAIL",
     "teams.microsoft.com": "TEAMS",
     "teams.live.com": "TEAMS",
     "teams.cloud.microsoft": "TEAMS",
+    "slack.com": "SLACK",
+    "app.slack.com": "SLACK",
+    "web.whatsapp.com": "WHATSAPP",
+    "web.telegram.org": "TELEGRAM",
+    "k.telegram.org": "TELEGRAM",
+    "a.telegram.org": "TELEGRAM",
+    "outlook.live.com": "OUTLOOK",
+    "outlook.office.com": "OUTLOOK",
+    "outlook.office365.com": "OUTLOOK",
+    "stackoverflow.com": "STACKOVERFLOW",
+    "kaggle.com": "KAGGLE",
+    "dice.com": "DICE",
+    "wellfound.com": "WELLFOUND",
+    "angel.co": "WELLFOUND",
     "indeed.com": "INDEED",
     "simplyhired.com": "SIMPLYHIRED",
     "glassdoor.com": "GLASSDOOR",
     "ziprecruiter.com": "ZIPRECRUITER",
     "greenhouse.io": "ATS_GREENHOUSE",
     "lever.co": "ATS_LEVER",
+    "ashbyhq.com": "ATS_ASHBY",
     "workday.com": "ATS_WORKDAY",
     "icims.com": "ATS_ICIMS",
     "smartrecruiters.com": "ATS_SMARTRECRUITERS",
@@ -148,17 +163,38 @@ class BrowserTracker:
                 return "SEARCH_RESULTS"
             return "JOB_POSTING"
 
-        # Google Chat & Microsoft Teams
+        # Chat & Messaging Platforms (Google Chat, Microsoft Teams, Slack, WhatsApp, Telegram)
         if (
-            platform in ["GOOGLE_CHAT", "CHAT"]
-            or "chat.google.com" in url_lower
-            or "/mail/u/" in url_lower and "/chat" in url_lower
+            platform in ["GOOGLE_CHAT", "CHAT", "TEAMS", "SLACK", "WHATSAPP", "TELEGRAM"]
+            or any(k in url_lower for k in [
+                "chat.google.com", "teams.microsoft.com", "teams.live.com", "teams.cloud.microsoft",
+                "app.slack.com", "slack.com", "web.whatsapp.com", "web.telegram.org"
+            ])
             or title_lower.endswith(" - chat")
             or " - chat" in title_lower
+            or any(w in title_lower for w in ["slack |", "whatsapp", "telegram", "teams | microsoft"])
         ):
             return "CHAT_CONVERSATION"
-        if platform == "TEAMS" or "teams.microsoft.com" in url_lower or "teams.live.com" in url_lower or "microsoft teams" in title_lower:
-            return "CHAT_CONVERSATION"
+
+        # Email Inboxes (Gmail, Outlook)
+        if platform in ["GMAIL", "OUTLOOK"] or any(k in url_lower for k in ["mail.google.com", "outlook.live.com", "outlook.office.com", "outlook.office365.com"]):
+            return "EMAIL_MESSAGE"
+
+        # PDF Resume / Portfolio
+        if (
+            platform == "PDF_RESUME"
+            or url_lower.endswith(".pdf")
+            or ".pdf?" in url_lower
+            or "/pdf/" in url_lower
+            or any(w in title_lower for w in ["resume", " cv ", "- cv", "curriculum vitae"])
+        ):
+            return "RESUME_DOCUMENT"
+
+        # Developer & Talent Communities
+        if platform in ["STACKOVERFLOW", "KAGGLE", "DICE", "WELLFOUND"]:
+            if any(p in url_lower for p in ["/users/", "/profile", "/candidate", "/talent", "/u/"]):
+                return "PROFILE"
+            return "TALENT_COMMUNITY"
 
         # GitHub Profile
         if "github.com" in url_lower:
@@ -249,6 +285,36 @@ class BrowserTracker:
         elif "workday" in title_lower:
             platform = "ATS_WORKDAY"
             probable_domain = "myworkdayjobs.com"
+        elif "slack" in title_lower or "slack |" in title_lower:
+            platform = "SLACK"
+            probable_domain = "app.slack.com"
+        elif "whatsapp" in title_lower:
+            platform = "WHATSAPP"
+            probable_domain = "web.whatsapp.com"
+        elif "telegram" in title_lower:
+            platform = "TELEGRAM"
+            probable_domain = "web.telegram.org"
+        elif "gmail" in title_lower:
+            platform = "GMAIL"
+            probable_domain = "mail.google.com"
+        elif "outlook" in title_lower:
+            platform = "OUTLOOK"
+            probable_domain = "outlook.office.com"
+        elif any(w in title_lower for w in ["resume", " cv ", "- cv", "curriculum vitae"]) or title_lower.endswith(".pdf"):
+            platform = "PDF_RESUME"
+            probable_domain = "pdf"
+        elif "stack overflow" in title_lower:
+            platform = "STACKOVERFLOW"
+            probable_domain = "stackoverflow.com"
+        elif "kaggle" in title_lower:
+            platform = "KAGGLE"
+            probable_domain = "kaggle.com"
+        elif "dice" in title_lower:
+            platform = "DICE"
+            probable_domain = "dice.com"
+        elif "wellfound" in title_lower:
+            platform = "WELLFOUND"
+            probable_domain = "wellfound.com"
 
         return {
             "platform": platform,

@@ -37,6 +37,7 @@ from .extractor.entity_extractor import EntityExtractor
 from .extractor.patterns import is_valid_person_name, is_valid_company_name
 from .extractor.grounding_gate import GroundingGate
 from .extractor.identity_resolver import IdentityResolver
+from .extractor.cross_channel_stitcher import CrossChannelStitcher
 from .extractor.timeline_parser import TimelineParser
 from .sync.local_queue import LocalQueue
 from .sync.backend_client import BackendClient
@@ -103,6 +104,7 @@ class ScoutDesktopApp:
         self.grounding_gate = GroundingGate()
         self.identity_resolver = IdentityResolver()
         self.timeline_parser = TimelineParser()
+        self.stitcher = CrossChannelStitcher()
         self.batch_processor = BatchProcessor()
         self.frame_queue = FrameQueue(max_depth=5)
 
@@ -436,7 +438,12 @@ class ScoutDesktopApp:
             allowed_domains = (
                 "linkedin.com", "teams", "github.com",
                 "chat.google.com", "mail.google.com",
-                "greenhouse.io", "lever.co", "ashbyhq.com", "myworkday.com", "workday.com"
+                "slack.com", "whatsapp.com", "telegram.org",
+                "outlook.com", "office.com", "office365.com",
+                "stackoverflow.com", "kaggle.com", "dice.com", "wellfound.com", "angel.co",
+                "greenhouse.io", "lever.co", "ashbyhq.com", "myworkday.com", "workday.com",
+                "icims.com", "smartrecruiters.com",
+                ".pdf", "blob:"
             )
             if not any(d in url_lower for d in allowed_domains):
                 logger.info("Frame rejected by URL hard-block: %s", page_url[:60])
@@ -445,16 +452,17 @@ class ScoutDesktopApp:
         # Gate 4: Page title validation — reject Search engine, browser chrome, and non-data pages
         if page_title:
             pt_lower = page_title.lower().strip()
-            is_chat_window = (
-                target_type in ("GOOGLE_CHAT", "TEAMS")
-                or "chat.google.com" in (page_url or "").lower()
-                or "teams.microsoft.com" in (page_url or "").lower()
+            is_chat_or_doc_window = (
+                target_type in ("GOOGLE_CHAT", "TEAMS", "SLACK", "WHATSAPP", "TELEGRAM", "GMAIL", "OUTLOOK", "PDF_RESUME")
+                or any(k in (page_url or "").lower() for k in [
+                    "chat.google.com", "teams.microsoft.com", "teams.live.com", "app.slack.com",
+                    "web.whatsapp.com", "web.telegram.org", "mail.google.com", "outlook.live.com", "outlook.office.com"
+                ])
                 or pt_lower.endswith(" - chat")
                 or " - chat" in pt_lower
-                or "google chat" in pt_lower
-                or "microsoft teams" in pt_lower
+                or any(w in pt_lower for w in ["google chat", "microsoft teams", "slack |", "whatsapp", "telegram", "resume", "cv", "curriculum"])
             )
-            if not is_chat_window:
+            if not is_chat_or_doc_window:
                 disallowed_page_titles = [
                     "google search", "new tab", "extensions",
                     "downloads", "history", "bookmarks",
@@ -584,6 +592,38 @@ class ScoutDesktopApp:
                 staged_contact["visual_change_score"] = delta
                 if not staged_contact.get("linkedin_url") and page_url and "linkedin.com/in/" in page_url:
                     staged_contact["linkedin_url"] = page_url
+
+                # Continuous Multi-Hop Cross-Channel Graph Stitching & Peak Enrichment
+                try:
+                    stitched = self.stitcher.stitch_observation(staged_contact, channel=target_type)
+                    staged_contact["completeness_score"] = stitched.completeness_score
+                    staged_contact["observed_channels"] = stitched.observed_channels
+                    if "metadata_json" in staged_contact and isinstance(staged_contact["metadata_json"], dict):
+                        staged_contact["metadata_json"]["completeness_score"] = stitched.completeness_score
+                        staged_contact["metadata_json"]["observed_channels"] = stitched.observed_channels
+                        staged_contact["metadata_json"]["stitched_entity_id"] = stitched.entity_id
+                        if stitched.work_authorization:
+                            staged_contact["metadata_json"]["work_authorization"] = stitched.work_authorization
+                        if stitched.compensation:
+                            staged_contact["metadata_json"]["compensation"] = stitched.compensation
+                        if stitched.availability:
+                            staged_contact["metadata_json"]["availability"] = stitched.availability
+                        if stitched.security_clearance:
+                            staged_contact["metadata_json"]["security_clearance"] = stitched.security_clearance
+
+                    # Fill in previously observed fields from earlier hops if missing
+                    if not staged_contact.get("email") and stitched.primary_email:
+                        staged_contact["email"] = stitched.primary_email
+                    if not staged_contact.get("phone") and stitched.primary_phone:
+                        staged_contact["phone"] = stitched.primary_phone
+                    if not staged_contact.get("linkedin_url") and stitched.linkedin_url:
+                        staged_contact["linkedin_url"] = stitched.linkedin_url
+                    if not staged_contact.get("company_name") and stitched.current_company:
+                        staged_contact["company_name"] = stitched.current_company
+                    if not staged_contact.get("title") and stitched.current_title:
+                        staged_contact["title"] = stitched.current_title
+                except Exception as stitch_err:
+                    logger.debug("CrossChannelStitcher error: %s", stitch_err)
 
                 # Data Quality Gate: Validate person name, clean company noise, and check signals
                 cand_name = staged_contact.get("recruiter_name") or staged_contact.get("raw_name")

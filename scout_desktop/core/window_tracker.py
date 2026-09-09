@@ -68,20 +68,26 @@ def is_allowed_scout_target(win_info: Optional['WindowInfo'], b_ctx: Optional[Di
     title = (win_info.title or "").strip()
     title_lower = title.lower()
 
-    # Rule 1: Microsoft Teams (Desktop app or Web in browser)
-    if (
-        proc in ("teams.exe", "ms-teams.exe")
-        or "microsoft teams" in title_lower
-        or "teams | microsoft" in title_lower
-    ):
+    # Rule 1: Desktop Collaboration, Communication & Resume Apps
+    if proc in ("teams.exe", "ms-teams.exe") or "microsoft teams" in title_lower or "teams | microsoft" in title_lower:
         return True, "TEAMS"
+    if proc == "slack.exe" or "slack |" in title_lower:
+        return True, "SLACK"
+    if proc in ("whatsapp.exe", "whatsapp.root.exe") or "whatsapp" in title_lower:
+        return True, "WHATSAPP"
+    if proc == "telegram.exe" or "telegram" in title_lower:
+        return True, "TELEGRAM"
+    if proc == "outlook.exe":
+        return True, "OUTLOOK"
+    if proc in ("acrord32.exe", "acrobat.exe") or (("resume" in title_lower or "cv" in title_lower or "curriculum" in title_lower) and "pdf" in title_lower):
+        return True, "PDF_RESUME"
 
-    # Rule 2: Browsers — Sourcing, ATS & Chat Targets (Chrome, Edge, Brave)
-    if proc in ("chrome.exe", "msedge.exe", "brave.exe"):
+    # Rule 2: Browsers — Sourcing, ATS, Mail & Chat Targets (Chrome, Edge, Brave, Firefox)
+    if proc in ("chrome.exe", "msedge.exe", "brave.exe", "firefox.exe"):
         b_ctx = b_ctx or {}
         url = (b_ctx.get("url") or "").lower()
 
-        # Target A1: Google Chat (Workspace Web & PWA)
+        # Target 1: Chat & Messaging Platforms
         if (
             "chat.google.com" in url
             or ("/mail/u/" in url and "/chat" in url)
@@ -89,13 +95,38 @@ def is_allowed_scout_target(win_info: Optional['WindowInfo'], b_ctx: Optional[Di
             or title_lower.endswith(" - chat")
             or " - chat" in title_lower
         ):
-            # Exclude media/entertainment that happens to have chat
             if not any(m in title_lower for m in ["youtube", "twitch", "facebook", "tiktok", "netflix", "reddit"]):
                 return True, "GOOGLE_CHAT"
 
-        # Target A2: Microsoft Teams (Web)
         if "teams.microsoft.com" in url or "teams.live.com" in url or "teams.cloud.microsoft" in url:
             return True, "TEAMS"
+
+        if "app.slack.com" in url or "slack.com" in url or "slack |" in title_lower:
+            return True, "SLACK"
+
+        if "web.whatsapp.com" in url or "whatsapp" in title_lower:
+            return True, "WHATSAPP"
+
+        if "web.telegram.org" in url or "k.telegram.org" in url or "a.telegram.org" in url:
+            return True, "TELEGRAM"
+
+        # Target 2: Email Inboxes (Candidate applications & outreach replies)
+        if "mail.google.com" in url or "gmail" in title_lower:
+            return True, "GMAIL"
+
+        if "outlook.office.com" in url or "outlook.live.com" in url or "outlook.office365.com" in url:
+            return True, "OUTLOOK"
+
+        # Target 3: PDF Resumes & Candidate Portfolios in Browser
+        if (
+            url.endswith(".pdf")
+            or ".pdf?" in url
+            or "/pdf/" in url
+            or "blob:" in url
+            or any(w in title_lower for w in ["resume", " cv ", "- cv", "curriculum vitae", "candidate profile"])
+        ):
+            if not any(s in title_lower for s in ["receipt", "invoice", "statement", "bill"]):
+                return True, "PDF_RESUME"
 
         # Reject generic search engine queries, blank tabs, and media
         disallowed_title_substrings = [
@@ -106,7 +137,7 @@ def is_allowed_scout_target(win_info: Optional['WindowInfo'], b_ctx: Optional[Di
         if any(s in title_lower for s in disallowed_title_substrings):
             return False, "UNSUPPORTED_BROWSER (SEARCH_OR_MEDIA)"
 
-        # Target A: LinkedIn Data (Profiles, Recruiter, Talent, Directory)
+        # Target 4: LinkedIn Data (Profiles, Recruiter, Talent, Directory)
         if "linkedin" in title_lower or "sales navigator" in title_lower or "linkedin.com" in url:
             disallowed_linkedin_sections = [
                 "feed | linkedin", "feed |", "messaging | linkedin", "messaging |",
@@ -127,14 +158,26 @@ def is_allowed_scout_target(win_info: Optional['WindowInfo'], b_ctx: Optional[Di
 
             return True, "LINKEDIN"
 
-        # Target B: GitHub Talent & Developer Profiles
+        # Target 5: Developer & Niche Talent Communities
         if "github" in title_lower or "github.com" in url:
             disallowed_gh = ["pulls", "issues", "marketplace", "explore", "notifications", "settings"]
             if any(f"/{s}" in url for s in disallowed_gh):
                 return False, "UNSUPPORTED_GITHUB (NON_PROFILE)"
             return True, "GITHUB"
 
-        # Target C: ATS Platforms (Greenhouse, Lever, Ashby, Workday)
+        if "stackoverflow.com" in url or "stack overflow" in title_lower:
+            return True, "STACKOVERFLOW"
+
+        if "kaggle.com" in url or "kaggle" in title_lower:
+            return True, "KAGGLE"
+
+        if "dice.com" in url or "dice" in title_lower:
+            return True, "DICE"
+
+        if "wellfound.com" in url or "angel.co" in url or "wellfound" in title_lower:
+            return True, "WELLFOUND"
+
+        # Target 6: ATS Platforms (Greenhouse, Lever, Ashby, Workday, iCIMS, SmartRecruiters)
         if "greenhouse.io" in url or "greenhouse" in title_lower:
             return True, "ATS_GREENHOUSE"
         if "lever.co" in url or "lever" in title_lower:
@@ -143,6 +186,10 @@ def is_allowed_scout_target(win_info: Optional['WindowInfo'], b_ctx: Optional[Di
             return True, "ATS_ASHBY"
         if "myworkday.com" in url or "workday.com" in url or "workday" in title_lower:
             return True, "ATS_WORKDAY"
+        if "icims.com" in url or "icims" in title_lower:
+            return True, "ATS_ICIMS"
+        if "smartrecruiters.com" in url or "smartrecruiters" in title_lower:
+            return True, "ATS_SMARTRECRUITERS"
 
         return False, "UNSUPPORTED_BROWSER_PAGE"
 

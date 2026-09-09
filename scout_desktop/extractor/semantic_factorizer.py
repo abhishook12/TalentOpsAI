@@ -176,7 +176,7 @@ class ProfileJudge:
             or "linkedin.com/in/" in source_url.lower()
         )
 
-        # 0. CHAT PLATFORMS INTELLIGENCE (Google Chat, Microsoft Teams)
+        # 0. CHAT, MESSAGING, EMAIL & RESUME INTELLIGENCE
         url_lower = source_url.lower()
         is_chat_target = (
             "chat.google.com" in url_lower
@@ -186,12 +186,28 @@ class ProfileJudge:
             or " - chat" in wt_lower
             or "teams" in wt_lower
             or "teams.microsoft.com" in url_lower
+            or "slack" in wt_lower
+            or "app.slack.com" in url_lower
+            or "whatsapp" in wt_lower
+            or "web.whatsapp.com" in url_lower
+            or "telegram" in wt_lower
+            or "web.telegram.org" in url_lower
+            or "mail.google.com" in url_lower
+            or "gmail" in wt_lower
+            or "outlook" in wt_lower
+            or "outlook.live.com" in url_lower
+            or "outlook.office.com" in url_lower
+            or any(w in wt_lower for w in ["resume", "cv", "curriculum vitae"])
+            or url_lower.endswith(".pdf")
+            or ".pdf?" in url_lower
+            or "/pdf/" in url_lower
         )
 
         if is_chat_target:
             has_contacts = any(
                 "linkedin.com/in/" in l.lower()
                 or "linkedin.com/company/" in l.lower()
+                or "github.com/" in l.lower()
                 or EMAIL_REGEX.search(l)
                 or PHONE_REGEX.search(l)
                 for l in clean_lines
@@ -201,7 +217,7 @@ class ProfileJudge:
                     category="CHAT_CONVERSATION",
                     is_candidate_profile=True,
                     confidence=0.92,
-                    signals_detected=["chat_candidate_data"],
+                    signals_detected=["multi_channel_candidate_data"],
                 )
 
         combined_context = (window_title + " " + " ".join(clean_lines[:12])).lower()

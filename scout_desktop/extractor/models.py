@@ -489,12 +489,46 @@ class EntityCluster:
         is_open_to_work = any("open to work" in s.lower() for s in self.signals)
         is_hiring = any("hiring" in s.lower() for s in self.signals)
 
+        # Deep Sourcing Signals Factorization
+        work_auth = None
+        tax_terms = []
+        comp = None
+        avail = None
+        sec_clearance = None
+        sen_level = None
+        work_pref = None
+
+        for o in self.observations:
+            pred = o.predicate
+            if pred == "HAS_WORK_AUTHORIZATION":
+                work_auth = str(o.object_value)
+            elif pred == "HAS_TAX_TERM":
+                val = str(o.object_value)
+                if val not in tax_terms:
+                    tax_terms.append(val)
+            elif pred == "HAS_COMPENSATION":
+                comp = o.attributes if isinstance(o.attributes, dict) and o.attributes else {"display": str(o.object_value)}
+            elif pred == "HAS_AVAILABILITY":
+                avail = str(o.object_value)
+            elif pred == "HAS_SECURITY_CLEARANCE":
+                sec_clearance = str(o.object_value)
+            elif pred == "HAS_SENIORITY_LEVEL":
+                sen_level = str(o.object_value)
+            elif pred == "HAS_WORK_PREFERENCE":
+                work_pref = str(o.object_value)
+
         meta = {
             "pronouns": pronouns,
             "previous_title": prev_title,
             "previous_company": prev_comp,
             "education_history": edu_history,
             "connection_degree": self.connection_degree,
+            "work_authorization": work_auth,
+            "tax_terms": tax_terms,
+            "compensation": comp,
+            "availability": avail,
+            "security_clearance": sec_clearance,
+            "work_preference": work_pref,
         }
         if title_intel:
             meta["title_intel"] = title_intel
@@ -503,6 +537,8 @@ class EntityCluster:
             meta["seniority_score"] = title_intel.get("seniority_score")
             meta["domain_specialization"] = title_intel.get("domain_specialization")
             meta["specialization_label"] = title_intel.get("specialization_label")
+        elif sen_level:
+            meta["seniority_level"] = sen_level
 
         return {
             "recruiter_name": clean_name or self.canonical_name,
@@ -529,10 +565,16 @@ class EntityCluster:
             "experience_history": exp_list,
             "is_open_to_work": is_open_to_work,
             "is_hiring": is_hiring,
+            "work_authorization": work_auth,
+            "tax_terms": tax_terms,
+            "compensation": comp,
+            "availability": avail,
+            "security_clearance": sec_clearance,
+            "work_preference": work_pref,
             "confidence": 95 if self.linkedin_url or self.email else 85,
             "observations_count": len(self.observations),
             "metadata_json": meta,
-            "seniority_level": title_intel.get("legacy_seniority") if title_intel else None,
+            "seniority_level": (title_intel.get("legacy_seniority") if title_intel else None) or sen_level,
             "granular_seniority": title_intel.get("seniority_level") if title_intel else None,
             "seniority_score": title_intel.get("seniority_score") if title_intel else None,
             "domain_specialization": title_intel.get("domain_specialization") if title_intel else None,

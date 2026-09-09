@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Optional
 from .phone_quality_engine import PhoneQualityEngine
 from .company_domain_engine import CompanyDomainEngine
 from .profile_identity_engine import ProfileIdentityEngine
+from .sourcing_signals_engine import SourcingSignalsEngine
 
 logger = logging.getLogger("talentops.chat_intelligence")
 
@@ -118,10 +119,13 @@ class ChatIntelligencePipeline:
         # Heuristic: Find words before delimiters (-, |, :) or before email/phone
         name = cls._extract_candidate_name(raw_text, primary_email, primary_phone_obj["raw"] if primary_phone_obj else None)
 
-        # 7. Classify completeness & partial status
+        # 7. Sourcing Signals Factorization (Work Auth, Tax Terms, Comp, Availability, Clearance)
+        signals = SourcingSignalsEngine.extract_signals(raw_text)
+
+        # 8. Classify completeness & partial status
         has_full_name = bool(name and len(name.split()) >= 2)
         has_contact = bool(primary_email or primary_phone)
-        is_partial = not (has_full_name and has_contact and (company or title))
+        is_partial = not (has_full_name and has_contact and (company or title or signals.work_authorization or signals.compensation))
 
         extracted_fields = {
             "name": name,
@@ -134,6 +138,13 @@ class ChatIntelligencePipeline:
             "primary_phone": primary_phone,
             "phone_details": primary_phone_obj,
             "linkedin_url": linkedin_url,
+            "work_authorization": signals.work_authorization,
+            "tax_terms": signals.tax_terms,
+            "compensation": signals.compensation,
+            "availability": signals.availability,
+            "security_clearance": signals.security_clearance,
+            "seniority_level": signals.seniority_level,
+            "work_preference": signals.work_preference,
             "raw_notes": raw_text,
         }
 
@@ -181,6 +192,27 @@ class ChatIntelligencePipeline:
                 "field_name": "linkedin_url",
                 "field_value": linkedin_url,
                 "confidence": 0.95,
+                "source": source_platform,
+            })
+        if signals.work_authorization:
+            observations.append({
+                "field_name": "work_authorization",
+                "field_value": signals.work_authorization,
+                "confidence": signals.work_authorization_confidence,
+                "source": source_platform,
+            })
+        if signals.compensation:
+            observations.append({
+                "field_name": "compensation",
+                "field_value": signals.compensation.get("display", ""),
+                "confidence": 0.85,
+                "source": source_platform,
+            })
+        if signals.availability:
+            observations.append({
+                "field_name": "availability",
+                "field_value": signals.availability,
+                "confidence": 0.90,
                 "source": source_platform,
             })
 
@@ -243,5 +275,9 @@ class ChatIntelligencePipeline:
         if fields.get("current_company"):
             score += 0.10
         if fields.get("current_title"):
+            score += 0.05
+        if fields.get("work_authorization"):
+            score += 0.05
+        if fields.get("compensation"):
             score += 0.05
         return min(1.0, score)

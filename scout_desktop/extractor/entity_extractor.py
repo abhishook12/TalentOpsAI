@@ -42,6 +42,7 @@ from .patterns import (
 from .timeline_parser import TimelineParser
 from .title_normalizer import classify_title
 from scout_desktop.extractor.semantic_factorizer import ProfileJudge, SemanticFactorizer
+from scout_desktop.extractor.sourcing_signals_engine import SourcingSignalsEngine
 
 logger = logging.getLogger("scout.entity_extractor")
 
@@ -124,20 +125,25 @@ class EntityExtractor:
         if self._is_job_page(clean_lines, window_title, source_url):
             return self._extract_job_page(clean_lines, capture_id, source_url, window_title)
 
-        # Case A.5: Chat Intelligence (Google Chat, Microsoft Teams)
+        # Case A.5: Chat & Multi-Channel Stream Intelligence (Google Chat, Teams, Slack, WhatsApp, Telegram, Gmail, Outlook, Resumes)
         wt_lower = window_title.lower()
         url_lower = source_url.lower()
         is_chat_stream = (
             judgment.category == "CHAT_CONVERSATION"
-            or "chat.google.com" in url_lower
+            or any(k in url_lower for k in [
+                "chat.google.com", "teams.microsoft.com", "teams.live.com",
+                "app.slack.com", "slack.com", "web.whatsapp.com", "web.telegram.org",
+                "mail.google.com", "outlook.live.com", "outlook.office.com"
+            ])
             or ("/mail/u/" in url_lower and "/chat" in url_lower)
-            or "teams.microsoft.com" in url_lower
-            or "teams.live.com" in url_lower
             or wt_lower.endswith(" - chat")
             or " - chat" in wt_lower
-            or "google chat" in wt_lower
-            or "microsoft teams" in wt_lower
-            or "teams | microsoft" in wt_lower
+            or any(w in wt_lower for w in [
+                "google chat", "microsoft teams", "teams | microsoft",
+                "slack |", "whatsapp", "telegram", "gmail", "outlook",
+                "resume", "cv", "curriculum vitae"
+            ])
+            or url_lower.endswith(".pdf") or "/pdf/" in url_lower
         )
         if is_chat_stream:
             chat_clusters = self._extract_chat_conversation(clean_lines, capture_id, source_url, window_title)
@@ -502,9 +508,10 @@ class EntityExtractor:
                 source_url=source_url,
             ))
 
-        # Signals
-        full_text = " ".join(clean_lines).lower()
-        if "open to work" in full_text or "#opentowork" in full_text:
+        # Sourcing Signals & Deep Attribute Factorization
+        full_text = " ".join(clean_lines)
+        full_text_lower = full_text.lower()
+        if "open to work" in full_text_lower or "#opentowork" in full_text_lower:
             cluster.add_observation(Observation(
                 semantic_type="PERSON",
                 subject=target_name,
@@ -512,6 +519,87 @@ class EntityExtractor:
                 object_value="Open to work",
                 confidence=0.95,
                 evidence="#OpenToWork badge",
+                capture_id=capture_id,
+                source_url=source_url,
+            ))
+
+        signals = SourcingSignalsEngine.extract_signals(full_text)
+        if signals.work_authorization:
+            cluster.add_observation(Observation(
+                semantic_type="SIGNAL",
+                subject=target_name,
+                predicate="HAS_WORK_AUTHORIZATION",
+                object_value=signals.work_authorization,
+                confidence=signals.work_authorization_confidence,
+                evidence="; ".join(signals.raw_matches) or signals.work_authorization,
+                capture_id=capture_id,
+                source_url=source_url,
+            ))
+        if signals.tax_terms:
+            for term in signals.tax_terms:
+                cluster.add_observation(Observation(
+                    semantic_type="SIGNAL",
+                    subject=target_name,
+                    predicate="HAS_TAX_TERM",
+                    object_value=term,
+                    confidence=0.90,
+                    evidence=term,
+                    capture_id=capture_id,
+                    source_url=source_url,
+                ))
+        if signals.compensation:
+            cluster.add_observation(Observation(
+                semantic_type="SIGNAL",
+                subject=target_name,
+                predicate="HAS_COMPENSATION",
+                object_value=signals.compensation.get("display", ""),
+                attributes=signals.compensation,
+                confidence=0.88,
+                evidence=signals.compensation.get("raw_text", ""),
+                capture_id=capture_id,
+                source_url=source_url,
+            ))
+        if signals.availability:
+            cluster.add_observation(Observation(
+                semantic_type="SIGNAL",
+                subject=target_name,
+                predicate="HAS_AVAILABILITY",
+                object_value=signals.availability,
+                confidence=0.90,
+                evidence=signals.availability,
+                capture_id=capture_id,
+                source_url=source_url,
+            ))
+        if signals.security_clearance:
+            cluster.add_observation(Observation(
+                semantic_type="SIGNAL",
+                subject=target_name,
+                predicate="HAS_SECURITY_CLEARANCE",
+                object_value=signals.security_clearance,
+                confidence=0.95,
+                evidence=signals.security_clearance,
+                capture_id=capture_id,
+                source_url=source_url,
+            ))
+        if signals.seniority_level:
+            cluster.add_observation(Observation(
+                semantic_type="SIGNAL",
+                subject=target_name,
+                predicate="HAS_SENIORITY_LEVEL",
+                object_value=signals.seniority_level,
+                confidence=0.85,
+                evidence=signals.seniority_level,
+                capture_id=capture_id,
+                source_url=source_url,
+            ))
+        if signals.work_preference:
+            cluster.add_observation(Observation(
+                semantic_type="SIGNAL",
+                subject=target_name,
+                predicate="HAS_WORK_PREFERENCE",
+                object_value=signals.work_preference,
+                confidence=0.85,
+                evidence=signals.work_preference,
                 capture_id=capture_id,
                 source_url=source_url,
             ))
@@ -1242,7 +1330,7 @@ class EntityExtractor:
             is_contact_line = has_email or has_phone or has_li
             is_delimiter = bool(timestamp_re.search(line_str))
 
-            if has_contact_in_current and (is_delimiter or has_li):
+            if has_contact_in_current and is_delimiter:
                 if current_chunk:
                     chunks.append(list(current_chunk))
                     current_chunk = []
@@ -1303,16 +1391,25 @@ class EntityExtractor:
         # 4. Extract Candidate Name
         cand_name = None
 
-        # A. Check email local part for full name (e.g. mary.zaffuto@blueciate.com -> Mary Zaffuto)
-        for e in emails:
-            local = e.split("@")[0].lower()
-            if "." in local:
-                parts = [p.capitalize() for p in local.split(".") if p.isalpha() and len(p) >= 2]
-                if len(parts) >= 2:
-                    cand_name = " ".join(parts)
+        # Priority 1: Check chunk lines directly for clean candidate name (2-3 words, no numbers)
+        for l in chunk_lines:
+            cl = clean_person_name(l)
+            if cl and is_valid_person_name(cl) and 2 <= len(cl.split()) <= 3:
+                if not is_plausible_title(cl):
+                    cand_name = cl
                     break
 
-        # B. Check LinkedIn slug (e.g. /in/crystalpettibone -> Crystal Pettibone)
+        # Priority 2: Check email local part for full name (e.g. mary.zaffuto@blueciate.com -> Mary Zaffuto)
+        if not cand_name:
+            for e in emails:
+                local = e.split("@")[0].lower()
+                if "." in local:
+                    parts = [p.capitalize() for p in local.split(".") if p.isalpha() and len(p) >= 2]
+                    if 2 <= len(parts) <= 3:
+                        cand_name = " ".join(parts)
+                        break
+
+        # Priority 3: Check LinkedIn slug
         if linkedin_url and not cand_name:
             m_slug = re.search(r"/in/([a-zA-Z0-9_\-\.]+)", linkedin_url)
             if m_slug:
@@ -1321,24 +1418,6 @@ class EntityExtractor:
                     cand_name = "Crystal Pettibone"
                 elif raw_slug.isalpha() and len(raw_slug) >= 4:
                     cand_name = raw_slug.capitalize()
-
-        # C. Check leftover words in chunk (e.g. 'Katy Sissine' in 'kasissine@gmail.com 770.906.2610 Katy Sissine...')
-        if not cand_name:
-            rem = chunk_text
-            for u in re.findall(r"https?://[^\s]+", rem):
-                rem = rem.replace(u, " ")
-            for e in emails:
-                rem = rem.replace(e, " ")
-            for p in raw_phones:
-                rem = rem.replace(p, " ")
-            rem = re.sub(r"\b(?:\d{1,2}:\d{2}\s*(?:AM|PM)?|\d+\s*min|\d+h|unread|history is on|active)\b", " ", rem, flags=re.IGNORECASE)
-            rem = re.sub(r"[^a-zA-Z\s]", " ", rem)
-
-            for line in rem.splitlines():
-                words = [w for w in line.split() if len(w) >= 2 and w.isalpha()]
-                if 2 <= len(words) <= 3:
-                    cand_name = " ".join(w.capitalize() for w in words)
-                    break
 
         # Fallback candidate name if still None
         if not cand_name:
@@ -1349,14 +1428,40 @@ class EntityExtractor:
             else:
                 return None
 
-        # 5. Extract Company
+        # 5. Extract Title & Company
         company = None
-        FREE_DOMAINS = {"gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com", "aol.com", "protonmail.com"}
-        for e in emails:
-            dom = e.split("@")[-1].lower()
-            if dom not in FREE_DOMAINS and "." in dom:
-                company = dom.split(".")[0].capitalize()
+        title = None
+        for l in chunk_lines:
+            t, c = clean_title_and_company(l)
+            if t and is_plausible_title(t):
+                title = t
+                if c and is_valid_company_name(c):
+                    company = c
                 break
+
+        if not title:
+            for l in chunk_lines:
+                cand_t = l.split(" at ")[0].split(" @ ")[0].strip()
+                if is_plausible_title(cand_t):
+                    title = cand_t
+                    break
+
+        if not company:
+            for l in chunk_lines:
+                m_at = re.search(r"\b(?:at|@|from)\s+([A-Z][A-Za-z0-9&.,'-]+(?:\s+[A-Z][A-Za-z0-9&.,'-]+)?)", l)
+                if m_at:
+                    c_cand = m_at.group(1).strip()
+                    if is_valid_company_name(c_cand):
+                        company = c_cand
+                        break
+
+        if not company:
+            FREE_DOMAINS = {"gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com", "aol.com", "protonmail.com"}
+            for e in emails:
+                dom = e.split("@")[-1].lower()
+                if dom not in FREE_DOMAINS and "." in dom:
+                    company = dom.split(".")[0].capitalize()
+                    break
 
         # 6. Build EntityCluster
         cluster = EntityCluster(canonical_name=cand_name, entity_type="PERSON")
@@ -1414,17 +1519,110 @@ class EntityExtractor:
                 capture_id=capture_id,
                 source_url=source_url or "https://chat.google.com",
             ))
+        if title:
+            cluster.add_observation(Observation(
+                semantic_type="PERSON",
+                subject=cand_name,
+                predicate="HAS_TITLE",
+                object_value=title,
+                confidence=0.88,
+                evidence=title,
+                capture_id=capture_id,
+                source_url=source_url or "https://chat.google.com",
+            ))
+        else:
+            cluster.add_observation(Observation(
+                semantic_type="PERSON",
+                subject=cand_name,
+                predicate="HAS_TITLE",
+                object_value="Professional Profile",
+                confidence=0.80,
+                evidence="Recruiter Chat Note",
+                capture_id=capture_id,
+                source_url=source_url or "https://chat.google.com",
+            ))
 
-        cluster.add_observation(Observation(
-            semantic_type="PERSON",
-            subject=cand_name,
-            predicate="HAS_TITLE",
-            object_value="Professional Profile",
-            confidence=0.80,
-            evidence="Recruiter Chat Note",
-            capture_id=capture_id,
-            source_url=source_url or "https://chat.google.com",
-        ))
+        # Deep Sourcing Signals Factorization (Visas, Rates, Availability, Clearances)
+        signals = SourcingSignalsEngine.extract_signals(chunk_text)
+        if signals.work_authorization:
+            cluster.add_observation(Observation(
+                semantic_type="SIGNAL",
+                subject=cand_name,
+                predicate="HAS_WORK_AUTHORIZATION",
+                object_value=signals.work_authorization,
+                confidence=signals.work_authorization_confidence,
+                evidence="; ".join(signals.raw_matches) or signals.work_authorization,
+                capture_id=capture_id,
+                source_url=source_url or "https://chat.google.com",
+            ))
+        if signals.tax_terms:
+            for term in signals.tax_terms:
+                cluster.add_observation(Observation(
+                    semantic_type="SIGNAL",
+                    subject=cand_name,
+                    predicate="HAS_TAX_TERM",
+                    object_value=term,
+                    confidence=0.90,
+                    evidence=term,
+                    capture_id=capture_id,
+                    source_url=source_url or "https://chat.google.com",
+                ))
+        if signals.compensation:
+            cluster.add_observation(Observation(
+                semantic_type="SIGNAL",
+                subject=cand_name,
+                predicate="HAS_COMPENSATION",
+                object_value=signals.compensation.get("display", ""),
+                attributes=signals.compensation,
+                confidence=0.88,
+                evidence=signals.compensation.get("raw_text", ""),
+                capture_id=capture_id,
+                source_url=source_url or "https://chat.google.com",
+            ))
+        if signals.availability:
+            cluster.add_observation(Observation(
+                semantic_type="SIGNAL",
+                subject=cand_name,
+                predicate="HAS_AVAILABILITY",
+                object_value=signals.availability,
+                confidence=0.90,
+                evidence=signals.availability,
+                capture_id=capture_id,
+                source_url=source_url or "https://chat.google.com",
+            ))
+        if signals.security_clearance:
+            cluster.add_observation(Observation(
+                semantic_type="SIGNAL",
+                subject=cand_name,
+                predicate="HAS_SECURITY_CLEARANCE",
+                object_value=signals.security_clearance,
+                confidence=0.95,
+                evidence=signals.security_clearance,
+                capture_id=capture_id,
+                source_url=source_url or "https://chat.google.com",
+            ))
+        if signals.seniority_level:
+            cluster.add_observation(Observation(
+                semantic_type="SIGNAL",
+                subject=cand_name,
+                predicate="HAS_SENIORITY_LEVEL",
+                object_value=signals.seniority_level,
+                confidence=0.85,
+                evidence=signals.seniority_level,
+                capture_id=capture_id,
+                source_url=source_url or "https://chat.google.com",
+            ))
+        if signals.work_preference:
+            cluster.add_observation(Observation(
+                semantic_type="SIGNAL",
+                subject=cand_name,
+                predicate="HAS_WORK_PREFERENCE",
+                object_value=signals.work_preference,
+                confidence=0.85,
+                evidence=signals.work_preference,
+                capture_id=capture_id,
+                source_url=source_url or "https://chat.google.com",
+            ))
 
         return cluster
 

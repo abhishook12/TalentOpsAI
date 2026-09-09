@@ -65,46 +65,64 @@ def record_scout_heartbeat(
 
 def get_all_scout_nodes_telemetry(db: Session) -> Dict[str, Any]:
     """
-    Returns live ingestion and heartbeat telemetry for ALL connected users and scout nodes.
+    Returns live ingestion and heartbeat telemetry for ALL connected scout nodes (devices)
+    and registered users. Every physical device gets its own independent telemetry card.
     """
     now = datetime.now(timezone.utc)
     today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
 
-    # 1. Fetch all registered users
     users = db.query(User).all()
     devices = db.query(ExtensionDevice).all()
+    user_map = {u.id: u for u in users}
+
+    # Fetch all events and staging records
+    all_events = db.query(ExtensionDiscoveryEvent).order_by(desc(ExtensionDiscoveryEvent.created_at)).limit(300).all()
+    events_by_device = {}
+    events_by_user = {}
+    for e in all_events:
+        if e.device_id:
+            events_by_device.setdefault(e.device_id, []).append(e)
+        events_by_user.setdefault(e.owner_user_id, []).append(e)
+
+    all_staging = db.query(DiscoveryStaging).order_by(desc(DiscoveryStaging.created_at)).limit(300).all()
+    staging_by_device = {}
+    staging_by_user = {}
+    for s in all_staging:
+        if s.device_id:
+            staging_by_device.setdefault(s.device_id, []).append(s)
+        staging_by_user.setdefault(s.owner_user_id, []).append(s)
 
     nodes_telemetry = []
+    users_with_devices = set()
 
-    for u in users:
-        u_devices = [d for d in devices if d.owner_user_id == u.id]
-        
-        # Query recent events for this user
-        u_events = db.query(ExtensionDiscoveryEvent).filter(
-            ExtensionDiscoveryEvent.owner_user_id == u.id
-        ).order_by(desc(ExtensionDiscoveryEvent.created_at)).limit(50).all()
+    # 1. Generate node card for EVERY physical device
+    for d in devices:
+        u = user_map.get(d.owner_user_id)
+        if u:
+            users_with_devices.add(u.id)
 
-        u_today_events = [e for e in u_events if e.created_at and (e.created_at.replace(tzinfo=timezone.utc) if e.created_at.tzinfo is None else e.created_at) >= today_start]
+        # Device events & staging
+        d_events = events_by_device.get(d.device_id) or events_by_user.get(d.owner_user_id, [])
+        d_staging = staging_by_device.get(d.device_id) or staging_by_user.get(d.owner_user_id, [])
 
-        latest_evt = u_events[0] if u_events else None
-        latest_staging = db.query(DiscoveryStaging).filter(
-            DiscoveryStaging.owner_user_id == u.id
-        ).order_by(desc(DiscoveryStaging.created_at)).first()
+        d_today_events = [
+            e for e in d_events
+            if e.created_at and (e.created_at.replace(tzinfo=timezone.utc) if e.created_at.tzinfo is None else e.created_at) >= today_start
+        ]
 
-        latest_enrich = next((e for e in u_events if e.db_action == "ENRICHED"), None)
-        latest_new = next((e for e in u_events if e.db_action == "NEW_DISCOVERY"), None)
+        latest_evt = d_events[0] if d_events else None
+        latest_staging = d_staging[0] if d_staging else None
+        latest_enrich = next((e for e in d_events if e.db_action == "ENRICHED"), None)
+        latest_new = next((e for e in d_events if e.db_action == "NEW_DISCOVERY"), None)
 
-        # Heartbeat calculation
-        latest_device = max(u_devices, key=lambda d: d.last_seen_at) if u_devices and any(d.last_seen_at for d in u_devices) else None
-        last_hb = latest_device.last_seen_at if latest_device else (latest_evt.created_at if latest_evt else None)
-
+        # Heartbeat calculation for this physical device
         heartbeat_sec = None
-        if last_hb:
-            hb_aware = last_hb.replace(tzinfo=timezone.utc) if last_hb.tzinfo is None else last_hb
-            heartbeat_sec = int((now - hb_aware).total_seconds())
+        if d.last_seen_at:
+            d_aware = d.last_seen_at.replace(tzinfo=timezone.utc) if d.last_seen_at.tzinfo is None else d.last_seen_at
+            heartbeat_sec = int((now - d_aware).total_seconds())
 
         # Determine true status
-        if latest_device and not latest_device.is_active:
+        if not d.is_active:
             node_status = "REVOKED"
             status_desc = "Device access revoked by administrator"
         elif heartbeat_sec is not None and heartbeat_sec < 45:
@@ -117,20 +135,20 @@ def get_all_scout_nodes_telemetry(db: Session) -> Dict[str, Any]:
         elif heartbeat_sec is not None and heartbeat_sec < 300:
             node_status = "IDLE_NO_INGESTION"
             status_desc = f"Last heartbeat {heartbeat_sec // 60}m ago; no recent stream"
-        elif len(u_events) > 0:
+        elif len(d_events) > 0:
             node_status = "PREVIOUSLY_ACTIVE"
-            status_desc = f"Historical activity recorded ({len(u_events)} discoveries)"
+            status_desc = f"Historical activity recorded ({len(d_events)} discoveries)"
         else:
             node_status = "AWAITING_CONNECTION"
-            status_desc = "Desktop Scout not yet paired or active"
+            status_desc = "Desktop Scout paired; waiting for first live session"
 
         # Count stats
-        captures_count = len(u_today_events) or len(u_events)
-        enriched_count = sum(1 for e in u_today_events if e.db_action == "ENRICHED") or sum(1 for e in u_events if e.db_action == "ENRICHED")
-        new_count = sum(1 for e in u_today_events if e.db_action == "NEW_DISCOVERY") or sum(1 for e in u_events if e.db_action == "NEW_DISCOVERY")
+        captures_count = len(d_today_events) or len(d_events)
+        enriched_count = sum(1 for e in d_today_events if e.db_action == "ENRICHED") or sum(1 for e in d_events if e.db_action == "ENRICHED")
+        new_count = sum(1 for e in d_today_events if e.db_action == "NEW_DISCOVERY") or sum(1 for e in d_events if e.db_action == "NEW_DISCOVERY")
 
         fields_added = 0
-        for e in u_today_events or u_events:
+        for e in d_today_events or d_events:
             if e.fields_added:
                 try:
                     fa = json.loads(e.fields_added)
@@ -138,13 +156,16 @@ def get_all_scout_nodes_telemetry(db: Session) -> Dict[str, Any]:
                 except Exception:
                     pass
 
+        user_name = f"{u.first_name or ''} {u.last_name or ''}".strip() or (u.email.split('@')[0] if u else "Unassigned")
+        user_email = u.email if u else "—"
+
         nodes_telemetry.append({
-            "scout_id": f"SCOUT-{u.id:03d}",
-            "user_id": u.id,
-            "user_name": f"{u.first_name or ''} {u.last_name or ''}".strip() or u.email.split('@')[0],
-            "user_email": u.email,
-            "device_id": latest_device.device_id if latest_device else f"DEV-NODE-{u.id}",
-            "device_name": latest_device.user_agent if latest_device else "Chrome Desktop Scout",
+            "scout_id": f"SCOUT-DEV-{d.id:03d}",
+            "user_id": u.id if u else d.owner_user_id,
+            "user_name": user_name,
+            "user_email": user_email,
+            "device_id": d.device_id,
+            "device_name": d.user_agent or "Desktop Scout Node",
             "connection_status": "CONNECTED" if (heartbeat_sec is not None and heartbeat_sec < 120) else "OFFLINE",
             "heartbeat_seconds_ago": heartbeat_sec,
             "heartbeat_formatted": f"{heartbeat_sec}s ago" if heartbeat_sec is not None and heartbeat_sec < 60 else (f"{heartbeat_sec // 60}m ago" if heartbeat_sec is not None else "None"),
@@ -167,13 +188,63 @@ def get_all_scout_nodes_telemetry(db: Session) -> Dict[str, Any]:
             "current_queue": 0,
         })
 
+    # 2. For users who have NO devices registered, add a placeholder node
+    for u in users:
+        if u.id in users_with_devices:
+            continue
+        user_name = f"{u.first_name or ''} {u.last_name or ''}".strip() or u.email.split('@')[0]
+        nodes_telemetry.append({
+            "scout_id": f"SCOUT-U{u.id:03d}",
+            "user_id": u.id,
+            "user_name": user_name,
+            "user_email": u.email,
+            "device_id": None,
+            "device_name": "No Device Paired",
+            "connection_status": "OFFLINE",
+            "heartbeat_seconds_ago": None,
+            "heartbeat_formatted": "None",
+            "node_status": "AWAITING_CONNECTION",
+            "status_description": "Desktop Scout not yet paired or active",
+            "last_page_observed": "—",
+            "last_capture_time": "—",
+            "last_extraction_time": "—",
+            "last_staging_write": "—",
+            "last_db_write": "—",
+            "last_enrichment_time": "—",
+            "last_new_record_time": "—",
+            "captures_today": 0,
+            "useful_discoveries": 0,
+            "records_enriched": 0,
+            "new_records_created": 0,
+            "fields_added": 0,
+            "db_successes": 0,
+            "db_failures": 0,
+            "current_queue": 0,
+        })
+
+    # 3. Sort: Connected/Live first, then by heartbeat recency
+    status_priority = {
+        "LIVE_STREAMING": 0,
+        "CONNECTED_IDLE": 1,
+        "IDLE_NO_INGESTION": 2,
+        "PREVIOUSLY_ACTIVE": 3,
+        "AWAITING_CONNECTION": 4,
+        "REVOKED": 5,
+    }
+    nodes_telemetry.sort(
+        key=lambda n: (
+            status_priority.get(n["node_status"], 9),
+            n["heartbeat_seconds_ago"] if n["heartbeat_seconds_ago"] is not None else 9999999
+        )
+    )
+
     # Summary aggregations
     active_nodes = sum(1 for n in nodes_telemetry if n["connection_status"] == "CONNECTED")
     streaming_nodes = sum(1 for n in nodes_telemetry if n["node_status"] == "LIVE_STREAMING")
 
     return {
         "total_registered_users": len(users),
-        "total_scout_nodes": len(nodes_telemetry),
+        "total_scout_nodes": len(devices),
         "active_connected_nodes": active_nodes,
         "active_nodes_streaming_data": streaming_nodes,
         "nodes": nodes_telemetry,

@@ -50,7 +50,7 @@ export default function DownloadScout() {
   }, []);
 
   // Scout Contributors Telemetry Query
-  const { data: contribData, isLoading, isFetching, refetch } = useQuery({
+  const { data: contribData, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ['scout-contributors-unified', statusFilter, searchQuery, sortBy],
     queryFn: async () => {
       const res = await api.get('/scout/users', {
@@ -523,12 +523,69 @@ export default function DownloadScout() {
       {/* ========================================================================= */}
       {activeView === 'contributors' && (
         <div>
+          {/* Reconnection / Error Banner */}
+          {isError && (
+            <div style={{
+              background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.35)',
+              borderRadius: 8, padding: '12px 18px', marginBottom: 16, display: 'flex',
+              alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#f87171', fontSize: 13 }}>
+                <AlertCircle size={18} />
+                <span>Backend telemetry engine is currently deploying or reconnecting. Telemetry will sync automatically.</span>
+              </div>
+              <button
+                onClick={() => refetch()}
+                disabled={isFetching}
+                style={{
+                  padding: '6px 14px', background: '#1e293b', border: '1px solid #334155',
+                  color: '#f8fafc', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer'
+                }}
+              >
+                {isFetching ? 'Syncing...' : 'Retry Connection'}
+              </button>
+            </div>
+          )}
+
+          {/* Navigation Guidance Strip */}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12,
+            background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.22)',
+            borderRadius: 10, padding: '10px 16px', marginBottom: 16, fontSize: 12
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#38bdf8' }}>
+              <Users size={16} />
+              <span>
+                Currently viewing <b>Contributors Intelligence (User Accounts)</b>. To inspect individual physical hardware machines, companion nodes &amp; live streams, switch to <b>Device Fleet &amp; Nodes</b>.
+              </span>
+            </div>
+            <button
+              onClick={() => setActiveView('fleet_nodes')}
+              style={{
+                padding: '5px 14px', background: '#0284c7', color: '#fff',
+                border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 2px 8px rgba(2, 132, 199, 0.3)'
+              }}
+            >
+              <Laptop size={13} />
+              <span>View Device Fleet &amp; Nodes ({summary.total_devices || summary.active_devices || 0})</span>
+            </button>
+          </div>
+
           {/* KPI Cards Strip */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 14, marginBottom: 20 }}>
             {[
               { label: 'TOTAL SCOUT USERS', value: totalUsersCount, icon: Users, color: '#38bdf8', sub: 'Registered & active' },
               { label: 'ACTIVE USERS', value: activeUsersCount, icon: Activity, color: '#4ade80', sub: 'Seen last 24h' },
-              { label: 'ACTIVE DEVICES', value: activeDevicesCount, icon: Laptop, color: '#22c55e', sub: `${totalDevicesCount} nodes active` },
+              {
+                label: 'ACTIVE DEVICES',
+                value: activeDevicesCount,
+                icon: Laptop,
+                color: '#22c55e',
+                sub: `${totalDevicesCount} nodes (Click to view fleet)`,
+                clickable: true,
+                onClick: () => setActiveView('fleet_nodes')
+              },
               { label: 'CONTRIBUTING USERS', value: contributingUsersCount, icon: Sparkles, color: '#a855f7', sub: 'Added / enriched data' },
               { label: 'OFFLINE USERS', value: offlineUsersCount, icon: Clock, color: '#94a3b8', sub: 'No signal > 7d' },
               { label: 'UPDATE REQUIRED', value: updateReqCount, icon: AlertTriangle, color: '#f59e0b', sub: `Prod is v${latestProdVer}` },
@@ -536,10 +593,18 @@ export default function DownloadScout() {
             ].map((card, idx) => {
               const Icon = card.icon;
               return (
-                <div key={idx} style={{
-                  background: '#0f172a', border: '1px solid #1e293b', borderRadius: 12, padding: '16px 18px',
-                  display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden'
-                }}>
+                <div
+                  key={idx}
+                  onClick={card.onClick}
+                  style={{
+                    background: '#0f172a', border: card.clickable ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid #1e293b',
+                    borderRadius: 12, padding: '16px 18px',
+                    display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden',
+                    cursor: card.clickable ? 'pointer' : 'default',
+                    transition: 'all 0.15s ease',
+                  }}
+                  title={card.clickable ? 'Click to open Device Fleet & Nodes panel' : undefined}
+                >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: 0.5 }}>{card.label}</span>
                     <Icon size={16} color={card.color} />
@@ -547,7 +612,9 @@ export default function DownloadScout() {
                   <div style={{ fontSize: 24, fontWeight: 800, color: '#f8fafc', lineHeight: 1.1, marginBottom: 4 }}>
                     {card.value.toLocaleString()}
                   </div>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>{card.sub}</div>
+                  <div style={{ fontSize: 11, color: card.clickable ? '#4ade80' : '#64748b', fontWeight: card.clickable ? 600 : 400 }}>
+                    {card.sub}
+                  </div>
                 </div>
               );
             })}

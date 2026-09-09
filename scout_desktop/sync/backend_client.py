@@ -15,8 +15,20 @@ import gzip
 import logging
 import time
 import uuid
+import platform
+import socket
+import hashlib
+import re
 from typing import Optional, Dict, Any, List, Tuple
 import requests
+
+try:
+    from ..core.paths import get_config_path
+except Exception:
+    try:
+        from core.paths import get_config_path
+    except Exception:
+        get_config_path = None
 
 logger = logging.getLogger("scout.backend_client")
 
@@ -24,19 +36,78 @@ DEFAULT_PRODUCTION_API = "https://talentopsai-1.onrender.com"
 DEFAULT_LOCAL_API = "http://localhost:8000"
 
 
+def _resolve_hardware_device_id() -> str:
+    """
+    Generates a deterministic hardware-based device fingerprint.
+    Combines machine hostname and MAC address so each physical computer
+    gets a unique, stable Scout device ID that never collides with other computers.
+    """
+    try:
+        hostname = (platform.node() or socket.gethostname() or "NODE").split(".")[0].upper()
+        clean_host = re.sub(r'[^A-Z0-9-]', '', hostname)[:10] or "NODE"
+        mac = uuid.getnode()
+        digest = hashlib.sha256(f"{hostname}-{mac}".encode("utf-8")).hexdigest()[:6].upper()
+        return f"SCOUT-{clean_host}-{digest}"
+    except Exception:
+        return f"SCOUT-NODE-{uuid.uuid4().hex[:6].upper()}"
+
+
 class BackendClient:
     def __init__(
         self,
         api_base: Optional[str] = None,
-        device_id: str = "DESKTOP-SCOUT-WIN",
-        scout_id: str = "SCOUT-NODE-01",
+        device_id: Optional[str] = None,
+        scout_id: Optional[str] = None,
         config_path: Optional[str] = None,
     ):
-        self.device_id = device_id
-        self.scout_id = scout_id
+        # 1. Resolve configuration file path (prefer AppData if present, fallback to local config.json)
+        resolved_config = config_path
+        if not resolved_config:
+            if get_config_path:
+                try:
+                    appdata_cfg = get_config_path()
+                    if os.path.exists(appdata_cfg):
+                        resolved_config = appdata_cfg
+                except Exception:
+                    pass
+            if not resolved_config:
+                resolved_config = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.json")
+        self.config_path = resolved_config
+
+        # 2. Resolve persistent unique device_id from hardware or saved config
+        cfg_dev_id = None
+        cfg_scout_id = None
+        if os.path.exists(self.config_path):
+            try:
+                with open(self.config_path, "r", encoding="utf-8") as f:
+                    cfg_data = json.load(f)
+                    GENERIC_PLACEHOLDERS = {"DESKTOP-SCOUT-WIN", "DEVICE-ENTERPRISE-VERIFY-99", "SCOUT-NODE-01", "TEST-NODE-E2E"}
+                    c_dev = cfg_data.get("device_id")
+                    if c_dev and c_dev not in GENERIC_PLACEHOLDERS:
+                        cfg_dev_id = c_dev
+                    c_scout = cfg_data.get("scout_id")
+                    if c_scout and c_scout not in GENERIC_PLACEHOLDERS:
+                        cfg_scout_id = c_scout
+            except Exception:
+                pass
+
+        GENERIC_DEFAULTS = {"DESKTOP-SCOUT-WIN", "DEVICE-ENTERPRISE-VERIFY-99", "SCOUT-NODE-01", "TEST-NODE-E2E"}
+        if device_id and device_id not in GENERIC_DEFAULTS:
+            self.device_id = device_id
+        elif cfg_dev_id:
+            self.device_id = cfg_dev_id
+        else:
+            self.device_id = _resolve_hardware_device_id()
+
+        if scout_id and scout_id not in GENERIC_DEFAULTS:
+            self.scout_id = scout_id
+        elif cfg_scout_id:
+            self.scout_id = cfg_scout_id
+        else:
+            self.scout_id = self.device_id
+
         self.user_id = 1
         self.session_id = f"SESS-{uuid.uuid4().hex[:8].upper()}"
-        self.config_path = config_path or os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.json")
         self.auth_token: Optional[str] = None
         self.last_request_time: str = "—"
         self.last_response_status: str = "—"
@@ -49,6 +120,31 @@ class BackendClient:
         self.environment_name = "PRODUCTION" if "onrender.com" in self.active_api_base else "LOCAL DEVELOPMENT"
 
         self._load_token_from_config()
+        self._ensure_device_id_persisted()
+
+    def _ensure_device_id_persisted(self):
+        """Ensures the unique hardware device_id and scout_id are written to config."""
+        try:
+            data = {}
+            if os.path.exists(self.config_path):
+                with open(self.config_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            
+            needs_save = False
+            if data.get("device_id") != self.device_id:
+                data["device_id"] = self.device_id
+                needs_save = True
+            if data.get("scout_id") != self.scout_id:
+                data["scout_id"] = self.scout_id
+                needs_save = True
+            
+            if needs_save:
+                os.makedirs(os.path.dirname(os.path.abspath(self.config_path)), exist_ok=True)
+                with open(self.config_path, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2)
+                logger.info("Persisted unique hardware device_id=%s to %s", self.device_id, self.config_path)
+        except Exception as e:
+            logger.debug("Failed to persist unique device_id: %s", e)
 
     def set_environment(self, env_type: str):
         """Switches environment between 'PRODUCTION' and 'LOCAL'."""

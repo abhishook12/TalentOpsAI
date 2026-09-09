@@ -353,6 +353,8 @@ from .routes import knowledge
 app.include_router(knowledge.router)
 from .routes import scout_nodes
 app.include_router(scout_nodes.router)
+from .routes import scout_updates
+app.include_router(scout_updates.router)
 
 
 @app.get("/")

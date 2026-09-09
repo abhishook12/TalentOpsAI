@@ -16,6 +16,7 @@ import app.models.extension_models
 import app.models.staging_models
 import app.models.intelligence_models
 import app.models.knowledge_models
+import app.models.update_models
 
 def migrate():
     db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend", "dev.db"))

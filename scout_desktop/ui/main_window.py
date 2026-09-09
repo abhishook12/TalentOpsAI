@@ -28,6 +28,11 @@ from PIL import Image
 
 logger = logging.getLogger("scout.main_window")
 
+try:
+    from ..version import __version__ as CURRENT_VERSION
+except Exception:
+    CURRENT_VERSION = "2.7.0"
+
 
 class SubsystemIndicator(QFrame):
     """Subsystem status badge with clean minimalist dark styling."""
@@ -175,7 +180,7 @@ class MainWindow(QMainWindow):
         self._is_paused = False
         self._technical_drawer_expanded = False
 
-        self.setWindowTitle("TalentOps Scout — Autonomous Companion")
+        self.setWindowTitle(f"TalentOps Scout v{CURRENT_VERSION} — Autonomous Companion")
         self.resize(520, 860)
         self.setMinimumSize(460, 680)
 
@@ -277,11 +282,28 @@ class MainWindow(QMainWindow):
 
         brand_col = QVBoxLayout()
         brand_col.setSpacing(1)
+
+        brand_row = QHBoxLayout()
+        brand_row.setSpacing(6)
         lbl_brand = QLabel("TALENTOPS SCOUT")
         lbl_brand.setStyleSheet("color: #F8FAFC; font-size: 13px; font-weight: 800; letter-spacing: 0.5px;")
-        brand_col.addWidget(lbl_brand)
+        brand_row.addWidget(lbl_brand)
 
-        self.lbl_env_badge = QLabel("PRODUCTION CLOUD")
+        self.lbl_version_pill = QLabel(f"v{CURRENT_VERSION}")
+        self.lbl_version_pill.setStyleSheet("""
+            background: #1E293B;
+            color: #38BDF8;
+            border: 1px solid #334155;
+            border-radius: 4px;
+            padding: 1px 6px;
+            font-size: 9px;
+            font-weight: 800;
+        """)
+        brand_row.addWidget(self.lbl_version_pill)
+        brand_row.addStretch()
+        brand_col.addLayout(brand_row)
+
+        self.lbl_env_badge = QLabel(f"PRODUCTION CLOUD • v{CURRENT_VERSION} [STABLE]")
         self.lbl_env_badge.setStyleSheet("color: #10B981; font-size: 9px; font-weight: 700;")
         brand_col.addWidget(self.lbl_env_badge)
         header.addLayout(brand_col)
@@ -1007,6 +1029,11 @@ class MainWindow(QMainWindow):
         ctrl_layout.addWidget(self.btn_exit_app)
 
         main_vbox.addWidget(ctrl_bar)
+
+        self.lbl_footer_status = QLabel(f"TalentOps Scout v{CURRENT_VERSION} • Production Cloud Connected • Auto-Sync Active")
+        self.lbl_footer_status.setStyleSheet("color: #475569; font-size: 8px; font-weight: 600; padding: 2px 0;")
+        self.lbl_footer_status.setAlignment(Qt.AlignCenter)
+        main_vbox.addWidget(self.lbl_footer_status)
 
     def _build_section_header(self, text: str) -> QLabel:
         lbl = QLabel(text)

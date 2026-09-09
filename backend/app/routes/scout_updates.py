@@ -30,11 +30,11 @@ logger = logging.getLogger("talentops.scout_updates")
 router = APIRouter(prefix="/scout", tags=["Scout Auto-Update & Fleet"])
 
 # Production Fallbacks
-DEFAULT_RELEASE_VERSION = "2.0.0"
+DEFAULT_RELEASE_VERSION = "2.7.0"
 DEFAULT_MINIMUM_VERSION = "1.0.0"
-DEFAULT_DOWNLOAD_URL = "https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe"
+DEFAULT_DOWNLOAD_URL = "https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup_v2.7.0.exe"
 DEFAULT_SHA256 = "4a7e93f6c8d19a2b3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d"
-DEFAULT_SIZE = 50474851
+DEFAULT_SIZE = 52000000
 
 DEFAULT_FEATURES = {
     "new_capture_pipeline": True,

@@ -31,7 +31,7 @@ export default function DownloadScout() {
 
   // Dynamic Release Info from Authoritative DB Registry
   const [releaseInfo, setReleaseInfo] = useState({
-    version: '2.0.0',
+    version: '2.7.0',
     download_url: 'https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe',
     size_bytes: 50474851,
     sha256: '4a7e93f6c8d19a2b3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d',
@@ -128,7 +128,7 @@ export default function DownloadScout() {
     // 2. Track download event in telemetry registry
     try {
       await api.post('/scout/download/track', {
-        version: releaseInfo.version || '2.0.0',
+        version: releaseInfo.version || '2.7.0',
         source: 'desktop_scout_page'
       });
     } catch (err) {}
@@ -141,7 +141,7 @@ export default function DownloadScout() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    toast.success(`TalentOps Scout v${releaseInfo.version || '2.0.0'} download initiated!`);
+    toast.success(`TalentOps Scout v${releaseInfo.version || '2.7.0'} download initiated!`);
     setTimeout(() => setDownloading(false), 2500);
   };
 
@@ -227,9 +227,9 @@ export default function DownloadScout() {
   const canonicalCreated = summary.total_canonical_created ?? summary.total_people_contributed ?? 0;
   const canonicalEnriched = summary.total_canonical_enriched ?? summary.total_contacts_contributed ?? 0;
   const avgQualScore = summary.avg_quality_score ?? summary.average_quality_score ?? 0;
-  const latestProdVer = contribData?.latest_production_version || releaseInfo?.version || '2.0.0';
+  const latestProdVer = contribData?.latest_production_version || releaseInfo?.version || '2.7.0';
 
-  const displayVersion = releaseInfo.version ? `v${releaseInfo.version}` : 'v2.0.0';
+  const displayVersion = releaseInfo.version ? `v${releaseInfo.version}` : 'v2.7.0';
   const displaySize = releaseInfo.size_bytes
     ? `${(releaseInfo.size_bytes / (1024 * 1024)).toFixed(1)} MB`
     : '48.1 MB';
@@ -789,7 +789,7 @@ export default function DownloadScout() {
                       const userTenant = u.company || u.tenant || null;
                       const deviceCount = u.device_count ?? u.devices_count ?? 0;
                       const activeCount = u.active_device_count ?? (u.health === 'HEALTHY' ? deviceCount : 0);
-                      const versionStr = u.primary_version || u.current_version || '2.0.0';
+                      const versionStr = u.primary_version || u.current_version || '2.7.0';
                       const isOutdated = u.update_required;
                       const lastSeenDisplay = u.last_seen_at ? formatTimeAgo(u.last_seen_at) : (u.last_seen || '—');
                       const lastContribDisplay = u.last_contribution_at ? formatTimeAgo(u.last_contribution_at) : (u.last_contribution || '—');

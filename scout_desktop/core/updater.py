@@ -48,9 +48,13 @@ from .updater_state import UpdateStateMachine, UpdateState
 
 logger = logging.getLogger("scout.updater")
 
-CURRENT_VERSION = "2.0.0"
+try:
+    from ..version import __version__ as CURRENT_VERSION
+except Exception:
+    CURRENT_VERSION = "2.7.0"
+
 UPDATE_CHECK_INTERVAL_SEC = 21600.0  # 6 hours
-FALLBACK_CDN_URL = "https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe"
+FALLBACK_CDN_URL = "https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup_v2.7.0.exe"
 
 
 def parse_semver(v: str):

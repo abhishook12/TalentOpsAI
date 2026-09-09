@@ -40,11 +40,16 @@ def record_scout_heartbeat(
         ExtensionDevice.owner_user_id == user_id
     ).first()
 
+    version_str = None
+    if client_metrics:
+        version_str = client_metrics.get("version") or client_metrics.get("scout_version") or client_metrics.get("extension_version")
+
     if not device:
         device = ExtensionDevice(
             device_id=device_id,
             owner_user_id=user_id,
             user_agent=client_metrics.get("device_name", "Browser Scout Node") if client_metrics else "Browser Scout Node",
+            extension_version=version_str,
             is_active=True,
             last_seen_at=now,
         )
@@ -52,6 +57,10 @@ def record_scout_heartbeat(
     else:
         device.last_seen_at = now
         device.is_active = True
+        if version_str:
+            device.extension_version = str(version_str)
+        if client_metrics and client_metrics.get("device_name"):
+            device.user_agent = client_metrics.get("device_name")
 
     db.commit()
 

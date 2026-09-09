@@ -32,6 +32,11 @@ except Exception:
 
 logger = logging.getLogger("scout.backend_client")
 
+try:
+    from ..version import __version__ as CURRENT_VERSION
+except Exception:
+    CURRENT_VERSION = "2.7.0"
+
 DEFAULT_PRODUCTION_API = "https://talentopsai-1.onrender.com"
 DEFAULT_LOCAL_API = "http://localhost:8000"
 
@@ -220,7 +225,7 @@ class BackendClient:
         claim_secret: str,
         hostname: Optional[str] = None,
         os_info: Optional[str] = None,
-        scout_version: Optional[str] = "2.0.0",
+        scout_version: Optional[str] = None,
     ) -> Tuple[bool, Dict[str, Any]]:
         """
         Consumes a short-lived one-time installation claim to auto-register this Scout instance.
@@ -235,7 +240,7 @@ class BackendClient:
             "device_id": self.device_id,
             "hostname": host,
             "os_info": os_info or sys.platform,
-            "scout_version": scout_version or "2.0.0",
+            "scout_version": scout_version or CURRENT_VERSION,
         }
         try:
             res = requests.post(url, json=payload, timeout=12.0)
@@ -268,7 +273,7 @@ class BackendClient:
             "device_id": self.device_id,
             "hostname": host,
             "os_info": sys.platform,
-            "scout_version": "2.0.0",
+            "scout_version": CURRENT_VERSION,
         }
 
         try:
@@ -298,7 +303,7 @@ class BackendClient:
         payload = {
             "device_id": self.device_id,
             "browser_info": "TalentOps Scout Desktop / Windows Native",
-            "extension_version": "2.0.0-desktop",
+            "extension_version": f"{CURRENT_VERSION}-desktop",
         }
         try:
             res = requests.post(url, json=payload, timeout=5.0)
@@ -316,7 +321,7 @@ class BackendClient:
         headers = {
             "Content-Type": "application/json",
             "X-Device-Id": self.device_id,
-            "X-Extension-Version": "1.0.0-desktop",
+            "X-Extension-Version": f"{CURRENT_VERSION}-desktop",
         }
         if self.auth_token:
             headers["Authorization"] = f"Bearer {self.auth_token}"
@@ -344,7 +349,8 @@ class BackendClient:
             "capture_id": capture_id,
             "client_metrics": {
                 "scout_id": self.scout_id,
-                "version": "2.0.0",
+                "version": CURRENT_VERSION,
+                "scout_version": CURRENT_VERSION,
                 "platform": sys.platform,
                 **metrics,
                 "timestamp": time.time(),

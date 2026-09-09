@@ -23,6 +23,11 @@ from PySide6.QtGui import QPainter, QColor, QPen, QBrush, QPainterPath
 
 logger = logging.getLogger("scout.edge_handle")
 
+try:
+    from ..version import __version__ as CURRENT_VERSION
+except Exception:
+    CURRENT_VERSION = "2.7.0"
+
 # Win32 Constants for Non-Activating Window
 GWL_EXSTYLE = -20
 WS_EX_NOACTIVATE = 0x08000000
@@ -56,6 +61,7 @@ class EdgeHandleWidget(QWidget):
         self._mouse_moved = False
         self._is_hovered = False
         self._status_state = "ACTIVE"  # ACTIVE | IDLE | OFFLINE
+        self.setToolTip(f"TalentOps Scout v{CURRENT_VERSION} (ACTIVE) — Click to open")
 
         self._init_position()
 
@@ -84,6 +90,7 @@ class EdgeHandleWidget(QWidget):
 
     def set_status_state(self, state: str):
         self._status_state = state.upper()
+        self.setToolTip(f"TalentOps Scout v{CURRENT_VERSION} ({self._status_state}) — Click to open")
         self.update()
 
     @property

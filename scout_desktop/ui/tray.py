@@ -12,6 +12,11 @@ import logging
 
 logger = logging.getLogger("scout.tray")
 
+try:
+    from ..version import __version__ as CURRENT_VERSION
+except Exception:
+    CURRENT_VERSION = "2.7.0"
+
 
 def create_tray_icon_pixmap(status_color: str = "#10b981") -> QPixmap:
     """Draws a crisp system tray icon using the TalentOps logo with dynamic status badge."""
@@ -98,7 +103,7 @@ class SystemTrayManager(QObject):
             }
         """)
 
-        self.status_action = menu.addAction("● Scout: Autonomous Active")
+        self.status_action = menu.addAction(f"● Scout v{CURRENT_VERSION}: Autonomous Active")
         self.status_action.setEnabled(False)
         menu.addSeparator()
 
@@ -149,34 +154,34 @@ class SystemTrayManager(QObject):
         state_upper = state.upper()
         if state_upper in ["ACTIVE", "ACTIVE_SAMPLING"]:
             color = "#10b981"  # GREEN: AUTONOMOUS ACTIVE
-            tip = "TalentOps Scout: AUTONOMOUS ACTIVE"
+            tip = f"TalentOps Scout v{CURRENT_VERSION}: AUTONOMOUS ACTIVE"
             if hasattr(self, "status_action"):
-                self.status_action.setText("● Scout: Autonomous Active")
+                self.status_action.setText(f"● Scout v{CURRENT_VERSION}: Autonomous Active")
         elif state_upper == "IDLE_WATCH":
             color = "#f59e0b"  # YELLOW: IDLE WATCH
-            tip = "TalentOps Scout: IDLE WATCH"
+            tip = f"TalentOps Scout v{CURRENT_VERSION}: IDLE WATCH"
             if hasattr(self, "status_action"):
-                self.status_action.setText("🟡 Scout: Idle Watch")
+                self.status_action.setText(f"🟡 Scout v{CURRENT_VERSION}: Idle Watch")
         elif state_upper in ["PAUSED", "STOPPED"]:
             color = "#3b82f6"  # BLUE: PAUSED by user
-            tip = "TalentOps Scout: PAUSED"
+            tip = f"TalentOps Scout v{CURRENT_VERSION}: PAUSED"
             if hasattr(self, "status_action"):
-                self.status_action.setText("⏸ Scout: Paused")
+                self.status_action.setText(f"⏸ Scout v{CURRENT_VERSION}: Paused")
         elif state_upper in ["OFFLINE", "DISCONNECTED"]:
             color = "#64748b"  # GRAY: OFFLINE / DISCONNECTED
-            tip = "TalentOps Scout: OFFLINE / DISCONNECTED"
+            tip = f"TalentOps Scout v{CURRENT_VERSION}: OFFLINE / DISCONNECTED"
             if hasattr(self, "status_action"):
-                self.status_action.setText("⚪ Scout: Offline")
+                self.status_action.setText(f"⚪ Scout v{CURRENT_VERSION}: Offline")
         elif state_upper in ["ERROR", "CAPTURE_ERROR"]:
             color = "#ef4444"  # RED: ERROR
-            tip = "TalentOps Scout: ERROR"
+            tip = f"TalentOps Scout v{CURRENT_VERSION}: ERROR"
             if hasattr(self, "status_action"):
-                self.status_action.setText("🔴 Scout: Error")
+                self.status_action.setText(f"🔴 Scout v{CURRENT_VERSION}: Error")
         else:
             color = "#64748b"  # GRAY: unknown defaults to offline
-            tip = f"TalentOps Scout: {state}"
+            tip = f"TalentOps Scout v{CURRENT_VERSION}: {state}"
             if hasattr(self, "status_action"):
-                self.status_action.setText(f"Scout: {state}")
+                self.status_action.setText(f"Scout v{CURRENT_VERSION}: {state}")
 
         pixmap = create_tray_icon_pixmap(color)
         self.tray.setIcon(QIcon(pixmap))

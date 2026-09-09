@@ -1,25 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Download, Laptop, ShieldCheck, Zap, Wifi, CheckCircle2, ArrowRight,
   Database, RefreshCw, Layers, Terminal, Sparkles, AlertCircle, HelpCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import api from '../services/api';
 import AddScoutModal from '../components/AddScoutModal';
 
 export default function DownloadScout() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [releaseInfo, setReleaseInfo] = useState({
+    version: '2.0.0',
+    download_url: 'https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe',
+    size_bytes: 50474851,
+  });
+
+  useEffect(() => {
+    api.get('/scout/updates/latest')
+      .then(res => {
+        if (res?.data?.version) {
+          setReleaseInfo(res.data);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleDownload = () => {
     setDownloading(true);
-    const downloadUrl = 'https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe';
+    const downloadUrl = releaseInfo.download_url || '/scout/updates/download/latest';
     const a = document.createElement('a');
     a.href = downloadUrl;
     a.download = 'TalentOpsScoutSetup.exe';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    toast.success('TalentOps Scout Desktop installer download started!');
+    toast.success(`TalentOps Scout v${releaseInfo.version} installer download started!`);
     setTimeout(() => setDownloading(false), 2500);
   };
 
@@ -87,7 +103,7 @@ export default function DownloadScout() {
 
           <div style={{ display: 'flex', gap: 18, marginTop: 18, fontSize: 11, color: '#64748b' }}>
             <span>• Windows 10 / 11 64-bit</span>
-            <span>• Version 2.0.0 Production</span>
+            <span>• Version {releaseInfo.version} Production</span>
             <span>• Zero Python Required</span>
           </div>
         </div>

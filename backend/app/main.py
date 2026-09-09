@@ -210,6 +210,15 @@ if RUN_STARTUP_MIGRATIONS:
                     "status": "VARCHAR(50) DEFAULT 'Ready'",
                     "validation_issues": "TEXT",
                 })
+
+                _ensure_columns("source_connectors", {
+                    "source_reliability": "FLOAT DEFAULT 0.85",
+                    "field_reliability_json": "TEXT DEFAULT '{}'",
+                    "cost_per_query_usd": "FLOAT DEFAULT 0.0",
+                    "supported_data_categories": "TEXT DEFAULT '[]'",
+                    "rate_limit_rpm": "INTEGER DEFAULT 60",
+                    "retention_rules_json": "TEXT DEFAULT '{}'",
+                })
             except Exception as e:
                 logger.warning("Import batch column migration warning: %s", e)
     except Exception as e:
@@ -357,6 +366,8 @@ from .routes import scout_updates
 app.include_router(scout_updates.router)
 from .routes import data_quality
 app.include_router(data_quality.router)
+from .routes import data_intelligence
+app.include_router(data_intelligence.router)
 
 
 @app.get("/")

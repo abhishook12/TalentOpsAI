@@ -35,6 +35,12 @@ class SourceConnector(Base):
     name = Column(String(150), nullable=False)
     auth_type = Column(String(32), default="OAUTH2")                          # OAUTH2, API_KEY, DESKTOP_PAIRING, PUBLIC
     is_active = Column(Boolean, default=True, index=True)
+    source_reliability = Column(Float, default=0.85)                           # 0.0 to 1.0 reliability weight
+    field_reliability_json = Column(Text, default="{}")                        # Per-field reliability override {field: weight}
+    cost_per_query_usd = Column(Float, default=0.0)                            # API cost in USD per query
+    supported_data_categories = Column(Text, default="[]")                     # JSON list of supported categories
+    rate_limit_rpm = Column(Integer, default=60)                               # Requests per minute ceiling
+    retention_rules_json = Column(Text, default="{}")                          # Retention policy overrides
     config_json = Column(Text, default="{}")
     created_at = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
@@ -293,3 +299,33 @@ class CareerVelocityRecord(Base):
     title_level_progression = Column(String(255), nullable=True)
     skills_velocity = Column(Integer, default=0)
     calculated_at = Column(TIMESTAMP, server_default=func.now(), index=True)
+
+
+class FieldConflictRecord(Base):
+    """
+    Records unresolved disputes between two or more sources for a given field on an entity.
+    Routes to the Data Quality review queue without deleting either observation.
+    """
+    __tablename__ = "field_conflict_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    entity_type = Column(String(32), index=True, nullable=False)               # PERSON, COMPANY
+    entity_id = Column(Integer, index=True, nullable=False)
+    field_name = Column(String(64), index=True, nullable=False)                # current_company, current_title, primary_email, primary_phone
+    source_a = Column(String(64), nullable=False)
+    value_a = Column(Text, nullable=True)
+    confidence_a = Column(Float, default=0.85)
+    observed_at_a = Column(TIMESTAMP, nullable=True)
+    source_b = Column(String(64), nullable=False)
+    value_b = Column(Text, nullable=True)
+    confidence_b = Column(Float, default=0.85)
+    observed_at_b = Column(TIMESTAMP, nullable=True)
+    conflict_status = Column(String(32), default="PENDING_REVIEW", index=True) # PENDING_REVIEW, RESOLVED_SOURCE_A, RESOLVED_SOURCE_B, RESOLVED_CUSTOM, DISMISSED
+    resolution_notes = Column(Text, nullable=True)
+    resolved_at = Column(TIMESTAMP, nullable=True)
+    created_at = Column(TIMESTAMP, server_default=func.now(), index=True)
+
+
+# Backwards compatibility & architectural alias
+RawSourceRecord = RawSignal
+

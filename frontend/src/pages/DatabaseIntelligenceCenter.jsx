@@ -7,16 +7,27 @@ const DatabaseIntelligenceCenter = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [identityJobLoading, setIdentityJobLoading] = useState(false);
+  const [connectors, setConnectors] = useState([]);
+  const [aiQuery, setAiQuery] = useState('Find people in US with verified corporate emails');
+  const [aiResult, setAiResult] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [chatText, setChatText] = useState('John Doe - 5716175929 - john.doe@datadog.com - Senior SRE');
+  const [chatResult, setChatResult] = useState(null);
+  const [chatLoading, setChatLoading] = useState(false);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [statsRes, idRes] = await Promise.all([
+        const [statsRes, idRes, connRes] = await Promise.all([
           api.get('/admin/intelligence-stats'),
-          api.get('/analytics/identity-quality')
+          api.get('/analytics/identity-quality'),
+          api.get('/intelligence/connectors').catch(() => ({ data: { connectors: [] } }))
         ]);
         setStats(statsRes.data);
         setIdentityStats(idRes.data);
+        if (connRes?.data?.connectors) {
+          setConnectors(connRes.data.connectors);
+        }
         setError(null);
       } catch (err) {
         console.error('Failed to fetch intelligence stats:', err);
@@ -30,6 +41,36 @@ const DatabaseIntelligenceCenter = () => {
     const interval = setInterval(fetchStats, 5000); // Poll every 5s for live updates
     return () => clearInterval(interval);
   }, []);
+
+  const handleRunAiQuery = async () => {
+    if (!aiQuery.trim()) return;
+    setAiLoading(true);
+    try {
+      const res = await api.post('/intelligence/query', { query: aiQuery });
+      setAiResult(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleTestChatIngest = async () => {
+    if (!chatText.trim()) return;
+    setChatLoading(true);
+    try {
+      const res = await api.post('/intelligence/chat-ingest', {
+        text: chatText,
+        source_platform: 'MICROSOFT_TEAMS',
+        sender_name: 'Recruiter Demo'
+      });
+      setChatResult(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setChatLoading(false);
+    }
+  };
 
   if (loading && !stats) {
     return (
@@ -260,6 +301,150 @@ const DatabaseIntelligenceCenter = () => {
           </div>
         )}
         
+        {/* Source Connector Hub */}
+        <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-6 backdrop-blur-md shadow-xl">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="text-xl font-bold text-gray-100 flex items-center gap-2">
+                <span className="h-3 w-3 rounded-full bg-emerald-500"></span>
+                Source Connector Hub & Orchestration
+              </h2>
+              <p className="text-xs text-gray-400 mt-1">
+                Multi-source data ingestion, reliability weights, and field-level provenance contracts.
+              </p>
+            </div>
+            <span className="text-xs font-mono bg-indigo-500/10 text-indigo-300 px-3 py-1.5 rounded-lg border border-indigo-500/20">
+              {connectors.length} Connectors Active
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {connectors.map((c) => (
+              <div key={c.connector_key} className="bg-gray-900/50 border border-white/5 rounded-xl p-4 hover:border-indigo-500/30 transition-all">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="font-semibold text-sm text-gray-200">{c.name}</span>
+                  <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono">
+                    {Math.round(c.source_reliability * 100)}% Rel
+                  </span>
+                </div>
+                <div className="text-xs text-gray-400 space-y-1 font-mono">
+                  <div>Type: <span className="text-gray-300">{c.auth_type}</span></div>
+                  <div>Cost/Query: <span className="text-gray-300">${c.cost_per_query_usd.toFixed(2)}</span></div>
+                  <div>RPM Cap: <span className="text-gray-300">{c.rate_limit_rpm}</span></div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1">
+                  {(c.supported_data_categories || []).slice(0, 3).map((cat) => (
+                    <span key={cat} className="text-[10px] bg-white/5 text-gray-400 px-1.5 py-0.5 rounded">
+                      {cat}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* AI Query & Chat Intelligence Ingestion Sandbox */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* AI Natural Language Query */}
+          <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-6 backdrop-blur-md shadow-xl space-y-4">
+            <div>
+              <h3 className="text-lg font-bold text-gray-100 flex items-center gap-2">
+                <span className="text-indigo-400">⚡</span> AI Natural Language Evidence Query
+              </h3>
+              <p className="text-xs text-gray-400 mt-1">
+                Translates recruiting questions into structured SQL queries over multi-source provenance.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={aiQuery}
+                onChange={(e) => setAiQuery(e.target.value)}
+                placeholder="e.g. Find engineers in US with verified email"
+                className="flex-1 bg-gray-900/80 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+              />
+              <button
+                onClick={handleRunAiQuery}
+                disabled={aiLoading}
+                className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm rounded-xl transition-all disabled:opacity-50"
+              >
+                {aiLoading ? 'Querying...' : 'Run Query'}
+              </button>
+            </div>
+
+            {aiResult && (
+              <div className="bg-gray-900/60 border border-white/5 rounded-xl p-4 space-y-3 font-mono text-xs">
+                <div className="flex justify-between text-indigo-300 border-b border-white/5 pb-2">
+                  <span>Matches: {aiResult.total_matches}</span>
+                  <span>Country Filter: {aiResult.parsed_filters?.country || 'All'}</span>
+                </div>
+                <div className="text-gray-400">
+                  Deliverable Email: {aiResult.parsed_filters?.email_deliverable ? 'YES' : 'ANY'} | Mobile Phone: {aiResult.parsed_filters?.has_mobile_phone ? 'YES' : 'ANY'}
+                </div>
+                {aiResult.results && aiResult.results.length > 0 ? (
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {aiResult.results.slice(0, 5).map((r) => (
+                      <div key={r.id} className="p-2 bg-black/40 rounded flex justify-between">
+                        <span className="text-gray-200 font-sans">{r.canonical_name} ({r.current_company || 'N/A'})</span>
+                        <span className="text-emerald-400">{r.primary_email || r.primary_phone || 'Profile Only'}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-gray-500 italic">No direct matches found for current filters.</div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Unstructured Chat Intelligence Ingestion */}
+          <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-6 backdrop-blur-md shadow-xl space-y-4">
+            <div>
+              <h3 className="text-lg font-bold text-gray-100 flex items-center gap-2">
+                <span className="text-emerald-400">💬</span> Chat Intelligence Pipeline Tester
+              </h3>
+              <p className="text-xs text-gray-400 mt-1">
+                Ingests messy Google Chat & Microsoft Teams recruiter notes with zero identity fabrication.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={chatText}
+                onChange={(e) => setChatText(e.target.value)}
+                placeholder="e.g. John - 5716175929 - john@abc.com"
+                className="flex-1 bg-gray-900/80 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+              />
+              <button
+                onClick={handleTestChatIngest}
+                disabled={chatLoading}
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm rounded-xl transition-all disabled:opacity-50"
+              >
+                {chatLoading ? 'Ingesting...' : 'Ingest Note'}
+              </button>
+            </div>
+
+            {chatResult && (
+              <div className="bg-gray-900/60 border border-white/5 rounded-xl p-4 space-y-2 font-mono text-xs">
+                <div className="flex justify-between text-emerald-400 border-b border-white/5 pb-2">
+                  <span>Status: {chatResult.status}</span>
+                  <span>Hash: {chatResult.content_hash?.slice(0, 12)}...</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-gray-300">
+                  <div>Name: <span className="text-white font-sans">{chatResult.analysis?.extracted_fields?.name || 'None'}</span></div>
+                  <div>Phone: <span className="text-white">{chatResult.analysis?.extracted_fields?.primary_phone || 'None'}</span></div>
+                  <div>Email: <span className="text-white">{chatResult.analysis?.extracted_fields?.primary_email || 'None'}</span></div>
+                  <div>Company: <span className="text-white">{chatResult.analysis?.extracted_fields?.current_company || 'None'}</span></div>
+                </div>
+                <div className="text-[11px] text-gray-400">
+                  Partial Record: <span className={chatResult.analysis?.is_partial ? 'text-amber-400' : 'text-emerald-400'}>{chatResult.analysis?.is_partial ? 'TRUE (Safe Staging)' : 'FALSE (Complete)'}</span> | Score: {Math.round((chatResult.analysis?.confidence_score || 0) * 100)}%
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
       </div>
     </div>
   );

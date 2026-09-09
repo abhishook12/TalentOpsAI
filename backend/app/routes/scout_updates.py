@@ -222,6 +222,72 @@ def get_update_manifest(
         return fallback
 
 
+@router.get("/updates/latest")
+def get_latest_release_info(
+    channel: str = Query("stable", description="Deployment channel: stable, beta, internal"),
+    db: Session = Depends(get_db),
+):
+    """
+    Public single-source-of-truth metadata endpoint for web downloaders.
+    Returns the latest published release from the database registry.
+    """
+    try:
+        release = (
+            db.query(ScoutRelease)
+            .filter(ScoutRelease.channel == channel, ScoutRelease.status == "ACTIVE", ScoutRelease.is_paused == False)
+            .order_by(ScoutRelease.id.desc())
+            .first()
+        )
+        if not release:
+            release = (
+                db.query(ScoutRelease)
+                .filter(ScoutRelease.status == "ACTIVE")
+                .order_by(ScoutRelease.id.desc())
+                .first()
+            )
+
+        if release:
+            return {
+                "version": release.version,
+                "channel": release.channel,
+                "download_url": release.download_url,
+                "sha256": release.sha256,
+                "size_bytes": release.size_bytes or DEFAULT_SIZE,
+                "release_notes": release.release_notes,
+                "release_date": release.created_at.strftime("%Y-%m-%d") if release.created_at else "2026-09-09",
+                "mandatory": release.mandatory,
+            }
+    except Exception as err:
+        logger.warning("Could not fetch release from db: %s", err)
+
+    return {
+        "version": DEFAULT_RELEASE_VERSION,
+        "channel": channel,
+        "download_url": DEFAULT_DOWNLOAD_URL,
+        "sha256": DEFAULT_SHA256,
+        "size_bytes": DEFAULT_SIZE,
+        "release_notes": "Official production release of TalentOps Scout Desktop.",
+        "release_date": "2026-09-09",
+        "mandatory": False,
+    }
+
+
+@router.get("/updates/download/latest")
+def download_latest_installer(
+    channel: str = Query("stable"),
+    db: Session = Depends(get_db),
+):
+    """
+    Public redirect endpoint that dynamically sends the client to the official
+    production download URL from the database registry, preventing stale links.
+    """
+    from fastapi.responses import RedirectResponse
+
+    info = get_latest_release_info(channel=channel, db=db)
+    download_url = info.get("download_url") or DEFAULT_DOWNLOAD_URL
+    return RedirectResponse(url=download_url, status_code=307)
+
+
 @router.post("/updates/report")
 def report_update_telemetry(
     req: UpdateReportRequest,

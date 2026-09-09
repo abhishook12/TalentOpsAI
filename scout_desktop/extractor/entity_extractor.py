@@ -126,8 +126,8 @@ class EntityExtractor:
             return self._extract_job_page(clean_lines, capture_id, source_url, window_title)
 
         # Case A.5: Chat & Multi-Channel Stream Intelligence (Google Chat, Teams, Slack, WhatsApp, Telegram, Gmail, Outlook, Resumes)
-        wt_lower = window_title.lower()
-        url_lower = source_url.lower()
+        wt_lower = (window_title or "").lower()
+        url_lower = (source_url or "").lower()
         is_chat_stream = (
             judgment.category == "CHAT_CONVERSATION"
             or any(k in url_lower for k in [

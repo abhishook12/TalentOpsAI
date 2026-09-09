@@ -162,7 +162,8 @@ class ProfileJudge:
                 rejection_reason="Empty text capture",
             )
 
-        wt_lower = window_title.lower()
+        wt_lower = (window_title or "").lower()
+        url_lower = (source_url or "").lower()
         if any(term in wt_lower for term in ["feed |", "messaging |", "notifications |", "linkedin learning"]):
             return JudgmentResult(
                 category="SYSTEM_NOISE",
@@ -173,11 +174,10 @@ class ProfileJudge:
 
         is_verified_linkedin = (
             any(k in wt_lower for k in ["| linkedin", "- linkedin", "linkedin recruiter", "sales navigator", "company: people"])
-            or "linkedin.com/in/" in source_url.lower()
+            or "linkedin.com/in/" in url_lower
         )
 
         # 0. CHAT, MESSAGING, EMAIL & RESUME INTELLIGENCE
-        url_lower = source_url.lower()
         is_chat_target = (
             "chat.google.com" in url_lower
             or ("/mail/u/" in url_lower and "/chat" in url_lower)
@@ -316,7 +316,7 @@ class ProfileJudge:
             profile_signals.append("linkedin_profile_context")
 
         # Candidate profile accepted if verified LinkedIn context OR at least 2 profile signals
-        if is_verified_linkedin or len(profile_signals) >= 2 or "linkedin.com/in/" in source_url.lower():
+        if is_verified_linkedin or len(profile_signals) >= 2 or "linkedin.com/in/" in url_lower:
             return JudgmentResult(
                 category="CANDIDATE_PROFILE",
                 is_candidate_profile=True,

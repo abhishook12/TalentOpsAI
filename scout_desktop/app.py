@@ -430,9 +430,9 @@ class ScoutDesktopApp:
 
         self.cnt_captured += 1
         capture_id = f"VC-{uuid.uuid4().hex[:6].upper()}"
-        b_ctx = self.current_browser_context
-        page_url = b_ctx.get("url", "")
-        page_title = b_ctx.get("title", win_info.title)
+        b_ctx = self.current_browser_context or {}
+        page_url = b_ctx.get("url") or ""
+        page_title = b_ctx.get("title") or (win_info.title if win_info else "") or ""
         cand_name = b_ctx.get("candidate_name")
 
         # Gate 3: URL hard-block — if we have a URL, it MUST be from an allowed domain

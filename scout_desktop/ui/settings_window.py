@@ -1,5 +1,5 @@
 """
-ui/settings_window.py — Settings, Node Identity & Connection Status Window
+ui/settings_window.py — Settings, Node Identity, Connection Status & Updates Window
 
 Surface 4 of the TalentOps Scout Desktop architecture.
 Provides configuration for:
@@ -7,19 +7,23 @@ Provides configuration for:
 - Node Identity (user_id, scout_id, device_id, session_id)
 - Live Backend Connection Status & Heartbeat
 - Telemetry & Staging Queue Management
+- Autonomous Release Management & Channels (Stable, Beta, Internal)
 """
 
 import os
 import json
+import time
+from datetime import datetime
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QCheckBox,
     QPushButton, QFrame, QTabWidget, QLineEdit, QMessageBox,
-    QSpinBox, QGraphicsDropShadowEffect
+    QSpinBox, QComboBox, QGraphicsDropShadowEffect
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QIcon, QPixmap, QColor
 
 from ..core.autostart import is_autostart_enabled, set_autostart_enabled
+from ..core.updater import CURRENT_VERSION
 from ..sync.backend_client import BackendClient
 from ..sync.local_queue import LocalQueue
 
@@ -27,14 +31,16 @@ from ..sync.local_queue import LocalQueue
 class SettingsWindow(QWidget):
     settings_saved = Signal()
     force_sync_requested = Signal()
+    update_requested = Signal()
 
-    def __init__(self, backend_client: BackendClient, local_queue: LocalQueue, parent=None):
+    def __init__(self, backend_client: BackendClient, local_queue: LocalQueue, auto_updater=None, parent=None):
         super().__init__(parent)
         self.backend = backend_client
         self.queue = local_queue
+        self.updater = auto_updater
 
-        self.setWindowTitle("TalentOps Scout — Settings & Connection Status")
-        self.resize(560, 480)
+        self.setWindowTitle("TalentOps Scout — Settings & Fleet Telemetry")
+        self.resize(600, 520)
 
         # Set Window Icon
         logo_path = os.path.join(os.path.dirname(__file__), "..", "assets", "logo.png")
@@ -88,12 +94,16 @@ class SettingsWindow(QWidget):
             QCheckBox::indicator:checked {
                 background: #2563eb;
             }
-            QLineEdit, QSpinBox {
+            QLineEdit, QSpinBox, QComboBox {
                 background-color: #020617;
                 border: 1px solid #1e293b;
                 border-radius: 6px;
                 padding: 6px 10px;
                 color: #f8fafc;
+            }
+            QComboBox::drop-down {
+                border: none;
+                padding-right: 6px;
             }
             QPushButton {
                 background-color: #2563eb;
@@ -114,6 +124,17 @@ class SettingsWindow(QWidget):
             QPushButton#secondary_btn:hover {
                 background-color: #334155;
                 color: white;
+            }
+            QPushButton#danger_btn {
+                background-color: #dc2626;
+                color: white;
+                border-radius: 6px;
+                padding: 6px 16px;
+                font-weight: 700;
+                border: none;
+            }
+            QPushButton#danger_btn:hover {
+                background-color: #b91c1c;
             }
         """)
 
@@ -141,7 +162,7 @@ class SettingsWindow(QWidget):
         lbl_title = QLabel("TALENTOPS SCOUT DESKTOP")
         lbl_title.setStyleSheet("font-size: 13px; font-weight: 800; letter-spacing: 0.5px; color: #f8fafc;")
         title_box.addWidget(lbl_title)
-        lbl_sub = QLabel("Autonomous Intelligence Companion Configuration & Health")
+        lbl_sub = QLabel("Autonomous Intelligence Companion Configuration & Fleet Telemetry")
         lbl_sub.setStyleSheet("font-size: 10px; color: #94a3b8;")
         title_box.addWidget(lbl_sub)
         header.addLayout(title_box)
@@ -313,6 +334,111 @@ class SettingsWindow(QWidget):
         conn_layout.addStretch()
         tabs.addTab(tab_conn, "Connection Status")
 
+        # Tab 4: Updates & Releases
+        tab_updates = QWidget()
+        up_layout = QVBoxLayout(tab_updates)
+        up_layout.setContentsMargins(16, 16, 16, 16)
+        up_layout.setSpacing(12)
+
+        # Release Info Box
+        u_box = QFrame()
+        u_box.setStyleSheet("background-color: #0b1120; border: 1px solid #1e293b; border-radius: 8px; padding: 12px;")
+        ub_layout = QVBoxLayout(u_box)
+        ub_layout.setSpacing(10)
+
+        row_v = QHBoxLayout()
+        v_title = QLabel("Scout Version:")
+        v_title.setStyleSheet("font-weight: 700; color: #cbd5e1; font-size: 12px;")
+        self.lbl_ver_val = QLabel(f"v{CURRENT_VERSION}")
+        self.lbl_ver_val.setStyleSheet("font-weight: 800; color: #f8fafc; font-size: 13px; margin-left: 4px;")
+        self.lbl_ver_badge = QLabel("✓ Up to date")
+        self.lbl_ver_badge.setStyleSheet("color: #10b981; background-color: rgba(16, 185, 129, 0.15); border-radius: 4px; padding: 2px 8px; font-weight: 700; font-size: 10px;")
+        row_v.addWidget(v_title)
+        row_v.addWidget(self.lbl_ver_val)
+        row_v.addWidget(self.lbl_ver_badge)
+        row_v.addStretch()
+        ub_layout.addLayout(row_v)
+
+        # Channel Selector
+        row_ch = QHBoxLayout()
+        lbl_ch = QLabel("Update Channel:")
+        lbl_ch.setStyleSheet("color: #94a3b8; font-weight: 600;")
+        self.combo_channel = QComboBox()
+        self.combo_channel.addItems(["Stable", "Beta", "Internal"])
+        cur_ch = (self.updater.channel if self.updater else "stable").capitalize()
+        idx = self.combo_channel.findText(cur_ch)
+        if idx >= 0:
+            self.combo_channel.setCurrentIndex(idx)
+        self.combo_channel.currentTextChanged.connect(self._on_channel_changed)
+        row_ch.addWidget(lbl_ch)
+        row_ch.addWidget(self.combo_channel)
+        row_ch.addStretch()
+        ub_layout.addLayout(row_ch)
+
+        # Auto-update options
+        self.chk_auto_download = QCheckBox("Download updates automatically in background")
+        self.chk_auto_download.setChecked(True)
+        ub_layout.addWidget(self.chk_auto_download)
+
+        self.chk_auto_restart = QCheckBox("Restart companion automatically after silent update")
+        self.chk_auto_restart.setChecked(True)
+        ub_layout.addWidget(self.chk_auto_restart)
+
+        # Check button & timestamp
+        row_check = QHBoxLayout()
+        btn_check = QPushButton("Check for Updates")
+        btn_check.clicked.connect(self._on_check_updates_clicked)
+        self.lbl_last_check = QLabel(f"Last checked: {datetime.now().strftime('%b %d, %Y %I:%M %p')}")
+        self.lbl_last_check.setStyleSheet("color: #94a3b8; font-size: 10px;")
+        row_check.addWidget(btn_check)
+        row_check.addWidget(self.lbl_last_check)
+        row_check.addStretch()
+        ub_layout.addLayout(row_check)
+
+        up_layout.addWidget(u_box)
+
+        # Card: New Version Available (Dynamic)
+        self.card_update = QFrame()
+        self.card_update.setStyleSheet("background-color: #0c1a30; border: 1px solid #38bdf8; border-radius: 8px; padding: 12px;")
+        cu_layout = QVBoxLayout(self.card_update)
+        cu_layout.setSpacing(6)
+        self.lbl_update_title = QLabel("New version available: Scout v2.1.0")
+        self.lbl_update_title.setStyleSheet("font-weight: 800; color: #38bdf8; font-size: 12px;")
+        cu_layout.addWidget(self.lbl_update_title)
+
+        self.lbl_update_notes = QLabel("• Improved background screen sampling\n• Cryptographic trust chain & signature verification\n• Resilient SQLite schema migration runner")
+        self.lbl_update_notes.setStyleSheet("color: #cbd5e1; font-size: 10px;")
+        cu_layout.addWidget(self.lbl_update_notes)
+
+        btn_update_now = QPushButton("Update Now")
+        btn_update_now.clicked.connect(self._on_update_now_clicked)
+        cu_layout.addWidget(btn_update_now)
+        self.card_update.hide()  # Hidden until update found
+        up_layout.addWidget(self.card_update)
+
+        # Card: Mandatory Update Required (Dynamic)
+        self.card_mandatory = QFrame()
+        self.card_mandatory.setStyleSheet("background-color: #2b0d0d; border: 1px solid #ef4444; border-radius: 8px; padding: 12px;")
+        cm_layout = QVBoxLayout(self.card_mandatory)
+        cm_layout.setSpacing(6)
+        lbl_mand_title = QLabel("⚠ Update Required — Your version is no longer supported")
+        lbl_mand_title.setStyleSheet("font-weight: 800; color: #ef4444; font-size: 12px;")
+        cm_layout.addWidget(lbl_mand_title)
+
+        self.lbl_mand_desc = QLabel("Your client version is below the minimum required floor. Update is required to resume profile capture.")
+        self.lbl_mand_desc.setStyleSheet("color: #fca5a5; font-size: 10px;")
+        cm_layout.addWidget(self.lbl_mand_desc)
+
+        btn_mand_update = QPushButton("Update Scout Now")
+        btn_mand_update.setObjectName("danger_btn")
+        btn_mand_update.clicked.connect(self._on_update_now_clicked)
+        cm_layout.addWidget(btn_mand_update)
+        self.card_mandatory.hide()  # Hidden until mandatory trigger
+        up_layout.addWidget(self.card_mandatory)
+
+        up_layout.addStretch()
+        tabs.addTab(tab_updates, "Updates & Releases")
+
         main_layout.addWidget(tabs)
 
         # Bottom Action Bar with Save + Close
@@ -333,8 +459,69 @@ class SettingsWindow(QWidget):
         # Load saved config values into spinboxes
         self._load_config_into_ui()
 
-        # Initial check
+        # Initial checks
         self.test_connection()
+        if self.updater:
+            self._sync_updater_ui()
+
+    def _sync_updater_ui(self):
+        """Synchronizes UI state with AutoUpdater model."""
+        if not self.updater:
+            return
+        self.lbl_ver_val.setText(f"v{self.updater.current_version}")
+        if self.updater.is_mandatory:
+            self.lbl_ver_badge.setText("⚠ Update Required")
+            self.lbl_ver_badge.setStyleSheet("color: #ef4444; background-color: rgba(239, 68, 68, 0.15); border-radius: 4px; padding: 2px 8px; font-weight: 700; font-size: 10px;")
+            self.card_mandatory.show()
+            self.card_update.hide()
+        elif self.updater.pending_version:
+            self.lbl_ver_badge.setText(f"● Update Available (v{self.updater.pending_version})")
+            self.lbl_ver_badge.setStyleSheet("color: #38bdf8; background-color: rgba(56, 189, 248, 0.15); border-radius: 4px; padding: 2px 8px; font-weight: 700; font-size: 10px;")
+            self.lbl_update_title.setText(f"New version available: Scout v{self.updater.pending_version}")
+            if self.updater.release_notes:
+                self.lbl_update_notes.setText(self.updater.release_notes)
+            self.card_update.show()
+            self.card_mandatory.hide()
+        else:
+            self.lbl_ver_badge.setText("✓ Up to date")
+            self.lbl_ver_badge.setStyleSheet("color: #10b981; background-color: rgba(16, 185, 129, 0.15); border-radius: 4px; padding: 2px 8px; font-weight: 700; font-size: 10px;")
+            self.card_update.hide()
+            self.card_mandatory.hide()
+
+    def _on_check_updates_clicked(self):
+        self.lbl_last_check.setText(f"Checking now...")
+        if self.updater:
+            manifest = self.updater.check_for_updates_now()
+            self.lbl_last_check.setText(f"Last checked: {datetime.now().strftime('%b %d, %Y %I:%M %p')}")
+            self._sync_updater_ui()
+            if not manifest:
+                QMessageBox.warning(self, "Update Check", "Unable to contact update server or manifest signature was invalid.")
+            elif not self.updater.pending_version and not self.updater.is_mandatory:
+                QMessageBox.information(self, "Up to Date", f"TalentOps Scout v{CURRENT_VERSION} is currently up to date.")
+        else:
+            self.lbl_last_check.setText(f"Last checked: {datetime.now().strftime('%b %d, %Y %I:%M %p')}")
+            QMessageBox.information(self, "Up to Date", f"TalentOps Scout v{CURRENT_VERSION} is currently up to date.")
+
+    def _on_channel_changed(self, channel_name: str):
+        ch = channel_name.lower()
+        if self.updater:
+            self.updater.channel = ch
+            self._on_check_updates_clicked()
+
+    def _on_update_now_clicked(self):
+        if self.updater:
+            if self.updater.downloaded_installer_path:
+                self.updater.apply_update_and_restart()
+            else:
+                manifest = self.updater.check_for_updates_now()
+                if manifest:
+                    ok = self.updater._download_and_verify(manifest)
+                    if ok:
+                        self.updater.apply_update_and_restart()
+                    else:
+                        QMessageBox.critical(self, "Update Failed", "Cryptographic verification or download failed.")
+        else:
+            QMessageBox.information(self, "Update", "Auto-updater not active in dev mode.")
 
     def _on_autostart_toggled(self, checked: bool):
         success = set_autostart_enabled(checked)
@@ -343,7 +530,6 @@ class SettingsWindow(QWidget):
             QMessageBox.warning(self, "Auto-Start Error", "Unable to update Windows startup registry.")
 
     def test_connection(self):
-        import time
         t0 = time.time()
         ok, res = self.backend.send_heartbeat(status="ACTIVE")
         elapsed = (time.time() - t0) * 1000
@@ -377,14 +563,17 @@ class SettingsWindow(QWidget):
                 self.spin_idle.setValue(int(config["idle_timeout_sec"]))
             if "audit_retention_sec" in config:
                 self.spin_ttl.setValue(int(config["audit_retention_sec"]))
+            if "update_channel" in config:
+                idx = self.combo_channel.findText(config["update_channel"].capitalize())
+                if idx >= 0:
+                    self.combo_channel.setCurrentIndex(idx)
         except Exception:
-            pass  # Config file may be malformed; use defaults
+            pass
 
     def _save_settings(self):
         """Persists all settings from UI controls to config.json."""
         config_path = self._get_config_path()
 
-        # Load existing config to preserve other keys
         config = {}
         if os.path.exists(config_path):
             try:
@@ -393,10 +582,10 @@ class SettingsWindow(QWidget):
             except Exception:
                 config = {}
 
-        # Update config with current UI values
         config["active_interval_sec"] = self.spin_rate.value()
         config["idle_timeout_sec"] = self.spin_idle.value()
         config["audit_retention_sec"] = self.spin_ttl.value()
+        config["update_channel"] = self.combo_channel.currentText().lower()
 
         try:
             with open(config_path, "w", encoding="utf-8") as f:

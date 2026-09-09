@@ -6,10 +6,12 @@ import toast from 'react-hot-toast'
 import { ShellCard, Badge, GhostButton } from './CommandCenter'
 import AnimatedNumber from './ui/AnimatedNumber'
 import AddScoutModal from './AddScoutModal'
+import FleetUpdateCenter from './FleetUpdateCenter'
 
 export default function ScoutNodesPanel() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [actionLoading, setActionLoading] = useState(null)
+  const [activeTab, setActiveTab] = useState('updates')
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['scout-nodes-telemetry'],
@@ -70,10 +72,10 @@ export default function ScoutNodesPanel() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-            Scout Node Fleet Management
+            Scout Fleet & Software Updates Center
           </h3>
           <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '2px 0 0' }}>
-            Active native desktop companion nodes streaming real-time candidate profiles.
+            Enterprise fleet telemetry, software release rollout cohorts, and real-time desktop companion streaming.
           </p>
         </div>
 
@@ -118,13 +120,64 @@ export default function ScoutNodesPanel() {
         </div>
       </div>
 
-      {/* Summary Header */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-        <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 18px' }}>
-          <div style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 2 }}>TOTAL SCOUT NODES</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}><AnimatedNumber value={totalNodes} /></div>
-          <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>Registered Desktop Clients</div>
-        </div>
+      {/* Navigation Tab Bar */}
+      <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid var(--border)', paddingBottom: 10 }}>
+        <button
+          onClick={() => setActiveTab('updates')}
+          style={{
+            padding: '8px 16px',
+            borderRadius: 8,
+            border: activeTab === 'updates' ? '1px solid #10b981' : '1px solid var(--border)',
+            background: activeTab === 'updates' ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
+            color: activeTab === 'updates' ? '#10b981' : 'var(--text-secondary)',
+            fontWeight: 700,
+            fontSize: 13,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <span>🚀 Fleet Updates & Rollouts</span>
+          <span style={{ fontSize: 10, background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', padding: '1px 6px', borderRadius: 4, fontWeight: 800 }}>CIRCUIT BREAKER</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('nodes')}
+          style={{
+            padding: '8px 16px',
+            borderRadius: 8,
+            border: activeTab === 'nodes' ? '1px solid #3b82f6' : '1px solid var(--border)',
+            background: activeTab === 'nodes' ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+            color: activeTab === 'nodes' ? '#38bdf8' : 'var(--text-secondary)',
+            fontWeight: 700,
+            fontSize: 13,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <span>🛰️ Live Node Streams</span>
+          <span style={{ fontSize: 11, background: '#1e293b', padding: '1px 6px', borderRadius: 10 }}>{totalNodes}</span>
+        </button>
+      </div>
+
+      {/* Tab 1: Fleet Update Center */}
+      {activeTab === 'updates' && (
+        <FleetUpdateCenter />
+      )}
+
+      {/* Tab 2: Live Nodes Stream */}
+      {activeTab === 'nodes' && (
+        <>
+          {/* Summary Header */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+            <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 18px' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 2 }}>TOTAL SCOUT NODES</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}><AnimatedNumber value={totalNodes} /></div>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>Registered Desktop Clients</div>
+            </div>
 
         <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 18px' }}>
           <div style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 2 }}>ACTIVE CONNECTED</div>
@@ -293,6 +346,8 @@ export default function ScoutNodesPanel() {
           </div>
         )}
       </div>
+      </>
+      )}
 
       {/* Add Scout Modal */}
       <AddScoutModal

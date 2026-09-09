@@ -90,6 +90,13 @@ def get_logs_dir() -> str:
     return logs_folder
 
 
+def get_state_dir() -> str:
+    """Returns absolute path to runtime state and telemetry directory in AppData."""
+    state_folder = os.path.join(get_app_data_dir(), "state")
+    os.makedirs(state_folder, exist_ok=True)
+    return state_folder
+
+
 def get_application_dir() -> str:
     """Returns the directory containing application binaries."""
     if getattr(sys, "frozen", False):

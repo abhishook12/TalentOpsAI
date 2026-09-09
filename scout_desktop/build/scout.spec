@@ -1,4 +1,14 @@
 # -*- mode: python ; coding: utf-8 -*-
+"""
+scout.spec — PyInstaller Specification for TalentOps Scout Dual-Binary Distribution.
+
+Produces:
+1. TalentOpsScout.exe: Main windowless GUI companion (IMAGE_SUBSYSTEM_WINDOWS_GUI, console=False).
+2. TalentOpsScoutUpdater.exe: Detached out-of-process updater helper binary (console=False).
+
+Both binaries are collected into the distribution folder without black console windows.
+"""
+
 import os
 import sys
 
@@ -16,6 +26,12 @@ hiddenimports = [
     'scout_desktop',
     'scout_desktop.app',
     'scout_desktop.core',
+    'scout_desktop.core.paths',
+    'scout_desktop.core.security',
+    'scout_desktop.core.updater',
+    'scout_desktop.core.updater_state',
+    'scout_desktop.core.migrations',
+    'scout_desktop.core.autostart',
     'scout_desktop.core.window_tracker',
     'scout_desktop.core.browser_tracker',
     'scout_desktop.core.visual_sampler',
@@ -54,9 +70,12 @@ hiddenimports = [
     'sqlite3',
     'urllib.parse',
     'gzip',
+    'cryptography',
+    'cryptography.hazmat.primitives.asymmetric.ed25519',
 ]
 
-a = Analysis(
+# ── 1. Main Scout Companion Binary ───────────────────────────────────────────
+a_scout = Analysis(
     [os.path.join(root_dir, 'entry.py')],
     pathex=[os.path.dirname(root_dir)],
     binaries=[],
@@ -72,11 +91,11 @@ a = Analysis(
     noarchive=False,
 )
 
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz_scout = PYZ(a_scout.pure, a_scout.zipped_data, cipher=block_cipher)
 
-exe = EXE(
-    pyz,
-    a.scripts,
+exe_scout = EXE(
+    pyz_scout,
+    a_scout.scripts,
     [],
     exclude_binaries=True,
     name='TalentOpsScout',
@@ -84,7 +103,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,  # CRITICAL: Suppresses the black terminal/console window
+    console=False,  # Suppresses black console window
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
@@ -93,11 +112,54 @@ exe = EXE(
     icon=os.path.join(root_dir, 'assets', 'logo.ico'),
 )
 
+# ── 2. Standalone Updater Helper Binary ──────────────────────────────────────
+a_updater = Analysis(
+    [os.path.join(root_dir, 'updater', 'updater_helper.py')],
+    pathex=[os.path.dirname(root_dir)],
+    binaries=[],
+    datas=[],
+    hiddenimports=['requests', 'json', 'shutil', 'subprocess', 'argparse', 'hashlib', 'sqlite3'],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=['tkinter', 'matplotlib', 'scipy', 'PySide6'],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=False,
+)
+
+pyz_updater = PYZ(a_updater.pure, a_updater.zipped_data, cipher=block_cipher)
+
+exe_updater = EXE(
+    pyz_updater,
+    a_updater.scripts,
+    [],
+    exclude_binaries=True,
+    name='TalentOpsScoutUpdater',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    console=False,  # Silent background helper
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon=os.path.join(root_dir, 'assets', 'logo.ico'),
+)
+
+# ── 3. Combined Distribution Collector ───────────────────────────────────────
 coll = COLLECT(
-    exe,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
+    exe_scout,
+    a_scout.binaries,
+    a_scout.zipfiles,
+    a_scout.datas,
+    exe_updater,
+    a_updater.binaries,
+    a_updater.zipfiles,
+    a_updater.datas,
     strip=False,
     upx=True,
     upx_exclude=[],

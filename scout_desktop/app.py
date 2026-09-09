@@ -47,6 +47,7 @@ from .ui.edge_handle import EdgeHandleWidget
 from .ui.diagnostics_window import DiagnosticsWindow
 from .ui.settings_window import SettingsWindow
 from .ui.activation_window import ActivationWindow
+from .core.updater import AutoUpdater
 
 class NullWriter:
     def write(self, text): pass
@@ -136,7 +137,12 @@ class ScoutDesktopApp:
         self.edge_handle = EdgeHandleWidget()
         self.tray = SystemTrayManager()
         self.diagnostics = DiagnosticsWindow()
-        self.settings_window = SettingsWindow(self.backend_client, self.local_queue)
+        self.updater = AutoUpdater(
+            api_base=self.backend_client.base_url,
+            device_id=self.backend_client.device_id,
+        )
+        self.updater.start()
+        self.settings_window = SettingsWindow(self.backend_client, self.local_queue, auto_updater=self.updater)
 
         self._connect_signals()
         self._init_timers()

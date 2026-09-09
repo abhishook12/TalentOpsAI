@@ -1,11 +1,15 @@
 ; Inno Setup Script for TalentOps Scout Desktop
 ; Creates a native single-file Windows installer: TalentOpsScoutSetup.exe
+; Bundles both TalentOpsScout.exe (main companion) and TalentOpsScoutUpdater.exe (independent updater helper).
+;
+; Persistent user state (%LOCALAPPDATA%\TalentOpsAI\Scout\) is strictly preserved across updates and uninstalls.
 
 #define MyAppName "TalentOps Scout"
 #define MyAppVersion "2.0.0"
 #define MyAppPublisher "TalentOps AI"
 #define MyAppURL "https://talentopsai-1.onrender.com"
 #define MyAppExeName "TalentOpsScout.exe"
+#define MyUpdaterExeName "TalentOpsScoutUpdater.exe"
 
 [Setup]
 AppId={{D37F291A-8B39-44F2-9C1D-8946E19E74A2}
@@ -34,6 +38,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "startup"; Description: "Launch TalentOps Scout automatically when Windows starts"; GroupDescription: "Startup:"
 
 [Files]
+; Distribute all binaries, including TalentOpsScout.exe and TalentOpsScoutUpdater.exe
 Source: "..\dist\TalentOpsScout\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
@@ -52,3 +57,7 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+
+[UninstallDelete]
+; Clean up app directory but NEVER touch persistent %LOCALAPPDATA%\TalentOpsAI\Scout
+Type: filesandordirs; Name: "{app}"

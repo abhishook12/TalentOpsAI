@@ -106,9 +106,28 @@ def create_rollback_backup(target_dir: str, backup_dir: str) -> bool:
         return False
 
 
+def _record_helper_state(state_name: str, error: str = None):
+    """Persists state to update_state.json so main application knows state on relaunch."""
+    try:
+        base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~\\AppData\\Local")
+        state_dir = os.path.join(base, "TalentOpsAI", "Scout", "state")
+        os.makedirs(state_dir, exist_ok=True)
+        state_file = os.path.join(state_dir, "update_state.json")
+        payload = {
+            "current_state": state_name,
+            "last_error": error,
+            "updated_at": time.time(),
+        }
+        with open(state_file, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2)
+    except Exception:
+        pass
+
+
 def restore_rollback_backup(backup_dir: str, target_dir: str) -> bool:
     """Restores application files from the backup directory back to the target directory."""
     logger.warning("[ROLLBACK] INITIATING AUTOMATIC ROLLBACK from '%s' -> '%s'...", backup_dir, target_dir)
+    _record_helper_state("ROLLBACK", "Update failed, restoring previous version")
     try:
         if not os.path.exists(backup_dir):
             logger.error("Rollback directory does not exist: %s", backup_dir)
@@ -127,6 +146,7 @@ def restore_rollback_backup(backup_dir: str, target_dir: str) -> bool:
                 shutil.copy2(src, dst)
 
         logger.info("[OK] Rollback restoration complete.")
+        _record_helper_state("STABLE", "Rollback successful, restored stable backup")
         return True
     except Exception as e:
         logger.error("[CRITICAL] Rollback failed: %s", e)

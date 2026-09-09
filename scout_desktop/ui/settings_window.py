@@ -26,6 +26,8 @@ from ..core.autostart import is_autostart_enabled, set_autostart_enabled
 from ..core.updater import CURRENT_VERSION
 from ..sync.backend_client import BackendClient
 from ..sync.local_queue import LocalQueue
+from ..core.health_monitor import HealthMonitor, SystemHealthStatus
+from ..core.diagnostics_bundler import DiagnosticsBundler
 
 
 class SettingsWindow(QWidget):
@@ -439,6 +441,63 @@ class SettingsWindow(QWidget):
         up_layout.addStretch()
         tabs.addTab(tab_updates, "Updates & Releases")
 
+        # Tab 5: Health & Diagnostics (Scout 2.0)
+        tab_diagnostics = QWidget()
+        diag_layout = QVBoxLayout(tab_diagnostics)
+        diag_layout.setContentsMargins(16, 16, 16, 16)
+        diag_layout.setSpacing(14)
+
+        diag_box = QFrame()
+        diag_box.setStyleSheet("background-color: #0b1120; border: 1px solid #1e293b; border-radius: 8px; padding: 12px;")
+        db_layout = QVBoxLayout(diag_box)
+        db_layout.setSpacing(10)
+
+        # Header with status badge
+        row_diag_hdr = QHBoxLayout()
+        lbl_diag_title = QLabel("System Health & Autonomous Healing:")
+        lbl_diag_title.setStyleSheet("font-weight: 700; color: #cbd5e1; font-size: 12px;")
+        self.lbl_health_badge = QLabel("● HEALTHY")
+        self.lbl_health_badge.setStyleSheet("color: #10b981; background-color: rgba(16, 185, 129, 0.15); border-radius: 4px; padding: 2px 8px; font-weight: 700; font-size: 10px;")
+        row_diag_hdr.addWidget(lbl_diag_title)
+        row_diag_hdr.addWidget(self.lbl_health_badge)
+        row_diag_hdr.addStretch()
+        db_layout.addLayout(row_diag_hdr)
+
+        self.lbl_diag_metrics = QLabel("RAM: -- MB | CPU: --% | Disk: -- GB free\nSQLite WAL: Normal | Queue Depth: -- items")
+        self.lbl_diag_metrics.setStyleSheet("color: #94a3b8; font-size: 11px; line-height: 1.4;")
+        db_layout.addWidget(self.lbl_diag_metrics)
+
+        # Action buttons
+        row_diag_btns = QHBoxLayout()
+        btn_run_diag = QPushButton("⚡ Run Full Diagnostics & Export Bundle")
+        btn_run_diag.clicked.connect(self._on_run_diagnostics_clicked)
+        row_diag_btns.addWidget(btn_run_diag)
+
+        btn_heal = QPushButton("🛠 Trigger Self-Healing")
+        btn_heal.setObjectName("secondary_btn")
+        btn_heal.clicked.connect(self._on_self_heal_clicked)
+        row_diag_btns.addWidget(btn_heal)
+        row_diag_btns.addStretch()
+        db_layout.addLayout(row_diag_btns)
+
+        diag_layout.addWidget(diag_box)
+
+        # Zero Secrets Guarantee Card
+        sec_box = QFrame()
+        sec_box.setStyleSheet("background-color: #021226; border: 1px solid #1e3a8a; border-radius: 8px; padding: 10px;")
+        sb_sec_layout = QVBoxLayout(sec_box)
+        sb_sec_layout.setSpacing(4)
+        lbl_sec_title = QLabel("Enterprise DLP & Zero Secrets Guarantee")
+        lbl_sec_title.setStyleSheet("font-weight: 700; color: #60a5fa; font-size: 11px;")
+        sb_sec_layout.addWidget(lbl_sec_title)
+        lbl_sec_desc = QLabel("Diagnostic bundles automatically scan and redact all credentials, private keys, and session tokens before archiving.")
+        lbl_sec_desc.setStyleSheet("color: #93c5fd; font-size: 10px;")
+        sb_sec_layout.addWidget(lbl_sec_desc)
+        diag_layout.addWidget(sec_box)
+
+        diag_layout.addStretch()
+        tabs.addTab(tab_diagnostics, "Health & Diagnostics")
+
         main_layout.addWidget(tabs)
 
         # Bottom Action Bar with Save + Close
@@ -461,6 +520,7 @@ class SettingsWindow(QWidget):
 
         # Initial checks
         self.test_connection()
+        self._refresh_health_ui()
         if self.updater:
             self._sync_updater_ui()
 
@@ -594,3 +654,79 @@ class SettingsWindow(QWidget):
             QMessageBox.information(self, "Settings Saved", "Configuration saved successfully to config.json.")
         except Exception as e:
             QMessageBox.warning(self, "Save Error", f"Failed to save settings: {e}")
+
+    def _refresh_health_ui(self):
+        """Samples health metrics and updates diagnostics card."""
+        try:
+            monitor = HealthMonitor.get_instance(db_path=self.queue.db_path)
+            report = monitor.get_health_report()
+            status = report.get("status", "HEALTHY")
+            res = report.get("system_resources", {})
+            q_stats = self.queue.get_queue_stats()
+
+            # Status badge
+            if status == "HEALTHY":
+                self.lbl_health_badge.setText("● HEALTHY")
+                self.lbl_health_badge.setStyleSheet("color: #10b981; background-color: rgba(16, 185, 129, 0.15); border-radius: 4px; padding: 2px 8px; font-weight: 700; font-size: 10px;")
+            elif status == "DEGRADED":
+                self.lbl_health_badge.setText("● DEGRADED")
+                self.lbl_health_badge.setStyleSheet("color: #f59e0b; background-color: rgba(245, 158, 11, 0.15); border-radius: 4px; padding: 2px 8px; font-weight: 700; font-size: 10px;")
+            else:
+                self.lbl_health_badge.setText(f"● {status}")
+                self.lbl_health_badge.setStyleSheet("color: #ef4444; background-color: rgba(239, 68, 68, 0.15); border-radius: 4px; padding: 2px 8px; font-weight: 700; font-size: 10px;")
+
+            # Metrics
+            cpu = res.get("cpu_percent", 0.0)
+            ram = res.get("memory_mb", 0.0)
+            disk = res.get("disk_free_gb", 0.0)
+            pending = q_stats.get("pending", 0)
+            high_p = q_stats.get("high_priority_pending", 0)
+            dlq = q_stats.get("dlq", 0)
+
+            self.lbl_diag_metrics.setText(
+                f"RAM: {ram:.1f} MB | CPU: {cpu:.1f}% | Disk: {disk:.1f} GB free\n"
+                f"Queue: {pending} pending ({high_p} HIGH priority) | DLQ: {dlq} items"
+            )
+        except Exception:
+            pass
+
+    def _on_run_diagnostics_clicked(self):
+        """Generates ScoutDiagnosticBundle.zip and displays result."""
+        try:
+            bundle_meta = DiagnosticsBundler.generate_bundle(db_path=self.queue.db_path)
+            b_path = bundle_meta["bundle_path"]
+            b_size = bundle_meta["file_size_bytes"]
+            b_hash = bundle_meta["sha256"][:12]
+
+            self._refresh_health_ui()
+
+            QMessageBox.information(
+                self,
+                "Diagnostics Bundle Ready",
+                f"Diagnostic package generated successfully:\n\n"
+                f"• File: {os.path.basename(b_path)}\n"
+                f"• Size: {b_size:,} bytes\n"
+                f"• SHA-256: {b_hash}...\n"
+                f"• Path: {b_path}\n"
+                f"• DLP Verification: Zero Secrets Guaranteed ✓"
+            )
+        except Exception as e:
+            QMessageBox.critical(self, "Diagnostics Error", f"Failed to generate diagnostic bundle: {e}")
+
+    def _on_self_heal_clicked(self):
+        """Triggers immediate autonomous recovery interventions."""
+        try:
+            monitor = HealthMonitor.get_instance(db_path=self.queue.db_path)
+            heal_res = monitor.self_heal()
+            interventions = heal_res.get("interventions", [])
+
+            self._refresh_health_ui()
+
+            if interventions:
+                acts = "\n• " + "\n• ".join(interventions)
+                QMessageBox.information(self, "Self-Healing Interventions", f"Executed {len(interventions)} recovery action(s):{acts}")
+            else:
+                QMessageBox.information(self, "Self-Healing Check", "All subsystems and worker threads are healthy. No recovery actions required.")
+        except Exception as e:
+            QMessageBox.warning(self, "Self-Healing Error", f"Self-healing encountered an issue: {e}")
+

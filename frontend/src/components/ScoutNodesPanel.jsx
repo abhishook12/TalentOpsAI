@@ -7,6 +7,7 @@ import { ShellCard, Badge, GhostButton } from './CommandCenter'
 import AnimatedNumber from './ui/AnimatedNumber'
 import AddScoutModal from './AddScoutModal'
 import FleetUpdateCenter from './FleetUpdateCenter'
+import OperationsConsole from './OperationsConsole'
 
 export default function ScoutNodesPanel() {
   const [showAddModal, setShowAddModal] = useState(false)
@@ -160,6 +161,26 @@ export default function ScoutNodesPanel() {
         >
           <span>🛰️ Live Node Streams</span>
           <span style={{ fontSize: 11, background: '#1e293b', padding: '1px 6px', borderRadius: 10 }}>{totalNodes}</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('operations')}
+          style={{
+            padding: '8px 16px',
+            borderRadius: 8,
+            border: activeTab === 'operations' ? '1px solid #a855f7' : '1px solid var(--border)',
+            background: activeTab === 'operations' ? 'rgba(168, 85, 247, 0.15)' : 'transparent',
+            color: activeTab === 'operations' ? '#c084fc' : 'var(--text-secondary)',
+            fontWeight: 700,
+            fontSize: 13,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <span>⚡ Operations & Kill Switches</span>
+          <span style={{ fontSize: 10, background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc', padding: '1px 6px', borderRadius: 4, fontWeight: 800 }}>SCOUT 2.0</span>
         </button>
       </div>
 
@@ -347,6 +368,11 @@ export default function ScoutNodesPanel() {
         )}
       </div>
       </>
+      )}
+
+      {/* Tab 3: Operations & Remote Kill Switches */}
+      {activeTab === 'operations' && (
+        <OperationsConsole />
       )}
 
       {/* Add Scout Modal */}

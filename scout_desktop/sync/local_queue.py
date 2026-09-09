@@ -1,24 +1,31 @@
 """
-sync/local_queue.py — Offline-Resilient Local Observation Queue
+sync/local_queue.py — Offline-Resilient Local Observation & Priority Queue (Scout 2.0)
 
-SQLite storage buffer for structured observations and candidate clusters.
-Guarantees zero data loss during network interruptions.
+SQLite storage buffer for structured observations, delta packets, and candidate clusters.
+Guarantees zero data loss during network interruptions, enforces DLP redaction before disk write,
+supports HIGH/MEDIUM/LOW priority scheduling, and uses exponential backoff with jitter.
 """
 
-import os
+from __future__ import annotations
+
+import hashlib
 import json
+import logging
+import os
+import random
 import sqlite3
 import time
-import logging
-import hashlib
-from typing import List, Dict, Any, Optional
 from contextlib import contextmanager
+from typing import Any, Dict, List, Optional
+
+from scout_desktop.core.dlp_engine import DLPEngine
 
 logger = logging.getLogger("scout.local_queue")
 
 MAX_RETRIES = 5
 BASE_BACKOFF_SEC = 10
 MAX_BACKOFF_SEC = 300
+
 
 class LocalQueue:
     def __init__(self, db_path: Optional[str] = None):
@@ -59,59 +66,116 @@ class LocalQueue:
                     created_at REAL NOT NULL,
                     synced_at REAL,
                     retry_count INTEGER DEFAULT 0,
-                    error_msg TEXT
+                    error_msg TEXT,
+                    priority TEXT DEFAULT 'MEDIUM', -- HIGH | MEDIUM | LOW
+                    operation TEXT DEFAULT 'INSERT', -- INSERT | UPDATE | DELTA
+                    content_hash TEXT,
+                    next_retry_at REAL,
+                    dlq_reason TEXT
                 )
             """)
-            
-            # Migration
-            try:
-                conn.execute("ALTER TABLE queued_observations ADD COLUMN content_hash TEXT")
-            except sqlite3.OperationalError:
-                pass
-            try:
-                conn.execute("ALTER TABLE queued_observations ADD COLUMN next_retry_at REAL")
-            except sqlite3.OperationalError:
-                pass
+
+            # Migrations for existing databases
+            columns = [
+                ("content_hash", "TEXT"),
+                ("next_retry_at", "REAL"),
+                ("priority", "TEXT DEFAULT 'MEDIUM'"),
+                ("operation", "TEXT DEFAULT 'INSERT'"),
+                ("dlq_reason", "TEXT"),
+            ]
+            for col_name, col_type in columns:
+                try:
+                    conn.execute(f"ALTER TABLE queued_observations ADD COLUMN {col_name} {col_type}")
+                except sqlite3.OperationalError:
+                    pass
 
             conn.execute("CREATE INDEX IF NOT EXISTS idx_status ON queued_observations(status)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_priority ON queued_observations(priority)")
             conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_content_hash ON queued_observations(content_hash)")
             conn.commit()
 
-    def enqueue_cluster(self, cluster_dict: Dict[str, Any]) -> int:
-        """Enqueues structured entity cluster for upload."""
-        canonical_name = cluster_dict.get("canonical_name") or cluster_dict.get("recruiter_name", "")
-        company_name = cluster_dict.get("company_name", "")
-        source_url = cluster_dict.get("source_url") or cluster_dict.get("linkedin_url", "")
-        hash_str = f"{canonical_name}|{company_name}|{source_url}"
+    def enqueue_cluster(
+        self,
+        cluster_dict: Dict[str, Any],
+        priority: str = "MEDIUM",
+        operation: str = "INSERT",
+    ) -> int:
+        """
+        Enqueues structured entity cluster or delta packet for synchronization.
+        Enforces DLP redaction on edge before disk persistence.
+        Returns queue record ID or -1 if duplicate.
+        """
+        # DLP Redaction: Strip secrets before persisting to disk
+        safe_dict = DLPEngine.redact_dict(cluster_dict)
+
+        canonical_name = safe_dict.get("canonical_name") or safe_dict.get("recruiter_name", "")
+        company_name = safe_dict.get("company_name") or safe_dict.get("company", "")
+        source_url = safe_dict.get("source_url") or safe_dict.get("linkedin_url", "")
+        packet_id = safe_dict.get("packet_id", "")
+
+        # Compute deterministic content hash
+        hash_str = f"{packet_id}|{canonical_name}|{company_name}|{source_url}|{operation}"
         content_hash = hashlib.sha256(hash_str.encode("utf-8")).hexdigest()
-        
-        payload_str = json.dumps(cluster_dict)
+
+        payload_str = json.dumps(safe_dict)
         now = time.time()
-        
+        norm_priority = priority.upper() if priority else "MEDIUM"
+        if norm_priority not in ("HIGH", "MEDIUM", "LOW"):
+            norm_priority = "MEDIUM"
+
         with self._get_conn() as conn:
-            # Deduplication
+            # Deduplication: check if identical record was queued recently
             cur = conn.execute("""
                 SELECT 1 FROM queued_observations 
                 WHERE content_hash = ? AND (status = 'PENDING' OR (status = 'SYNCED' AND synced_at >= ?))
             """, (content_hash, now - 86400))
             if cur.fetchone():
-                logger.info(f"Duplicate observation detected, skipping insertion: {content_hash}")
+                logger.info("Duplicate observation detected, skipping insertion: %s", content_hash)
                 return -1
 
             cur = conn.execute(
-                "INSERT INTO queued_observations (cluster_json, status, created_at, content_hash) VALUES (?, 'PENDING', ?, ?)",
-                (payload_str, now, content_hash),
+                """
+                INSERT INTO queued_observations (
+                    cluster_json, status, created_at, content_hash, priority, operation
+                ) VALUES (?, 'PENDING', ?, ?, ?, ?)
+                """,
+                (payload_str, now, content_hash, norm_priority, operation),
             )
             conn.commit()
             return cur.lastrowid
 
+    def enqueue_packet(
+        self,
+        packet_dict: Dict[str, Any],
+        priority: str = "MEDIUM",
+        operation: str = "INSERT",
+    ) -> int:
+        """Alias for intelligence packet enqueueing."""
+        return self.enqueue_cluster(packet_dict, priority=priority, operation=operation)
+
     def get_pending_batch(self, limit: int = 25) -> List[Dict[str, Any]]:
-        """Fetches up to `limit` pending clusters for synchronization."""
+        """
+        Fetches up to `limit` pending items for synchronization.
+        Strictly orders by priority (HIGH -> MEDIUM -> LOW), respecting exponential backoff.
+        """
         results = []
         now = time.time()
         with self._get_conn() as conn:
             cur = conn.execute(
-                "SELECT id, cluster_json, retry_count FROM queued_observations WHERE status = 'PENDING' AND (next_retry_at IS NULL OR next_retry_at <= ?) ORDER BY id ASC LIMIT ?",
+                """
+                SELECT id, cluster_json, retry_count, priority, operation 
+                FROM queued_observations 
+                WHERE status = 'PENDING' AND (next_retry_at IS NULL OR next_retry_at <= ?)
+                ORDER BY 
+                    CASE priority 
+                        WHEN 'HIGH' THEN 1 
+                        WHEN 'MEDIUM' THEN 2 
+                        WHEN 'LOW' THEN 3 
+                        ELSE 4 
+                    END ASC, 
+                    id ASC 
+                LIMIT ?
+                """,
                 (now, limit),
             )
             for row in cur.fetchall():
@@ -119,9 +183,11 @@ class LocalQueue:
                     data = json.loads(row[1])
                     data["_local_queue_id"] = row[0]
                     data["_retry_count"] = row[2]
+                    data["_priority"] = row[3] or "MEDIUM"
+                    data["_operation"] = row[4] or "INSERT"
                     results.append(data)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning("Failed to deserialize queued observation %s: %s", row[0], e)
         return results
 
     def mark_batch_synced(self, queue_ids: List[int]):
@@ -137,7 +203,10 @@ class LocalQueue:
             conn.commit()
 
     def mark_batch_failed(self, queue_ids: List[int], error_msg: str):
-        """Increments retry count on failure and applies exponential backoff."""
+        """
+        Increments retry count on failure and applies exponential backoff with jitter.
+        After MAX_RETRIES, transitions records into Dead-Letter Queue (DLQ).
+        """
         if not queue_ids:
             return
         now = time.time()
@@ -148,27 +217,29 @@ class LocalQueue:
                 if not row:
                     continue
                 retry_count = row[0]
-                
+
                 if retry_count >= MAX_RETRIES:
                     conn.execute(
-                        "UPDATE queued_observations SET status = 'DLQ', error_msg = ? WHERE id = ?",
-                        (str(error_msg)[:200], qid)
+                        "UPDATE queued_observations SET status = 'DLQ', error_msg = ?, dlq_reason = ? WHERE id = ?",
+                        (str(error_msg)[:200], f"Exceeded {MAX_RETRIES} retries", qid),
                     )
                 else:
-                    backoff = min(MAX_BACKOFF_SEC, BASE_BACKOFF_SEC * (2 ** retry_count))
+                    # Exponential backoff with random jitter: base * (2^retry) + jitter(0.1, 1.5)
+                    jitter = random.uniform(0.1, 1.5)
+                    backoff = min(MAX_BACKOFF_SEC, (BASE_BACKOFF_SEC * (2 ** retry_count)) + jitter)
                     next_retry_at = now + backoff
                     conn.execute(
                         "UPDATE queued_observations SET retry_count = retry_count + 1, error_msg = ?, next_retry_at = ? WHERE id = ?",
-                        (str(error_msg)[:200], next_retry_at, qid)
+                        (str(error_msg)[:200], next_retry_at, qid),
                     )
             conn.commit()
 
     def get_dlq_items(self) -> List[Dict[str, Any]]:
-        """Returns items in DLQ status for manual review."""
+        """Returns items in DLQ status for manual review or diagnostics."""
         results = []
         with self._get_conn() as conn:
             cur = conn.execute(
-                "SELECT id, cluster_json, retry_count, error_msg FROM queued_observations WHERE status = 'DLQ' ORDER BY id ASC"
+                "SELECT id, cluster_json, retry_count, error_msg, dlq_reason FROM queued_observations WHERE status = 'DLQ' ORDER BY id ASC"
             )
             for row in cur.fetchall():
                 try:
@@ -176,6 +247,7 @@ class LocalQueue:
                     data["_local_queue_id"] = row[0]
                     data["_retry_count"] = row[2]
                     data["_error_msg"] = row[3]
+                    data["_dlq_reason"] = row[4]
                     results.append(data)
                 except Exception:
                     pass
@@ -185,18 +257,21 @@ class LocalQueue:
         """Resets a DLQ item back to PENDING with retry_count=0."""
         with self._get_conn() as conn:
             conn.execute(
-                "UPDATE queued_observations SET status = 'PENDING', retry_count = 0, next_retry_at = NULL WHERE id = ?",
-                (queue_id,)
+                "UPDATE queued_observations SET status = 'PENDING', retry_count = 0, next_retry_at = NULL, dlq_reason = NULL WHERE id = ?",
+                (queue_id,),
             )
             conn.commit()
 
     def get_queue_stats(self) -> Dict[str, int]:
-        """Returns pending, synced today, and failed counts."""
+        """Returns pending, priority breakdown, synced today, failed, and dlq counts."""
         now = time.time()
         today_start = now - (now % 86400)
         with self._get_conn() as conn:
             cur = conn.execute("SELECT status, count(*) FROM queued_observations GROUP BY status")
             counts = dict(cur.fetchall())
+
+            cur_prio = conn.execute("SELECT priority, count(*) FROM queued_observations WHERE status = 'PENDING' GROUP BY priority")
+            prio_counts = dict(cur_prio.fetchall())
 
             cur_today = conn.execute(
                 "SELECT count(*) FROM queued_observations WHERE status = 'SYNCED' AND synced_at >= ?",
@@ -206,6 +281,9 @@ class LocalQueue:
 
             return {
                 "pending": counts.get("PENDING", 0),
+                "high_priority_pending": prio_counts.get("HIGH", 0),
+                "medium_priority_pending": prio_counts.get("MEDIUM", 0),
+                "low_priority_pending": prio_counts.get("LOW", 0),
                 "synced_today": synced_today,
                 "failed": counts.get("FAILED", 0),
                 "dlq": counts.get("DLQ", 0),

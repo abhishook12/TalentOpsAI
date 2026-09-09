@@ -620,7 +620,7 @@ export default function Settings() {
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                   <button
                     onClick={() => {
-                      const downloadUrl = 'https://talentopsai-1.onrender.com/scout/download/setup';
+                      const downloadUrl = 'https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe';
                       const a = document.createElement('a');
                       a.href = downloadUrl;
                       a.download = 'TalentOpsScoutSetup.exe';

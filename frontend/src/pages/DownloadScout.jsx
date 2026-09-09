@@ -12,7 +12,7 @@ export default function DownloadScout() {
 
   const handleDownload = () => {
     setDownloading(true);
-    const downloadUrl = 'https://talentopsai-1.onrender.com/scout/download/setup';
+    const downloadUrl = 'https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe';
     const a = document.createElement('a');
     a.href = downloadUrl;
     a.download = 'TalentOpsScoutSetup.exe';

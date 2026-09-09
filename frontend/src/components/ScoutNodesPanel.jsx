@@ -91,7 +91,7 @@ export default function ScoutNodesPanel() {
           </button>
 
           <a
-            href="https://talentopsai-1.onrender.com/scout/download/setup"
+            href="https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe"
             download="TalentOpsScoutSetup.exe"
             style={{
               padding: '8px 14px', background: '#334155', color: '#f8fafc',

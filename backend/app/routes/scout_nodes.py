@@ -376,7 +376,7 @@ def get_latest_scout_release():
         "app_name": "TalentOps Scout Desktop",
         "platform": "windows-x64",
         "installer_name": "TalentOpsScoutSetup.exe",
-        "download_url": "https://talentopsai-1.onrender.com/scout/download/setup",
+        "download_url": "https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe",
         "release_date": "2026-09-09",
         "release_notes": "Official release of TalentOps Scout Desktop replacing browser extension. Includes native Win32 window tracking, offline Windows OCR, regional visual diffing, local SQLite buffer queue, and zero-touch continuous background ingestion.",
         "mandatory": False,
@@ -409,6 +409,7 @@ def download_scout_installer():
                 },
             )
 
-    # Cloud container fallback (Render runs Linux where local exe is hosted via release assets)
-    github_release_url = "https://github.com/abhishook12/TalentOpsAI/releases/latest/download/TalentOpsScoutSetup.exe"
-    return RedirectResponse(url=github_release_url, status_code=307)
+    # Cloud storage fallback (Supabase public CDN - 100% accessible to anyone without GitHub account)
+    supabase_cdn_url = "https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe"
+    return RedirectResponse(url=supabase_cdn_url, status_code=302)
+

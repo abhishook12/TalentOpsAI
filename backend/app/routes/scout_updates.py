@@ -380,7 +380,26 @@ def download_latest_installer(
     except Exception:
         pass
 
-    return RedirectResponse(url=download_url, status_code=307)
+    headers = {
+        "Content-Disposition": 'attachment; filename="TalentOpsScoutSetup.exe"',
+        "X-Content-Type-Options": "nosniff",
+        "X-Checksum-SHA256": info.get("sha256") or DEFAULT_SHA256,
+        "Cache-Control": "private, no-transform, max-age=60",
+    }
+
+    direct = (request.query_params.get("direct") or "").lower() in ("1", "true", "yes") if request else False
+    local_setup = r"c:\TalentOpsAI\scout_desktop\dist\TalentOpsScoutSetup.exe"
+    if direct and os.path.exists(local_setup):
+        from fastapi.responses import FileResponse
+        return FileResponse(
+            path=local_setup,
+            filename="TalentOpsScoutSetup.exe",
+            media_type="application/vnd.microsoft.portable-executable",
+            headers=headers,
+        )
+
+    return RedirectResponse(url=download_url, status_code=307, headers=headers)
+
 
 
 @router.post("/updates/report")

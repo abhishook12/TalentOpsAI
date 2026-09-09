@@ -15,8 +15,10 @@ Orchestrates:
 import os
 import sys
 import time
+import json
 import uuid
 import logging
+import tempfile
 import threading
 from typing import Optional, Dict, Any, List, Tuple
 
@@ -235,6 +237,164 @@ class ScoutDesktopApp:
         self.heartbeat_timer.timeout.connect(self._send_heartbeat)
         self.heartbeat_timer.start(20000)
 
+    def _check_and_consume_installation_claim(self) -> bool:
+        """
+        Checks for a short-lived installation claim passed via:
+        1. Deep link protocol: talentopsscout://claim?claim_id=CLM-...&claim_secret=...
+        2. CLI flags: --claim-id CLM-... --claim-secret ...
+        3. Bootstrap file: %TEMP%/talentops_scout_claim.json or %LOCALAPPDATA%/TalentOpsAI/Scout/install_claim.json
+        Returns True if claim was successfully consumed and authenticated.
+        """
+        claim_id = None
+        claim_secret = None
+
+        # 1. Check CLI args / deep link
+        for i, arg in enumerate(sys.argv[1:]):
+            if "talentopsscout://" in arg:
+                import urllib.parse
+                try:
+                    parsed = urllib.parse.urlparse(arg)
+                    qs = urllib.parse.parse_qs(parsed.query)
+                    if "claim_id" in qs and "claim_secret" in qs:
+                        claim_id = qs["claim_id"][0]
+                        claim_secret = qs["claim_secret"][0]
+                        break
+                except Exception as e:
+                    logger.debug("Failed to parse claim deep link: %s", e)
+            elif arg in ("--claim-id", "-claim") and i + 2 < len(sys.argv):
+                claim_id = sys.argv[i + 2]
+            elif arg in ("--claim-secret", "-secret") and i + 2 < len(sys.argv):
+                claim_secret = sys.argv[i + 2]
+
+        # 2. Check local bootstrap claim files
+        candidate_paths = [
+            os.path.join(tempfile.gettempdir(), "talentops_scout_claim.json"),
+            os.path.join(tempfile.gettempdir(), "talentops_claim.json"),
+            os.path.join(os.environ.get("LOCALAPPDATA", ""), "TalentOpsAI", "Scout", "install_claim.json"),
+        ]
+        if not (claim_id and claim_secret):
+            for c_path in candidate_paths:
+                if c_path and os.path.exists(c_path):
+                    try:
+                        with open(c_path, "r", encoding="utf-8") as f:
+                            c_data = json.load(f)
+                            if c_data.get("claim_id") and c_data.get("claim_secret"):
+                                claim_id = c_data["claim_id"]
+                                claim_secret = c_data["claim_secret"]
+                                logger.info("Found bootstrap claim in %s: %s", c_path, claim_id)
+                                break
+                    except Exception as e:
+                        logger.debug("Failed reading claim file %s: %s", c_path, e)
+
+        if claim_id and claim_secret:
+            logger.info("Auto-consuming installation claim: %s", claim_id)
+            ok, data = self.backend_client.register_with_claim(claim_id, claim_secret)
+            if ok:
+                # Cleanup bootstrap file after consumption
+                for c_path in candidate_paths:
+                    try:
+                        if c_path and os.path.exists(c_path):
+                            os.remove(c_path)
+                    except Exception:
+                        pass
+                self._on_activation_complete(data)
+                return True
+            else:
+                logger.warning("Failed to auto-consume installation claim: %s", data.get("error"))
+
+        return False
+
+    def _start_loopback_claim_server(self):
+        """
+        Starts a background HTTP loopback server on 127.0.0.1:49152.
+        Allows the web browser on the download page to push the installation claim
+        directly to Scout without requiring any manual typing.
+        """
+        if getattr(self, "_loopback_server", None):
+            return
+
+        from http.server import HTTPServer, BaseHTTPRequestHandler
+
+        app_ref = self
+
+        class LoopbackHandler(BaseHTTPRequestHandler):
+            def log_message(self, format, *args):
+                return  # Silence server log output
+
+            def _send_cors(self, status=200):
+                self.send_response(status)
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+                self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+
+            def do_OPTIONS(self):
+                self._send_cors(204)
+
+            def do_GET(self):
+                if "/handshake" in self.path:
+                    self._send_cors(200)
+                    resp = {
+                        "app": "TalentOps Scout Desktop",
+                        "version": "2.0.0",
+                        "device_id": app_ref.backend_client.device_id,
+                        "status": "REGISTRATION_PENDING" if not app_ref.backend_client.is_authenticated() else "AUTHENTICATED",
+                        "is_authenticated": app_ref.backend_client.is_authenticated(),
+                    }
+                    self.wfile.write(json.dumps(resp).encode("utf-8"))
+                else:
+                    self._send_cors(404)
+                    self.wfile.write(b'{"error": "not found"}')
+
+            def do_POST(self):
+                if "/claim" in self.path:
+                    try:
+                        content_len = int(self.headers.get("Content-Length", 0))
+                        body = self.rfile.read(content_len).decode("utf-8")
+                        payload = json.loads(body)
+                        c_id = payload.get("claim_id")
+                        c_sec = payload.get("claim_secret")
+
+                        if not (c_id and c_sec):
+                            self._send_cors(400)
+                            self.wfile.write(b'{"error": "claim_id and claim_secret required"}')
+                            return
+
+                        ok, data = app_ref.backend_client.register_with_claim(c_id, c_sec)
+                        if ok:
+                            self._send_cors(200)
+                            self.wfile.write(json.dumps({
+                                "ok": True,
+                                "status": "REGISTERED",
+                                "user_email": data.get("user_email"),
+                                "device_id": data.get("device_id"),
+                            }).encode("utf-8"))
+                            # Trigger GUI activation completion on Qt main thread
+                            QTimer.singleShot(0, lambda: app_ref._on_activation_complete(data))
+                        else:
+                            self._send_cors(403)
+                            self.wfile.write(json.dumps({"ok": False, "error": data.get("error")}).encode("utf-8"))
+                    except Exception as err:
+                        self._send_cors(500)
+                        self.wfile.write(json.dumps({"error": str(err)}).encode("utf-8"))
+                else:
+                    self._send_cors(404)
+                    self.wfile.write(b'{"error": "not found"}')
+
+        def _run():
+            try:
+                server = HTTPServer(("127.0.0.1", 49152), LoopbackHandler)
+                app_ref._loopback_server = server
+                logger.info("⚡ Scout loopback claim listener active on 127.0.0.1:49152")
+                while not app_ref.backend_client.is_authenticated():
+                    server.handle_request()
+                server.server_close()
+            except Exception as e:
+                logger.debug("Loopback server closed or port unavailable: %s", e)
+
+        threading.Thread(target=_run, daemon=True, name="ScoutLoopbackServer").start()
+
     def start(self):
         """
         Starts the autonomous desktop scout with visible startup progression:
@@ -245,36 +405,45 @@ class ScoutDesktopApp:
         self.edge_handle.show()
         self.main_window.show()
 
-        # Check deep link or CLI activation code
-        deep_code = None
-        for arg in sys.argv[1:]:
-            if "talentopsscout://" in arg:
-                import urllib.parse
-                try:
-                    parsed = urllib.parse.urlparse(arg)
-                    qs = urllib.parse.parse_qs(parsed.query)
-                    if "code" in qs:
-                        deep_code = qs["code"][0]
-                except Exception as e:
-                    logger.debug("Failed to parse deep link: %s", e)
-            elif arg.startswith("TOS-"):
-                deep_code = arg
+        # Step 0: Check for One-Click Installation Claim or Legacy Code
+        claimed = self._check_and_consume_installation_claim()
+        if not claimed:
+            deep_code = None
+            for arg in sys.argv[1:]:
+                if "talentopsscout://" in arg and "code=" in arg:
+                    import urllib.parse
+                    try:
+                        parsed = urllib.parse.urlparse(arg)
+                        qs = urllib.parse.parse_qs(parsed.query)
+                        if "code" in qs:
+                            deep_code = qs["code"][0]
+                    except Exception as e:
+                        logger.debug("Failed to parse deep link: %s", e)
+                elif arg.startswith("TOS-"):
+                    deep_code = arg
 
-        if deep_code:
-            logger.info("Found activation code in launch argument: %s", deep_code)
-            self.backend_client.activate_with_code(deep_code)
+            if deep_code:
+                logger.info("Found activation code in launch argument: %s", deep_code)
+                self.backend_client.activate_with_code(deep_code)
 
+        # Step 0.5: If unauthenticated, transition to REGISTRATION_PENDING & launch loopback server
         if not self.backend_client.is_authenticated():
-            logger.info("Scout unauthenticated: displaying first-run activation modal")
+            logger.info("Scout unauthenticated: transitioning to REGISTRATION_PENDING state and launching loopback listener")
+            self._start_loopback_claim_server()
             self.activation_window = ActivationWindow(self.backend_client, parent=self.main_window)
             self.activation_window.activation_successful.connect(self._on_activation_complete)
             self.activation_window.show()
+            self.main_window.update_status_state("REGISTRATION_PENDING")
+            self.edge_handle.set_status_state("PENDING")
+            self.tray.update_icon_status("PENDING")
+            self.bridge.event_logged.emit("REGISTRATION_PENDING", "Waiting for one-click pairing from browser...")
 
         # Update environment badge
         self.main_window.update_environment(
             self.backend_client.environment_name,
             self.backend_client.active_api_base
         )
+
 
         # Step 1: STARTING
         self.main_window.update_status_state("STARTING")
@@ -746,6 +915,10 @@ class ScoutDesktopApp:
 
     def _async_flush_worker(self):
         """Executes HTTP network flush in background worker thread."""
+        if not self.backend_client.is_authenticated():
+            logger.debug("Database upload deferred: Scout Desktop is in REGISTRATION_PENDING state")
+            return
+
         self._is_flushing = True
         try:
             pending = self.local_queue.get_pending_batch(limit=20)
@@ -805,6 +978,10 @@ class ScoutDesktopApp:
 
     def _async_heartbeat_worker(self):
         """Executes HTTP heartbeat ping in background worker thread."""
+        if not self.backend_client.is_authenticated():
+            logger.debug("Heartbeat deferred: Scout Desktop is in REGISTRATION_PENDING state")
+            return
+
         self._is_heartbeating = True
         try:
             b_ctx = self.current_browser_context
@@ -814,6 +991,7 @@ class ScoutDesktopApp:
                     "state": self.sampler.state,
                     "captured": self.cnt_captured,
                     "analyzed": self.cnt_analyzed,
+
                     "useful": self.cnt_useful,
                     "staged": self.cnt_staged,
                     "observed": self.cnt_observed,

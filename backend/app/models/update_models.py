@@ -112,3 +112,33 @@ class ScoutInstallation(Base):
     last_update_check = Column(TIMESTAMP, nullable=True)
     last_update_at = Column(TIMESTAMP, nullable=True)
     last_successful_update = Column(TIMESTAMP, nullable=True)
+
+
+class ScoutInstallationClaim(Base):
+    """
+    Short-lived, one-time installation claims for zero-friction desktop onboarding.
+    Generated when an authenticated web user initiates a Scout download.
+    Scout Desktop auto-consumes the claim on launch to bind the installation
+    to the user's account without requiring manual pairing codes.
+    """
+    __tablename__ = "scout_installation_claims"
+
+    id = Column(Integer, primary_key=True, index=True)
+    claim_id = Column(String(64), unique=True, index=True, nullable=False)     # e.g. "CLM-4A8F-9C12-E7B3"
+    claim_token_hash = Column(String(128), nullable=False)                    # SHA-256 hash of one-time secret
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    tenant_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    status = Column(String(32), default="CREATED", index=True, nullable=False) # CREATED, CONSUMED, EXPIRED, REVOKED
+    
+    # Audit & Device Binding
+    device_id = Column(String(64), nullable=True, index=True)
+    hostname = Column(String(128), nullable=True)
+    os_info = Column(String(100), nullable=True)
+    ip_address = Column(String(64), nullable=True)
+    user_agent = Column(String(300), nullable=True)
+
+    # Lifespan
+    created_at = Column(TIMESTAMP, server_default=func.now(), index=True)
+    expires_at = Column(TIMESTAMP, nullable=False, index=True)
+    used_at = Column(TIMESTAMP, nullable=True)
+

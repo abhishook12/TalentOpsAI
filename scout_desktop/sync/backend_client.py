@@ -118,6 +118,48 @@ class BackendClient:
         """Returns True if device has a stored authentication token."""
         return bool(self.auth_token)
 
+    def register_with_claim(
+        self,
+        claim_id: str,
+        claim_secret: str,
+        hostname: Optional[str] = None,
+        os_info: Optional[str] = None,
+        scout_version: Optional[str] = "2.0.0",
+    ) -> Tuple[bool, Dict[str, Any]]:
+        """
+        Consumes a short-lived one-time installation claim to auto-register this Scout instance.
+        Stores issued JWT token, scout_id, user_email, and user_name to local configuration.
+        Zero manual code typing required.
+        """
+        url = f"{self.active_api_base}/scout/install/register"
+        host = hostname or os.environ.get("COMPUTERNAME", "Windows Desktop")
+        payload = {
+            "claim_id": claim_id.strip(),
+            "claim_secret": claim_secret.strip(),
+            "device_id": self.device_id,
+            "hostname": host,
+            "os_info": os_info or sys.platform,
+            "scout_version": scout_version or "2.0.0",
+        }
+        try:
+            res = requests.post(url, json=payload, timeout=12.0)
+            data = res.json() if res.content else {}
+            if res.status_code == 200 and data.get("access_token"):
+                token = data["access_token"]
+                scout_id = data.get("scout_id", self.device_id)
+                u_email = data.get("user_email")
+                u_name = data.get("user_name")
+                self._save_credentials_to_config(token, scout_id=scout_id, user_email=u_email, user_name=u_name)
+                logger.info("🎉 Scout Desktop auto-registered successfully via installation claim! user=%s (%s)", u_name, u_email)
+                return True, data
+            else:
+                err_msg = data.get("detail") or f"Registration failed (HTTP {res.status_code})"
+                logger.warning("Scout claim registration rejected: %s", err_msg)
+                return False, {"error": err_msg}
+        except Exception as e:
+            logger.warning("Scout claim registration network error: %s", e)
+            return False, {"error": f"Connection error: {e}"}
+
     def activate_with_code(self, activation_code: str, hostname: Optional[str] = None) -> Tuple[bool, Dict[str, Any]]:
         """
         Activates this Scout Desktop instance using a short-lived code (TOS-XXXX-XXXX).

@@ -29,8 +29,18 @@ WizardStyle=modern
 PrivilegesRequired=lowest
 SetupIconFile=..\assets\logo.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
+VersionInfoCompany={#MyAppPublisher}
+VersionInfoDescription={#MyAppName} Windows Setup
+VersionInfoVersion=2.0.0.0
+VersionInfoTextVersion={#MyAppVersion}
+VersionInfoCopyright=© 2026 TalentOps AI
+VersionInfoProductName={#MyAppName}
+VersionInfoProductVersion=2.0.0.0
+SignedUninstaller=yes
+SignTool=signtool sign /fd sha256 /tr http://timestamp.digicert.com /td sha256 $f
 
 [Languages]
+
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]

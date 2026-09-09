@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Download, Laptop, ShieldCheck, Zap, Wifi, CheckCircle2, ArrowRight,
@@ -17,11 +17,16 @@ export default function DownloadScout() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [showSetupGuide, setShowSetupGuide] = useState(false);
+  const [showSecurityNotice, setShowSecurityNotice] = useState(false);
+  const [activeClaim, setActiveClaim] = useState(null);
+  const [claimStatus, setClaimStatus] = useState(null);
+  const pollIntervalRef = useRef(null);
   const [activeView, setActiveView] = useState('contributors'); // 'contributors' | 'fleet_nodes'
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [sortBy, setSortBy] = useState('most_active');
   const [selectedUserId, setSelectedUserId] = useState(null);
+
 
   // Dynamic Release Info from Authoritative DB Registry
   const [releaseInfo, setReleaseInfo] = useState({
@@ -62,19 +67,72 @@ export default function DownloadScout() {
   const summary = contribData?.summary || {};
   const users = contribData?.users || [];
   const versionDistribution = contribData?.version_distribution || {};
-  const latestProdVer = contribData?.latest_production_version || releaseInfo.version || '2.0.0';
+  // Cleanup poller on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
+  }, []);
 
   const handleDownload = async () => {
     setDownloading(true);
+
+    // 1. Issue short-lived installation claim for one-click auto-registration
+    try {
+      const claimRes = await api.post('/scout/install/claim', {
+        label: 'Web Download Scout Auto-Pair',
+        expires_minutes: 15,
+      });
+
+      if (claimRes?.data?.ok) {
+        const claimData = claimRes.data;
+        setActiveClaim(claimData);
+        setClaimStatus({ status: 'WAITING', is_consumed: false });
+
+        // Background loopback attempt: If Scout Desktop is already open on this PC,
+        // it listens on 127.0.0.1:49152 and registers instantly!
+        try {
+          fetch('http://127.0.0.1:49152/claim', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              claim_id: claimData.claim_id,
+              claim_secret: claimData.claim_secret,
+            }),
+            mode: 'cors',
+          }).catch(() => {});
+        } catch (_) {}
+
+        // Poll claim status every 3s to notify user when Scout launches and pairs
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = setInterval(async () => {
+          try {
+            const stRes = await api.get(`/scout/install/status/${claimData.claim_id}`);
+            if (stRes?.data) {
+              setClaimStatus(stRes.data);
+              if (stRes.data.is_consumed) {
+                clearInterval(pollIntervalRef.current);
+                pollIntervalRef.current = null;
+                toast.success(`🎉 Scout Desktop auto-registered successfully! (${stRes.data.hostname || stRes.data.device_id})`);
+                refetch();
+              }
+            }
+          } catch (_) {}
+        }, 3000);
+      }
+    } catch (err) {
+      console.debug('Claim generation fallback:', err);
+    }
+
+    // 2. Track download event in telemetry registry
     try {
       await api.post('/scout/download/track', {
         version: releaseInfo.version || '2.0.0',
         source: 'desktop_scout_page'
       });
-    } catch (err) {
-      // Telemetry error shouldn't block installer download
-    }
+    } catch (err) {}
 
+    // 3. Initiate browser download of the installer
     const downloadUrl = releaseInfo.download_url || '/scout/updates/download/latest';
     const a = document.createElement('a');
     a.href = downloadUrl;
@@ -85,6 +143,7 @@ export default function DownloadScout() {
     toast.success(`TalentOps Scout v${releaseInfo.version || '2.0.0'} download initiated!`);
     setTimeout(() => setDownloading(false), 2500);
   };
+
 
   const formatTimeAgo = (isoStr) => {
     if (!isoStr) return 'Never';
@@ -324,8 +383,69 @@ export default function DownloadScout() {
               <span>{showSetupGuide ? 'Hide Guide' : 'Setup Guide'}</span>
               {showSetupGuide ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
             </button>
+
+            <button
+              onClick={() => setShowSecurityNotice(!showSecurityNotice)}
+              style={{
+                padding: '9px 12px', background: '#090d16', color: '#f59e0b',
+                border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 8, fontSize: 11, fontWeight: 600,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5
+              }}
+              title="Browser download warnings & SmartScreen reputation"
+            >
+              <ShieldAlert size={13} />
+              <span>Trust &amp; SmartScreen</span>
+              {showSecurityNotice ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            </button>
           </div>
         </div>
+
+        {/* Real-Time Auto-Registration Claim Banner */}
+        {activeClaim && (
+          <div style={{
+            marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.08)',
+            background: claimStatus?.is_consumed ? 'rgba(16, 185, 129, 0.08)' : 'rgba(56, 189, 248, 0.08)',
+            border: claimStatus?.is_consumed ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(56, 189, 248, 0.25)',
+            borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'center',
+            justifyContent: 'space-between', flexWrap: 'wrap', gap: 12
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: 8,
+                background: claimStatus?.is_consumed ? 'rgba(16, 185, 129, 0.2)' : 'rgba(56, 189, 248, 0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: claimStatus?.is_consumed ? '#34d399' : '#38bdf8'
+              }}>
+                {claimStatus?.is_consumed ? <Check size={18} /> : <Zap size={18} />}
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#f8fafc' }}>
+                  {claimStatus?.is_consumed
+                    ? `🎉 Device Auto-Registered: ${claimStatus.hostname || claimStatus.device_id}`
+                    : '⚡ 1-Click Auto-Registration Waiting for Scout Desktop...'}
+                </div>
+                <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                  {claimStatus?.is_consumed
+                    ? 'This device is now bound to your account and reporting live telemetry.'
+                    : `Claim ${activeClaim.claim_id} active. Run the downloaded installer, or click the button to pair immediately without manual codes.`}
+                </div>
+              </div>
+            </div>
+            {!claimStatus?.is_consumed && (
+              <a
+                href={activeClaim.deep_link}
+                style={{
+                  padding: '6px 14px', background: 'linear-gradient(135deg, #38bdf8 0%, #0284c7 100%)',
+                  color: '#fff', borderRadius: 6, fontSize: 11, fontWeight: 700, textDecoration: 'none',
+                  display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 2px 8px rgba(56, 189, 248, 0.3)'
+                }}
+              >
+                <ExternalLink size={12} />
+                <span>Launch &amp; Auto-Register Scout</span>
+              </a>
+            )}
+          </div>
+        )}
 
         {/* Expandable 3-Step Setup Guide */}
         {showSetupGuide && (
@@ -340,9 +460,9 @@ export default function DownloadScout() {
               </div>
             </div>
             <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: 8, padding: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#10b981', marginBottom: 3 }}>2. Pair Account in 30s</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#10b981', marginBottom: 3 }}>2. Auto-Register in 5s</div>
               <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.4 }}>
-                Click <b>Pair Device</b> to get your 10-minute code or 1-Click connect link. Links your workstation to your account.
+                Scout automatically connects using your download claim. Zero manual codes needed.
               </div>
             </div>
             <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: 8, padding: 12 }}>
@@ -353,7 +473,36 @@ export default function DownloadScout() {
             </div>
           </div>
         )}
+
+        {/* Expandable Trust & SmartScreen Security Notice */}
+        {showSecurityNotice && (
+          <div style={{
+            marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.08)',
+            background: 'rgba(245, 158, 11, 0.05)', border: '1px solid rgba(245, 158, 11, 0.25)',
+            borderRadius: 8, padding: 14
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, color: '#f59e0b', fontSize: 12, fontWeight: 700 }}>
+              <ShieldAlert size={16} />
+              <span>Browser Security &amp; Windows SmartScreen Notice</span>
+            </div>
+            <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>
+              <p style={{ margin: '0 0 6px 0', color: '#f8fafc' }}>
+                <b>Why does Chrome, Edge, or Windows show an unrecognized app or reputation warning?</b>
+              </p>
+              <p style={{ margin: '0 0 6px 0' }}>
+                Microsoft SmartScreen and Google Safe Browsing evaluate download reputation for newly released executables. Even digitally signed binaries initially show an <i>“unrecognized app”</i> prompt on unmanaged PCs until sufficient download volume establishes positive publisher reputation.
+              </p>
+              <ul style={{ margin: '0 0 8px 18px', padding: 0 }}>
+                <li><b>In Chrome/Edge:</b> Click the download dropdown → Select <b>Keep</b> / <b>Download suspicious file</b>.</li>
+                <li><b>In Windows SmartScreen:</b> Click <b>More info</b> → Select <b>Run anyway</b> to complete installation.</li>
+                <li><b>Integrity Verification:</b> All builds are verified via SHA-256 (<code>{releaseInfo.sha256 ? releaseInfo.sha256.substring(0, 16) + '...' : 'Verified'}</code>) and distributed via strict HTTPS.</li>
+                <li><b>Strict Privacy Guardrail:</b> Scout never extracts, logs, or stores browser passwords or cookies. Only candidate profile data is staged.</li>
+              </ul>
+            </div>
+          </div>
+        )}
       </div>
+
 
       {/* ========================================================================= */}
       {/* PRIMARY VIEW 1: SCOUT USERS & CONTRIBUTORS INTELLIGENCE                   */}

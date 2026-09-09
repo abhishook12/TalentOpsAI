@@ -372,6 +372,8 @@ from .routes import data_quality
 app.include_router(data_quality.router)
 from .routes import data_intelligence
 app.include_router(data_intelligence.router)
+from .routes import scout_install
+app.include_router(scout_install.router)
 
 
 @app.get("/")

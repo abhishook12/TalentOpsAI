@@ -17,6 +17,7 @@ import sys
 import time
 import uuid
 import logging
+import threading
 from typing import Optional, Dict, Any, List, Tuple
 
 from PIL import Image
@@ -111,6 +112,8 @@ class ScoutDesktopApp:
         # State tracking
         self.current_window: Optional[WindowInfo] = None
         self.current_browser_context: Dict[str, Any] = {}
+        self._is_flushing = False
+        self._is_heartbeating = False
 
         # 12 Explicit Telemetry Counters
         self.cnt_captured = 0
@@ -732,67 +735,100 @@ class ScoutDesktopApp:
         self._emit_telemetry()
 
     def _flush_queue_to_backend(self):
-        """Flushes pending local SQLite queue items to backend /recruiters/extension/batch."""
-        pending = self.local_queue.get_pending_batch(limit=20)
-        if not pending:
+        """Dispatches queue flushing to a background thread to eliminate GUI thread freezes."""
+        if getattr(self, "_is_flushing", False):
             return
+        threading.Thread(
+            target=self._async_flush_worker,
+            daemon=True,
+            name="ScoutBackendSyncWorker"
+        ).start()
 
-        queue_ids = [item.pop("_local_queue_id") for item in pending]
-        for it in pending:
-            it.pop("_retry_count", None)
+    def _async_flush_worker(self):
+        """Executes HTTP network flush in background worker thread."""
+        self._is_flushing = True
+        try:
+            pending = self.local_queue.get_pending_batch(limit=20)
+            if not pending:
+                return
 
-        self.bridge.event_logged.emit(
-            "DB_SYNC_STARTED",
-            f"Flushing {len(pending)} records to {self.backend_client.environment_name}"
-        )
+            queue_ids = [item.pop("_local_queue_id") for item in pending]
+            for it in pending:
+                it.pop("_retry_count", None)
 
-        success, res = self.backend_client.sync_staged_batch(
-            contacts=pending,
-            session_stats={"source": "TalentOps Scout Desktop"},
-        )
+            self.bridge.event_logged.emit(
+                "DB_SYNC_STARTED",
+                f"Flushing {len(pending)} records to {self.backend_client.environment_name}"
+            )
 
-        if success:
-            self.local_queue.mark_batch_synced(queue_ids)
-            staged_cnt = res.get("staged", len(pending))
-            self.cnt_db_updates += staged_cnt
+            success, res = self.backend_client.sync_staged_batch(
+                contacts=pending,
+                session_stats={"source": "TalentOps Scout Desktop"},
+            )
 
-            proc = res.get("processor_stats", {})
-            self.cnt_new += proc.get("new", 0)
-            self.cnt_enriched += proc.get("enriched", 0)
-            self.cnt_matched += proc.get("duplicate", 0) + proc.get("review", 0)
+            if success:
+                self.local_queue.mark_batch_synced(queue_ids)
+                staged_cnt = res.get("staged", len(pending))
+                self.cnt_db_updates += staged_cnt
 
-            self.bridge.event_logged.emit("DB_SYNC_SUCCESS", f"Backend accepted {staged_cnt} staged record(s)")
-            self.bridge.db_proof_updated.emit("STAGED", res, f"SUCCESS (Staged: {staged_cnt})")
-            if hasattr(self.main_window, "lbl_hero_pill") and self.main_window.lbl_hero_pill.text() == "STAGED":
-                self.main_window.lbl_hero_pill.setText("CLOUD COMMITTED")
-                self.main_window.lbl_hero_pill.setStyleSheet("background: #0F2520; color: #34D399; border: 1px solid #059669; border-radius: 10px; padding: 2px 8px; font-size: 8px; font-weight: 800;")
-        else:
-            err = res.get("error", "Network error")
-            self.local_queue.mark_batch_failed(queue_ids, err)
-            self.bridge.event_logged.emit("DB_SYNC_FAILED", f"Error: {err}")
-            self.bridge.db_proof_updated.emit("ERROR", res, f"FAILED: {err}")
+                proc = res.get("processor_stats", {})
+                self.cnt_new += proc.get("new", 0)
+                self.cnt_enriched += proc.get("enriched", 0)
+                self.cnt_matched += proc.get("duplicate", 0) + proc.get("review", 0)
 
-        self._emit_telemetry()
+                self.bridge.event_logged.emit("DB_SYNC_SUCCESS", f"Backend accepted {staged_cnt} staged record(s)")
+                self.bridge.db_proof_updated.emit("STAGED", res, f"SUCCESS (Staged: {staged_cnt})")
+                if hasattr(self.main_window, "lbl_hero_pill") and self.main_window.lbl_hero_pill.text() == "STAGED":
+                    self.main_window.lbl_hero_pill.setText("CLOUD COMMITTED")
+                    self.main_window.lbl_hero_pill.setStyleSheet("background: #0F2520; color: #34D399; border: 1px solid #059669; border-radius: 10px; padding: 2px 8px; font-size: 8px; font-weight: 800;")
+            else:
+                err = res.get("error", "Network error")
+                self.local_queue.mark_batch_failed(queue_ids, err)
+                self.bridge.event_logged.emit("DB_SYNC_FAILED", f"Error: {err}")
+                self.bridge.db_proof_updated.emit("ERROR", res, f"FAILED: {err}")
+
+            self._emit_telemetry()
+        except Exception as e:
+            logger.debug("Async flush worker error: %s", e)
+        finally:
+            self._is_flushing = False
 
     def _send_heartbeat(self):
-        b_ctx = self.current_browser_context
-        self.backend_client.send_heartbeat(
-            page_url=b_ctx.get("url"),
-            client_metrics={
-                "state": self.sampler.state,
-                "captured": self.cnt_captured,
-                "analyzed": self.cnt_analyzed,
-                "useful": self.cnt_useful,
-                "staged": self.cnt_staged,
-                "observed": self.cnt_observed,
-                "fields_added": self.cnt_fields_added,
-                "purged": self.cnt_purged,
-                "committed": self.cnt_db_updates,
-                "intelligence_level": self.intelligence_router.stats.get("total_decisions", 0),
-                "context_entities": len(self.context_memory.get_all_entities()),
-                "frame_queue_depth": self.frame_queue.depth,
-            }
-        )
+        """Dispatches heartbeat network request to background thread to eliminate GUI thread freezes."""
+        if getattr(self, "_is_heartbeating", False):
+            return
+        threading.Thread(
+            target=self._async_heartbeat_worker,
+            daemon=True,
+            name="ScoutHeartbeatWorker"
+        ).start()
+
+    def _async_heartbeat_worker(self):
+        """Executes HTTP heartbeat ping in background worker thread."""
+        self._is_heartbeating = True
+        try:
+            b_ctx = self.current_browser_context
+            self.backend_client.send_heartbeat(
+                page_url=b_ctx.get("url"),
+                client_metrics={
+                    "state": self.sampler.state,
+                    "captured": self.cnt_captured,
+                    "analyzed": self.cnt_analyzed,
+                    "useful": self.cnt_useful,
+                    "staged": self.cnt_staged,
+                    "observed": self.cnt_observed,
+                    "fields_added": self.cnt_fields_added,
+                    "purged": self.cnt_purged,
+                    "committed": self.cnt_db_updates,
+                    "intelligence_level": self.intelligence_router.stats.get("total_decisions", 0),
+                    "context_entities": len(self.context_memory.get_all_entities()),
+                    "frame_queue_depth": self.frame_queue.depth,
+                }
+            )
+        except Exception as e:
+            logger.debug("Async heartbeat error: %s", e)
+        finally:
+            self._is_heartbeating = False
 
     def _emit_telemetry(self):
         e_stats = self.evidence_store.get_telemetry()

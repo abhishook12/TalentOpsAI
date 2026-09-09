@@ -232,10 +232,25 @@ class VisualSampler:
 
                 logger.info("⚡ Immediate capture triggered (%s) for '%s'", reason, window_info.title[:30])
                 if self.on_meaningful_frame:
-                    try:
-                        self.on_meaningful_frame(img, 1.0, window_info)
-                    except Exception as e:
-                        logger.error("Error in on_meaningful_frame handler: %s", e)
+                    threading.Thread(
+                        target=self._dispatch_frame_async,
+                        args=(img, 1.0, window_info),
+                        daemon=True,
+                        name="ImmediateCaptureWorker"
+                    ).start()
+
+    def _dispatch_frame_async(self, img: Image.Image, delta: float, window_info: WindowInfo, bbox: Optional[Tuple[int, int, int, int]] = None):
+        """Executes heavy frame analysis, OCR, and extraction on a worker thread to keep Qt GUI responsive."""
+        try:
+            if self.on_meaningful_frame:
+                import inspect
+                sig = inspect.signature(self.on_meaningful_frame)
+                if len(sig.parameters) >= 4 and bbox is not None:
+                    self.on_meaningful_frame(img, delta, window_info, bbox)
+                else:
+                    self.on_meaningful_frame(img, delta, window_info)
+        except Exception as e:
+            logger.error("Error in on_meaningful_frame worker handler: %s", e)
 
     def start(self, initial_window: Optional[WindowInfo] = None):
         """Starts the autonomous sampling worker thread."""

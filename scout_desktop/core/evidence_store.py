@@ -23,6 +23,7 @@ logger = logging.getLogger("scout.evidence_store")
 
 AUDIT_RETENTION_SEC = 20.0       # 20-second evidence audit window after staging
 HARD_MAX_RETENTION_SEC = 150.0   # 2.5-minute hard maximum retention ceiling
+HARD_MAX_FILE_AGE_SEC = 3600.0   # 1-Hour Strict User Mandate (Unconditional Purge Ceiling)
 MAX_BUFFER_IMAGES = 20           # Keep buffer light on disk
 
 VALID_TRANSITIONS = {
@@ -239,19 +240,87 @@ class EvidenceStore:
                     item.status = "CLEANUP_PENDING"
                     item.expires_at = now + 10.0
 
-    def purge_expired(self) -> int:
+    def purge_hard_1hour_ceiling(self, max_age_sec: float = HARD_MAX_FILE_AGE_SEC) -> int:
         """
-        Scans items and deletes images whose retention TTL has expired.
-        Strict Rule: Never purge while status == 'ANALYZING'.
+        STRICT USER MANDATE:
+        Deletes ANY screenshot file on disk older than 1 hour (3600 seconds)
+        regardless of its state (even ANALYZING, STAGED, EXTRACTED, ORPHANED, etc.),
+        NO MATTER THE CASE.
         """
         now = time.time()
         purged_count = 0
+        try:
+            pattern = os.path.join(self.storage_dir, "*.*")
+            files = glob.glob(pattern)
+            for f in files:
+                if not f.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+                    continue
+                try:
+                    mtime = os.path.getmtime(f)
+                    ctime = os.path.getctime(f)
+                    file_time = min(mtime, ctime)
+                    file_age = now - file_time
+
+                    if file_age >= max_age_sec:
+                        os.remove(f)
+                        purged_count += 1
+                        logger.info("⏰ 1-Hour Hard Ceiling Purge: Removed '%s' (Age: %.1fs >= %.1fs)",
+                                    os.path.basename(f), file_age, max_age_sec)
+                except Exception as fe:
+                    logger.debug("Error checking/deleting file %s: %s", f, fe)
+
+            # Synchronize memory state
+            with self._lock:
+                to_remove = []
+                for cid, it in self._items.items():
+                    if it.filepath and not os.path.exists(it.filepath):
+                        it.status = "PURGED"
+                        it.filepath = None
+                        to_remove.append(cid)
+                    elif (now - it.created_at) >= max_age_sec:
+                        if it.filepath and os.path.exists(it.filepath):
+                            try:
+                                os.remove(it.filepath)
+                                purged_count += 1
+                            except Exception:
+                                pass
+                        it.status = "PURGED"
+                        it.filepath = None
+                        to_remove.append(cid)
+
+                for cid in to_remove:
+                    self._items.pop(cid, None)
+
+            if purged_count > 0:
+                self.total_purged_ever += purged_count
+                self.last_purge_time = time.strftime("%H:%M:%S")
+
+        except Exception as e:
+            logger.error("Error running purge_hard_1hour_ceiling: %s", e)
+
+        return purged_count
+
+    def purge_expired(self) -> int:
+        """
+        Scans items and deletes images whose retention TTL has expired.
+        Strict Rule: Never purge while status == 'ANALYZING' for short-term TTL,
+        BUT unconditionally purges any file older than 1 hour (3600s) NO MATTER THE CASE.
+        """
+        # 1. Enforce strict unconditional 1-hour hard ceiling
+        hard_purged = self.purge_hard_1hour_ceiling()
+
+        # 2. Sweep orphaned or untracked crop files on disk
+        orphans_purged = self.sweep_orphan_files()
+
+        # 3. Regular short-term audit TTL expiration
+        now = time.time()
+        purged_count = hard_purged + orphans_purged
 
         with self._lock:
             to_purge = []
             for cid, item in self._items.items():
                 if item.status == "ANALYZING":
-                    continue  # NEVER DELETE DURING PROCESSING
+                    continue  # Protect active analysis during short-term window (< 1 hour)
                 if item.status != "PURGED" and item.expires_at <= now:
                     to_purge.append(item)
 

@@ -101,22 +101,8 @@ class BrowserTracker:
                 except Exception:
                     pass
 
-            # Tier 2: Search Edit controls and match candidate URL patterns
-            cond = self._uia.CreatePropertyCondition(30003, UIA_EditControlTypeId)
-            edits = el.FindAll(TreeScope_Descendants, cond)
-            if edits:
-                for i in range(min(edits.Length, 10)):
-                    edit = edits.GetElement(i)
-                    pat = edit.GetCurrentPattern(UIA_ValuePatternId)
-                    if pat:
-                        val_pat = pat.QueryInterface(IUIAutomationValuePattern)
-                        val = val_pat.CurrentValue
-                        if val and ("." in val or "://" in val) and not val.startswith(" "):
-                            # Heuristic: address bar contains domain or path
-                            if any(d in val.lower() for d in [".com", ".org", ".io", ".net", ".co", "http", "www."]):
-                                if not val.startswith("http://") and not val.startswith("https://"):
-                                    val = f"https://{val}"
-                                return val
+            # Safe return without deep TreeScope_Descendants search to prevent UI thread lockups
+            return None
         except Exception as e:
             logger.debug("UIA address bar read failed: %s", e)
         return None

@@ -52,6 +52,7 @@ FREE_EMAIL_DOMAINS = {
     'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com',
     'icloud.com', 'live.com', 'msn.com', 'me.com', 'mail.com',
     'protonmail.com', 'ymail.com', 'comcast.net', 'att.net',
+    'noemail.talentops',
 }
 
 
@@ -594,6 +595,93 @@ class DiscoveryProcessor:
                     if normalize_text(c.recruiter_name) == norm_name:
                         return c, CONFIDENCE_WEAK
 
+        # 4. Search DuckDB Parquet recruiter_store (the 437,933 canonical master database)
+        try:
+            from .recruiter_store import recruiter_store
+            recruiter_store._ensure_loaded()
+            conn = recruiter_store._get_conn()
+            if conn:
+                matched_row = None
+                conf = 0.0
+
+                # A. Match by LinkedIn slug in Parquet
+                if person.linkedin_url:
+                    slug = self._normalize_linkedin(person.linkedin_url)
+                    if slug and len(slug) > 3:
+                        res = conn.execute(
+                            "SELECT recruiter_id, recruiter_name, email, linkedin, phone, title, company_id, location, specialization FROM recruiters WHERE linkedin ILIKE ? LIMIT 1",
+                            [f"%{slug}%"]
+                        ).fetchone()
+                        if res:
+                            matched_row = res
+                            conf = CONFIDENCE_VERY_STRONG
+
+                # B. Match by verified email in Parquet
+                if not matched_row and person.primary_email and "noemail" not in person.primary_email.lower():
+                    res = conn.execute(
+                        "SELECT recruiter_id, recruiter_name, email, linkedin, phone, title, company_id, location, specialization FROM recruiters WHERE LOWER(email) = ? LIMIT 1",
+                        [person.primary_email.strip().lower()]
+                    ).fetchone()
+                    if res:
+                        matched_row = res
+                        conf = CONFIDENCE_VERY_STRONG
+
+                # C. Match by Name + Company in Parquet
+                if not matched_row and person.canonical_name and person.canonical_name != "Unknown Professional":
+                    c_rows = conn.execute(
+                        "SELECT recruiter_id, recruiter_name, email, linkedin, phone, title, company_id, location, specialization FROM recruiters WHERE LOWER(recruiter_name) LIKE ? LIMIT 10",
+                        [f"%{person.canonical_name.strip().lower()}%"]
+                    ).fetchall()
+                    norm_name = normalize_text(person.canonical_name)
+                    for r_row in c_rows:
+                        if normalize_text(r_row[1]) == norm_name:
+                            if person.current_company and r_row[6] and normalize_text(person.current_company) == normalize_text(str(r_row[6])):
+                                matched_row = r_row
+                                conf = 0.75
+                                break
+
+                if matched_row:
+                    r_id, r_name, r_email, r_li, r_phone, r_title, r_comp, r_loc, r_spec = matched_row
+                    # Check if already imported into PostgreSQL
+                    existing_pg = self.db.query(Recruiter).filter(
+                        (Recruiter.recruiter_name == r_name) | (Recruiter.email == r_email)
+                    ).first()
+                    if existing_pg:
+                        return existing_pg, conf
+
+                    # Find or create company
+                    c_id = None
+                    if r_comp:
+                        c_obj = self.db.query(Company).filter(Company.company_name.ilike(str(r_comp).strip())).first()
+                        if not c_obj:
+                            c_obj = Company(company_name=str(r_comp).strip(), canonical_name=str(r_comp).strip(), trust_score=80)
+                            self.db.add(c_obj)
+                            self.db.flush()
+                        c_id = c_obj.company_id
+
+                    # Hydrate canonical recruiter into PostgreSQL so it can be enriched
+                    hydrated_rec = Recruiter(
+                        recruiter_name=r_name,
+                        email=r_email or f"ext_{secrets.token_hex(8)}@noemail.talentops",
+                        linkedin=r_li,
+                        phone=r_phone,
+                        title=r_title or "Recruiter",
+                        specialization=r_spec,
+                        company_id=c_id,
+                        location=r_loc,
+                        data_source="parquet_canonical",
+                        is_active=True,
+                        needs_review=False,
+                        trust_score=85,
+                    )
+                    self.db.add(hydrated_rec)
+                    self.db.flush()
+                    logger.info("Hydrated canonical master recruiter from Parquet into PostgreSQL: %s (ID %s)", r_name, hydrated_rec.recruiter_id)
+                    return hydrated_rec, conf
+
+        except Exception as se:
+            logger.debug("Parquet master matching note: %s", se)
+
         return None, 0.0
 
     def _make_decision(self, person: ResolvedPerson, master_match: Optional[Recruiter], match_confidence: float) -> dict:
@@ -628,21 +716,25 @@ class DiscoveryProcessor:
 
         # Case 2: Master match found
         new_fields = []
-        if person.primary_email and not master_match.email:
-            new_fields.append('email')
+        # Email enrichment (also upgrades from placeholder @noemail)
+        if person.primary_email and (not master_match.email or master_match.email.endswith('@noemail.talentops')):
+            if not master_match.email or master_match.email.lower() != person.primary_email.lower():
+                new_fields.append('email')
         if person.primary_phone and not master_match.phone:
             new_fields.append('phone')
         if person.linkedin_url and not master_match.linkedin:
             new_fields.append('linkedin')
+
         # Title change / promotion detection
         has_new_title = False
         if person.current_title and master_match.title:
-            if normalize_text(person.current_title) != normalize_text(master_match.title):
+            if master_match.title in ("Recruiter", "Professional") or normalize_text(person.current_title) != normalize_text(master_match.title):
                 has_new_title = True
                 new_fields.append('title')
         elif person.current_title and not master_match.title:
             has_new_title = True
             new_fields.append('title')
+
         if person.location and not master_match.location:
             new_fields.append('location')
 
@@ -654,17 +746,33 @@ class DiscoveryProcessor:
                 has_new_company = True
                 new_fields.append('company')
 
-        # Deep Profile Field Checks
+        # Deep Profile Progressive Field Checks
         import json
         meta = json.loads(master_match.metadata_json) if master_match.metadata_json else {}
         if person.education and not meta.get("education"):
             new_fields.append('education')
-        if person.skills and not meta.get("skills"):
-            new_fields.append('skills')
-        if person.experience_history and not meta.get("experience_history"):
-            new_fields.append('experience_history')
-        if person.about_summary and not meta.get("about_summary"):
-            new_fields.append('about_summary')
+        if person.skills:
+            try:
+                inc_skills = json.loads(person.skills) if isinstance(person.skills, str) else person.skills
+                exist_skills = meta.get("skills") or []
+                if not exist_skills or len(inc_skills) > len(exist_skills):
+                    new_fields.append('skills')
+            except Exception:
+                new_fields.append('skills')
+
+        if person.experience_history:
+            try:
+                inc_exp = json.loads(person.experience_history) if isinstance(person.experience_history, str) else person.experience_history
+                exist_exp = meta.get("experience_history") or []
+                if not exist_exp or len(inc_exp) > len(exist_exp):
+                    new_fields.append('experience')
+            except Exception:
+                new_fields.append('experience')
+
+        if person.about_summary:
+            exist_about = meta.get("about_summary") or ""
+            if not exist_about or len(person.about_summary) > len(exist_about) + 15:
+                new_fields.append('about_summary')
 
         # Conflict checks: Contradictory LinkedIn URLs
         if master_match.linkedin and person.linkedin_url:
@@ -678,8 +786,8 @@ class DiscoveryProcessor:
                     'reason': f'Conflicting LinkedIn profiles: Master has "{master_match.linkedin}" vs Staged "{person.linkedin_url}"',
                 }
 
-        # Conflict checks: Contradictory corporate email domains
-        if master_match.email and person.primary_email:
+        # Conflict checks: Contradictory corporate email domains (ignore dummy noemail.talentops)
+        if master_match.email and not master_match.email.endswith('@noemail.talentops') and person.primary_email:
             m_domain = master_match.email.split('@')[-1].lower() if '@' in master_match.email else ''
             p_domain = person.primary_email.split('@')[-1].lower() if '@' in person.primary_email else ''
             if m_domain and p_domain and m_domain != p_domain:

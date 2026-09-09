@@ -6,12 +6,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, text
 from pydantic import BaseModel
 
-from app.database import get_db
-from app.models.auth_models import User
-from app.models.models import Recruiter, Company, RepairLog
-from app.services.auth_service import get_current_user_from_request
-from app.models.sentinel_state import SentinelPhase4State, SentinelState
-from app.services.recruiter_store import recruiter_store as _store
+from ..database import get_db
+from ..models.auth_models import User
+from ..models.models import Recruiter, Company, RepairLog
+from ..services.auth_service import get_current_user_from_request
+from ..models.sentinel_state import SentinelPhase4State, SentinelState
+from ..services.recruiter_store import recruiter_store as _store
 
 router = APIRouter()
 

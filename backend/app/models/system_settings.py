@@ -1,7 +1,7 @@
 from datetime import timezone
 import datetime
 from sqlalchemy import Column, String, DateTime
-from app.database import Base
+from ..database import Base
 
 class SystemSetting(Base):
     __tablename__ = "system_settings"

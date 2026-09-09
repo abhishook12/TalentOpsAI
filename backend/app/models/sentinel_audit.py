@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Text
 from sqlalchemy.sql import func
-from app.database import Base
+from ..database import Base
 
 class SentinelAuditLog(Base):
     __tablename__ = "sentinel_audit_logs"

@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.sql import func
-from app.database import Base
+from ..database import Base
 
 class SentinelState(Base):
     __tablename__ = "sentinel_state"

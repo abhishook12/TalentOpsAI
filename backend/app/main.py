@@ -20,7 +20,7 @@ from .config import (
 )
 from .routes import recruiters, companies, vendors, candidates, submissions, analytics, admin, auth, actions, updates, ai, campaigns, harvester, users, visitor_analytics, notifications, bridge, accounts, extension, staging
 from .database import get_db, engine, Base
-from .models import models, auth_models, staging_models
+from .models import models, auth_models, staging_models, data_quality_models
 from .models import extension_models  # Extension device/activation tracking
 from .create_indexes import create_performance_indexes
 
@@ -355,6 +355,8 @@ from .routes import scout_nodes
 app.include_router(scout_nodes.router)
 from .routes import scout_updates
 app.include_router(scout_updates.router)
+from .routes import data_quality
+app.include_router(data_quality.router)
 
 
 @app.get("/")

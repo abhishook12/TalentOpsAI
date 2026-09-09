@@ -1,7 +1,7 @@
 import json
 import re
 import logging
-from app.services.sync_layer import sync_manager
+from ..services.sync_layer import sync_manager
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session, joinedload, contains_eager, selectinload
 from sqlalchemy import text

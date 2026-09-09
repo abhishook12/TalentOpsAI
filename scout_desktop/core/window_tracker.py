@@ -72,54 +72,59 @@ def is_allowed_scout_target(win_info: Optional['WindowInfo'], b_ctx: Optional[Di
     if proc in ("teams.exe", "ms-teams.exe") or "microsoft teams" in title_lower:
         return True, "TEAMS"
 
-    # Rule 2: Google Chrome — strictly LinkedIn data only
-    if proc == "chrome.exe":
+    # Rule 2: Browsers — Sourcing & ATS Targets (Chrome, Edge, Brave)
+    if proc in ("chrome.exe", "msedge.exe", "brave.exe"):
         b_ctx = b_ctx or {}
         url = (b_ctx.get("url") or "").lower()
 
-        # Invariant A: Title MUST contain "linkedin" or "sales navigator"
-        # In Chrome on Windows, every active LinkedIn tab title includes "LinkedIn" or "Sales Navigator".
-        if "linkedin" not in title_lower and "sales navigator" not in title_lower:
-            return False, "UNSUPPORTED_CHROME"
-
-        # Invariant B: Disallow Search Engines and non-LinkedIn web content that happens to have "linkedin" in title
-        # e.g. "linkedin - Google Search", "linkedin recruiter - Google Search", "LinkedIn - Chat"
+        # Reject generic search engine queries and blank tabs
         disallowed_title_substrings = [
-            "google search", "- google search", "search - google chrome",
-            " - chat", "chat - google chrome", "untitled", "new tab",
-            "youtube", "github", "simplyhired", "indeed", "jobright",
+            "google search", "- google search", "search - google chrome", "search - microsoft edge",
+            " - chat", "chat - google chrome", "untitled", "new tab", "youtube",
+            "facebook", "instagram", "tiktok", "netflix", "reddit",
         ]
         if any(s in title_lower for s in disallowed_title_substrings):
-            return False, "UNSUPPORTED_CHROME"
+            return False, "UNSUPPORTED_BROWSER (SEARCH_OR_MEDIA)"
 
-        # Invariant C: Disallow Non-Data / Non-Profile LinkedIn sections
-        # The user wants "only linkedin data" (candidates, profiles, recruiters, company talent directories).
-        # Reject Feed, Messaging, Notifications, Jobs, Learning, and pure blank Home tab
-        disallowed_linkedin_sections = [
-            "feed | linkedin", "feed |", "messaging | linkedin", "messaging |",
-            "notifications | linkedin", "notifications |", "linkedin learning",
-            ": jobs | linkedin", ": jobs |", "jobs | linkedin", "jobs |",
-            "help center", "settings & privacy", "manage my network",
-        ]
-        if any(s in title_lower for s in disallowed_linkedin_sections):
-            return False, "UNSUPPORTED_CHROME (NON_DATA_SECTION)"
+        # Target A: LinkedIn Data (Profiles, Recruiter, Talent, Directory)
+        if "linkedin" in title_lower or "sales navigator" in title_lower or "linkedin.com" in url:
+            disallowed_linkedin_sections = [
+                "feed | linkedin", "feed |", "messaging | linkedin", "messaging |",
+                "notifications | linkedin", "notifications |", "linkedin learning",
+                ": jobs | linkedin", ": jobs |", "jobs | linkedin", "jobs |",
+                "help center", "settings & privacy", "manage my network",
+            ]
+            if any(s in title_lower for s in disallowed_linkedin_sections):
+                return False, "UNSUPPORTED_LINKEDIN (NON_DATA_SECTION)"
 
-        # Check if title is just raw "LinkedIn - Google Chrome" or "(1) LinkedIn - Google Chrome"
-        # without any profile name, company, or section (i.e. empty home stream)
-        clean_title = re.sub(r"^(?:\(\d+\)\s*)?", "", title_lower)
-        clean_title = re.sub(r"\s*-\s*google\s*chrome\s*$", "", clean_title).strip()
-        if clean_title in ("linkedin", "home | linkedin", "feed", "jobs"):
-            return False, "UNSUPPORTED_CHROME (NON_DATA_SECTION)"
+            clean_title = re.sub(r"^(?:\(\d+\)\s*)?", "", title_lower)
+            clean_title = re.sub(r"\s*-\s*(?:google\s*chrome|microsoft\s*edge|brave)\s*$", "", clean_title).strip()
+            if clean_title in ("linkedin", "home | linkedin", "feed", "jobs"):
+                return False, "UNSUPPORTED_LINKEDIN (NON_DATA_SECTION)"
 
-        # Invariant D: If URL is detected, verify it matches LinkedIn data paths
-        if url:
-            if "linkedin.com" not in url:
-                return False, "UNSUPPORTED_CHROME"
-            # Reject non-data LinkedIn URLs
-            if any(p in url for p in ["/feed", "/messaging", "/notifications", "/learning", "/settings", "/jobs"]):
-                return False, "UNSUPPORTED_CHROME (NON_DATA_SECTION)"
+            if url and any(p in url for p in ["/feed", "/messaging", "/notifications", "/learning", "/settings", "/jobs"]):
+                return False, "UNSUPPORTED_LINKEDIN (NON_DATA_SECTION)"
 
-        return True, "CHROME_LINKEDIN"
+            return True, "LINKEDIN"
+
+        # Target B: GitHub Talent & Developer Profiles
+        if "github" in title_lower or "github.com" in url:
+            disallowed_gh = ["pulls", "issues", "marketplace", "explore", "notifications", "settings"]
+            if any(f"/{s}" in url for s in disallowed_gh):
+                return False, "UNSUPPORTED_GITHUB (NON_PROFILE)"
+            return True, "GITHUB"
+
+        # Target C: ATS Platforms (Greenhouse, Lever, Ashby, Workday)
+        if "greenhouse.io" in url or "greenhouse" in title_lower:
+            return True, "ATS_GREENHOUSE"
+        if "lever.co" in url or "lever" in title_lower:
+            return True, "ATS_LEVER"
+        if "ashbyhq.com" in url or "ashby" in title_lower:
+            return True, "ATS_ASHBY"
+        if "myworkday.com" in url or "workday.com" in url or "workday" in title_lower:
+            return True, "ATS_WORKDAY"
+
+        return False, "UNSUPPORTED_BROWSER_PAGE"
 
     # All other applications are strictly ignored
     return False, f"UNSUPPORTED_APP ({proc})"

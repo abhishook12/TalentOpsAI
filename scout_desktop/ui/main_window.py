@@ -576,6 +576,18 @@ class MainWindow(QMainWindow):
         hero_sub.addStretch()
 
         hero_layout.addLayout(hero_sub)
+
+        # Live Copilot Intelligence Badge
+        self.lbl_hero_copilot = QLabel("🔍 Live Copilot: Ready to query TalentOps central database")
+        self.lbl_hero_copilot.setStyleSheet("""
+            color: #38BDF8; font-size: 10px; font-weight: 700;
+            background: rgba(14, 165, 233, 0.12);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            border-radius: 6px; padding: 4px 8px; margin-top: 4px;
+        """)
+        self.lbl_hero_copilot.setWordWrap(True)
+        hero_layout.addWidget(self.lbl_hero_copilot)
+
         main_vbox.addWidget(self.hero_card)
 
         # ── 6. Collapsible Technical Telemetry Drawer Toggle ──
@@ -1090,14 +1102,31 @@ class MainWindow(QMainWindow):
     def update_window_context(self, app_name: str, window_title: str, url: str, context: str, is_allowed: bool = True, target_type: str = ""):
         clean_title = window_title[:45] if window_title else "Screen Active"
         if is_allowed:
-            if target_type == "CHROME_LINKEDIN":
-                self.lbl_target_desc.setText(f"Watching Google Chrome — LinkedIn Profile Active ({clean_title})")
+            if target_type in ("CHROME_LINKEDIN", "LINKEDIN"):
+                self.lbl_target_desc.setText(f"Watching LinkedIn — Talent Profile Active ({clean_title})")
                 self.lbl_target_url.setText(f"Target: {url or 'https://www.linkedin.com'}")
                 self.lbl_sampling_pulse.setText("● SCANNING LINKEDIN")
                 self.lbl_sampling_pulse.setStyleSheet("color: #10B981; font-size: 9px; font-weight: 700;")
                 self.lbl_main_status.setText("ACTIVE (LINKEDIN)")
                 self.status_dot.setStyleSheet("color: #10B981; font-size: 10px;")
                 self.lbl_main_status.setStyleSheet("color: #10B981; font-size: 9px; font-weight: 800;")
+            elif target_type == "GITHUB":
+                self.lbl_target_desc.setText(f"Watching GitHub — Developer Profile Active ({clean_title})")
+                self.lbl_target_url.setText(f"Target: {url or 'https://github.com'}")
+                self.lbl_sampling_pulse.setText("● SCANNING GITHUB")
+                self.lbl_sampling_pulse.setStyleSheet("color: #A855F7; font-size: 9px; font-weight: 700;")
+                self.lbl_main_status.setText("ACTIVE (GITHUB)")
+                self.status_dot.setStyleSheet("color: #A855F7; font-size: 10px;")
+                self.lbl_main_status.setStyleSheet("color: #A855F7; font-size: 9px; font-weight: 800;")
+            elif target_type.startswith("ATS_"):
+                ats_name = target_type.split("ATS_")[-1]
+                self.lbl_target_desc.setText(f"Watching ATS ({ats_name}) — Candidate Review ({clean_title})")
+                self.lbl_target_url.setText(f"Target ATS: {url or 'Applicant Tracking System'}")
+                self.lbl_sampling_pulse.setText(f"● SCANNING {ats_name}")
+                self.lbl_sampling_pulse.setStyleSheet("color: #F59E0B; font-size: 9px; font-weight: 700;")
+                self.lbl_main_status.setText(f"ACTIVE ({ats_name})")
+                self.status_dot.setStyleSheet("color: #F59E0B; font-size: 10px;")
+                self.lbl_main_status.setStyleSheet("color: #F59E0B; font-size: 9px; font-weight: 800;")
             elif target_type == "TEAMS":
                 self.lbl_target_desc.setText(f"Watching Microsoft Teams — {clean_title}")
                 self.lbl_target_url.setText("Target: Microsoft Teams (Chat/Meeting/Channel)")
@@ -1111,12 +1140,12 @@ class MainWindow(QMainWindow):
                 self.lbl_target_url.setText(f"Target URL: {url or '---'}")
             self.ind_window.set_state("DETECTED")
         else:
-            if target_type == "UNSUPPORTED_CHROME":
-                self.lbl_target_desc.setText(f"Resting (Chrome) — Tab is not LinkedIn ('{clean_title}')")
-                self.lbl_target_url.setText(f"Scanner ignores non-LinkedIn Chrome tabs ({url or 'other web content'})")
+            if "BROWSER" in target_type or "SEARCH" in target_type:
+                self.lbl_target_desc.setText(f"Resting (Browser) — Page outside talent allowlist ('{clean_title}')")
+                self.lbl_target_url.setText(f"Scanner ignores search engines & non-talent pages ({url or 'web content'})")
             else:
                 self.lbl_target_desc.setText(f"Resting [{app_name}] — Outside target allowlist")
-                self.lbl_target_url.setText("Scanner active ONLY on LinkedIn (Chrome) and MS Teams")
+                self.lbl_target_url.setText("Scanner active on LinkedIn, GitHub, ATS systems (Greenhouse/Lever/Ashby) & Teams")
             
             self.lbl_sampling_pulse.setText("💤 RESTING (0% CPU)")
             self.lbl_sampling_pulse.setStyleSheet("color: #64748B; font-size: 9px; font-weight: 700;")
@@ -1125,8 +1154,16 @@ class MainWindow(QMainWindow):
             self.lbl_main_status.setStyleSheet("color: #64748B; font-size: 9px; font-weight: 800;")
             self.ind_window.set_state("IDLE")
 
-    def update_candidate_card(self, name: str, title: Optional[str], company: Optional[str], location: Optional[str], status: str = "CLOUD COMMITTED"):
-        """Updates the prominent Latest Candidate Hero Card with clean details."""
+    def update_candidate_card(
+        self,
+        name: str,
+        title: Optional[str],
+        company: Optional[str],
+        location: Optional[str],
+        status: str = "CLOUD COMMITTED",
+        copilot_info: Optional[dict] = None,
+    ):
+        """Updates the prominent Latest Candidate Hero Card with clean details and Live Copilot info."""
         try:
             from scout_desktop.extractor.title_normalizer import classify_title
             t_info = classify_title(title) if title else None
@@ -1141,10 +1178,30 @@ class MainWindow(QMainWindow):
         self.lbl_hero_company.setText(f"Company: {company or '—'}")
         self.lbl_hero_location.setText(f"Location: {location or '—'}")
         self.lbl_hero_pill.setText(status.upper())
-        if "COMMITTED" in status or "SYNC" in status:
+        if "COMMITTED" in status or "SYNC" in status or "DATABASE" in status:
             self.lbl_hero_pill.setStyleSheet("background: #0F2520; color: #34D399; border: 1px solid #059669; border-radius: 10px; padding: 2px 8px; font-size: 8px; font-weight: 800;")
         else:
             self.lbl_hero_pill.setStyleSheet("background: #0E1A2E; color: #38BDF8; border: 1px solid #0284C7; border-radius: 10px; padding: 2px 8px; font-size: 8px; font-weight: 800;")
+
+        # Update Live Copilot status badge
+        if copilot_info and copilot_info.get("found"):
+            e_text = f" • Email: {copilot_info['email']}" if copilot_info.get("email") else " • Verified Record on file"
+            t_score = f" (Trust: {copilot_info.get('trust_score', 90)}%)"
+            self.lbl_hero_copilot.setText(f"🟢 IN TALENTOPS DATABASE{e_text}{t_score}")
+            self.lbl_hero_copilot.setStyleSheet("""
+                color: #34D399; font-size: 10px; font-weight: 700;
+                background: rgba(16, 185, 129, 0.12);
+                border: 1px solid rgba(16, 185, 129, 0.35);
+                border-radius: 6px; padding: 4px 8px; margin-top: 4px;
+            """)
+        elif copilot_info and not copilot_info.get("found"):
+            self.lbl_hero_copilot.setText("✨ NEW CANDIDATE LEAD — Automatically staging & resolving identity to database")
+            self.lbl_hero_copilot.setStyleSheet("""
+                color: #C084FC; font-size: 10px; font-weight: 700;
+                background: rgba(168, 85, 247, 0.12);
+                border: 1px solid rgba(168, 85, 247, 0.35);
+                border-radius: 6px; padding: 4px 8px; margin-top: 4px;
+            """)
 
     def update_explicit_counters(self, metrics: Dict[str, Any]):
         # 1. Update Technical Drawer Counters

@@ -17,11 +17,11 @@ import sys
 import time
 import uuid
 import logging
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 
 from PIL import Image
 
-from PySide6.QtWidgets import QApplication, QTabWidget
+from PySide6.QtWidgets import QApplication, QTabWidget, QSystemTrayIcon
 from PySide6.QtCore import QObject, Signal, QTimer, Slot
 from PySide6.QtGui import QIcon
 
@@ -30,6 +30,7 @@ from .core.browser_tracker import BrowserTracker
 from .core.visual_sampler import VisualSampler
 from .core.evidence_store import EvidenceStore
 from .core.ocr_engine import OcrEngine
+from .core.updater import AutoUpdater
 from .core.intelligence_levels import IntelligenceRouter, FrameQueue, FrameContext
 from .core.context_memory import ContextMemory
 from .extractor.entity_extractor import EntityExtractor
@@ -73,7 +74,7 @@ class AppBridge(QObject):
     capture_view_updated = Signal(str, float, str, object, dict, str) # (capture_id, delta, reason, img, breakdown, status)
     extraction_proof_updated = Signal(list)       # (observations)
     db_proof_updated = Signal(str, dict, str)     # (status, response_dict, result_str)
-    candidate_card_updated = Signal(str, str, str, str, str, str) # (name, title, company, location, status, desc)
+    candidate_card_updated = Signal(str, str, str, str, str, str, object) # (name, title, company, location, status, desc, copilot_info)
 
 
 class ScoutDesktopApp:
@@ -88,6 +89,12 @@ class ScoutDesktopApp:
         self.entity_extractor = EntityExtractor()
         self.local_queue = LocalQueue()
         self.backend_client = BackendClient()
+
+        # Auto-Updater Subsystem
+        self.updater = AutoUpdater(
+            api_base=self.backend_client.active_api_base,
+            on_update_ready=self._on_update_ready
+        )
 
         # New Intelligence Subsystems (Phases 3-9)
         self.intelligence_router = IntelligenceRouter()
@@ -317,7 +324,40 @@ class ScoutDesktopApp:
             self.tray.update_icon_status("IDLE")
             self.bridge.event_logged.emit("SCOUT_RESTING", "Resting — Active window is outside allowed targets")
 
+        # Step 6: Global Hotkey & Auto-Updater
+        self._init_global_hotkey()
+        self.updater.start()
+
         self._emit_telemetry()
+
+    def _init_global_hotkey(self):
+        """Registers system-wide hotkey Ctrl+Shift+S for instant candidate capture."""
+        try:
+            import keyboard
+            keyboard.add_hotkey("ctrl+shift+s", self._on_global_hotkey_pressed)
+            logger.info("⚡ Global force-capture hotkey registered (Ctrl + Shift + S)")
+        except Exception as e:
+            logger.debug("Failed to register global hotkey via keyboard: %s", e)
+
+    def _on_global_hotkey_pressed(self):
+        """Callback for Ctrl+Shift+S global hotkey."""
+        logger.info("⚡ Global hotkey triggered: Ctrl + Shift + S")
+        QTimer.singleShot(0, self.force_capture)
+
+    def _on_update_ready(self, version: str, installer_path: str):
+        """Invoked by AutoUpdater when a new installer binary is downloaded and ready."""
+        logger.info("Update ready to install: v%s (%s)", version, installer_path)
+        self.bridge.event_logged.emit("UPDATE_READY", f"TalentOps Scout v{version} downloaded & ready to apply")
+        try:
+            if hasattr(self, "tray") and hasattr(self.tray, "tray"):
+                self.tray.tray.showMessage(
+                    "TalentOps Scout Update Ready",
+                    f"Version {version} downloaded. Restart to apply update.",
+                    QSystemTrayIcon.Information,
+                    6000
+                )
+        except Exception as e:
+            logger.debug("Tray message error: %s", e)
 
     def _poll_active_window(self):
         """Checks foreground window and enforces strict targeting rule (LinkedIn on Chrome or MS Teams only)."""
@@ -351,10 +391,10 @@ class ScoutDesktopApp:
         except Exception as e:
             logger.debug("Active window poll error: %s", e)
 
-    def _on_meaningful_frame(self, img: Image.Image, delta: float, win_info: WindowInfo):
+    def _on_meaningful_frame(self, img: Image.Image, delta: float, win_info: WindowInfo, bbox: Optional[Tuple[int, int, int, int]] = None):
         """
         Invoked by VisualSampler when meaningful visual change occurs.
-        Strict Whitelist Gatekeeper: Only processes frames from LinkedIn (Chrome) or MS Teams.
+        Strict Whitelist Gatekeeper: Processes frames from LinkedIn, GitHub, ATS systems, or MS Teams.
         Includes real-time window re-validation to prevent stale win_info race conditions.
         """
         # Gate 1: Check the passed (potentially stale) win_info
@@ -387,7 +427,11 @@ class ScoutDesktopApp:
         # Gate 3: URL hard-block — if we have a URL, it MUST be from an allowed domain
         if page_url:
             url_lower = page_url.lower()
-            if "linkedin.com" not in url_lower and "teams" not in url_lower:
+            allowed_domains = (
+                "linkedin.com", "teams", "github.com",
+                "greenhouse.io", "lever.co", "ashbyhq.com", "myworkday.com", "workday.com"
+            )
+            if not any(d in url_lower for d in allowed_domains):
                 logger.info("Frame rejected by URL hard-block: %s", page_url[:60])
                 return
 
@@ -433,7 +477,27 @@ class ScoutDesktopApp:
         # 2. Extract visible text via offline Windows Media OCR
         ocr_lines = []
         if capture_item and os.path.exists(capture_item.file_path):
-            ocr_lines = self.ocr_engine.extract_text_from_image(capture_item.file_path)
+            ocr_target_path = capture_item.file_path
+            if bbox:
+                bx1, by1, bx2, by2 = bbox
+                box_area = (bx2 - bx1) * (by2 - by1)
+                total_area = img.width * img.height
+                if total_area > 0 and 0.10 <= (box_area / total_area) <= 0.85:
+                    try:
+                        crop_img = img.crop(bbox)
+                        crop_path = capture_item.file_path.replace(".jpg", "_crop.jpg")
+                        crop_img.save(crop_path, "JPEG", quality=85)
+                        ocr_target_path = crop_path
+                        logger.debug("Running OCR on regional delta crop (%s)", bbox)
+                    except Exception as ce:
+                        logger.debug("Regional crop failed, falling back to full frame: %s", ce)
+
+            ocr_lines = self.ocr_engine.extract_text_from_image(ocr_target_path)
+            if ocr_target_path != capture_item.file_path and os.path.exists(ocr_target_path):
+                try:
+                    os.remove(ocr_target_path)
+                except Exception:
+                    pass
 
         lines = list(ocr_lines)
 
@@ -559,13 +623,32 @@ class ScoutDesktopApp:
                 desc += f" @ {first.current_company}"
             if first.location:
                 desc += f" ({first.location})"
+
+            # Live Copilot Intelligence Query
+            copilot_info = None
+            try:
+                cand_email = getattr(first, "primary_email", None) or getattr(first, "email", None)
+                cand_linkedin = page_url if "linkedin.com/in/" in page_url else getattr(first, "linkedin_url", None)
+                copilot_info = self.backend_client.lookup_candidate(
+                    name=first.canonical_name,
+                    company=first.current_company,
+                    linkedin=cand_linkedin,
+                    email=cand_email,
+                )
+                if copilot_info and copilot_info.get("found"):
+                    self.cnt_matched += 1
+            except Exception as e:
+                logger.debug("Live Copilot lookup error: %s", e)
+
+            card_status = "IN DATABASE" if (copilot_info and copilot_info.get("found")) else "STAGED"
             self.bridge.candidate_card_updated.emit(
                 first.canonical_name,
                 first.current_title or "",
                 first.current_company or "",
                 first.location or "",
-                "STAGED",
-                desc
+                card_status,
+                desc,
+                copilot_info
             )
         else:
             # Discard immediately on NO_USEFUL_DATA (0ms)
@@ -696,15 +779,16 @@ class ScoutDesktopApp:
             self.edge_handle.set_status_state("IDLE")
             self.tray.update_icon_status("IDLE")
 
-    @Slot(str, str, str, str, str, str)
-    def _handle_candidate_card_update(self, name: str, title: str, company: str, location: str, status: str, desc: str):
+    @Slot(str, str, str, str, str, str, object)
+    def _handle_candidate_card_update(self, name: str, title: str, company: str, location: str, status: str, desc: str, copilot_info: Optional[dict] = None):
         self.main_window.lbl_target_desc.setText(f"Extracted: {desc}")
         self.main_window.update_candidate_card(
             name=name,
             title=title,
             company=company,
             location=location,
-            status=status
+            status=status,
+            copilot_info=copilot_info
         )
 
     @Slot(str)
@@ -729,6 +813,24 @@ class ScoutDesktopApp:
 
     def shutdown(self):
         logger.info("🛑 Complete shutdown initiated: stopping all TalentOps Scout operations...")
+        try:
+            import keyboard
+            keyboard.unhook_all_hotkeys()
+        except Exception:
+            pass
+
+        try:
+            if hasattr(self, "updater"):
+                self.updater.stop()
+        except Exception as e:
+            logger.debug("Error stopping updater: %s", e)
+
+        try:
+            if hasattr(self, "ocr_engine"):
+                self.ocr_engine.close()
+        except Exception as e:
+            logger.debug("Error closing OCR engine: %s", e)
+
         try:
             self.sampler.stop()
         except Exception as e:

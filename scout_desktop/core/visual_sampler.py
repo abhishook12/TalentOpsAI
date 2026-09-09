@@ -42,10 +42,21 @@ def compute_weighted_regional_delta(pixels_a: np.ndarray, pixels_b: np.ndarray) 
     Main content (middle 75% vertical & 80% horizontal) gets 80% weight.
     Borders/margins (headers, tabs, clocks, spinners) get 20% weight.
     """
+    delta, _ = compute_weighted_regional_delta_and_box(pixels_a, pixels_b)
+    return delta
+
+
+def compute_weighted_regional_delta_and_box(
+    pixels_a: np.ndarray, pixels_b: np.ndarray, orig_w: int = 0, orig_h: int = 0
+) -> Tuple[float, Optional[Tuple[int, int, int, int]]]:
+    """
+    Computes regional weighted difference score AND identifies the bounding box
+    of the visually altered region (scaled to original image dimensions).
+    """
     if pixels_a is None or pixels_b is None:
-        return 1.0
+        return 1.0, None
     if pixels_a.shape != pixels_b.shape:
-        return 1.0
+        return 1.0, None
 
     diff = np.abs(pixels_a - pixels_b)
     significant_mask = diff > PIXEL_TOLERANCE
@@ -68,7 +79,29 @@ def compute_weighted_regional_delta(pixels_a: np.ndarray, pixels_b: np.ndarray) 
 
     # Weighted score favoring main content
     weighted_score = (main_ratio * 0.8) + (outer_ratio * 0.2)
-    return round(float(weighted_score), 4)
+    score = round(float(weighted_score), 4)
+
+    # Compute changed bounding box if change detected
+    bbox = None
+    if total_sig > 10 and orig_w > 0 and orig_h > 0:
+        y_indices, x_indices = np.where(significant_mask)
+        if len(y_indices) > 0 and len(x_indices) > 0:
+            min_y_ratio = max(0.0, float(np.min(y_indices)) / DOWNSCALE_HEIGHT - 0.05)
+            max_y_ratio = min(1.0, float(np.max(y_indices)) / DOWNSCALE_HEIGHT + 0.05)
+            min_x_ratio = max(0.0, float(np.min(x_indices)) / DOWNSCALE_WIDTH - 0.05)
+            max_x_ratio = min(1.0, float(np.max(x_indices)) / DOWNSCALE_WIDTH + 0.05)
+
+            # Ensure box isn't trivial
+            if (max_y_ratio - min_y_ratio) > 0.15 and (max_x_ratio - min_x_ratio) > 0.15:
+                bbox = (
+                    int(min_x_ratio * orig_w),
+                    int(min_y_ratio * orig_h),
+                    int(max_x_ratio * orig_w),
+                    int(max_y_ratio * orig_h),
+                )
+
+    return score, bbox
+
 
 
 class VisualSampler:
@@ -283,7 +316,9 @@ class VisualSampler:
                         except Exception as e:
                             logger.error("Baseline frame dispatch error: %s", e)
                 else:
-                    delta = compute_weighted_regional_delta(self._prev_pixels, current_pixels)
+                    delta, bbox = compute_weighted_regional_delta_and_box(
+                        self._prev_pixels, current_pixels, img.width, img.height
+                    )
                     self.stats["last_delta"] = delta
                     is_meaningful = delta >= self.delta_threshold
                     is_autonomous_scan = (now - self._last_autonomous_scan_time) >= self.autonomous_scan_interval_sec
@@ -301,7 +336,12 @@ class VisualSampler:
                         effective_delta = delta if is_meaningful else 0.05
                         if self.on_meaningful_frame and win_info:
                             try:
-                                self.on_meaningful_frame(img, effective_delta, win_info)
+                                import inspect
+                                sig = inspect.signature(self.on_meaningful_frame)
+                                if len(sig.parameters) >= 4:
+                                    self.on_meaningful_frame(img, effective_delta, win_info, bbox)
+                                else:
+                                    self.on_meaningful_frame(img, effective_delta, win_info)
                             except Exception as e:
                                 logger.error("Frame dispatch error: %s", e)
                     else:

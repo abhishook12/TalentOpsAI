@@ -229,6 +229,41 @@ class BackendClient:
             logger.debug("Heartbeat ping failed: %s", e)
             return False, {"error": str(e)}
 
+    def lookup_candidate(
+        self,
+        name: Optional[str] = None,
+        company: Optional[str] = None,
+        linkedin: Optional[str] = None,
+        email: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Queries backend copilot endpoint to check if candidate is already in TalentOps.
+        Returns candidate match dict if found or None.
+        """
+        if not self.ensure_authenticated():
+            return None
+
+        url = f"{self.active_api_base}/scout/copilot/lookup"
+        params = {}
+        if name:
+            params["name"] = name
+        if company:
+            params["company"] = company
+        if linkedin:
+            params["linkedin"] = linkedin
+        if email:
+            params["email"] = email
+
+        try:
+            res = requests.get(url, params=params, headers=self._get_headers(), timeout=3.5)
+            if res.status_code == 200:
+                data = res.json()
+                if data.get("found"):
+                    return data
+        except Exception as e:
+            logger.debug("Copilot lookup error: %s", e)
+        return None
+
     def sync_staged_batch(
         self,
         contacts: List[Dict[str, Any]],

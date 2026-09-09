@@ -25,6 +25,7 @@ from sqlalchemy import desc
 
 from ..database import get_db
 from ..models.auth_models import User
+from ..models.models import Recruiter, Company
 from ..models.extension_models import (
     ExtensionActivationCode,
     ExtensionDevice,
@@ -329,6 +330,85 @@ def rename_scout_device(
     db.commit()
 
     return {"ok": True, "device_id": device_id, "name": device.user_agent}
+
+
+# ── Copilot Candidate Real-Time Lookup Endpoint ──────────────────────────────
+
+def _format_copilot_match(r: Recruiter) -> dict:
+    has_real_email = bool(r.email and "noemail.talentops" not in r.email)
+    return {
+        "found": True,
+        "status": "IN_DATABASE",
+        "recruiter_id": r.recruiter_id,
+        "name": r.recruiter_name,
+        "title": r.title,
+        "company": r.company.company_name if r.company else None,
+        "email": r.email if has_real_email else None,
+        "phone": r.phone,
+        "linkedin": r.linkedin,
+        "trust_score": r.trust_score or 75,
+        "last_seen": r.updated_at.isoformat() if r.updated_at else (r.created_at.isoformat() if r.created_at else None),
+        "notes": r.notes,
+    }
+
+
+def _get_optional_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
+    try:
+        return get_current_user_from_request(request, db)
+    except Exception:
+        return None
+
+
+@router.get("/copilot/lookup")
+def copilot_candidate_lookup(
+    name: Optional[str] = Query(None),
+    company: Optional[str] = Query(None),
+    linkedin: Optional[str] = Query(None),
+    email: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(_get_optional_user),
+):
+    """
+    Real-time candidate lookup for Scout Desktop Live Copilot overlay.
+    Checks if a candidate viewed on screen already exists in central TalentOps database.
+    """
+    if not name and not linkedin and not email:
+        return {"found": False, "status": "INSUFFICIENT_QUERY"}
+
+    query = db.query(Recruiter)
+
+    # 1. Match by LinkedIn URL slug
+    if linkedin and "linkedin.com/in/" in linkedin:
+        slug = linkedin.split("linkedin.com/in/")[-1].strip("/? ")
+        if slug:
+            match = query.filter(Recruiter.linkedin.ilike(f"%{slug}%")).first()
+            if match:
+                return _format_copilot_match(match)
+
+    # 2. Match by direct email
+    if email and "@" in email:
+        match = query.filter(
+            (Recruiter.email == email.strip()) | (Recruiter.email2 == email.strip())
+        ).first()
+        if match:
+            return _format_copilot_match(match)
+
+    # 3. Match by name and company
+    if name and company:
+        match = query.join(Recruiter.company, isouter=True).filter(
+            Recruiter.recruiter_name.ilike(f"%{name.strip()}%"),
+            Company.company_name.ilike(f"%{company.strip()}%"),
+        ).first()
+        if match:
+            return _format_copilot_match(match)
+
+    # 4. Match by name alone
+    if name and len(name.strip()) >= 3:
+        match = query.filter(Recruiter.recruiter_name.ilike(f"%{name.strip()}%")).first()
+        if match:
+            return _format_copilot_match(match)
+
+    return {"found": False, "status": "NEW_LEAD"}
 
 
 # ── Official Scout Batch Ingestion Endpoint ───────────────────────────────────

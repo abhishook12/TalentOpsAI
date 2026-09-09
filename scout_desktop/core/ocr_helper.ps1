@@ -1,6 +1,6 @@
 param(
-    [Parameter(Mandatory=$true)]
-    [string]$ImagePath
+    [string]$ImagePath = "",
+    [switch]$Daemon = $false
 )
 
 $ErrorActionPreference = 'Stop'
@@ -24,32 +24,73 @@ try {
     [Windows.Graphics.Imaging.BitmapDecoder, Windows.Graphics.Imaging, ContentType = WindowsRuntime] | Out-Null
     [Windows.Media.Ocr.OcrEngine, Windows.Foundation, ContentType = WindowsRuntime] | Out-Null
 
-    $file = Await-Async ([Windows.Storage.StorageFile]::GetFileFromPathAsync((Resolve-Path $ImagePath).Path)) ([Windows.Storage.StorageFile])
-    $stream = Await-Async ($file.OpenAsync([Windows.Storage.FileAccessMode]::Read)) ([Windows.Storage.Streams.IRandomAccessStream])
-    $decoder = Await-Async ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($stream)) ([Windows.Graphics.Imaging.BitmapDecoder])
-    $bitmap = Await-Async ($decoder.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap])
-
     $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
     if (-not $engine) {
         $lang = [Windows.Globalization.Language]::new("en-US")
         $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage($lang)
     }
 
-    $ocrResult = Await-Async ($engine.RecognizeAsync($bitmap)) ([Windows.Media.Ocr.OcrResult])
+    function Process-OcrImage([string]$targetPath) {
+        try {
+            if (-not (Test-Path $targetPath)) {
+                $errObj = @{ "lines" = @(); "full_text" = ""; "error" = "FILE_NOT_FOUND" }
+                [Console]::Out.WriteLine(($errObj | ConvertTo-Json -Compress))
+                [Console]::Out.Flush()
+                return
+            }
 
-    $lines = @()
-    foreach ($line in $ocrResult.Lines) {
-        $cleanLine = $line.Text -replace '[\u0000-\u0008\u000B\u000C\u000E-\u001F]', ' '
-        $lines += $cleanLine
+            $resolved = (Resolve-Path $targetPath).Path
+            $file = Await-Async ([Windows.Storage.StorageFile]::GetFileFromPathAsync($resolved)) ([Windows.Storage.StorageFile])
+            $stream = Await-Async ($file.OpenAsync([Windows.Storage.FileAccessMode]::Read)) ([Windows.Storage.Streams.IRandomAccessStream])
+            $decoder = Await-Async ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($stream)) ([Windows.Graphics.Imaging.BitmapDecoder])
+            $bitmap = Await-Async ($decoder.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap])
+            $ocrResult = Await-Async ($engine.RecognizeAsync($bitmap)) ([Windows.Media.Ocr.OcrResult])
+
+            $lines = @()
+            foreach ($line in $ocrResult.Lines) {
+                $cleanLine = $line.Text -replace '[\u0000-\u0008\u000B\u000C\u000E-\u001F]', ' '
+                $cleanLine = $cleanLine.Trim()
+                if ($cleanLine.Length -gt 0) {
+                    $lines += $cleanLine
+                }
+            }
+
+            $cleanFull = $ocrResult.Text -replace '[\u0000-\u0008\u000B\u000C\u000E-\u001F]', ' '
+            $outObj = @{
+                "lines" = $lines
+                "full_text" = $cleanFull.Trim()
+            }
+
+            [Console]::Out.WriteLine(($outObj | ConvertTo-Json -Compress))
+            [Console]::Out.Flush()
+        } catch {
+            $errObj = @{ "lines" = @(); "full_text" = ""; "error" = $_.Exception.Message }
+            [Console]::Out.WriteLine(($errObj | ConvertTo-Json -Compress))
+            [Console]::Out.Flush()
+        }
     }
 
-    $cleanFull = $ocrResult.Text -replace '[\u0000-\u0008\u000B\u000C\u000E-\u001F]', ' '
-    $outObj = @{
-        "lines" = $lines
-        "full_text" = $cleanFull
+    if ($Daemon) {
+        [Console]::Out.WriteLine("DAEMON_READY")
+        [Console]::Out.Flush()
+
+        while ($true) {
+            $inputLine = [Console]::In.ReadLine()
+            if ($null -eq $inputLine -or $inputLine -eq "QUIT" -or $inputLine -eq "EXIT") {
+                break
+            }
+            $target = $inputLine.Trim()
+            if ($target.Length -gt 0) {
+                Process-OcrImage $target
+            }
+        }
+    } else {
+        if ($ImagePath) {
+            Process-OcrImage $ImagePath
+        }
     }
 
-    $outObj | ConvertTo-Json -Compress
 } catch {
-    Write-Output "ERROR: $($_.Exception.Message)"
+    [Console]::Out.WriteLine("ERROR: $($_.Exception.Message)")
+    [Console]::Out.Flush()
 }

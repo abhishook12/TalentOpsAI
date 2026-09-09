@@ -55,6 +55,39 @@ class RepairEngine:
 
     # ── Quarantine Operations ──────────────────────────────────────────────────
 
+    def quarantine_record(
+        self,
+        entity_type: str,
+        entity_id: int,
+        field_name: str,
+        raw_value: Optional[str],
+        quarantine_reason: str,
+        problem_type: str = "BAD",
+        severity: str = "HIGH",
+        owner_user_id: int = 1,
+        metadata_json: Optional[str] = None,
+    ) -> QuarantineRecord:
+        """
+        Isolates a corrupt, suspicious, or disputed entity/field in the Quarantine Room.
+        """
+        qr_code = f"QRN-{uuid.uuid4().hex[:8].upper()}"
+        record = QuarantineRecord(
+            quarantine_id=qr_code,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            field_name=field_name,
+            raw_value=raw_value,
+            quarantine_reason=quarantine_reason,
+            problem_type=problem_type,
+            severity=severity,
+            status="QUARANTINED",
+            owner_user_id=owner_user_id,
+            metadata_json=metadata_json,
+        )
+        self.db.add(record)
+        self.db.flush()
+        return record
+
     def release_quarantine(self, quarantine_id: int, user_id: int) -> Dict[str, Any]:
         """
         Releases an isolated record or field from quarantine.
@@ -209,6 +242,15 @@ class RepairEngine:
             q.status = "REPAIRED"
             q.released_at = now
 
+        # 5. Invoke Active Learning Feedback Loop
+        feedback_res = None
+        try:
+            from .dq_feedback_loop import DQFeedbackLoop
+            loop = DQFeedbackLoop(self.db)
+            feedback_res = loop.on_proposal_approved(prop, actor=actor)
+        except Exception as e:
+            logger.warning("Active learning hook failed: %s", e)
+
         self.db.commit()
 
         return {
@@ -217,6 +259,7 @@ class RepairEngine:
             "change_id": change_code,
             "new_value": prop.proposed_value,
             "history_preserved": keep_both_as_historical,
+            "feedback": feedback_res,
         }
 
     # ── Safe Auto-Repairs & Batch Snapshots ────────────────────────────────────

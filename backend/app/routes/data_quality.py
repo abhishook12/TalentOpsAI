@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 
@@ -59,6 +60,15 @@ class BatchRepairRequest(BaseModel):
 
 class BatchRollbackRequest(BaseModel):
     batch_id: str
+
+
+class RevertToDateRequest(BaseModel):
+    target_timestamp: str
+    reason: Optional[str] = None
+
+
+class DaemonRunRequest(BaseModel):
+    tier: int = 1
 
 
 
@@ -568,8 +578,20 @@ def reject_repair_proposal(
     if not prop:
         raise HTTPException(status_code=404, detail="Proposal not found")
     prop.status = "REJECTED"
+    feedback_res = None
+    try:
+        from ..services.dq_feedback_loop import DQFeedbackLoop
+        loop = DQFeedbackLoop(db)
+        feedback_res = loop.on_proposal_rejected(
+            prop,
+            actor=getattr(current_user, "email", "admin@talentops.ai"),
+            reason="Human administrator rejected proposal in Data Quality Center",
+        )
+    except Exception as e:
+        logger.warning("Active learning rejection hook failed: %s", e)
+
     db.commit()
-    return {"status": "REJECTED", "proposal_id": prop.proposal_id}
+    return {"status": "REJECTED", "proposal_id": prop.proposal_id, "feedback": feedback_res}
 
 
 @router.post("/proposals/{proposal_id}/keep-both")
@@ -663,4 +685,228 @@ def get_audit_trail(
         "limit": limit,
         "offset": offset,
     }
+
+
+# ── Time-Travel Timeline & Point-in-Time Revert (2.0) ─────────────────────────
+
+@router.get("/candidate/{candidate_id}/timeline")
+def get_candidate_timeline(
+    candidate_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Returns complete chronological history of a candidate across all
+    observations, audits, and contact changes for visual time-travel diffing.
+    """
+    person = db.query(PersonIdentity).filter(
+        PersonIdentity.id == candidate_id,
+        PersonIdentity.owner_user_id == current_user.id,
+    ).first()
+
+    if not person:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    # 1. Base initial observation
+    timeline_events: List[Dict[str, Any]] = []
+
+    base_time = person.observed_at or person.created_at or datetime.now(timezone.utc)
+    timeline_events.append({
+        "timestamp": base_time.isoformat(),
+        "event_type": "INITIAL_RECORD_CREATED",
+        "actor": "scout_edge_ingest",
+        "snapshot": {
+            "canonical_name": person.canonical_name,
+            "current_title": person.current_title,
+            "current_company": person.current_company,
+            "primary_email": person.primary_email,
+            "primary_phone": person.primary_phone,
+            "location": person.location,
+        },
+        "description": f"Initial ingestion of '{person.canonical_name}'",
+    })
+
+    # 2. Historical contact history changes
+    contacts = db.query(PersonContactHistory).filter(
+        PersonContactHistory.person_identity_id == candidate_id
+    ).order_by(PersonContactHistory.created_at.asc()).all()
+
+    for c in contacts:
+        t = c.valid_to or c.created_at
+        timeline_events.append({
+            "timestamp": t.isoformat() if t else datetime.now(timezone.utc).isoformat(),
+            "event_type": "CONTACT_MUTATION",
+            "actor": "dq_engine",
+            "contact_type": c.contact_type,
+            "contact_value": c.contact_value,
+            "status": c.status,
+            "description": c.reason or f"Archived {c.contact_type} value",
+        })
+
+    # 3. Data Change Audits
+    audits = db.query(DataChangeAudit).filter(
+        DataChangeAudit.entity_type == "PERSON",
+        DataChangeAudit.entity_id == candidate_id,
+    ).order_by(DataChangeAudit.created_at.asc()).all()
+
+    for a in audits:
+        timeline_events.append({
+            "timestamp": a.created_at.isoformat() if a.created_at else datetime.now(timezone.utc).isoformat(),
+            "event_type": "AUDIT_CHANGE",
+            "change_id": a.change_id,
+            "field_name": a.field_name,
+            "old_value": a.old_value,
+            "new_value": a.new_value,
+            "reason": a.reason,
+            "actor": a.actor,
+            "description": f"Field '{a.field_name}' updated from '{a.old_value}' to '{a.new_value}'",
+        })
+
+    # Sort chronological
+    timeline_events.sort(key=lambda x: x["timestamp"])
+
+    return {
+        "candidate_id": person.id,
+        "canonical_name": person.canonical_name,
+        "current": {
+            "canonical_name": person.canonical_name,
+            "current_title": person.current_title,
+            "current_company": person.current_company,
+            "primary_email": person.primary_email,
+            "primary_phone": person.primary_phone,
+            "location": person.location,
+            "updated_at": person.updated_at.isoformat() if person.updated_at else None,
+        },
+        "timeline": timeline_events,
+    }
+
+
+@router.post("/candidate/{candidate_id}/revert-to-date")
+def revert_candidate_to_historical_date(
+    candidate_id: int,
+    req: RevertToDateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Reconstructs candidate state at a specific historical timestamp
+    and non-destructively reverts canonical fields while archiving active data.
+    """
+    person = db.query(PersonIdentity).filter(
+        PersonIdentity.id == candidate_id,
+        PersonIdentity.owner_user_id == current_user.id,
+    ).first()
+
+    if not person:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    try:
+        target_dt = datetime.fromisoformat(req.target_timestamp.replace("Z", "+00:00"))
+    except Exception:
+        target_dt = datetime.now(timezone.utc)
+
+    # Find the most recent audit or contact change on or prior to target_dt
+    audits_after = db.query(DataChangeAudit).filter(
+        DataChangeAudit.entity_type == "PERSON",
+        DataChangeAudit.entity_id == candidate_id,
+        DataChangeAudit.created_at >= target_dt,
+    ).order_by(DataChangeAudit.created_at.desc()).all()
+
+    now = datetime.now(timezone.utc)
+    reverted_fields = []
+
+    # Roll back audits backwards from current down to target_dt
+    for a in audits_after:
+        curr_val = getattr(person, a.field_name, None)
+        if curr_val != a.old_value and a.old_value is not None:
+            # Archive current value to PersonContactHistory
+            hist = PersonContactHistory(
+                person_identity_id=person.id,
+                contact_type=a.field_name,
+                contact_value=str(curr_val),
+                status="historical",
+                valid_to=now,
+                reason=f"Point-in-Time Revert to {req.target_timestamp}: {req.reason or 'User requested rollback'}",
+            )
+            db.add(hist)
+
+            # Revert canonical value
+            setattr(person, a.field_name, a.old_value)
+
+            # Record Audit Trail of the Revert
+            revert_audit = DataChangeAudit(
+                change_id=f"CHANGE-REV-{uuid.uuid4().hex[:6].upper()}",
+                entity_type="PERSON",
+                entity_id=person.id,
+                field_name=a.field_name,
+                old_value=str(curr_val),
+                new_value=str(a.old_value),
+                reason=f"Point-in-Time Revert to {req.target_timestamp}: {req.reason or 'User requested rollback'}",
+                confidence=1.0,
+                actor=getattr(current_user, "email", "admin@talentops.ai"),
+            )
+            db.add(revert_audit)
+            reverted_fields.append({"field": a.field_name, "reverted_to": a.old_value})
+
+    person.updated_at = now
+    db.commit()
+
+    return {
+        "status": "REVERTED",
+        "candidate_id": person.id,
+        "target_timestamp": req.target_timestamp,
+        "reverted_fields": reverted_fields,
+        "current_canonical": {
+            "canonical_name": person.canonical_name,
+            "current_title": person.current_title,
+            "current_company": person.current_company,
+            "primary_email": person.primary_email,
+            "primary_phone": person.primary_phone,
+        },
+    }
+
+
+# ── Active Learning, Daemon & Self-Healing Probes Endpoints (2.0) ─────────────
+
+@router.get("/learning-stats")
+def get_active_learning_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Returns statistics from the active learning loop.
+    """
+    from ..services.dq_feedback_loop import DQFeedbackLoop
+    loop = DQFeedbackLoop(db)
+    return loop.get_learning_stats()
+
+
+@router.post("/daemon/run-tier")
+def run_autonomous_daemon_tier(
+    req: DaemonRunRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Triggers an autonomous scan cycle on demand (Tier 1, Tier 2, or Tier 3).
+    """
+    from ..services.dq_daemon import DQDaemon
+    daemon = DQDaemon(db)
+    res = daemon.run_autonomous_cycle(tier=req.tier, owner_user_id=current_user.id)
+    return res
+
+
+@router.post("/self-heal/scan")
+def run_self_healing_probe(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Scans for employment transitions and missing contacts,
+    auto-derives patterns, and stages Level 3 repair proposals.
+    """
+    from ..services.self_healing_probe import SelfHealingProbe
+    probe = SelfHealingProbe(db)
+    return probe.scan_and_heal_transitions(owner_user_id=current_user.id)
+
 

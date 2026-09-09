@@ -284,3 +284,42 @@ class RepairBatchSnapshot(Base):
     created_at = Column(DateTime, server_default=func.now())
     rolled_back_at = Column(DateTime, nullable=True)
 
+
+class DissimilarityBlocklist(Base):
+    """
+    Dissimilarity Blocklist for Active Learning.
+    Stores pairs of entity IDs that human reviewers or system consensus
+    have confirmed are distinct individuals/companies, preventing repetitive
+    false-positive duplicate proposals.
+    """
+    __tablename__ = "dissimilarity_blocklist"
+
+    id = Column(Integer, primary_key=True, index=True)
+    entity_type = Column(String(30), default="PERSON", nullable=False, index=True)
+    entity_a_id = Column(Integer, nullable=False, index=True)
+    entity_b_id = Column(Integer, nullable=False, index=True)
+    reason = Column(String(255), default="HUMAN_REJECTED_MERGE")
+    created_at = Column(DateTime, server_default=func.now())
+
+
+class SLAHealthAlert(Base):
+    """
+    Data Quality SLA Health Alerts and Guardrail Trips.
+    Records delivery degradation, quarantine spikes, and campaign auto-pause events.
+    """
+    __tablename__ = "sla_health_alerts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    alert_code = Column(String(64), unique=True, index=True, nullable=False)
+    tenant_id = Column(Integer, nullable=True, index=True)
+    alert_type = Column(String(50), nullable=False, index=True)  # DELIVERABILITY_DROP, QUARANTINE_SPIKE, CAMPAIGN_AUTO_PAUSED
+    metric_name = Column(String(50), nullable=False)
+    metric_value = Column(Float, nullable=False)
+    threshold = Column(Float, nullable=False)
+    status = Column(String(30), default="TRIGGERED", index=True)  # TRIGGERED, ACKNOWLEDGED, RESOLVED
+    message = Column(Text, nullable=False)
+    payload_json = Column(Text, nullable=True)
+    triggered_at = Column(DateTime, server_default=func.now())
+    resolved_at = Column(DateTime, nullable=True)
+
+

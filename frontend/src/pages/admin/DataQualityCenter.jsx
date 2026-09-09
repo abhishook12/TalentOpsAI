@@ -48,6 +48,16 @@ export default function DataQualityCenter() {
   const [rollbackBatchId, setRollbackBatchId] = useState('')
   const [showRollbackModal, setShowRollbackModal] = useState(false)
 
+  // Version 2.0 State: Time Machine, Daemon, Self-Healing & Active Learning
+  const [timeMachineCandidateId, setTimeMachineCandidateId] = useState('')
+  const [timeMachineData, setTimeMachineData] = useState(null)
+  const [loadingTimeMachine, setLoadingTimeMachine] = useState(false)
+  const [selectedTimelineIndex, setSelectedTimelineIndex] = useState(0)
+  const [revertingPointInTime, setRevertingPointInTime] = useState(false)
+  const [runningDaemon, setRunningDaemon] = useState(false)
+  const [runningSelfHealing, setRunningSelfHealing] = useState(false)
+  const [learningStats, setLearningStats] = useState(null)
+
   const [scanning, setScanning] = useState(false)
   const [repairingId, setRepairingId] = useState(null)
 
@@ -134,6 +144,81 @@ export default function DataQualityCenter() {
       setLoadingAudit(false)
     }
   }, [])
+
+  const fetchLearningStats = useCallback(async () => {
+    try {
+      const res = await api.get('/data-quality/learning-stats')
+      setLearningStats(res.data)
+    } catch (err) {
+      console.error('Failed to load learning stats', err)
+    }
+  }, [])
+
+  const fetchCandidateTimeline = async (candidateId) => {
+    if (!candidateId) return
+    setLoadingTimeMachine(true)
+    try {
+      const res = await api.get(`/data-quality/candidate/${candidateId}/timeline`)
+      setTimeMachineData(res.data)
+      setSelectedTimelineIndex(res.data.timeline?.length ? res.data.timeline.length - 1 : 0)
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Failed to load timeline')
+    } finally {
+      setLoadingTimeMachine(false)
+    }
+  }
+
+  const handleRevertToDate = async () => {
+    if (!timeMachineData || !timeMachineData.timeline?.[selectedTimelineIndex]) return
+    const targetPoint = timeMachineData.timeline[selectedTimelineIndex]
+    setRevertingPointInTime(true)
+    const toastId = toast.loading('Reverting candidate point-in-time...')
+    try {
+      await api.post(`/data-quality/candidate/${timeMachineData.candidate_id}/revert-to-date`, {
+        target_timestamp: targetPoint.timestamp,
+        reason: `Reverted to historical milestone from ${targetPoint.timestamp}`,
+      })
+      toast.success(`Successfully reverted ${timeMachineData.canonical_name} to milestone!`, { id: toastId })
+      await fetchCandidateTimeline(timeMachineData.candidate_id)
+      fetchDqSummary()
+      fetchAuditTrail()
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Failed to revert point-in-time', { id: toastId })
+    } finally {
+      setRevertingPointInTime(false)
+    }
+  }
+
+  const handleRunDaemon = async (tier = 1) => {
+    setRunningDaemon(true)
+    const toastId = toast.loading(`Running Autonomous Daemon Tier ${tier}...`)
+    try {
+      const res = await api.post('/data-quality/daemon/run-tier', { tier })
+      toast.success(`Daemon Tier ${tier} complete!`, { id: toastId })
+      fetchDqSummary()
+      fetchQuarantine()
+      fetchProposals()
+      fetchLearningStats()
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Daemon cycle failed', { id: toastId })
+    } finally {
+      setRunningDaemon(false)
+    }
+  }
+
+  const handleRunSelfHealing = async () => {
+    setRunningSelfHealing(true)
+    const toastId = toast.loading('Running Proactive Self-Healing Probes...')
+    try {
+      const res = await api.post('/data-quality/self-heal/scan')
+      toast.success(`Self-healing complete! Staged ${res.data.proposals_staged || 0} candidate repair proposals.`, { id: toastId })
+      fetchProposals()
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Self-healing scan failed', { id: toastId })
+    } finally {
+      setRunningSelfHealing(false)
+    }
+  }
 
   const handleRemediate = async (issueId, action) => {
     const toastId = toast.loading(`Executing ${action}...`)
@@ -295,12 +380,13 @@ export default function DataQualityCenter() {
     fetchQuarantine()
     fetchProposals()
     fetchAuditTrail()
+    fetchLearningStats()
     const interval = setInterval(() => {
       fetchDashboardData()
       fetchDqSummary()
     }, 10000)
     return () => clearInterval(interval)
-  }, [fetchDashboardData, fetchAnomalies, fetchDqSummary, fetchRemediationQueue, fetchQuarantine, fetchProposals, fetchAuditTrail, filterType, anomalyPage])
+  }, [fetchDashboardData, fetchAnomalies, fetchDqSummary, fetchRemediationQueue, fetchQuarantine, fetchProposals, fetchAuditTrail, fetchLearningStats, filterType, anomalyPage])
 
   const handleRunScan = async () => {
     setScanning(true)
@@ -407,10 +493,37 @@ export default function DataQualityCenter() {
           <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 14, maxWidth: 850, lineHeight: 1.5 }}>
             Never fix bad data by deleting or blindly overwriting it. Continuous 14-validator scanning, hospital quarantine isolation, 5-tier evidence ladders, shadow-write proposals, and reversible snapshot rollbacks.
           </p>
+          {learningStats && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 12, background: 'rgba(139, 92, 246, 0.15)', color: '#8B5CF6', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Sparkles size={13} /> Active Learning: {learningStats.learned_company_aliases} Aliases Promoted &bull; {learningStats.blocked_duplicate_pairs} False-Merges Blocked
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Global Action Toolbar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <button 
+            onClick={() => handleRunDaemon(1)}
+            disabled={runningDaemon}
+            className="cc-ghost-button"
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', fontSize: 13, fontWeight: 600, color: 'var(--brand)', borderColor: 'var(--brand)' }}
+          >
+            {runningDaemon ? <RefreshCw className="animate-spin" size={16} /> : <Cpu size={16} />}
+            {runningDaemon ? 'Daemon Running...' : 'Run Daemon'}
+          </button>
+
+          <button 
+            onClick={handleRunSelfHealing}
+            disabled={runningSelfHealing}
+            className="cc-ghost-button"
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', fontSize: 13, fontWeight: 600, color: '#10B981', borderColor: '#10B98150' }}
+          >
+            {runningSelfHealing ? <RefreshCw className="animate-spin" size={16} /> : <Sparkles size={16} color="#10B981" />}
+            {runningSelfHealing ? 'Probing...' : 'Self-Heal Probes'}
+          </button>
+
           <button 
             onClick={handleRunQualityScan}
             disabled={runningQualityScan}
@@ -527,6 +640,12 @@ export default function DataQualityCenter() {
           onClick={() => { setActiveTab('audit'); fetchAuditTrail(); }}
           icon={History}
           label="Audit Trail & Snapshots"
+        />
+        <TabButton 
+          active={activeTab === 'timemachine'} 
+          onClick={() => setActiveTab('timemachine')}
+          icon={Clock}
+          label="Candidate Time Machine"
         />
         <TabButton 
           active={activeTab === 'anomalies'} 
@@ -1287,6 +1406,215 @@ export default function DataQualityCenter() {
         </div>
       )}
 
+      {/* TAB 7: CANDIDATE TIME MACHINE (Version 2.0) */}
+      {activeTab === 'timemachine' && (
+        <div style={{ animation: 'ccFadeUp 0.3s ease' }}>
+          {/* Search / Select Bar */}
+          <div className="card" style={{ padding: '1.25rem 1.5rem', marginBottom: '1.5rem', background: 'var(--panel-bg)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+              <div>
+                <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Clock color="var(--brand)" size={18} />
+                  Candidate Temporal Time Machine & Visual Diff
+                </h3>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>
+                  Scrub across historical observation checkpoints, analyze field-level provenance diffs, and execute 1-click point-in-time rollbacks without destroying intermediate audit history.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type="text"
+                  placeholder="Enter Candidate ID (e.g. 1)..."
+                  value={timeMachineCandidateId}
+                  onChange={(e) => setTimeMachineCandidateId(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && fetchCandidateTimeline(timeMachineCandidateId)}
+                  className="cc-input"
+                  style={{ width: 220, padding: '8px 12px', fontSize: 13 }}
+                />
+                <button
+                  onClick={() => fetchCandidateTimeline(timeMachineCandidateId)}
+                  disabled={loadingTimeMachine || !timeMachineCandidateId}
+                  className="cc-primary-button"
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', fontSize: 13 }}
+                >
+                  {loadingTimeMachine ? <RefreshCw className="animate-spin" size={15} /> : <Search size={15} />}
+                  Load Timeline
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {!timeMachineData ? (
+            <div className="card" style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+              <Clock size={48} style={{ margin: '0 auto 1rem', opacity: 0.4 }} />
+              <h4 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 8px 0', color: 'var(--text-primary)' }}>No Candidate Selected</h4>
+              <p style={{ fontSize: 13, maxWidth: 500, margin: '0 auto 1.5rem' }}>
+                Enter a Candidate ID above or click "Open in Time Machine" from any candidate identity card across the Data Quality Center.
+              </p>
+            </div>
+          ) : (
+            <div>
+              {/* Candidate Banner */}
+              <div className="card" style={{ padding: '1.25rem 1.5rem', marginBottom: '1.5rem', borderLeft: '4px solid var(--brand)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)' }}>
+                        {timeMachineData.canonical_name}
+                      </span>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
+                        ID #{timeMachineData.candidate_id}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
+                      Current: <strong>{timeMachineData.current?.current_title || 'N/A'}</strong> at <strong>{timeMachineData.current?.current_company || 'N/A'}</strong> &bull; {timeMachineData.current?.primary_email || 'No email'}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>
+                      Total Milestones: {timeMachineData.timeline?.length || 0}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Interactive Timeline Slider / Scrub Bar */}
+              {timeMachineData.timeline?.length > 0 && (
+                <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem', background: 'var(--panel-bg)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--brand)' }}>
+                      Chronological Checkpoint Selector
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                      Step {selectedTimelineIndex + 1} of {timeMachineData.timeline.length}
+                    </span>
+                  </div>
+
+                  {/* Slider Control */}
+                  <div style={{ padding: '8px 0', marginBottom: 16 }}>
+                    <input
+                      type="range"
+                      min={0}
+                      max={timeMachineData.timeline.length - 1}
+                      value={selectedTimelineIndex}
+                      onChange={(e) => setSelectedTimelineIndex(parseInt(e.target.value, 10))}
+                      style={{ width: '100%', cursor: 'pointer', accentColor: 'var(--brand)' }}
+                    />
+                  </div>
+
+                  {/* Milestone Detail Card */}
+                  {(() => {
+                    const currentPoint = timeMachineData.timeline[selectedTimelineIndex]
+                    if (!currentPoint) return null
+                    const dt = new Date(currentPoint.timestamp)
+                    return (
+                      <div style={{ padding: '1rem 1.25rem', borderRadius: 8, background: 'var(--bg-elevated)', border: '1px solid var(--card-border)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{
+                              fontSize: 11,
+                              fontWeight: 800,
+                              padding: '3px 8px',
+                              borderRadius: 4,
+                              background: currentPoint.event_type === 'INITIAL_RECORD_CREATED' ? '#3B82F620' : (
+                                currentPoint.event_type === 'AUDIT_CHANGE' ? '#8B5CF620' : '#F59E0B20'
+                              ),
+                              color: currentPoint.event_type === 'INITIAL_RECORD_CREATED' ? '#3B82F6' : (
+                                currentPoint.event_type === 'AUDIT_CHANGE' ? '#8B5CF6' : '#F59E0B'
+                              )
+                            }}>
+                              {currentPoint.event_type}
+                            </span>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                              {dt.toLocaleDateString()} {dt.toLocaleTimeString()}
+                            </span>
+                          </div>
+
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                            Actor: <strong>{currentPoint.actor}</strong>
+                          </div>
+                        </div>
+
+                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 14 }}>
+                          {currentPoint.description}
+                        </div>
+
+                        {/* Point-in-time Revert Action */}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                          <button
+                            onClick={handleRevertToDate}
+                            disabled={revertingPointInTime}
+                            className="cc-primary-button"
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 18px', fontSize: 13, fontWeight: 700, background: '#EF4444', borderColor: '#EF4444' }}
+                          >
+                            {revertingPointInTime ? <RefreshCw className="animate-spin" size={15} /> : <RotateCcw size={15} />}
+                            Revert Canonical Profile to This Milestone
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })()}
+                </div>
+              )}
+
+              {/* Side-by-Side Visual Diff Table */}
+              <div className="card" style={{ padding: '1.25rem 1.5rem', background: 'var(--panel-bg)' }}>
+                <h4 style={{ fontSize: 15, fontWeight: 800, margin: '0 0 1rem 0', color: 'var(--text-primary)' }}>
+                  Visual Side-by-Side Field Comparison (Live vs Selected Milestone)
+                </h4>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--card-border)', color: 'var(--text-muted)', textAlign: 'left' }}>
+                        <th style={{ padding: '10px 12px' }}>FIELD</th>
+                        <th style={{ padding: '10px 12px' }}>CURRENT PRODUCTION VALUE</th>
+                        <th style={{ padding: '10px 12px' }}>HISTORICAL CHECKPOINT VALUE</th>
+                        <th style={{ padding: '10px 12px', textAlign: 'right' }}>DELTA</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {['canonical_name', 'current_title', 'current_company', 'primary_email', 'primary_phone', 'location'].map((fKey) => {
+                        const currentVal = timeMachineData.current?.[fKey] || '—'
+                        const snapshotVal = timeMachineData.timeline?.[selectedTimelineIndex]?.snapshot?.[fKey] || 
+                                           (timeMachineData.timeline?.[selectedTimelineIndex]?.field_name === fKey ? timeMachineData.timeline[selectedTimelineIndex].old_value : currentVal)
+                        const isDiff = currentVal !== snapshotVal && snapshotVal !== '—'
+                        return (
+                          <tr key={fKey} style={{ borderBottom: '1px solid var(--card-border)' }}>
+                            <td style={{ padding: '12px', fontWeight: 700, textTransform: 'capitalize', color: 'var(--text-muted)' }}>
+                              {fKey.replace('_', ' ')}
+                            </td>
+                            <td style={{ padding: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                              {currentVal}
+                            </td>
+                            <td style={{ padding: '12px', fontWeight: 600, color: isDiff ? '#F59E0B' : 'var(--text-secondary)' }}>
+                              {snapshotVal}
+                            </td>
+                            <td style={{ padding: '12px', textAlign: 'right' }}>
+                              <span style={{
+                                fontSize: 11,
+                                fontWeight: 800,
+                                padding: '2px 8px',
+                                borderRadius: 4,
+                                background: isDiff ? '#F59E0B20' : '#10B98120',
+                                color: isDiff ? '#F59E0B' : '#10B981'
+                              }}>
+                                {isDiff ? 'MUTATED' : 'IDENTICAL'}
+                              </span>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ──────────────────────────────────────────────────────────────────────── */}
       {/* MODAL 1: BEFORE / AFTER / EVIDENCE MODAL (User Mandate Section 23)        */}
       {/* ──────────────────────────────────────────────────────────────────────── */}
@@ -1588,7 +1916,21 @@ export default function DataQualityCenter() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button
+                onClick={() => {
+                  const pid = selectedPersonCard.id
+                  setSelectedPersonCard(null)
+                  setTimeMachineCandidateId(String(pid))
+                  setActiveTab('timemachine')
+                  fetchCandidateTimeline(pid)
+                }}
+                className="cc-ghost-button"
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', fontSize: 13, color: 'var(--brand)', borderColor: 'var(--brand)' }}
+              >
+                <Clock size={15} />
+                Open in Time Machine
+              </button>
               <button
                 onClick={() => setSelectedPersonCard(null)}
                 className="cc-primary-button"

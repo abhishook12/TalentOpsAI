@@ -1,0 +1,14 @@
+PySide6>=6.5.0
+pyautogui
+Pillow
+google-genai
+openpyxl
+pywin32
+pypiwin32
+winshell
+keyboard
+pyperclip
+imagehash
+opencv-python
+pandas
+sqlalchemy

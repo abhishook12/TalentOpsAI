@@ -7,9 +7,14 @@ import logging
 import pandas as pd
 from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, File, Depends, Form
 from pydantic import BaseModel
-from app.utils.enricher_state import get_enricher_state, set_enricher_state
-from app.services.auth_service import get_current_user_from_request, require_admin
-from app.models.auth_models import User
+try:
+    from ..utils.enricher_state import get_enricher_state, set_enricher_state
+    from ..services.auth_service import get_current_user_from_request, require_admin
+    from ..models.auth_models import User
+except ImportError:
+    from app.utils.enricher_state import get_enricher_state, set_enricher_state
+    from app.services.auth_service import get_current_user_from_request, require_admin
+    from app.models.auth_models import User
 # from app.services.parquet_writer import write_to_parquet
 
 router = APIRouter()

@@ -30,6 +30,21 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
+      "exclude_matches": [
+        "*://*.google.com/*",
+        "*://*.youtube.com/*",
+        "*://*.facebook.com/*",
+        "*://*.instagram.com/*",
+        "*://*.twitter.com/*",
+        "*://*.x.com/*",
+        "*://*.reddit.com/*",
+        "*://web.whatsapp.com/*",
+        "*://*.slack.com/*",
+        "*://*.discord.com/*",
+        "*://*.zoom.us/*",
+        "*://teams.microsoft.com/*",
+        "*://*.netflix.com/*"
+      ],
       "js": [
         "detector/patterns.js",
         "detector/linkedin.js",

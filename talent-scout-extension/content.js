@@ -6,6 +6,29 @@
 (function() {
   'use strict';
 
+  // Strict Domain Gate: Never run on internal chat, webmail, social, or non-career domains
+  const host = location.hostname.toLowerCase();
+  const EXCLUDED_HOSTS = [
+    'google.com',
+    'youtube.com',
+    'facebook.com',
+    'instagram.com',
+    'twitter.com',
+    'x.com',
+    'reddit.com',
+    'whatsapp.com',
+    'slack.com',
+    'discord.com',
+    'microsoft.com',
+    'zoom.us',
+    'netflix.com',
+    'amazon.com'
+  ];
+
+  if (EXCLUDED_HOSTS.some(ex => host.includes(ex))) {
+    return; // Complete early-exit: ZERO listeners, ZERO observers, ZERO timers
+  }
+
   // Prevent multiple timer loops if reinjected
   if (window.__talentScoutHeartbeatRunning) return;
   window.__talentScoutHeartbeatRunning = true;
@@ -255,7 +278,7 @@
         chrome.storage.local.set({ seenKeysWithTime: {} });
       }
       runAutonomousFusionScan(false);
-    }, 120);
+    }, 600);
   });
 
   if (document.body || document.documentElement) {
@@ -345,19 +368,9 @@
   }
 
   function autoExpandProfileSections() {
-    try {
-      const moreButtons = document.querySelectorAll([
-        '.inline-show-more-text__button',
-        'button[aria-label*="see more" i]',
-        'button.pv-profile-section__see-more-inline',
-        'button[aria-expanded="false"]',
-      ].join(','));
-      moreButtons.forEach(btn => {
-        if (btn && btn.offsetParent !== null && !btn.disabled) {
-          btn.click();
-        }
-      });
-    } catch (_) {}
+    // PASSIVE READ-ONLY ENGINE: Never programmatically click user UI elements.
+    // Simulating clicks opens context menus, toggles dropdowns, and triggers recursive mutation loops.
+    // Collapsed text is extracted directly from DOM metadata, embedded Voyager JSON, and visually-hidden elements.
   }
 
   // ── Algorithm 6, 7, 8, 12: CORE FUSION, SCORING & GATING ENGINE ──

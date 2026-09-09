@@ -555,7 +555,7 @@ window.TalentScout.extractLinkedIn = function(text) {
  */
 window.TalentScout.extractConnectionDegree = function(text) {
   if (!text) return null;
-  const m = text.match(/\b(1st|2nd|3rd(?:\+)?)\b/i);
+  const m = text.match(/\b(1st|2nd|3rd(?:\+)?)(?!\w)/i);
   return m ? m[1].toLowerCase() : null;
 };
 

@@ -347,6 +347,363 @@ function _scrapeCompanyPeoplePage(pageCompanyContext) {
   return results;
 }
 
+/**
+ * Strict Location Validation & Cleaning Engine
+ * Rejects job titles, industry names, company suffixes, credentials, pronouns, and metrics.
+ * Requires genuine geographic indicators or standard city, state/country formatting.
+ */
+function isValidLocation(text) {
+  if (!text || typeof text !== 'string') return false;
+  const t = text.trim();
+  if (t.length < 3 || t.length > 80) return false;
+  const lower = t.toLowerCase();
+
+  // Reject pronouns
+  if (/^(?:he\/him|she\/her|they\/them|she\/they|he\/they)$/i.test(lower)) return false;
+  // Reject metrics & connections
+  if (/\b(?:followers?|connections?|mutual|following|network)\b/i.test(lower)) return false;
+  // Reject degrees & credentials
+  if (/^[·•\s]*\d*(?:st|nd|rd|th)?(?:\s*degree)?$/i.test(t)) return false;
+  // Reject contact info text
+  if (/^contact\s*info$/i.test(lower)) return false;
+  // Reject UI actions
+  if (/^(?:message|connect|follow|more|save|share|view|endorse|view profile|open to work|hiring|verified)$/i.test(lower)) return false;
+  // Reject digits only, pure numbers, or date ranges
+  if (/^\d+$/.test(t) || /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d{4})\b/i.test(lower)) return false;
+
+  // Reject job roles, disciplines, industries, and company suffix words (PREVENTS "Power Engineering" BUG)
+  if (/\b(?:engineer|engineering|developer|recruiter|recruiting|talent|manager|consultant|analyst|specialist|officer|director|lead|head|vp|president|designer|scientist|marketing|sales|architect|intern|assistant|advisor|technician|contract|full-time|part-time|hybrid|corp|corporation|inc|llc|ltd|gmbh|technologies|solutions|services|group|holdings)\b/i.test(lower)) {
+    return false;
+  }
+
+  // Must have genuine geographic indicator:
+  const hasGeoWord = /\b(?:area|greater|city|county|region|metro|metropolitan|district|remote|united states|united kingdom|usa|uk|canada|india|australia|germany|france|netherlands|singapore|brazil|spain|italy|ireland|switzerland|sweden|japan|uae|dubai|mexico|poland|philippines|alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|florida|georgia|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|missouri|montana|nebraska|nevada|new hampshire|new jersey|new mexico|new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|south dakota|tennessee|texas|utah|vermont|virginia|washington|west virginia|wisconsin|wyoming|al|ak|az|ar|ca|co|ct|de|fl|ga|hi|id|il|in|ia|ks|ky|la|me|md|ma|mi|mn|ms|mo|mt|ne|nv|nh|nj|nm|ny|nc|nd|oh|ok|or|pa|ri|sc|sd|tn|tx|ut|vt|va|wa|wv|wi|wy|england|scotland|wales|london|boston|chicago|seattle|austin|san francisco|sf bay|los angeles|atlanta|dallas|houston|denver|phoenix|philadelphia|san diego|miami|portland|toronto|vancouver|berlin|paris|amsterdam|tokyo|sydney|melbourne|bangalore|bengaluru|mumbai|hyderabad|pune|chennai|delhi|noida|gurgaon)\b/i.test(lower);
+  if (hasGeoWord) return true;
+
+  // Standard "City, State/Country" with 2-letter state code or standard comma separation
+  if (/^[A-Z][a-zA-Z\s.-]+,\s*[A-Z]{2}$/.test(t)) return true;
+  if (/^[A-Z][a-zA-Z\s.-]+,\s*[A-Z][a-zA-Z\s.-]+,\s*[A-Z][a-zA-Z\s.-]+$/.test(t)) return true;
+
+  return false;
+}
+
+function cleanLocationText(text) {
+  if (!text) return null;
+  return text
+    .replace(/\bcontact\s*info\b/gi, '')
+    .replace(/[\u00C2\u00A0]*[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]+.*$/g, '')
+    .replace(/^[\s\-_,·•\u00B7\u2022\u00C2\u00A0|]+|[\s\-_,·•\u00B7\u2022\u00C2\u00A0|]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * SELECTOR-RESILIENT Top Card InnerText Parser
+ * 
+ * LinkedIn always renders the profile top card in this stable visual order:
+ *   [Name]
+ *   [Headline/Title]
+ *   [Company icon] Company Name
+ *   [Education icon] School Name
+ *   [Location] · Contact info
+ *   [Connections] · [Followers]
+ *
+ * This parser reads the section's innerText (which respects visual line breaks)
+ * and extracts fields by positional logic — no CSS class names needed.
+ */
+function parseTopCardInnerText() {
+  const result = {
+    name: null,
+    headline: null,
+    company: null,
+    education: null,
+    location: null,
+    connections: null,
+    followers: null,
+    degree: null,
+  };
+
+  try {
+    // Find the top card section: it's the container with h1
+    const h1 = document.querySelector('h1');
+    if (!h1) return result;
+
+    // The top card is ALWAYS the major <section> containing the h1, or the .pv-top-card container
+    let topCard = h1.closest('.pv-top-card') ||
+                  h1.closest('div[data-view-name="profile-top-card"]') ||
+                  h1.closest('section') ||
+                  h1.closest('main') ||
+                  h1.parentElement?.parentElement?.parentElement?.parentElement ||
+                  document.body;
+
+    // Safety guard: if topCard is too small (< 80 chars), walk up to <section> or <main>
+    if (topCard && topCard.innerText && topCard.innerText.length < 80) {
+      const parentSec = topCard.closest('section') || topCard.closest('main');
+      if (parentSec) topCard = parentSec;
+    }
+    if (!topCard) return result;
+
+    // The h1 text is the person's name
+    const h1Text = (h1.innerText?.trim() || h1.textContent?.trim() || '').split('\n')[0].trim();
+    result.name = h1Text;
+
+    // ── Vector 1: Image Alt Attributes (Extreme Precision for Company & School Logos) ──
+    try {
+      const topImgs = (topCard || document).querySelectorAll('img[alt]');
+      for (const img of topImgs) {
+        const alt = (img.getAttribute('alt') || '').trim();
+        if (!alt) continue;
+        if (h1Text && alt.toLowerCase().includes(h1Text.toLowerCase())) continue;
+        if (/^(profile|photo|picture|avatar|banner|background|badge|status|view|open|close|verified)/i.test(alt)) continue;
+
+        const cleanAlt = alt.replace(/\s*(?:company\s*)?logo$/i, '').trim();
+        if (cleanAlt.length >= 2 && cleanAlt.length <= 80 && !/linkedin/i.test(cleanAlt)) {
+          if (/\b(university|college|institute|school|academy|polytechnic|penn state)\b/i.test(cleanAlt)) {
+            if (!result.education) result.education = cleanAlt;
+          } else {
+            if (!result.company && !/^(about|experience|education|skills|interests|activity|projects)/i.test(cleanAlt)) {
+              result.company = cleanAlt;
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    // ── Vector 2: Top Card Links & Buttons (Company & School) ──
+    try {
+      // School link or button direct scanner
+      if (!result.education) {
+        const schoolLink = (topCard || document).querySelector('a[href*="/school/"]');
+        if (schoolLink) {
+          const t = schoolLink.textContent?.trim();
+          if (t && t.length >= 3 && !/linkedin|follow|see all|learn more/i.test(t)) {
+            result.education = t.replace(/\s+/g, ' ');
+          }
+        }
+      }
+
+      // Anchors
+      const compLinks = (topCard || document).querySelectorAll('a[href*="/company/"]');
+      for (const a of compLinks) {
+        if (a.closest('#experience, section[data-section="experience"], #about')) continue;
+        const t = a.textContent?.trim();
+        if (t && t.length >= 2 && t.length <= 80 && !/linkedin|follow|see all|learn more/i.test(t)) {
+          if (!result.company) {
+            result.company = t.replace(/\s+/g, ' ');
+            break;
+          }
+        }
+      }
+
+      const schoolLinks = (topCard || document).querySelectorAll('a[href*="/school/"]');
+      for (const a of schoolLinks) {
+        if (a.closest('#education, section[data-section="education"]')) continue;
+        const t = a.textContent?.trim();
+        if (t && t.length >= 2 && t.length <= 100 && !/linkedin|follow|see all|learn more/i.test(t)) {
+          if (!result.education) {
+            result.education = t.replace(/\s+/g, ' ');
+            break;
+          }
+        }
+      }
+
+      // Buttons with aria-label
+      const buttons = (topCard || document).querySelectorAll('button[aria-label]');
+      for (const btn of buttons) {
+        const aria = btn.getAttribute('aria-label') || '';
+        if (/current company|company:/i.test(aria)) {
+          const m = aria.match(/(?:current\s*company:?|company:?)\s*([^.\n\r]+)/i);
+          if (m && m[1] && !result.company) result.company = m[1].trim();
+        }
+        if (/education:|school:/i.test(aria)) {
+          const m = aria.match(/(?:education:?|school:?)\s*([^.\n\r]+)/i);
+          if (m && m[1] && !result.education) result.education = m[1].trim();
+        }
+      }
+    } catch (_) {}
+
+    // ── Vector 3: Positional InnerText Parsing (Layout Immune) ──
+    const rawText = topCard.innerText || '';
+    if (rawText && rawText.length >= 10) {
+      const lines = rawText.split(/\n/).map(l => l.trim()).filter(l => l.length > 0);
+
+      // Find the name line index
+      let nameIdx = -1;
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i] === h1Text || lines[i].includes(h1Text)) {
+          nameIdx = i;
+          break;
+        }
+      }
+      if (nameIdx === -1) nameIdx = 0;
+
+      // UI noise filter
+      const isNoise = (t) => {
+        const lower = t.toLowerCase();
+        return /^(message|connect|follow|following|pending|more|save|report|block|send|endorse|open to|\.\.\.|see more|show|mutual|kevin is|get introduced|ask your|message top|we're hiring|visit|view|similar)/.test(lower) ||
+          /^(home|my network|jobs|messaging|notifications|post|write|start a post)$/i.test(lower) ||
+          /^\d+$/.test(t) ||
+          t.length < 2 ||
+          t.length > 200 ||
+          /^(he\/him|she\/her|they\/them)$/i.test(lower);
+      };
+
+      const degreePattern = /\b(\d+(?:st|nd|rd|th)(?:\+)?)(?!\w)/i;
+
+      // Check degree marker on the name line or nearby lines
+      const nameLineFull = lines[nameIdx] || '';
+      const degMatch = nameLineFull.match(degreePattern);
+      if (degMatch) {
+        result.degree = degMatch[1];
+      }
+
+      // Headline: first substantial non-noise line after the name
+      for (let i = nameIdx + 1; i < Math.min(nameIdx + 5, lines.length); i++) {
+        const line = lines[i];
+        if (isNoise(line)) continue;
+        if (degreePattern.test(line) && line.length < 8) {
+          if (!result.degree) result.degree = line.match(degreePattern)[1];
+          continue;
+        }
+        if (/^(he\/him|she\/her|they\/them|she\/they|he\/they)$/i.test(line)) continue;
+
+        result.headline = line;
+        break;
+      }
+
+      // Contact info anchor line
+      let contactInfoLineIdx = -1;
+      for (let i = 0; i < lines.length; i++) {
+        if (/contact\s*info/i.test(lines[i])) {
+          contactInfoLineIdx = i;
+          break;
+        }
+      }
+
+      // Location extraction from contact info line
+      if (contactInfoLineIdx >= 0) {
+        const contactLine = lines[contactInfoLineIdx];
+        const locPart = cleanLocationText(contactLine);
+        if (locPart && isValidLocation(locPart)) {
+          result.location = locPart;
+        }
+
+        if (!result.location && contactInfoLineIdx > 0) {
+          const prevLine = cleanLocationText(lines[contactInfoLineIdx - 1]);
+          if (prevLine && isValidLocation(prevLine)) {
+            result.location = prevLine;
+          }
+        }
+      }
+
+      // Direct DOM contact info element proximity scan (immune to innerText line splitting)
+      if (!result.location) {
+        try {
+          const contactEls = Array.from((topCard || document).querySelectorAll('a, button, span')).filter(el => {
+            const t = el.textContent?.trim() || '';
+            return /^contact\s*info$/i.test(t);
+          });
+          for (const cEl of contactEls) {
+            const pText = cEl.parentElement?.textContent?.trim() || '';
+            const cPart = cleanLocationText(pText);
+            if (cPart && isValidLocation(cPart)) {
+              result.location = cPart;
+              break;
+            }
+            const prev = cEl.previousElementSibling;
+            if (prev && prev.textContent) {
+              const prevText = cleanLocationText(prev.textContent);
+              if (prevText && isValidLocation(prevText)) {
+                result.location = prevText;
+                break;
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
+      // Fallback location scan: strictly validated lines only
+      if (!result.location) {
+        for (let i = nameIdx + 1; i < Math.min(nameIdx + 8, lines.length); i++) {
+          const line = cleanLocationText(lines[i]);
+          if (!line || line === result.headline || line === result.company || isNoise(line)) continue;
+          if (isValidLocation(line)) {
+            result.location = line;
+            break;
+          }
+        }
+      }
+
+      // Education fallback from lines
+      if (!result.education) {
+        for (let i = nameIdx + 1; i < lines.length; i++) {
+          const line = lines[i];
+          if (/\b(university|college|institute|school|academy|polytechnic|harvard|stanford|mit|oxford|cambridge|bachelor|master|mba|ph\.?d|b\.?s\b|b\.?a\b|m\.?s\b)\b/i.test(line)) {
+            if (line.length >= 3 && line.length <= 120 && !isNoise(line)) {
+              result.education = line;
+              break;
+            }
+          }
+        }
+      }
+
+      // Company fallback from lines between headline and contact info
+      if (!result.company) {
+        const endScanIdx = contactInfoLineIdx > 0 ? contactInfoLineIdx : Math.min(lines.length, nameIdx + 6);
+        for (let i = nameIdx + 1; i < endScanIdx; i++) {
+          const line = lines[i];
+          if (line === result.headline || line === result.education || line === result.degree || line === result.location) continue;
+          if (isNoise(line) || degreePattern.test(line)) continue;
+          if (/\b(university|college|institute|school|academy)\b/i.test(line)) continue;
+          if (/,/.test(line) && /\b(area|greater|city|state|usa|uk|county)\b/i.test(line)) continue;
+          if (line.length >= 2 && line.length <= 60) {
+            result.company = line;
+            break;
+          }
+        }
+      }
+
+      // Company fallback from headline (e.g. "Director of Sales at Acme Corp")
+      if (!result.company && result.headline) {
+        const atMatch = result.headline.match(/(?:\bat\b|\b@\b)\s+(.+)$/i);
+        if (atMatch && atMatch[1]) {
+          const comp = atMatch[1].replace(/[·•|].*$/, '').trim();
+          if (comp.length >= 2 && comp.length <= 60) {
+            result.company = comp;
+          }
+        }
+      }
+
+      // Social counts
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (/\b(\d[\d,]*\+?)\s*connections?\b/i.test(line)) {
+          const m = line.match(/(\d[\d,]*\+?)\s*connections?/i);
+          if (m) result.connections = m[1];
+        }
+        if (/\b(\d[\d,]*[kKmM]?\+?)\s*followers?\b/i.test(line)) {
+          const m = line.match(/(\d[\d,]*[kKmM]?\+?)\s*followers?/i);
+          if (m) result.followers = m[1];
+        }
+      }
+
+      // Degree fallback
+      if (!result.degree) {
+        for (let i = 0; i < lines.length; i++) {
+          const dm = lines[i].match(/\b(\d+(?:st|nd|rd|th)(?:\+)?)(?!\w)/i);
+          if (dm && lines[i].length < 30) {
+            result.degree = dm[1];
+            break;
+          }
+        }
+      }
+    }
+
+  } catch (_) {}
+
+  return result;
+}
+
 function _scrapeSingleProfile(pageCompanyContext) {
   const ts = window.TalentScout;
   const cleanUrl = location.href.split('?')[0].split('#')[0];
@@ -357,8 +714,11 @@ function _scrapeSingleProfile(pageCompanyContext) {
   const embeddedCand = embeddedData.candidate || null;
   const badges = ts.extractBadgesAndSignals ? ts.extractBadgesAndSignals() : {};
 
-  // 1. Name — try multiple modern and legacy LinkedIn DOM selectors + JSON-LD + Embedded Data
-  let name = ts.text([
+  // 0b. PRIMARY: Selector-Resilient Top Card InnerText Parser (immune to CSS class renames)
+  const topCardData = parseTopCardInnerText();
+
+  // 1. Name — topCardData PRIMARY, then CSS selectors, then embedded/JSON-LD
+  let name = topCardData.name || ts.text([
     'h1.text-heading-xlarge',
     '.pv-text-details__left-panel h1',
     'section.pv-top-card h1',
@@ -374,8 +734,8 @@ function _scrapeSingleProfile(pageCompanyContext) {
     'h1',
   ]) || embeddedCand?.name || jsonLdPerson?.name;
 
-  // 2. Title / Headline
-  let rawTitle = ts.text([
+  // 2. Title / Headline — topCardData PRIMARY, then CSS selectors, then embedded/JSON-LD
+  let rawTitle = topCardData.headline || ts.text([
     '.text-body-medium.break-words',
     '.pv-text-details__left-panel .text-body-medium',
     'div[data-generated-suggestion-target]',
@@ -391,52 +751,22 @@ function _scrapeSingleProfile(pageCompanyContext) {
   const smallMeta = ts.extractSmallTextDetails ? ts.extractSmallTextDetails(document) : {};
 
   // 3. Location (City, State, Region, Country) — Semantic Multi-Strategy Precision Engine
-  function isValidLocation(text) {
-    if (!text || typeof text !== 'string') return false;
-    const t = text.trim();
-    if (t.length < 3 || t.length > 80) return false;
-    const lower = t.toLowerCase();
-
-    // Reject pronouns
-    if (/^(?:he\/him|she\/her|they\/them|she\/they|he\/they)$/i.test(lower)) return false;
-    // Reject metrics & connections
-    if (/\b(?:followers?|connections?|mutual|following|network)\b/i.test(lower)) return false;
-    // Reject degrees & credentials
-    if (/^[·•\s]*\d*(?:st|nd|rd|th)?(?:\s*degree)?$/i.test(t)) return false;
-    // Reject contact info text
-    if (/^contact\s*info$/i.test(lower)) return false;
-    // Reject UI actions
-    if (/^(?:message|connect|follow|more|save|share|view|endorse|view profile|open to work|hiring|verified)$/i.test(lower)) return false;
-    // Reject digits only, pure numbers, or date ranges
-    if (/^\d+$/.test(t) || /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d{4})\b/i.test(lower)) return false;
-
-    // Must have a geographic indicator:
-    if (/,/.test(t)) return true;
-    if (/\b(?:area|greater|city|county|region|metro|metropolitan|district|remote|united states|united kingdom|usa|uk|canada|india|australia|germany|france|netherlands|singapore|brazil|spain|italy|ireland|switzerland|sweden|japan|uae|dubai|mexico|poland|philippines)\b/i.test(lower)) {
-      return true;
-    }
-    return false;
-  }
-
-  function cleanLocationText(text) {
-    if (!text) return null;
-    return text
-      .replace(/\bcontact\s*info\b/gi, '')
-      .replace(/[\u00C2\u00A0]*[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]+.*$/g, '')
-      .replace(/^[\s\-_,·•\u00B7\u2022\u00C2\u00A0|]+|[\s\-_,·•\u00B7\u2022\u00C2\u00A0|]+$/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
-
   let candidateLocation = null;
 
+  // Strategy 0 (PRIMARY): topCardData innerText parser — immune to CSS renames
+  if (topCardData.location && isValidLocation(topCardData.location)) {
+    candidateLocation = cleanLocationText(topCardData.location);
+  }
+
   // Strategy A: Contact info proximity scan (Contact info parent / previous sibling)
-  const contactInfoLink = document.querySelector('a[href*="contact-info"], #top-card-text-details-contact-info, a[id*="contact-info"]');
+  const contactInfoLink = document.querySelector('a[href*="contact-info"], #top-card-text-details-contact-info, a[id*="contact-info"], button[aria-label*="contact info" i]');
   if (contactInfoLink) {
     const parent = contactInfoLink.parentElement;
-    if (parent) {
+    if (parent && parent.cloneNode) {
       const clone = parent.cloneNode(true);
-      clone.querySelectorAll('a, button, svg, span[class*="separator"], .dist-value').forEach(el => el.remove());
+      if (clone.querySelectorAll) {
+        clone.querySelectorAll('a, button, svg, span[class*="separator"], .dist-value').forEach(el => el.remove && el.remove());
+      }
       const t = cleanLocationText(clone.textContent);
       if (isValidLocation(t)) candidateLocation = t;
     }
@@ -478,30 +808,21 @@ function _scrapeSingleProfile(pageCompanyContext) {
     }
   }
 
-  // Strategy D: Broad regex extractor fallback
-  if (!candidateLocation && ts.extractLocation) {
-    const fullText = document.body ? (document.body.innerText || '') : '';
-    const locFound = ts.extractLocation(fullText);
-    if (locFound && isValidLocation(locFound)) {
-      candidateLocation = cleanLocationText(locFound);
-    }
-  }
-
-  // 4. Followers, Connections & Degree Context
-  let connectionDegree = ts.extractConnectionDegree(name) || ts.extractConnectionDegree(rawTitle) || smallMeta.degree || ts.text([
+  // 4. Followers, Connections & Degree Context — topCardData PRIMARY
+  let connectionDegree = topCardData.degree || ts.extractConnectionDegree(name) || ts.extractConnectionDegree(rawTitle) || smallMeta.degree || ts.text([
     '.pv-text-details__left-panel .dist-value',
     '.artdeco-hoverable-trigger .dist-value',
     'span.dist-value',
   ]);
 
-  let followers = smallMeta.followers || ts.text([
+  let followers = topCardData.followers || smallMeta.followers || ts.text([
     '.pv-top-card--list-bullet li:first-child span.t-bold',
     '.pv-top-card--list-bullet li:first-child',
     'span.t-black--light.t-normal span.t-bold',
     'ul.pv-top-card--list-bullet li:first-child',
     '.ph5 ul.pv-top-card--list-bullet li',
   ]);
-  let connections = smallMeta.connections || ts.text([
+  let connections = topCardData.connections || smallMeta.connections || ts.text([
     '.pv-top-card--list-bullet li:nth-child(2) span.t-bold',
     '.pv-top-card--list-bullet li:nth-child(2)',
     '.t-black--light.t-bold',
@@ -535,13 +856,14 @@ function _scrapeSingleProfile(pageCompanyContext) {
     });
   }
 
-  // 5. Education (School / University)
-  let education = ts.text([
+  // 5. Education (School / University) — topCardData PRIMARY
+  let education = topCardData.education || ts.text([
     'button[aria-label*="Education" i]',
     'button[aria-label*="Education:" i] span[aria-hidden="true"]',
     '.pv-text-details__right-panel button[aria-label*="Education" i]',
-    '.pv-text-details__right-panel li:nth-child(2) button',
-    '.pv-text-details__right-panel li:nth-child(2) a',
+    '.pv-text-details__right-panel li button',
+    '.pv-text-details__right-panel li a',
+    '.pv-text-details__right-panel li',
     'a[href*="/school/"] span[aria-hidden="true"]',
     'a[href*="/school/"] span',
     'a[href*="/school/"]',
@@ -560,13 +882,24 @@ function _scrapeSingleProfile(pageCompanyContext) {
   }
 
   if (!education) {
-    const rightPanelAnchors = document.querySelectorAll('.pv-text-details__right-panel a, .pv-text-details__right-panel li');
-    rightPanelAnchors.forEach(a => {
+    const rightPanelAnchors = document.querySelectorAll('.pv-text-details__right-panel a, .pv-text-details__right-panel li, div[data-view-name*="profile-top-card"] a[href*="/school/"], a[href*="/school/"]');
+    for (const a of rightPanelAnchors) {
       const txt = a.textContent?.trim();
-      if (txt && /university|college|institute|school|academy|polytechnic|alabama|tech|state|bs|ba|master|bachelor|wisconsin|harvard|stanford|mit|oxford|cambridge/i.test(txt)) {
+      if (txt && /university|college|institute|school|academy|polytechnic|penn state|alabama|tech|state|bs|ba|master|bachelor|wisconsin|harvard|stanford|mit|oxford|cambridge/i.test(txt) && !/linkedin|follow|see all/i.test(txt)) {
         education = txt.replace(/\s+/g, ' ').replace(/^Education:\s*/i, '').trim();
+        break;
       }
-    });
+    }
+  }
+
+  if (!education) {
+    const eduImg = document.querySelector('img[alt*="university" i], img[alt*="college" i], img[alt*="school" i], img[alt*="penn state" i]');
+    if (eduImg) {
+      const alt = (eduImg.getAttribute('alt') || '').replace(/\s*(?:company\s*)?logo$/i, '').trim();
+      if (alt.length >= 3 && !/linkedin/i.test(alt)) {
+        education = alt;
+      }
+    }
   }
 
   if (!education) {
@@ -602,6 +935,27 @@ function _scrapeSingleProfile(pageCompanyContext) {
     const aboutAnchor = document.getElementById('about');
     if (aboutAnchor && aboutAnchor.closest('section')) {
       aboutSummary = ts.text(['.visually-hidden', 'span[aria-hidden="true"]', '.inline-show-more-text', 'p'], aboutAnchor.closest('section'));
+    }
+  }
+
+  if (!aboutSummary) {
+    const aboutHeaders = Array.from(document.querySelectorAll('h2, h3, div')).filter(el => {
+      const txt = el.textContent?.trim() || '';
+      return /^about$/i.test(txt);
+    });
+    for (const h of aboutHeaders) {
+      const sec = h.closest('section') || h.parentElement?.parentElement;
+      if (sec) {
+        const textNodes = sec.querySelectorAll('.inline-show-more-text, p, span[aria-hidden="true"], .break-words');
+        for (const tn of textNodes) {
+          const txt = tn.textContent?.trim() || '';
+          if (txt.length > 25 && !/^about$/i.test(txt) && !ts.isUIAction(txt)) {
+            aboutSummary = txt;
+            break;
+          }
+        }
+      }
+      if (aboutSummary) break;
     }
   }
   const aboutInsights = ts.decomposeAboutSection(aboutSummary);
@@ -660,8 +1014,8 @@ function _scrapeSingleProfile(pageCompanyContext) {
     }
   }
 
-  // Top card explicit company fallback (Modern LinkedIn right-panel, buttons, logo alt, links)
-  let rawCompany = currentCompany || ts.text([
+  // Top card explicit company — topCardData PRIMARY, then experience-derived, then CSS selectors
+  let rawCompany = topCardData.company || currentCompany || ts.text([
     'button[aria-label*="Current company" i]',
     'button[aria-label*="Current company:" i] span[aria-hidden="true"]',
     '.pv-text-details__right-panel button[aria-label*="Current company" i]',
@@ -680,7 +1034,12 @@ function _scrapeSingleProfile(pageCompanyContext) {
   ]);
 
   if (rawCompany) {
-    rawCompany = rawCompany.replace(/^Current\s*company:\s*/i, '').replace(/^Education:\s*/i, '').trim();
+    rawCompany = rawCompany
+      .replace(/^Current\s*company:\s*/i, '')
+      .replace(/^Education:\s*/i, '')
+      .replace(/[·•|].*$/, '')
+      .replace(/\. Click to skip.*$/i, '')
+      .trim();
   }
 
   if (!rawCompany) {

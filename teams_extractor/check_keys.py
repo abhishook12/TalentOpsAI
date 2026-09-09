@@ -12,7 +12,7 @@ other_errors = []
 for idx, k in enumerate(keys):
     try:
         client = genai.Client(api_key=k)
-        resp = client.models.generate_content(model='gemini-2.0-flash', contents=['hi'])
+        resp = client.models.generate_content(model='gemini-3.6-flash', contents=['hi'])
         print(f'Key {idx+1}: OK')
         working.append(idx + 1)
     except Exception as e:

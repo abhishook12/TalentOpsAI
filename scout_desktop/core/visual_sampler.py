@@ -26,7 +26,8 @@ DEFAULT_DELTA_THRESHOLD = 0.048  # 4.8% meaningful regional change (filters typi
 PIXEL_TOLERANCE = 18            # Ignore micro compression noise
 IDLE_TIMEOUT_SEC = 6.0          # 6 continuous seconds static -> IDLE WATCH
 ACTIVE_INTERVAL_SEC = 1.0       # 1s active sampling
-IDLE_POLL_INTERVAL_SEC = 1.8    # Low-power idle poll
+IDLE_POLL_INTERVAL_SEC = 2.0    # Low-power idle poll (2.0s)
+DEFAULT_AUTONOMOUS_SCAN_SEC = 30.0 # 30s periodic scan when static (prevents CPU spikes)
 
 
 def downscale_to_grayscale(img: Image.Image) -> np.ndarray:
@@ -111,7 +112,7 @@ class VisualSampler:
         on_state_change: Optional[Callable[[str], None]] = None,
         delta_threshold: float = DEFAULT_DELTA_THRESHOLD,
         idle_timeout_sec: float = IDLE_TIMEOUT_SEC,
-        autonomous_scan_interval_sec: float = 3.0,
+        autonomous_scan_interval_sec: float = DEFAULT_AUTONOMOUS_SCAN_SEC,
         active_interval_sec: float = ACTIVE_INTERVAL_SEC,
         idle_poll_interval_sec: float = IDLE_POLL_INTERVAL_SEC,
     ):

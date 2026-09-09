@@ -21,10 +21,11 @@ from PIL import Image
 
 logger = logging.getLogger("scout.evidence_store")
 
-AUDIT_RETENTION_SEC = 20.0       # 20-second evidence audit window after staging
-HARD_MAX_RETENTION_SEC = 150.0   # 2.5-minute hard maximum retention ceiling
+AUDIT_RETENTION_SEC = 15.0       # 15-second evidence audit window after staging
+HARD_MAX_RETENTION_SEC = 60.0    # 60-second hard maximum retention ceiling
 HARD_MAX_FILE_AGE_SEC = 3600.0   # 1-Hour Strict User Mandate (Unconditional Purge Ceiling)
-MAX_BUFFER_IMAGES = 20           # Keep buffer light on disk
+MAX_BUFFER_IMAGES = 10           # Keep buffer ultra-light on disk (max 10 images)
+MAX_BUFFER_MB = 25               # Max 25 MB on disk
 
 VALID_TRANSITIONS = {
     "CAPTURED": ["ANALYZING", "NO_USEFUL_DATA", "DISCARDED", "PROCESSING_FAILED"],
@@ -84,11 +85,19 @@ class EvidenceStore:
         audit_retention_sec: float = AUDIT_RETENTION_SEC,
         hard_max_retention_sec: float = HARD_MAX_RETENTION_SEC,
         max_buffer_images: int = MAX_BUFFER_IMAGES,
-        max_buffer_mb: int = 100,
+        max_buffer_mb: int = MAX_BUFFER_MB,
         retention_sec: Optional[float] = None,
     ):
         if not storage_dir:
-            storage_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "captures")
+            try:
+                from .paths import get_captures_dir
+                storage_dir = get_captures_dir()
+            except Exception:
+                try:
+                    from scout_desktop.core.paths import get_captures_dir
+                    storage_dir = get_captures_dir()
+                except Exception:
+                    storage_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "captures")
         self.storage_dir = os.path.abspath(storage_dir)
         os.makedirs(self.storage_dir, exist_ok=True)
         

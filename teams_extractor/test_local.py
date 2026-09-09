@@ -30,10 +30,10 @@ Only output the raw JSON array.
 success = False
 for key_idx, key in enumerate(api_keys):
     try:
-        print(f'Attempting extraction with Key {key_idx+1} using gemini-2.0-flash...')
+        print(f'Attempting extraction with Key {key_idx+1} using gemini-3.6-flash...')
         client = genai.Client(api_key=key)
         response = client.models.generate_content(
-            model='gemini-2.0-flash',
+            model='gemini-3.6-flash',
             contents=[prompt, img],
             config=types.GenerateContentConfig(
                 response_mime_type='application/json',

@@ -67,6 +67,85 @@ logging.basicConfig(
 )
 logger = logging.getLogger("scout.app")
 
+_SINGLE_INSTANCE_MUTEX = None
+_SINGLE_INSTANCE_LOCK_FD = None
+
+
+def acquire_single_instance_lock() -> bool:
+    """
+    Ensures only ONE instance of TalentOps Scout Desktop runs at any time.
+    Dual-layer protection:
+    1. Win32 Named Mutex with proper use_last_error check (retained at module scope).
+    2. Atomic kernel file lock via msvcrt.locking on %LOCALAPPDATA%\\TalentOpsAI\\Scout\\scout_running.lock.
+    Returns True if lock was acquired; False if an instance is already running.
+    """
+    global _SINGLE_INSTANCE_MUTEX, _SINGLE_INSTANCE_LOCK_FD
+    if sys.platform != "win32":
+        return True
+
+    # Layer 1: Win32 Named Mutex
+    try:
+        import ctypes
+        from ctypes import wintypes
+        kernel32 = ctypes.windll.kernel32
+        ERROR_ALREADY_EXISTS = 183
+
+        CreateMutexW = kernel32.CreateMutexW
+        CreateMutexW.argtypes = [wintypes.LPVOID, wintypes.BOOL, wintypes.LPCWSTR]
+        CreateMutexW.restype = wintypes.HANDLE
+        CreateMutexW.use_last_error = True
+
+        mutex_name = "Local\\TalentOps_Scout_Desktop_SingleInstance_Mutex"
+        _SINGLE_INSTANCE_MUTEX = CreateMutexW(None, True, mutex_name)
+        err = ctypes.get_last_error()
+        if err == ERROR_ALREADY_EXISTS:
+            logger.warning("Single-Instance Mutex: Another instance is already running (GetLastError=%d).", err)
+            return False
+    except Exception as me:
+        logger.debug("Named mutex creation exception: %s", me)
+
+    # Layer 2: Atomic Kernel File Lock in AppData
+    try:
+        import msvcrt
+        from .core.paths import get_app_data_dir
+        lock_dir = get_app_data_dir()
+        os.makedirs(lock_dir, exist_ok=True)
+        lock_file = os.path.join(lock_dir, "scout_running.lock")
+        _SINGLE_INSTANCE_LOCK_FD = open(lock_file, "a+")
+        _SINGLE_INSTANCE_LOCK_FD.seek(0)
+        msvcrt.locking(_SINGLE_INSTANCE_LOCK_FD.fileno(), msvcrt.LK_NBLCK, 1)
+        _SINGLE_INSTANCE_LOCK_FD.truncate(0)
+        _SINGLE_INSTANCE_LOCK_FD.write(f"PID={os.getpid()}\nTime={time.time()}\n")
+        _SINGLE_INSTANCE_LOCK_FD.flush()
+    except (IOError, OSError, PermissionError) as fe:
+        logger.warning("Single-Instance FileLock: scout_running.lock is held by another process: %s", fe)
+        return False
+    except Exception as ge:
+        logger.debug("File lock exception: %s", ge)
+
+    return True
+
+
+def release_single_instance_lock():
+    """Releases the single instance lockfile upon application shutdown."""
+    global _SINGLE_INSTANCE_LOCK_FD, _SINGLE_INSTANCE_MUTEX
+    if _SINGLE_INSTANCE_LOCK_FD:
+        try:
+            import msvcrt
+            _SINGLE_INSTANCE_LOCK_FD.seek(0)
+            msvcrt.locking(_SINGLE_INSTANCE_LOCK_FD.fileno(), msvcrt.LK_UNLCK, 1)
+            _SINGLE_INSTANCE_LOCK_FD.close()
+            _SINGLE_INSTANCE_LOCK_FD = None
+        except Exception:
+            pass
+    if _SINGLE_INSTANCE_MUTEX:
+        try:
+            import ctypes
+            ctypes.windll.kernel32.CloseHandle(_SINGLE_INSTANCE_MUTEX)
+            _SINGLE_INSTANCE_MUTEX = None
+        except Exception:
+            pass
+
 
 class AppBridge(QObject):
     """Thread-safe signal bridge for Qt UI updates."""
@@ -223,10 +302,10 @@ class ScoutDesktopApp:
         self.window_timer.timeout.connect(self._poll_active_window)
         self.window_timer.start(600)
 
-        # 2. Auto-Purge Timer (cleans expired screenshots every 15 seconds)
+        # 2. Auto-Purge Timer (cleans expired screenshots every 10 seconds)
         self.purge_timer = QTimer()
         self.purge_timer.timeout.connect(self._run_purge_sweep)
-        self.purge_timer.start(15000)
+        self.purge_timer.start(10000)
 
         # 3. Queue Sync Timer (flushes pending batches to backend every 10 seconds)
         self.sync_timer = QTimer()
@@ -1210,28 +1289,25 @@ class ScoutDesktopApp:
         except Exception as e:
             logger.debug("Error closing local queue: %s", e)
 
+        release_single_instance_lock()
         QApplication.quit()
 
 
 def main():
     if sys.platform == "win32":
         # 1. Single-instance guard: Prevent duplicate instances from fighting over resources
-        try:
-            import ctypes
-            kernel32 = ctypes.windll.kernel32
-            ERROR_ALREADY_EXISTS = 183
-            mutex_name = "Local\\TalentOps_Scout_Desktop_SingleInstance_Mutex"
-            h_mutex = kernel32.CreateMutexW(None, True, mutex_name)
-            if kernel32.GetLastError() == ERROR_ALREADY_EXISTS:
-                logger.warning("TalentOps Scout is already running. Focusing existing window...")
+        if not acquire_single_instance_lock():
+            logger.warning("TalentOps Scout is already running. Focusing existing window and exiting.")
+            try:
+                import ctypes
                 user32 = ctypes.windll.user32
                 hwnd = user32.FindWindowW(None, "TalentOps Scout")
                 if hwnd:
                     user32.ShowWindow(hwnd, 9)  # SW_RESTORE
                     user32.SetForegroundWindow(hwnd)
-                sys.exit(0)
-        except Exception as e:
-            logger.debug("Mutex check failed: %s", e)
+            except Exception:
+                pass
+            sys.exit(0)
 
         # 2. Attach to the interactive user desktop and close the open handle immediately
         try:

@@ -224,13 +224,13 @@ const stagingPipelineRoute = createRoute({
 const scoutContributorsAdminRoute = createRoute({
   getParentRoute: () => adminLayoutRoute,
   path: '/admin/scout-contributors',
-  component: lazyComponent(() => import('./pages/ScoutContributors')),
+  component: lazyComponent(() => import('./pages/DownloadScout')),
 })
 
 const scoutContributorsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/scout/contributors',
-  component: lazyComponent(() => import('./pages/ScoutContributors')),
+  component: lazyComponent(() => import('./pages/DownloadScout')),
 })
 
 

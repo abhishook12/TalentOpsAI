@@ -449,29 +449,39 @@ def scout_ingest_batch(
 # ── Release & Distribution Metadata ───────────────────────────────────────────
 
 @router.get("/release/latest")
-def get_latest_scout_release():
+def get_latest_scout_release(db: Session = Depends(get_db)):
     """
-    Returns latest Scout Desktop version metadata and installer download link.
+    Returns latest Scout Desktop version metadata and installer download link
+    dynamically resolved from the authoritative database release registry.
     """
+    from .scout_updates import get_latest_release_info
+    info = get_latest_release_info(db=db)
     return {
-        "version": "2.0.0",
+        "version": info.get("version", "2.0.0"),
         "app_name": "TalentOps Scout Desktop",
         "platform": "windows-x64",
-        "installer_name": "TalentOpsScoutSetup.exe",
-        "download_url": "https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe",
-        "release_date": "2026-09-09",
-        "release_notes": "Official release of TalentOps Scout Desktop replacing browser extension. Includes native Win32 window tracking, offline Windows OCR, regional visual diffing, local SQLite buffer queue, and zero-touch continuous background ingestion.",
-        "mandatory": False,
-        "supported_versions": ["2.0.0"],
-        "sha256": "4a7e93f6c8d19a2b3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d",
+        "installer_name": info.get("artifact", "TalentOpsScoutSetup.exe"),
+        "download_url": info.get("download_url"),
+        "release_date": info.get("release_date"),
+        "release_notes": info.get("release_notes"),
+        "mandatory": info.get("mandatory", False),
+        "supported_versions": [info.get("version", "2.0.0")],
+        "sha256": info.get("sha256"),
+        "size_bytes": info.get("size_bytes"),
+        "status": info.get("status", "ACTIVE"),
     }
 
 
 @router.get("/download/setup")
-def download_scout_installer():
+def download_scout_installer(request: Request = None, db: Session = Depends(get_db)):
     """
-    Serves the production Windows installer (TalentOpsScoutSetup.exe).
+    Serves the production Windows installer (TalentOpsScoutSetup.exe)
+    dynamically resolved from the authoritative database release registry.
     """
+    from .scout_updates import get_latest_release_info
+    info = get_latest_release_info(db=db)
+    download_url = info.get("download_url") or "https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe"
+
     candidate_paths = [
         os.path.abspath(r"c:\TalentOpsAI\scout_desktop\dist\TalentOpsScoutSetup.exe"),
         os.path.abspath(r"c:\TalentOpsAI\dist\TalentOpsScoutSetup.exe"),
@@ -486,14 +496,13 @@ def download_scout_installer():
                 content=content,
                 media_type="application/vnd.microsoft.portable-executable",
                 headers={
-                    "Content-Disposition": "attachment; filename=TalentOpsScoutSetup.exe",
+                    "Content-Disposition": f"attachment; filename={info.get('artifact', 'TalentOpsScoutSetup.exe')}",
                     "Access-Control-Expose-Headers": "Content-Disposition",
                 },
             )
 
-    # Cloud storage fallback (Supabase public CDN - 100% accessible to anyone without GitHub account)
-    supabase_cdn_url = "https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe"
-    return RedirectResponse(url=supabase_cdn_url, status_code=302)
+    # Cloud storage fallback (Authoritative production registry URL)
+    return RedirectResponse(url=download_url, status_code=302)
 
 
 # ── Scout 2.0 Intelligence Packet & Operations Endpoints ─────────────────────────

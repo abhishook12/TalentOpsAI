@@ -53,6 +53,7 @@ export default function Sidebar() {
   const adminNav = [
     { isGroupHeader: true, label: 'Command Center' },
     { to: '/admin', label: 'Admin Terminal', icon: LayoutDashboard },
+    { to: '/admin/scout-contributors', label: 'Scout Contributors', icon: Users, badge: 'Live' },
     { to: '/admin/staging', label: 'Staging Pipeline', icon: Layers, badge: 'New' },
     { to: '/sentinel', label: 'Data Quality Center', icon: HeartPulse },
     { to: '/review-queue', label: 'Review Queue', icon: Search },

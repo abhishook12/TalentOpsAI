@@ -221,6 +221,18 @@ const stagingPipelineRoute = createRoute({
   component: lazyComponent(() => import('./pages/StagingPipeline')),
 })
 
+const scoutContributorsAdminRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: '/admin/scout-contributors',
+  component: lazyComponent(() => import('./pages/ScoutContributors')),
+})
+
+const scoutContributorsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/scout/contributors',
+  component: lazyComponent(() => import('./pages/ScoutContributors')),
+})
+
 
 const campaignsRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -274,6 +286,7 @@ const routeTree = rootRoute.addChildren([
   settingsRoute,
   extensionHubRoute,
   downloadScoutRoute,
+  scoutContributorsRoute,
   adminLayoutRoute.addChildren([
     adminRoute,
     activityRoute,
@@ -289,6 +302,7 @@ const routeTree = rootRoute.addChildren([
     intelligenceCenterRoute,
     extensionReportRoute,
     stagingPipelineRoute,
+    scoutContributorsAdminRoute,
   ]),
   notFoundRoute
 ])

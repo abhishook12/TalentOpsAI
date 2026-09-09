@@ -50,6 +50,14 @@ class ScoutRelease(Base):
     failure_count = Column(Integer, default=0)
     success_count = Column(Integer, default=0)
 
+    # Canonical Release Attributes
+    is_current = Column(Boolean, default=True)
+    is_public = Column(Boolean, default=True)
+    artifact = Column(String(100), default="TalentOpsScoutSetup.exe")
+    artifact_url = Column(String(500), nullable=True)
+    approved_at = Column(TIMESTAMP, nullable=True)
+    released_at = Column(TIMESTAMP, nullable=True)
+
     created_at = Column(TIMESTAMP, server_default=func.now(), index=True)
 
     @property
@@ -58,6 +66,19 @@ class ScoutRelease(Base):
         if total == 0:
             return 0.0
         return round((self.failure_count / total) * 100.0, 2)
+
+
+class ScoutDownloadEvent(Base):
+    """Forensic tracking of public and authenticated Scout installer download events."""
+    __tablename__ = "scout_download_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    ip_address = Column(String(64), nullable=True)
+    user_agent = Column(String(300), nullable=True)
+    release_version = Column(String(32), nullable=True, index=True)
+    download_source = Column(String(100), default="web_download_page")
+    downloaded_at = Column(TIMESTAMP, server_default=func.now(), index=True)
 
 
 class ScoutInstallation(Base):

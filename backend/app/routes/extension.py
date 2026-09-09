@@ -11,6 +11,7 @@ Endpoints:
 """
 
 import base64
+import hashlib
 import json
 import logging
 import re
@@ -309,6 +310,7 @@ def ingest_extension_batch(
     device_id = req.device_id or x_device_id or "unknown"
     batch_id = f"BATCH-{secrets.token_hex(6).upper()}"
     staged = 0
+    idempotent_duplicates = 0
     errors = []
     source_sites = set()
 
@@ -328,14 +330,20 @@ def ingest_extension_batch(
                 except Exception:
                     pass
 
-            discovery_id = contact.discovery_id or f"DISC-{secrets.token_hex(4).upper()}"
+            if contact.discovery_id:
+                discovery_id = contact.discovery_id
+            else:
+                # Deterministic idempotency key from observation content
+                idempotency_seed = f"{current_user.id}|{device_id}|{contact.source_url or ''}|{contact.recruiter_name or ''}|{contact.company_name or ''}|{contact.title or ''}|{contact.email or ''}|{contact.linkedin_url or ''}"
+                discovery_id = f"DISC-{hashlib.sha256(idempotency_seed.encode('utf-8')).hexdigest()[:16].upper()}"
 
-            # Check if discovery_id already staged to prevent duplicate submission frames
+            # Check if discovery_id already staged to prevent duplicate submission frames (Idempotent Ingestion)
             existing_staged = db.query(DiscoveryStaging).filter(
                 DiscoveryStaging.discovery_id == discovery_id
             ).first()
 
             if existing_staged:
+                idempotent_duplicates += 1
                 continue
 
             staging_record = DiscoveryStaging(
@@ -412,7 +420,7 @@ def ingest_extension_batch(
         owner_user_id=current_user.id,
         contacts_received=len(req.contacts),
         contacts_accepted=staged,
-        contacts_duplicate=0,
+        contacts_duplicate=idempotent_duplicates,
         contacts_errored=len(errors),
         source_sites=json.dumps(list(source_sites)),
     )
@@ -449,8 +457,8 @@ def ingest_extension_batch(
             logger.warning("Auto batch processor / knowledge graph run error: %s", pe)
 
     logger.info(
-        "Extension staged: device=%s batch=%s staged=%d processor_stats=%s kg_stats=%s",
-        device_id, batch_id, staged, processor_stats, kg_stats
+        "Extension staged: device=%s batch=%s staged=%d duplicates=%d processor_stats=%s kg_stats=%s",
+        device_id, batch_id, staged, idempotent_duplicates, processor_stats, kg_stats
     )
 
     return {
@@ -458,7 +466,8 @@ def ingest_extension_batch(
         "batch_id": batch_id,
         "staged": staged,
         "accepted": staged,
-        "duplicates": 0,
+        "duplicates": idempotent_duplicates,
+        "idempotent_skips": idempotent_duplicates,
         "processor_stats": processor_stats,
         "knowledge_graph_stats": kg_stats,
         "errors": errors[:5],

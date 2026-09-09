@@ -218,10 +218,11 @@ class LocalQueue:
                     continue
                 retry_count = row[0]
 
-                if retry_count >= MAX_RETRIES:
+                new_retry = retry_count + 1
+                if new_retry >= MAX_RETRIES:
                     conn.execute(
-                        "UPDATE queued_observations SET status = 'DLQ', error_msg = ?, dlq_reason = ? WHERE id = ?",
-                        (str(error_msg)[:200], f"Exceeded {MAX_RETRIES} retries", qid),
+                        "UPDATE queued_observations SET status = 'DLQ', retry_count = ?, error_msg = ?, dlq_reason = ? WHERE id = ?",
+                        (new_retry, str(error_msg)[:200], f"Exceeded {MAX_RETRIES} retries", qid),
                     )
                 else:
                     # Exponential backoff with random jitter: base * (2^retry) + jitter(0.1, 1.5)
@@ -229,8 +230,8 @@ class LocalQueue:
                     backoff = min(MAX_BACKOFF_SEC, (BASE_BACKOFF_SEC * (2 ** retry_count)) + jitter)
                     next_retry_at = now + backoff
                     conn.execute(
-                        "UPDATE queued_observations SET retry_count = retry_count + 1, error_msg = ?, next_retry_at = ? WHERE id = ?",
-                        (str(error_msg)[:200], next_retry_at, qid),
+                        "UPDATE queued_observations SET retry_count = ?, error_msg = ?, next_retry_at = ? WHERE id = ?",
+                        (new_retry, str(error_msg)[:200], next_retry_at, qid),
                     )
             conn.commit()
 
@@ -253,14 +254,32 @@ class LocalQueue:
                     pass
         return results
 
-    def retry_dlq_item(self, queue_id: int):
+    def retry_dlq_item(self, queue_id: int) -> bool:
         """Resets a DLQ item back to PENDING with retry_count=0."""
         with self._get_conn() as conn:
-            conn.execute(
+            cur = conn.execute(
                 "UPDATE queued_observations SET status = 'PENDING', retry_count = 0, next_retry_at = NULL, dlq_reason = NULL WHERE id = ?",
                 (queue_id,),
             )
             conn.commit()
+            return cur.rowcount > 0
+
+    def heal_stalled_items(self, max_stalled_sec: float = 300.0) -> int:
+        """
+        Self-healing watchdog: Recovers items that were in flight or stalled during unexpected
+        shutdown or crash, resetting them back to PENDING.
+        """
+        now = time.time()
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                "UPDATE queued_observations SET status = 'PENDING' WHERE status = 'PROCESSING' AND created_at < ?",
+                (now - max_stalled_sec,),
+            )
+            count = cur.rowcount
+            conn.commit()
+            if count > 0:
+                logger.info("Self-healing watchdog: Recovered %d stalled queue observations", count)
+            return count
 
     def get_queue_stats(self) -> Dict[str, int]:
         """Returns pending, priority breakdown, synced today, failed, and dlq counts."""

@@ -364,6 +364,10 @@ from .routes import scout_nodes
 app.include_router(scout_nodes.router)
 from .routes import scout_updates
 app.include_router(scout_updates.router)
+from .routes import scout_dead_letter
+app.include_router(scout_dead_letter.router)
+from .routes import scout_contributors
+app.include_router(scout_contributors.router)
 from .routes import data_quality
 app.include_router(data_quality.router)
 from .routes import data_intelligence

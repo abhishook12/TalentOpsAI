@@ -15,13 +15,13 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any, List
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sqlfunc
 
 from ..database import get_db
-from ..models.update_models import ScoutRelease, ScoutInstallation
+from ..models.update_models import ScoutRelease, ScoutInstallation, ScoutDownloadEvent
 from ..models.auth_models import User
 from ..services.auth_service import get_current_user_from_request
 from ..services.release_signer import sign_manifest, sign_package_hash
@@ -247,15 +247,24 @@ def get_latest_release_info(
             )
 
         if release:
+            rel_date = (release.released_at or release.created_at)
             return {
                 "version": release.version,
                 "channel": release.channel,
+                "status": release.status,
+                "artifact": getattr(release, "artifact", "TalentOpsScoutSetup.exe") or "TalentOpsScoutSetup.exe",
+                "artifact_url": getattr(release, "artifact_url", None) or release.download_url,
                 "download_url": release.download_url,
                 "sha256": release.sha256,
                 "size_bytes": release.size_bytes or DEFAULT_SIZE,
                 "release_notes": release.release_notes,
-                "release_date": release.created_at.strftime("%Y-%m-%d") if release.created_at else "2026-09-09",
+                "release_date": rel_date.strftime("%Y-%m-%d") if rel_date else "2026-09-09",
+                "minimum_version": release.minimum_version,
                 "mandatory": release.mandatory,
+                "supported_windows_version": "Windows 10 / 11 64-bit",
+                "is_current": bool(getattr(release, "is_current", True)),
+                "is_public": bool(getattr(release, "is_public", True)),
+                "rollout_percentage": release.rollout_percentage,
             }
     except Exception as err:
         logger.warning("Could not fetch release from db: %s", err)
@@ -263,28 +272,114 @@ def get_latest_release_info(
     return {
         "version": DEFAULT_RELEASE_VERSION,
         "channel": channel,
+        "status": "ACTIVE",
+        "artifact": "TalentOpsScoutSetup.exe",
+        "artifact_url": DEFAULT_DOWNLOAD_URL,
         "download_url": DEFAULT_DOWNLOAD_URL,
         "sha256": DEFAULT_SHA256,
         "size_bytes": DEFAULT_SIZE,
         "release_notes": "Official production release of TalentOps Scout Desktop.",
         "release_date": "2026-09-09",
+        "minimum_version": DEFAULT_MINIMUM_VERSION,
         "mandatory": False,
+        "supported_windows_version": "Windows 10 / 11 64-bit",
+        "is_current": True,
+        "is_public": True,
+        "rollout_percentage": 100,
+    }
+
+
+class DownloadTrackRequest(BaseModel):
+    version: Optional[str] = None
+    source: Optional[str] = "web_download_button"
+
+
+@router.post("/download/track")
+def track_scout_download(
+    req: DownloadTrackRequest = DownloadTrackRequest(),
+    request: Request = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Records a public or authenticated Scout installer download event.
+    Distinguishes download events from installed/active contributors.
+    """
+    try:
+        ip = request.client.host if request and request.client else None
+        ua = request.headers.get("user-agent") if request else None
+
+        user_id = None
+        auth_header = request.headers.get("authorization") if request else None
+        if auth_header and auth_header.startswith("Bearer "):
+            try:
+                import jwt as _jwt
+                from ..services.auth_service import SECRET_KEY, ALGORITHM
+                payload = _jwt.decode(auth_header.split(" ")[1], SECRET_KEY, algorithms=[ALGORITHM])
+                user_id = int(payload.get("sub")) if payload.get("sub") else None
+            except Exception:
+                pass
+
+        info = get_latest_release_info(db=db)
+        ver = req.version or info.get("version") or DEFAULT_RELEASE_VERSION
+
+        evt = ScoutDownloadEvent(
+            user_id=user_id,
+            ip_address=ip,
+            user_agent=ua,
+            release_version=ver,
+            download_source=req.source or "web_download_page",
+        )
+        db.add(evt)
+        db.commit()
+        return {"ok": True, "event_id": evt.id, "version": ver}
+    except Exception as e:
+        logger.warning("Could not record download event: %s", e)
+        return {"ok": False, "error": str(e)}
+
+
+@router.get("/download/stats")
+def get_download_stats(db: Session = Depends(get_db)):
+    """Returns total download event count and recent telemetry."""
+    total = db.query(ScoutDownloadEvent).count()
+    now = datetime.now(timezone.utc)
+    today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
+    today_count = db.query(ScoutDownloadEvent).filter(ScoutDownloadEvent.downloaded_at >= today_start).count()
+    return {
+        "total_downloads": total,
+        "downloads_today": today_count,
     }
 
 
 @router.get("/updates/download/latest")
 def download_latest_installer(
     channel: str = Query("stable"),
+    request: Request = None,
     db: Session = Depends(get_db),
 ):
     """
     Public redirect endpoint that dynamically sends the client to the official
     production download URL from the database registry, preventing stale links.
+    Also records download telemetry for contributor lifecycle tracking.
     """
     from fastapi.responses import RedirectResponse
 
     info = get_latest_release_info(channel=channel, db=db)
     download_url = info.get("download_url") or DEFAULT_DOWNLOAD_URL
+
+    try:
+        ip = request.client.host if request and request.client else None
+        ua = request.headers.get("user-agent") if request else None
+        evt = ScoutDownloadEvent(
+            ip_address=ip,
+            user_agent=ua,
+            release_version=info.get("version", DEFAULT_RELEASE_VERSION),
+            download_source="direct_redirect_url",
+        )
+        db.add(evt)
+        db.commit()
+    except Exception:
+        pass
+
     return RedirectResponse(url=download_url, status_code=307)
 
 

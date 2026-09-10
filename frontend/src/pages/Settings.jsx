@@ -9,6 +9,7 @@ import { API } from '../services/api';
 import { useSessionState } from '../hooks/useSessionState';
 import ConnectionWizard from '../components/ConnectionWizard';
 import AddScoutModal from '../components/AddScoutModal';
+import AIAutonomySettings from '../components/ai/AIAutonomySettings';
 
 export default function Settings() {
   const { user, checkAuthStatus } = useAuth();
@@ -145,6 +146,7 @@ export default function Settings() {
     { id: 'security', label: 'Privacy & Security' },
     { id: 'integrations', label: 'API & Integrations' },
     { id: 'extension', label: 'TalentOps Scout Desktop' },
+    { id: 'ai_governance', label: '✦ AI Autonomy & Governance' },
   ];
 
   return (
@@ -229,6 +231,7 @@ export default function Settings() {
                 {activeTab === 'appearance' && <Globe size={16} />}
                 {activeTab === 'notifications' && <Bell size={16} />}
                 {activeTab === 'security' && <Shield size={16} />}
+                {activeTab === 'ai_governance' && <Zap size={16} />}
                 General
               </button>
             </div>
@@ -687,6 +690,12 @@ export default function Settings() {
               {showAddScoutModal && (
                 <AddScoutModal onClose={() => setShowAddScoutModal(false)} />
               )}
+            </div>
+          )}
+
+          {activeTab === 'ai_governance' && (
+            <div className="animate-fade-in">
+              <AIAutonomySettings />
             </div>
           )}
 

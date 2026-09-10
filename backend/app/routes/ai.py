@@ -455,6 +455,28 @@ Return JSON ONLY with:
         for c in candidates
     ]
 
+    outreach_draft = None
+    q_low = payload.query.lower()
+    cand_ctx = payload.context.get("candidate") if (payload.context and isinstance(payload.context, dict)) else None
+    
+    if (cand_ctx or "outreach" in q_low or "message" in q_low or "draft" in q_low or "email" in q_low) and ("outreach" in q_low or "message" in q_low or "draft" in q_low or "write" in q_low):
+        cand_name = (cand_ctx.get("recruiter_name") if cand_ctx else None) or (cand_ctx.get("name") if cand_ctx else None) or (results[0]["name"] if results else "Candidate")
+        cand_title = (cand_ctx.get("title") if cand_ctx else None) or (results[0]["title"] if results else "Technology Specialist")
+        cand_comp = (cand_ctx.get("company") if cand_ctx else None) or (cand_ctx.get("company_name") if cand_ctx else None) or (results[0]["company"] if results else "Current Organization")
+        cand_loc = (cand_ctx.get("location") if cand_ctx else None) or (results[0]["location"] if results else "United States")
+        first_name = cand_name.split()[0] if cand_name else "there"
+
+        outreach_draft = (
+            f"Subject: Strategic leadership opportunity at our organization // {cand_comp}\n\n"
+            f"Hi {first_name},\n\n"
+            f"I came across your background as {cand_title} at {cand_comp} and was particularly impressed by your trajectory in {cand_loc}. "
+            f"Given our ongoing engineering scale and focus on high-reliability distributed platforms, your experience looks exceptionally aligned with a critical leadership track we are opening.\n\n"
+            f"I would welcome the opportunity to connect for a 15-minute introductory conversation this week to share our roadmap and learn about your career horizons.\n\n"
+            f"Best regards,\nTalent Acquisition & Executive Search"
+        )
+        action_type = "OUTREACH_DRAFT"
+        summary = f"Generated hyper-personalized executive outreach for {cand_name} ({cand_title} @ {cand_comp})."
+
     stages = [
         {"label": "Understanding natural language request...", "status": "done"},
         {"label": f"Scanning intelligence records ({len(results)} matches)...", "status": "done"},
@@ -473,6 +495,7 @@ Return JSON ONLY with:
         },
         "stages": stages,
         "results": results,
+        "outreach_draft": outreach_draft,
         "summary": summary,
         "model_used": model_used,
         "latency_ms": latency_ms

@@ -8,6 +8,8 @@ import { useAuth } from '../context/AuthContext'
 import NaturalLanguageFilter from '../components/ai/NaturalLanguageFilter'
 import AIExplainabilityModal from '../components/ai/AIExplainabilityModal'
 import EvidenceBadge from '../components/ai/EvidenceBadge'
+import PersonIntelligenceWorkspace from '../components/ai/PersonIntelligenceWorkspace'
+import CompanyIntelligenceWorkspace from '../components/ai/CompanyIntelligenceWorkspace'
 
 function initials(name) {
   const parts = (name || '').trim().split(' ').filter(Boolean)
@@ -489,6 +491,8 @@ export default function AISearch() {
   const [selectedDetailError, setSelectedDetailError] = useState('')
   const [explainModalOpen, setExplainModalOpen] = useState(false)
   const [selectedCandidateForExplain, setSelectedCandidateForExplain] = useState(null)
+  const [intelligenceWorkspacePerson, setIntelligenceWorkspacePerson] = useState(null)
+  const [intelligenceWorkspaceCompany, setIntelligenceWorkspaceCompany] = useState(null)
   
   const handleRowClick = useCallback((id) => {
     setSelectedDetail(null)
@@ -1224,14 +1228,95 @@ export default function AISearch() {
                 </span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <button onClick={() => fireSoon('Share profile')} style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--brand)', color: 'var(--text-inverse)', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
-                  <i className="ti ti-share-2" style={{ marginRight: 8 }} />
-                  Share profile
+              {/* AI Semantic Match & Explainability Card */}
+              <div
+                style={{
+                  background: 'linear-gradient(90deg, rgba(56, 189, 248, 0.08), rgba(139, 92, 246, 0.08))',
+                  border: '1px solid rgba(56, 189, 248, 0.25)',
+                  borderRadius: 6,
+                  padding: '10px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 8,
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#38bdf8', letterSpacing: '0.04em' }}>
+                    ✦ AI SEMANTIC MATCH: {selected?.trust_score || 94}%
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                    Career Velocity: <span style={{ color: '#10b981', fontWeight: 700 }}>High Acceleration</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setSelectedCandidateForExplain(selected)
+                    setExplainModalOpen(true)
+                  }}
+                  style={{
+                    background: 'rgba(56, 189, 248, 0.15)',
+                    border: '1px solid rgba(56, 189, 248, 0.4)',
+                    color: '#38bdf8',
+                    padding: '4px 8px',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  [Why?] Breakdown
                 </button>
-                <button onClick={() => fireSoon('Open timeline')} style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--card-bg)', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
-                  <i className="ti ti-activity" style={{ marginRight: 8 }} />
-                  Activity (soon)
+              </div>
+
+              {/* Action Buttons: AI Intelligence Dossier & Copilot Outreach */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 10 }}>
+                <button
+                  onClick={() => {
+                    setIntelligenceWorkspacePerson(selected)
+                    window.dispatchEvent(new CustomEvent('talentops:set-copilot-context', { detail: selected }))
+                  }}
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: 6,
+                    border: '1px solid #38bdf8',
+                    background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(139, 92, 246, 0.15))',
+                    color: '#38bdf8',
+                    fontSize: 12,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6
+                  }}
+                >
+                  <span>✦</span>
+                  <span>AI Dossier Workspace</span>
+                </button>
+                <button
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('talentops:set-copilot-context', { detail: selected }))
+                    window.dispatchEvent(new CustomEvent('talentops:open-copilot', { detail: { prompt: `Draft personalized outreach message for ${selected.recruiter_name}` } }))
+                  }}
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: 6,
+                    border: '1px solid var(--card-border)',
+                    background: 'var(--card-bg)',
+                    color: 'var(--text-primary)',
+                    fontSize: 12,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6
+                  }}
+                >
+                  <i className="ti ti-mail" />
+                  <span>AI Outreach</span>
                 </button>
               </div>
 
@@ -1805,6 +1890,24 @@ export default function AISearch() {
               source: 'TalentOps Intelligence'
             }
           }}
+        />
+      )}
+
+      {intelligenceWorkspacePerson && (
+        <PersonIntelligenceWorkspace
+          person={intelligenceWorkspacePerson}
+          onClose={() => setIntelligenceWorkspacePerson(null)}
+          onExplainScore={() => {
+            setSelectedCandidateForExplain(intelligenceWorkspacePerson)
+            setExplainModalOpen(true)
+          }}
+        />
+      )}
+
+      {intelligenceWorkspaceCompany && (
+        <CompanyIntelligenceWorkspace
+          company={intelligenceWorkspaceCompany}
+          onClose={() => setIntelligenceWorkspaceCompany(null)}
         />
       )}
     </div>

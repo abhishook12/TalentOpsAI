@@ -16,6 +16,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
   ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [activeCandidate, setActiveCandidate] = useState(null)
   const messagesEndRef = useRef(null)
 
   const scrollToBottom = () => {
@@ -25,6 +26,38 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  useEffect(() => {
+    const handleSetContext = (e) => {
+      if (e.detail) {
+        setActiveCandidate(e.detail)
+        const name = e.detail.recruiter_name || e.detail.name || 'Candidate'
+        const title = e.detail.title || 'Specialist'
+        const company = e.detail.company || e.detail.company_name || 'Organization'
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: 'assistant',
+            text: `🎯 Focused context on ${name} (${title} @ ${company}). You can ask me to draft personalized outreach, explain match score, or forecast career velocity.`
+          }
+        ])
+      }
+    }
+
+    const handleOpenCopilot = (e) => {
+      if (!isOpen && onToggle) onToggle()
+      if (e.detail?.prompt) {
+        setTimeout(() => handleSendMessage(e.detail.prompt), 300)
+      }
+    }
+
+    window.addEventListener('talentops:set-copilot-context', handleSetContext)
+    window.addEventListener('talentops:open-copilot', handleOpenCopilot)
+    return () => {
+      window.removeEventListener('talentops:set-copilot-context', handleSetContext)
+      window.removeEventListener('talentops:open-copilot', handleOpenCopilot)
+    }
+  }, [isOpen, onToggle])
 
   const handleSendMessage = async (textToSend) => {
     const query = textToSend || input
@@ -39,11 +72,20 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
       const res = await api.post('/ai/command', {
         query,
         mode: 'chat',
-        context: currentContext
+        context: { ...currentContext, candidate: activeCandidate }
       })
 
       const reply = res.data.summary || 'I analyzed your request against the talent intelligence database.'
-      setMessages([...newMsgs, { role: 'assistant', text: reply, intent: res.data.intent, results: res.data.results }])
+      setMessages([
+        ...newMsgs,
+        {
+          role: 'assistant',
+          text: reply,
+          intent: res.data.intent,
+          results: res.data.results,
+          outreach_draft: res.data.outreach_draft
+        }
+      ])
     } catch (err) {
       console.error('AI chat error:', err)
       setMessages([...newMsgs, { role: 'assistant', text: 'Encountered a momentary connection pause. Please try again.' }])
@@ -162,11 +204,35 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
               color: 'var(--text-secondary)',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'space-between',
               gap: '6px'
             }}
           >
-            <span style={{ color: '#10b981' }}>●</span>
-            <span>Active Context: {currentContext?.name || 'Talent Intelligence Console'}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, overflow: 'hidden' }}>
+              <span style={{ color: activeCandidate ? '#38bdf8' : '#10b981' }}>●</span>
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {activeCandidate
+                  ? `Focus: ${activeCandidate.recruiter_name || activeCandidate.name} (${activeCandidate.company || activeCandidate.company_name || 'Enterprise'})`
+                  : `Workspace: ${currentContext?.name || 'Talent Intelligence Console'}`}
+              </span>
+            </div>
+            {activeCandidate && (
+              <button
+                onClick={() => setActiveCandidate(null)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid var(--border, #1e293b)',
+                  borderRadius: '4px',
+                  color: 'var(--text-secondary)',
+                  fontSize: '10px',
+                  padding: '2px 6px',
+                  cursor: 'pointer'
+                }}
+                title="Clear candidate focus"
+              >
+                Clear
+              </button>
+            )}
           </div>
 
           {/* Chat Message Stream */}
@@ -211,6 +277,55 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
                     ))}
                   </div>
                 )}
+
+                {/* Executive Outreach Draft with Copy action */}
+                {m.outreach_draft && (
+                  <div
+                    style={{
+                      marginTop: '10px',
+                      background: 'rgba(56, 189, 248, 0.04)',
+                      border: '1px solid rgba(56, 189, 248, 0.3)',
+                      borderRadius: '6px',
+                      padding: '10px 12px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: 800, color: '#38bdf8', letterSpacing: '0.04em' }}>
+                        ✉ EXECUTIVE OUTREACH DRAFT
+                      </span>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(m.outreach_draft)
+                          toast.success('Outreach draft copied to clipboard!')
+                        }}
+                        style={{
+                          background: 'rgba(56, 189, 248, 0.15)',
+                          border: '1px solid rgba(56, 189, 248, 0.4)',
+                          borderRadius: '4px',
+                          color: '#38bdf8',
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        📋 Copy
+                      </button>
+                    </div>
+                    <pre
+                      style={{
+                        margin: 0,
+                        whiteSpace: 'pre-wrap',
+                        fontFamily: 'inherit',
+                        fontSize: '11px',
+                        color: 'var(--text-primary)',
+                        lineHeight: 1.5
+                      }}
+                    >
+                      {m.outreach_draft}
+                    </pre>
+                  </div>
+                )}
               </div>
             ))}
             {loading && (
@@ -237,7 +352,14 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
 
           {/* Quick Prompt Suggestions */}
           <div style={{ padding: '8px 16px', display: 'flex', gap: '6px', flexWrap: 'wrap', borderTop: '1px solid var(--border, #1e293b)' }}>
-            {['Explain candidate #1', 'Draft outreach message', 'Run Data Doctor'].map((q, i) => (
+            {(activeCandidate
+              ? [
+                  `Draft outreach for ${(activeCandidate.recruiter_name || activeCandidate.name || 'Candidate').split(' ')[0]}`,
+                  `Explain match score`,
+                  `Analyze career velocity`
+                ]
+              : ['Find senior ML engineers in Austin', 'Analyze database quality health', 'Show hiring expansion signals']
+            ).map((q, i) => (
               <button
                 key={i}
                 onClick={() => handleSendMessage(q)}

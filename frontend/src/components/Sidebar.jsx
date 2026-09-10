@@ -44,7 +44,7 @@ export default function Sidebar() {
     { to: '/directory', label: 'Directory', icon: Map, aliases: ['/states', '/companies'] },
     { to: '/analytics', label: 'Analytics', icon: BarChart2 },
     { to: '/search', label: 'AI Search', icon: Search },
-    { to: '/download-scout', label: 'Desktop Scout', icon: Laptop, badge: 'v2.0' },
+    { to: '/download-scout', label: 'Desktop Scout', icon: Laptop, badge: 'v2.7.0' },
     { isGroupHeader: true, label: 'Account' },
     { to: '/profile', label: 'Profile', icon: UserCircle },
     { to: '/settings', label: 'Settings', icon: Settings },

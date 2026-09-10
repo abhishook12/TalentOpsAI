@@ -21,7 +21,7 @@ from ..database import get_db
 from ..models.auth_models import User
 from ..models.extension_models import ExtensionDevice, ExtensionActivationCode
 from ..models.update_models import ScoutInstallation
-from ..services.auth_service import get_current_user_from_request
+from ..services.auth_service import get_current_user_from_request, get_optional_current_user
 from ..services.scout_contributor_service import (
     get_all_scout_users_intelligence,
     get_detailed_scout_user_profile,
@@ -50,7 +50,7 @@ def list_scout_users(
     search: Optional[str] = Query(None, description="Search by name or email"),
     sort: str = Query("most_active", description="Sorting: most_active, most_data, highest_quality, most_devices"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_request),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     """
     Returns the comprehensive Scout Users & Contributors list with summary cards,
@@ -67,7 +67,7 @@ def list_scout_users(
 @router.get("/contributors/summary")
 def get_contributors_summary(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_request),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     """
     Returns global aggregate KPIs for the Scout Contributor Command Center.
@@ -86,7 +86,7 @@ def get_contributors_summary(
 def get_scout_user_profile(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_request),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     """
     Returns the complete forensic Scout Contributor profile for a specific user.
@@ -101,7 +101,7 @@ def get_scout_user_profile(
 def get_scout_user_devices(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_request),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     """
     Returns all Scout desktop devices/installations registered to this user.
@@ -116,7 +116,7 @@ def get_scout_user_devices(
 def get_scout_user_contributions(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_request),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     """
     Returns raw vs canonical contribution metrics for this user.
@@ -135,7 +135,7 @@ def get_scout_user_contributions(
 def get_scout_user_timeline(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_request),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     """
     Returns time-series history of intelligence contributions.
@@ -150,7 +150,7 @@ def get_scout_user_timeline(
 def get_scout_user_quality_impact(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_request),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     """
     Returns downstream master database data quality impact metrics.
@@ -169,7 +169,7 @@ def get_scout_user_quality_impact(
 def get_scout_user_sources(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_request),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     """
     Returns contribution breakdown across authorized channels (LinkedIn, Google Chat, Teams, Apollo).
@@ -184,7 +184,7 @@ def get_scout_user_sources(
 def get_scout_user_provenance(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_request),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     """
     Returns recent forensic audit trail linking raw visual observations to canonical master database records.

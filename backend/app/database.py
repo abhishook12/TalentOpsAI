@@ -4,6 +4,10 @@ from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 import os
 
+# Ensure backend/.env is loaded even if execution starts from repository root
+backend_env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+if os.path.exists(backend_env_path):
+    load_dotenv(backend_env_path)
 load_dotenv()
 
 DATABASE_URL = "sqlite:///./dev.db"

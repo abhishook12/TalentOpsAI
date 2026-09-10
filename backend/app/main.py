@@ -58,9 +58,9 @@ if RUN_STARTUP_MIGRATIONS:
             except Exception:
                 _db.rollback()
 
-            # Ensure critical tables (like extension_discovery_events, discovery_staging, resolved_persons) are created
+            # Ensure critical tables (like extension_discovery_events, discovery_staging, resolved_persons, scout_releases) are created
             try:
-                from .models import extension_models, staging_models
+                from .models import extension_models, staging_models, update_models
                 Base.metadata.create_all(bind=_db.get_bind())
             except Exception as e:
                 logger.warning("Error ensuring model tables: %s", e)
@@ -219,6 +219,18 @@ if RUN_STARTUP_MIGRATIONS:
                     "rate_limit_rpm": "INTEGER DEFAULT 60",
                     "retention_rules_json": "TEXT DEFAULT '{}'",
                 })
+
+                _ensure_columns("scout_releases", {
+                    "installer_url": "VARCHAR(500)",
+                    "published_at": "TIMESTAMP",
+                    "release_date": "TIMESTAMP",
+                    "approved_at": "TIMESTAMP",
+                    "released_at": "TIMESTAMP",
+                    "is_current": "BOOLEAN DEFAULT TRUE",
+                    "is_public": "BOOLEAN DEFAULT TRUE",
+                    "artifact": "VARCHAR(100) DEFAULT 'TalentOpsScoutSetup.exe'",
+                    "artifact_url": "VARCHAR(500)",
+                })
             except Exception as e:
                 logger.warning("Import batch column migration warning: %s", e)
     except Exception as e:
@@ -364,6 +376,21 @@ from .routes import scout_nodes
 app.include_router(scout_nodes.router)
 from .routes import scout_updates
 app.include_router(scout_updates.router)
+
+@app.get("/download/scout/windows", tags=["Scout Auto-Update & Fleet"])
+@app.get("/api/download/scout/windows", tags=["Scout Auto-Update & Fleet"])
+def public_download_scout_windows(
+    request: Request,
+    channel: str = "stable",
+    db: Session = Depends(get_db),
+):
+    """
+    Stable Public Download Endpoint: /download/scout/windows
+    Dynamically resolves to the current production release from the database registry.
+    """
+    from .routes.scout_updates import download_latest_installer
+    return download_latest_installer(channel=channel, request=request, db=db)
+
 from .routes import scout_dead_letter
 app.include_router(scout_dead_letter.router)
 from .routes import scout_contributors

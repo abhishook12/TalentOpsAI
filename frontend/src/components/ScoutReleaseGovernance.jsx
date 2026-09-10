@@ -172,7 +172,7 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
                 SINGLE SOURCE OF TRUTH
               </span>
               <span style={{ color: '#94a3b8', fontSize: 12 }}>
-                Canonical Production Release: <b style={{ color: '#f8fafc', fontSize: 14 }}>v{currentProduction.version || '2.7.0'}</b>
+                Canonical Production Release: <b style={{ color: '#f8fafc', fontSize: 14 }}>{currentProduction.version ? `v${currentProduction.version}` : 'Loading...'}</b>
               </span>
             </div>
             <h2 style={{ fontSize: 20, fontWeight: 800, color: '#f8fafc', margin: '0 0 6px' }}>

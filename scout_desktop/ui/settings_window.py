@@ -412,9 +412,9 @@ class SettingsWindow(QWidget):
         self.lbl_update_notes.setStyleSheet("color: #cbd5e1; font-size: 10px;")
         cu_layout.addWidget(self.lbl_update_notes)
 
-        btn_update_now = QPushButton("Update Now")
-        btn_update_now.clicked.connect(self._on_update_now_clicked)
-        cu_layout.addWidget(btn_update_now)
+        self.btn_update_now = QPushButton("Update Now")
+        self.btn_update_now.clicked.connect(self._on_update_now_clicked)
+        cu_layout.addWidget(self.btn_update_now)
         self.card_update.hide()  # Hidden until update found
         up_layout.addWidget(self.card_update)
 
@@ -534,10 +534,22 @@ class SettingsWindow(QWidget):
             self.lbl_ver_badge.setStyleSheet("color: #ef4444; background-color: rgba(239, 68, 68, 0.15); border-radius: 4px; padding: 2px 8px; font-weight: 700; font-size: 10px;")
             self.card_mandatory.show()
             self.card_update.hide()
+        elif self.updater.downloaded_installer_path and os.path.exists(self.updater.downloaded_installer_path):
+            self.lbl_ver_badge.setText(f"● Ready to Install (v{self.updater.pending_version})")
+            self.lbl_ver_badge.setStyleSheet("color: #38bdf8; background-color: rgba(56, 189, 248, 0.15); border-radius: 4px; padding: 2px 8px; font-weight: 700; font-size: 10px;")
+            self.lbl_update_title.setText(f"Scout v{self.updater.pending_version} ready to install")
+            if hasattr(self, "btn_update_now"):
+                self.btn_update_now.setText("Restart & Update")
+            if self.updater.release_notes:
+                self.lbl_update_notes.setText(self.updater.release_notes)
+            self.card_update.show()
+            self.card_mandatory.hide()
         elif self.updater.pending_version:
             self.lbl_ver_badge.setText(f"● Update Available (v{self.updater.pending_version})")
             self.lbl_ver_badge.setStyleSheet("color: #38bdf8; background-color: rgba(56, 189, 248, 0.15); border-radius: 4px; padding: 2px 8px; font-weight: 700; font-size: 10px;")
             self.lbl_update_title.setText(f"New version available: Scout v{self.updater.pending_version}")
+            if hasattr(self, "btn_update_now"):
+                self.btn_update_now.setText("Download & Install")
             if self.updater.release_notes:
                 self.lbl_update_notes.setText(self.updater.release_notes)
             self.card_update.show()
@@ -549,7 +561,7 @@ class SettingsWindow(QWidget):
             self.card_mandatory.hide()
 
     def _on_check_updates_clicked(self):
-        self.lbl_last_check.setText(f"Checking now...")
+        self.lbl_last_check.setText("Checking now...")
         if self.updater:
             manifest = self.updater.check_for_updates_now()
             self.lbl_last_check.setText(f"Last checked: {datetime.now().strftime('%b %d, %Y %I:%M %p')}")
@@ -570,14 +582,17 @@ class SettingsWindow(QWidget):
 
     def _on_update_now_clicked(self):
         if self.updater:
-            if self.updater.downloaded_installer_path:
-                self.updater.apply_update_and_restart()
+            if hasattr(self, "queue") and hasattr(self.queue, "checkpoint"):
+                self.queue.checkpoint()
+            if self.updater.downloaded_installer_path and os.path.exists(self.updater.downloaded_installer_path):
+                self.updater.apply_update_and_restart(self.updater.downloaded_installer_path)
             else:
                 manifest = self.updater.check_for_updates_now()
                 if manifest:
                     ok = self.updater._download_and_verify(manifest)
                     if ok:
-                        self.updater.apply_update_and_restart()
+                        self._sync_updater_ui()
+                        self.updater.apply_update_and_restart(self.updater.downloaded_installer_path)
                     else:
                         QMessageBox.critical(self, "Update Failed", "Cryptographic verification or download failed.")
         else:

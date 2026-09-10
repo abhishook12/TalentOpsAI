@@ -55,10 +55,13 @@ class ScoutRelease(Base):
     is_public = Column(Boolean, default=True)
     artifact = Column(String(100), default="TalentOpsScoutSetup.exe")
     artifact_url = Column(String(500), nullable=True)
+    installer_url = Column(String(500), nullable=True)
     approved_at = Column(TIMESTAMP, nullable=True)
     approved_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     approval_checklist_json = Column(Text, default="{}")
     released_at = Column(TIMESTAMP, nullable=True)
+    published_at = Column(TIMESTAMP, nullable=True)
+    release_date = Column(TIMESTAMP, nullable=True)
 
     created_at = Column(TIMESTAMP, server_default=func.now(), index=True)
 

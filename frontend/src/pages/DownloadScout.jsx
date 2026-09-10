@@ -31,10 +31,10 @@ export default function DownloadScout() {
 
   // Dynamic Release Info from Authoritative DB Registry
   const [releaseInfo, setReleaseInfo] = useState({
-    version: '2.7.0',
-    download_url: 'https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe',
+    version: '',
+    download_url: '/download/scout/windows',
     size_bytes: 50474851,
-    sha256: '4a7e93f6c8d19a2b3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d',
+    sha256: '',
     channel: 'stable',
     released_at: '',
   });
@@ -128,20 +128,21 @@ export default function DownloadScout() {
     // 2. Track download event in telemetry registry
     try {
       await api.post('/scout/download/track', {
-        version: releaseInfo.version || '2.7.0',
+        version: releaseInfo.version || contribData?.latest_production_version || 'latest',
         source: 'desktop_scout_page'
       });
     } catch (err) {}
 
-    // 3. Initiate browser download of the installer
-    const downloadUrl = releaseInfo.download_url || '/scout/updates/download/latest';
+    // 3. Initiate browser download of the installer using canonical public endpoint
+    const downloadUrl = releaseInfo.download_url || '/download/scout/windows';
     const a = document.createElement('a');
     a.href = downloadUrl;
     a.download = 'TalentOpsScoutSetup.exe';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    toast.success(`TalentOps Scout v${releaseInfo.version || '2.7.0'} download initiated!`);
+    const verDisplay = releaseInfo.version ? `v${releaseInfo.version}` : (contribData?.latest_production_version ? `v${contribData.latest_production_version}` : '');
+    toast.success(`TalentOps Scout ${verDisplay ? verDisplay + ' ' : ''}download initiated!`);
     setTimeout(() => setDownloading(false), 2500);
   };
 
@@ -227,9 +228,9 @@ export default function DownloadScout() {
   const canonicalCreated = summary.total_canonical_created ?? summary.total_people_contributed ?? 0;
   const canonicalEnriched = summary.total_canonical_enriched ?? summary.total_contacts_contributed ?? 0;
   const avgQualScore = summary.avg_quality_score ?? summary.average_quality_score ?? 0;
-  const latestProdVer = contribData?.latest_production_version || releaseInfo?.version || '2.7.0';
+  const latestProdVer = contribData?.latest_production_version || releaseInfo?.version || '';
 
-  const displayVersion = releaseInfo.version ? `v${releaseInfo.version}` : 'v2.7.0';
+  const displayVersion = releaseInfo.version ? `v${releaseInfo.version}` : (latestProdVer ? `v${latestProdVer}` : 'Production');
   const displaySize = releaseInfo.size_bytes
     ? `${(releaseInfo.size_bytes / (1024 * 1024)).toFixed(1)} MB`
     : '48.1 MB';
@@ -789,7 +790,7 @@ export default function DownloadScout() {
                       const userTenant = u.company || u.tenant || null;
                       const deviceCount = u.device_count ?? u.devices_count ?? 0;
                       const activeCount = u.active_device_count ?? (u.health === 'HEALTHY' ? deviceCount : 0);
-                      const versionStr = u.primary_version || u.current_version || '2.7.0';
+                      const versionStr = u.primary_version || u.current_version || latestProdVer || '—';
                       const isOutdated = u.update_required;
                       const lastSeenDisplay = u.last_seen_at ? formatTimeAgo(u.last_seen_at) : (u.last_seen || '—');
                       const lastContribDisplay = u.last_contribution_at ? formatTimeAgo(u.last_contribution_at) : (u.last_contribution || '—');

@@ -79,9 +79,10 @@ class BackendClient:
                 resolved_config = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.json")
         self.config_path = resolved_config
 
-        # 2. Resolve persistent unique device_id from hardware or saved config
+        # 2. Resolve persistent unique device_id and installation_id from hardware or saved config
         cfg_dev_id = None
         cfg_scout_id = None
+        cfg_inst_id = None
         if os.path.exists(self.config_path):
             try:
                 with open(self.config_path, "r", encoding="utf-8") as f:
@@ -93,6 +94,7 @@ class BackendClient:
                     c_scout = cfg_data.get("scout_id")
                     if c_scout and c_scout not in GENERIC_PLACEHOLDERS:
                         cfg_scout_id = c_scout
+                    cfg_inst_id = cfg_data.get("installation_id")
             except Exception:
                 pass
 
@@ -111,6 +113,9 @@ class BackendClient:
         else:
             self.scout_id = self.device_id
 
+        # Persistent installation_id across updates
+        self.installation_id = cfg_inst_id or f"INST-{uuid.uuid4().hex[:12].upper()}"
+
         self.user_id = 1
         self.session_id = f"SESS-{uuid.uuid4().hex[:8].upper()}"
         self.auth_token: Optional[str] = None
@@ -128,7 +133,7 @@ class BackendClient:
         self._ensure_device_id_persisted()
 
     def _ensure_device_id_persisted(self):
-        """Ensures the unique hardware device_id and scout_id are written to config."""
+        """Ensures the unique hardware device_id, scout_id, and installation_id are written to config."""
         try:
             data = {}
             if os.path.exists(self.config_path):
@@ -142,12 +147,15 @@ class BackendClient:
             if data.get("scout_id") != self.scout_id:
                 data["scout_id"] = self.scout_id
                 needs_save = True
+            if data.get("installation_id") != self.installation_id:
+                data["installation_id"] = self.installation_id
+                needs_save = True
             
             if needs_save:
                 os.makedirs(os.path.dirname(os.path.abspath(self.config_path)), exist_ok=True)
                 with open(self.config_path, "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=2)
-                logger.info("Persisted unique hardware device_id=%s to %s", self.device_id, self.config_path)
+                logger.info("Persisted unique hardware device_id=%s, installation_id=%s to %s", self.device_id, self.installation_id, self.config_path)
         except Exception as e:
             logger.debug("Failed to persist unique device_id: %s", e)
 

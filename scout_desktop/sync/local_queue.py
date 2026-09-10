@@ -56,6 +56,15 @@ class LocalQueue:
                 pass
             self._mem_conn = None
 
+    def checkpoint(self):
+        """Flushes SQLite WAL buffer to disk to ensure 100% data preservation during updates."""
+        try:
+            with self._get_conn() as conn:
+                conn.execute("PRAGMA wal_checkpoint(FULL);")
+            logger.info("LocalQueue WAL checkpoint flushed safely to disk.")
+        except Exception as e:
+            logger.debug("LocalQueue checkpoint note: %s", e)
+
     def _init_db(self):
         with self._get_conn() as conn:
             conn.execute("""

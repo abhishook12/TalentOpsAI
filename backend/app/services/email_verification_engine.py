@@ -5,12 +5,20 @@ import threading
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 
-from app.services.recruiter_store import recruiter_store, PARQUET_FILE
-from app.services.parquet_writer import parquet_writer
-from app.services.verification_state import verification_state
-from app.services.domain_checker import domain_checker
-from app.database import SessionLocal
-from app.models.campaigns import EmailLog
+try:
+    from app.services.recruiter_store import recruiter_store, PARQUET_FILE
+    from app.services.parquet_writer import parquet_writer
+    from app.services.verification_state import verification_state
+    from app.services.domain_checker import domain_checker
+    from app.database import SessionLocal
+    from app.models.campaigns import EmailLog
+except ImportError:
+    from ..services.recruiter_store import recruiter_store, PARQUET_FILE
+    from ..services.parquet_writer import parquet_writer
+    from ..services.verification_state import verification_state
+    from ..services.domain_checker import domain_checker
+    from ..database import SessionLocal
+    from ..models.campaigns import EmailLog
 from sqlalchemy import func, text
 
 logger = logging.getLogger(__name__)

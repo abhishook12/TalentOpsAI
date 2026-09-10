@@ -8,10 +8,18 @@ export default function Sidebar() {
   const location = useLocation()
   const { isAdmin, user } = useAuth()
   const [backendVersion, setBackendVersion] = useState('loading...')
+  const [scoutVersion, setScoutVersion] = useState('')
   const [pendingDevicesCount, setPendingDevicesCount] = useState(0)
 
   useEffect(() => {
     api.get('/version').then(res => setBackendVersion(res.data.version)).catch(() => setBackendVersion('unknown'))
+    api.get('/scout/updates/latest')
+      .then(res => {
+        if (res?.data?.version) {
+          setScoutVersion(res.data.version)
+        }
+      })
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -44,7 +52,7 @@ export default function Sidebar() {
     { to: '/directory', label: 'Directory', icon: Map, aliases: ['/states', '/companies'] },
     { to: '/analytics', label: 'Analytics', icon: BarChart2 },
     { to: '/search', label: 'AI Search', icon: Search },
-    { to: '/download-scout', label: 'Desktop Scout', icon: Laptop, badge: 'v2.7.0' },
+    { to: '/download-scout', label: 'Desktop Scout', icon: Laptop, badge: scoutVersion ? `v${scoutVersion}` : 'Live' },
     { isGroupHeader: true, label: 'Account' },
     { to: '/profile', label: 'Profile', icon: UserCircle },
     { to: '/settings', label: 'Settings', icon: Settings },

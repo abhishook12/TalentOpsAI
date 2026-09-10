@@ -82,6 +82,7 @@ class AutoUpdater:
         current_version: str = CURRENT_VERSION,
         channel: str = "stable",
         device_id: Optional[str] = None,
+        installation_id: Optional[str] = None,
         on_update_ready: Optional[Callable[[str, str], None]] = None,
         on_mandatory_update_required: Optional[Callable[[str, str], None]] = None,
     ):
@@ -89,6 +90,7 @@ class AutoUpdater:
         self.current_version = current_version
         self.channel = channel
         self.device_id = device_id or f"DEV-{platform.node()}-{os.getlogin()}"
+        self.installation_id = installation_id
         self.on_update_ready = on_update_ready
         self.on_mandatory_update_required = on_mandatory_update_required
 
@@ -102,12 +104,36 @@ class AutoUpdater:
         self.active_config: Dict[str, Any] = {}
         self.last_checked_at: Optional[float] = None
 
+        # Deferral & User notification policy
+        self.notification_deferred_until: float = 0.0
+        self.auto_download: bool = True
+        self.notifications_enabled: bool = True
+
         self._thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
 
     @property
     def update_status(self) -> str:
         return self.state_machine.current_state.value
+
+    @property
+    def snooze_until(self) -> float:
+        return self.notification_deferred_until
+
+    @snooze_until.setter
+    def snooze_until(self, val: float):
+        self.notification_deferred_until = val
+
+    def postpone_update(self, hours: float = 24.0):
+        """User chose [Later]: postpones update notifications for specified hours."""
+        self.notification_deferred_until = time.time() + (hours * 3600.0)
+        logger.info("Update notification postponed for %.1f hours (until %s)", hours, time.ctime(self.notification_deferred_until))
+
+    def is_notification_due(self) -> bool:
+        """Returns True if notifications are enabled and not currently postponed."""
+        if not self.notifications_enabled:
+            return False
+        return time.time() >= self.notification_deferred_until
 
     def start(self):
         """Starts background periodic update poller."""
@@ -122,6 +148,16 @@ class AutoUpdater:
         """Stops background update worker."""
         self._stop_event.set()
 
+    def fetch_update_manifest(self) -> Optional[Dict[str, Any]]:
+        """Fetches raw update manifest from backend."""
+        inst_param = f"&installation_id={self.installation_id}" if self.installation_id else ""
+        url = f"{self.api_base}/scout/updates/manifest?channel={self.channel}&device_id={self.device_id}{inst_param}"
+        logger.debug("Checking update manifest at %s...", url)
+        res = requests.get(url, timeout=10.0)
+        if res.status_code == 200:
+            return res.json()
+        return None
+
     def check_for_updates_now(self) -> Optional[Dict[str, Any]]:
         """
         Polls signed update manifest from the backend.
@@ -130,28 +166,21 @@ class AutoUpdater:
         """
         self.last_checked_at = time.time()
         try:
-            url = f"{self.api_base}/scout/updates/manifest?channel={self.channel}&device_id={self.device_id}"
-            logger.debug("Checking update manifest at %s...", url)
-            res = requests.get(url, timeout=10.0)
-
-            if res.status_code == 200:
-                manifest = res.json()
-
+            manifest = self.fetch_update_manifest()
+            if manifest:
                 # Cryptographic Trust Chain Check 1: Verify Manifest Signature
                 sig = manifest.get("signature") or manifest.get("manifest_signature")
                 if sig:
                     is_valid_sig = verify_manifest_signature(manifest, signature_b64=sig)
                     if not is_valid_sig:
                         logger.error("[SECURITY] REJECTED MANIFEST: Cryptographic signature verification failed!")
-                        self.report_status_to_server(self.device_id, "VERIFICATION_FAILED", "Manifest signature invalid")
+                        self.report_status_to_server(self.device_id, "FAILED", "Manifest signature invalid")
                         return None
                 else:
                     logger.warning("Manifest has no cryptographic signature. Proceeding with caution.")
 
                 self._process_manifest(manifest)
                 return manifest
-            else:
-                logger.debug("Update server responded with HTTP %d", res.status_code)
         except Exception as e:
             logger.debug("Update check ping failed: %s", e)
 
@@ -178,12 +207,12 @@ class AutoUpdater:
         # Check if local version is deprecated below minimum
         if local_ver < min_ver or manifest.get("mandatory", False):
             self.is_mandatory = True
+            self.pending_version = remote_ver_str
+            self.state_machine.transition(UpdateState.REQUIRED_UPDATE, target_version=remote_ver_str, strict=False)
             logger.warning("[MANDATORY] UPDATE REQUIRED! Local v%s is below minimum v%s", self.current_version, min_ver_str)
             if self.on_mandatory_update_required:
                 self.on_mandatory_update_required(min_ver_str, remote_ver_str)
-
-        # Check if new version exists
-        if remote_ver > local_ver:
+        elif remote_ver > local_ver:
             logger.info("[UPDATE] Update available: v%s (Local: v%s)", remote_ver_str, self.current_version)
             self.pending_version = remote_ver_str
             self.state_machine.transition(UpdateState.UPDATE_AVAILABLE, target_version=remote_ver_str, strict=False)
@@ -240,11 +269,10 @@ class AutoUpdater:
             if not expected_hash or actual_hash.lower() == expected_hash.lower():
                 logger.info("[OK] Staged installer for v%s already cached and verified (%s)", ver, target_file)
                 self.downloaded_installer_path = target_file
-                self.state_machine.transition(UpdateState.DOWNLOADED, target_version=ver, strict=False)
-                self.state_machine.transition(UpdateState.VERIFYING, strict=False)
-                self.state_machine.transition(UpdateState.SUCCESS, context="Cached and verified", strict=False)
+                self.state_machine.transition(UpdateState.READY_TO_INSTALL, target_version=ver, strict=False)
+                self.report_status_to_server(self.device_id, "READY_TO_INSTALL", target_version=ver)
                 if self.on_update_ready:
-                    self.on_update_ready(ver, target_file)
+                    self.on_update_ready(ver, target_file, self.release_notes)
                 return True
 
         # 2. Download
@@ -263,9 +291,6 @@ class AutoUpdater:
                         if chunk:
                             f.write(chunk)
 
-                self.state_machine.transition(UpdateState.DOWNLOADED, strict=False)
-                self.state_machine.transition(UpdateState.VERIFYING, strict=False)
-
                 # 3. Cryptographic Check A: SHA-256 Integrity
                 if expected_hash:
                     actual_hash = compute_file_sha256(temp_download)
@@ -276,8 +301,8 @@ class AutoUpdater:
                             actual_hash,
                         )
                         os.remove(temp_download)
-                        self.state_machine.transition(UpdateState.VERIFICATION_FAILED, context="SHA-256 mismatch", strict=False)
-                        self.report_status_to_server(self.device_id, "VERIFICATION_FAILED", "SHA-256 mismatch", target_version=ver)
+                        self.state_machine.transition(UpdateState.FAILED, context="SHA-256 mismatch", strict=False)
+                        self.report_status_to_server(self.device_id, "FAILED", "SHA-256 mismatch", target_version=ver)
                         return False
                     logger.info("[OK] Cryptographic SHA-256 verification PASSED (%s)", actual_hash[:16])
 
@@ -287,8 +312,8 @@ class AutoUpdater:
                     if not is_pkg_sig_valid:
                         logger.error("[SECURITY ALERT] Package digital signature verification FAILED! Untrusted binary.")
                         os.remove(temp_download)
-                        self.state_machine.transition(UpdateState.VERIFICATION_FAILED, context="Package signature mismatch", strict=False)
-                        self.report_status_to_server(self.device_id, "VERIFICATION_FAILED", "Package signature mismatch", target_version=ver)
+                        self.state_machine.transition(UpdateState.FAILED, context="Package signature mismatch", strict=False)
+                        self.report_status_to_server(self.device_id, "FAILED", "Package signature mismatch", target_version=ver)
                         return False
                     logger.info("[OK] Package digital signature PASSED.")
 
@@ -303,17 +328,17 @@ class AutoUpdater:
 
                 logger.info("[SUCCESS] TalentOps Scout v%s verified and staged (%s)", ver, target_file)
                 self.downloaded_installer_path = target_file
-                self.state_machine.transition(UpdateState.SUCCESS, context="Staged successfully", strict=False)
-                self.report_status_to_server(self.device_id, "STAGED", target_version=ver)
+                self.state_machine.transition(UpdateState.READY_TO_INSTALL, target_version=ver, strict=False)
+                self.report_status_to_server(self.device_id, "READY_TO_INSTALL", target_version=ver)
 
                 if self.on_update_ready:
-                    self.on_update_ready(ver, target_file)
+                    self.on_update_ready(ver, target_file, self.release_notes)
                 return True
 
         except Exception as e:
-            logger.warning("Silent auto-update download failed: %s", e)
-            self.state_machine.transition(UpdateState.DOWNLOAD_FAILED, context=str(e), strict=False)
-            self.report_status_to_server(self.device_id, "DOWNLOAD_FAILED", str(e), target_version=ver)
+            logger.warning("Auto-update background download failed: %s", e)
+            self.state_machine.transition(UpdateState.FAILED, context=str(e), strict=False)
+            self.report_status_to_server(self.device_id, "FAILED", str(e), target_version=ver)
             if os.path.exists(temp_download):
                 try:
                     os.remove(temp_download)
@@ -365,7 +390,11 @@ class AutoUpdater:
             # Fallback direct execution
             cmd = [pkg_path, "/SILENT", "/CLOSEAPPLICATIONS", "/RESTARTAPPLICATIONS=1"]
             subprocess.Popen(cmd, shell=False)
-            sys.exit(0)
+            try:
+                sys.exit(0)
+            except SystemExit:
+                pass
+            return True
 
         logger.info("Launching detached out-of-process updater helper: %s", cmd)
 
@@ -377,7 +406,11 @@ class AutoUpdater:
 
         subprocess.Popen(cmd, creationflags=flags, close_fds=True)
         logger.info("Scout shutting down cleanly to permit out-of-process binary update...")
-        sys.exit(0)
+        try:
+            sys.exit(0)
+        except SystemExit:
+            pass
+        return True
 
     def report_status_to_server(
         self,

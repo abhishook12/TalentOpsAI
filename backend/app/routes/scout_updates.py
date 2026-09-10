@@ -123,30 +123,38 @@ def get_canonical_production_release(channel: str = "stable", db: Session = None
     """
     if not db:
         return None
-    # 1. Authoritative: is_current == True on requested channel
-    rel = (
-        db.query(ScoutRelease)
-        .filter(ScoutRelease.channel == channel, ScoutRelease.is_current == True)
-        .order_by(ScoutRelease.id.desc())
-        .first()
-    )
-    # 2. Fallback: newest ACTIVE release on requested channel
-    if not rel:
+    try:
+        # 1. Authoritative: is_current == True on requested channel
         rel = (
             db.query(ScoutRelease)
-            .filter(ScoutRelease.channel == channel, ScoutRelease.status == "ACTIVE")
+            .filter(ScoutRelease.channel == channel, ScoutRelease.is_current == True)
             .order_by(ScoutRelease.id.desc())
             .first()
         )
-    # 3. Fallback: stable channel production release
-    if not rel and channel != "stable":
-        rel = (
-            db.query(ScoutRelease)
-            .filter(ScoutRelease.channel == "stable", ScoutRelease.is_current == True)
-            .order_by(ScoutRelease.id.desc())
-            .first()
-        )
-    return rel
+        # 2. Fallback: newest ACTIVE release on requested channel
+        if not rel:
+            rel = (
+                db.query(ScoutRelease)
+                .filter(ScoutRelease.channel == channel, ScoutRelease.status == "ACTIVE")
+                .order_by(ScoutRelease.id.desc())
+                .first()
+            )
+        # 3. Fallback: stable channel production release
+        if not rel and channel != "stable":
+            rel = (
+                db.query(ScoutRelease)
+                .filter(ScoutRelease.channel == "stable", ScoutRelease.is_current == True)
+                .order_by(ScoutRelease.id.desc())
+                .first()
+            )
+        return rel
+    except Exception as e:
+        logger.debug("get_canonical_production_release database fallback note: %s", e)
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        return None
 
 
 def get_merged_remote_config(channel: str = "stable", db: Session = None) -> Tuple[Dict[str, Any], Dict[str, Any]]:
@@ -186,6 +194,7 @@ def get_merged_remote_config(channel: str = "stable", db: Session = None) -> Tup
 def get_update_manifest(
     channel: str = Query("stable", description="Deployment channel: stable, beta, internal"),
     device_id: Optional[str] = Query(None, description="Device identifier for staged rollout cohort calculation"),
+    installation_id: Optional[str] = Query(None, description="Installation identifier for staged rollout cohort calculation"),
     db: Session = Depends(get_db),
 ):
     """
@@ -199,6 +208,8 @@ def get_update_manifest(
         # 1. Authoritative Single Source of Truth: Canonical production release
         canonical_release = get_canonical_production_release(channel=channel, db=db)
         selected_release = canonical_release
+
+        cohort_key = installation_id or device_id
 
         if canonical_release:
             # 2. Circuit breaker / pause check
@@ -218,12 +229,12 @@ def get_update_manifest(
                 if fallback_rel:
                     selected_release = fallback_rel
 
-            # 3. Staged rollout evaluation (Cohort allocation: 0-99)
-            elif selected_release.rollout_percentage < 100 and device_id:
-                cohort_bucket = abs(hash(device_id)) % 100
+            # 3. Staged rollout evaluation (Cohort allocation: 0-99 via stable installation/device hash)
+            elif selected_release.rollout_percentage < 100 and cohort_key:
+                cohort_bucket = abs(hash(cohort_key)) % 100
                 if cohort_bucket >= selected_release.rollout_percentage:
-                    logger.debug("Device %s in bucket %d >= rollout %d%% for v%s. Falling back to earlier release.",
-                                 device_id, cohort_bucket, selected_release.rollout_percentage, selected_release.version)
+                    logger.debug("Device/Installation %s in bucket %d >= rollout %d%% for v%s. Falling back to earlier release.",
+                                 cohort_key, cohort_bucket, selected_release.rollout_percentage, selected_release.version)
                     fallback_rel = (
                         db.query(ScoutRelease)
                         .filter(
@@ -253,16 +264,31 @@ def get_update_manifest(
                 except Exception:
                     pass
 
+            installer_url = getattr(selected_release, "installer_url", None) or selected_release.download_url
+            artifact_url = getattr(selected_release, "artifact_url", None) or selected_release.download_url
+            rel_date_obj = (
+                getattr(selected_release, "release_date", None)
+                or getattr(selected_release, "released_at", None)
+                or selected_release.created_at
+            )
+            rel_date_str = rel_date_obj.strftime("%Y-%m-%d") if rel_date_obj else "2026-09-10"
+
             manifest_payload = {
                 "product": "talentops-scout",
                 "channel": selected_release.channel,
+                "version": selected_release.version,
                 "latest_version": selected_release.version,
                 "minimum_version": selected_release.minimum_version,
                 "mandatory": selected_release.mandatory,
-                "release_date": selected_release.created_at.strftime("%Y-%m-%d") if selected_release.created_at else "2026-09-09",
+                "release_date": rel_date_str,
                 "release_notes": selected_release.release_notes,
+                "download_url": selected_release.download_url,
+                "installer_url": installer_url,
+                "artifact_url": artifact_url,
+                "sha256": selected_release.sha256,
                 "rollout_percentage": selected_release.rollout_percentage,
                 "is_current": bool(getattr(selected_release, "is_current", True)),
+                "is_public": bool(getattr(selected_release, "is_public", True)),
                 "package": {
                     "url": selected_release.download_url,
                     "sha256": selected_release.sha256,
@@ -299,11 +325,19 @@ def get_update_manifest(
         fallback_manifest = {
             "product": "talentops-scout",
             "channel": channel,
+            "version": DEFAULT_RELEASE_VERSION,
             "latest_version": DEFAULT_RELEASE_VERSION,
             "minimum_version": DEFAULT_MINIMUM_VERSION,
             "mandatory": False,
-            "release_date": "2026-09-09",
+            "release_date": "2026-09-10",
             "release_notes": "Official production release of TalentOps Scout Desktop.",
+            "download_url": DEFAULT_DOWNLOAD_URL,
+            "installer_url": DEFAULT_DOWNLOAD_URL,
+            "artifact_url": DEFAULT_DOWNLOAD_URL,
+            "sha256": DEFAULT_SHA256,
+            "rollout_percentage": 100,
+            "is_current": True,
+            "is_public": True,
             "package": {
                 "url": DEFAULT_DOWNLOAD_URL,
                 "sha256": DEFAULT_SHA256,
@@ -325,12 +359,23 @@ def get_update_manifest(
         fallback = {
             "product": "talentops-scout",
             "channel": channel,
+            "version": DEFAULT_RELEASE_VERSION,
             "latest_version": DEFAULT_RELEASE_VERSION,
             "minimum_version": DEFAULT_MINIMUM_VERSION,
             "mandatory": False,
-            "package": {"url": DEFAULT_DOWNLOAD_URL, "sha256": DEFAULT_SHA256, "size": DEFAULT_SIZE},
-            "features": DEFAULT_FEATURES,
-            "config": DEFAULT_CONFIG,
+            "release_date": "2026-09-10",
+            "download_url": DEFAULT_DOWNLOAD_URL,
+            "installer_url": DEFAULT_DOWNLOAD_URL,
+            "artifact_url": DEFAULT_DOWNLOAD_URL,
+            "sha256": DEFAULT_SHA256,
+            "rollout_percentage": 100,
+            "is_current": True,
+            "is_public": True,
+            "package": {
+                "url": DEFAULT_DOWNLOAD_URL,
+                "sha256": DEFAULT_SHA256,
+                "size": DEFAULT_SIZE,
+            },
         }
         return fallback
 
@@ -453,6 +498,7 @@ def get_download_stats(db: Session = Depends(get_db)):
     }
 
 
+@router.get("/download/windows")
 @router.get("/updates/download/latest")
 def download_latest_installer(
     channel: str = Query("stable"),
@@ -859,6 +905,82 @@ def rollback_production_release(
         db.rollback()
         logger.error("Failed to execute rollback for v%s: %s", version, e)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+class ReleasePromoteRequest(BaseModel):
+    target_channel: str = "stable"
+    rollout_percentage: Optional[int] = None
+    is_production: Optional[bool] = None
+
+
+@router.post("/releases/{version}/promote")
+def promote_scout_release(
+    version: str,
+    req: ReleasePromoteRequest = ReleasePromoteRequest(),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Promotes a release between channels (INTERNAL -> BETA -> STABLE).
+    If promoted to stable and is_production is True, makes it current production.
+    """
+    rel = db.query(ScoutRelease).filter(ScoutRelease.version == version).first()
+    if not rel:
+        raise HTTPException(status_code=404, detail=f"Release v{version} not found in registry")
+
+    now = datetime.now(timezone.utc)
+    old_chan = rel.channel
+    rel.channel = req.target_channel.lower()
+    if req.rollout_percentage is not None:
+        rel.rollout_percentage = max(0, min(100, req.rollout_percentage))
+
+    if req.target_channel.lower() == "stable" and (req.is_production or req.is_production is None):
+        db.query(ScoutRelease).filter(ScoutRelease.channel == "stable", ScoutRelease.id != rel.id).update({"is_current": False})
+        rel.is_current = True
+        rel.status = "ACTIVE"
+        rel.approved_at = now
+        rel.released_at = now
+        rel.approved_by = getattr(current_user, "id", None)
+
+    db.commit()
+    db.refresh(rel)
+    logger.info("Promoted release v%s from %s to %s (is_current=%s)", version, old_chan, rel.channel, rel.is_current)
+    return {
+        "status": "promoted",
+        "version": rel.version,
+        "from_channel": old_chan,
+        "to_channel": rel.channel,
+        "is_current": rel.is_current,
+        "rollout_percentage": rel.rollout_percentage,
+    }
+
+
+@router.post("/releases/{version}/publish")
+def publish_existing_release(
+    version: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Marks a release as public and available for download.
+    """
+    rel = db.query(ScoutRelease).filter(ScoutRelease.version == version).first()
+    if not rel:
+        raise HTTPException(status_code=404, detail=f"Release v{version} not found in registry")
+
+    now = datetime.now(timezone.utc)
+    rel.is_public = True
+    rel.published_at = now
+    if not rel.released_at:
+        rel.released_at = now
+    db.commit()
+    db.refresh(rel)
+    return {
+        "status": "published",
+        "version": rel.version,
+        "is_public": rel.is_public,
+        "published_at": rel.published_at.isoformat(),
+    }
 
 
 @router.post("/releases/{version}/rollout")

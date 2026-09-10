@@ -32,7 +32,7 @@ export default function ScoutContributors() {
   const summary = data?.summary || {}
   const users = data?.users || []
   const versionDistribution = data?.version_distribution || {}
-  const latestProdVer = data?.latest_production_version || '2.7.0'
+  const latestProdVer = data?.latest_production_version || ''
 
   const formatTimeAgo = (isoStr) => {
     if (!isoStr) return 'Never'
@@ -355,7 +355,7 @@ export default function ScoutContributors() {
                   const userTenant = u.company || u.tenant || null
                   const deviceCount = u.device_count ?? u.devices_count ?? 0
                   const activeCount = u.active_device_count ?? (u.health === 'HEALTHY' ? deviceCount : 0)
-                  const versionStr = u.primary_version || u.current_version || '2.7.0'
+                  const versionStr = u.primary_version || u.current_version || latestProdVer || '—'
                   const isOutdated = u.update_required
                   const lastSeenDisplay = u.last_seen_at ? formatTimeAgo(u.last_seen_at) : (u.last_seen || '—')
                   const lastContribDisplay = u.last_contribution_at ? formatTimeAgo(u.last_contribution_at) : (u.last_contribution || '—')

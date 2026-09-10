@@ -49,22 +49,27 @@ class UpdateState(str, Enum):
     UP_TO_DATE = "UP_TO_DATE"
     UPDATE_AVAILABLE = "UPDATE_AVAILABLE"
     DOWNLOADING = "DOWNLOADING"
-    DOWNLOADED = "DOWNLOADED"
-    VERIFYING = "VERIFYING"
-    APPLYING = "APPLYING"
+    READY_TO_INSTALL = "READY_TO_INSTALL"
+    INSTALLING = "INSTALLING"
     HEALTH_CHECK = "HEALTH_CHECK"
-    SUCCESS = "SUCCESS"
+    UPDATED = "UPDATED"
+    FAILED = "FAILED"
+    ROLLING_BACK = "ROLLING_BACK"
+    ROLLED_BACK = "ROLLED_BACK"
+    REQUIRED_UPDATE = "REQUIRED_UPDATE"
 
-    # Failure States
-    DOWNLOAD_FAILED = "DOWNLOAD_FAILED"
-    VERIFICATION_FAILED = "VERIFICATION_FAILED"
-    APPLY_FAILED = "APPLY_FAILED"
-    HEALTH_CHECK_FAILED = "HEALTH_CHECK_FAILED"
-
-    # Rollback States
-    ROLLBACK = "ROLLBACK"
-    RESTORE_PREVIOUS = "RESTORE_PREVIOUS"
-    STABLE = "STABLE"
+    # Legacy & Granular Compatibility Aliases
+    DOWNLOADED = "READY_TO_INSTALL"
+    APPLYING = "INSTALLING"
+    SUCCESS = "UPDATED"
+    ROLLBACK = "ROLLING_BACK"
+    RESTORE_PREVIOUS = "ROLLING_BACK"
+    STABLE = "UP_TO_DATE"
+    DOWNLOAD_FAILED = "FAILED"
+    VERIFICATION_FAILED = "FAILED"
+    APPLY_FAILED = "FAILED"
+    HEALTH_CHECK_FAILED = "FAILED"
+    VERIFYING = "DOWNLOADING"
 
 
 class InvalidStateTransitionError(ValueError):
@@ -72,68 +77,60 @@ class InvalidStateTransitionError(ValueError):
     pass
 
 
-# Strict transition graph ensuring lifecycle integrity
 VALID_TRANSITIONS: Dict[UpdateState, Set[UpdateState]] = {
     UpdateState.UP_TO_DATE: {
         UpdateState.UPDATE_AVAILABLE,
+        UpdateState.REQUIRED_UPDATE,
+        UpdateState.DOWNLOADING,
         UpdateState.UP_TO_DATE,
     },
     UpdateState.UPDATE_AVAILABLE: {
         UpdateState.DOWNLOADING,
-        UpdateState.UP_TO_DATE,  # User canceled or already latest
+        UpdateState.READY_TO_INSTALL,
+        UpdateState.UP_TO_DATE,
+        UpdateState.REQUIRED_UPDATE,
+    },
+    UpdateState.REQUIRED_UPDATE: {
+        UpdateState.DOWNLOADING,
+        UpdateState.READY_TO_INSTALL,
+        UpdateState.INSTALLING,
+        UpdateState.UP_TO_DATE,
     },
     UpdateState.DOWNLOADING: {
-        UpdateState.DOWNLOADED,
-        UpdateState.DOWNLOAD_FAILED,
+        UpdateState.READY_TO_INSTALL,
+        UpdateState.FAILED,
     },
-    UpdateState.DOWNLOADED: {
-        UpdateState.VERIFYING,
-        UpdateState.DOWNLOAD_FAILED,
+    UpdateState.READY_TO_INSTALL: {
+        UpdateState.INSTALLING,
+        UpdateState.FAILED,
+        UpdateState.UP_TO_DATE,
     },
-    UpdateState.VERIFYING: {
-        UpdateState.APPLYING,
-        UpdateState.VERIFICATION_FAILED,
-    },
-    UpdateState.APPLYING: {
+    UpdateState.INSTALLING: {
         UpdateState.HEALTH_CHECK,
-        UpdateState.APPLY_FAILED,
-        UpdateState.ROLLBACK,
+        UpdateState.FAILED,
+        UpdateState.ROLLING_BACK,
     },
     UpdateState.HEALTH_CHECK: {
-        UpdateState.SUCCESS,
-        UpdateState.HEALTH_CHECK_FAILED,
-        UpdateState.ROLLBACK,
+        UpdateState.UPDATED,
+        UpdateState.FAILED,
+        UpdateState.ROLLING_BACK,
     },
-    UpdateState.SUCCESS: {
+    UpdateState.UPDATED: {
         UpdateState.UP_TO_DATE,
+        UpdateState.UPDATE_AVAILABLE,
     },
-
-    # Failure paths can reset to UP_TO_DATE or UPDATE_AVAILABLE on retry
-    UpdateState.DOWNLOAD_FAILED: {
+    UpdateState.FAILED: {
         UpdateState.DOWNLOADING,
+        UpdateState.UPDATE_AVAILABLE,
         UpdateState.UP_TO_DATE,
+        UpdateState.ROLLING_BACK,
     },
-    UpdateState.VERIFICATION_FAILED: {
-        UpdateState.DOWNLOADING,
-        UpdateState.UP_TO_DATE,
-    },
-    UpdateState.APPLY_FAILED: {
-        UpdateState.ROLLBACK,
-        UpdateState.UP_TO_DATE,
-    },
-    UpdateState.HEALTH_CHECK_FAILED: {
-        UpdateState.ROLLBACK,
-    },
-
-    # Rollback lifecycle
-    UpdateState.ROLLBACK: {
-        UpdateState.RESTORE_PREVIOUS,
-    },
-    UpdateState.RESTORE_PREVIOUS: {
+    UpdateState.ROLLING_BACK: {
+        UpdateState.ROLLED_BACK,
         UpdateState.HEALTH_CHECK,
-        UpdateState.STABLE,
+        UpdateState.FAILED,
     },
-    UpdateState.STABLE: {
+    UpdateState.ROLLED_BACK: {
         UpdateState.UP_TO_DATE,
         UpdateState.UPDATE_AVAILABLE,
     },

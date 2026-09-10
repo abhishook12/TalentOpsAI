@@ -24,7 +24,7 @@ from typing import Optional, Dict, Any, List, Tuple
 
 from PIL import Image
 
-from PySide6.QtWidgets import QApplication, QTabWidget, QSystemTrayIcon
+from PySide6.QtWidgets import QApplication, QTabWidget, QSystemTrayIcon, QMessageBox
 from PySide6.QtCore import QObject, Signal, QTimer, Slot
 from PySide6.QtGui import QIcon
 
@@ -181,6 +181,7 @@ class ScoutDesktopApp:
             api_base=self.backend_client.active_api_base,
             current_version=CURRENT_VERSION,
             device_id=self.backend_client.device_id,
+            installation_id=getattr(self.backend_client, "installation_id", None),
             on_update_ready=self._on_update_ready,
             on_mandatory_update_required=self._on_mandatory_update_required,
         )
@@ -607,14 +608,99 @@ class ScoutDesktopApp:
         logger.info("⚡ Global hotkey triggered: Ctrl + Shift + S")
         QTimer.singleShot(0, self.force_capture)
 
-    def _on_update_ready(self, version: str, installer_path: str):
-        """Invoked by AutoUpdater when a new installer binary is downloaded and verified."""
+    def _on_update_ready(self, version: str, installer_path: str, release_notes: Optional[str] = None):
+        """Invoked by AutoUpdater when a new installer binary is downloaded and verified in background."""
         logger.info("Update ready to install: v%s (%s)", version, installer_path)
         self._pending_update_version = version
         self._pending_installer_path = installer_path
-        self.bridge.event_logged.emit("UPDATE_READY", f"TalentOps Scout v{version} verified. Preparing safe background installation.")
-        # Attempt safe installation or schedule on idle
-        self._evaluate_safe_install_point()
+        self._pending_release_notes = release_notes
+        self.bridge.event_logged.emit("UPDATE_READY", f"TalentOps Scout v{version} is ready to install.")
+
+        # Check snooze/postpone policy
+        if hasattr(self, "updater") and not self.updater.is_notification_due():
+            logger.info("Update notification is snoozed (within 24h snooze window).")
+            return
+
+        # Display mainstream non-disruptive update prompt on UI thread
+        QTimer.singleShot(0, lambda: self._show_update_prompt(version, installer_path, release_notes))
+
+    def _show_update_prompt(self, version: str, installer_path: str, release_notes: Optional[str] = None):
+        """Displays mainstream desktop update dialog with [Restart & Update] and [Later] (24h snooze)."""
+        # Show tray notification
+        try:
+            if hasattr(self, "tray") and hasattr(self.tray, "tray"):
+                self.tray.tray.showMessage(
+                    "TalentOps Scout Update Ready",
+                    f"Scout v{version} is ready to install. Click to restart and update.",
+                    QSystemTrayIcon.Information,
+                    8000
+                )
+        except Exception as e:
+            logger.debug("Tray notification error: %s", e)
+
+        try:
+            parent = self.main_window if hasattr(self, "main_window") and self.main_window.isVisible() else None
+            msg_box = QMessageBox(parent)
+            msg_box.setWindowTitle("TalentOps Scout Update")
+            msg_box.setText(f"<h3>TalentOps Scout v{version} is ready to install</h3>")
+            info_text = (
+                "The update has been downloaded and verified in the background.<br>"
+                "Restart Scout now to complete installation, or continue working and update later."
+            )
+            if release_notes:
+                info_text += f"<br><br><b>What's New:</b><br>{release_notes}"
+            msg_box.setInformativeText(info_text)
+
+            btn_restart = msg_box.addButton("Restart & Update", QMessageBox.AcceptRole)
+            btn_later = msg_box.addButton("Later", QMessageBox.RejectRole)
+            msg_box.setDefaultButton(btn_restart)
+
+            msg_box.setStyleSheet("""
+                QMessageBox {
+                    background-color: #0b1120;
+                    color: #f8fafc;
+                }
+                QLabel {
+                    color: #f8fafc;
+                }
+                QPushButton {
+                    background-color: #0284c7;
+                    color: #ffffff;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 8px 16px;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background-color: #0369a1;
+                }
+                QPushButton[role="RejectRole"] {
+                    background-color: #1e293b;
+                    color: #94a3b8;
+                }
+                QPushButton[role="RejectRole"]:hover {
+                    background-color: #334155;
+                    color: #f8fafc;
+                }
+            """)
+
+            msg_box.exec_()
+
+            if msg_box.clickedButton() == btn_restart:
+                logger.info("User accepted update to v%s. Flushed queue and applying update...", version)
+                self.bridge.event_logged.emit("APPLYING_UPDATE", f"Applying update v{version}...")
+                try:
+                    if hasattr(self, "local_queue"):
+                        self.local_queue.checkpoint()
+                except Exception as e:
+                    logger.debug("Local queue checkpoint: %s", e)
+                self.updater.apply_update_and_restart(installer_path)
+            else:
+                logger.info("User postponed update to v%s. Snoozing for 24 hours.", version)
+                self.updater.postpone_update(hours=24.0)
+                self.bridge.event_logged.emit("UPDATE_POSTPONED", f"Update v{version} postponed for 24 hours.")
+        except Exception as e:
+            logger.warning("Failed to show update prompt dialog: %s", e)
 
     def _on_mandatory_update_required(self, min_version: str, remote_version: str):
         """Invoked when local Scout version is below the minimum allowed version."""
@@ -624,41 +710,76 @@ class ScoutDesktopApp:
         self.edge_handle.set_status_state("UPDATE_REQUIRED")
         self.tray.update_icon_status("PENDING")
         self.bridge.event_logged.emit("UPDATE_REQUIRED", f"Critical update required: v{remote_version} (minimum: v{min_version})")
+        QTimer.singleShot(0, lambda: self._show_mandatory_update_dialog(min_version, remote_version))
+
+    def _show_mandatory_update_dialog(self, min_version: str, remote_version: str):
+        """Displays required update modal dialog with [Update Scout Now]."""
         try:
-            if hasattr(self, "tray") and hasattr(self.tray, "tray"):
-                self.tray.tray.showMessage(
-                    "Critical Update Required",
-                    f"TalentOps Scout v{remote_version} is required. Installing update automatically...",
-                    QSystemTrayIcon.Warning,
-                    8000
-                )
+            parent = self.main_window if hasattr(self, "main_window") and self.main_window.isVisible() else None
+            msg_box = QMessageBox(parent)
+            msg_box.setIcon(QMessageBox.Warning)
+            msg_box.setWindowTitle("Scout Update Required")
+            msg_box.setText("<h3>Critical Scout Update Required</h3>")
+            msg_box.setInformativeText(
+                f"Your installed Scout version (v{CURRENT_VERSION}) is below the required minimum (v{min_version}).<br><br>"
+                f"An update to v{remote_version} is required to continue synchronizing data safely."
+            )
+            btn_update = msg_box.addButton("Update Scout Now", QMessageBox.AcceptRole)
+            msg_box.setDefaultButton(btn_update)
+            msg_box.setStyleSheet("""
+                QMessageBox {
+                    background-color: #0b1120;
+                    color: #f8fafc;
+                }
+                QLabel {
+                    color: #f8fafc;
+                }
+                QPushButton {
+                    background-color: #dc2626;
+                    color: #ffffff;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 8px 16px;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background-color: #b91c1c;
+                }
+            """)
+            msg_box.exec_()
+
+            if self._pending_installer_path and os.path.exists(self._pending_installer_path):
+                try:
+                    if hasattr(self, "local_queue"):
+                        self.local_queue.checkpoint()
+                except Exception:
+                    pass
+                self.updater.apply_update_and_restart(self._pending_installer_path)
+            else:
+                manifest = self.updater.check_for_updates_now()
+                if manifest:
+                    ok = self.updater._download_and_verify(manifest)
+                    if ok and self.updater.downloaded_installer_path:
+                        try:
+                            if hasattr(self, "local_queue"):
+                                self.local_queue.checkpoint()
+                        except Exception:
+                            pass
+                        self.updater.apply_update_and_restart(self.updater.downloaded_installer_path)
         except Exception as e:
-            logger.debug("Tray message error: %s", e)
+            logger.warning("Failed to show mandatory update dialog: %s", e)
 
     def _evaluate_safe_install_point(self):
         """
-        Evaluates whether Scout is in a safe idle state to perform autonomous background update:
-        1. No active capture or extraction in flight
-        2. Sampler is in IDLE, PAUSED, or STANDBY state
-        3. Network queue flush worker is not actively uploading
-        If safe: triggers `updater.apply_update_and_restart()`
-        If busy: schedules a re-check via QTimer when idle
+        Maintains backward compatibility hook for safe install point evaluation.
+        Does not force silent restarts; invokes prompt if pending update exists.
         """
-        if not getattr(self, "_pending_installer_path", None):
-            return
-
-        is_idle = getattr(self.sampler, "state", "IDLE") in ("IDLE", "PAUSED", "STANDBY")
-        is_safe = is_idle and not self._is_flushing
-
-        if is_safe:
-            logger.info("⚡ Safe install point reached: Sampler is IDLE. Applying update v%s...", self._pending_update_version)
-            self.bridge.event_logged.emit("APPLYING_UPDATE", f"Applying update v{self._pending_update_version} in background...")
-            pkg = self._pending_installer_path
-            self._pending_installer_path = None
-            QTimer.singleShot(500, lambda: self.updater.apply_update_and_restart(pkg))
-        else:
-            logger.debug("Scout busy (state=%s, flushing=%s). Waiting for safe install point...", getattr(self.sampler, "state", ""), self._is_flushing)
-            QTimer.singleShot(10000, self._evaluate_safe_install_point)
+        if getattr(self, "_pending_installer_path", None) and getattr(self, "_pending_update_version", None):
+            self._show_update_prompt(
+                self._pending_update_version,
+                self._pending_installer_path,
+                getattr(self, "_pending_release_notes", None)
+            )
 
     def _check_and_notify_recent_update(self):
         """Checks if Scout just restarted after an autonomous background update."""

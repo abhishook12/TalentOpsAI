@@ -23,6 +23,11 @@ import EnricherControlPanel from '../components/EnricherControlPanel'
 import LiveIngestionPipeline from '../components/LiveIngestionPipeline'
 import { Skeleton, SkeletonRow } from '../components/ui/Skeleton'
 import AnimatedNumber from '../components/ui/AnimatedNumber'
+import AICommandCenter from '../components/ai/AICommandCenter'
+import IntelligenceFeed from '../components/ai/IntelligenceFeed'
+import AIDataDoctor from '../components/ai/AIDataDoctor'
+import KnowledgeGraphView from '../components/ai/KnowledgeGraphView'
+import PersonIntelligenceWorkspace from '../components/ai/PersonIntelligenceWorkspace'
 
 const REFRESH_INTERVAL = 60_000 // 60 seconds
 
@@ -63,6 +68,7 @@ export default function Dashboard() {
   const queryClient = useQueryClient()
   const [lastUpdated, setLastUpdated] = useState(() => new Date())
   const [refreshError, setRefreshError] = useState(null)
+  const [selectedPerson, setSelectedPerson] = useState(null)
   const isManualRefreshing = useRef(false)
 
   const sharedQueryOpts = {
@@ -282,6 +288,17 @@ export default function Dashboard() {
 
       <AIInsights />
 
+      {/* ── Pillar 1: Enterprise Natural-Language AI Command Center ── */}
+      <div style={{ marginTop: '8px', marginBottom: '8px' }}>
+        <AICommandCenter onSelectCandidate={(cand) => setSelectedPerson(cand)} />
+      </div>
+
+      {/* ── Pillars 4 & 6: Proactive Intelligence Feed & Autonomous Data Doctor ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 12, marginTop: '8px', marginBottom: '8px' }}>
+        <IntelligenceFeed onTriggerAction={(item) => toast.success(`Action: ${item.action_label}`)} />
+        <AIDataDoctor />
+      </div>
+
       {dataQuality?.total_recruiters === 0 ? (
         <div style={{
           padding: 60,
@@ -320,14 +337,19 @@ export default function Dashboard() {
             ))}
           </div>
 
-      <div style={{ marginTop: '4px', marginBottom: '4px' }}>
-        <USHeatmap />
-      </div>
+          <div style={{ marginTop: '4px', marginBottom: '4px' }}>
+            <USHeatmap />
+          </div>
 
-      {/* Dedicated Live Scraper & Enrichment Ingestion Pipeline Panel */}
-      <div style={{ marginTop: '4px', marginBottom: '8px' }}>
-        <LiveIngestionPipeline />
-      </div>
+          {/* Dedicated Live Scraper & Enrichment Ingestion Pipeline Panel */}
+          <div style={{ marginTop: '4px', marginBottom: '8px' }}>
+            <LiveIngestionPipeline />
+          </div>
+
+          {/* ── Pillar 10: Interactive Entity Knowledge Graph ── */}
+          <div style={{ marginTop: '8px', marginBottom: '8px' }}>
+            <KnowledgeGraphView />
+          </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.35fr 0.95fr', gap: 12, minHeight: 0 }}>
         <ShellCard style={{ padding: 18, minHeight: 0 }}>
@@ -583,6 +605,13 @@ export default function Dashboard() {
         <EnrichmentLiveFeed />
       </div>
       </>
+      )}
+
+      {selectedPerson && (
+        <PersonIntelligenceWorkspace
+          person={selectedPerson}
+          onClose={() => setSelectedPerson(null)}
+        />
       )}
 
     </div>

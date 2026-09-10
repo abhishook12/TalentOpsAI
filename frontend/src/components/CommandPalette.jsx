@@ -11,6 +11,8 @@ export default function CommandPalette() {
   const inputRef = useRef(null);
   
   const actions = [
+    { id: 'ai_command', title: '✦ Ask TalentOps AI Anything', icon: Search, type: 'ai', route: '/?focus=ai' },
+    { id: 'ai_doctor', title: '🩺 Run AI Data Doctor (Health & Repair)', icon: Database, type: 'ai', route: '/?focus=doctor' },
     { id: 'dashboard', title: 'Go to Dashboard', icon: BarChart, route: '/' },
     { id: 'recruiters', title: 'Search Recruiters', icon: Users, route: '/recruiters' },
     { id: 'companies', title: 'Search Companies', icon: Briefcase, route: '/directory' },
@@ -22,7 +24,7 @@ export default function CommandPalette() {
     { id: 'admin_dashboard', title: 'Admin Terminal', icon: Monitor, route: '/admin' },
     { id: 'admin_users', title: 'User Management', icon: Users, route: '/admin/users' },
     { id: 'admin_visitors', title: 'Visitor Analytics', icon: Activity, route: '/admin/visitor-analytics' },
-    { id: 'ai_search', title: 'AI Search', icon: Search, route: '/search' },
+    { id: 'ai_search', title: 'AI Search & Query Intelligence', icon: Search, route: '/search' },
   ];
 
   const filteredActions = actions.filter(action => 
@@ -163,8 +165,13 @@ export default function CommandPalette() {
                       transition: 'background 0.1s'
                     }}
                   >
-                    <Icon size={18} style={{ color: isSelected ? 'var(--brand)' : 'inherit' }} />
-                    <span style={{ fontSize: 15, fontWeight: isSelected ? 600 : 500 }}>{action.title}</span>
+                    <Icon size={18} style={{ color: action.type === 'ai' ? '#38bdf8' : (isSelected ? 'var(--brand)' : 'inherit') }} />
+                    <span style={{ fontSize: 15, fontWeight: isSelected ? 600 : 500, flex: 1 }}>{action.title}</span>
+                    {action.type === 'ai' && (
+                      <span style={{ fontSize: '10px', background: 'rgba(139, 92, 246, 0.2)', color: '#c4b5fd', border: '1px solid rgba(139, 92, 246, 0.4)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                        AI ACTION
+                      </span>
+                    )}
                   </div>
                 );
               })

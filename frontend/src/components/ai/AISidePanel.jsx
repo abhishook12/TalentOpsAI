@@ -1,0 +1,307 @@
+import React, { useState, useEffect, useRef } from 'react'
+import { toast } from 'react-hot-toast'
+import api from '../../services/api'
+import EvidenceBadge from './EvidenceBadge'
+
+/**
+ * Context-Aware Persistent AI Side Panel
+ * Collapsible right-hand intelligence companion injected with current screen context.
+ */
+export default function AISidePanel({ isOpen, onToggle, currentContext }) {
+  const [messages, setMessages] = useState([
+    {
+      role: 'assistant',
+      text: 'TalentOps AI Copilot active. Context initialized for current workspace. How can I assist your sourcing operations today?'
+    }
+  ])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const messagesEndRef = useRef(null)
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
+  const handleSendMessage = async (textToSend) => {
+    const query = textToSend || input
+    if (!query.trim()) return
+
+    const newMsgs = [...messages, { role: 'user', text: query }]
+    setMessages(newMsgs)
+    setInput('')
+    setLoading(true)
+
+    try {
+      const res = await api.post('/ai/command', {
+        query,
+        mode: 'chat',
+        context: currentContext
+      })
+
+      const reply = res.data.summary || 'I analyzed your request against the talent intelligence database.'
+      setMessages([...newMsgs, { role: 'assistant', text: reply, intent: res.data.intent, results: res.data.results }])
+    } catch (err) {
+      console.error('AI chat error:', err)
+      setMessages([...newMsgs, { role: 'assistant', text: 'Encountered a momentary connection pause. Please try again.' }])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <>
+      {/* Floating Toggle Pill when panel is closed */}
+      {!isOpen && (
+        <button
+          onClick={onToggle}
+          title="Open TalentOps AI Copilot"
+          style={{
+            position: 'fixed',
+            right: '20px',
+            bottom: '24px',
+            zIndex: 9998,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: 'linear-gradient(135deg, #8b5cf6, #38bdf8)',
+            border: 'none',
+            borderRadius: '30px',
+            padding: '10px 18px',
+            color: '#fff',
+            fontWeight: 800,
+            fontSize: '13px',
+            boxShadow: '0 8px 24px rgba(139, 92, 246, 0.4)',
+            cursor: 'pointer',
+            transition: 'transform 0.2s ease'
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
+          onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+        >
+          <span style={{ fontSize: '15px' }}>✦</span>
+          <span>AI Copilot</span>
+        </button>
+      )}
+
+      {/* Persistent Side Panel Drawer */}
+      {isOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: '380px',
+            backgroundColor: 'var(--bg-card, #0f172a)',
+            borderLeft: '1px solid var(--border-ai, rgba(139, 92, 246, 0.3))',
+            zIndex: 9999,
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '-10px 0 30px rgba(0, 0, 0, 0.6)',
+            animation: 'slideInRight 0.2s ease-out'
+          }}
+        >
+          {/* Drawer Header */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '16px 20px',
+              borderBottom: '1px solid var(--border, #1e293b)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div
+                style={{
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '6px',
+                  background: 'linear-gradient(135deg, #8b5cf6, #38bdf8)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff',
+                  fontSize: '12px',
+                  fontWeight: 900
+                }}
+              >
+                ✦
+              </div>
+              <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                TalentOps Copilot
+              </span>
+              <EvidenceBadge status="OBSERVED" size="sm" />
+            </div>
+
+            <button
+              onClick={onToggle}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-secondary)',
+                fontSize: '18px',
+                cursor: 'pointer',
+                padding: '4px'
+              }}
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Quick Context Strip */}
+          <div
+            style={{
+              padding: '8px 16px',
+              backgroundColor: 'rgba(255, 255, 255, 0.02)',
+              borderBottom: '1px solid var(--border, #1e293b)',
+              fontSize: '11px',
+              color: 'var(--text-secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <span style={{ color: '#10b981' }}>●</span>
+            <span>Active Context: {currentContext?.name || 'Talent Intelligence Console'}</span>
+          </div>
+
+          {/* Chat Message Stream */}
+          <div
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}
+          >
+            {messages.map((m, idx) => (
+              <div
+                key={idx}
+                style={{
+                  alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
+                  maxWidth: '88%',
+                  backgroundColor: m.role === 'user' ? '#8b5cf6' : 'var(--bg-base, #090d14)',
+                  color: m.role === 'user' ? '#ffffff' : 'var(--text-primary)',
+                  border: m.role === 'user' ? 'none' : '1px solid var(--border, #1e293b)',
+                  borderRadius: '10px',
+                  padding: '10px 14px',
+                  fontSize: '12px',
+                  lineHeight: 1.5,
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
+                }}
+              >
+                {m.text}
+
+                {/* Optional mini results */}
+                {m.results && m.results.length > 0 && (
+                  <div style={{ marginTop: '8px', borderTop: '1px solid var(--border, #1e293b)', paddingTop: '6px' }}>
+                    <div style={{ fontSize: '10px', fontWeight: 700, color: '#38bdf8', textTransform: 'uppercase' }}>
+                      Identified Top Candidates:
+                    </div>
+                    {m.results.slice(0, 3).map((c) => (
+                      <div key={c.id} style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                        • {c.name} ({c.title})
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+            {loading && (
+              <div
+                style={{
+                  alignSelf: 'flex-start',
+                  backgroundColor: 'var(--bg-base, #090d14)',
+                  border: '1px solid var(--border, #1e293b)',
+                  borderRadius: '10px',
+                  padding: '8px 14px',
+                  fontSize: '11px',
+                  color: '#38bdf8',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <i className="ti ti-loader-2" style={{ animation: 'spin 1s linear infinite' }} />
+                <span>Thinking...</span>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Quick Prompt Suggestions */}
+          <div style={{ padding: '8px 16px', display: 'flex', gap: '6px', flexWrap: 'wrap', borderTop: '1px solid var(--border, #1e293b)' }}>
+            {['Explain candidate #1', 'Draft outreach message', 'Run Data Doctor'].map((q, i) => (
+              <button
+                key={i}
+                onClick={() => handleSendMessage(q)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid var(--border, #1e293b)',
+                  borderRadius: '4px',
+                  padding: '3px 8px',
+                  fontSize: '10px',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer'
+                }}
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+
+          {/* Input Box */}
+          <div
+            style={{
+              padding: '12px 16px',
+              borderTop: '1px solid var(--border, #1e293b)',
+              display: 'flex',
+              gap: '8px',
+              backgroundColor: 'var(--bg-base, #090d14)'
+            }}
+          >
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+              placeholder="Ask Copilot..."
+              style={{
+                flex: 1,
+                backgroundColor: 'var(--bg-card, #0f172a)',
+                border: '1px solid var(--border, #1e293b)',
+                borderRadius: '6px',
+                padding: '8px 12px',
+                fontSize: '12px',
+                color: 'var(--text-primary)',
+                outline: 'none'
+              }}
+            />
+            <button
+              onClick={() => handleSendMessage()}
+              disabled={loading || !input.trim()}
+              style={{
+                background: 'linear-gradient(135deg, #8b5cf6, #38bdf8)',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '0 12px',
+                color: '#fff',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: loading || !input.trim() ? 'not-allowed' : 'pointer'
+              }}
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}

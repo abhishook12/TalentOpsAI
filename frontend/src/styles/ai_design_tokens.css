@@ -1,0 +1,142 @@
+/**
+ * TalentOpsAI — Semantic AI Design Tokens & Styles
+ * Aligned with Google PAIR, IBM, Microsoft Fluent, Apple HIG, W3C WCAG 2.2, and NIST.
+ */
+
+:root {
+  /* Semantic Enterprise Dark Palette */
+  --ai-bg-canvas: #090d14;
+  --ai-bg-surface: #0f172a;
+  --ai-bg-surface-raised: #161f30;
+  --ai-bg-surface-elevated: #1e293b;
+  --ai-border-subtle: rgba(255, 255, 255, 0.08);
+  --ai-border-medium: rgba(255, 255, 255, 0.14);
+  --ai-border-focus: #38bdf8;
+
+  /* Primary Brand & AI Accents */
+  --ai-primary-cyan: #38bdf8;
+  --ai-accent-violet: #8b5cf6;
+  --ai-accent-indigo: #6366f1;
+  --ai-accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #38bdf8 100%);
+  --ai-accent-subtle-glow: rgba(139, 92, 246, 0.16);
+
+  /* Semantic Data Provenance Status */
+  --ai-status-verified: #10b981;
+  --ai-status-observed: #38bdf8;
+  --ai-status-inferred: #f59e0b;
+  --ai-status-derived: #8b5cf6;
+  --ai-status-predicted: #ec4899;
+  --ai-status-unknown: #94a3b8;
+  --ai-status-danger: #ef4444;
+
+  /* Typography */
+  --ai-font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --ai-font-mono: 'JetBrains Mono', monospace;
+}
+
+/* Subtle AI Ambient Glow */
+.ai-glow {
+  box-shadow: 0 0 20px -5px var(--ai-accent-subtle-glow);
+}
+
+.ai-card {
+  background: var(--ai-bg-surface);
+  border: 1px solid var(--ai-border-subtle);
+  border-radius: 12px;
+  transition: all 0.2s ease-in-out;
+}
+
+.ai-card:hover {
+  border-color: rgba(139, 92, 246, 0.35);
+  box-shadow: 0 4px 24px -6px rgba(139, 92, 246, 0.12);
+}
+
+/* Gradient Header Text */
+.ai-gradient-text {
+  background: var(--ai-accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Calibrated Uncertainty Provenance Badges */
+.ai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--ai-font-mono);
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+
+.ai-badge-verified {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.28);
+}
+
+.ai-badge-observed {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.28);
+}
+
+.ai-badge-inferred {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.28);
+}
+
+.ai-badge-derived {
+  background: rgba(139, 92, 246, 0.12);
+  color: #a78bfa;
+  border-color: rgba(139, 92, 246, 0.28);
+}
+
+.ai-badge-predicted {
+  background: rgba(236, 72, 153, 0.12);
+  color: #f472b6;
+  border-color: rgba(236, 72, 153, 0.28);
+}
+
+.ai-badge-unknown {
+  background: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.28);
+}
+
+/* Subtle Animated Processing Indicator */
+@keyframes ai-pulse-glow {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.6));
+  }
+}
+
+.ai-processing-pulse {
+  animation: ai-pulse-glow 2s infinite ease-in-out;
+}
+
+/* WCAG 2.2 Compliant Keyboard Focus */
+.ai-focus-ring:focus-visible {
+  outline: 2px solid var(--ai-border-focus);
+  outline-offset: 2px;
+}
+
+/* Respect Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .ai-processing-pulse {
+    animation: none;
+  }
+  .ai-card {
+    transition: none;
+  }
+}

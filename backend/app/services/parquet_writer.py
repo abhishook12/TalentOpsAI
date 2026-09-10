@@ -9,7 +9,10 @@ import duckdb
 import pandas as pd
 from typing import List, Dict, Any
 
-from app.services.recruiter_store import PARQUET_FILE, recruiter_store
+try:
+    from app.services.recruiter_store import PARQUET_FILE, recruiter_store
+except ImportError:
+    from ..services.recruiter_store import PARQUET_FILE, recruiter_store
 
 logger = logging.getLogger("parquet_writer")
 

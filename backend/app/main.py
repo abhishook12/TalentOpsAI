@@ -20,7 +20,7 @@ from .config import (
 )
 from .routes import recruiters, companies, vendors, candidates, submissions, analytics, admin, auth, actions, updates, ai, campaigns, harvester, users, visitor_analytics, notifications, bridge, accounts, extension, staging
 from .database import get_db, engine, Base
-from .models import models, auth_models, staging_models, data_quality_models, extension_models, update_models
+from .models import models, auth_models, staging_models, data_quality_models, extension_models, update_models, ai_models
 from .create_indexes import create_performance_indexes
 
 

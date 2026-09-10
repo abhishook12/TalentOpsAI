@@ -11,6 +11,7 @@ import { ThemeProvider, useTheme } from './context/ThemeContext'
 import { Toaster } from 'react-hot-toast'
 import CommandPalette from './components/CommandPalette'
 import NotificationCenter from './components/NotificationCenter'
+import AISidePanel from './components/ai/AISidePanel'
 
 // Global settings
 // axios credentials set in main.jsx
@@ -84,6 +85,7 @@ function AppShell() {
   const pageName = useMemo(() => PAGE_NAMES[location.pathname] || 'Dashboard', [location.pathname])
   
   const [backendVersion, setBackendVersion] = useState('v4.0.2-Stable')
+  const [aiPanelOpen, setAiPanelOpen] = useState(false)
 
   useEffect(() => {
     api.get('/version').then(res => {
@@ -141,6 +143,11 @@ function AppShell() {
   return (
     <>
       <CommandPalette />
+      <AISidePanel
+        isOpen={aiPanelOpen}
+        onToggle={() => setAiPanelOpen(!aiPanelOpen)}
+        currentContext={{ name: pageName, path: location.pathname }}
+      />
       <Toaster position="top-right" toastOptions={{ style: { background: 'var(--main-bg)', color: 'var(--text-primary)', border: '1px solid var(--border)', fontSize: '13px', borderRadius: '8px' } }} />
       <UpdateCenter />
       <div className="cc-shell">
@@ -152,6 +159,15 @@ function AppShell() {
             </div>
             <div className="cc-top-actions">
               <div id="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 10 }} />
+              <button
+                className="cc-icon-button"
+                title="TalentOps AI Copilot"
+                aria-label="TalentOps AI Copilot"
+                style={{ padding: '8px', color: aiPanelOpen ? '#38bdf8' : '#a78bfa' }}
+                onClick={() => setAiPanelOpen(!aiPanelOpen)}
+              >
+                <span style={{ fontSize: '18px', fontWeight: 900 }}>✦</span>
+              </button>
               <button className="cc-icon-button" title="Settings" aria-label="Settings" style={{ padding: '8px' }} onClick={() => navigate({ to: '/settings' })}>
                 <i className="ti ti-settings" style={{ fontSize: '20px' }} />
               </button>

@@ -25,7 +25,7 @@ export const AuthProvider = ({ children }) => {
 
             // SECURITY PATCH: Immediately accept the legacy bypass token without hitting the backend
             if (token === 'legacy_admin_bypass_token') {
-                setUser({ id: 'admin', role: 'admin', first_name: 'Admin', email: 'admin@system' });
+                setUser({ id: 'admin', role: 'superadmin', first_name: 'Abhishek', email: 'abhishekjadon824@gmail.com' });
                 setLoading(false);
                 return;
             }
@@ -37,9 +37,9 @@ export const AuthProvider = ({ children }) => {
                 if (response.data.user) {
                     setUser(response.data.user);
                     localStorage.setItem('auth_session', JSON.stringify({ email: response.data.user.email || null }));
-                } else if (response.data.role === 'admin') {
-                    setUser({ id: 'admin', role: 'admin', first_name: 'Admin', email: 'admin@system' });
-                    localStorage.setItem('auth_session', JSON.stringify({ email: 'admin@system' }));
+                } else if (response.data.role === 'admin' || response.data.role === 'superadmin') {
+                    setUser({ id: 'admin', role: 'superadmin', first_name: 'Abhishek', email: 'abhishekjadon824@gmail.com' });
+                    localStorage.setItem('auth_session', JSON.stringify({ email: 'abhishekjadon824@gmail.com' }));
                 }
             } else {
                 setUser(null);
@@ -134,8 +134,8 @@ export const AuthProvider = ({ children }) => {
         return response.data;
     };
 
-    const isAdmin = user?.email?.toLowerCase() === 'abhishekjadon824@gmail.com' || 
-                    ['admin', 'superadmin'].includes(user?.role?.toLowerCase() || '');
+    // HARD USER MANDATE: ONLY abhishekjadon824@gmail.com is EVER an admin
+    const isAdmin = user?.email?.toLowerCase().trim() === 'abhishekjadon824@gmail.com';
 
     return (
         <AuthContext.Provider value={{ user, isAdmin, loading, login, googleLogin, logout, register, forgotPassword, resetPassword, verifyEmail, checkAuthStatus }}>

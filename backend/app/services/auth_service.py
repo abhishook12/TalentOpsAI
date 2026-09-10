@@ -121,15 +121,9 @@ def get_current_user_from_request(request: Request, db: Session = Depends(get_db
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Legacy/Admin bypass token handling (used by admin sessions and test harnesses)
+    # Legacy/Admin bypass token handling (strictly locked to abhishekjadon824@gmail.com)
     if token == "legacy_admin_bypass_token":
-        admin_user = db.query(User).options(joinedload(User.role)).filter(User.email == "admin@talentops.com").first()
-        if not admin_user:
-            admin_user = db.query(User).options(joinedload(User.role)).filter(User.email == "admin@talentops.ai").first()
-        if not admin_user:
-            admin_user = db.query(User).options(joinedload(User.role)).filter(User.email == "abhishekjadon824@gmail.com").first()
-        if not admin_user:
-            admin_user = db.query(User).options(joinedload(User.role)).first()
+        admin_user = db.query(User).options(joinedload(User.role)).filter(User.email == "abhishekjadon824@gmail.com").first()
         if admin_user:
             _AUTH_CACHE[token] = (admin_user, time.time(), admin_user.id)
             return admin_user
@@ -220,12 +214,18 @@ def get_current_user_from_request(request: Request, db: Session = Depends(get_db
         if user.status != "Active":
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is not active")
             
-        from ..config import DEVELOPMENT_LOCKDOWN
-        # BYPASS LOCKDOWN
-        # if DEVELOPMENT_LOCKDOWN:
-        #    if not user.role or user.role.name.lower() not in ['admin', 'superadmin']:
-        #        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="maintenance_lockdown")
-        
+        # HARD USER LOCK: ONLY abhishekjadon824@gmail.com can EVER have admin/superadmin privileges
+        if user and user.email.lower().strip() != "abhishekjadon824@gmail.com":
+            if user.role and user.role.name.lower() in ["admin", "superadmin"]:
+                user_role = db.query(Role).filter(Role.name == "user").first()
+                if user_role:
+                    user.role = user_role
+                    user.role_id = user_role.id
+                    try:
+                        db.commit()
+                    except Exception:
+                        db.rollback()
+
         _AUTH_CACHE[token] = (user, time.time(), user.id)
         return user
     except jwt.ExpiredSignatureError as e:
@@ -256,7 +256,12 @@ def get_optional_current_user(request: Request, db: Session = Depends(get_db)) -
 def require_role(allowed_roles: list[str]):
     def role_checker(request: Request, db: Session = Depends(get_db)):
         user = get_current_user_from_request(request, db)
-        if not user.role or user.role.name.lower() not in [r.lower() for r in allowed_roles]:
+        allowed_lower = [r.lower() for r in allowed_roles]
+        # HARD LOCK: If endpoint requires admin/superadmin, ONLY abhishekjadon824@gmail.com is permitted
+        if any(r in ["admin", "superadmin"] for r in allowed_lower):
+            if user.email.lower().strip() != "abhishekjadon824@gmail.com":
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access restricted to platform owner.")
+        if not user.role or user.role.name.lower() not in allowed_lower:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
         return user
     return role_checker
@@ -264,14 +269,15 @@ def require_role(allowed_roles: list[str]):
 def require_admin(request: Request, db: Session = Depends(get_db)):
     """
     Enforces strict Admin access.
-    Checks if the user's email is the master admin OR they possess the admin role.
+    HARD USER MANDATE: ONLY abhishekjadon824@gmail.com is EVER permitted admin access.
+    All other users are rejected unconditionally with HTTP 403.
     """
     user = get_current_user_from_request(request, db)
-    if user.email.lower() == "abhishekjadon824@gmail.com":
-        return user
-        
-    if not user.role or user.role.name.lower() not in ["superadmin", "admin"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    if user.email.lower().strip() != "abhishekjadon824@gmail.com":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access restricted. Only the master platform owner (abhishekjadon824@gmail.com) has administrative privileges."
+        )
     return user
 
 def require_permission(permission_name: str):

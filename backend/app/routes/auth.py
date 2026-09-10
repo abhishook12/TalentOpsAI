@@ -132,11 +132,13 @@ def register(request: Request, user: UserRegister, background_tasks: BackgroundT
     # Determine user status
     initial_status = "Active" if DEV_AUTO_VERIFY else "Pending Verification"
     
-    # First user ever → make superadmin and active
-    is_first_user = db.query(User).count() == 0
-    if is_first_user:
+    # HARD USER LOCK: ONLY abhishekjadon824@gmail.com can EVER be assigned superadmin/admin
+    clean_reg_email = user.email.lower().strip()
+    if clean_reg_email == "abhishekjadon824@gmail.com":
         default_role = db.query(Role).filter(Role.name == "superadmin").first() or default_role
         initial_status = "Active"
+    else:
+        default_role = db.query(Role).filter(Role.name == "user").first()
     
     from ..utils.sanitize import sanitize_html
     new_user = User(
@@ -487,6 +489,12 @@ def login(request: Request, login_data: UserLogin, response: Response, db: Sessi
         max_age=30*24*60*60
     )
     
+    # HARD USER LOCK: ONLY abhishekjadon824@gmail.com can EVER have admin/superadmin role returned
+    effective_role = user.role.name if user.role else "user"
+    if clean_email != "abhishekjadon824@gmail.com":
+        if effective_role.lower() in ("admin", "superadmin"):
+            effective_role = "user"
+
     return {
         "message": "Login successful",
         "token": access_token,
@@ -495,7 +503,7 @@ def login(request: Request, login_data: UserLogin, response: Response, db: Sessi
             "email": user.email,
             "first_name": user.first_name,
             "last_name": user.last_name,
-            "role": user.role.name if user.role else "None",
+            "role": effective_role,
             "avatar_url": user.avatar_url,
             "company": user.company
         }
@@ -561,15 +569,14 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
             pass # Handled below
     else:
         # Create new user
-        _ensure_default_roles(db)
-        default_role = db.query(Role).filter(Role.name == "user").first()
-        is_first_user = db.query(User).count() == 0
-        if is_first_user:
+        # HARD USER LOCK: ONLY abhishekjadon824@gmail.com can EVER be assigned superadmin/admin
+        clean_g_email = email.lower().strip()
+        if clean_g_email == "abhishekjadon824@gmail.com":
             default_role = db.query(Role).filter(Role.name == "superadmin").first() or default_role
-
-        initial_status = "Active" if DEV_AUTO_VERIFY else "Pending Verification"
-        if is_first_user:
             initial_status = "Active"
+        else:
+            default_role = db.query(Role).filter(Role.name == "user").first()
+            initial_status = "Active" if DEV_AUTO_VERIFY else "Pending Verification"
 
         user = User(
             first_name=idinfo.get("given_name", ""),
@@ -642,6 +649,12 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
         key="refresh_token", value=refresh_token, httponly=True, secure=IS_PRODUCTION, samesite="none" if IS_PRODUCTION else "lax", max_age=30*24*60*60
     )
     
+    # HARD USER LOCK: ONLY abhishekjadon824@gmail.com can EVER have admin/superadmin role returned
+    effective_g_role = user.role.name if user.role else "user"
+    if email.lower().strip() != "abhishekjadon824@gmail.com":
+        if effective_g_role.lower() in ("admin", "superadmin"):
+            effective_g_role = "user"
+
     return {
         "message": "Google Login successful",
         "token": access_token,
@@ -650,7 +663,7 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
             "email": user.email,
             "first_name": user.first_name,
             "last_name": user.last_name,
-            "role": user.role.name if user.role else "None",
+            "role": effective_g_role,
             "avatar_url": user.avatar_url,
             "company": user.company
         }
@@ -743,6 +756,11 @@ def complete_device_approval(request: Request, response: Response, db: Session =
 def get_me(request: Request, db: Session = Depends(get_db)):
     try:
         user = get_current_user_from_request(request, db)
+        effective_me_role = user.role.name if user.role else "user"
+        if user.email.lower().strip() != "abhishekjadon824@gmail.com":
+            if effective_me_role.lower() in ("admin", "superadmin"):
+                effective_me_role = "user"
+
         return {
             "authenticated": True,
             "user": {
@@ -750,7 +768,7 @@ def get_me(request: Request, db: Session = Depends(get_db)):
                 "email": user.email,
                 "first_name": user.first_name,
                 "last_name": user.last_name,
-                "role": user.role.name if user.role else "None",
+                "role": effective_me_role,
                 "avatar_url": user.avatar_url,
                 "company": user.company
             }
@@ -761,8 +779,8 @@ def get_me(request: Request, db: Session = Depends(get_db)):
         if cookie_token:
             try:
                 payload = jwt.decode(cookie_token, JWT_SECRET, algorithms=[ALGORITHM])
-                if payload.get("role") == "admin":
-                    return {"authenticated": True, "role": "admin"}
+                if payload.get("email", "").lower().strip() == "abhishekjadon824@gmail.com":
+                    return {"authenticated": True, "role": "superadmin"}
             except Exception:
                 pass
         return {"authenticated": False}

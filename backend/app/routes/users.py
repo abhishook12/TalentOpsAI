@@ -123,6 +123,8 @@ def create_user(
     password = user_data.get("password") or "TempPass123!"
     
     role_name = user_data.get("role_name", "user")
+    if role_name.lower() in ("admin", "superadmin") and email.lower().strip() != "abhishekjadon824@gmail.com":
+        role_name = "user"
     role_record = db.query(Role).filter(Role.name == role_name).first()
     if not role_record:
         # fallback
@@ -229,7 +231,10 @@ def update_user_status(
         user.status = status_data["status"]
         
     if "role_name" in status_data:
-        role = db.query(Role).filter(Role.name == status_data["role_name"]).first()
+        requested_role = status_data["role_name"]
+        if requested_role.lower() in ("admin", "superadmin") and user.email.lower().strip() != "abhishekjadon824@gmail.com":
+            raise HTTPException(status_code=403, detail="Administrative roles are strictly restricted to the platform owner (abhishekjadon824@gmail.com).")
+        role = db.query(Role).filter(Role.name == requested_role).first()
         if not role:
             raise HTTPException(status_code=400, detail="Invalid role")
         user.role_id = role.id

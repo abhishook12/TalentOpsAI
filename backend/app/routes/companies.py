@@ -116,7 +116,7 @@ def create_company(data: CompanyCreate, db: Session = Depends(get_db), current_u
 @router.put("/{company_id}")
 def update_company(company_id: int, data: CompanyUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
 
-    is_admin = current_user.role and current_user.role.name.lower() in ('admin', 'superadmin')
+    is_admin = (current_user.email or "").lower().strip() == "abhishekjadon824@gmail.com"
     if not is_admin:
         raise HTTPException(status_code=403, detail="Read-only access: Cannot modify global company database")
     c = db.query(Company).filter(Company.company_id == company_id).first()
@@ -137,7 +137,7 @@ def update_company(company_id: int, data: CompanyUpdate, db: Session = Depends(g
 @router.delete("/{company_id}")
 def delete_company(company_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
 
-    is_admin = current_user.role and current_user.role.name.lower() in ('admin', 'superadmin')
+    is_admin = (current_user.email or "").lower().strip() == "abhishekjadon824@gmail.com"
     if not is_admin:
         raise HTTPException(status_code=403, detail="Read-only access: Cannot modify global company database")
     c = db.query(Company).filter(Company.company_id == company_id).first()

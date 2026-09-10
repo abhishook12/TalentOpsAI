@@ -538,7 +538,7 @@ def revoke_scout_device(
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
 
-    is_admin = current_user.email.lower() == "abhishekjadon824@gmail.com" or getattr(getattr(current_user, "role", None), "name", "").lower() in ("admin", "superadmin")
+    is_admin = current_user.email.lower().strip() == "abhishekjadon824@gmail.com"
     if not is_admin and device.owner_user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to revoke this device")
 
@@ -564,7 +564,7 @@ def rename_scout_device(
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
 
-    is_admin = current_user.email.lower() == "abhishekjadon824@gmail.com" or getattr(getattr(current_user, "role", None), "name", "").lower() in ("admin", "superadmin")
+    is_admin = current_user.email.lower().strip() == "abhishekjadon824@gmail.com"
     if not is_admin and device.owner_user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to rename this device")
 

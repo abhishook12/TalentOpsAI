@@ -157,14 +157,10 @@ def get_current_user_from_request(request: Request, db: Session = Depends(get_db
         user_id = payload.get("sub")
         if user_id is None:
             if payload.get("role") in ("admin", "superadmin"):
-                admin_user = db.query(User).options(joinedload(User.role)).filter(User.email == "admin@talentops.ai").first()
+                admin_user = db.query(User).options(joinedload(User.role)).filter(User.email == "abhishekjadon824@gmail.com").first()
                 if admin_user:
                     _AUTH_CACHE[token] = (admin_user, time.time(), admin_user.id)
                     return admin_user
-                first_admin = db.query(User).options(joinedload(User.role)).first()
-                if first_admin:
-                    _AUTH_CACHE[token] = (first_admin, time.time(), first_admin.id)
-                    return first_admin
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
         
 

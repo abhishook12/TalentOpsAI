@@ -145,11 +145,7 @@ class VisionAnalyzeRequest(BaseModel):
 def is_admin_user(user: User) -> bool:
     if not user:
         return False
-    if user.email and user.email.lower() == "abhishekjadon824@gmail.com":
-        return True
-    if hasattr(user, "role") and user.role and getattr(user.role, "name", "").lower() in ("admin", "superadmin"):
-        return True
-    return False
+    return (user.email or "").lower().strip() == "abhishekjadon824@gmail.com"
 
 
 import jwt as _jwt

@@ -148,8 +148,7 @@ def get_domain_reputation(
 
 @router.post("/sweep")
 def trigger_deliverability_sweep(current_user: User = Depends(get_current_user_from_request)):
-    """Trigger on-demand deliverability engine evaluation across the dataset."""
-    if not current_user.role or current_user.role.name.lower() not in ('admin', 'superadmin'):
+    if (current_user.email or "").lower().strip() != "abhishekjadon824@gmail.com":
         raise HTTPException(status_code=403, detail="Admin authorization required")
         
     start_t = time.time()
@@ -234,7 +233,7 @@ def get_verification_log(current_user: User = Depends(get_current_user_from_requ
 @router.post("/enrich")
 def trigger_enrichment(current_user: User = Depends(get_current_user_from_request)):
     """Start the contact enrichment worker (LinkedIn URLs, phone propagation, completeness scores)."""
-    if not current_user.role or current_user.role.name.lower() not in ('admin', 'superadmin'):
+    if (current_user.email or "").lower().strip() != "abhishekjadon824@gmail.com":
         raise HTTPException(status_code=403, detail="Admin authorization required")
     
     from ..services.contact_enrichment_worker import enrichment_worker
@@ -271,7 +270,7 @@ def probe_mailboxes(
     Returns verification results for each email without sending any email.
     Limited to 50 emails per request to prevent abuse.
     """
-    if not current_user.role or current_user.role.name.lower() not in ('admin', 'superadmin'):
+    if (current_user.email or "").lower().strip() != "abhishekjadon824@gmail.com":
         raise HTTPException(status_code=403, detail="Admin authorization required")
     
     if len(payload.emails) > 50:

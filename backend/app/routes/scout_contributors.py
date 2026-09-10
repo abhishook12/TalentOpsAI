@@ -56,6 +56,8 @@ def list_scout_users(
     Returns the comprehensive Scout Users & Contributors list with summary cards,
     lifecycle statuses, device counts, quality scores, and version distribution.
     """
+    if not current_user or (current_user.email or "").lower().strip() != "abhishekjadon824@gmail.com":
+        raise HTTPException(status_code=403, detail="Admin authorization required")
     try:
         return get_all_scout_users_intelligence(
             db=db,
@@ -88,9 +90,10 @@ def list_scout_users(
             "version_distribution": {},
             "latest_production_version": "2.7.0",
             "users": [],
-            "last_updated": datetime.now(timezone.utc).isoformat(),
         }
 
+
+# ── Contributor Intelligence Summary ─────────────────────────────────────────
 
 @router.get("/contributors/summary")
 def get_contributors_summary(
@@ -100,6 +103,8 @@ def get_contributors_summary(
     """
     Returns global aggregate KPIs for the Scout Contributor Command Center.
     """
+    if not current_user or (current_user.email or "").lower().strip() != "abhishekjadon824@gmail.com":
+        raise HTTPException(status_code=403, detail="Admin authorization required")
     try:
         data = get_all_scout_users_intelligence(db=db)
         return {
@@ -134,6 +139,18 @@ def get_contributors_summary(
         }
 
 
+def _check_user_access(current_user: Optional[User], user_id: int):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if (current_user.email or "").lower().strip() != "abhishekjadon824@gmail.com" and current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+
+def _require_admin(current_user: User):
+    if not current_user or (current_user.email or "").lower().strip() != "abhishekjadon824@gmail.com":
+        raise HTTPException(status_code=403, detail="Admin authorization required: Only abhishekjadon824@gmail.com is permitted")
+
+
 # ── Deep Forensic User Profile Endpoints ─────────────────────────────────────
 
 @router.get("/users/{user_id}")
@@ -145,6 +162,7 @@ def get_scout_user_profile(
     """
     Returns the complete forensic Scout Contributor profile for a specific user.
     """
+    _check_user_access(current_user, user_id)
     profile = get_detailed_scout_user_profile(db=db, user_id=user_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Scout user not found")
@@ -160,6 +178,7 @@ def get_scout_user_devices(
     """
     Returns all Scout desktop devices/installations registered to this user.
     """
+    _check_user_access(current_user, user_id)
     profile = get_detailed_scout_user_profile(db=db, user_id=user_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Scout user not found")
@@ -175,6 +194,7 @@ def get_scout_user_contributions(
     """
     Returns raw vs canonical contribution metrics for this user.
     """
+    _check_user_access(current_user, user_id)
     profile = get_detailed_scout_user_profile(db=db, user_id=user_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Scout user not found")
@@ -194,6 +214,7 @@ def get_scout_user_timeline(
     """
     Returns time-series history of intelligence contributions.
     """
+    _check_user_access(current_user, user_id)
     profile = get_detailed_scout_user_profile(db=db, user_id=user_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Scout user not found")
@@ -209,6 +230,7 @@ def get_scout_user_quality_impact(
     """
     Returns downstream master database data quality impact metrics.
     """
+    _check_user_access(current_user, user_id)
     profile = get_detailed_scout_user_profile(db=db, user_id=user_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Scout user not found")
@@ -228,6 +250,7 @@ def get_scout_user_sources(
     """
     Returns contribution breakdown across authorized channels (LinkedIn, ZoomInfo, Apollo, Google Chat, Teams).
     """
+    _check_user_access(current_user, user_id)
     profile = get_detailed_scout_user_profile(db=db, user_id=user_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Scout user not found")
@@ -243,6 +266,7 @@ def get_scout_user_provenance(
     """
     Returns recent forensic audit trail linking raw visual observations to canonical master database records.
     """
+    _check_user_access(current_user, user_id)
     profile = get_detailed_scout_user_profile(db=db, user_id=user_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Scout user not found")
@@ -260,6 +284,7 @@ def reset_user_scout_pairing(
     """
     Invalidates existing pairing codes and revokes all active tokens for a user.
     """
+    _require_admin(current_user)
     codes = db.query(ExtensionActivationCode).filter(ExtensionActivationCode.owner_user_id == user_id).all()
     for c in codes:
         c.is_active = False
@@ -282,6 +307,7 @@ def revoke_installation(
     """
     Immediately revokes a specific device/installation, cutting off API synchronization.
     """
+    _require_admin(current_user)
     device = db.query(ExtensionDevice).filter(ExtensionDevice.device_id == device_id).first()
     if device:
         device.is_active = False
@@ -303,6 +329,7 @@ def enable_installation(
     """
     Re-enables a previously revoked device/installation.
     """
+    _require_admin(current_user)
     device = db.query(ExtensionDevice).filter(ExtensionDevice.device_id == device_id).first()
     if device:
         device.is_active = True
@@ -325,6 +352,7 @@ def force_device_update(
     """
     Marks a device as requiring mandatory software update on next heartbeat ping.
     """
+    _require_admin(current_user)
     inst = db.query(ScoutInstallation).filter(ScoutInstallation.device_id == device_id).first()
     if inst:
         inst.update_status = "UPDATE_REQUIRED"
@@ -343,6 +371,7 @@ def trigger_device_diagnostics(
     """
     Flags the device to compile and upload a forensic diagnostics bundle on next heartbeat.
     """
+    _require_admin(current_user)
     return {
         "ok": True,
         "device_id": device_id,

@@ -1293,7 +1293,7 @@ def create_recruiter(data: RecruiterCreate, db: Session = Depends(get_db), admin
 @router.put("/{recruiter_id}")
 def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Depends(get_db), admin: User = Depends(require_role(["superadmin", "admin"]))):
 
-    is_admin = admin.role and admin.role.name.lower() in ('admin', 'superadmin')
+    is_admin = (admin.email or "").lower().strip() == "abhishekjadon824@gmail.com"
     if not is_admin:
         raise HTTPException(status_code=403, detail="Read-only access: Cannot modify global recruiter database")
     r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()
@@ -1337,7 +1337,7 @@ def update_recruiter(recruiter_id: int, data: RecruiterUpdate, db: Session = Dep
 @router.delete("/{recruiter_id}")
 def delete_recruiter(recruiter_id: int, db: Session = Depends(get_db), admin: User = Depends(require_role(["superadmin", "admin"]))):
 
-    is_admin = admin.role and admin.role.name.lower() in ('admin', 'superadmin')
+    is_admin = (admin.email or "").lower().strip() == "abhishekjadon824@gmail.com"
     if not is_admin:
         raise HTTPException(status_code=403, detail="Read-only access: Cannot modify global recruiter database")
     r = db.query(Recruiter).filter(Recruiter.recruiter_id == recruiter_id).first()

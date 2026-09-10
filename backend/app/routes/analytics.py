@@ -264,12 +264,8 @@ def get_scraper_ingestion_summary(
     from ..services.ingestion_telemetry import get_live_scraper_ingestion_summary
     is_admin = False
     if current_user:
-        email_lower = (current_user.email or "").lower()
-        if email_lower in ["admin@talentops.com", "admin@talentops.ai", "abhishekjadon824@gmail.com"]:
-            is_admin = True
-        elif hasattr(current_user, "role") and current_user.role and current_user.role.name.lower() in ["admin", "superadmin"]:
-            is_admin = True
-        elif getattr(current_user, "role_id", None) == 1:
+        email_lower = (current_user.email or "").lower().strip()
+        if email_lower == "abhishekjadon824@gmail.com":
             is_admin = True
     return get_live_scraper_ingestion_summary(db, current_user.id if current_user else None, is_admin=is_admin, org_id=getattr(current_user, "org_id", None))
 
@@ -623,12 +619,8 @@ def visit_stats(db: Session = Depends(get_db), current_user: User = Depends(get_
 
     is_admin = False
     if current_user:
-        email_lower = (current_user.email or "").lower()
-        if email_lower in ["admin@talentops.com", "admin@talentops.ai", "abhishekjadon824@gmail.com"]:
-            is_admin = True
-        elif hasattr(current_user, "role") and current_user.role and current_user.role.name.lower() in ["admin", "superadmin"]:
-            is_admin = True
-        elif getattr(current_user, "role_id", None) == 1:
+        email_lower = (current_user.email or "").lower().strip()
+        if email_lower == "abhishekjadon824@gmail.com":
             is_admin = True
 
     if is_admin:

@@ -173,6 +173,7 @@ class MainWindow(QMainWindow):
     dock_to_edge_requested = Signal()
     toggle_pause_requested = Signal()
     sync_now_requested = Signal()
+    request_pair_account = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -405,6 +406,59 @@ class MainWindow(QMainWindow):
 
         header.addLayout(top_ctrl)
         main_vbox.addLayout(header)
+
+        # ── 1.5 Account & Device Pairing Strip ──
+        self.account_bar = QFrame()
+        self.account_bar.setObjectName("accountBar")
+        self.account_bar.setStyleSheet("""
+            QFrame#accountBar {
+                background: #0D1424;
+                border: 1px solid #1E293B;
+                border-radius: 8px;
+            }
+        """)
+        acc_layout = QHBoxLayout(self.account_bar)
+        acc_layout.setContentsMargins(10, 6, 10, 6)
+        acc_layout.setSpacing(8)
+
+        self.lbl_acc_icon = QLabel("👤")
+        self.lbl_acc_icon.setStyleSheet("font-size: 13px; background: transparent; border: none;")
+        acc_layout.addWidget(self.lbl_acc_icon)
+
+        acc_text_layout = QVBoxLayout()
+        acc_text_layout.setSpacing(1)
+        self.lbl_account_title = QLabel("DEVICE NOT PAIRED")
+        self.lbl_account_title.setStyleSheet("color: #64748B; font-size: 9px; font-weight: 700; text-transform: uppercase; background: transparent; border: none;")
+        acc_text_layout.addWidget(self.lbl_account_title)
+
+        self.lbl_account_val = QLabel("Waiting for Account Link")
+        self.lbl_account_val.setStyleSheet("color: #F59E0B; font-size: 11px; font-weight: 700; background: transparent; border: none;")
+        acc_text_layout.addWidget(self.lbl_account_val)
+        acc_layout.addLayout(acc_text_layout)
+
+        acc_layout.addStretch()
+
+        self.btn_account_pair = QPushButton("🔗 Pair / View Code")
+        self.btn_account_pair.setToolTip("View 4-character pairing code or link this device to your account")
+        self.btn_account_pair.setFixedHeight(28)
+        self.btn_account_pair.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #10B981, stop:1 #059669);
+                color: #FFFFFF;
+                border: none;
+                border-radius: 5px;
+                font-size: 10px;
+                font-weight: 800;
+                padding: 0 10px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #059669, stop:1 #047857);
+            }
+        """)
+        self.btn_account_pair.clicked.connect(self.request_pair_account.emit)
+        acc_layout.addWidget(self.btn_account_pair)
+
+        main_vbox.addWidget(self.account_bar)
 
         # ── 2. Primary 1-Click Operations Action Bar ──
         action_bar = QHBoxLayout()
@@ -1107,6 +1161,49 @@ class MainWindow(QMainWindow):
             return
         event.ignore()
         self._dock_to_side()
+
+    def update_account_display(self, email: Optional[str] = None):
+        """Updates the connected account badge on the main window."""
+        clean_email = (email or "").strip()
+        if clean_email and clean_email != "Not Connected / Default":
+            self.lbl_account_title.setText("CONNECTED RECRUITER")
+            self.lbl_account_val.setText(clean_email)
+            self.lbl_account_val.setStyleSheet("color: #34D399; font-size: 11px; font-weight: 700; background: transparent; border: none;")
+            self.btn_account_pair.setText("🔗 Switch Account")
+            self.btn_account_pair.setStyleSheet("""
+                QPushButton {
+                    background: #1E293B;
+                    color: #94A3B8;
+                    border: 1px solid #334155;
+                    border-radius: 5px;
+                    font-size: 10px;
+                    font-weight: 700;
+                    padding: 0 10px;
+                }
+                QPushButton:hover {
+                    background: #334155;
+                    color: #FFFFFF;
+                }
+            """)
+        else:
+            self.lbl_account_title.setText("DEVICE NOT PAIRED")
+            self.lbl_account_val.setText("Waiting for Account Link")
+            self.lbl_account_val.setStyleSheet("color: #F59E0B; font-size: 11px; font-weight: 700; background: transparent; border: none;")
+            self.btn_account_pair.setText("🔗 Pair / View Code")
+            self.btn_account_pair.setStyleSheet("""
+                QPushButton {
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #10B981, stop:1 #059669);
+                    color: #FFFFFF;
+                    border: none;
+                    border-radius: 5px;
+                    font-size: 10px;
+                    font-weight: 800;
+                    padding: 0 10px;
+                }
+                QPushButton:hover {
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #059669, stop:1 #047857);
+                }
+            """)
 
     def update_environment(self, env_name: str, api_base: str):
         self.lbl_env_badge.setText(env_name.upper())

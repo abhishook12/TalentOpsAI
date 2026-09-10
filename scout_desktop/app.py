@@ -268,10 +268,11 @@ class ScoutDesktopApp:
         self.main_window.toggle_pause_requested.connect(self.toggle_pause)
         self.main_window.sync_now_requested.connect(self._flush_queue_to_backend)
 
-        # Settings actions
+        # Settings & Pairing actions
         self.settings_window.force_sync_requested.connect(self._flush_queue_to_backend)
         self.settings_window.request_pair_account.connect(self._show_pair_account_dialog)
         self.tray.request_pair_account.connect(self._show_pair_account_dialog)
+        self.main_window.request_pair_account.connect(self._show_pair_account_dialog)
 
     def _show_pair_account_dialog(self):
         """Displays the Activation / Pair Account dialog on demand (from tray or settings)."""
@@ -304,6 +305,7 @@ class ScoutDesktopApp:
         self.edge_handle.set_status_state("ACTIVE")
         self.tray.update_icon_status("ACTIVE")
         user_display = self.backend_client.current_user_email
+        self.main_window.update_account_display(user_display)
         self.bridge.event_logged.emit("ACCOUNT_PAIRED", f"Device paired to: {user_display}")
 
         # Send initial proof of life heartbeat under the new user identity
@@ -574,6 +576,7 @@ class ScoutDesktopApp:
             self.backend_client.environment_name,
             self.backend_client.active_api_base
         )
+        self.main_window.update_account_display(self.backend_client.current_user_email)
 
 
         # Step 1: STARTING

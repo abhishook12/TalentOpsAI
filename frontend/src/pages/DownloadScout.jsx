@@ -895,17 +895,41 @@ export default function DownloadScout() {
                   <span>{downloading ? 'Starting...' : `Download ${displayVersion}`}</span>
                 </button>
 
-                <button
-                  onClick={() => setAdminView('companion')}
-                  style={{
-                    padding: '9px 16px', background: '#1e293b', color: '#38bdf8',
-                    border: '1px solid #334155', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7
-                  }}
-                >
-                  <Key size={14} />
-                  <span>Enter Pairing Code</span>
-                </button>
+                {/* Instant Inline Device Pairing Input */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 6, background: '#020617',
+                  border: '1px solid #334155', borderRadius: 8, padding: '3px 8px'
+                }}>
+                  <Key size={14} color="#38bdf8" />
+                  <input
+                    type="text"
+                    placeholder="CODE: TOS-XXXX"
+                    value={pairingCodeInput}
+                    onChange={(e) => {
+                      setPairingCodeInput(e.target.value.toUpperCase());
+                      setPairingError('');
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleVerifyPairingCode();
+                    }}
+                    style={{
+                      width: 125, background: 'transparent', border: 'none',
+                      color: '#38bdf8', fontFamily: 'monospace', fontWeight: 800,
+                      fontSize: 12, outline: 'none'
+                    }}
+                  />
+                  <button
+                    onClick={handleVerifyPairingCode}
+                    disabled={pairingLoading || !pairingCodeInput.trim()}
+                    style={{
+                      padding: '5px 12px', background: '#2563eb', color: '#fff',
+                      border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                      cursor: 'pointer', opacity: (pairingLoading || !pairingCodeInput.trim()) ? 0.6 : 1
+                    }}
+                  >
+                    {pairingLoading ? 'Linking...' : 'Connect Device'}
+                  </button>
+                </div>
 
                 <button
                   onClick={() => setShowAddModal(true)}
@@ -920,6 +944,29 @@ export default function DownloadScout() {
                 </button>
               </div>
             </div>
+
+            {(pairingError || pairingSuccess) && (
+              <div style={{ marginTop: 12 }}>
+                {pairingError && (
+                  <div style={{
+                    background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)',
+                    borderRadius: 8, padding: '8px 14px', color: '#f87171', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8
+                  }}>
+                    <AlertCircle size={15} flexShrink={0} />
+                    <span>{pairingError}</span>
+                  </div>
+                )}
+                {pairingSuccess && (
+                  <div style={{
+                    background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.4)',
+                    borderRadius: 8, padding: '8px 14px', color: '#34d399', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8
+                  }}>
+                    <CheckCircle2 size={15} flexShrink={0} />
+                    <span>{pairingSuccess}</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Reconnection / Error Banner */}

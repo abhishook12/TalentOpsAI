@@ -4,9 +4,9 @@
   "environment": "PRODUCTION",
   "api_base": "https://talentopsai-1.onrender.com",
   "local_api_base": "http://localhost:8000",
-  "device_id": "SCOUT-TEK-LA-48-B7E85E",
-  "scout_id": "SCOUT-TEK-LA-48-B7E85E",
-  "auth_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1NiIsInNjb3BlIjoiZXh0ZW5zaW9uIiwiZXhwIjoxODIwNjAzNTk5fQ.QbY3F5ZolU0wGDI1tlqjzjQP19-S6BHS6O-Qs-RSQsA",
+  "device_id": "",
+  "scout_id": "",
+  "auth_token": "",
   "active_interval_sec": 1.0,
   "idle_timeout_sec": 10.0,
   "idle_poll_interval_sec": 1.5,
@@ -27,5 +27,5 @@
   "developer_mode": false,
   "user_email": "",
   "user_name": "",
-  "installation_id": "INST-B9298B6B8A3A"
+  "installation_id": ""
 }

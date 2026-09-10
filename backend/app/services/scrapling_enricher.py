@@ -1,13 +1,19 @@
 """Scrapling Autonomous Company and Email Pattern Enrichment Service."""
-import re, json, logging
-+from typing import Dict, Optional, List
-from scrapling import Fetcher
+import re
+import json
+import logging
+from typing import Dict, Optional, List
+
+try:
+    from scrapling import Fetcher
+except ImportError:
+    Fetcher = None
 
 logger = logging.getLogger('talentops.scrapling_enricher')
 
 class ScraplingEnricher:
     def __init__(self):
-        self.fetcher = Fetcher()
+        self.fetcher = Fetcher() if Fetcher is not None else None
 
     def enrich_company(self, company_name: str, domain: Optional[str] = None) -> Dict:
         if not domain and company_name:
@@ -15,6 +21,9 @@ class ScraplingEnricher:
             domain = f'{clean_name}.com'
         if not domain:
             return {'status': 'SKIPPED', 'reason': 'no_domain'}
+
+        if not self.fetcher:
+            return {'status': 'SKIPPED', 'reason': 'scrapling_not_installed', 'domain': domain}
 
         target_urls = [
             f'https://{domain}',
@@ -33,17 +42,17 @@ class ScraplingEnricher:
         for url in target_urls:
             try:
                 res = self.fetcher.get(url, timeout=5)
-                if res.status == 200:
-                    text = res.text
-                    phones = re.findall(r'\(?\d3s)?[s.-]?\d3ss.-]?\d4', text)
+                if res and getattr(res, 'status', None) == 200:
+                    text = getattr(res, 'text', '')
+                    phones = re.findall(r'\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}', text)
                     if phones and not enriched_data["phone"]:
                         enriched_data["phone"] = phones[0]
-                    emails = re.findall(r' [a-zA-Z0-9._q+-]+@' + re.escape(domain), text, re.IGNORECSE)
+                    emails = re.findall(r'[a-zA-Z0-9._%+-]+@' + re.escape(domain), text, re.IGNORECASE)
                     for em in emails:
                         if em.lower() not in enriched_data["sample_emails"]:
                             enriched_data["sample_emails"].append(em.lower())
             except Exception as e:
-                logger.debug('Error: %s\', url, e)
+                logger.debug('Error fetching %s: %s', url, e)
         if enriched_data["sample_emails"]:
             sample = enriched_data["sample_emails"][0].split('@')[0]
             if '.' in sample:

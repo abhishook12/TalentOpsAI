@@ -334,6 +334,53 @@ class BackendClient:
             logger.warning("Activation request error: %s", e)
             return False, {"error": f"Connection error: {e}"}
 
+    def init_device_flow(self) -> Tuple[bool, Dict[str, Any]]:
+        """
+        Requests the backend to initialize a Reverse Device Flow session.
+        Generates a human-friendly pairing code (e.g. TOS-8492) that the user
+        enters on the website to pair this computer.
+        """
+        url = f"{self.active_api_base}/scout/device-flow/init"
+        payload = {
+            "device_id": self.device_id,
+            "hostname": os.environ.get("COMPUTERNAME", "Windows Desktop"),
+            "os_info": sys.platform,
+            "scout_version": CURRENT_VERSION,
+        }
+        try:
+            res = requests.post(url, json=payload, timeout=8.0)
+            data = res.json() if res.content else {}
+            if res.status_code == 200 and data.get("code"):
+                return True, data
+            return False, {"error": data.get("detail", "Failed to initialize device pairing")}
+        except Exception as e:
+            return False, {"error": str(e)}
+
+    def poll_device_flow(self, code: str) -> Tuple[bool, Dict[str, Any]]:
+        """
+        Polls the backend to check if the user verified the pairing code on the website.
+        If approved, saves the issued token and returns True.
+        """
+        url = f"{self.active_api_base}/scout/device-flow/status"
+        try:
+            res = requests.get(url, params={"code": code.strip(), "device_id": self.device_id}, timeout=5.0)
+            data = res.json() if res.content else {}
+            if res.status_code == 200:
+                if data.get("status") == "APPROVED" and data.get("access_token"):
+                    token = data["access_token"]
+                    scout_id = data.get("scout_id", self.device_id)
+                    u_email = data.get("user_email")
+                    u_name = data.get("user_name")
+                    self._save_credentials_to_config(token, scout_id=scout_id, user_email=u_email, user_name=u_name)
+                    logger.info("🎉 Scout Desktop successfully paired via web verification! user=%s (%s)", u_name, u_email)
+                    return True, data
+                elif data.get("status") == "EXPIRED":
+                    return False, {"status": "EXPIRED", "error": "Pairing code expired"}
+                return False, {"status": "PENDING"}
+            return False, {"status": "ERROR", "error": f"HTTP {res.status_code}"}
+        except Exception as e:
+            return False, {"status": "ERROR", "error": str(e)}
+
     def ensure_authenticated(self) -> bool:
         """Auto-activates device to acquire valid JWT token if needed."""
         if self.auth_token:

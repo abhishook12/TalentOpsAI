@@ -16,6 +16,7 @@ import hashlib
 import secrets
 import string
 import logging
+import threading
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any, List
 
@@ -73,6 +74,17 @@ class ScoutActivationRequest(BaseModel):
 
 class RenameDeviceRequest(BaseModel):
     name: str
+
+
+class DeviceFlowInitRequest(BaseModel):
+    device_id: str
+    hostname: Optional[str] = None
+    os_info: Optional[str] = None
+    scout_version: Optional[str] = "2.7.0"
+
+
+class DeviceFlowVerifyRequest(BaseModel):
+    code: str
 
 
 # ── Telemetry & Proof-of-Life Endpoints ────────────────────────────────────────
@@ -280,6 +292,234 @@ def activate_scout_desktop(
         "environment": "PRODUCTION",
         "expires_in_days": 365,
     }
+
+
+# ── Reverse Device Flow (App Generates Code -> User Verifies on Web) ─────────
+
+_device_flow_lock = threading.Lock()
+_device_flow_sessions: Dict[str, Dict[str, Any]] = {}
+
+def _cleanup_expired_device_flows():
+    now = datetime.now(timezone.utc)
+    expired = [k for k, v in _device_flow_sessions.items() if v.get("expires_at") and v["expires_at"] < now]
+    for k in expired:
+        _device_flow_sessions.pop(k, None)
+
+
+@router.post("/device-flow/init")
+def init_device_flow(req: DeviceFlowInitRequest):
+    """
+    Step 1: Desktop Scout companion generates a human-readable pairing code (e.g. TOS-8492)
+    and displays it on screen, waiting for the user to confirm it on the website.
+    """
+    with _device_flow_lock:
+        _cleanup_expired_device_flows()
+        charset = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+        code_part = "".join(secrets.choice(charset) for _ in range(4))
+        code = f"TOS-{code_part}"
+
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
+        _device_flow_sessions[code] = {
+            "code": code,
+            "device_id": req.device_id,
+            "hostname": req.hostname or "Windows Desktop",
+            "os_info": req.os_info or "Windows",
+            "scout_version": req.scout_version or "2.7.0",
+            "status": "PENDING",
+            "created_at": datetime.now(timezone.utc),
+            "expires_at": expires_at,
+            "access_token": None,
+            "user_id": None,
+            "user_email": None,
+            "user_name": None,
+            "scout_id": None,
+        }
+
+    logger.info("Initiated device flow pairing: code=%s for device=%s", code, req.device_id)
+    return {
+        "ok": True,
+        "code": code,
+        "device_id": req.device_id,
+        "expires_in_seconds": 900,
+        "verification_url": "https://talent-ops-ai.vercel.app/download-scout",
+    }
+
+
+@router.get("/device-flow/status")
+def get_device_flow_status(code: str, device_id: Optional[str] = None):
+    """
+    Step 2: Polled by Desktop Scout companion every 2-3 seconds to check if
+    the user has approved this device from the website.
+    """
+    clean_code = code.strip().upper()
+    with _device_flow_lock:
+        _cleanup_expired_device_flows()
+        session = _device_flow_sessions.get(clean_code)
+        if not session:
+            return {"status": "EXPIRED", "detail": "Pairing code expired or not found"}
+
+        if session["status"] == "APPROVED":
+            return {
+                "status": "APPROVED",
+                "access_token": session["access_token"],
+                "token_type": "bearer",
+                "user_id": session["user_id"],
+                "user_email": session["user_email"],
+                "user_name": session["user_name"],
+                "scout_id": session["scout_id"],
+                "device_id": session["device_id"],
+            }
+
+        return {"status": "PENDING", "code": clean_code}
+
+
+@router.post("/device-flow/verify")
+def verify_device_flow_code(
+    req: DeviceFlowVerifyRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Step 3: Called by the website when a logged-in user (e.g. Ritik Sharma)
+    enters the pairing code shown on their desktop app.
+    Links the desktop hardware node directly to this user's account!
+    """
+    raw_code = req.code.strip().upper()
+    clean_code = raw_code if raw_code.startswith("TOS-") else f"TOS-{raw_code}"
+
+    with _device_flow_lock:
+        _cleanup_expired_device_flows()
+        session = _device_flow_sessions.get(clean_code)
+        if not session:
+            session = _device_flow_sessions.get(raw_code)
+
+        if not session:
+            raise HTTPException(
+                status_code=404,
+                detail="Invalid or expired pairing code. Please check the code displayed on your Desktop Scout app."
+            )
+
+        device_id = session["device_id"]
+        hostname = session.get("hostname") or "Windows Desktop"
+        os_info = session.get("os_info") or "Windows"
+        version = session.get("scout_version") or "2.7.0"
+
+        # Register or reassign device to current_user
+        device = db.query(ExtensionDevice).filter(ExtensionDevice.device_id == device_id).first()
+        now = datetime.now(timezone.utc)
+        device_name = f"{hostname} ({os_info})"
+
+        if not device:
+            device = ExtensionDevice(
+                device_id=device_id,
+                owner_user_id=current_user.id,
+                user_agent=device_name,
+                extension_version=version,
+                first_seen_at=now,
+                last_seen_at=now,
+                is_active=True,
+            )
+            db.add(device)
+        else:
+            device.owner_user_id = current_user.id
+            device.user_agent = device_name
+            device.extension_version = version
+            device.last_seen_at = now
+            device.is_active = True
+
+        db.commit()
+        db.refresh(device)
+
+        # Issue scoped token
+        token = create_access_token(
+            data={"sub": str(current_user.id), "scope": "scout_desktop", "device_id": device_id},
+            expires_delta=timedelta(days=365),
+        )
+
+        user_name = f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or current_user.email.split("@")[0]
+        scout_id = f"SCOUT-{device.id:04d}"
+
+        # Approve the desktop session
+        session["status"] = "APPROVED"
+        session["access_token"] = token
+        session["user_id"] = current_user.id
+        session["user_email"] = current_user.email
+        session["user_name"] = user_name
+        session["scout_id"] = scout_id
+
+        logger.info("Successfully verified Device Flow: paired device %s to user %s (%d)", device_id, current_user.email, current_user.id)
+
+        return {
+            "ok": True,
+            "status": "PAIRED",
+            "message": f"Successfully linked Desktop Scout to {current_user.email}",
+            "device_id": device_id,
+            "user_email": current_user.email,
+            "user_name": user_name,
+            "scout_id": scout_id,
+        }
+
+
+@router.get("/my-device")
+def get_my_scout_device(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Returns the personal Scout Desktop status and paired devices for the logged-in user.
+    """
+    devices = (
+        db.query(ExtensionDevice)
+        .filter(ExtensionDevice.owner_user_id == current_user.id)
+        .order_by(ExtensionDevice.last_seen_at.desc())
+        .all()
+    )
+
+    now = datetime.now(timezone.utc)
+    device_list = []
+    for d in devices:
+        last_seen = d.last_seen_at.replace(tzinfo=timezone.utc) if d.last_seen_at and d.last_seen_at.tzinfo is None else d.last_seen_at
+        is_online = bool(last_seen and (now - last_seen).total_seconds() < 120 and d.is_active)
+        device_list.append({
+            "id": d.id,
+            "device_id": d.device_id,
+            "name": d.user_agent or "Windows Desktop",
+            "version": d.extension_version or "2.7.0",
+            "last_seen_at": d.last_seen_at.isoformat() if d.last_seen_at else None,
+            "total_submitted": d.total_submitted or 0,
+            "total_accepted": d.total_accepted or 0,
+            "is_active": d.is_active,
+            "is_online": is_online,
+        })
+
+    return {
+        "has_device": len(devices) > 0,
+        "user_email": current_user.email,
+        "user_name": f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or current_user.email.split("@")[0],
+        "devices": device_list,
+    }
+
+
+@router.post("/my-device/{device_id}/disconnect")
+def disconnect_my_scout_device(
+    device_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Unlinks or disconnects a device owned by the current user.
+    """
+    dev = db.query(ExtensionDevice).filter(
+        ExtensionDevice.device_id == device_id,
+        ExtensionDevice.owner_user_id == current_user.id
+    ).first()
+    if not dev:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    dev.is_active = False
+    db.commit()
+    logger.info("User %s disconnected device %s", current_user.email, device_id)
+    return {"ok": True, "message": "Device disconnected successfully"}
 
 
 # ── Device Management Endpoints ───────────────────────────────────────────────

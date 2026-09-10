@@ -507,17 +507,24 @@ class ScoutDesktopApp:
                 logger.info("Found activation code in launch argument: %s", deep_code)
                 self.backend_client.activate_with_code(deep_code)
 
-        # Step 0.5: If unauthenticated, transition to REGISTRATION_PENDING & launch loopback server
+        # Step 0.5: If unauthenticated, try silent auto-activation before showing code dialog
         if not self.backend_client.is_authenticated():
-            logger.info("Scout unauthenticated: transitioning to REGISTRATION_PENDING state and launching loopback listener")
-            self._start_loopback_claim_server()
-            self.activation_window = ActivationWindow(self.backend_client, parent=self.main_window)
-            self.activation_window.activation_successful.connect(self._on_activation_complete)
-            self.activation_window.show()
-            self.main_window.update_status_state("REGISTRATION_PENDING")
-            self.edge_handle.set_status_state("PENDING")
-            self.tray.update_icon_status("PENDING")
-            self.bridge.event_logged.emit("REGISTRATION_PENDING", "Waiting for one-click pairing from browser...")
+            if self.backend_client.ensure_authenticated():
+                logger.info("⚡ Scout Desktop silently authenticated via backend auto-activation!")
+                self.main_window.update_status_state("SCOUT ACTIVE")
+                self.edge_handle.set_status_state("ACTIVE")
+                self.tray.update_icon_status("ACTIVE")
+                self.bridge.event_logged.emit("AUTO_AUTHENTICATED", f"Device auto-registered: {self.backend_client.device_id}")
+            else:
+                logger.info("Scout unauthenticated: transitioning to REGISTRATION_PENDING state and launching loopback listener")
+                self._start_loopback_claim_server()
+                self.activation_window = ActivationWindow(self.backend_client, parent=self.main_window)
+                self.activation_window.activation_successful.connect(self._on_activation_complete)
+                self.activation_window.show()
+                self.main_window.update_status_state("REGISTRATION_PENDING")
+                self.edge_handle.set_status_state("PENDING")
+                self.tray.update_icon_status("PENDING")
+                self.bridge.event_logged.emit("REGISTRATION_PENDING", "Waiting for one-click pairing from browser...")
 
         # Update environment badge
         self.main_window.update_environment(

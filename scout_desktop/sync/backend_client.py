@@ -117,6 +117,8 @@ class BackendClient:
         self.installation_id = cfg_inst_id or f"INST-{uuid.uuid4().hex[:12].upper()}"
 
         self.user_id = 1
+        self.user_email: Optional[str] = None
+        self.user_name: Optional[str] = None
         self.session_id = f"SESS-{uuid.uuid4().hex[:8].upper()}"
         self.auth_token: Optional[str] = None
         self.last_request_time: str = "—"
@@ -190,19 +192,49 @@ class BackendClient:
         return DEFAULT_PRODUCTION_API
 
     def _load_token_from_config(self):
-        """Loads saved auth token if present."""
+        """Loads saved auth token and user identity if present."""
         if os.path.exists(self.config_path):
             try:
                 with open(self.config_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     self.auth_token = data.get("auth_token") or None
+                    self.user_email = data.get("user_email") or None
+                    self.user_name = data.get("user_name") or None
             except Exception:
                 pass
+
+    @property
+    def current_user_email(self) -> str:
+        """Returns the email of the currently bound user, or 'Not Connected'."""
+        if self.user_email:
+            return self.user_email
+        if self.auth_token:
+            try:
+                import base64
+                parts = self.auth_token.split(".")
+                if len(parts) >= 2:
+                    padding = 4 - (len(parts[1]) % 4)
+                    payload_b64 = parts[1] + ("=" * (padding % 4))
+                    payload = json.loads(base64.urlsafe_b64decode(payload_b64.encode("utf-8")))
+                    email = payload.get("email")
+                    if email:
+                        self.user_email = email
+                        return email
+                    sub = payload.get("sub")
+                    if sub:
+                        return f"User #{sub}"
+            except Exception:
+                pass
+        return "Not Connected / Default"
 
     def _save_credentials_to_config(self, token: str, scout_id: Optional[str] = None, user_email: Optional[str] = None, user_name: Optional[str] = None):
         self.auth_token = token
         if scout_id:
             self.scout_id = scout_id
+        if user_email:
+            self.user_email = user_email
+        if user_name:
+            self.user_name = user_name
         try:
             data = {}
             if os.path.exists(self.config_path):

@@ -72,6 +72,7 @@ class SystemTrayManager(QObject):
     show_connection_status = Signal()
     force_capture = Signal()
     toggle_pause = Signal()
+    request_pair_account = Signal()
     quit_app = Signal()
 
     def __init__(self, parent=None):
@@ -117,6 +118,9 @@ class SystemTrayManager(QObject):
         force_capture_act.triggered.connect(self.force_capture.emit)
 
         menu.addSeparator()
+
+        pair_act = menu.addAction("🔗 Connect Account / Pair Device...")
+        pair_act.triggered.connect(self.request_pair_account.emit)
 
         diag_act = menu.addAction("Diagnostics")
         diag_act.triggered.connect(self.show_diagnostics.emit)

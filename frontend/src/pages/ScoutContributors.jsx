@@ -7,12 +7,14 @@ import {
 } from 'lucide-react'
 import api from '../services/api'
 import ScoutUserProfileDrawer from '../components/ScoutUserProfileDrawer'
+import AddScoutModal from '../components/AddScoutModal'
 
 export default function ScoutContributors() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [sortBy, setSortBy] = useState('most_active')
   const [selectedUserId, setSelectedUserId] = useState(null)
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
 
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['scout-contributors', statusFilter, searchQuery, sortBy],
@@ -139,6 +141,18 @@ export default function ScoutContributors() {
           </div>
 
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              style={{
+                padding: '9px 16px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                border: 'none', color: '#ffffff', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                boxShadow: '0 2px 10px rgba(16, 185, 129, 0.3)'
+              }}
+            >
+              <Laptop size={14} />
+              <span>Pair Device (10m Code)</span>
+            </button>
             <button
               onClick={() => refetch()}
               disabled={isFetching}
@@ -500,6 +514,13 @@ export default function ScoutContributors() {
         userId={selectedUserId}
         onClose={() => setSelectedUserId(null)}
         onRefreshList={() => refetch()}
+      />
+
+      {/* Add Scout Node Modal */}
+      <AddScoutModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onActivated={() => refetch()}
       />
     </div>
   )

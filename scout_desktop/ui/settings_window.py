@@ -34,6 +34,7 @@ class SettingsWindow(QWidget):
     settings_saved = Signal()
     force_sync_requested = Signal()
     update_requested = Signal()
+    request_pair_account = Signal()
 
     def __init__(self, backend_client: BackendClient, local_queue: LocalQueue, auto_updater=None, parent=None):
         super().__init__(parent)
@@ -262,8 +263,9 @@ class SettingsWindow(QWidget):
         cb_layout.setSpacing(8)
 
         # Fields
+        cur_account = getattr(self.backend, 'current_user_email', 'Not Connected / Default')
         for name, val in [
-            ("User ID:", str(self.backend.user_id)),
+            ("Connected User:", cur_account),
             ("Device ID:", self.backend.device_id),
             ("Scout Node ID:", f"SCOUT-{self.backend.device_id[:8].upper()}"),
             ("Active Session ID:", self.backend.session_id),
@@ -278,6 +280,24 @@ class SettingsWindow(QWidget):
             r.addWidget(val_lbl)
             r.addStretch()
             cb_layout.addLayout(r)
+
+        btn_pair = QPushButton("🔗 Connect Account / Pair Activation Code (TOS-XXXX-XXXX)")
+        btn_pair.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #10b981, stop:1 #059669);
+                color: #ffffff;
+                font-weight: 700;
+                font-size: 12px;
+                padding: 10px 16px;
+                border-radius: 6px;
+                margin-top: 8px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #059669, stop:1 #047857);
+            }
+        """)
+        btn_pair.clicked.connect(self.request_pair_account.emit)
+        cb_layout.addWidget(btn_pair)
 
         id_layout.addWidget(cfg_box)
         id_layout.addStretch()

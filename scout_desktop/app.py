@@ -270,6 +270,56 @@ class ScoutDesktopApp:
 
         # Settings actions
         self.settings_window.force_sync_requested.connect(self._flush_queue_to_backend)
+        self.settings_window.request_pair_account.connect(self._show_pair_account_dialog)
+        self.tray.request_pair_account.connect(self._show_pair_account_dialog)
+
+    def _show_pair_account_dialog(self):
+        """Displays the Activation / Pair Account dialog on demand (from tray or settings)."""
+        if getattr(self, "activation_window", None) and self.activation_window.isVisible():
+            self.activation_window.activateWindow()
+            self.activation_window.raise_()
+            return
+
+        self.activation_window = ActivationWindow(self.backend_client, parent=self.main_window)
+        self.activation_window.activation_successful.connect(self._on_activation_complete)
+        self.activation_window.show()
+        self.activation_window.activateWindow()
+        self.activation_window.raise_()
+
+    def _on_activation_complete(self, data: Optional[Dict[str, Any]] = None):
+        """Callback invoked when device is successfully paired/activated with backend."""
+        logger.info("🎉 Scout Desktop successfully paired with user account: %s", data)
+        if hasattr(self, "activation_window") and self.activation_window:
+            try:
+                self.activation_window.close()
+            except Exception:
+                pass
+            self.activation_window = None
+
+        # Re-load token and user identity from config
+        self.backend_client._load_token_from_config()
+
+        # Update UI indicators to active
+        self.main_window.update_status_state("SCOUT ACTIVE")
+        self.edge_handle.set_status_state("ACTIVE")
+        self.tray.update_icon_status("ACTIVE")
+        user_display = self.backend_client.current_user_email
+        self.bridge.event_logged.emit("ACCOUNT_PAIRED", f"Device paired to: {user_display}")
+
+        # Send initial proof of life heartbeat under the new user identity
+        self.backend_client.send_heartbeat(status="ACTIVE")
+
+        # Show notification
+        try:
+            if hasattr(self, "tray") and hasattr(self.tray, "tray"):
+                self.tray.tray.showMessage(
+                    "TalentOps Scout Connected",
+                    f"Successfully connected to account: {user_display}",
+                    QIcon(self.tray.tray.icon()),
+                    4000
+                )
+        except Exception:
+            pass
 
     def _dock_to_edge(self):
         """Hides MainWindow while ensuring the screen-edge handle is active and visible."""
@@ -507,24 +557,17 @@ class ScoutDesktopApp:
                 logger.info("Found activation code in launch argument: %s", deep_code)
                 self.backend_client.activate_with_code(deep_code)
 
-        # Step 0.5: If unauthenticated, try silent auto-activation before showing code dialog
+        # Step 0.5: If unauthenticated, show activation dialog so user can connect their account
         if not self.backend_client.is_authenticated():
-            if self.backend_client.ensure_authenticated():
-                logger.info("⚡ Scout Desktop silently authenticated via backend auto-activation!")
-                self.main_window.update_status_state("SCOUT ACTIVE")
-                self.edge_handle.set_status_state("ACTIVE")
-                self.tray.update_icon_status("ACTIVE")
-                self.bridge.event_logged.emit("AUTO_AUTHENTICATED", f"Device auto-registered: {self.backend_client.device_id}")
-            else:
-                logger.info("Scout unauthenticated: transitioning to REGISTRATION_PENDING state and launching loopback listener")
-                self._start_loopback_claim_server()
-                self.activation_window = ActivationWindow(self.backend_client, parent=self.main_window)
-                self.activation_window.activation_successful.connect(self._on_activation_complete)
-                self.activation_window.show()
-                self.main_window.update_status_state("REGISTRATION_PENDING")
-                self.edge_handle.set_status_state("PENDING")
-                self.tray.update_icon_status("PENDING")
-                self.bridge.event_logged.emit("REGISTRATION_PENDING", "Waiting for one-click pairing from browser...")
+            logger.info("Scout unauthenticated: transitioning to REGISTRATION_PENDING state and launching loopback listener")
+            self._start_loopback_claim_server()
+            self.activation_window = ActivationWindow(self.backend_client, parent=self.main_window)
+            self.activation_window.activation_successful.connect(self._on_activation_complete)
+            self.activation_window.show()
+            self.main_window.update_status_state("REGISTRATION_PENDING")
+            self.edge_handle.set_status_state("PENDING")
+            self.tray.update_icon_status("PENDING")
+            self.bridge.event_logged.emit("REGISTRATION_PENDING", "Waiting for account pairing code (TOS-XXXX-XXXX)...")
 
         # Update environment badge
         self.main_window.update_environment(

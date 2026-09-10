@@ -20,19 +20,46 @@ from .config import (
 )
 from .routes import recruiters, companies, vendors, candidates, submissions, analytics, admin, auth, actions, updates, ai, campaigns, harvester, users, visitor_analytics, notifications, bridge, accounts, extension, staging
 from .database import get_db, engine, Base
-from .models import models, auth_models, staging_models, data_quality_models
-from .models import extension_models  # Extension device/activation tracking
+from .models import models, auth_models, staging_models, data_quality_models, extension_models, update_models
 from .create_indexes import create_performance_indexes
 
 
 from .core.logger import setup_logger
 logger = setup_logger(level=logging.INFO if IS_PRODUCTION else logging.DEBUG)
 
+# Unconditionally ensure core tables exist in PostgreSQL (idempotent CREATE TABLE IF NOT EXISTS)
+try:
+    Base.metadata.create_all(bind=engine)
+    logger.info("Core database tables initialized successfully via Base.metadata.create_all.")
+
+    # Ensure critical release and telemetry columns exist in scout_releases
+    from sqlalchemy import inspect
+    insp = inspect(engine)
+    if insp.has_table("scout_releases"):
+        existing_cols = {col["name"] for col in insp.get_columns("scout_releases")}
+        scout_rel_cols = {
+            "installer_url": "VARCHAR(500)",
+            "published_at": "TIMESTAMP",
+            "release_date": "TIMESTAMP",
+            "approved_at": "TIMESTAMP",
+            "released_at": "TIMESTAMP",
+            "is_current": "BOOLEAN DEFAULT TRUE",
+            "is_public": "BOOLEAN DEFAULT TRUE",
+            "artifact": "VARCHAR(100) DEFAULT 'TalentOpsScoutSetup.exe'",
+            "artifact_url": "VARCHAR(500)",
+        }
+        with engine.begin() as conn:
+            for col, col_type in scout_rel_cols.items():
+                if col not in existing_cols:
+                    conn.execute(text(f"ALTER TABLE scout_releases ADD COLUMN IF NOT EXISTS {col} {col_type}"))
+    logger.info("Scout release column schema verified.")
+except Exception as e:
+    logger.warning("Core database table initialization warning: %s", e)
+
 RUN_STARTUP_MIGRATIONS = os.getenv("RUN_STARTUP_MIGRATIONS", "false").lower() in ("1", "true", "yes")
 
 if RUN_STARTUP_MIGRATIONS:
     try:
-        models.Base.metadata.create_all(bind=engine)
         try:
             from .database_security import enforce_database_rls_and_security
             enforce_database_rls_and_security(engine)
@@ -579,6 +606,44 @@ async def startup_event():
             verification_engine.start()
         if ENABLE_DATA_FILLER_ENGINE:
             data_filler_engine.start()
+
+        # Ensure canonical Scout release (v2.7.0) is seeded in scout_releases table
+        try:
+            from sqlalchemy.orm import Session as StartupSession
+            from .models.update_models import ScoutRelease
+            from .routes.scout_updates import (
+                DEFAULT_RELEASE_VERSION,
+                DEFAULT_DOWNLOAD_URL,
+                DEFAULT_SHA256,
+                DEFAULT_SIZE,
+                DEFAULT_MINIMUM_VERSION,
+            )
+            with StartupSession(engine) as seed_db:
+                existing_rel = seed_db.query(ScoutRelease).filter(ScoutRelease.version == DEFAULT_RELEASE_VERSION).first()
+                if not existing_rel:
+                    seed_rel = ScoutRelease(
+                        version=DEFAULT_RELEASE_VERSION,
+                        channel="stable",
+                        minimum_version=DEFAULT_MINIMUM_VERSION,
+                        mandatory=False,
+                        download_url=DEFAULT_DOWNLOAD_URL,
+                        sha256=DEFAULT_SHA256,
+                        size_bytes=DEFAULT_SIZE,
+                        release_notes=f"Official production release of TalentOps Scout Desktop v{DEFAULT_RELEASE_VERSION}.",
+                        status="ACTIVE",
+                        rollout_percentage=100,
+                        is_current=True,
+                        is_public=True,
+                        artifact="TalentOpsScoutSetup.exe",
+                        artifact_url=DEFAULT_DOWNLOAD_URL,
+                        installer_url=DEFAULT_DOWNLOAD_URL,
+                    )
+                    seed_db.add(seed_rel)
+                    seed_db.commit()
+                    logger.info("Successfully seeded canonical Scout release v%s into database.", DEFAULT_RELEASE_VERSION)
+        except Exception as seed_err:
+            logger.warning("Scout release seed check note: %s", seed_err)
+
         logger.info("Acquired leader lock; started background tasks including Discovery Batch Intelligence Engine.")
     else:
         if conn:

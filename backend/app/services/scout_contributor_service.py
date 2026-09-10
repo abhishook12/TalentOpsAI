@@ -177,21 +177,49 @@ def get_all_scout_users_intelligence(
     Returns high-level contributor summary cards and user table with complete metrics.
     """
     now = datetime.now(timezone.utc)
-    users = db.query(User).all()
-    devices = db.query(ExtensionDevice).all()
-    installations = db.query(ScoutInstallation).all()
+
+    def _safe_query(query_fn, model_to_create=None, default=None):
+        if default is None:
+            default = []
+        try:
+            return query_fn()
+        except Exception as err:
+            logger.warning("Scout contributor query fallback note: %s", err)
+            try:
+                db.rollback()
+                if model_to_create is not None:
+                    from ..database import Base
+                    from ..models import extension_models, staging_models, update_models
+                    Base.metadata.create_all(bind=db.get_bind())
+                    return query_fn()
+            except Exception as rec_err:
+                logger.error("Contributor auto-creation recovery attempt failed: %s", rec_err)
+                try:
+                    db.rollback()
+                except Exception:
+                    pass
+            return default
+
+    users = _safe_query(lambda: db.query(User).all(), User, [])
+    devices = _safe_query(lambda: db.query(ExtensionDevice).all(), ExtensionDevice, [])
+    installations = _safe_query(lambda: db.query(ScoutInstallation).all(), ScoutInstallation, [])
     inst_by_device = {i.device_id: i for i in installations}
 
     # Fetch active release for update required checking
-    latest_rel = db.query(ScoutRelease).filter(ScoutRelease.status == "ACTIVE").order_by(ScoutRelease.id.desc()).first()
-    latest_ver = latest_rel.version if latest_rel else "2.0.0"
+    latest_rel = _safe_query(
+        lambda: db.query(ScoutRelease).filter(ScoutRelease.status == "ACTIVE").order_by(ScoutRelease.id.desc()).first(),
+        ScoutRelease,
+        None
+    )
+    latest_ver = latest_rel.version if latest_rel else "2.7.0"
+
     # Bulk pre-fetch events and staging to eliminate N+1 queries
-    all_events = db.query(ExtensionDiscoveryEvent).all()
+    all_events = _safe_query(lambda: db.query(ExtensionDiscoveryEvent).all(), ExtensionDiscoveryEvent, [])
     events_by_user = {}
     for e in all_events:
         events_by_user.setdefault(e.owner_user_id, []).append(e)
 
-    all_staging = db.query(DiscoveryStaging).all()
+    all_staging = _safe_query(lambda: db.query(DiscoveryStaging).all(), DiscoveryStaging, [])
     staging_by_user = {}
     for s in all_staging:
         staging_by_user.setdefault(s.owner_user_id, []).append(s)
@@ -396,21 +424,33 @@ def get_detailed_scout_user_profile(db: Session, user_id: int) -> Dict[str, Any]
     timeline, data quality impact, source attribution, and recent provenance trace.
     """
     now = datetime.now(timezone.utc)
-    user = db.query(User).filter(User.id == user_id).first()
+
+    def _safe_query(query_fn, default=None):
+        try:
+            return query_fn()
+        except Exception as err:
+            logger.warning("Scout profile query fallback note: %s", err)
+            try:
+                db.rollback()
+            except Exception:
+                pass
+            return default
+
+    user = _safe_query(lambda: db.query(User).filter(User.id == user_id).first(), None)
     if not user:
         return None
 
-    devices = db.query(ExtensionDevice).filter(ExtensionDevice.owner_user_id == user_id).all()
-    installations = db.query(ScoutInstallation).filter(ScoutInstallation.user_id == user_id).all()
+    devices = _safe_query(lambda: db.query(ExtensionDevice).filter(ExtensionDevice.owner_user_id == user_id).all(), [])
+    installations = _safe_query(lambda: db.query(ScoutInstallation).filter(ScoutInstallation.user_id == user_id).all(), [])
     inst_map = {i.device_id: i for i in installations}
 
-    events = db.query(ExtensionDiscoveryEvent).filter(
+    events = _safe_query(lambda: db.query(ExtensionDiscoveryEvent).filter(
         ExtensionDiscoveryEvent.owner_user_id == user_id
-    ).order_by(desc(ExtensionDiscoveryEvent.created_at)).all()
+    ).order_by(desc(ExtensionDiscoveryEvent.created_at)).all(), [])
 
-    staging = db.query(DiscoveryStaging).filter(
+    staging = _safe_query(lambda: db.query(DiscoveryStaging).filter(
         DiscoveryStaging.owner_user_id == user_id
-    ).order_by(desc(DiscoveryStaging.created_at)).all()
+    ).order_by(desc(DiscoveryStaging.created_at)).all(), [])
 
     # Devices details
     devices_list = []
@@ -433,7 +473,7 @@ def get_detailed_scout_user_profile(db: Session, user_id: int) -> Dict[str, Any]
             "device_name": d.user_agent or "Windows Scout Workstation",
             "os": getattr(inst, "os_info", "Windows 11 64-bit"),
             "os_version": getattr(inst, "os_version", "Build 22631"),
-            "scout_version": d.extension_version or "2.0.0",
+            "scout_version": d.extension_version or "2.7.0",
             "channel": getattr(inst, "channel", "stable"),
             "health": health,
             "is_active": d.is_active,

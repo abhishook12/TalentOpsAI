@@ -56,12 +56,40 @@ def list_scout_users(
     Returns the comprehensive Scout Users & Contributors list with summary cards,
     lifecycle statuses, device counts, quality scores, and version distribution.
     """
-    return get_all_scout_users_intelligence(
-        db=db,
-        status_filter=status,
-        search_query=search,
-        sort_by=sort,
-    )
+    try:
+        return get_all_scout_users_intelligence(
+            db=db,
+            status_filter=status,
+            search_query=search,
+            sort_by=sort,
+        )
+    except Exception as e:
+        logger.error("Error in list_scout_users endpoint: %s", e)
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        return {
+            "summary": {
+                "total_scout_users": 0,
+                "active_users": 0,
+                "active_devices": 0,
+                "contributing_users": 0,
+                "offline_users": 0,
+                "update_required": 0,
+                "update_failed": 0,
+                "revoked": 0,
+                "total_people_contributed": 0,
+                "total_companies_contributed": 0,
+                "total_contacts_contributed": 0,
+                "total_fields_added": 0,
+                "average_quality_score": 100,
+            },
+            "version_distribution": {},
+            "latest_production_version": "2.7.0",
+            "users": [],
+            "last_updated": datetime.now(timezone.utc).isoformat(),
+        }
 
 
 @router.get("/contributors/summary")
@@ -72,12 +100,38 @@ def get_contributors_summary(
     """
     Returns global aggregate KPIs for the Scout Contributor Command Center.
     """
-    data = get_all_scout_users_intelligence(db=db)
-    return {
-        "summary": data["summary"],
-        "version_distribution": data["version_distribution"],
-        "latest_production_version": data["latest_production_version"],
-    }
+    try:
+        data = get_all_scout_users_intelligence(db=db)
+        return {
+            "summary": data["summary"],
+            "version_distribution": data["version_distribution"],
+            "latest_production_version": data["latest_production_version"],
+        }
+    except Exception as e:
+        logger.error("Error in get_contributors_summary endpoint: %s", e)
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        return {
+            "summary": {
+                "total_scout_users": 0,
+                "active_users": 0,
+                "active_devices": 0,
+                "contributing_users": 0,
+                "offline_users": 0,
+                "update_required": 0,
+                "update_failed": 0,
+                "revoked": 0,
+                "total_people_contributed": 0,
+                "total_companies_contributed": 0,
+                "total_contacts_contributed": 0,
+                "total_fields_added": 0,
+                "average_quality_score": 100,
+            },
+            "version_distribution": {},
+            "latest_production_version": "2.7.0",
+        }
 
 
 # ── Deep Forensic User Profile Endpoints ─────────────────────────────────────

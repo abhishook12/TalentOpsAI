@@ -1,4 +1,4 @@
-import { createRouter, createRoute, createRootRoute } from '@tanstack/react-router'
+import { createRouter, createRoute, createRootRoute, Navigate } from '@tanstack/react-router'
 import { lazy, Suspense } from 'react'
 
 // Import AppShell directly as the root component
@@ -212,7 +212,7 @@ const trustedDevicesRoute = createRoute({
 const extensionReportRoute = createRoute({
   getParentRoute: () => adminLayoutRoute,
   path: '/admin/extension',
-  component: lazyComponent(() => import('./pages/admin/ExtensionReport')),
+  component: () => <Navigate to="/admin/scout-contributors" replace />,
 })
 
 const stagingPipelineRoute = createRoute({

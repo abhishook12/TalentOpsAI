@@ -762,6 +762,7 @@ class ScoutDesktopApp:
                 "chat.google.com", "mail.google.com",
                 "slack.com", "whatsapp.com", "telegram.org",
                 "outlook.com", "office.com", "office365.com",
+                "zoominfo.com", "zi-lite", "apollo.io",
                 "stackoverflow.com", "kaggle.com", "dice.com", "wellfound.com", "angel.co",
                 "greenhouse.io", "lever.co", "ashbyhq.com", "myworkday.com", "workday.com",
                 "icims.com", "smartrecruiters.com",

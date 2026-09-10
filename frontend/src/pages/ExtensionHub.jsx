@@ -188,7 +188,7 @@ export default function ExtensionHub() {
             Pre-Configured Extension Package
           </h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.5, margin: 0 }}>
-            Your download is pre-loaded with your account credentials. When loaded in Chrome, it connects immediately with <b>zero code entry</b>. All candidate profiles you or your team encounter on LinkedIn, Gmail, Outlook, or job portals stream into your shared database seamlessly.
+            Your download is pre-loaded with your account credentials. When loaded in Chrome, it connects immediately with <b>zero code entry</b>. All candidate profiles you or your team encounter on LinkedIn, ZoomInfo, Apollo, Gmail, Outlook, or job portals stream into your shared database seamlessly.
           </p>
         </div>
 

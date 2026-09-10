@@ -172,7 +172,7 @@ def get_scout_user_sources(
     current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     """
-    Returns contribution breakdown across authorized channels (LinkedIn, Google Chat, Teams, Apollo).
+    Returns contribution breakdown across authorized channels (LinkedIn, ZoomInfo, Apollo, Google Chat, Teams).
     """
     profile = get_detailed_scout_user_profile(db=db, user_id=user_id)
     if not profile:

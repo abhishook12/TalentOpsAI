@@ -202,6 +202,33 @@ class EntityExtractor:
                         if is_valid_person_name(sans_pronoun):
                             target_name = sans_pronoun
 
+        # Check ZoomInfo title
+        if not target_name and ("zoominfo" in window_title.lower() or "zi-lite" in window_title.lower()):
+            m = re.match(r"^(?:ZoomInfo\s*(?:Lite)?\s*[-–|]\s*)?([^|•·–\n]+?)(?:\s*[|•·–]\s*ZoomInfo.*)?$", window_title, re.IGNORECASE)
+            if m:
+                raw_extracted = m.group(1).strip()
+                cand_cleaned = clean_person_name(raw_extracted)
+                if cand_cleaned:
+                    target_name = cand_cleaned
+
+        # Check Apollo title
+        if not target_name and "apollo" in window_title.lower():
+            m = re.match(r"^(?:Apollo\s*[-–|]\s*)?([^|•·–\n]+?)(?:\s*[|•·–]\s*Apollo.*)?$", window_title, re.IGNORECASE)
+            if m:
+                cand_cleaned = clean_person_name(m.group(1).strip())
+                if cand_cleaned:
+                    target_name = cand_cleaned
+
+        # Check ZoomInfo / Sourcing breadcrumb patterns e.g. "< Homepage / Katie Oakley"
+        if not target_name:
+            for line in clean_lines[:10]:
+                m_bread = re.search(r"(?:Homepage|Contacts|Search)\s*/\s*([A-Za-z\s\.\-'\u00C0-\u017F]+)", line, re.IGNORECASE)
+                if m_bread:
+                    c_name = clean_person_name(m_bread.group(1).strip())
+                    if c_name and is_valid_person_name(c_name):
+                        target_name = c_name
+                        break
+
         if not target_name:
             # First search header zone
             search_pool = header_lines if header_lines else clean_lines[:15]

@@ -512,17 +512,19 @@ def get_detailed_scout_user_profile(db: Session, user_id: int) -> Dict[str, Any]
     timeline = sorted(timeline_map.values(), key=lambda t: t["date"])
 
     # Source breakdown
-    source_counts = {"LinkedIn": 0, "Google Chat": 0, "Microsoft Teams": 0, "Apollo": 0, "Other": 0}
+    source_counts = {"LinkedIn": 0, "ZoomInfo": 0, "Apollo": 0, "Google Chat": 0, "Microsoft Teams": 0, "Other": 0}
     for e in events:
         url = (e.source_url or "").lower()
         if "linkedin.com" in url:
             source_counts["LinkedIn"] += 1
+        elif "zoominfo.com" in url or "zi-lite" in url:
+            source_counts["ZoomInfo"] += 1
+        elif "apollo.io" in url:
+            source_counts["Apollo"] += 1
         elif "chat.google.com" in url:
             source_counts["Google Chat"] += 1
         elif "teams.microsoft.com" in url or "teams.live.com" in url:
             source_counts["Microsoft Teams"] += 1
-        elif "apollo.io" in url:
-            source_counts["Apollo"] += 1
         else:
             source_counts["Other"] += 1
 

@@ -1214,8 +1214,33 @@ class MainWindow(QMainWindow):
                 self.lbl_target_desc.setText(f"Watching {target_type} Community — {clean_title}")
                 self.lbl_target_url.setText(f"Target: {target_type} Candidate Portfolio")
                 self.lbl_sampling_pulse.setText(f"● SCANNING {target_type}")
-                self.lbl_sampling_pulse.setStyleSheet("color: #06B6D4; font-size: 9px; font-weight: 700;")
+                self.lbl_sampling_pulse.setStyleSheet("color: #8B5CF6; font-size: 9px; font-weight: 700;")
                 self.lbl_main_status.setText(f"ACTIVE ({target_type})")
+                self.status_dot.setStyleSheet("color: #8B5CF6; font-size: 10px;")
+                self.lbl_main_status.setStyleSheet("color: #8B5CF6; font-size: 9px; font-weight: 800;")
+            elif target_type == "ZOOMINFO":
+                self.lbl_target_desc.setText(f"Watching ZoomInfo — {clean_title}")
+                self.lbl_target_url.setText("Target: ZoomInfo / ZoomInfo Lite Contact Profile")
+                self.lbl_sampling_pulse.setText("● SCANNING ZOOMINFO")
+                self.lbl_sampling_pulse.setStyleSheet("color: #F43F5E; font-size: 9px; font-weight: 700;")
+                self.lbl_main_status.setText("ACTIVE (ZOOMINFO)")
+                self.status_dot.setStyleSheet("color: #F43F5E; font-size: 10px;")
+                self.lbl_main_status.setStyleSheet("color: #F43F5E; font-size: 9px; font-weight: 800;")
+            elif target_type == "APOLLO":
+                self.lbl_target_desc.setText(f"Watching Apollo.io — {clean_title}")
+                self.lbl_target_url.setText("Target: Apollo Sourcing & Leads Directory")
+                self.lbl_sampling_pulse.setText("● SCANNING APOLLO")
+                self.lbl_sampling_pulse.setStyleSheet("color: #EAB308; font-size: 9px; font-weight: 700;")
+                self.lbl_main_status.setText("ACTIVE (APOLLO.IO)")
+                self.status_dot.setStyleSheet("color: #EAB308; font-size: 10px;")
+                self.lbl_main_status.setStyleSheet("color: #EAB308; font-size: 9px; font-weight: 800;")
+            elif target_type.startswith("ATS_"):
+                ats_name = target_type.replace("ATS_", "")
+                self.lbl_target_desc.setText(f"Watching {ats_name} ATS — {clean_title}")
+                self.lbl_target_url.setText(f"Target: {ats_name} Recruiter Workspace")
+                self.lbl_sampling_pulse.setText(f"● SCANNING {ats_name}")
+                self.lbl_sampling_pulse.setStyleSheet("color: #06B6D4; font-size: 9px; font-weight: 700;")
+                self.lbl_main_status.setText(f"ACTIVE ({ats_name})")
                 self.status_dot.setStyleSheet("color: #06B6D4; font-size: 10px;")
                 self.lbl_main_status.setStyleSheet("color: #06B6D4; font-size: 9px; font-weight: 800;")
             else:
@@ -1228,7 +1253,7 @@ class MainWindow(QMainWindow):
                 self.lbl_target_url.setText(f"Scanner ignores search engines & non-talent pages ({url or 'web content'})")
             else:
                 self.lbl_target_desc.setText(f"Resting [{app_name}] — Outside target allowlist")
-                self.lbl_target_url.setText("Scanner active on LinkedIn, GitHub, ATS systems (Greenhouse/Lever/Ashby), Teams & Google Chat")
+                self.lbl_target_url.setText("Scanner active on LinkedIn, ZoomInfo, Apollo, GitHub, ATS systems (Greenhouse/Lever/Ashby), Teams & Google Chat")
             
             self.lbl_sampling_pulse.setText("💤 RESTING (0% CPU)")
             self.lbl_sampling_pulse.setStyleSheet("color: #64748B; font-size: 9px; font-weight: 700;")

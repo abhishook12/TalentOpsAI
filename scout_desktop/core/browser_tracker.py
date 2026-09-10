@@ -46,6 +46,11 @@ KNOWN_PLATFORMS = {
     "workday.com": "ATS_WORKDAY",
     "icims.com": "ATS_ICIMS",
     "smartrecruiters.com": "ATS_SMARTRECRUITERS",
+    "zoominfo.com": "ZOOMINFO",
+    "zi-lite.zoominfo.com": "ZOOMINFO",
+    "app.zoominfo.com": "ZOOMINFO",
+    "apollo.io": "APOLLO",
+    "app.apollo.io": "APOLLO",
 }
 
 
@@ -135,6 +140,22 @@ class BrowserTracker:
             # Title-based profile detection: "Name | LinkedIn"
             if " | linkedin" in title_lower and not any(k in title_lower for k in ["feed", "jobs", "search", "notifications"]):
                 return "PROFILE"
+
+        # ZoomInfo classification
+        if platform == "ZOOMINFO" or "zoominfo.com" in url_lower or "zi-lite" in url_lower:
+            if any(k in url_lower for k in ["/profile/person/", "/contact-profile", "/profile/"]):
+                return "PROFILE"
+            if any(k in url_lower for k in ["/search", "/contacts", "/companies"]):
+                return "SEARCH_RESULTS"
+            if "zoominfo" in title_lower and not any(k in title_lower for k in ["login", "pricing", "navigation"]):
+                return "PROFILE"
+
+        # Apollo.io classification
+        if platform == "APOLLO" or "apollo.io" in url_lower:
+            if any(k in url_lower for k in ["/people/", "/contacts/"]):
+                return "PROFILE"
+            if any(k in url_lower for k in ["/search", "/sequences", "/tasks"]):
+                return "SEARCH_RESULTS"
 
         # General ATS / Job boards
         if platform in ["ATS_GREENHOUSE", "ATS_LEVER", "ATS_WORKDAY", "ATS_ICIMS", "ATS_SMARTRECRUITERS"]:
@@ -249,6 +270,23 @@ class BrowserTracker:
             if m:
                 cand = m.group(1).strip()
                 if not any(w in cand.lower() for w in ["search", "feed", "notifications", "jobs", "messaging"]):
+                    candidate_name = cand
+        elif "zoominfo" in title_lower or "zi-lite" in title_lower:
+            platform = "ZOOMINFO"
+            probable_domain = "zoominfo.com"
+            # ZoomInfo pattern e.g. "Katie Oakley | ZoomInfo" or "ZoomInfo Lite - Katie Oakley"
+            m = re.match(r"^(?:ZoomInfo\s*(?:Lite)?\s*[-–|]\s*)?([^|•·–\n]+?)(?:\s*[|•·–]\s*ZoomInfo.*)?$", title_clean, flags=re.IGNORECASE)
+            if m:
+                cand = m.group(1).strip()
+                if not any(w in cand.lower() for w in ["search", "contacts", "companies", "pricing", "login", "navigation", "zoominfo"]):
+                    candidate_name = cand
+        elif "apollo" in title_lower:
+            platform = "APOLLO"
+            probable_domain = "apollo.io"
+            m = re.match(r"^(?:Apollo\s*[-–|]\s*)?([^|•·–\n]+?)(?:\s*[|•·–]\s*Apollo.*)?$", title_clean, flags=re.IGNORECASE)
+            if m:
+                cand = m.group(1).strip()
+                if not any(w in cand.lower() for w in ["search", "contacts", "companies", "pricing", "login", "navigation", "apollo"]):
                     candidate_name = cand
         elif "simplyhired" in title_lower:
             platform = "SIMPLYHIRED"

@@ -436,20 +436,36 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                   <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 6 }}>
                     Breakdown of verified discoveries across authorized integration sources:
                   </div>
-                  {Object.entries(profile?.source_breakdown || {}).map(([src, count], idx) => (
-                    <div key={idx} style={{
-                      padding: '14px 18px', background: '#0e1526', border: '1px solid #1e293b', borderRadius: 10,
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <Globe size={16} color="#38bdf8" />
-                        <span style={{ fontSize: 14, fontWeight: 700, color: '#f8fafc' }}>{src}</span>
+                  {Object.entries(profile?.source_breakdown || {}).map(([src, count], idx) => {
+                    let srcColor = '#38bdf8';
+                    let srcBg = 'rgba(56, 189, 248, 0.12)';
+                    if (src === 'ZoomInfo') { srcColor = '#f43f5e'; srcBg = 'rgba(244, 63, 94, 0.15)'; }
+                    else if (src === 'LinkedIn') { srcColor = '#38bdf8'; srcBg = 'rgba(56, 189, 248, 0.15)'; }
+                    else if (src === 'Apollo') { srcColor = '#eab308'; srcBg = 'rgba(234, 179, 8, 0.15)'; }
+                    else if (src === 'Microsoft Teams') { srcColor = '#818cf8'; srcBg = 'rgba(129, 140, 248, 0.15)'; }
+                    else if (src === 'Google Chat') { srcColor = '#10b981'; srcBg = 'rgba(16, 185, 129, 0.15)'; }
+                    return (
+                      <div key={idx} style={{
+                        padding: '14px 18px', background: '#0e1526', border: '1px solid #1e293b', borderRadius: 10,
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{
+                            padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 800,
+                            background: srcBg, color: srcColor
+                          }}>
+                            {src}
+                          </span>
+                          <span style={{ fontSize: 13, color: '#94a3b8' }}>
+                            {src === 'ZoomInfo' ? 'B2B Org & Contact Intelligence' : src === 'LinkedIn' ? 'Candidate Profiles & Recruiter' : src === 'Apollo' ? 'Direct Sourcing & Leads' : 'Collaboration Stream'}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: 16, fontWeight: 900, color: '#10b981' }}>
+                          {count} observations
+                        </span>
                       </div>
-                      <span style={{ fontSize: 16, fontWeight: 900, color: '#10b981' }}>
-                        {count} observations
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 

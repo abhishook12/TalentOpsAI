@@ -177,6 +177,15 @@ class ProfileJudge:
             or "linkedin.com/in/" in url_lower
         )
 
+        is_verified_sourcing_platform = (
+            is_verified_linkedin
+            or "zoominfo.com" in url_lower
+            or "zi-lite" in url_lower
+            or "zoominfo" in wt_lower
+            or "apollo.io" in url_lower
+            or "apollo" in wt_lower
+        )
+
         # 0. CHAT, MESSAGING, EMAIL & RESUME INTELLIGENCE
         is_chat_target = (
             "chat.google.com" in url_lower
@@ -314,9 +323,18 @@ class ProfileJudge:
         # Check URL or window title
         if is_verified_linkedin:
             profile_signals.append("linkedin_profile_context")
+        if is_verified_sourcing_platform:
+            profile_signals.append("sourcing_platform_context")
 
-        # Candidate profile accepted if verified LinkedIn context OR at least 2 profile signals
-        if is_verified_linkedin or len(profile_signals) >= 2 or "linkedin.com/in/" in url_lower:
+        # Candidate profile accepted if verified sourcing platform context OR at least 2 profile signals
+        if (
+            is_verified_sourcing_platform
+            or len(profile_signals) >= 2
+            or "linkedin.com/in/" in url_lower
+            or "zoominfo.com" in url_lower
+            or "zi-lite" in url_lower
+            or "apollo.io" in url_lower
+        ):
             return JudgmentResult(
                 category="CANDIDATE_PROFILE",
                 is_candidate_profile=True,
@@ -509,6 +527,33 @@ class SemanticFactorizer:
                 if cleaned and is_valid_person_name(cleaned):
                     target_name = cleaned
 
+        # Check ZoomInfo title
+        if not target_name and ("zoominfo" in window_title.lower() or "zi-lite" in window_title.lower()):
+            m = re.match(r"^(?:ZoomInfo\s*(?:Lite)?\s*[-–|]\s*)?([^|•·–\n]+?)(?:\s*[|•·–]\s*ZoomInfo.*)?$", window_title, re.IGNORECASE)
+            if m:
+                raw_title_name = m.group(1).strip()
+                cleaned = clean_person_name(raw_title_name)
+                if cleaned and is_valid_person_name(cleaned):
+                    target_name = cleaned
+
+        # Check Apollo title
+        if not target_name and "apollo" in window_title.lower():
+            m = re.match(r"^(?:Apollo\s*[-–|]\s*)?([^|•·–\n]+?)(?:\s*[|•·–]\s*Apollo.*)?$", window_title, re.IGNORECASE)
+            if m:
+                cleaned = clean_person_name(m.group(1).strip())
+                if cleaned and is_valid_person_name(cleaned):
+                    target_name = cleaned
+
+        # Check ZoomInfo / Platform breadcrumbs e.g. "< Homepage / Katie Oakley" or "Homepage / Katie Oakley"
+        if not target_name:
+            for line in all_lines[:10]:
+                m_bread = re.search(r"(?:Homepage|Contacts|Search)\s*/\s*([A-Za-z\s\.\-'\u00C0-\u017F]+)", line, re.IGNORECASE)
+                if m_bread:
+                    c_name = clean_person_name(m_bread.group(1).strip())
+                    if c_name and is_valid_person_name(c_name):
+                        target_name = c_name
+                        break
+
         # Search header zone for name if not found in window title
         search_pool = header_lines if header_lines else all_lines[:10]
         if not target_name:
@@ -551,6 +596,10 @@ class SemanticFactorizer:
                 cur_title = t
             if c and not cur_comp and is_valid_company_name(c):
                 cur_comp = c
+            elif not cur_comp and is_valid_company_name(line) and not is_plausible_title(line):
+                cleaned_c = clean_company_name(line)
+                if cleaned_c:
+                    cur_comp = cleaned_c
 
         # 2. Parse Experience Section for chronological roles
         if exp_lines:

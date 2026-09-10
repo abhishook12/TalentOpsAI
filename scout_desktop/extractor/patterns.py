@@ -44,7 +44,10 @@ GEO_INDICATORS = re.compile(
 
 UI_ACTIONS = re.compile(
     r"^(?:message|connect|follow|more|save|share|view|endorse|view profile|"
-    r"open to work|hiring|verified|contact info)$",
+    r"open to work|hiring|verified|contact info|"
+    r"export|suggest update|reveal|contact profile|contact details|"
+    r"contact management|similar companies|overview|employees|premium features|"
+    r"scheduled emails|web visits|crm integrations|zoominfo lite|zoominfo|homepage|quick search)$",
     re.IGNORECASE,
 )
 
@@ -479,6 +482,7 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         "tools", "tool", "admin", "settings", "setting", "app", "apps", "more",
         "desktop", "find", "spark", "planet", "seasoned", "tv", "options", "option",
         "device", "devices", "help", "support", "sign", "login", "logout", "portal",
+        "zoominfo", "lite", "export", "reveal", "suggest", "homepage",
     }
     if any(w in blacklisted for w in lower_words):
         return False

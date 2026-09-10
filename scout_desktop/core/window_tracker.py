@@ -191,6 +191,12 @@ def is_allowed_scout_target(win_info: Optional['WindowInfo'], b_ctx: Optional[Di
         if "smartrecruiters.com" in url or "smartrecruiters" in title_lower:
             return True, "ATS_SMARTRECRUITERS"
 
+        # Target 7: B2B Contact & Talent Intelligence Platforms (ZoomInfo, Apollo)
+        if "zoominfo.com" in url or "zoominfo" in title_lower or "zi-lite" in url or "zi-lite" in title_lower:
+            return True, "ZOOMINFO"
+        if "apollo.io" in url or "apollo" in title_lower:
+            return True, "APOLLO"
+
         return False, "UNSUPPORTED_BROWSER_PAGE"
 
     # All other applications are strictly ignored

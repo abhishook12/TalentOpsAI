@@ -53,23 +53,23 @@ export default function CompanyIntelligenceWorkspace({ company, onClose }) {
           maxWidth: '780px',
           maxHeight: '88vh',
           overflowY: 'auto',
-          backgroundColor: 'var(--bg-card, #0f172a)',
-          border: '1px solid var(--border-ai, rgba(139, 92, 246, 0.35))',
+          backgroundColor: 'var(--bg-card, #121214)',
+          border: '1px solid var(--border-ai, rgba(161, 161, 170, 0.35))',
           borderRadius: '12px',
           padding: '24px',
           display: 'flex',
           flexDirection: 'column',
           gap: '20px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 30px rgba(139, 92, 246, 0.15)'
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 30px rgba(161, 161, 170, 0.15)'
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border, #1e293b)', paddingBottom: '14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border, #232326)', paddingBottom: '14px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <span style={{ fontSize: '13px', color: '#38bdf8' }}>🏢</span>
-              <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#38bdf8', letterSpacing: '0.08em' }}>
+              <span style={{ fontSize: '13px', color: '#e4e4e7' }}>🏢</span>
+              <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#e4e4e7', letterSpacing: '0.08em' }}>
                 Company Situational Briefing
               </span>
               <EvidenceBadge status="VERIFIED" confidence={0.94} size="sm" />
@@ -88,7 +88,7 @@ export default function CompanyIntelligenceWorkspace({ company, onClose }) {
 
         {/* Growth Velocity & Hiring Momentum */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-          <div style={{ background: 'var(--bg-base, #090d14)', border: '1px solid var(--border, #1e293b)', borderRadius: '8px', padding: '12px' }}>
+          <div style={{ background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--border, #232326)', borderRadius: '8px', padding: '12px' }}>
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
               Hiring Momentum
             </div>
@@ -100,11 +100,11 @@ export default function CompanyIntelligenceWorkspace({ company, onClose }) {
             </div>
           </div>
 
-          <div style={{ background: 'var(--bg-base, #090d14)', border: '1px solid var(--border, #1e293b)', borderRadius: '8px', padding: '12px' }}>
+          <div style={{ background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--border, #232326)', borderRadius: '8px', padding: '12px' }}>
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
               Estimated Team Size
             </div>
-            <div style={{ fontSize: '22px', fontWeight: 900, color: '#38bdf8', marginTop: '2px' }}>
+            <div style={{ fontSize: '22px', fontWeight: 900, color: '#e4e4e7', marginTop: '2px' }}>
               450 – 1,200
             </div>
             <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
@@ -112,11 +112,11 @@ export default function CompanyIntelligenceWorkspace({ company, onClose }) {
             </div>
           </div>
 
-          <div style={{ background: 'var(--bg-base, #090d14)', border: '1px solid var(--border, #1e293b)', borderRadius: '8px', padding: '12px' }}>
+          <div style={{ background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--border, #232326)', borderRadius: '8px', padding: '12px' }}>
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
               Scout Intelligence
             </div>
-            <div style={{ fontSize: '22px', fontWeight: 900, color: '#a78bfa', marginTop: '2px' }}>
+            <div style={{ fontSize: '22px', fontWeight: 900, color: '#a1a1aa', marginTop: '2px' }}>
               18 Profiles
             </div>
             <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
@@ -138,8 +138,8 @@ export default function CompanyIntelligenceWorkspace({ company, onClose }) {
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  backgroundColor: 'var(--bg-base, #090d14)',
-                  border: '1px solid var(--border, #1e293b)',
+                  backgroundColor: 'var(--bg-base, #0b0b0c)',
+                  border: '1px solid var(--border, #232326)',
                   borderRadius: '6px',
                   padding: '8px 12px'
                 }}
@@ -167,15 +167,15 @@ export default function CompanyIntelligenceWorkspace({ company, onClose }) {
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  backgroundColor: 'var(--bg-base, #090d14)',
-                  border: '1px solid var(--border, #1e293b)',
+                  backgroundColor: 'var(--bg-base, #0b0b0c)',
+                  border: '1px solid var(--border, #232326)',
                   borderRadius: '6px',
                   padding: '10px 14px',
                   fontSize: '12px'
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ color: '#38bdf8' }}>⚡</span>
+                  <span style={{ color: '#e4e4e7' }}>⚡</span>
                   <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{sig.role}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

@@ -78,14 +78,14 @@ export default function AdminLock({ onUnlock, errorMessage }) {
       {/* Left brand panel */}
       <div style={{
         padding: 44,
-        background: 'radial-gradient(1200px 800px at 30% 20%, rgba(99,102,241,0.22), transparent 55%), radial-gradient(900px 600px at 60% 70%, rgba(59,130,246,0.18), transparent 60%)',
+        background: 'radial-gradient(1200px 800px at 30% 20%, rgba(161, 161, 170,0.22), transparent 55%), radial-gradient(900px 600px at 60% 70%, rgba(212, 212, 216,0.18), transparent 60%)',
         borderRight: '1px solid var(--card-border)',
         display: 'flex',
         flexDirection: 'column',
         gap: 22,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 52, height: 52, borderRadius: 6, background: 'rgba(99,102,241,0.22)', border: '1px solid rgba(99,102,241,0.28)', display: 'grid', placeItems: 'center' }}>
+          <div style={{ width: 52, height: 52, borderRadius: 6, background: 'rgba(161, 161, 170,0.22)', border: '1px solid rgba(161, 161, 170,0.28)', display: 'grid', placeItems: 'center' }}>
             <i className="ti ti-terminal-2" style={{ fontSize: 22, color: '#c7d2fe' }} />
           </div>
           <div style={{ fontSize: 34, fontWeight: 900, letterSpacing: '-0.02em' }}>RECRUIT-INTEL</div>
@@ -98,7 +98,7 @@ export default function AdminLock({ onUnlock, errorMessage }) {
           <div className="card" style={{ padding: 16, borderRadius: 6, width: 220, background: 'var(--bg-surface)', border: '1px solid var(--card-border)' }}>
             <div style={{ fontSize: 10, color: 'rgba(229,231,235,0.65)', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' }}>ETL Pipeline</div>
             <div style={{ marginTop: 10, height: 6, borderRadius: 999, background: 'var(--bg-surface)', overflow: 'hidden' }}>
-              <div style={{ width: '62%', height: '100%', background: 'rgba(99,102,241,0.75)' }} />
+              <div style={{ width: '62%', height: '100%', background: 'rgba(161, 161, 170,0.75)' }} />
             </div>
             <div style={{ marginTop: 10, fontSize: 12, color: 'rgba(229,231,235,0.75)' }}>98.2% Accuracy Rate</div>
           </div>
@@ -120,18 +120,18 @@ export default function AdminLock({ onUnlock, errorMessage }) {
         `}</style>
 
         {/* Glow ring */}
-        <div style={{ position: 'absolute', top: -60, left: '50%', transform: 'translateX(-50%)', width: 80, height: 80, borderRadius: '50%', background: '#38bdf822', animation: 'pulse-ring 2s ease-out infinite' }} />
+        <div style={{ position: 'absolute', top: -60, left: '50%', transform: 'translateX(-50%)', width: 80, height: 80, borderRadius: '50%', background: '#e4e4e722', animation: 'pulse-ring 2s ease-out infinite' }} />
 
         <div style={{
           background: 'var(--card-bg)', border: '1px solid var(--card-border)',
           borderRadius: 6, padding: '40px 36px', backdropFilter: 'blur(12px)',
-          boxShadow: '0 0 60px rgba(56,189,248,0.08), 0 24px 48px rgba(0,0,0,0.5)',
+          boxShadow: '0 0 60px rgba(228, 228, 231,0.08), 0 24px 48px rgba(0,0,0,0.5)',
           display: 'flex', flexDirection: 'column', gap: 28, alignItems: 'center',
           position: 'relative',
         }}>
           {/* Icon */}
           <div style={{ position: 'relative' }}>
-            <div style={{ width: 64, height: 64, borderRadius: 6, background: 'linear-gradient(135deg, #0ea5e9, #1d4ed8)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 30px rgba(14,165,233,0.4)' }}>
+            <div style={{ width: 64, height: 64, borderRadius: 6, background: 'linear-gradient(135deg, #d4d4d8, #d4d4d8)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 30px rgba(212, 212, 216,0.4)' }}>
               <i className="ti ti-terminal-2" style={{ color: 'var(--text-primary)', fontSize: 30 }} />
             </div>
             <div style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16, borderRadius: '50%', background: '#ef4444', border: '2px solid #0d1829', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -141,9 +141,9 @@ export default function AdminLock({ onUnlock, errorMessage }) {
 
           {/* Title */}
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#e2e8f0', letterSpacing: '-0.02em', marginBottom: 6 }}>ADMIN TERMINAL</div>
-            <div style={{ fontSize: 12, color: '#475569', fontFamily: "'DM Mono', monospace" }}>
-              <span style={{ color: '#38bdf8', animation: 'blink 1.2s step-end infinite' }}>▌</span> Restricted access. Authorisation required.
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#e4e4e7', letterSpacing: '-0.02em', marginBottom: 6 }}>ADMIN TERMINAL</div>
+            <div style={{ fontSize: 12, color: '#3f3f46', fontFamily: "'DM Mono', monospace" }}>
+              <span style={{ color: '#e4e4e7', animation: 'blink 1.2s step-end infinite' }}>▌</span> Restricted access. Authorisation required.
             </div>
           </div>
 
@@ -163,7 +163,7 @@ export default function AdminLock({ onUnlock, errorMessage }) {
           {/* PIN dots */}
           <div style={{ display: 'flex', gap: 12 }}>
             {[0,1,2,3].map(i => (
-              <div key={i} style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid', borderColor: pin.length > i ? '#38bdf8' : '#1e3a5f', background: pin.length > i ? '#38bdf8' : 'transparent', transition: 'all 0.15s', boxShadow: pin.length > i ? '0 0 8px #38bdf8' : 'none' }} />
+              <div key={i} style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid', borderColor: pin.length > i ? '#e4e4e7' : '#27272a', background: pin.length > i ? '#e4e4e7' : 'transparent', transition: 'all 0.15s', boxShadow: pin.length > i ? '0 0 8px #e4e4e7' : 'none' }} />
             ))}
           </div>
 
@@ -193,24 +193,24 @@ export default function AdminLock({ onUnlock, errorMessage }) {
                   borderRadius: 10,
                   fontSize: 18,
                   fontWeight: 600,
-                  background: k.key === 'enter' ? 'linear-gradient(135deg, #0ea5e9, #1d4ed8)' : '#111c30',
-                  color: k.key === 'enter' ? '#fff' : '#94a3b8',
-                  border: '1px solid #1e3a5f',
+                  background: k.key === 'enter' ? 'linear-gradient(135deg, #d4d4d8, #d4d4d8)' : '#111c30',
+                  color: k.key === 'enter' ? '#fff' : '#a1a1aa',
+                  border: '1px solid #27272a',
                   cursor: verifying ? 'not-allowed' : 'pointer',
                   transition: 'all 0.1s',
-                  boxShadow: k.key === 'enter' ? '0 0 16px rgba(14,165,233,0.3)' : 'none',
+                  boxShadow: k.key === 'enter' ? '0 0 16px rgba(212, 212, 216,0.3)' : 'none',
                   opacity: verifying ? 0.7 : 1,
                   display: 'grid',
                   placeItems: 'center',
                 }}
                 onMouseEnter={(e) => {
                   if (verifying) return
-                  e.currentTarget.style.background = k.key === 'enter' ? 'linear-gradient(135deg, #38bdf8, #3b82f6)' : '#1a2840'
-                  e.currentTarget.style.color = '#e2e8f0'
+                  e.currentTarget.style.background = k.key === 'enter' ? 'linear-gradient(135deg, #e4e4e7, #d4d4d8)' : '#1a2840'
+                  e.currentTarget.style.color = '#e4e4e7'
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = k.key === 'enter' ? 'linear-gradient(135deg, #0ea5e9, #1d4ed8)' : '#111c30'
-                  e.currentTarget.style.color = k.key === 'enter' ? '#fff' : '#94a3b8'
+                  e.currentTarget.style.background = k.key === 'enter' ? 'linear-gradient(135deg, #d4d4d8, #d4d4d8)' : '#111c30'
+                  e.currentTarget.style.color = k.key === 'enter' ? '#fff' : '#a1a1aa'
                 }}
               >
                 {k.label}
@@ -222,7 +222,7 @@ export default function AdminLock({ onUnlock, errorMessage }) {
             <button
               type="button"
               onClick={() => { setPin(''); setAttempts(0); setLockedMsg('') }}
-              style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 12 }}
+              style={{ background: 'transparent', border: 'none', color: '#71717a', cursor: 'pointer', fontSize: 12 }}
               title="Emergency Reset (clears PIN input only)"
               disabled={verifying}
             >
@@ -242,20 +242,20 @@ export default function AdminLock({ onUnlock, errorMessage }) {
                   setHealthLoading(false)
                 }
               }}
-              style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 12 }}
+              style={{ background: 'transparent', border: 'none', color: '#71717a', cursor: 'pointer', fontSize: 12 }}
               title="System Health"
               disabled={verifying}
             >
               System Health
             </button>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#94a3b8', cursor: verifying ? 'not-allowed' : 'pointer', opacity: verifying ? 0.7 : 1 }} title="Remember this admin session on this device">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#a1a1aa', cursor: verifying ? 'not-allowed' : 'pointer', opacity: verifying ? 0.7 : 1 }} title="Remember this admin session on this device">
               <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} disabled={verifying} />
               Remember
             </label>
           </div>
 
           {verifying && (
-            <div style={{ fontSize: 11.5, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ fontSize: 11.5, color: '#e4e4e7', display: 'flex', alignItems: 'center', gap: 6 }}>
               <i className="ti ti-loader" style={{ fontSize: 13, animation: 'spin 0.8s linear infinite' }} />
               Verifying credentials…
             </div>

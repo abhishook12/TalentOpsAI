@@ -44,8 +44,8 @@ export default function LiveVisitorsTab() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ 
-                  width: 40, height: 40, borderRadius: '50%', background: 'rgba(96, 165, 250, 0.1)', 
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#60a5fa' 
+                  width: 40, height: 40, borderRadius: '50%', background: 'rgba(244, 244, 245, 0.1)', 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f4f4f5' 
                 }}>
                   {s.user_email ? s.user_email[0].toUpperCase() : <Fingerprint size={20} />}
                 </div>
@@ -64,8 +64,8 @@ export default function LiveVisitorsTab() {
                 </div>
                 {s.session_score === 'Power User' && (
                   <div style={{ 
-                    background: 'rgba(96, 165, 250, 0.1)',
-                    color: '#60a5fa',
+                    background: 'rgba(244, 244, 245, 0.1)',
+                    color: '#f4f4f5',
                     padding: '4px 8px', borderRadius: 4, fontSize: 11, fontWeight: 700
                   }}>
                     {s.session_score}
@@ -77,7 +77,7 @@ export default function LiveVisitorsTab() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
               {s.current_page && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-primary)', fontWeight: 600 }}>
-                  <Monitor size={14} style={{ opacity: 0.5, color: '#60a5fa' }} /> {s.current_page}
+                  <Monitor size={14} style={{ opacity: 0.5, color: '#f4f4f5' }} /> {s.current_page}
                 </div>
               )}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

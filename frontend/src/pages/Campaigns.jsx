@@ -1029,9 +1029,9 @@ export default function Campaigns() {
                         gap: 5,
                         padding: '3px 9px',
                         borderRadius: 6,
-                        background: isABTest ? 'rgba(99, 102, 241, 0.12)' : 'var(--bg-hover)',
-                        color: isABTest ? '#818cf8' : 'var(--text-muted)',
-                        border: isABTest ? '1px solid rgba(99, 102, 241, 0.25)' : '1px solid var(--border)',
+                        background: isABTest ? 'rgba(161, 161, 170, 0.12)' : 'var(--bg-hover)',
+                        color: isABTest ? '#a1a1aa' : 'var(--text-muted)',
+                        border: isABTest ? '1px solid rgba(161, 161, 170, 0.25)' : '1px solid var(--border)',
                         cursor: 'pointer',
                         transition: 'all 0.15s ease'
                       }}
@@ -1044,7 +1044,7 @@ export default function Campaigns() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <div style={{ position: 'relative' }}>
                       {isABTest && (
-                        <span style={{ position: 'absolute', left: 8, top: 9, fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 4, background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', border: '1px solid rgba(99, 102, 241, 0.25)' }}>
+                        <span style={{ position: 'absolute', left: 8, top: 9, fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 4, background: 'rgba(161, 161, 170, 0.15)', color: '#a1a1aa', border: '1px solid rgba(161, 161, 170, 0.25)' }}>
                           A
                         </span>
                       )}
@@ -1155,13 +1155,13 @@ export default function Campaigns() {
                 <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 8, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Clock size={15} style={{ color: '#818cf8' }} />
+                      <Clock size={15} style={{ color: '#a1a1aa' }} />
                       <div>
                         <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>Prime-Time Timezone Dispatcher</div>
                         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Target 8:45 AM local recipient morning window</div>
                       </div>
                     </div>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600, color: smartTimezone ? '#818cf8' : 'var(--text-muted)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600, color: smartTimezone ? '#a1a1aa' : 'var(--text-muted)' }}>
                       <input
                         type="checkbox"
                         checked={smartTimezone}
@@ -1174,7 +1174,7 @@ export default function Campaigns() {
 
                   {smartTimezone && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingTop: 6, borderTop: '1px solid var(--border)' }}>
-                      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: 'rgba(99, 102, 241, 0.1)', color: '#a5b4fc', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+                      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: 'rgba(161, 161, 170, 0.1)', color: '#d4d4d8', border: '1px solid rgba(161, 161, 170, 0.2)' }}>
                         ET: {timezoneStats.ET} leads
                       </span>
                       <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: 'rgba(16, 185, 129, 0.1)', color: '#6ee7b7', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
@@ -1406,9 +1406,9 @@ export default function Campaigns() {
 // ── Helper: StatusBadge ────────────────────────────────────────────────────────
 function StatusBadge({ status }) {
   const map = {
-    active: { bg: 'rgba(6,182,212,0.15)', text: '#22d3ee', dot: '#06b6d4', border: '1px solid rgba(6,182,212,0.3)' },
-    sending: { bg: 'rgba(6,182,212,0.15)', text: '#22d3ee', dot: '#06b6d4', border: '1px solid rgba(6,182,212,0.3)' },
-    queued: { bg: 'rgba(59,130,246,0.15)', text: '#60a5fa', dot: '#3b82f6', border: '1px solid rgba(59,130,246,0.3)' },
+    active: { bg: 'rgba(212, 212, 216,0.15)', text: '#d4d4d8', dot: '#d4d4d8', border: '1px solid rgba(212, 212, 216,0.3)' },
+    sending: { bg: 'rgba(212, 212, 216,0.15)', text: '#d4d4d8', dot: '#d4d4d8', border: '1px solid rgba(212, 212, 216,0.3)' },
+    queued: { bg: 'rgba(212, 212, 216,0.15)', text: '#f4f4f5', dot: '#d4d4d8', border: '1px solid rgba(212, 212, 216,0.3)' },
     retrying: { bg: 'rgba(245,158,11,0.15)', text: '#fbbf24', dot: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' },
     paused: { bg: '#3b2a0c', text: '#fcd34d', dot: '#f59e0b' },
     completed: { bg: '#0f3d24', text: '#86efac', dot: '#22c55e' },

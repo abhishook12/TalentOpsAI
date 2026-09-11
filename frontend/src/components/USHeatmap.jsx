@@ -135,10 +135,7 @@ export default function USHeatmap() {
       <div style={{ padding: "18px 24px 0", flexShrink: 0 }}>
         <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)" }}>Geography</p>
         <h2 style={{ margin: "2px 0 0", fontSize: "18px", fontWeight: 700, color: "var(--text-primary)" }}>Recruiter Coverage by State</h2>
-        <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>Choropleth of live recruiter density across the United States.</p>
-        <div style={{ position: "absolute", top: 20, right: 20 }}>
-          <span style={{ fontSize: "10px", fontWeight: "bold", border: "1px solid var(--brand)", background: "var(--brand-bg)", padding: "4px 10px", borderRadius: "100px", color: "var(--brand)" }}>LIVE</span>
-        </div>
+        <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>Choropleth of recruiter coverage across the United States.</p>
       </div>
 
       <div style={{ position: "relative", flexGrow: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>

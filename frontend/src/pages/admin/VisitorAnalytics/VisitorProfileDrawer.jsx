@@ -68,7 +68,7 @@ export default function VisitorProfileDrawer({ sessionId, onClose }) {
                 {data.profile.user_email || 'Anonymous'}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'var(--text-secondary)' }}>
-                <MapPin size={16} style={{ color: '#60a5fa' }}/>
+                <MapPin size={16} style={{ color: '#f4f4f5' }}/>
                 {data.profile.location} ({data.profile.ip_address})
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'var(--text-secondary)' }}>
@@ -95,13 +95,13 @@ export default function VisitorProfileDrawer({ sessionId, onClose }) {
                     height: 16, 
                     borderRadius: '50%',
                     background: '#141414',
-                    border: `2px solid ${event.type === 'page_view' ? '#60a5fa' : 'var(--brand)'}`,
+                    border: `2px solid ${event.type === 'page_view' ? '#f4f4f5' : 'var(--brand)'}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center'
                   }}>
                   </div>
                   
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-                    <div style={{ fontWeight: 600, color: event.type === 'page_view' ? '#60a5fa' : 'var(--brand)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ fontWeight: 600, color: event.type === 'page_view' ? '#f4f4f5' : 'var(--brand)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
                       {event.type === 'page_view' ? <FileText size={14}/> : <Activity size={14}/>}
                       {event.type === 'page_view' ? 'Page View' : 'Action'}
                     </div>

@@ -168,7 +168,7 @@ export default function UserManagement() {
           <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, background: 'linear-gradient(90deg, #fff, #aaa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>User Management</h1>
           <p style={{ margin: '8px 0 0', color: 'var(--text-muted)', fontSize: 14 }}>Manage roles, permissions, and platform access.</p>
         </div>
-        <button onClick={() => setShowCreateModal(true)} style={{ padding: '10px 20px', borderRadius: 8, background: '#3b82f6', color: '#ffffff', border: 'none', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}>
+        <button onClick={() => setShowCreateModal(true)} style={{ padding: '10px 20px', borderRadius: 8, background: '#d4d4d8', color: '#ffffff', border: 'none', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(212, 212, 216, 0.3)' }}>
           + Add New User
         </button>
       </div>
@@ -176,7 +176,7 @@ export default function UserManagement() {
       {/* Analytics Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginBottom: 32 }}>
         {[
-          { label: 'Total Users', value: analytics?.total || 0, color: '#3b82f6' },
+          { label: 'Total Users', value: analytics?.total || 0, color: '#d4d4d8' },
           { label: 'Active Users', value: analytics?.active || 0, color: '#10b981' },
           { label: 'Inactive Users', value: analytics?.inactive || 0, color: '#f59e0b' },
           { label: 'New This Week', value: analytics?.new_last_7_days || 0, color: 'var(--brand)' }
@@ -222,8 +222,8 @@ export default function UserManagement() {
         </select>
 
         {selectedUsers.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(59, 130, 246, 0.1)', padding: '0 16px', borderRadius: 8, border: '1px solid rgba(59, 130, 246, 0.3)' }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#60a5fa' }}>{selectedUsers.length} selected</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(212, 212, 216, 0.1)', padding: '0 16px', borderRadius: 8, border: '1px solid rgba(212, 212, 216, 0.3)' }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#f4f4f5' }}>{selectedUsers.length} selected</span>
             <button onClick={() => executeBulkAction('status', 'Active')} style={{ background: 'transparent', border: 'none', color: '#10b981', cursor: 'pointer', fontWeight: 600 }}>Activate</button>
             <button onClick={() => executeBulkAction('status', 'Inactive')} style={{ background: 'transparent', border: 'none', color: '#f59e0b', cursor: 'pointer', fontWeight: 600 }}>Deactivate</button>
             <button onClick={() => executeBulkAction('delete')} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 600 }}>Delete</button>
@@ -316,7 +316,7 @@ export default function UserManagement() {
             
             <div style={{ padding: 20, overflowY: 'auto', flex: 1 }}>
               <div style={{ textAlign: 'center', marginBottom: 24 }}>
-                <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, var(--brand))', margin: '0 auto 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 800, color: 'var(--text-primary)' }}>
+                <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'linear-gradient(135deg, #d4d4d8, var(--brand))', margin: '0 auto 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 800, color: 'var(--text-primary)' }}>
                   {selectedUserDetail.first_name[0]}{selectedUserDetail.last_name[0]}
                 </div>
                 <h3 style={{ margin: '0 0 4px', fontSize: 20 }}>{selectedUserDetail.first_name} {selectedUserDetail.last_name}</h3>
@@ -403,7 +403,7 @@ export default function UserManagement() {
               </div>
               <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
                 <button type="button" onClick={() => setShowCreateModal(false)} style={{ padding: '10px 16px', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
-                <button type="submit" style={{ padding: '10px 24px', background: '#3b82f6', border: 'none', borderRadius: 8, color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 600 }}>Create User</button>
+                <button type="submit" style={{ padding: '10px 24px', background: '#d4d4d8', border: 'none', borderRadius: 8, color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 600 }}>Create User</button>
               </div>
             </form>
           </div>

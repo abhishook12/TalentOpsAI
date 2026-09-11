@@ -107,7 +107,7 @@ export default function ForgotPassword() {
                 outline: 'none',
                 transition: 'border-color 0.2s'
               }}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+              onFocus={(e) => e.target.style.borderColor = '#d4d4d8'}
               onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
             />
           </div>
@@ -119,7 +119,7 @@ export default function ForgotPassword() {
               width: '100%',
               padding: '12px',
               borderRadius: '8px',
-              background: (isSubmitting || !email) ? 'rgba(59, 130, 246, 0.5)' : '#3b82f6',
+              background: (isSubmitting || !email) ? 'rgba(212, 212, 216, 0.5)' : '#d4d4d8',
               color: 'var(--text-primary)',
               fontSize: '15px',
               fontWeight: '600',
@@ -143,7 +143,7 @@ export default function ForgotPassword() {
 
         <p style={{ textAlign: 'center', marginTop: '32px', fontSize: '14px', color: '#a1a1aa' }}>
           Remember your password?{' '}
-          <Link to="/login" style={{ color: '#3b82f6', textDecoration: 'none', fontWeight: '500' }}>
+          <Link to="/login" style={{ color: '#d4d4d8', textDecoration: 'none', fontWeight: '500' }}>
             Sign in
           </Link>
         </p>

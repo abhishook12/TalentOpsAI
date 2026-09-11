@@ -59,8 +59,8 @@ export default function NaturalLanguageFilter({ onApplyFilters }) {
         display: 'flex',
         flexDirection: 'column',
         gap: '8px',
-        backgroundColor: 'var(--bg-card, #0f172a)',
-        border: '1px solid var(--border-ai, rgba(139, 92, 246, 0.25))',
+        backgroundColor: 'var(--bg-card, #121214)',
+        border: '1px solid var(--border-ai, rgba(161, 161, 170, 0.25))',
         borderRadius: '8px',
         padding: '12px 16px'
       }}
@@ -74,8 +74,8 @@ export default function NaturalLanguageFilter({ onApplyFilters }) {
             placeholder="Conversational filter... (e.g. 'Engineers in Texas with phone numbers')"
             style={{
               width: '100%',
-              backgroundColor: 'var(--bg-base, #090d14)',
-              border: '1px solid var(--border, #1e293b)',
+              backgroundColor: 'var(--bg-base, #0b0b0c)',
+              border: '1px solid var(--border, #232326)',
               borderRadius: '6px',
               padding: '8px 12px',
               fontSize: '12px',
@@ -89,7 +89,7 @@ export default function NaturalLanguageFilter({ onApplyFilters }) {
           type="submit"
           disabled={loading || !input.trim()}
           style={{
-            background: 'linear-gradient(135deg, #8b5cf6, #38bdf8)',
+            background: 'linear-gradient(135deg, #a1a1aa, #e4e4e7)',
             border: 'none',
             borderRadius: '6px',
             padding: '0 14px',
@@ -115,12 +115,12 @@ export default function NaturalLanguageFilter({ onApplyFilters }) {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '4px',
-                background: 'rgba(56, 189, 248, 0.1)',
-                border: '1px solid rgba(56, 189, 248, 0.3)',
+                background: 'rgba(228, 228, 231, 0.1)',
+                border: '1px solid rgba(228, 228, 231, 0.3)',
                 borderRadius: '4px',
                 padding: '2px 8px',
                 fontSize: '11px',
-                color: '#38bdf8',
+                color: '#e4e4e7',
                 fontWeight: 600
               }}
             >
@@ -130,7 +130,7 @@ export default function NaturalLanguageFilter({ onApplyFilters }) {
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: '#38bdf8',
+                  color: '#e4e4e7',
                   cursor: 'pointer',
                   padding: 0,
                   fontSize: '11px',

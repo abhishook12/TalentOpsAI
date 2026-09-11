@@ -224,13 +224,13 @@ const stagingPipelineRoute = createRoute({
 const scoutContributorsAdminRoute = createRoute({
   getParentRoute: () => adminLayoutRoute,
   path: '/admin/scout-contributors',
-  component: lazyComponent(() => import('./pages/DownloadScout')),
+  component: lazyComponent(() => import('./pages/ScoutContributors')),
 })
 
 const scoutContributorsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/scout/contributors',
-  component: lazyComponent(() => import('./pages/DownloadScout')),
+  component: lazyComponent(() => import('./pages/ScoutContributors')),
 })
 
 
@@ -250,6 +250,34 @@ const mailIntelRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/mailintel',
   component: lazyComponent(() => import('./pages/MailIntelDashboard')),
+})
+
+const mcpRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/mcp',
+  component: function MCPPage() {
+    return (
+      <div style={{ padding: 32, maxWidth: 800, margin: '0 auto', color: 'var(--text-primary)' }}>
+        <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Model Context Protocol (MCP) Gateway</h1>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>
+          Standardized JSON-RPC 2.0 interface for AI assistants and edge telemetry tools.
+        </p>
+        <div className="ds-card" style={{ marginBottom: 16 }}>
+          <div className="ds-eyebrow" style={{ marginBottom: 8 }}>Registered Tools</div>
+          <ul style={{ margin: 0, paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
+            <li><strong>echo</strong> — Diagnostic roundtrip test tool.</li>
+            <li><strong>list_recruiters</strong> — Query talent intelligence database with parameter filters.</li>
+          </ul>
+        </div>
+        <div className="ds-card">
+          <div className="ds-eyebrow" style={{ marginBottom: 8 }}>Endpoint Details</div>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>
+            Protocol: <code style={{ fontFamily: 'var(--mono)' }}>mcp-jsonrpc-2.0</code> | Methods: <code style={{ fontFamily: 'var(--mono)' }}>tools/list</code>, <code style={{ fontFamily: 'var(--mono)' }}>tools/call</code>
+          </p>
+        </div>
+      </div>
+    )
+  },
 })
 
 const notFoundRoute = createRoute({
@@ -287,6 +315,7 @@ const routeTree = rootRoute.addChildren([
   extensionHubRoute,
   downloadScoutRoute,
   scoutContributorsRoute,
+  mcpRoute,
   adminLayoutRoute.addChildren([
     adminRoute,
     activityRoute,

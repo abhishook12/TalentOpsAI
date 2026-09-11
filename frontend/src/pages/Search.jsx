@@ -238,15 +238,15 @@ const SearchResultRow = React.memo(function SearchResultRow({ r, active, query, 
               {r.seniority_level && r.seniority_level !== 'Specialist' && (
                 <span style={{ 
                   fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, 
-                  background: r.seniority_level === 'Executive' ? 'rgba(168,85,247,0.15)' :
-                              r.seniority_level === 'Lead' ? 'rgba(99,102,241,0.15)' :
+                  background: r.seniority_level === 'Executive' ? 'rgba(161, 161, 170,0.15)' :
+                              r.seniority_level === 'Lead' ? 'rgba(161, 161, 170,0.15)' :
                               r.seniority_level === 'Senior' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)',
-                  color: r.seniority_level === 'Executive' ? '#c084fc' :
-                         r.seniority_level === 'Lead' ? '#818cf8' :
+                  color: r.seniority_level === 'Executive' ? '#d4d4d8' :
+                         r.seniority_level === 'Lead' ? '#a1a1aa' :
                          r.seniority_level === 'Senior' ? '#34d399' : '#fbbf24',
                   border: `1px solid ${
-                    r.seniority_level === 'Executive' ? 'rgba(168,85,247,0.3)' :
-                    r.seniority_level === 'Lead' ? 'rgba(99,102,241,0.3)' :
+                    r.seniority_level === 'Executive' ? 'rgba(161, 161, 170,0.3)' :
+                    r.seniority_level === 'Lead' ? 'rgba(161, 161, 170,0.3)' :
                     r.seniority_level === 'Senior' ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'
                   }`
                 }}>
@@ -1124,10 +1124,10 @@ export default function AISearch() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 4,
-                    background: 'rgba(139, 92, 246, 0.15)',
-                    border: '1px solid rgba(139, 92, 246, 0.35)',
+                    background: 'rgba(161, 161, 170, 0.15)',
+                    border: '1px solid rgba(161, 161, 170, 0.35)',
                     borderRadius: 6,
-                    color: '#c4b5fd',
+                    color: '#d4d4d8',
                     fontSize: 11,
                     fontWeight: 700,
                     padding: '6px 10px',
@@ -1231,8 +1231,8 @@ export default function AISearch() {
               {/* AI Semantic Match & Explainability Card */}
               <div
                 style={{
-                  background: 'linear-gradient(90deg, rgba(56, 189, 248, 0.08), rgba(139, 92, 246, 0.08))',
-                  border: '1px solid rgba(56, 189, 248, 0.25)',
+                  background: 'linear-gradient(90deg, rgba(228, 228, 231, 0.08), rgba(161, 161, 170, 0.08))',
+                  border: '1px solid rgba(228, 228, 231, 0.25)',
                   borderRadius: 6,
                   padding: '10px 12px',
                   display: 'flex',
@@ -1242,7 +1242,7 @@ export default function AISearch() {
                 }}
               >
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: '#38bdf8', letterSpacing: '0.04em' }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#e4e4e7', letterSpacing: '0.04em' }}>
                     ✦ AI SEMANTIC MATCH: {selected?.trust_score || 94}%
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
@@ -1255,9 +1255,9 @@ export default function AISearch() {
                     setExplainModalOpen(true)
                   }}
                   style={{
-                    background: 'rgba(56, 189, 248, 0.15)',
-                    border: '1px solid rgba(56, 189, 248, 0.4)',
-                    color: '#38bdf8',
+                    background: 'rgba(228, 228, 231, 0.15)',
+                    border: '1px solid rgba(228, 228, 231, 0.4)',
+                    color: '#e4e4e7',
                     padding: '4px 8px',
                     borderRadius: 4,
                     fontSize: 11,
@@ -1280,9 +1280,9 @@ export default function AISearch() {
                   style={{
                     padding: '10px 12px',
                     borderRadius: 6,
-                    border: '1px solid #38bdf8',
-                    background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(139, 92, 246, 0.15))',
-                    color: '#38bdf8',
+                    border: '1px solid #e4e4e7',
+                    background: 'linear-gradient(135deg, rgba(228, 228, 231, 0.15), rgba(161, 161, 170, 0.15))',
+                    color: '#e4e4e7',
                     fontSize: 12,
                     fontWeight: 800,
                     cursor: 'pointer',
@@ -1404,7 +1404,7 @@ export default function AISearch() {
                       <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, marginBottom: 4 }}>Skills ({selected.skills.length})</div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                         {selected.skills.map((s, idx) => (
-                          <span key={idx} style={{ fontSize: 10, fontWeight: 600, background: 'rgba(56,189,248,0.1)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)', padding: '2px 6px', borderRadius: 4 }}>
+                          <span key={idx} style={{ fontSize: 10, fontWeight: 600, background: 'rgba(228, 228, 231,0.1)', color: '#e4e4e7', border: '1px solid rgba(228, 228, 231,0.3)', padding: '2px 6px', borderRadius: 4 }}>
                             {s}
                           </span>
                         ))}
@@ -1416,7 +1416,7 @@ export default function AISearch() {
                       <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, marginBottom: 4 }}>Career History</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {selected.experience_history.map((exp, idx) => (
-                          <div key={idx} style={{ borderLeft: '2px solid #38bdf8', paddingLeft: 6, fontSize: 11 }}>
+                          <div key={idx} style={{ borderLeft: '2px solid #e4e4e7', paddingLeft: 6, fontSize: 11 }}>
                             <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{exp.title || 'Role'}</div>
                             <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{exp.company} {exp.date_range ? `(${exp.date_range})` : ''}</div>
                           </div>
@@ -1811,16 +1811,16 @@ export default function AISearch() {
                 </div>
 
                 {/* LinkedIn Boolean Card */}
-                <div style={{ padding: 12, borderRadius: 8, background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                <div style={{ padding: 12, borderRadius: 8, background: 'rgba(212, 212, 216, 0.05)', border: '1px solid rgba(212, 212, 216, 0.2)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6' }}>LinkedIn Recruiter Boolean String</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#d4d4d8' }}>LinkedIn Recruiter Boolean String</span>
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(booleanResult.linkedin_boolean)
                         setToast('Copied LinkedIn Boolean!')
                         setTimeout(() => setToast(''), 1400)
                       }}
-                      style={{ padding: '4px 10px', borderRadius: 6, background: '#3b82f6', color: '#fff', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                      style={{ padding: '4px 10px', borderRadius: 6, background: '#d4d4d8', color: '#fff', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
                     >
                       Copy Boolean
                     </button>
@@ -1829,14 +1829,14 @@ export default function AISearch() {
                 </div>
 
                 {/* Google X-Ray Card */}
-                <div style={{ padding: 12, borderRadius: 8, background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.2)' }}>
+                <div style={{ padding: 12, borderRadius: 8, background: 'rgba(161, 161, 170, 0.05)', border: '1px solid rgba(161, 161, 170, 0.2)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#a855f7' }}>Google X-Ray Sourcing String</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#a1a1aa' }}>Google X-Ray Sourcing String</span>
                     <a
                       href={booleanResult.google_xray_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={{ padding: '4px 10px', borderRadius: 6, background: '#a855f7', color: '#fff', textDecoration: 'none', fontSize: 11, fontWeight: 700 }}
+                      style={{ padding: '4px 10px', borderRadius: 6, background: '#a1a1aa', color: '#fff', textDecoration: 'none', fontSize: 11, fontWeight: 700 }}
                     >
                       Open Google X-Ray
                     </a>

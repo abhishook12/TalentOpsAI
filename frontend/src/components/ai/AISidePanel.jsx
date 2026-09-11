@@ -112,14 +112,14 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            background: 'linear-gradient(135deg, #8b5cf6, #38bdf8)',
+            background: 'linear-gradient(135deg, #a1a1aa, #e4e4e7)',
             border: 'none',
             borderRadius: '30px',
             padding: '10px 18px',
             color: '#fff',
             fontWeight: 800,
             fontSize: '13px',
-            boxShadow: '0 8px 24px rgba(139, 92, 246, 0.4)',
+            boxShadow: '0 8px 24px rgba(161, 161, 170, 0.4)',
             cursor: 'pointer',
             transition: 'transform 0.2s ease'
           }}
@@ -140,8 +140,8 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
             top: 0,
             bottom: 0,
             width: '380px',
-            backgroundColor: 'var(--bg-card, #0f172a)',
-            borderLeft: '1px solid var(--border-ai, rgba(139, 92, 246, 0.3))',
+            backgroundColor: 'var(--bg-card, #121214)',
+            borderLeft: '1px solid var(--border-ai, rgba(161, 161, 170, 0.3))',
             zIndex: 9999,
             display: 'flex',
             flexDirection: 'column',
@@ -156,7 +156,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
               justifyContent: 'space-between',
               alignItems: 'center',
               padding: '16px 20px',
-              borderBottom: '1px solid var(--border, #1e293b)'
+              borderBottom: '1px solid var(--border, #232326)'
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -165,7 +165,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
                   width: '24px',
                   height: '24px',
                   borderRadius: '6px',
-                  background: 'linear-gradient(135deg, #8b5cf6, #38bdf8)',
+                  background: 'linear-gradient(135deg, #a1a1aa, #e4e4e7)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -202,7 +202,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
             style={{
               padding: '8px 16px',
               backgroundColor: 'rgba(255, 255, 255, 0.02)',
-              borderBottom: '1px solid var(--border, #1e293b)',
+              borderBottom: '1px solid var(--border, #232326)',
               fontSize: '11px',
               color: 'var(--text-secondary)',
               display: 'flex',
@@ -212,7 +212,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, overflow: 'hidden' }}>
-              <span style={{ color: activeCandidate ? '#38bdf8' : '#10b981' }}>●</span>
+              <span style={{ color: activeCandidate ? '#e4e4e7' : '#10b981' }}>●</span>
               <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {activeCandidate
                   ? `Focus: ${activeCandidate.recruiter_name || activeCandidate.name} (${activeCandidate.company || activeCandidate.company_name || 'Enterprise'})`
@@ -224,7 +224,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
                 onClick={() => setActiveCandidate(null)}
                 style={{
                   background: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid var(--border, #1e293b)',
+                  border: '1px solid var(--border, #232326)',
                   borderRadius: '4px',
                   color: 'var(--text-secondary)',
                   fontSize: '10px',
@@ -255,9 +255,9 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
                 style={{
                   alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
                   maxWidth: '88%',
-                  backgroundColor: m.role === 'user' ? '#8b5cf6' : 'var(--bg-base, #090d14)',
+                  backgroundColor: m.role === 'user' ? '#a1a1aa' : 'var(--bg-base, #0b0b0c)',
                   color: m.role === 'user' ? '#ffffff' : 'var(--text-primary)',
-                  border: m.role === 'user' ? 'none' : '1px solid var(--border, #1e293b)',
+                  border: m.role === 'user' ? 'none' : '1px solid var(--border, #232326)',
                   borderRadius: '10px',
                   padding: '10px 14px',
                   fontSize: '12px',
@@ -269,8 +269,8 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
 
                 {/* Optional mini results */}
                 {m.results && m.results.length > 0 && (
-                  <div style={{ marginTop: '8px', borderTop: '1px solid var(--border, #1e293b)', paddingTop: '6px' }}>
-                    <div style={{ fontSize: '10px', fontWeight: 700, color: '#38bdf8', textTransform: 'uppercase' }}>
+                  <div style={{ marginTop: '8px', borderTop: '1px solid var(--border, #232326)', paddingTop: '6px' }}>
+                    <div style={{ fontSize: '10px', fontWeight: 700, color: '#e4e4e7', textTransform: 'uppercase' }}>
                       Identified Top Candidates:
                     </div>
                     {m.results.slice(0, 3).map((c) => (
@@ -286,14 +286,14 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
                   <div
                     style={{
                       marginTop: '10px',
-                      background: 'rgba(56, 189, 248, 0.04)',
-                      border: '1px solid rgba(56, 189, 248, 0.3)',
+                      background: 'rgba(228, 228, 231, 0.04)',
+                      border: '1px solid rgba(228, 228, 231, 0.3)',
                       borderRadius: '6px',
                       padding: '10px 12px'
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '10px', fontWeight: 800, color: '#38bdf8', letterSpacing: '0.04em' }}>
+                      <span style={{ fontSize: '10px', fontWeight: 800, color: '#e4e4e7', letterSpacing: '0.04em' }}>
                         ✉ EXECUTIVE OUTREACH DRAFT
                       </span>
                       <button
@@ -302,10 +302,10 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
                           toast.success('Outreach draft copied to clipboard!')
                         }}
                         style={{
-                          background: 'rgba(56, 189, 248, 0.15)',
-                          border: '1px solid rgba(56, 189, 248, 0.4)',
+                          background: 'rgba(228, 228, 231, 0.15)',
+                          border: '1px solid rgba(228, 228, 231, 0.4)',
                           borderRadius: '4px',
-                          color: '#38bdf8',
+                          color: '#e4e4e7',
                           fontSize: '10px',
                           fontWeight: 700,
                           padding: '2px 8px',
@@ -335,12 +335,12 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
               <div
                 style={{
                   alignSelf: 'flex-start',
-                  backgroundColor: 'var(--bg-base, #090d14)',
-                  border: '1px solid var(--border, #1e293b)',
+                  backgroundColor: 'var(--bg-base, #0b0b0c)',
+                  border: '1px solid var(--border, #232326)',
                   borderRadius: '10px',
                   padding: '8px 14px',
                   fontSize: '11px',
-                  color: '#38bdf8',
+                  color: '#e4e4e7',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px'
@@ -354,7 +354,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
           </div>
 
           {/* Quick Prompt Suggestions */}
-          <div style={{ padding: '8px 16px', display: 'flex', gap: '6px', flexWrap: 'wrap', borderTop: '1px solid var(--border, #1e293b)' }}>
+          <div style={{ padding: '8px 16px', display: 'flex', gap: '6px', flexWrap: 'wrap', borderTop: '1px solid var(--border, #232326)' }}>
             {(activeCandidate
               ? [
                   `Draft outreach for ${(activeCandidate.recruiter_name || activeCandidate.name || 'Candidate').split(' ')[0]}`,
@@ -368,7 +368,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
                 onClick={() => handleSendMessage(q)}
                 style={{
                   background: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid var(--border, #1e293b)',
+                  border: '1px solid var(--border, #232326)',
                   borderRadius: '4px',
                   padding: '3px 8px',
                   fontSize: '10px',
@@ -385,10 +385,10 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
           <div
             style={{
               padding: '12px 16px',
-              borderTop: '1px solid var(--border, #1e293b)',
+              borderTop: '1px solid var(--border, #232326)',
               display: 'flex',
               gap: '8px',
-              backgroundColor: 'var(--bg-base, #090d14)'
+              backgroundColor: 'var(--bg-base, #0b0b0c)'
             }}
           >
             <input
@@ -399,8 +399,8 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
               placeholder="Ask Copilot..."
               style={{
                 flex: 1,
-                backgroundColor: 'var(--bg-card, #0f172a)',
-                border: '1px solid var(--border, #1e293b)',
+                backgroundColor: 'var(--bg-card, #121214)',
+                border: '1px solid var(--border, #232326)',
                 borderRadius: '6px',
                 padding: '8px 12px',
                 fontSize: '12px',
@@ -412,7 +412,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
               onClick={() => handleSendMessage()}
               disabled={loading || !input.trim()}
               style={{
-                background: 'linear-gradient(135deg, #8b5cf6, #38bdf8)',
+                background: 'linear-gradient(135deg, #a1a1aa, #e4e4e7)',
                 border: 'none',
                 borderRadius: '6px',
                 padding: '0 12px',

@@ -12,7 +12,7 @@ const CHART_TICK = { fill: 'var(--text-primary)', fontSize: 12, fontWeight: 700 
 
 const BAR_LABEL_PROPS = { fill: 'var(--text-primary)', fontSize: 12, fontWeight: 700 }
 
-const PAGE_COLORS = ['#C9A84C', '#0F6E56', '#94a3b8', '#BA7517', '#C4394A', '#1695A3', '#f0d78c', '#D97706']
+const PAGE_COLORS = ['#C9A84C', '#0F6E56', '#a1a1aa', '#BA7517', '#C4394A', '#1695A3', '#f0d78c', '#D97706']
 
 const STATE_FULL_NAMES = {
   AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',CT:'Connecticut',

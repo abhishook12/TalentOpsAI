@@ -122,7 +122,7 @@ export default function FleetUpdateCenter() {
 
         <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px' }}>
           <div style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 2 }}>🔵 UPDATE AVAILABLE</div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#38bdf8' }}><AnimatedNumber value={health.update_available} /></div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#e4e4e7' }}><AnimatedNumber value={health.update_available} /></div>
           <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 2 }}>Silent download staged</div>
         </div>
 
@@ -140,7 +140,7 @@ export default function FleetUpdateCenter() {
 
         <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px' }}>
           <div style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 2 }}>⚫ STALE / OFFLINE</div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#94a3b8' }}><AnimatedNumber value={health.stale + health.offline} /></div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#a1a1aa' }}><AnimatedNumber value={health.stale + health.offline} /></div>
           <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 2 }}>No recent heartbeat</div>
         </div>
       </div>
@@ -161,7 +161,7 @@ export default function FleetUpdateCenter() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {versionDist.map((item) => {
               const isBelow = item.is_below_minimum
-              const barColor = isBelow ? '#ef4444' : (item.percentage > 50 ? '#10b981' : '#3b82f6')
+              const barColor = isBelow ? '#ef4444' : (item.percentage > 50 ? '#10b981' : '#d4d4d8')
 
               return (
                 <div key={item.version} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -182,7 +182,7 @@ export default function FleetUpdateCenter() {
                   </div>
 
                   {/* Progress Bar Meter */}
-                  <div style={{ width: '100%', height: 8, background: '#1e293b', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ width: '100%', height: 8, background: '#232326', borderRadius: 4, overflow: 'hidden' }}>
                     <div
                       style={{
                         width: `${Math.max(2, item.percentage)}%`,
@@ -219,7 +219,7 @@ export default function FleetUpdateCenter() {
             <button
               onClick={() => refetch()}
               style={{
-                background: '#1e293b', border: '1px solid #334155', color: '#94a3b8',
+                background: '#232326', border: '1px solid #27272a', color: '#a1a1aa',
                 borderRadius: 6, padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11
               }}
             >
@@ -245,7 +245,7 @@ export default function FleetUpdateCenter() {
                 {releases.map((rel) => {
                   const isTripped = rel.status === 'CIRCUIT_TRIPPED'
                   const isPaused = rel.is_paused || isTripped
-                  const statusColor = isTripped ? '#ef4444' : (isPaused ? '#f59e0b' : (rel.channel === 'stable' ? '#10b981' : '#38bdf8'))
+                  const statusColor = isTripped ? '#ef4444' : (isPaused ? '#f59e0b' : (rel.channel === 'stable' ? '#10b981' : '#e4e4e7'))
 
                   return (
                     <tr key={rel.id || rel.version} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
@@ -253,7 +253,7 @@ export default function FleetUpdateCenter() {
                         v{rel.version}
                       </td>
                       <td style={{ padding: '10px 6px' }}>
-                        <span style={{ textTransform: 'uppercase', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: '#1e293b', color: '#94a3b8' }}>
+                        <span style={{ textTransform: 'uppercase', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: '#232326', color: '#a1a1aa' }}>
                           {rel.channel}
                         </span>
                       </td>
@@ -282,9 +282,9 @@ export default function FleetUpdateCenter() {
                                 fontSize: 10,
                                 fontWeight: 700,
                                 borderRadius: 4,
-                                border: rel.rollout_percentage === pct ? '1px solid #3b82f6' : '1px solid #334155',
-                                background: rel.rollout_percentage === pct ? '#2563eb' : '#0b1120',
-                                color: rel.rollout_percentage === pct ? '#fff' : '#94a3b8',
+                                border: rel.rollout_percentage === pct ? '1px solid #d4d4d8' : '1px solid #27272a',
+                                background: rel.rollout_percentage === pct ? '#e4e4e7' : '#0b1120',
+                                color: rel.rollout_percentage === pct ? '#fff' : '#a1a1aa',
                                 cursor: 'pointer',
                               }}
                             >

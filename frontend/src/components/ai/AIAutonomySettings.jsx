@@ -95,8 +95,8 @@ export default function AIAutonomySettings() {
   return (
     <div
       style={{
-        backgroundColor: 'var(--bg-card, #0f172a)',
-        border: '1px solid var(--border-ai, rgba(139, 92, 246, 0.3))',
+        backgroundColor: 'var(--bg-card, #121214)',
+        border: '1px solid var(--border-ai, rgba(161, 161, 170, 0.3))',
         borderRadius: '12px',
         padding: '24px',
         display: 'flex',
@@ -127,7 +127,7 @@ export default function AIAutonomySettings() {
           onClick={handleSave}
           disabled={saving}
           style={{
-            background: 'linear-gradient(135deg, #10b981, #38bdf8)',
+            background: 'linear-gradient(135deg, #10b981, #e4e4e7)',
             border: 'none',
             borderRadius: '8px',
             padding: '8px 20px',
@@ -154,8 +154,8 @@ export default function AIAutonomySettings() {
                 key={al.level}
                 onClick={() => setAutonomyLevel(al.level)}
                 style={{
-                  backgroundColor: isSelected ? 'rgba(139, 92, 246, 0.12)' : 'var(--bg-base, #090d14)',
-                  border: `1px solid ${isSelected ? '#8b5cf6' : 'var(--border, #1e293b)'}`,
+                  backgroundColor: isSelected ? 'rgba(161, 161, 170, 0.12)' : 'var(--bg-base, #0b0b0c)',
+                  border: `1px solid ${isSelected ? '#a1a1aa' : 'var(--border, #232326)'}`,
                   borderRadius: '8px',
                   padding: '14px',
                   cursor: 'pointer',
@@ -163,11 +163,11 @@ export default function AIAutonomySettings() {
                   flexDirection: 'column',
                   gap: '6px',
                   transition: 'all 0.2s ease',
-                  boxShadow: isSelected ? '0 0 15px rgba(139, 92, 246, 0.25)' : 'none'
+                  boxShadow: isSelected ? '0 0 15px rgba(161, 161, 170, 0.25)' : 'none'
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 800, color: isSelected ? '#38bdf8' : 'var(--text-primary)' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 800, color: isSelected ? '#e4e4e7' : 'var(--text-primary)' }}>
                     {al.title}
                   </span>
                   {isSelected && <span style={{ color: '#10b981', fontWeight: 900 }}>✓</span>}
@@ -204,14 +204,14 @@ export default function AIAutonomySettings() {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: '10px 14px',
-                backgroundColor: 'var(--bg-base, #090d14)',
-                border: `1px solid ${permissions[perm.key] ? 'rgba(56, 189, 248, 0.3)' : 'var(--border, #1e293b)'}`,
+                backgroundColor: 'var(--bg-base, #0b0b0c)',
+                border: `1px solid ${permissions[perm.key] ? 'rgba(228, 228, 231, 0.3)' : 'var(--border, #232326)'}`,
                 borderRadius: '8px',
                 cursor: 'pointer'
               }}
             >
               <div>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: permissions[perm.key] ? '#38bdf8' : 'var(--text-primary)' }}>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: permissions[perm.key] ? '#e4e4e7' : 'var(--text-primary)' }}>
                   {perm.label}
                 </div>
                 <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{perm.desc}</div>
@@ -221,8 +221,8 @@ export default function AIAutonomySettings() {
                   width: '18px',
                   height: '18px',
                   borderRadius: '4px',
-                  border: `1px solid ${permissions[perm.key] ? '#38bdf8' : 'var(--border, #1e293b)'}`,
-                  backgroundColor: permissions[perm.key] ? '#38bdf8' : 'transparent',
+                  border: `1px solid ${permissions[perm.key] ? '#e4e4e7' : 'var(--border, #232326)'}`,
+                  backgroundColor: permissions[perm.key] ? '#e4e4e7' : 'transparent',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -258,15 +258,15 @@ export default function AIAutonomySettings() {
                   gap: '12px',
                   alignItems: 'center',
                   padding: '8px 12px',
-                  backgroundColor: 'var(--bg-base, #090d14)',
-                  border: '1px solid var(--border, #1e293b)',
+                  backgroundColor: 'var(--bg-base, #0b0b0c)',
+                  border: '1px solid var(--border, #232326)',
                   borderRadius: '6px',
                   fontSize: '11px'
                 }}
               >
                 <span style={{ color: 'var(--text-secondary)' }}>{log.created_at?.slice(0, 19).replace('T', ' ')}</span>
                 <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{log.action_type}</span>
-                <span style={{ color: '#38bdf8' }}>{log.model_name}</span>
+                <span style={{ color: '#e4e4e7' }}>{log.model_name}</span>
                 <span style={{ color: '#10b981' }}>{log.latency_ms}ms</span>
                 <span style={{ color: 'var(--text-secondary)' }}>${(log.cost_usd || 0).toFixed(5)}</span>
               </div>

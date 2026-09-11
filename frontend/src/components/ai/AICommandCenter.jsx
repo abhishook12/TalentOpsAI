@@ -87,8 +87,8 @@ export default function AICommandCenter({ onSelectCandidate }) {
   return (
     <div
       style={{
-        backgroundColor: 'var(--bg-card, #0f172a)',
-        border: '1px solid var(--border-ai, rgba(139, 92, 246, 0.3))',
+        backgroundColor: 'var(--bg-card, #121214)',
+        border: '1px solid var(--border-ai, rgba(161, 161, 170, 0.3))',
         borderRadius: '12px',
         padding: '20px',
         boxShadow: '0 8px 30px rgba(0, 0, 0, 0.25)',
@@ -105,7 +105,7 @@ export default function AICommandCenter({ onSelectCandidate }) {
               width: '28px',
               height: '28px',
               borderRadius: '8px',
-              background: 'linear-gradient(135deg, #8b5cf6, #38bdf8)',
+              background: 'linear-gradient(135deg, #a1a1aa, #e4e4e7)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -128,7 +128,7 @@ export default function AICommandCenter({ onSelectCandidate }) {
 
         {response?.model_used && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '10px', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.04)', padding: '3px 8px', borderRadius: '4px', border: '1px solid var(--border, #1e293b)' }}>
+            <span style={{ fontSize: '10px', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.04)', padding: '3px 8px', borderRadius: '4px', border: '1px solid var(--border, #232326)' }}>
               ⚡ {response.model_used} ({response.latency_ms}ms)
             </span>
           </div>
@@ -147,12 +147,12 @@ export default function AICommandCenter({ onSelectCandidate }) {
             disabled={loading}
             style={{
               width: '100%',
-              backgroundColor: 'var(--bg-base, #090d14)',
-              border: '1px solid var(--border, #1e293b)',
+              backgroundColor: 'var(--bg-base, #0b0b0c)',
+              border: '1px solid var(--border, #232326)',
               borderRadius: '8px',
               padding: '12px 16px',
               fontSize: '13px',
-              color: 'var(--text-primary, #f8fafc)',
+              color: 'var(--text-primary, #fafafa)',
               outline: 'none',
               transition: 'border 0.2s ease',
               boxSizing: 'border-box'
@@ -185,7 +185,7 @@ export default function AICommandCenter({ onSelectCandidate }) {
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            background: 'linear-gradient(135deg, #8b5cf6, #38bdf8)',
+            background: 'linear-gradient(135deg, #a1a1aa, #e4e4e7)',
             border: 'none',
             borderRadius: '8px',
             padding: '0 20px',
@@ -224,7 +224,7 @@ export default function AICommandCenter({ onSelectCandidate }) {
               }}
               style={{
                 background: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid var(--border, #1e293b)',
+                border: '1px solid var(--border, #232326)',
                 borderRadius: '6px',
                 padding: '4px 10px',
                 fontSize: '11px',
@@ -233,11 +233,11 @@ export default function AICommandCenter({ onSelectCandidate }) {
                 transition: 'all 0.15s ease'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#8b5cf6'
-                e.currentTarget.style.color = '#38bdf8'
+                e.currentTarget.style.borderColor = '#a1a1aa'
+                e.currentTarget.style.color = '#e4e4e7'
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'var(--border, #1e293b)'
+                e.currentTarget.style.borderColor = 'var(--border, #232326)'
                 e.currentTarget.style.color = 'var(--text-secondary)'
               }}
             >
@@ -254,12 +254,12 @@ export default function AICommandCenter({ onSelectCandidate }) {
             display: 'flex',
             alignItems: 'center',
             gap: '10px',
-            background: 'rgba(139, 92, 246, 0.08)',
-            border: '1px solid rgba(139, 92, 246, 0.2)',
+            background: 'rgba(161, 161, 170, 0.08)',
+            border: '1px solid rgba(161, 161, 170, 0.2)',
             borderRadius: '8px',
             padding: '10px 14px',
             fontSize: '12px',
-            color: '#38bdf8',
+            color: '#e4e4e7',
             fontWeight: 600
           }}
         >
@@ -272,7 +272,7 @@ export default function AICommandCenter({ onSelectCandidate }) {
         <div
           style={{
             background: 'rgba(255, 255, 255, 0.02)',
-            border: '1px solid var(--border, #1e293b)',
+            border: '1px solid var(--border, #232326)',
             borderRadius: '8px',
             padding: '10px 14px',
             display: 'flex',
@@ -286,7 +286,7 @@ export default function AICommandCenter({ onSelectCandidate }) {
                 Extracted Intent:
               </span>
               {response.intent.role && (
-                <span style={{ fontSize: '11px', background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                <span style={{ fontSize: '11px', background: 'rgba(228, 228, 231, 0.1)', color: '#e4e4e7', border: '1px solid rgba(228, 228, 231, 0.3)', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
                   Role: {response.intent.role}
                 </span>
               )}
@@ -296,7 +296,7 @@ export default function AICommandCenter({ onSelectCandidate }) {
                 </span>
               )}
               {response.intent.company && (
-                <span style={{ fontSize: '11px', background: 'rgba(167, 139, 250, 0.1)', color: '#a78bfa', border: '1px solid rgba(167, 139, 250, 0.3)', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                <span style={{ fontSize: '11px', background: 'rgba(161, 161, 170, 0.1)', color: '#a1a1aa', border: '1px solid rgba(161, 161, 170, 0.3)', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
                   Company: {response.intent.company}
                 </span>
               )}
@@ -333,8 +333,8 @@ export default function AICommandCenter({ onSelectCandidate }) {
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  backgroundColor: 'var(--bg-base, #090d14)',
-                  border: '1px solid var(--border, #1e293b)',
+                  backgroundColor: 'var(--bg-base, #0b0b0c)',
+                  border: '1px solid var(--border, #232326)',
                   borderRadius: '8px',
                   padding: '12px 16px',
                   transition: 'border 0.2s ease'
@@ -348,7 +348,7 @@ export default function AICommandCenter({ onSelectCandidate }) {
                     <EvidenceBadge status={cand.uncertainty_status} confidence={cand.confidence} size="sm" />
                   </div>
                   <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                    {cand.title} • <span style={{ color: '#38bdf8' }}>{cand.company}</span> • {cand.location}
+                    {cand.title} • <span style={{ color: '#e4e4e7' }}>{cand.company}</span> • {cand.location}
                   </div>
                   <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', gap: '12px', marginTop: '2px' }}>
                     {cand.email && <span>✉ {cand.email}</span>}
@@ -364,10 +364,10 @@ export default function AICommandCenter({ onSelectCandidate }) {
                       display: 'flex',
                       alignItems: 'center',
                       gap: '4px',
-                      background: 'rgba(139, 92, 246, 0.1)',
-                      border: '1px solid rgba(139, 92, 246, 0.3)',
+                      background: 'rgba(161, 161, 170, 0.1)',
+                      border: '1px solid rgba(161, 161, 170, 0.3)',
                       borderRadius: '6px',
-                      color: '#c4b5fd',
+                      color: '#d4d4d8',
                       fontSize: '11px',
                       fontWeight: 700,
                       padding: '6px 12px',
@@ -382,8 +382,8 @@ export default function AICommandCenter({ onSelectCandidate }) {
                     <button
                       onClick={() => onSelectCandidate(cand)}
                       style={{
-                        background: 'var(--bg-surface, #1e293b)',
-                        border: '1px solid var(--border, #334155)',
+                        background: 'var(--bg-surface, #232326)',
+                        border: '1px solid var(--border, #27272a)',
                         borderRadius: '6px',
                         color: 'var(--text-primary)',
                         fontSize: '11px',

@@ -85,7 +85,7 @@ export default function AIDataDoctor() {
 
   if (loading && !summary) {
     return (
-      <div style={{ backgroundColor: 'var(--bg-card, #0f172a)', border: '1px solid var(--border, #1e293b)', borderRadius: '12px', padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+      <div style={{ backgroundColor: 'var(--bg-card, #121214)', border: '1px solid var(--border, #232326)', borderRadius: '12px', padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
         <i className="ti ti-loader-2" style={{ animation: 'spin 1s linear infinite', fontSize: '20px', display: 'block', margin: '0 auto 8px' }} />
         AI Data Doctor diagnosing database health...
       </div>
@@ -97,8 +97,8 @@ export default function AIDataDoctor() {
   return (
     <div
       style={{
-        backgroundColor: 'var(--bg-card, #0f172a)',
-        border: '1px solid var(--border-ai, rgba(139, 92, 246, 0.25))',
+        backgroundColor: 'var(--bg-card, #121214)',
+        border: '1px solid var(--border-ai, rgba(161, 161, 170, 0.25))',
         borderRadius: '12px',
         padding: '20px',
         display: 'flex',
@@ -149,7 +149,7 @@ export default function AIDataDoctor() {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            background: 'linear-gradient(90deg, rgba(16, 185, 129, 0.15), rgba(56, 189, 248, 0.1))',
+            background: 'linear-gradient(90deg, rgba(16, 185, 129, 0.15), rgba(228, 228, 231, 0.1))',
             border: '1px solid rgba(16, 185, 129, 0.4)',
             borderRadius: '8px',
             padding: '10px 16px'
@@ -179,7 +179,7 @@ export default function AIDataDoctor() {
 
       {/* Metric Cards Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-        <div style={{ background: 'var(--bg-base, #090d14)', border: '1px solid var(--border, #1e293b)', borderRadius: '8px', padding: '12px' }}>
+        <div style={{ background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--border, #232326)', borderRadius: '8px', padding: '12px' }}>
           <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
             Healthy Records
           </div>
@@ -188,7 +188,7 @@ export default function AIDataDoctor() {
           </div>
         </div>
 
-        <div style={{ background: 'var(--bg-base, #090d14)', border: '1px solid var(--border, #1e293b)', borderRadius: '8px', padding: '12px' }}>
+        <div style={{ background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--border, #232326)', borderRadius: '8px', padding: '12px' }}>
           <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
             Stale / Missing Emails
           </div>
@@ -197,7 +197,7 @@ export default function AIDataDoctor() {
           </div>
         </div>
 
-        <div style={{ background: 'var(--bg-base, #090d14)', border: '1px solid var(--border, #1e293b)', borderRadius: '8px', padding: '12px' }}>
+        <div style={{ background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--border, #232326)', borderRadius: '8px', padding: '12px' }}>
           <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
             Unverified Phones
           </div>
@@ -206,24 +206,24 @@ export default function AIDataDoctor() {
           </div>
         </div>
 
-        <div style={{ background: 'var(--bg-base, #090d14)', border: '1px solid var(--border, #1e293b)', borderRadius: '8px', padding: '12px' }}>
+        <div style={{ background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--border, #232326)', borderRadius: '8px', padding: '12px' }}>
           <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
             Flagged For Review
           </div>
-          <div style={{ fontSize: '20px', fontWeight: 900, color: '#a78bfa', marginTop: '4px' }}>
+          <div style={{ fontSize: '20px', fontWeight: 900, color: '#a1a1aa', marginTop: '4px' }}>
             {summary?.needs_review?.toLocaleString() || '0'}
           </div>
         </div>
       </div>
 
       {/* Action Bar */}
-      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'flex-end', borderTop: '1px solid var(--border, #1e293b)', paddingTop: '12px' }}>
+      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'flex-end', borderTop: '1px solid var(--border, #232326)', paddingTop: '12px' }}>
         <button
           disabled={repairing}
           onClick={() => handlePreviewAction('HARMONIZE_TITLES')}
           style={{
-            background: 'var(--bg-base, #090d14)',
-            border: '1px solid var(--border, #1e293b)',
+            background: 'var(--bg-base, #0b0b0c)',
+            border: '1px solid var(--border, #232326)',
             borderRadius: '6px',
             padding: '8px 14px',
             fontSize: '12px',
@@ -256,7 +256,7 @@ export default function AIDataDoctor() {
           disabled={repairing}
           onClick={() => handlePreviewAction('AUTO_MERGE')}
           style={{
-            background: 'linear-gradient(135deg, #10b981, #38bdf8)',
+            background: 'linear-gradient(135deg, #10b981, #e4e4e7)',
             border: 'none',
             borderRadius: '6px',
             padding: '8px 16px',
@@ -296,8 +296,8 @@ export default function AIDataDoctor() {
               maxWidth: '740px',
               maxHeight: '85vh',
               overflowY: 'auto',
-              backgroundColor: 'var(--bg-card, #0f172a)',
-              border: '1px solid var(--border-ai, rgba(139, 92, 246, 0.4))',
+              backgroundColor: 'var(--bg-card, #121214)',
+              border: '1px solid var(--border-ai, rgba(161, 161, 170, 0.4))',
               borderRadius: '12px',
               padding: '24px',
               display: 'flex',
@@ -336,8 +336,8 @@ export default function AIDataDoctor() {
                     gridTemplateColumns: '180px 1fr 1fr',
                     gap: '12px',
                     padding: '10px 14px',
-                    backgroundColor: 'var(--bg-base, #090d14)',
-                    border: '1px solid var(--border, #1e293b)',
+                    backgroundColor: 'var(--bg-base, #0b0b0c)',
+                    border: '1px solid var(--border, #232326)',
                     borderRadius: '6px',
                     fontSize: '12px'
                   }}
@@ -357,12 +357,12 @@ export default function AIDataDoctor() {
               ))}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid var(--border, #1e293b)', paddingTop: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid var(--border, #232326)', paddingTop: '16px' }}>
               <button
                 onClick={() => setShowPreviewModal(false)}
                 style={{
-                  background: 'var(--bg-base, #090d14)',
-                  border: '1px solid var(--border, #1e293b)',
+                  background: 'var(--bg-base, #0b0b0c)',
+                  border: '1px solid var(--border, #232326)',
                   borderRadius: '6px',
                   padding: '8px 16px',
                   fontSize: '12px',
@@ -375,7 +375,7 @@ export default function AIDataDoctor() {
               <button
                 onClick={handleCommitAction}
                 style={{
-                  background: 'linear-gradient(135deg, #10b981, #38bdf8)',
+                  background: 'linear-gradient(135deg, #10b981, #e4e4e7)',
                   border: 'none',
                   borderRadius: '6px',
                   padding: '8px 18px',

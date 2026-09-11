@@ -190,7 +190,7 @@ export default function SignatureManager({ onSelectSignature, selectedSignatureI
                 borderRadius: '8px',
                 padding: '12px',
                 cursor: onSelectSignature ? 'pointer' : 'default',
-                background: selectedSignatureId === sig.signature_id ? 'rgba(14, 165, 233, 0.05)' : 'var(--bg-surface)',
+                background: selectedSignatureId === sig.signature_id ? 'rgba(212, 212, 216, 0.05)' : 'var(--bg-surface)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '8px',

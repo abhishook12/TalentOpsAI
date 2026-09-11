@@ -78,9 +78,9 @@ export default function ExtensionHub() {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
             <div style={{
-              background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+              background: 'linear-gradient(135deg, #a1a1aa 0%, #71717a 100%)',
               width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(99, 102, 241, 0.4)'
+              boxShadow: '0 4px 12px rgba(161, 161, 170, 0.4)'
             }}>
               <Puzzle size={22} color="#fff" />
             </div>
@@ -97,7 +97,7 @@ export default function ExtensionHub() {
           <button
             onClick={() => fetchAllData(true)}
             style={{
-              padding: '9px 14px', background: '#1e293b', color: '#94a3b8', border: '1px solid #334155',
+              padding: '9px 14px', background: '#232326', color: '#a1a1aa', border: '1px solid #27272a',
               borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex',
               alignItems: 'center', gap: 6
             }}
@@ -109,9 +109,9 @@ export default function ExtensionHub() {
           <button
             onClick={handleDownload}
             style={{
-              padding: '10px 22px', background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
+              padding: '10px 22px', background: 'linear-gradient(135deg, #71717a 0%, #a1a1aa 100%)',
               color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 14px rgba(99, 102, 241, 0.35)',
+              display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 14px rgba(161, 161, 170, 0.35)',
             }}
           >
             <Download size={16} />
@@ -124,56 +124,56 @@ export default function ExtensionHub() {
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28
       }}>
-        <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 12, padding: '16px 20px' }}>
+        <div style={{ background: '#121214', border: '1px solid #232326', borderRadius: 12, padding: '16px 20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Verified Recruiters</span>
-            <Users size={16} color="#60a5fa" />
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#a1a1aa', textTransform: 'uppercase' }}>Verified Recruiters</span>
+            <Users size={16} color="#f4f4f5" />
           </div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: '#f8fafc' }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#fafafa' }}>
             {summary?.total_recruiters ? summary.total_recruiters.toLocaleString() : '87,419'}
           </div>
           <span style={{ fontSize: 11, color: '#4ade80', fontWeight: 600 }}>● Network verified</span>
         </div>
 
-        <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 12, padding: '16px 20px' }}>
+        <div style={{ background: '#121214', border: '1px solid #232326', borderRadius: 12, padding: '16px 20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Enriched Companies</span>
-            <Building size={16} color="#a78bfa" />
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#a1a1aa', textTransform: 'uppercase' }}>Enriched Companies</span>
+            <Building size={16} color="#a1a1aa" />
           </div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: '#f8fafc' }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#fafafa' }}>
             {summary?.total_companies ? summary.total_companies.toLocaleString() : '12,850'}
           </div>
-          <span style={{ fontSize: 11, color: '#a78bfa', fontWeight: 600 }}>Direct corporate domains</span>
+          <span style={{ fontSize: 11, color: '#a1a1aa', fontWeight: 600 }}>Direct corporate domains</span>
         </div>
 
-        <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 12, padding: '16px 20px' }}>
+        <div style={{ background: '#121214', border: '1px solid #232326', borderRadius: 12, padding: '16px 20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Active Scout Nodes</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#a1a1aa', textTransform: 'uppercase' }}>Active Scout Nodes</span>
             <Wifi size={16} color="#4ade80" />
           </div>
           <div style={{ fontSize: 22, fontWeight: 800, color: '#4ade80' }}>
             {summary?.active_scouts ? summary.active_scouts : '16'} Connected
           </div>
-          <span style={{ fontSize: 11, color: '#94a3b8' }}>Real-time telemetry</span>
+          <span style={{ fontSize: 11, color: '#a1a1aa' }}>Real-time telemetry</span>
         </div>
 
-        <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 12, padding: '16px 20px' }}>
+        <div style={{ background: '#121214', border: '1px solid #232326', borderRadius: 12, padding: '16px 20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Live Database Sync</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#a1a1aa', textTransform: 'uppercase' }}>Live Database Sync</span>
             <Activity size={16} color="#f59e0b" />
           </div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#e4e4e7', display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
             Active Sync
           </div>
-          <span style={{ fontSize: 11, color: '#64748b' }}>Pre-configured & Bound</span>
+          <span style={{ fontSize: 11, color: '#71717a' }}>Pre-configured & Bound</span>
         </div>
       </div>
 
       {/* Hero Overview & Pre-Activated Status Card */}
       <div style={{
-        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(56, 189, 248, 0.08) 100%)',
-        border: '1px solid rgba(99, 102, 241, 0.3)', borderRadius: 16, padding: '24px 28px',
+        background: 'linear-gradient(135deg, rgba(161, 161, 170, 0.12) 0%, rgba(228, 228, 231, 0.08) 100%)',
+        border: '1px solid rgba(161, 161, 170, 0.3)', borderRadius: 16, padding: '24px 28px',
         display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 24, marginBottom: 28, alignItems: 'center'
       }}>
         <div>
@@ -194,15 +194,15 @@ export default function ExtensionHub() {
 
         {/* Activation Code Box */}
         <div style={{
-          background: '#0f172a', border: '1px solid #334155', borderRadius: 12, padding: '18px 20px',
+          background: '#121214', border: '1px solid #27272a', borderRadius: 12, padding: '18px 20px',
           boxShadow: '0 10px 25px rgba(0,0,0,0.4)'
         }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>
             Universal Pre-Activated Key
           </div>
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            background: '#1e293b', border: '1px solid #334155', borderRadius: 8, padding: '8px 12px', marginTop: 6
+            background: '#232326', border: '1px solid #27272a', borderRadius: 8, padding: '8px 12px', marginTop: 6
           }}>
             <span style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 700, color: '#4ade80', letterSpacing: 1 }}>
               {activeCode}
@@ -215,7 +215,7 @@ export default function ExtensionHub() {
                 setTimeout(() => setCopiedCode(false), 2000);
               }}
               style={{
-                padding: '6px 12px', background: copiedCode ? '#22c55e' : '#6366f1', color: '#fff',
+                padding: '6px 12px', background: copiedCode ? '#22c55e' : '#a1a1aa', color: '#fff',
                 border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: 5
               }}
@@ -225,12 +225,12 @@ export default function ExtensionHub() {
             </button>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
-            <span style={{ fontSize: 11, color: '#64748b' }}>Auto-activates on load</span>
+            <span style={{ fontSize: 11, color: '#71717a' }}>Auto-activates on load</span>
             <button
               onClick={handleGenerateCode}
               disabled={generating}
               style={{
-                background: 'none', border: 'none', color: '#818cf8', fontSize: 11, fontWeight: 600,
+                background: 'none', border: 'none', color: '#a1a1aa', fontSize: 11, fontWeight: 600,
                 cursor: 'pointer', textDecoration: 'underline'
               }}
             >
@@ -242,23 +242,23 @@ export default function ExtensionHub() {
 
       {/* Live Stream: Real-Time Synced Database Additions */}
       <div style={{
-        background: '#0f172a', border: '1px solid #1e293b', borderRadius: 16,
+        background: '#121214', border: '1px solid #232326', borderRadius: 16,
         padding: '22px 24px', marginBottom: 28
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px #22c55e' }} />
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#f8fafc', margin: 0 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#fafafa', margin: 0 }}>
               Live Traceable Discovery Stream
             </h3>
           </div>
-          <span style={{ fontSize: 12, color: '#94a3b8' }}>
+          <span style={{ fontSize: 12, color: '#a1a1aa' }}>
             ⚡ Real-time verified discoveries only • Complete audit provenance
           </span>
         </div>
 
         {liveFeed.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '28px 0', color: '#64748b', fontSize: 13 }}>
+          <div style={{ textAlign: 'center', padding: '28px 0', color: '#71717a', fontSize: 13 }}>
             📡 No live captures yet in this browser session. Waiting for screen change or navigation...
           </div>
         ) : (
@@ -267,30 +267,30 @@ export default function ExtensionHub() {
               const isNew = item.db_action === 'NEW_DISCOVERY' || !item.db_action;
               const isEnriched = item.db_action === 'ENRICHED';
               const tagLabel = isNew ? 'NEW DISCOVERY' : isEnriched ? 'ENRICHED' : 'PREVIOUSLY KNOWN';
-              const tagColor = isNew ? '#4ade80' : isEnriched ? '#38bdf8' : '#94a3b8';
-              const tagBg = isNew ? 'rgba(34, 197, 94, 0.15)' : isEnriched ? 'rgba(56, 189, 248, 0.15)' : 'rgba(148, 163, 184, 0.15)';
+              const tagColor = isNew ? '#4ade80' : isEnriched ? '#e4e4e7' : '#a1a1aa';
+              const tagBg = isNew ? 'rgba(34, 197, 94, 0.15)' : isEnriched ? 'rgba(228, 228, 231, 0.15)' : 'rgba(148, 163, 184, 0.15)';
 
               return (
                 <div key={idx} style={{
-                  background: '#131b2e', border: '1px solid #1e293b', borderRadius: 10, padding: '12px 14px',
+                  background: '#131b2e', border: '1px solid #232326', borderRadius: 10, padding: '12px 14px',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{
-                      width: 32, height: 32, borderRadius: 8, background: 'rgba(99, 102, 241, 0.2)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#818cf8',
+                      width: 32, height: 32, borderRadius: 8, background: 'rgba(161, 161, 170, 0.2)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a1a1aa',
                       fontWeight: 700, fontSize: 13
                     }}>
                       {item.recruiter_name ? item.recruiter_name.charAt(0) : 'R'}
                     </div>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#fafafa' }}>
                         {item.recruiter_name}
                       </div>
-                      <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                      <div style={{ fontSize: 11, color: '#a1a1aa' }}>
                         {item.company_name || 'Corporate'} • {item.title || 'Recruiter'}
                       </div>
-                      <div style={{ fontSize: 10, color: '#64748b', marginTop: 2, fontFamily: 'monospace' }}>
+                      <div style={{ fontSize: 10, color: '#71717a', marginTop: 2, fontFamily: 'monospace' }}>
                         {item.discovery_id || `DISC-R${item.recruiter_id || idx}`} • {item.extraction_source || 'Visual + DOM'}
                       </div>
                     </div>
@@ -324,13 +324,13 @@ export default function ExtensionHub() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 18 }}>
           <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
-            <div style={{ color: '#818cf8', fontWeight: 800, fontSize: 13, marginBottom: 4 }}>1. Download & Unzip</div>
+            <div style={{ color: '#a1a1aa', fontWeight: 800, fontSize: 13, marginBottom: 4 }}>1. Download & Unzip</div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
               Click <b>1-Click Pre-Activated Download</b> and extract the folder to your computer.
             </div>
           </div>
           <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
-            <div style={{ color: '#38bdf8', fontWeight: 800, fontSize: 13, marginBottom: 4 }}>2. Open chrome://extensions</div>
+            <div style={{ color: '#e4e4e7', fontWeight: 800, fontSize: 13, marginBottom: 4 }}>2. Open chrome://extensions</div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
               Open <code>chrome://extensions/</code> in Chrome and toggle <b>Developer mode</b> (top right).
             </div>

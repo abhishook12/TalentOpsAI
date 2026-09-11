@@ -32,7 +32,7 @@ export default function GeographyTab() {
   return (
     <div className="glass-card" style={{ padding: 24, borderRadius: 6 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-        <div style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8', padding: 8, borderRadius: 8 }}>
+        <div style={{ background: 'rgba(228, 228, 231, 0.1)', color: '#e4e4e7', padding: 8, borderRadius: 8 }}>
           <Globe size={20} />
         </div>
         <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text-primary)' }}>Traffic by Geography</h2>

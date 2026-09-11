@@ -57,7 +57,7 @@ export default function AuditLogs() {
                   display: 'grid', gridTemplateColumns: '40px 1fr 120px 200px', alignItems: 'center', gap: 16, 
                   padding: '12px 16px', 
                   borderBottom: index < filtered.length - 1 ? '1px solid var(--card-border)' : 'none',
-                  background: index % 2 === 0 ? 'transparent' : 'rgba(14, 165, 233, 0.02)',
+                  background: index % 2 === 0 ? 'transparent' : 'rgba(212, 212, 216, 0.02)',
                   borderRadius: index === 0 ? '8px 8px 0 0' : index === filtered.length - 1 ? '0 0 8px 8px' : 0
                 }}
               >

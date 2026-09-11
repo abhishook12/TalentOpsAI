@@ -39,24 +39,24 @@ export default function FullScreenLoader({ error, onRetry, isSlowNetwork }) {
         <div style={{
           width: 48,
           height: 48,
-          background: 'linear-gradient(135deg, #0ea5e9, #3b82f6)',
+          background: 'linear-gradient(135deg, #d4d4d8, #d4d4d8)',
           borderRadius: 6,
           display: 'grid',
           placeItems: 'center',
           color: '#fff',
-          boxShadow: '0 8px 32px rgba(14, 165, 233, 0.4)'
+          boxShadow: '0 8px 32px rgba(212, 212, 216, 0.4)'
         }}>
           <span style={{ fontWeight: 900, fontSize: 24, letterSpacing: -1 }}>T</span>
         </div>
         <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em' }}>
-          TalentOps <span style={{ color: '#0ea5e9' }}>AI</span>
+          TalentOps <span style={{ color: '#d4d4d8' }}>AI</span>
         </div>
       </div>
 
       {!error ? (
         <>
           <div style={{ position: 'relative', width: 64, height: 64, marginBottom: 24 }}>
-            <Loader2 size={64} color="#0ea5e9" style={{ animation: 'spin 1s linear infinite' }} />
+            <Loader2 size={64} color="#d4d4d8" style={{ animation: 'spin 1s linear infinite' }} />
           </div>
           <style>{`
             @keyframes spin {
@@ -108,7 +108,7 @@ export default function FullScreenLoader({ error, onRetry, isSlowNetwork }) {
               onClick={onRetry}
               style={{
                 padding: '10px 24px',
-                background: '#0ea5e9',
+                background: '#d4d4d8',
                 color: '#fff',
                 border: 'none',
                 borderRadius: 8,

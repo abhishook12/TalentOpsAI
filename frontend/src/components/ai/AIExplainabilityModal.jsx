@@ -72,12 +72,12 @@ export default function AIExplainabilityModal({ isOpen, onClose, explanationData
           maxWidth: '680px',
           maxHeight: '90vh',
           overflowY: 'auto',
-          backgroundColor: 'var(--bg-card, #0f172a)',
-          border: '1px solid var(--border-ai, rgba(139, 92, 246, 0.35))',
+          backgroundColor: 'var(--bg-card, #121214)',
+          border: '1px solid var(--border-ai, rgba(161, 161, 170, 0.35))',
           borderRadius: '12px',
-          boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.7), 0 0 25px rgba(139, 92, 246, 0.15)',
+          boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.7), 0 0 25px rgba(161, 161, 170, 0.15)',
           padding: '24px',
-          color: 'var(--text-primary, #f8fafc)',
+          color: 'var(--text-primary, #fafafa)',
           display: 'flex',
           flexDirection: 'column',
           gap: '20px'
@@ -85,11 +85,11 @@ export default function AIExplainabilityModal({ isOpen, onClose, explanationData
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border, #1e293b)', paddingBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border, #232326)', paddingBottom: '16px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <span style={{ fontSize: '14px', color: '#a78bfa' }}>✦</span>
-              <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#a78bfa' }}>
+              <span style={{ fontSize: '14px', color: '#a1a1aa' }}>✦</span>
+              <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#a1a1aa' }}>
                 Explainability Engine
               </span>
               <EvidenceBadge status={provenance.profile_status || 'OBSERVED'} confidence={confidence} />
@@ -103,7 +103,7 @@ export default function AIExplainabilityModal({ isOpen, onClose, explanationData
             style={{
               background: 'transparent',
               border: 'none',
-              color: 'var(--text-secondary, #94a3b8)',
+              color: 'var(--text-secondary, #a1a1aa)',
               fontSize: '20px',
               cursor: 'pointer',
               padding: '4px 8px',
@@ -120,8 +120,8 @@ export default function AIExplainabilityModal({ isOpen, onClose, explanationData
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(56, 189, 248, 0.05))',
-            border: '1px solid rgba(139, 92, 246, 0.2)',
+            background: 'linear-gradient(135deg, rgba(161, 161, 170, 0.08), rgba(228, 228, 231, 0.05))',
+            border: '1px solid rgba(161, 161, 170, 0.2)',
             borderRadius: '10px',
             padding: '16px 20px'
           }}
@@ -130,7 +130,7 @@ export default function AIExplainabilityModal({ isOpen, onClose, explanationData
             <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
               Overall Calibrated Match Score
             </div>
-            <div style={{ fontSize: '28px', fontWeight: 900, color: '#38bdf8', marginTop: '2px' }}>
+            <div style={{ fontSize: '28px', fontWeight: 900, color: '#e4e4e7', marginTop: '2px' }}>
               {overall_score}<span style={{ fontSize: '16px', color: 'var(--text-secondary)' }}>/100</span>
             </div>
           </div>
@@ -156,18 +156,18 @@ export default function AIExplainabilityModal({ isOpen, onClose, explanationData
                   <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{item.label}</span>
                   <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>Weight: {item.weight}</span>
                 </div>
-                <div style={{ height: '8px', backgroundColor: 'var(--border, #1e293b)', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{ height: '8px', backgroundColor: 'var(--border, #232326)', borderRadius: '4px', overflow: 'hidden' }}>
                   <div
                     style={{
                       height: '100%',
                       width: `${item.score}%`,
-                      background: item.score >= 90 ? 'linear-gradient(90deg, #38bdf8, #818cf8)' : 'linear-gradient(90deg, #818cf8, #a78bfa)',
+                      background: item.score >= 90 ? 'linear-gradient(90deg, #e4e4e7, #a1a1aa)' : 'linear-gradient(90deg, #a1a1aa, #a1a1aa)',
                       borderRadius: '4px',
                       transition: 'width 0.6s ease'
                     }}
                   />
                 </div>
-                <div style={{ textAlign: 'right', fontWeight: 700, color: '#38bdf8' }}>
+                <div style={{ textAlign: 'right', fontWeight: 700, color: '#e4e4e7' }}>
                   {item.score}%
                 </div>
               </div>
@@ -191,12 +191,12 @@ export default function AIExplainabilityModal({ isOpen, onClose, explanationData
                   fontSize: '12px',
                   lineHeight: '1.5',
                   backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid var(--border, #1e293b)',
+                  border: '1px solid var(--border, #232326)',
                   borderRadius: '6px',
                   padding: '8px 12px'
                 }}
               >
-                <span style={{ color: '#38bdf8', fontWeight: 800 }}>✓</span>
+                <span style={{ color: '#e4e4e7', fontWeight: 800 }}>✓</span>
                 <span style={{ color: 'var(--text-secondary)' }}>{fact}</span>
               </div>
             ))}
@@ -216,7 +216,7 @@ export default function AIExplainabilityModal({ isOpen, onClose, explanationData
         {/* Human Recruiter Feedback Loop */}
         <div
           style={{
-            borderTop: '1px solid var(--border, #1e293b)',
+            borderTop: '1px solid var(--border, #232326)',
             paddingTop: '16px',
             display: 'flex',
             flexDirection: 'column',
@@ -285,9 +285,9 @@ export default function AIExplainabilityModal({ isOpen, onClose, explanationData
                     padding: '3px 8px',
                     fontSize: '10px',
                     borderRadius: '4px',
-                    border: feedbackCategory === reason ? '1px solid #a78bfa' : '1px solid var(--border, #1e293b)',
-                    backgroundColor: feedbackCategory === reason ? 'rgba(167, 139, 250, 0.2)' : 'transparent',
-                    color: feedbackCategory === reason ? '#a78bfa' : 'var(--text-secondary)',
+                    border: feedbackCategory === reason ? '1px solid #a1a1aa' : '1px solid var(--border, #232326)',
+                    backgroundColor: feedbackCategory === reason ? 'rgba(161, 161, 170, 0.2)' : 'transparent',
+                    color: feedbackCategory === reason ? '#a1a1aa' : 'var(--text-secondary)',
                     cursor: 'pointer'
                   }}
                 >

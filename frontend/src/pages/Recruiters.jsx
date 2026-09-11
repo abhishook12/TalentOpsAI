@@ -98,7 +98,7 @@ function Modal({ title, onClose, onSave, form, setForm, saving }) {
           {form.needs_review && (
             <div style={{ gridColumn: 'span 2', padding: '10px 14px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: '#d97706', marginBottom: 4 }}>Needs Manual Review</div>
-              <div style={{ fontSize: 12, color: '#b45309' }}>{form.review_reason || 'This record flagged as a possible duplicate during import.'}</div>
+              <div style={{ fontSize: 12, color: '#b45309' }}>{form.review_reason || 'Flagged for manual review.'}</div>
             </div>
           )}
         </div>
@@ -117,7 +117,7 @@ const getAvatarColor = (name) => {
   const colors = [
     { bg: 'var(--brand-bg)', text: 'var(--brand-strong)', border: 'var(--brand-bg)' }, // Gold
     { bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', border: 'rgba(245, 158, 11, 0.3)' }, // Amber
-    { bg: 'rgba(100, 116, 139, 0.15)', text: '#94a3b8', border: 'rgba(100, 116, 139, 0.3)' }, // Slate
+    { bg: 'rgba(100, 116, 139, 0.15)', text: '#a1a1aa', border: 'rgba(100, 116, 139, 0.3)' }, // Slate
     { bg: 'rgba(20, 184, 166, 0.15)', text: '#2dd4bf', border: 'rgba(20, 184, 166, 0.3)' }, // Teal
     { bg: 'rgba(168, 115, 68, 0.15)', text: '#d99c64', border: 'rgba(168, 115, 68, 0.3)' } // Warm Brown
   ]
@@ -125,9 +125,25 @@ const getAvatarColor = (name) => {
   return colors[index]
 }
 
+const formatLastActive = (dateStr) => {
+  if (!dateStr) return '—'
+  try {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return '—'
+    const diffMs = Date.now() - d.getTime()
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    if (diffHours < 1) return 'Just now'
+    if (diffHours < 24) return `${diffHours}h ago`
+    const diffDays = Math.floor(diffHours / 24)
+    if (diffDays < 30) return `${diffDays}d ago`
+    return d.toLocaleDateString()
+  } catch {
+    return '—'
+  }
+}
+
 const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleActive, handleDelete, onSelect }) {
-  // Mock "Last Active" based on completeness to mimic the mockup's data variations
-  const mockLastActive = r.completeness_score > 80 ? '2h ago' : r.completeness_score > 50 ? '3h ago' : '1d ago'
+  const lastActiveText = formatLastActive(r.last_active_at || r.updated_at)
   
   const avatarStyle = getAvatarColor(r.recruiter_name)
 
@@ -181,15 +197,15 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
                   <div style={{ 
                     display: 'inline-flex', alignItems: 'center', gap: 3, 
                     padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700,
-                    background: r.seniority_level === 'Executive' ? 'rgba(168,85,247,0.15)' :
-                                r.seniority_level === 'Lead' ? 'rgba(99,102,241,0.15)' :
+                    background: r.seniority_level === 'Executive' ? 'rgba(161, 161, 170,0.15)' :
+                                r.seniority_level === 'Lead' ? 'rgba(161, 161, 170,0.15)' :
                                 r.seniority_level === 'Senior' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)',
-                    color: r.seniority_level === 'Executive' ? '#c084fc' :
-                           r.seniority_level === 'Lead' ? '#818cf8' :
+                    color: r.seniority_level === 'Executive' ? '#d4d4d8' :
+                           r.seniority_level === 'Lead' ? '#a1a1aa' :
                            r.seniority_level === 'Senior' ? '#34d399' : '#fbbf24',
                     border: `1px solid ${
-                      r.seniority_level === 'Executive' ? 'rgba(168,85,247,0.3)' :
-                      r.seniority_level === 'Lead' ? 'rgba(99,102,241,0.3)' :
+                      r.seniority_level === 'Executive' ? 'rgba(161, 161, 170,0.3)' :
+                      r.seniority_level === 'Lead' ? 'rgba(161, 161, 170,0.3)' :
                       r.seniority_level === 'Senior' ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'
                     }`
                   }}>
@@ -197,7 +213,7 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
                     {r.seniority_level}
                   </div>
                 )}
-                {r.is_deliverable !== false && (
+                {r.is_deliverable === true && (
                   <div style={{ 
                     display: 'inline-flex', alignItems: 'center', gap: 3, 
                     padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700,
@@ -211,14 +227,14 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
                     display: 'inline-flex', alignItems: 'center', gap: 4, 
                     padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
                     background: r.email_status === 'verified' ? 'rgba(16,185,129,0.1)' : 
-                                r.email_status === 'likely_valid' ? 'rgba(59,130,246,0.1)' :
+                                r.email_status === 'likely_valid' ? 'rgba(212, 212, 216,0.1)' :
                                 r.email_status === 'needs_monitoring' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
                     color: r.email_status === 'verified' ? '#10b981' : 
-                           r.email_status === 'likely_valid' ? '#3b82f6' :
+                           r.email_status === 'likely_valid' ? '#d4d4d8' :
                            r.email_status === 'needs_monitoring' ? '#f59e0b' : '#ef4444',
                     border: `1px solid ${
                       r.email_status === 'verified' ? 'rgba(16,185,129,0.2)' : 
-                      r.email_status === 'likely_valid' ? 'rgba(59,130,246,0.2)' :
+                      r.email_status === 'likely_valid' ? 'rgba(212, 212, 216,0.2)' :
                       r.email_status === 'needs_monitoring' ? 'rgba(245,158,11,0.2)' : 'rgba(239,68,68,0.2)'
                     }`
                   }} title={r.email_source ? `Confidence: ${r.email_confidence}% | Source: ${r.email_source}` : `Confidence: ${r.email_confidence || 0}%`}>
@@ -271,7 +287,7 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
         {r.specialization || '—'}
       </td>
       <td style={{ padding: '24px 20px', color: 'var(--text-secondary)', fontSize: 14, textAlign: 'right', verticalAlign: 'middle' }}>
-        {mockLastActive}
+        {lastActiveText}
       </td>
       <td style={{ padding: '24px 20px', textAlign: 'center', verticalAlign: 'middle' }}>
         {r.is_active ? (
@@ -332,7 +348,7 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
             transition: 'all 0.2s ease'
           }}
           onClick={(e) => { e.stopPropagation(); if (openEdit) openEdit(r); }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(139, 92, 246, 0.15)'; e.currentTarget.style.color = '#c4b5fd' }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(161, 161, 170, 0.15)'; e.currentTarget.style.color = '#d4d4d8' }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)' }}
         >
           <i className="ti ti-dots" style={{ fontSize: 18 }} />
@@ -726,9 +742,9 @@ export default function Recruiters() {
                   key={idx}
                   onClick={() => { setSearch(example); setPage(1); }}
                   style={{
-                    background: search === example ? 'rgba(59,130,246,0.18)' : 'rgba(255,255,255,0.04)',
-                    border: search === example ? '1px solid rgba(59,130,246,0.4)' : '1px solid var(--card-border)',
-                    color: search === example ? '#60a5fa' : 'var(--text-secondary)',
+                    background: search === example ? 'rgba(212, 212, 216,0.18)' : 'rgba(255,255,255,0.04)',
+                    border: search === example ? '1px solid rgba(212, 212, 216,0.4)' : '1px solid var(--card-border)',
+                    color: search === example ? '#f4f4f5' : 'var(--text-secondary)',
                     padding: '3px 8px',
                     borderRadius: 6,
                     fontSize: 11,

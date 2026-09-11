@@ -122,7 +122,6 @@ export default function Dashboard() {
     isManualRefreshing.current = true
     setRefreshError(null)
     try {
-      await api.post('/recruiters/extension/process-batch').catch(() => {})
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] }),
         queryClient.invalidateQueries({ queryKey: ['dashboard-data-quality'] }),
@@ -138,22 +137,6 @@ export default function Dashboard() {
       isManualRefreshing.current = false
     }
   }, [queryClient, isFetchingAny])
-
-  // Auto-drain pending staging records into Master DB whenever queue has items
-  useEffect(() => {
-    if (ingestionData?.metrics_today?.staging_records > 0) {
-      const timer = setTimeout(() => {
-        api.post('/recruiters/extension/process-batch')
-          .then(() => {
-            queryClient.invalidateQueries({ queryKey: ['dashboard-ingestion-summary'] })
-            queryClient.invalidateQueries({ queryKey: ['dashboard-kpis'] })
-            queryClient.invalidateQueries({ queryKey: ['dashboard-data-quality'] })
-          })
-          .catch(() => {})
-      }, 1500)
-      return () => clearTimeout(timer)
-    }
-  }, [ingestionData?.metrics_today?.staging_records, queryClient])
 
   const topPages = Array.isArray(visits?.top_pages) ? visits.top_pages.slice(0, 5) : []
 
@@ -238,7 +221,7 @@ export default function Dashboard() {
       <SectionHeader
         eyebrow="Operational Overview"
         title="Command Center Dashboard"
-        subtitle="Real database data only. The layout mirrors a control-room interface while keeping existing workflows intact."
+        subtitle="Recruiter operations and intelligence workspace overview."
         action={(
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--mono)', marginRight: 4 }}>
@@ -262,12 +245,6 @@ export default function Dashboard() {
             <PrimaryButton onClick={() => navigate({ to: '/search' })}>
               <i className="ti ti-sparkles" /> Open AI Search
             </PrimaryButton>
-            <GhostButton
-              onClick={() => window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/analytics/executive-report`, '_blank')}
-              title="Download executive scorecard CSV report across top staffing giants"
-            >
-              <i className="ti ti-file-export" /> Executive Report
-            </GhostButton>
           </div>
         )}
       />
@@ -394,8 +371,7 @@ export default function Dashboard() {
           <SectionHeader
             eyebrow="Search Logs"
             title="Top Companies"
-            subtitle="Companies ranked by recruiter coverage from the live backend."
-            action={<Badge tone="success">Real data</Badge>}
+            subtitle="Companies ranked by recruiter coverage."
           />
           {companiesLoading && !topCompanies ? (
             <SkeletonRow rows={4} gap={10} height={52} />
@@ -464,7 +440,7 @@ export default function Dashboard() {
           <SectionHeader
             eyebrow="Traffic"
             title="Top Pages"
-            subtitle="Live page visitation distribution."
+            subtitle="Page visitation distribution."
             action={<Badge tone="neutral">{visitsLoading && !visits ? <Skeleton width="50px" height="12px" /> : `${formatCount(totalPages)} views`}</Badge>}
           />
           {visitsLoading && !visits ? (

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { Search, Monitor, Settings, Users, Briefcase, BarChart, Database, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
 
 export default function CommandPalette() {
   const [isOpen, setIsOpen] = useState(false);
@@ -9,6 +10,7 @@ export default function CommandPalette() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const navigate = useNavigate();
   const inputRef = useRef(null);
+  const { isAdmin } = useAuth();
   
   const actions = [
     { id: 'ai_command', title: '✦ Ask TalentOps AI Anything', icon: Search, type: 'ai', route: '/?focus=ai' },
@@ -21,13 +23,15 @@ export default function CommandPalette() {
     { id: 'directory', title: 'View Directory', icon: Database, route: '/directory' },
     { id: 'settings', title: 'Open Settings', icon: Settings, route: '/settings' },
     { id: 'profile', title: 'My Profile', icon: Users, route: '/profile' },
-    { id: 'admin_dashboard', title: 'Admin Terminal', icon: Monitor, route: '/admin' },
-    { id: 'admin_users', title: 'User Management', icon: Users, route: '/admin/users' },
-    { id: 'admin_visitors', title: 'Visitor Analytics', icon: Activity, route: '/admin/visitor-analytics' },
+    { id: 'admin_dashboard', title: 'Admin Terminal', icon: Monitor, route: '/admin', adminOnly: true },
+    { id: 'admin_users', title: 'User Management', icon: Users, route: '/admin/users', adminOnly: true },
+    { id: 'admin_visitors', title: 'Visitor Analytics', icon: Activity, route: '/admin/visitor-analytics', adminOnly: true },
     { id: 'ai_search', title: 'AI Search & Query Intelligence', icon: Search, route: '/search' },
   ];
 
-  const filteredActions = actions.filter(action => 
+  const visibleActions = actions.filter(action => !action.adminOnly || isAdmin);
+
+  const filteredActions = visibleActions.filter(action => 
     action.title.toLowerCase().includes(query.toLowerCase())
   );
 
@@ -165,10 +169,10 @@ export default function CommandPalette() {
                       transition: 'background 0.1s'
                     }}
                   >
-                    <Icon size={18} style={{ color: action.type === 'ai' ? '#38bdf8' : (isSelected ? 'var(--brand)' : 'inherit') }} />
+                    <Icon size={18} style={{ color: action.type === 'ai' ? '#e4e4e7' : (isSelected ? 'var(--brand)' : 'inherit') }} />
                     <span style={{ fontSize: 15, fontWeight: isSelected ? 600 : 500, flex: 1 }}>{action.title}</span>
                     {action.type === 'ai' && (
-                      <span style={{ fontSize: '10px', background: 'rgba(139, 92, 246, 0.2)', color: '#c4b5fd', border: '1px solid rgba(139, 92, 246, 0.4)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                      <span style={{ fontSize: '10px', background: 'rgba(161, 161, 170, 0.2)', color: '#d4d4d8', border: '1px solid rgba(161, 161, 170, 0.4)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
                         AI ACTION
                       </span>
                     )}

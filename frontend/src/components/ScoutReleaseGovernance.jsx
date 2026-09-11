@@ -145,7 +145,7 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
 
   if (loading && !releases.length) {
     return (
-      <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>
+      <div style={{ padding: 40, textAlign: 'center', color: '#a1a1aa' }}>
         <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 12px' }} />
         <div>Loading Scout Release &amp; Rollout Governance...</div>
       </div>
@@ -156,11 +156,11 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* ── TOP HERO: CANONICAL PRODUCTION RELEASE STATUS ───────────────────── */}
       <div style={{
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)',
-        border: '1px solid #3b82f6',
+        background: 'linear-gradient(135deg, #121214 0%, #1e1b4b 100%)',
+        border: '1px solid #d4d4d8',
         borderRadius: 12,
         padding: '20px 24px',
-        boxShadow: '0 4px 20px rgba(59, 130, 246, 0.15)'
+        boxShadow: '0 4px 20px rgba(212, 212, 216, 0.15)'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14 }}>
           <div>
@@ -171,14 +171,14 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
               }}>
                 SINGLE SOURCE OF TRUTH
               </span>
-              <span style={{ color: '#94a3b8', fontSize: 12 }}>
-                Canonical Production Release: <b style={{ color: '#f8fafc', fontSize: 14 }}>{currentProduction.version ? `v${currentProduction.version}` : 'Loading...'}</b>
+              <span style={{ color: '#a1a1aa', fontSize: 12 }}>
+                Canonical Production Release: <b style={{ color: '#fafafa', fontSize: 14 }}>{currentProduction.version ? `v${currentProduction.version}` : 'Loading...'}</b>
               </span>
             </div>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#f8fafc', margin: '0 0 6px' }}>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#fafafa', margin: '0 0 6px' }}>
               Platform-Wide Production Synchronization
             </h2>
-            <p style={{ color: '#94a3b8', fontSize: 12, margin: 0, maxWidth: 680 }}>
+            <p style={{ color: '#a1a1aa', fontSize: 12, margin: 0, maxWidth: 680 }}>
               Website downloads (<code>/scout/updates/download/latest</code>), manifest (<code>/scout/updates/manifest</code>),
               release registry, and fleet auto-updaters are all bound dynamically to this single record.
             </p>
@@ -189,8 +189,8 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
               background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: 8, padding: '8px 14px', textAlign: 'right'
             }}>
-              <div style={{ fontSize: 10, color: '#94a3b8' }}>ROLLOUT PROGRESS</div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: currentProduction.is_paused ? '#ef4444' : '#38bdf8' }}>
+              <div style={{ fontSize: 10, color: '#a1a1aa' }}>ROLLOUT PROGRESS</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: currentProduction.is_paused ? '#ef4444' : '#e4e4e7' }}>
                 {currentProduction.is_paused ? 'PAUSED' : `${currentProduction.rollout_percentage || 100}% FLEET`}
               </div>
             </div>
@@ -199,7 +199,7 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
               background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: 8, padding: '8px 14px', textAlign: 'right'
             }}>
-              <div style={{ fontSize: 10, color: '#94a3b8' }}>MINIMUM FLOOR</div>
+              <div style={{ fontSize: 10, color: '#a1a1aa' }}>MINIMUM FLOOR</div>
               <div style={{ fontSize: 16, fontWeight: 800, color: '#f59e0b' }}>
                 v{currentProduction.minimum_version || '1.0.0'}
               </div>
@@ -225,34 +225,34 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
 
       {/* ── SECTION 2: PRODUCTION RELEASE APPROVAL GATE ──────────────────────── */}
       <div style={{
-        background: '#0d131f', border: '1px solid #1e293b', borderRadius: 12, padding: 20
+        background: '#0d131f', border: '1px solid #232326', borderRadius: 12, padding: 20
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#f8fafc', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#fafafa', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 8 }}>
               <ShieldCheck size={18} color="#10b981" />
               <span>Production Release Approval Gate</span>
             </h3>
-            <p style={{ color: '#94a3b8', fontSize: 12, margin: 0 }}>
+            <p style={{ color: '#a1a1aa', fontSize: 12, margin: 0 }}>
               Verify safety checklist and formally promote release candidates to active production distribution.
             </p>
           </div>
 
           {selectedCandidate ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 12, color: '#94a3b8' }}>Target Candidate:</span>
-              <span style={{ background: '#3b82f6', color: '#fff', padding: '3px 10px', borderRadius: 6, fontWeight: 800, fontSize: 13 }}>
+              <span style={{ fontSize: 12, color: '#a1a1aa' }}>Target Candidate:</span>
+              <span style={{ background: '#d4d4d8', color: '#fff', padding: '3px 10px', borderRadius: 6, fontWeight: 800, fontSize: 13 }}>
                 v{selectedCandidate.version}
               </span>
             </div>
           ) : (
-            <span style={{ fontSize: 12, color: '#64748b' }}>No pending release candidates</span>
+            <span style={{ fontSize: 12, color: '#71717a' }}>No pending release candidates</span>
           )}
         </div>
 
         {selectedCandidate ? (
           <div style={{
-            background: '#131c2e', border: '1px solid #1e293b', borderRadius: 10, padding: 18,
+            background: '#131c2e', border: '1px solid #232326', borderRadius: 10, padding: 18,
             display: 'flex', flexDirection: 'column', gap: 16
           }}>
             {/* Checklist items */}
@@ -270,9 +270,9 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
                   key={item.key}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8, fontSize: 12,
-                    color: checklist[item.key] ? '#f8fafc' : '#94a3b8', cursor: 'pointer',
+                    color: checklist[item.key] ? '#fafafa' : '#a1a1aa', cursor: 'pointer',
                     background: checklist[item.key] ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.02)',
-                    padding: '8px 12px', borderRadius: 6, border: `1px solid ${checklist[item.key] ? '#10b981' : '#334155'}`
+                    padding: '8px 12px', borderRadius: 6, border: `1px solid ${checklist[item.key] ? '#10b981' : '#27272a'}`
                   }}
                 >
                   <input
@@ -293,7 +293,7 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                 <div>
-                  <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>INITIAL ROLLOUT COHORT</div>
+                  <div style={{ fontSize: 11, color: '#a1a1aa', marginBottom: 4 }}>INITIAL ROLLOUT COHORT</div>
                   <div style={{ display: 'flex', gap: 6 }}>
                     {[5, 25, 50, 100].map(pct => (
                       <button
@@ -302,8 +302,8 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
                         style={{
                           padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700,
                           border: 'none', cursor: 'pointer',
-                          background: targetRollout === pct ? '#3b82f6' : '#1e293b',
-                          color: targetRollout === pct ? '#fff' : '#94a3b8'
+                          background: targetRollout === pct ? '#d4d4d8' : '#232326',
+                          color: targetRollout === pct ? '#fff' : '#a1a1aa'
                         }}
                       >
                         {pct}%
@@ -313,15 +313,15 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
                 </div>
 
                 <div>
-                  <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>MINIMUM SUPPORTED VERSION</div>
+                  <div style={{ fontSize: 11, color: '#a1a1aa', marginBottom: 4 }}>MINIMUM SUPPORTED VERSION</div>
                   <input
                     type="text"
                     value={targetMinVersion}
                     onChange={(e) => setTargetMinVersion(e.target.value)}
                     placeholder="e.g. 1.0.0"
                     style={{
-                      padding: '4px 10px', background: '#090d16', border: '1px solid #334155',
-                      borderRadius: 6, color: '#f8fafc', fontSize: 12, width: 90
+                      padding: '4px 10px', background: '#0b0b0c', border: '1px solid #27272a',
+                      borderRadius: 6, color: '#fafafa', fontSize: 12, width: 90
                     }}
                   />
                 </div>
@@ -344,7 +344,7 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
             </div>
           </div>
         ) : (
-          <div style={{ padding: 18, background: '#131c2e', borderRadius: 8, fontSize: 12, color: '#94a3b8' }}>
+          <div style={{ padding: 18, background: '#131c2e', borderRadius: 8, fontSize: 12, color: '#a1a1aa' }}>
             Current production release (v{currentProduction.version}) is active and healthy. To release a new Scout version, commit code, build the signed installer, and publish via CI/CD.
           </div>
         )}
@@ -352,17 +352,17 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
 
       {/* ── SECTION 3: RELEASES REGISTRY & ROLLOUT CONTROLS ─────────────────── */}
       <div style={{
-        background: '#0d131f', border: '1px solid #1e293b', borderRadius: 12, padding: 20
+        background: '#0d131f', border: '1px solid #232326', borderRadius: 12, padding: 20
       }}>
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: '#f8fafc', margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Sliders size={18} color="#38bdf8" />
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: '#fafafa', margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Sliders size={18} color="#e4e4e7" />
           <span>Catalog of Published Releases across Channels</span>
         </h3>
 
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid #1e293b', color: '#64748b', textAlign: 'left' }}>
+              <tr style={{ borderBottom: '1px solid #232326', color: '#71717a', textAlign: 'left' }}>
                 <th style={{ padding: '10px 14px' }}>VERSION</th>
                 <th style={{ padding: '10px 14px' }}>CHANNEL</th>
                 <th style={{ padding: '10px 14px' }}>STATUS</th>
@@ -377,7 +377,7 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
                 const isCircuit = rel.status === 'CIRCUIT_TRIPPED';
                 return (
                   <tr key={rel.id} style={{ borderBottom: '1px solid #131c2e' }}>
-                    <td style={{ padding: '12px 14px', fontWeight: 700, color: '#f8fafc' }}>
+                    <td style={{ padding: '12px 14px', fontWeight: 700, color: '#fafafa' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span>v{rel.version}</span>
                         {rel.is_current && (
@@ -386,12 +386,12 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
+                      <div style={{ fontSize: 10, color: '#71717a', marginTop: 2 }}>
                         Min: v{rel.minimum_version}
                       </div>
                     </td>
 
-                    <td style={{ padding: '12px 14px', color: '#94a3b8' }}>
+                    <td style={{ padding: '12px 14px', color: '#a1a1aa' }}>
                       {rel.channel}
                     </td>
 
@@ -407,10 +407,10 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
 
                     <td style={{ padding: '12px 14px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <div style={{ width: 60, height: 6, background: '#1e293b', borderRadius: 3, overflow: 'hidden' }}>
-                          <div style={{ width: `${rel.rollout_percentage}%`, height: '100%', background: '#38bdf8' }} />
+                        <div style={{ width: 60, height: 6, background: '#232326', borderRadius: 3, overflow: 'hidden' }}>
+                          <div style={{ width: `${rel.rollout_percentage}%`, height: '100%', background: '#e4e4e7' }} />
                         </div>
-                        <span style={{ color: '#f8fafc', fontWeight: 600 }}>{rel.rollout_percentage}%</span>
+                        <span style={{ color: '#fafafa', fontWeight: 600 }}>{rel.rollout_percentage}%</span>
                       </div>
                       <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
                         {[5, 25, 50, 100].map(pct => (
@@ -418,9 +418,9 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
                             key={pct}
                             onClick={() => handleAdjustRollout(rel.version, pct)}
                             style={{
-                              padding: '1px 5px', fontSize: 9, borderRadius: 3, border: '1px solid #334155',
-                              background: rel.rollout_percentage === pct ? '#38bdf8' : 'transparent',
-                              color: rel.rollout_percentage === pct ? '#090d16' : '#94a3b8',
+                              padding: '1px 5px', fontSize: 9, borderRadius: 3, border: '1px solid #27272a',
+                              background: rel.rollout_percentage === pct ? '#e4e4e7' : 'transparent',
+                              color: rel.rollout_percentage === pct ? '#0b0b0c' : '#a1a1aa',
                               cursor: 'pointer'
                             }}
                           >
@@ -430,14 +430,14 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
                       </div>
                     </td>
 
-                    <td style={{ padding: '12px 14px', color: '#94a3b8' }}>
-                      <span style={{ color: '#f8fafc', fontWeight: 600 }}>{rel.adoption_percentage || 0}%</span>
-                      <span style={{ fontSize: 10, color: '#64748b' }}> ({rel.device_count || 0} nodes)</span>
+                    <td style={{ padding: '12px 14px', color: '#a1a1aa' }}>
+                      <span style={{ color: '#fafafa', fontWeight: 600 }}>{rel.adoption_percentage || 0}%</span>
+                      <span style={{ fontSize: 10, color: '#71717a' }}> ({rel.device_count || 0} nodes)</span>
                     </td>
 
                     <td style={{ padding: '12px 14px' }}>
                       <span style={{
-                        color: (rel.failure_rate || 0) > 5 ? '#ef4444' : '#94a3b8',
+                        color: (rel.failure_rate || 0) > 5 ? '#ef4444' : '#a1a1aa',
                         fontWeight: (rel.failure_rate || 0) > 5 ? 700 : 400
                       }}>
                         {rel.failure_rate || 0}%
@@ -449,7 +449,7 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
                         <button
                           onClick={() => handleTogglePause(rel.version, rel.is_paused)}
                           style={{
-                            padding: '4px 8px', background: '#1e293b', border: '1px solid #334155',
+                            padding: '4px 8px', background: '#232326', border: '1px solid #27272a',
                             color: rel.is_paused ? '#34d399' : '#f59e0b', borderRadius: 4, fontSize: 10, fontWeight: 700,
                             cursor: 'pointer'
                           }}
@@ -460,8 +460,8 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
                           <button
                             onClick={() => setSelectedCandidate(rel)}
                             style={{
-                              padding: '4px 8px', background: '#1e293b', border: '1px solid #3b82f6',
-                              color: '#60a5fa', borderRadius: 4, fontSize: 10, fontWeight: 700,
+                              padding: '4px 8px', background: '#232326', border: '1px solid #d4d4d8',
+                              color: '#f4f4f5', borderRadius: 4, fontSize: 10, fontWeight: 700,
                               cursor: 'pointer'
                             }}
                           >
@@ -480,15 +480,15 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
 
       {/* ── SECTION 4: CENTRALIZED REMOTE CONFIGURATION (TYPE 3 CHANGES) ───── */}
       <div style={{
-        background: '#0d131f', border: '1px solid #1e293b', borderRadius: 12, padding: 20
+        background: '#0d131f', border: '1px solid #232326', borderRadius: 12, padding: 20
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <div>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#f8fafc', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Settings size={18} color="#a855f7" />
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#fafafa', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Settings size={18} color="#a1a1aa" />
               <span>Remote Configuration &amp; Feature Flags (Type 3 Changes)</span>
             </h3>
-            <p style={{ color: '#94a3b8', fontSize: 12, margin: 0 }}>
+            <p style={{ color: '#a1a1aa', fontSize: 12, margin: 0 }}>
               Dynamically adjust Scout runtime parameters (batch sizes, sync intervals, feature toggles) across the fleet without binary updates.
             </p>
           </div>
@@ -497,7 +497,7 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
             onClick={handleSaveRemoteConfig}
             disabled={configSaving}
             style={{
-              padding: '8px 18px', background: '#a855f7', color: '#fff',
+              padding: '8px 18px', background: '#a1a1aa', color: '#fff',
               border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700,
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
             }}
@@ -510,13 +510,13 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
         {remoteConfig && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
             {/* Feature Flags */}
-            <div style={{ background: '#131c2e', border: '1px solid #1e293b', borderRadius: 8, padding: 14 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#f8fafc', marginBottom: 10 }}>
+            <div style={{ background: '#131c2e', border: '1px solid #232326', borderRadius: 8, padding: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#fafafa', marginBottom: 10 }}>
                 Feature Toggles
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {Object.entries(remoteConfig.features || {}).map(([featKey, val]) => (
-                  <label key={featKey} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: '#94a3b8' }}>
+                  <label key={featKey} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: '#a1a1aa' }}>
                     <code>{featKey}</code>
                     <input
                       type="checkbox"
@@ -528,7 +528,7 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
                           features: { ...prev.features, [featKey]: checked }
                         }));
                       }}
-                      style={{ accentColor: '#a855f7', cursor: 'pointer' }}
+                      style={{ accentColor: '#a1a1aa', cursor: 'pointer' }}
                     />
                   </label>
                 ))}
@@ -536,14 +536,14 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
             </div>
 
             {/* Runtime Parameters */}
-            <div style={{ background: '#131c2e', border: '1px solid #1e293b', borderRadius: 8, padding: 14 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#f8fafc', marginBottom: 10 }}>
+            <div style={{ background: '#131c2e', border: '1px solid #232326', borderRadius: 8, padding: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#fafafa', marginBottom: 10 }}>
                 Runtime Parameters
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {Object.entries(remoteConfig.config || {}).map(([cfgKey, val]) => (
                   <div key={cfgKey} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
-                    <code style={{ color: '#94a3b8' }}>{cfgKey}</code>
+                    <code style={{ color: '#a1a1aa' }}>{cfgKey}</code>
                     <input
                       type="number"
                       value={val}
@@ -555,8 +555,8 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
                         }));
                       }}
                       style={{
-                        padding: '3px 8px', background: '#090d16', border: '1px solid #334155',
-                        borderRadius: 4, color: '#f8fafc', fontSize: 11, width: 80, textAlign: 'right'
+                        padding: '3px 8px', background: '#0b0b0c', border: '1px solid #27272a',
+                        borderRadius: 4, color: '#fafafa', fontSize: 11, width: 80, textAlign: 'right'
                       }}
                     />
                   </div>

@@ -593,9 +593,9 @@ export default function Directory() {
                       {(() => {
                         const count = company.recruiter_count || 0;
                         if (count >= 500) {
-                          return <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'rgba(168,85,247,0.15)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.3)', whiteSpace: 'nowrap' }}>Enterprise</span>;
+                          return <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'rgba(161, 161, 170,0.15)', color: '#d4d4d8', border: '1px solid rgba(161, 161, 170,0.3)', whiteSpace: 'nowrap' }}>Enterprise</span>;
                         } else if (count >= 50) {
-                          return <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'rgba(59,130,246,0.15)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.3)', whiteSpace: 'nowrap' }}>Mid-Market</span>;
+                          return <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'rgba(212, 212, 216,0.15)', color: '#f4f4f5', border: '1px solid rgba(212, 212, 216,0.3)', whiteSpace: 'nowrap' }}>Mid-Market</span>;
                         } else {
                           return <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'rgba(245,158,11,0.15)', color: '#fbbf24', border: '1px solid rgba(245,158,11,0.3)', whiteSpace: 'nowrap' }}>Boutique</span>;
                         }

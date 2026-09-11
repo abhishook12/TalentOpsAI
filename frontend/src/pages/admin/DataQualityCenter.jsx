@@ -495,7 +495,7 @@ export default function DataQualityCenter() {
           </p>
           {learningStats && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 12, background: 'rgba(139, 92, 246, 0.15)', color: '#8B5CF6', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 12, background: 'rgba(161, 161, 170, 0.15)', color: '#a1a1aa', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <Sparkles size={13} /> Active Learning: {learningStats.learned_company_aliases} Aliases Promoted &bull; {learningStats.blocked_duplicate_pairs} False-Merges Blocked
               </span>
             </div>
@@ -598,7 +598,7 @@ export default function DataQualityCenter() {
           label="Auto-Fixed Today" 
           value={autoFixedCount} 
           icon={Sparkles} 
-          color="#8B5CF6" 
+          color="#a1a1aa" 
           subtitle="Lossless Pre-Commit Snapshots" 
         />
       </div>
@@ -633,7 +633,7 @@ export default function DataQualityCenter() {
           icon={ArrowLeftRight}
           label="Repair Proposals (Shadow Writes)"
           badge={proposalsList.length}
-          badgeColor="#8B5CF6"
+          badgeColor="#a1a1aa"
         />
         <TabButton 
           active={activeTab === 'audit'} 
@@ -653,7 +653,7 @@ export default function DataQualityCenter() {
           icon={Cpu}
           label="Sentinel Live Stream"
           badge={totalAnomalies}
-          badgeColor="#64748B"
+          badgeColor="#71717a"
         />
       </div>
 
@@ -690,7 +690,7 @@ export default function DataQualityCenter() {
             <DimensionMeterCard 
               label="Company & Domain Resolution"
               pct={dqSummary?.quality_dimensions?.company_resolution_pct ?? 98.1}
-              color="#8B5CF6"
+              color="#a1a1aa"
               icon={Building}
               stages="Canonical Aliases • Domain Discovery • Job Mismatch Detect"
               subtitle="Corporate Master Mapping"
@@ -738,7 +738,7 @@ export default function DataQualityCenter() {
               title="Duplicates"
               count={dqSummary?.issues_breakdown?.duplicate_people ?? 14829}
               severity="HIGH"
-              color="#8B5CF6"
+              color="#a1a1aa"
               description="Fuzzy multi-signal overlap (score >= 0.80)"
               actionLabel="Review Merges"
               onClick={() => setActiveTab('scanner')}
@@ -756,7 +756,7 @@ export default function DataQualityCenter() {
               title="Domain Mismatch"
               count={4219}
               severity="MEDIUM"
-              color="#3B82F6"
+              color="#d4d4d8"
               description="Company name doesn't match primary web domain"
               actionLabel="Review Domains"
               onClick={() => setActiveTab('scanner')}
@@ -765,7 +765,7 @@ export default function DataQualityCenter() {
               title="Stale Data"
               count={dqSummary?.issues_breakdown?.stale_emails ?? 82117}
               severity="LOW"
-              color="#64748B"
+              color="#71717a"
               description="No observation updates in > 365 days"
               actionLabel="Queue Re-verify"
               onClick={() => setActiveTab('scanner')}
@@ -957,8 +957,8 @@ export default function DataQualityCenter() {
                             fontWeight: 800, 
                             padding: '2px 7px', 
                             borderRadius: 4,
-                            background: item.severity === 'HIGH' ? '#EF444418' : item.severity === 'MEDIUM' ? '#F59E0B18' : '#3B82F618',
-                            color: item.severity === 'HIGH' ? '#EF4444' : item.severity === 'MEDIUM' ? '#F59E0B' : '#3B82F6'
+                            background: item.severity === 'HIGH' ? '#EF444418' : item.severity === 'MEDIUM' ? '#F59E0B18' : '#d4d4d818',
+                            color: item.severity === 'HIGH' ? '#EF4444' : item.severity === 'MEDIUM' ? '#F59E0B' : '#d4d4d8'
                           }}>
                             {item.severity}
                           </span>
@@ -1132,7 +1132,7 @@ export default function DataQualityCenter() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: 12 }}>
             <div>
               <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <ArrowLeftRight color="#8B5CF6" size={20} />
+                <ArrowLeftRight color="#a1a1aa" size={20} />
                 Shadow Writes & Repair Proposals
               </h2>
               <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
@@ -1198,8 +1198,8 @@ export default function DataQualityCenter() {
                             fontWeight: 800, 
                             padding: '2px 7px', 
                             borderRadius: 4,
-                            background: '#8B5CF620',
-                            color: '#8B5CF6'
+                            background: '#a1a1aa20',
+                            color: '#a1a1aa'
                           }}>
                             LEVEL {prop.evidence_ladder_level}
                           </span>
@@ -1518,11 +1518,11 @@ export default function DataQualityCenter() {
                               fontWeight: 800,
                               padding: '3px 8px',
                               borderRadius: 4,
-                              background: currentPoint.event_type === 'INITIAL_RECORD_CREATED' ? '#3B82F620' : (
-                                currentPoint.event_type === 'AUDIT_CHANGE' ? '#8B5CF620' : '#F59E0B20'
+                              background: currentPoint.event_type === 'INITIAL_RECORD_CREATED' ? '#d4d4d820' : (
+                                currentPoint.event_type === 'AUDIT_CHANGE' ? '#a1a1aa20' : '#F59E0B20'
                               ),
-                              color: currentPoint.event_type === 'INITIAL_RECORD_CREATED' ? '#3B82F6' : (
-                                currentPoint.event_type === 'AUDIT_CHANGE' ? '#8B5CF6' : '#F59E0B'
+                              color: currentPoint.event_type === 'INITIAL_RECORD_CREATED' ? '#d4d4d8' : (
+                                currentPoint.event_type === 'AUDIT_CHANGE' ? '#a1a1aa' : '#F59E0B'
                               )
                             }}>
                               {currentPoint.event_type}
@@ -1652,8 +1652,8 @@ export default function DataQualityCenter() {
                 fontWeight: 800, 
                 padding: '2px 8px', 
                 borderRadius: 4, 
-                background: '#8B5CF620', 
-                color: '#8B5CF6' 
+                background: '#a1a1aa20', 
+                color: '#a1a1aa' 
               }}>
                 LEVEL {selectedProposal.evidence_ladder_level} EVIDENCE
               </span>
@@ -1721,7 +1721,7 @@ export default function DataQualityCenter() {
               <button
                 onClick={() => handleKeepBothProposal(selectedProposal.id)}
                 className="cc-ghost-button"
-                style={{ padding: '9px 16px', fontSize: 12, fontWeight: 700, color: '#8B5CF6', borderColor: '#8B5CF640' }}
+                style={{ padding: '9px 16px', fontSize: 12, fontWeight: 700, color: '#a1a1aa', borderColor: '#a1a1aa40' }}
               >
                 Keep Both as Historical
               </button>

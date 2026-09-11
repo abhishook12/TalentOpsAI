@@ -36,7 +36,7 @@ export default function AIInsights() {
         title="Observations"
         subtitle="AI-driven analysis of your operational data."
         action={
-          <Badge tone="success" style={{ background: 'rgba(139, 92, 246, 0.1)', color: 'var(--brand)', borderColor: 'rgba(139, 92, 246, 0.2)' }}>
+          <Badge tone="success" style={{ background: 'rgba(161, 161, 170, 0.1)', color: 'var(--brand)', borderColor: 'rgba(161, 161, 170, 0.2)' }}>
             <BarChart3 size={12} style={{ marginRight: 4 }} /> AI Active
           </Badge>
         }

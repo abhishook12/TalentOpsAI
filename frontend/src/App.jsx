@@ -163,7 +163,7 @@ function AppShell() {
                 className="cc-icon-button"
                 title="TalentOps AI Copilot"
                 aria-label="TalentOps AI Copilot"
-                style={{ padding: '8px', color: aiPanelOpen ? '#38bdf8' : '#a78bfa' }}
+                style={{ padding: '8px', color: aiPanelOpen ? '#e4e4e7' : '#a1a1aa' }}
                 onClick={() => setAiPanelOpen(!aiPanelOpen)}
               >
                 <span style={{ fontSize: '18px', fontWeight: 900 }}>✦</span>
@@ -195,33 +195,34 @@ function AppShell() {
 
             <footer className="cc-footer">
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                <div style={{ width: 28, height: 28, borderRadius: 10, background: 'linear-gradient(135deg, #d7d7d7, #8e8e8e)', color: '#111', display: 'grid', placeItems: 'center' }}>
-                  <i className="ti ti-brand-graphql" />
-                </div>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 16, fontWeight: 900, lineHeight: 1, letterSpacing: '-0.03em', color: 'var(--text-primary)' }}>
-                    REC-INTEL v4.0
+                  <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.2, color: 'var(--text-primary)' }}>
+                    TalentOps
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                    Operational Command Center
+                    Recruiter intelligence workspace
                   </div>
                 </div>
               </div>
 
-              <div className="cc-footer-center">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 34, whiteSpace: 'nowrap' }}>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)' }}>
-                    Built by
-                  </span>
-                  <span style={{ fontSize: 17, fontWeight: 500, fontStyle: 'italic', color: 'var(--text-primary)', letterSpacing: '0.01em' }}>
-                    Abhishek
-                  </span>
-                </div>
+              <div className="cc-footer-center" style={{ display: 'flex', justifyContent: 'center' }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '3px 10px',
+                  borderRadius: '9999px',
+                  fontSize: '11px',
+                  fontWeight: 500,
+                  backgroundColor: 'rgba(217, 119, 6, 0.12)',
+                  color: '#f59e0b',
+                  border: '1px solid rgba(217, 119, 6, 0.3)'
+                }}>
+                  Sample data — not connected to a live database.
+                </span>
               </div>
 
-              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                <span><strong>Version</strong> {backendVersion}</span>
-                <span><strong>Server Node</strong> US-EAST-01A</span>
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'flex-end', fontSize: 12, color: 'var(--text-muted)' }}>
+                <span><strong>Version</strong> {backendVersion || '—'}</span>
                 <span>Copyright {new Date().getFullYear()} TalentOpsAI</span>
               </div>
             </footer>

@@ -27,9 +27,17 @@ export default function Sidebar() {
       const fetchPending = async () => {
         try {
           const res = await api.get('/admin/devices/pending/count')
-          setPendingDevicesCount(res.data.count)
+          const raw = res?.data
+          const resolvedCount = typeof raw === 'number'
+            ? raw
+            : typeof raw?.count === 'number'
+            ? raw.count
+            : typeof raw?.data?.count === 'number'
+            ? raw.data.count
+            : 0
+          setPendingDevicesCount(resolvedCount)
         } catch (e) {
-          console.error('Failed to fetch pending devices', e)
+          setPendingDevicesCount(0)
         }
       }
       fetchPending()

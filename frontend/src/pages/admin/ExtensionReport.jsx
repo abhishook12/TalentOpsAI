@@ -93,22 +93,22 @@ export default function ExtensionReport() {
             onClick={handleDownloadAndInstall}
             style={{
               padding: '8px 16px', borderRadius: 8, border: 'none', fontSize: 13, fontWeight: 700,
-              background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
+              background: 'linear-gradient(135deg, #71717a 0%, #a1a1aa 100%)',
               color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-              boxShadow: '0 2px 10px rgba(99, 102, 241, 0.35)',
+              boxShadow: '0 2px 10px rgba(161, 161, 170, 0.35)',
             }}
           >
             <span>⚡ 1-Click Install Extension</span>
           </button>
-          <div style={{ display: 'flex', gap: 4, background: '#1e293b', padding: 3, borderRadius: 8, border: '1px solid #334155' }}>
+          <div style={{ display: 'flex', gap: 4, background: '#232326', padding: 3, borderRadius: 8, border: '1px solid #27272a' }}>
             {[7, 14, 30, 90].map(d => (
               <button
                 key={d}
                 onClick={() => setDays(d)}
                 style={{
                   padding: '5px 12px', borderRadius: 6, border: 'none', fontSize: 12, fontWeight: 600,
-                  background: days === d ? '#6366f1' : 'transparent',
-                  color: days === d ? '#ffffff' : '#94a3b8',
+                  background: days === d ? '#a1a1aa' : 'transparent',
+                  color: days === d ? '#ffffff' : '#a1a1aa',
                   cursor: 'pointer',
                 }}
               >
@@ -121,13 +121,13 @@ export default function ExtensionReport() {
 
       {/* 1-Click Installation Banner */}
       <div style={{
-        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(56, 189, 248, 0.08) 100%)',
-        border: '1px solid rgba(99, 102, 241, 0.35)', borderRadius: 12, padding: '16px 20px',
+        background: 'linear-gradient(135deg, rgba(161, 161, 170, 0.15) 0%, rgba(228, 228, 231, 0.08) 100%)',
+        border: '1px solid rgba(161, 161, 170, 0.35)', borderRadius: 12, padding: '16px 20px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{
-            fontSize: 24, background: 'rgba(99, 102, 241, 0.25)', width: 44, height: 44,
+            fontSize: 24, background: 'rgba(161, 161, 170, 0.25)', width: 44, height: 44,
             borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             📡
@@ -144,9 +144,9 @@ export default function ExtensionReport() {
         <button
           onClick={handleDownloadAndInstall}
           style={{
-            padding: '9px 20px', background: '#6366f1', color: '#ffffff', border: 'none',
+            padding: '9px 20px', background: '#a1a1aa', color: '#ffffff', border: 'none',
             borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
-            boxShadow: '0 2px 10px rgba(99, 102, 241, 0.4)',
+            boxShadow: '0 2px 10px rgba(161, 161, 170, 0.4)',
           }}
         >
           Download & Setup
@@ -185,7 +185,7 @@ export default function ExtensionReport() {
             {[
               { label: 'Contacts Accepted', val: report.totals.accepted, color: '#22c55e' },
               { label: 'Duplicates Skipped', val: report.totals.duplicates, color: '#f59e0b' },
-              { label: 'Total Received', val: report.totals.received, color: '#6366f1' },
+              { label: 'Total Received', val: report.totals.received, color: '#a1a1aa' },
             ].map(s => (
               <div key={s.label} style={{
                 background: 'var(--surface-1)', borderRadius: 12, padding: '20px 24px',
@@ -220,7 +220,7 @@ export default function ExtensionReport() {
                   {report.daily_summary.map((row, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '10px 12px', color: 'var(--text-primary)', fontWeight: 500 }}>{row.day}</td>
-                      <td style={{ padding: '10px 12px', color: '#6366f1' }}>{row.received}</td>
+                      <td style={{ padding: '10px 12px', color: '#a1a1aa' }}>{row.received}</td>
                       <td style={{ padding: '10px 12px', color: '#22c55e', fontWeight: 700 }}>{row.accepted}</td>
                       <td style={{ padding: '10px 12px', color: '#f59e0b' }}>{row.duplicates}</td>
                       <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{row.active_devices}</td>
@@ -396,21 +396,21 @@ export default function ExtensionReport() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 20,
         }}>
           <div style={{
-            background: '#0f172a', border: '1px solid #334155', borderRadius: 16, maxWidth: 520, width: '100%',
+            background: '#121214', border: '1px solid #27272a', borderRadius: 16, maxWidth: 520, width: '100%',
             padding: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#f8fafc' }}>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#fafafa' }}>
                   🚀 3-Step Quick Setup Guide
                 </h2>
-                <p style={{ margin: '4px 0 0', fontSize: 12, color: '#94a3b8' }}>
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: '#a1a1aa' }}>
                   Your extension ZIP package is downloading automatically.
                 </p>
               </div>
               <button
                 onClick={() => setShowInstallModal(false)}
-                style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 18, cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: '#a1a1aa', fontSize: 18, cursor: 'pointer' }}
               >
                 ✕
               </button>
@@ -419,51 +419,51 @@ export default function ExtensionReport() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, margin: '20px 0' }}>
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                 <div style={{
-                  background: '#6366f1', color: '#fff', width: 26, height: 26, borderRadius: '50%',
+                  background: '#a1a1aa', color: '#fff', width: 26, height: 26, borderRadius: '50%',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flexShrink: 0,
                 }}>
                   1
                 </div>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#f8fafc' }}>Unzip the Package</div>
-                  <div style={{ fontSize: 12, color: '#94a3b8' }}>Right-click <code>talentops-scout-extension.zip</code> and extract/unzip it.</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#fafafa' }}>Unzip the Package</div>
+                  <div style={{ fontSize: 12, color: '#a1a1aa' }}>Right-click <code>talentops-scout-extension.zip</code> and extract/unzip it.</div>
                 </div>
               </div>
 
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                 <div style={{
-                  background: '#38bdf8', color: '#fff', width: 26, height: 26, borderRadius: '50%',
+                  background: '#e4e4e7', color: '#fff', width: 26, height: 26, borderRadius: '50%',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flexShrink: 0,
                 }}>
                   2
                 </div>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#f8fafc' }}>Open Chrome Extensions</div>
-                  <div style={{ fontSize: 12, color: '#94a3b8' }}>Navigate to <code>chrome://extensions/</code> and enable <b>Developer mode</b> (top right).</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#fafafa' }}>Open Chrome Extensions</div>
+                  <div style={{ fontSize: 12, color: '#a1a1aa' }}>Navigate to <code>chrome://extensions/</code> and enable <b>Developer mode</b> (top right).</div>
                 </div>
               </div>
 
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                 <div style={{
-                  background: '#4ade80', color: '#090d16', width: 26, height: 26, borderRadius: '50%',
+                  background: '#4ade80', color: '#0b0b0c', width: 26, height: 26, borderRadius: '50%',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flexShrink: 0,
                 }}>
                   3
                 </div>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#f8fafc' }}>Load Unpacked</div>
-                  <div style={{ fontSize: 12, color: '#94a3b8' }}>Click <b>Load unpacked</b> and select the unzipped folder.</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#fafafa' }}>Load Unpacked</div>
+                  <div style={{ fontSize: 12, color: '#a1a1aa' }}>Click <b>Load unpacked</b> and select the unzipped folder.</div>
                 </div>
               </div>
             </div>
 
             {/* Activation Code Copy Box */}
             <div style={{
-              background: '#1e293b', border: '1px solid #334155', borderRadius: 10, padding: 14,
+              background: '#232326', border: '1px solid #27272a', borderRadius: 10, padding: 14,
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
               <div>
-                <div style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600 }}>
+                <div style={{ fontSize: 10, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600 }}>
                   Your Activation Code
                 </div>
                 <div style={{ fontSize: 14, fontFamily: 'monospace', fontWeight: 700, color: '#4ade80', marginTop: 2 }}>
@@ -477,7 +477,7 @@ export default function ExtensionReport() {
                   setTimeout(() => setCopiedCode(false), 2000)
                 }}
                 style={{
-                  padding: '6px 14px', background: copiedCode ? '#22c55e' : '#6366f1', color: '#fff',
+                  padding: '6px 14px', background: copiedCode ? '#22c55e' : '#a1a1aa', color: '#fff',
                   border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer',
                 }}
               >
@@ -489,7 +489,7 @@ export default function ExtensionReport() {
               <button
                 onClick={() => setShowInstallModal(false)}
                 style={{
-                  padding: '9px 20px', background: '#334155', color: '#f8fafc', border: 'none',
+                  padding: '9px 20px', background: '#27272a', color: '#fafafa', border: 'none',
                   borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
                 }}
               >

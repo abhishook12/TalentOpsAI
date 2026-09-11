@@ -58,7 +58,7 @@ export default function VerifyEmail() {
         {status === 'verifying' && (
           <>
             <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
-              <i className="ti ti-loader animate-spin" style={{ fontSize: '48px', color: '#3b82f6' }} />
+              <i className="ti ti-loader animate-spin" style={{ fontSize: '48px', color: '#d4d4d8' }} />
             </div>
             <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', margin: '0 0 8px 0' }}>Verifying Email</h1>
             <p style={{ color: '#a1a1aa', margin: 0, fontSize: '14px' }}>Please wait while we verify your email address...</p>
@@ -76,7 +76,7 @@ export default function VerifyEmail() {
               display: 'inline-block',
               padding: '12px 24px',
               borderRadius: '8px',
-              background: '#3b82f6', color: '#ffffff',
+              background: '#d4d4d8', color: '#ffffff',
               textDecoration: 'none',
               fontWeight: '500',
               transition: 'background 0.2s'

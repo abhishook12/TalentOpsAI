@@ -44,8 +44,8 @@ export default function SqlConsole() {
             background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-secondary)',
             padding: '5px 12px', borderRadius: 6, fontSize: 11.5, cursor: 'pointer',
           }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = '#38bdf8'; e.currentTarget.style.color = '#38bdf8' }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = '#1e3a5f'; e.currentTarget.style.color = '#94a3b8' }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = '#e4e4e7'; e.currentTarget.style.color = '#e4e4e7' }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = '#27272a'; e.currentTarget.style.color = '#a1a1aa' }}
           >{q.label}</button>
         ))}
       </div>
@@ -57,7 +57,7 @@ export default function SqlConsole() {
         rows={5}
         style={{
           width: '100%', fontFamily: "'DM Mono', monospace", fontSize: 12.5,
-          background: '#060e1a', border: '1px solid #1e3a5f', color: '#a5f3fc',
+          background: '#0b0b0c', border: '1px solid #27272a', color: '#e4e4e7',
           borderRadius: 10, padding: 16, resize: 'vertical', outline: 'none',
           lineHeight: 1.7,
         }}
@@ -65,14 +65,14 @@ export default function SqlConsole() {
 
       <div style={{ display: 'flex', gap: 10, marginTop: 10, alignItems: 'center' }}>
         <button onClick={run} disabled={loading} style={{
-          background: loading ? '#1e3a5f' : 'linear-gradient(135deg, #0ea5e9, #1d4ed8)',
+          background: loading ? '#27272a' : 'linear-gradient(135deg, #d4d4d8, #d4d4d8)',
           color: 'var(--text-primary)', padding: '9px 22px', borderRadius: 8, fontSize: 13, fontWeight: 600,
           border: 'none', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8,
         }}>
           {loading ? <i className="ti ti-loader" style={{ animation: 'spin 0.8s linear infinite' }} /> : <i className="ti ti-player-play" />}
           {loading ? 'Running...' : 'Run Query'}
         </button>
-        {result && <span style={{ fontSize: 11.5, color: '#64748b' }}>✓ {result.total} row{result.total !== 1 ? 's' : ''} in {result.query_ms}ms</span>}
+        {result && <span style={{ fontSize: 11.5, color: '#71717a' }}>✓ {result.total} row{result.total !== 1 ? 's' : ''} in {result.query_ms}ms</span>}
       </div>
 
       {error && (
@@ -87,7 +87,7 @@ export default function SqlConsole() {
             <thead>
               <tr style={{ background: 'var(--panel-bg)' }}>
                 {result.columns.map(c => (
-                  <th key={c} style={{ padding: '8px 14px', textAlign: 'left', color: '#38bdf8', fontSize: 10.5, letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: '1px solid var(--card-border)', whiteSpace: 'nowrap' }}>{c}</th>
+                  <th key={c} style={{ padding: '8px 14px', textAlign: 'left', color: '#e4e4e7', fontSize: 10.5, letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: '1px solid var(--card-border)', whiteSpace: 'nowrap' }}>{c}</th>
                 ))}
               </tr>
             </thead>
@@ -98,7 +98,7 @@ export default function SqlConsole() {
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
                   {result.columns.map(c => (
-                    <td key={c} style={{ padding: '7px 14px', color: '#94a3b8', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <td key={c} style={{ padding: '7px 14px', color: '#a1a1aa', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {String(row[c] ?? '—')}
                     </td>
                   ))}
@@ -106,7 +106,7 @@ export default function SqlConsole() {
               ))}
             </tbody>
           </table>
-          {result.total > 200 && <div style={{ fontSize: 11, color: '#475569', marginTop: 8 }}>Showing first 200 of {fmt(result.total)} rows</div>}
+          {result.total > 200 && <div style={{ fontSize: 11, color: '#3f3f46', marginTop: 8 }}>Showing first 200 of {fmt(result.total)} rows</div>}
         </div>
       )}
     </Section>

@@ -44,17 +44,26 @@ export default function LiveIngestionPipeline() {
     last_master_db_update: 'None Recorded',
   }
 
-  const pipelineState = data?.pipeline_state || 'IDLE'
-  const statusDetail = data?.status_detail || 'Waiting for browser activity'
+  const derivedStatus = (() => {
+    if (metrics.raw_observations_received === 0 && metrics.useful_discoveries === 0) {
+      return 'IDLE'
+    }
+    if (metrics.staging_records > 0) {
+      return 'PROCESSING'
+    }
+    return 'RECEIVING_DATA'
+  })()
+
+  const statusDetail = data?.status_detail || (derivedStatus === 'IDLE' ? 'Waiting for browser activity' : 'Processing incoming records')
   const recentDiffs = data?.recent_enrichment_diffs || []
 
   // Status badge styling
   const statusConfig = {
-    RECEIVING_DATA: { tone: 'success', text: '● LIVE INGESTION: RECEIVING DATA', color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
-    PROCESSING: { tone: 'warning', text: '● LIVE INGESTION: BATCH PROCESSING', color: '#3b82f6', bg: 'rgba(59,130,246,0.15)' },
-    IDLE: { tone: 'neutral', text: '● LIVE INGESTION: IDLE', color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' },
-    NO_INGESTION_WARNING: { tone: 'danger', text: '⚠ NO INGESTION (>10m)', color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
-  }[pipelineState] || { tone: 'neutral', text: '● LIVE INGESTION: STANDBY', color: '#9ca3af', bg: 'rgba(156,163,175,0.15)' }
+    RECEIVING_DATA: { tone: 'success', text: 'RECEIVING DATA', color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
+    PROCESSING: { tone: 'warning', text: 'BATCH PROCESSING', color: '#d4d4d8', bg: 'rgba(212, 212, 216,0.15)' },
+    IDLE: { tone: 'neutral', text: 'IDLE', color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' },
+    NO_INGESTION_WARNING: { tone: 'danger', text: 'NO INGESTION (>10m)', color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
+  }[derivedStatus] || { tone: 'neutral', text: 'STANDBY', color: '#9ca3af', bg: 'rgba(156,163,175,0.15)' }
 
   return (
     <ShellCard style={{ padding: 20, minHeight: 0, background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12 }}>
@@ -63,7 +72,7 @@ export default function LiveIngestionPipeline() {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
             <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
-              REAL-TIME TELEMETRY
+              INGESTION
             </span>
             <span
               style={{
@@ -83,10 +92,10 @@ export default function LiveIngestionPipeline() {
             </span>
           </div>
           <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-            Live Scraper & Enrichment Ingestion Pipeline
+            Ingestion Pipeline
           </h2>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-            {statusDetail} • Explicit separation between AI searches, new person creations, and existing master enrichments.
+            {statusDetail} • Separation between AI searches, new person creations, and existing master enrichments.
           </p>
         </div>
 
@@ -98,12 +107,12 @@ export default function LiveIngestionPipeline() {
       </div>
 
       {/* 1. Visual 6-Stage Pipeline Flow Banner */}
-      <div style={{ background: 'var(--bg-surface, #0f172a)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', marginBottom: 20, overflowX: 'auto' }}>
+      <div style={{ background: 'var(--bg-surface, #121214)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', marginBottom: 20, overflowX: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minWidth: 800, gap: 8 }}>
           {/* Stage 1 */}
           <div style={{ textAlign: 'center', flex: 1 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 2 }}>1. BROWSER OBSERVED</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#3b82f6' }}><AnimatedNumber value={metrics.raw_observations_received} /></div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#d4d4d8' }}><AnimatedNumber value={metrics.raw_observations_received} /></div>
             <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Raw Viewport Frames</div>
           </div>
           <i className="ti ti-arrow-right" style={{ color: 'var(--text-secondary)', fontSize: 16 }} />
@@ -111,7 +120,7 @@ export default function LiveIngestionPipeline() {
           {/* Stage 2 */}
           <div style={{ textAlign: 'center', flex: 1 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 2 }}>2. STAGING BUFFER</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#a855f7' }}><AnimatedNumber value={metrics.staging_records} /></div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#a1a1aa' }}><AnimatedNumber value={metrics.staging_records} /></div>
             <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Pending Intelligence</div>
           </div>
           <i className="ti ti-arrow-right" style={{ color: 'var(--text-secondary)', fontSize: 16 }} />
@@ -135,7 +144,7 @@ export default function LiveIngestionPipeline() {
           {/* Stage 5 */}
           <div style={{ textAlign: 'center', flex: 1 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 2 }}>5. ENRICHED TODAY</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#06b6d4' }}>+<AnimatedNumber value={metrics.existing_people_enriched} /></div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#d4d4d8' }}>+<AnimatedNumber value={metrics.existing_people_enriched} /></div>
             <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{metrics.fields_added} fields added</div>
           </div>
           <i className="ti ti-arrow-right" style={{ color: 'var(--text-secondary)', fontSize: 16 }} />
@@ -152,9 +161,9 @@ export default function LiveIngestionPipeline() {
       {/* 2. Three Column Metric Breakdown */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
         {/* Column A: Scraper Ingestion Volume */}
-        <div style={{ background: 'var(--bg-surface, #0f172a)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
+        <div style={{ background: 'var(--bg-surface, #121214)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            📥 Ingestion Volume (Today)
+            Ingestion Volume (Today)
           </div>
           <div style={{ display: 'grid', gap: 8, fontSize: 13 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -175,20 +184,20 @@ export default function LiveIngestionPipeline() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Staffing Signals:</span>
-              <span style={{ fontWeight: 700, color: '#a855f7' }}><AnimatedNumber value={metrics.staffing_signals} /></span>
+              <span style={{ fontWeight: 700, color: '#a1a1aa' }}><AnimatedNumber value={metrics.staffing_signals} /></span>
             </div>
           </div>
         </div>
 
         {/* Column B: Identity & Field Resolution */}
-        <div style={{ background: 'var(--bg-surface, #0f172a)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
+        <div style={{ background: 'var(--bg-surface, #121214)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            🧬 Identity & Enrichment (Today)
+            Identity & Enrichment (Today)
           </div>
           <div style={{ display: 'grid', gap: 8, fontSize: 13 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Existing People Enriched:</span>
-              <span style={{ fontWeight: 800, color: '#06b6d4' }}>+<AnimatedNumber value={metrics.existing_people_enriched} /></span>
+              <span style={{ fontWeight: 800, color: '#d4d4d8' }}>+<AnimatedNumber value={metrics.existing_people_enriched} /></span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Fields Added Today:</span>
@@ -209,10 +218,10 @@ export default function LiveIngestionPipeline() {
           </div>
         </div>
 
-        {/* Column C: Forensic Live Timestamps */}
-        <div style={{ background: 'var(--bg-surface, #0f172a)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
+        {/* Column C: Ingestion Timestamps */}
+        <div style={{ background: 'var(--bg-surface, #121214)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            ⏱ Live Forensic Timestamps
+            Ingestion Timestamps
           </div>
           <div style={{ display: 'grid', gap: 8, fontSize: 13 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -229,7 +238,7 @@ export default function LiveIngestionPipeline() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Last Enrichment:</span>
-              <span style={{ fontWeight: 700, fontFamily: 'var(--mono)', color: '#06b6d4' }}>{timestamps.last_enrichment}</span>
+              <span style={{ fontWeight: 700, fontFamily: 'var(--mono)', color: '#d4d4d8' }}>{timestamps.last_enrichment}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Last Master DB Update:</span>
@@ -240,10 +249,10 @@ export default function LiveIngestionPipeline() {
       </div>
 
       {/* 3. "Where Is This Data Going?" Traceable Before/After Enrichment Diffs Table */}
-      <div style={{ background: 'var(--bg-surface, #0f172a)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+      <div style={{ background: 'var(--bg-surface, #121214)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
         <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <i className="ti ti-git-compare" style={{ color: '#06b6d4', fontSize: 16 }} />
+            <i className="ti ti-git-compare" style={{ color: '#d4d4d8', fontSize: 16 }} />
             <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
               Traceable Enrichment Stream (Before & After Field Diffs)
             </span>
@@ -263,7 +272,7 @@ export default function LiveIngestionPipeline() {
               <thead>
                 <tr style={{ background: 'rgba(0,0,0,0.2)', textAlign: 'left', color: 'var(--text-secondary)' }}>
                   <th style={{ padding: '8px 14px' }}>Time</th>
-                  <th style={{ padding: '8px 14px' }}>Candidate</th>
+                  <th style={{ padding: '8px 14px' }}>Record</th>
                   <th style={{ padding: '8px 14px' }}>Company</th>
                   <th style={{ padding: '8px 14px' }}>Decision</th>
                   <th style={{ padding: '8px 14px' }}>Fields Added / Mutated</th>
@@ -292,13 +301,13 @@ export default function LiveIngestionPipeline() {
                           fontWeight: 700,
                           background:
                             diff.decision === 'ENRICHED'
-                              ? 'rgba(6,182,212,0.15)'
+                              ? 'rgba(212, 212, 216,0.15)'
                               : diff.decision === 'NEW_DISCOVERY'
                               ? 'rgba(236,72,153,0.15)'
                               : 'rgba(156,163,175,0.15)',
                           color:
                             diff.decision === 'ENRICHED'
-                              ? '#06b6d4'
+                              ? '#d4d4d8'
                               : diff.decision === 'NEW_DISCOVERY'
                               ? '#ec4899'
                               : '#9ca3af',

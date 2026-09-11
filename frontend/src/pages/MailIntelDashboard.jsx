@@ -178,7 +178,7 @@ export default function MailIntelDashboard() {
           label="Tier 2: Likely Deliverable" 
           value={likely_valid} 
           icon={ShieldCheck} 
-          color="#3B82F6" 
+          color="#d4d4d8" 
           subtitle="75-89% Consumer/Standard" 
         />
         <MetricCard 
@@ -233,7 +233,7 @@ export default function MailIntelDashboard() {
           <span style={{ color: '#10B981' }}>{deliverability_rate}%</span>
         </div>
         <div style={{ width: '100%', height: 8, borderRadius: 4, background: 'var(--bg-elevated)', overflow: 'hidden' }}>
-          <div style={{ width: `${deliverability_rate}%`, height: '100%', background: 'linear-gradient(90deg, #10B981, #3B82F6)', borderRadius: 4, transition: 'width 0.6s ease' }} />
+          <div style={{ width: `${deliverability_rate}%`, height: '100%', background: 'linear-gradient(90deg, #10B981, #d4d4d8)', borderRadius: 4, transition: 'width 0.6s ease' }} />
         </div>
       </div>
 

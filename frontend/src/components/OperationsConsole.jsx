@@ -56,14 +56,14 @@ export default function OperationsConsole() {
         <ShellCard title="Fleet Queue Backlog">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: data?.queue_backlog_depth > 50 ? '#f59e0b' : '#38bdf8' }}>
+              <div style={{ fontSize: 26, fontWeight: 800, color: data?.queue_backlog_depth > 50 ? '#f59e0b' : '#e4e4e7' }}>
                 <AnimatedNumber value={data?.queue_backlog_depth || 0} />
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
                 Pending staging observations
               </div>
             </div>
-            <div style={{ width: 42, height: 42, borderRadius: 10, background: 'rgba(56, 189, 248, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8' }}>
+            <div style={{ width: 42, height: 42, borderRadius: 10, background: 'rgba(228, 228, 231, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e4e4e7' }}>
               <Server size={20} />
             </div>
           </div>
@@ -88,14 +88,14 @@ export default function OperationsConsole() {
         <ShellCard title="Avg Sync Latency">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: '#a855f7' }}>
+              <div style={{ fontSize: 26, fontWeight: 800, color: '#a1a1aa' }}>
                 {data?.avg_sync_latency_sec || 1.4}s
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
                 Edge packet delivery time
               </div>
             </div>
-            <div style={{ width: 42, height: 42, borderRadius: 10, background: 'rgba(168, 85, 247, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a855f7' }}>
+            <div style={{ width: 42, height: 42, borderRadius: 10, background: 'rgba(161, 161, 170, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a1a1aa' }}>
               <Clock size={20} />
             </div>
           </div>
@@ -104,14 +104,14 @@ export default function OperationsConsole() {
         <ShellCard title="Active Edge Nodes">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: '#3b82f6' }}>
+              <div style={{ fontSize: 26, fontWeight: 800, color: '#d4d4d8' }}>
                 {data?.active_nodes_count || 0} / {data?.total_nodes_count || 0}
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
                 Scout 2.0 instances online
               </div>
             </div>
-            <div style={{ width: 42, height: 42, borderRadius: 10, background: 'rgba(59, 130, 246, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
+            <div style={{ width: 42, height: 42, borderRadius: 10, background: 'rgba(212, 212, 216, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d4d4d8' }}>
               <Activity size={20} />
             </div>
           </div>
@@ -121,7 +121,7 @@ export default function OperationsConsole() {
       {/* Remote Kill Switches Card */}
       <div style={{
         background: '#0b1329',
-        border: '1px solid #1e293b',
+        border: '1px solid #232326',
         borderRadius: 12,
         padding: 20,
       }}>
@@ -129,11 +129,11 @@ export default function OperationsConsole() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Power size={18} color="#ef4444" />
-              <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#f8fafc' }}>
+              <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#fafafa' }}>
                 Fleet Operations & Remote Kill Switches
               </h4>
             </div>
-            <p style={{ margin: '4px 0 0', fontSize: 11, color: '#94a3b8' }}>
+            <p style={{ margin: '4px 0 0', fontSize: 11, color: '#a1a1aa' }}>
               Instantly control remote edge subsystems across all connected user instances without client redeployment.
             </p>
           </div>
@@ -154,7 +154,7 @@ export default function OperationsConsole() {
             alignItems: 'center',
           }}>
             <div>
-              <div style={{ fontWeight: 700, color: '#f8fafc', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ fontWeight: 700, color: '#fafafa', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span>Screen Capture Engine</span>
                 <span style={{
                   fontSize: 10,
@@ -167,7 +167,7 @@ export default function OperationsConsole() {
                   {killSwitches.capture_engine_enabled ? 'ENABLED' : 'PAUSED'}
                 </span>
               </div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+              <div style={{ fontSize: 11, color: '#a1a1aa', marginTop: 4 }}>
                 Win32 visual window tracking & OCR
               </div>
             </div>
@@ -200,7 +200,7 @@ export default function OperationsConsole() {
             alignItems: 'center',
           }}>
             <div>
-              <div style={{ fontWeight: 700, color: '#f8fafc', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ fontWeight: 700, color: '#fafafa', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span>Fleet Ingestion Sync</span>
                 <span style={{
                   fontSize: 10,
@@ -213,7 +213,7 @@ export default function OperationsConsole() {
                   {killSwitches.sync_enabled ? 'ENABLED' : 'PAUSED'}
                 </span>
               </div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+              <div style={{ fontSize: 11, color: '#a1a1aa', marginTop: 4 }}>
                 Local SQLite buffer queue upload to cloud
               </div>
             </div>
@@ -246,7 +246,7 @@ export default function OperationsConsole() {
             alignItems: 'center',
           }}>
             <div>
-              <div style={{ fontWeight: 700, color: '#f8fafc', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ fontWeight: 700, color: '#fafafa', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span>AI Signals & Delta Inference</span>
                 <span style={{
                   fontSize: 10,
@@ -259,7 +259,7 @@ export default function OperationsConsole() {
                   {killSwitches.ai_signals_enabled ? 'ENABLED' : 'PAUSED'}
                 </span>
               </div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+              <div style={{ fontSize: 11, color: '#a1a1aa', marginTop: 4 }}>
                 Intent detection & career velocity scoring
               </div>
             </div>
@@ -285,7 +285,7 @@ export default function OperationsConsole() {
 
       {/* Security, DLP & Zero Secrets Architecture Card */}
       <div style={{
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)',
+        background: 'linear-gradient(135deg, #121214 0%, #1e1b4b 100%)',
         border: '1px solid #312e81',
         borderRadius: 12,
         padding: 18,
@@ -297,11 +297,11 @@ export default function OperationsConsole() {
           width: 36,
           height: 36,
           borderRadius: 8,
-          background: 'rgba(99, 102, 241, 0.2)',
+          background: 'rgba(161, 161, 170, 0.2)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#818cf8',
+          color: '#a1a1aa',
           flexShrink: 0,
           marginTop: 2,
         }}>
@@ -311,7 +311,7 @@ export default function OperationsConsole() {
           <div style={{ fontWeight: 800, fontSize: 13, color: '#e0e7ff' }}>
             Scout 2.0 Enterprise Privacy & Boundary Guardrails
           </div>
-          <div style={{ fontSize: 11, color: '#a5b4fc', marginTop: 4, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 11, color: '#d4d4d8', marginTop: 4, lineHeight: 1.5 }}>
             • <strong>Local Data Loss Prevention (DLP):</strong> Pre-upload regex scanning automatically masks credentials, private keys, and session tokens with <code>[REDACTED_SECRET]</code>.<br />
             • <strong>Scope-Aware Observation:</strong> Connectors strictly respect authorized profile views with zero DOM injection and zero bot automation.<br />
             • <strong>Cryptographic Provenance:</strong> Every observation packet carries a verifiable lineage signature for enterprise defense audits.

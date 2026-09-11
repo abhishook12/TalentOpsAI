@@ -40,23 +40,23 @@ export default function KnowledgeGraphView() {
   const getNodeColor = (type) => {
     switch (type) {
       case 'CANDIDATE':
-        return '#38bdf8' // cyan
+        return '#e4e4e7' // cyan
       case 'COMPANY':
-        return '#a78bfa' // purple
+        return '#a1a1aa' // purple
       case 'SKILL':
         return '#10b981' // green
       case 'LOCATION':
         return '#f59e0b' // amber
       default:
-        return '#94a3b8'
+        return '#a1a1aa'
     }
   }
 
   return (
     <div
       style={{
-        backgroundColor: 'var(--bg-card, #0f172a)',
-        border: '1px solid var(--border-ai, rgba(139, 92, 246, 0.25))',
+        backgroundColor: 'var(--bg-card, #121214)',
+        border: '1px solid var(--border-ai, rgba(161, 161, 170, 0.25))',
         borderRadius: '12px',
         padding: '20px',
         display: 'flex',
@@ -68,7 +68,7 @@ export default function KnowledgeGraphView() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '14px', color: '#a78bfa' }}>✦</span>
+          <span style={{ fontSize: '14px', color: '#a1a1aa' }}>✦</span>
           <div>
             <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)' }}>
               Entity Knowledge Graph
@@ -81,8 +81,8 @@ export default function KnowledgeGraphView() {
 
         {/* Legend */}
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '11px' }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#38bdf8' }}>● Candidate</span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#a78bfa' }}>● Company</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#e4e4e7' }}>● Candidate</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#a1a1aa' }}>● Company</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#10b981' }}>● Skill</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#f59e0b' }}>● Location</span>
         </div>
@@ -93,8 +93,8 @@ export default function KnowledgeGraphView() {
         style={{
           position: 'relative',
           height: '320px',
-          backgroundColor: 'var(--bg-base, #090d14)',
-          border: '1px solid var(--border, #1e293b)',
+          backgroundColor: 'var(--bg-base, #0b0b0c)',
+          border: '1px solid var(--border, #232326)',
           borderRadius: '8px',
           overflow: 'hidden',
           display: 'flex',
@@ -130,8 +130,8 @@ export default function KnowledgeGraphView() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: '8px',
-                      backgroundColor: isSelected ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.03)',
-                      border: `1px solid ${isSelected ? getNodeColor(node.type) : 'var(--border, #1e293b)'}`,
+                      backgroundColor: isSelected ? 'rgba(228, 228, 231, 0.2)' : 'rgba(255, 255, 255, 0.03)',
+                      border: `1px solid ${isSelected ? getNodeColor(node.type) : 'var(--border, #232326)'}`,
                       borderRadius: '20px',
                       padding: '6px 14px',
                       cursor: 'pointer',
@@ -161,8 +161,8 @@ export default function KnowledgeGraphView() {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            backgroundColor: 'var(--bg-base, #090d14)',
-            border: '1px solid var(--border, #1e293b)',
+            backgroundColor: 'var(--bg-base, #0b0b0c)',
+            border: '1px solid var(--border, #232326)',
             borderRadius: '8px',
             padding: '12px 16px'
           }}

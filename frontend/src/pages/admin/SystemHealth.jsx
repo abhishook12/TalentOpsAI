@@ -46,7 +46,7 @@ export default function SystemHealth() {
         {/* API Status */}
         <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-            <Server size={20} color="#3b82f6" />
+            <Server size={20} color="#d4d4d8" />
             <span style={{ fontWeight: 600 }}>API Server</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>

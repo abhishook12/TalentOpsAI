@@ -216,7 +216,7 @@ export default function ResetPassword() {
               width: '100%',
               padding: '12px',
               borderRadius: '8px',
-              background: (isSubmitting || strength < 4 || password !== confirmPassword) ? 'rgba(59, 130, 246, 0.5)' : '#3b82f6',
+              background: (isSubmitting || strength < 4 || password !== confirmPassword) ? 'rgba(212, 212, 216, 0.5)' : '#d4d4d8',
               color: 'var(--text-primary)',
               fontSize: '15px',
               fontWeight: '600',

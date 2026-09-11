@@ -73,7 +73,7 @@ export default function AdminSettings() {
         <button 
           onClick={handleSave} 
           disabled={saving || loading}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px', borderRadius: 8, background: '#3b82f6', color: '#ffffff', border: 'none', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px', borderRadius: 8, background: '#d4d4d8', color: '#ffffff', border: 'none', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(212, 212, 216, 0.3)' }}
         >
           {saving ? <RefreshCw size={18} className="animate-spin" /> : <Save size={18} />}
           Save Changes

@@ -104,7 +104,7 @@ export default function StagingPipeline() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-            <div style={{ padding: 8, background: 'rgba(59, 130, 246, 0.15)', borderRadius: 8, color: '#3b82f6' }}>
+            <div style={{ padding: 8, background: 'rgba(212, 212, 216, 0.15)', borderRadius: 8, color: '#d4d4d8' }}>
               <Layers size={24} />
             </div>
             <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>
@@ -151,12 +151,12 @@ export default function StagingPipeline() {
               padding: '8px 18px',
               borderRadius: 8,
               border: 'none',
-              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+              background: 'linear-gradient(135deg, #e4e4e7, #d4d4d8)',
               color: '#fff',
               cursor: processing ? 'not-allowed' : 'pointer',
               fontSize: 13,
               fontWeight: 600,
-              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.3)',
+              boxShadow: '0 2px 8px rgba(228, 228, 231, 0.3)',
             }}
           >
             <Play size={14} />
@@ -191,15 +191,15 @@ export default function StagingPipeline() {
 
         {/* Silver: Resolution & Validation */}
         <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: 20, position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: '#3b82f6' }} />
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: '#d4d4d8' }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#d4d4d8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Silver Layer
               </div>
               <div style={{ fontSize: 16, fontWeight: 600 }}>Resolved Entity Clusters</div>
             </div>
-            <div style={{ padding: 6, background: 'rgba(59, 130, 246, 0.15)', borderRadius: 6, color: '#3b82f6' }}>
+            <div style={{ padding: 6, background: 'rgba(212, 212, 216, 0.15)', borderRadius: 6, color: '#d4d4d8' }}>
               <UserCheck size={18} />
             </div>
           </div>
@@ -249,7 +249,7 @@ export default function StagingPipeline() {
           {distribution.map((d) => {
             const colors = {
               NEW: { bg: 'rgba(16, 185, 129, 0.15)', text: '#10b981' },
-              ENRICH: { bg: 'rgba(59, 130, 246, 0.15)', text: '#3b82f6' },
+              ENRICH: { bg: 'rgba(212, 212, 216, 0.15)', text: '#d4d4d8' },
               DUPLICATE: { bg: 'rgba(107, 114, 128, 0.15)', text: '#9ca3af' },
               REVIEW: { bg: 'rgba(245, 158, 11, 0.15)', text: '#f59e0b' },
               CONFLICT: { bg: 'rgba(239, 68, 68, 0.15)', text: '#ef4444' },
@@ -289,9 +289,9 @@ export default function StagingPipeline() {
             padding: '10px 18px',
             border: 'none',
             background: 'none',
-            color: activeTab === 'pipeline' ? '#3b82f6' : 'var(--text-secondary)',
+            color: activeTab === 'pipeline' ? '#d4d4d8' : 'var(--text-secondary)',
             fontWeight: activeTab === 'pipeline' ? 600 : 500,
-            borderBottom: activeTab === 'pipeline' ? '2px solid #3b82f6' : '2px solid transparent',
+            borderBottom: activeTab === 'pipeline' ? '2px solid #d4d4d8' : '2px solid transparent',
             cursor: 'pointer',
             fontSize: 14,
           }}
@@ -325,9 +325,9 @@ export default function StagingPipeline() {
             padding: '10px 18px',
             border: 'none',
             background: 'none',
-            color: activeTab === 'nodes' ? '#a855f7' : 'var(--text-secondary)',
+            color: activeTab === 'nodes' ? '#a1a1aa' : 'var(--text-secondary)',
             fontWeight: activeTab === 'nodes' ? 600 : 500,
-            borderBottom: activeTab === 'nodes' ? '2px solid #a855f7' : '2px solid transparent',
+            borderBottom: activeTab === 'nodes' ? '2px solid #a1a1aa' : '2px solid transparent',
             cursor: 'pointer',
             fontSize: 14,
             display: 'flex',
@@ -438,7 +438,7 @@ export default function StagingPipeline() {
                               : r.processing_status === 'review'
                               ? 'rgba(245, 158, 11, 0.15)'
                               : r.processing_status === 'pending'
-                              ? 'rgba(59, 130, 246, 0.15)'
+                              ? 'rgba(212, 212, 216, 0.15)'
                               : 'rgba(107, 114, 128, 0.15)',
                           color:
                             r.processing_status === 'committed'
@@ -446,7 +446,7 @@ export default function StagingPipeline() {
                               : r.processing_status === 'review'
                               ? '#f59e0b'
                               : r.processing_status === 'pending'
-                              ? '#3b82f6'
+                              ? '#d4d4d8'
                               : '#9ca3af',
                         }}
                       >
@@ -486,7 +486,7 @@ export default function StagingPipeline() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
             <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 20px' }}>
               <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>TOTAL ENTITIES</div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: '#3b82f6' }}>{knowledgeStats?.total_entities || knowledgeEntities.length}</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: '#d4d4d8' }}>{knowledgeStats?.total_entities || knowledgeEntities.length}</div>
               <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>Persons, Companies, Jobs, Schools</div>
             </div>
             <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 20px' }}>
@@ -496,7 +496,7 @@ export default function StagingPipeline() {
             </div>
             <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 20px' }}>
               <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>STAFFING & HIRING SIGNALS</div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: '#a855f7' }}>{knowledgeStats?.total_signals || knowledgeSignals.length}</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: '#a1a1aa' }}>{knowledgeStats?.total_signals || knowledgeSignals.length}</div>
               <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>Hiring Surges, Certifications, Capabilities</div>
             </div>
             <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px 20px' }}>
@@ -533,19 +533,19 @@ export default function StagingPipeline() {
                           fontWeight: 700,
                           background:
                             e.entity_type === 'PERSON'
-                              ? 'rgba(59, 130, 246, 0.15)'
+                              ? 'rgba(212, 212, 216, 0.15)'
                               : e.entity_type === 'COMPANY'
                               ? 'rgba(16, 185, 129, 0.15)'
                               : e.entity_type === 'JOB'
-                              ? 'rgba(168, 85, 247, 0.15)'
+                              ? 'rgba(161, 161, 170, 0.15)'
                               : 'rgba(245, 158, 11, 0.15)',
                           color:
                             e.entity_type === 'PERSON'
-                              ? '#3b82f6'
+                              ? '#d4d4d8'
                               : e.entity_type === 'COMPANY'
                               ? '#10b981'
                               : e.entity_type === 'JOB'
-                              ? '#a855f7'
+                              ? '#a1a1aa'
                               : '#f59e0b',
                         }}
                       >
@@ -572,7 +572,7 @@ export default function StagingPipeline() {
                     <div key={s.id} style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                         <span style={{ fontWeight: 600, fontSize: 13 }}>{s.title}</span>
-                        <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: 'rgba(168, 85, 247, 0.15)', color: '#a855f7', fontWeight: 700 }}>
+                        <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: 'rgba(161, 161, 170, 0.15)', color: '#a1a1aa', fontWeight: 700 }}>
                           {s.signal_type}
                         </span>
                       </div>

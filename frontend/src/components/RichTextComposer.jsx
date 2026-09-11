@@ -122,7 +122,7 @@ export default function RichTextComposer({
   const insertVariable = (tag) => {
     if (editor) {
       // Create a spanned element that looks like a chip but is just styled text
-      const html = `<span style="background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 4px; padding: 2px 6px; font-family: monospace; color: var(--brand);">${tag}</span>&nbsp;`;
+      const html = `<span style="background: rgba(212, 212, 216, 0.15); border: 1px solid rgba(212, 212, 216, 0.3); border-radius: 4px; padding: 2px 6px; font-family: monospace; color: var(--brand);">${tag}</span>&nbsp;`;
       editor.chain().focus().insertContent(html).run();
     }
   };

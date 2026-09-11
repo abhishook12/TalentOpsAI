@@ -121,7 +121,7 @@ export default function UpdateCenter() {
     : 'Not refreshed yet';
 
   // Determine indicator color based on status
-  let color = '#38bdf8'; // Blue: Update Available / Operational (default)
+  let color = '#e4e4e7'; // Blue: Update Available / Operational (default)
   let icon = 'ti-info-circle';
   
   if (activeStatus.status === 'Verified & Operational' || activeStatus.status === 'Verified') {

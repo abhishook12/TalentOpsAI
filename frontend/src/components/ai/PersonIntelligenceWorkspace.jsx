@@ -64,11 +64,11 @@ export default function PersonIntelligenceWorkspace({ person, onClose, onExplain
           maxWidth: '820px',
           maxHeight: '90vh',
           overflowY: 'auto',
-          backgroundColor: 'var(--bg-card, #0f172a)',
-          border: '1px solid var(--border-ai, rgba(139, 92, 246, 0.35))',
+          backgroundColor: 'var(--bg-card, #121214)',
+          border: '1px solid var(--border-ai, rgba(161, 161, 170, 0.35))',
           borderRadius: '12px',
           padding: '24px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 30px rgba(139, 92, 246, 0.15)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 30px rgba(161, 161, 170, 0.15)',
           display: 'flex',
           flexDirection: 'column',
           gap: '20px'
@@ -76,11 +76,11 @@ export default function PersonIntelligenceWorkspace({ person, onClose, onExplain
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border, #1e293b)', paddingBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border, #232326)', paddingBottom: '16px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-              <span style={{ fontSize: '13px', color: '#a78bfa' }}>✦</span>
-              <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#a78bfa', letterSpacing: '0.08em' }}>
+              <span style={{ fontSize: '13px', color: '#a1a1aa' }}>✦</span>
+              <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#a1a1aa', letterSpacing: '0.08em' }}>
                 Entity Intelligence Workspace
               </span>
               <EvidenceBadge status={email && !email.includes('noemail') ? 'VERIFIED' : 'OBSERVED'} confidence={0.93} />
@@ -89,7 +89,7 @@ export default function PersonIntelligenceWorkspace({ person, onClose, onExplain
               {name}
             </h1>
             <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-              {title} • <span style={{ color: '#38bdf8' }}>{company}</span> • {location}
+              {title} • <span style={{ color: '#e4e4e7' }}>{company}</span> • {location}
             </div>
           </div>
 
@@ -97,13 +97,13 @@ export default function PersonIntelligenceWorkspace({ person, onClose, onExplain
             <button
               onClick={() => setShowWhatChanged(!showWhatChanged)}
               style={{
-                background: showWhatChanged ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.04)',
-                border: '1px solid var(--border, #1e293b)',
+                background: showWhatChanged ? 'rgba(228, 228, 231, 0.2)' : 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid var(--border, #232326)',
                 borderRadius: '6px',
                 padding: '6px 12px',
                 fontSize: '11px',
                 fontWeight: 700,
-                color: showWhatChanged ? '#38bdf8' : 'var(--text-secondary)',
+                color: showWhatChanged ? '#e4e4e7' : 'var(--text-secondary)',
                 cursor: 'pointer'
               }}
             >
@@ -122,8 +122,8 @@ export default function PersonIntelligenceWorkspace({ person, onClose, onExplain
         {showWhatChanged && (
           <div
             style={{
-              background: 'rgba(56, 189, 248, 0.05)',
-              border: '1px solid rgba(56, 189, 248, 0.25)',
+              background: 'rgba(228, 228, 231, 0.05)',
+              border: '1px solid rgba(228, 228, 231, 0.25)',
               borderRadius: '8px',
               padding: '14px 18px',
               display: 'flex',
@@ -131,7 +131,7 @@ export default function PersonIntelligenceWorkspace({ person, onClose, onExplain
               gap: '8px'
             }}
           >
-            <div style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', color: '#38bdf8' }}>
+            <div style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', color: '#e4e4e7' }}>
               Historical Entity Transformation Trail
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -150,12 +150,12 @@ export default function PersonIntelligenceWorkspace({ person, onClose, onExplain
 
         {/* Career Velocity & Trust Gauge */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-          <div style={{ background: 'var(--bg-base, #090d14)', border: '1px solid var(--border, #1e293b)', borderRadius: '8px', padding: '14px' }}>
+          <div style={{ background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--border, #232326)', borderRadius: '8px', padding: '14px' }}>
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
               Career Velocity Score
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '4px' }}>
-              <span style={{ fontSize: '24px', fontWeight: 900, color: '#38bdf8' }}>94</span>
+              <span style={{ fontSize: '24px', fontWeight: 900, color: '#e4e4e7' }}>94</span>
               <span style={{ fontSize: '12px', color: '#10b981', fontWeight: 700 }}>▲ Top 5%</span>
             </div>
             <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
@@ -163,7 +163,7 @@ export default function PersonIntelligenceWorkspace({ person, onClose, onExplain
             </div>
           </div>
 
-          <div style={{ background: 'var(--bg-base, #090d14)', border: '1px solid var(--border, #1e293b)', borderRadius: '8px', padding: '14px' }}>
+          <div style={{ background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--border, #232326)', borderRadius: '8px', padding: '14px' }}>
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
               Intelligence Trust Index
             </div>
@@ -176,7 +176,7 @@ export default function PersonIntelligenceWorkspace({ person, onClose, onExplain
             </div>
           </div>
 
-          <div style={{ background: 'var(--bg-base, #090d14)', border: '1px solid var(--border, #1e293b)', borderRadius: '8px', padding: '14px' }}>
+          <div style={{ background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--border, #232326)', borderRadius: '8px', padding: '14px' }}>
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
               Match Explanation
             </div>
@@ -184,10 +184,10 @@ export default function PersonIntelligenceWorkspace({ person, onClose, onExplain
               onClick={() => setShowExplainModal(true)}
               style={{
                 marginTop: '6px',
-                background: 'rgba(139, 92, 246, 0.15)',
-                border: '1px solid rgba(139, 92, 246, 0.4)',
+                background: 'rgba(161, 161, 170, 0.15)',
+                border: '1px solid rgba(161, 161, 170, 0.4)',
                 borderRadius: '6px',
-                color: '#c4b5fd',
+                color: '#d4d4d8',
                 fontSize: '12px',
                 fontWeight: 700,
                 padding: '6px 14px',
@@ -209,7 +209,7 @@ export default function PersonIntelligenceWorkspace({ person, onClose, onExplain
             <span style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
               ✦ AI Executive Summary
             </span>
-            <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-base, #090d14)', padding: '2px', borderRadius: '6px', border: '1px solid var(--border, #1e293b)' }}>
+            <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-base, #0b0b0c)', padding: '2px', borderRadius: '6px', border: '1px solid var(--border, #232326)' }}>
               {[
                 { id: 'recruiter', label: 'Recruiter View' },
                 { id: 'executive', label: 'Executive View' },
@@ -219,13 +219,13 @@ export default function PersonIntelligenceWorkspace({ person, onClose, onExplain
                   key={p.id}
                   onClick={() => setPersona(p.id)}
                   style={{
-                    background: persona === p.id ? 'var(--bg-surface, #1e293b)' : 'transparent',
+                    background: persona === p.id ? 'var(--bg-surface, #232326)' : 'transparent',
                     border: 'none',
                     borderRadius: '4px',
                     padding: '4px 10px',
                     fontSize: '11px',
                     fontWeight: persona === p.id ? 700 : 500,
-                    color: persona === p.id ? '#38bdf8' : 'var(--text-secondary)',
+                    color: persona === p.id ? '#e4e4e7' : 'var(--text-secondary)',
                     cursor: 'pointer'
                   }}
                 >
@@ -237,8 +237,8 @@ export default function PersonIntelligenceWorkspace({ person, onClose, onExplain
 
           <div
             style={{
-              backgroundColor: 'var(--bg-base, #090d14)',
-              border: '1px solid var(--border, #1e293b)',
+              backgroundColor: 'var(--bg-base, #0b0b0c)',
+              border: '1px solid var(--border, #232326)',
               borderRadius: '8px',
               padding: '14px 16px',
               fontSize: '13px',
@@ -256,7 +256,7 @@ export default function PersonIntelligenceWorkspace({ person, onClose, onExplain
             Contact Intelligence & Calibrated Uncertainty
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-            <div style={{ background: 'var(--bg-base, #090d14)', border: '1px solid var(--border, #1e293b)', borderRadius: '8px', padding: '12px' }}>
+            <div style={{ background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--border, #232326)', borderRadius: '8px', padding: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                 <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>Corporate Email</span>
                 <EvidenceBadge status={email && !email.includes('noemail') ? 'VERIFIED' : 'UNVERIFIED'} size="sm" />
@@ -266,7 +266,7 @@ export default function PersonIntelligenceWorkspace({ person, onClose, onExplain
               </div>
             </div>
 
-            <div style={{ background: 'var(--bg-base, #090d14)', border: '1px solid var(--border, #1e293b)', borderRadius: '8px', padding: '12px' }}>
+            <div style={{ background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--border, #232326)', borderRadius: '8px', padding: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                 <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>Direct Phone</span>
                 <EvidenceBadge status={phone ? 'VERIFIED' : 'INFERRED'} size="sm" />
@@ -276,14 +276,14 @@ export default function PersonIntelligenceWorkspace({ person, onClose, onExplain
               </div>
             </div>
 
-            <div style={{ background: 'var(--bg-base, #090d14)', border: '1px solid var(--border, #1e293b)', borderRadius: '8px', padding: '12px' }}>
+            <div style={{ background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--border, #232326)', borderRadius: '8px', padding: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                 <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>LinkedIn Profile</span>
                 <EvidenceBadge status={linkedin ? 'VERIFIED' : 'OBSERVED'} size="sm" />
               </div>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#38bdf8' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#e4e4e7' }}>
                 {linkedin ? (
-                  <a href={linkedin} target="_blank" rel="noopener noreferrer" style={{ color: '#38bdf8', textDecoration: 'none' }}>
+                  <a href={linkedin} target="_blank" rel="noopener noreferrer" style={{ color: '#e4e4e7', textDecoration: 'none' }}>
                     View Profile ↗
                   </a>
                 ) : (

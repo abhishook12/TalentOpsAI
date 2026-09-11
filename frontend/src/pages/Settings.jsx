@@ -602,7 +602,7 @@ export default function Settings() {
             <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
               {/* Banner */}
               <div style={{
-                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(56, 189, 248, 0.08) 100%)',
+                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(228, 228, 231, 0.08) 100%)',
                 border: '1px solid rgba(16, 185, 129, 0.35)', borderRadius: 12, padding: '24px 28px',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16
               }}>
@@ -646,7 +646,7 @@ export default function Settings() {
                   <button
                     onClick={() => setShowAddScoutModal(true)}
                     style={{
-                      padding: '10px 18px', background: '#1e293b', color: '#38bdf8', border: '1px solid #334155',
+                      padding: '10px 18px', background: '#232326', color: '#e4e4e7', border: '1px solid #27272a',
                       borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex',
                       alignItems: 'center', gap: 8, whiteSpace: 'nowrap'
                     }}
@@ -668,11 +668,11 @@ export default function Settings() {
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Download <code>TalentOpsScoutSetup.exe</code> and install in 10 seconds.</div>
                   </div>
                   <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8', marginBottom: 4 }}>2. Generate Code</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#e4e4e7', marginBottom: 4 }}>2. Generate Code</div>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Click "Pair Device" above to get your single-use 10-minute activation code.</div>
                   </div>
                   <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#a855f7', marginBottom: 4 }}>3. Background Run</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#a1a1aa', marginBottom: 4 }}>3. Background Run</div>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Scout launches silently to system tray and continuously streams verified leads.</div>
                   </div>
                 </div>
@@ -681,7 +681,7 @@ export default function Settings() {
                   <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                     Looking for full architecture guides, diagnostic logs, and live telemetry?
                   </span>
-                  <a href="/download-scout" style={{ color: '#38bdf8', fontSize: 13, fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <a href="/download-scout" style={{ color: '#e4e4e7', fontSize: 13, fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
                     Go to Scout Hub <ArrowRight size={14} />
                   </a>
                 </div>

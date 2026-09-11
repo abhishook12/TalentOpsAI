@@ -110,7 +110,7 @@ export default function NotificationCenter() {
                     return (
                       <div key={n.id} style={{ 
                         display: 'flex', gap: 12, padding: '12px 16px', 
-                        background: n.read ? 'transparent' : 'rgba(14, 165, 233, 0.04)',
+                        background: n.read ? 'transparent' : 'rgba(212, 212, 216, 0.04)',
                         borderRadius: 6, margin: '4px 0'
                       }}>
                         <div style={{ flexShrink: 0, width: 32, height: 32, borderRadius: 6, background: `${color}15`, color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

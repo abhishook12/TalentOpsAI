@@ -34,7 +34,7 @@ export default function ScoutNodesPanel() {
     CONNECTED_IDLE: { text: '● CONNECTED (IDLE)', color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' },
     IDLE_NO_INGESTION: { text: '⚠ NO INGESTION (>5m)', color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
     PREVIOUSLY_ACTIVE: { text: '○ HISTORICAL (OFFLINE)', color: '#9ca3af', bg: 'rgba(156,163,175,0.15)' },
-    AWAITING_CONNECTION: { text: '○ AWAITING PAIRING', color: '#64748b', bg: 'rgba(100,116,139,0.15)' },
+    AWAITING_CONNECTION: { text: '○ AWAITING PAIRING', color: '#71717a', bg: 'rgba(100,116,139,0.15)' },
     REVOKED: { text: '🔴 REVOKED', color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
   }
 
@@ -84,8 +84,8 @@ export default function ScoutNodesPanel() {
           <button
             onClick={() => refetch()}
             style={{
-              padding: '8px 12px', background: '#1e293b', color: '#94a3b8',
-              border: '1px solid #334155', borderRadius: 8, fontSize: 12, fontWeight: 600,
+              padding: '8px 12px', background: '#232326', color: '#a1a1aa',
+              border: '1px solid #27272a', borderRadius: 8, fontSize: 12, fontWeight: 600,
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
             }}
           >
@@ -97,9 +97,9 @@ export default function ScoutNodesPanel() {
             href="https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe"
             download="TalentOpsScoutSetup.exe"
             style={{
-              padding: '8px 14px', background: '#334155', color: '#f8fafc',
+              padding: '8px 14px', background: '#27272a', color: '#fafafa',
               borderRadius: 8, fontSize: 12, fontWeight: 700, textDecoration: 'none',
-              display: 'flex', alignItems: 'center', gap: 6, border: '1px solid #475569'
+              display: 'flex', alignItems: 'center', gap: 6, border: '1px solid #3f3f46'
             }}
           >
             <Download size={13} />
@@ -148,9 +148,9 @@ export default function ScoutNodesPanel() {
           style={{
             padding: '8px 16px',
             borderRadius: 8,
-            border: activeTab === 'nodes' ? '1px solid #3b82f6' : '1px solid var(--border)',
-            background: activeTab === 'nodes' ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
-            color: activeTab === 'nodes' ? '#38bdf8' : 'var(--text-secondary)',
+            border: activeTab === 'nodes' ? '1px solid #d4d4d8' : '1px solid var(--border)',
+            background: activeTab === 'nodes' ? 'rgba(212, 212, 216, 0.15)' : 'transparent',
+            color: activeTab === 'nodes' ? '#e4e4e7' : 'var(--text-secondary)',
             fontWeight: 700,
             fontSize: 13,
             cursor: 'pointer',
@@ -160,7 +160,7 @@ export default function ScoutNodesPanel() {
           }}
         >
           <span>🛰️ Live Node Streams</span>
-          <span style={{ fontSize: 11, background: '#1e293b', padding: '1px 6px', borderRadius: 10 }}>{totalNodes}</span>
+          <span style={{ fontSize: 11, background: '#232326', padding: '1px 6px', borderRadius: 10 }}>{totalNodes}</span>
         </button>
 
         <button
@@ -168,9 +168,9 @@ export default function ScoutNodesPanel() {
           style={{
             padding: '8px 16px',
             borderRadius: 8,
-            border: activeTab === 'operations' ? '1px solid #a855f7' : '1px solid var(--border)',
-            background: activeTab === 'operations' ? 'rgba(168, 85, 247, 0.15)' : 'transparent',
-            color: activeTab === 'operations' ? '#c084fc' : 'var(--text-secondary)',
+            border: activeTab === 'operations' ? '1px solid #a1a1aa' : '1px solid var(--border)',
+            background: activeTab === 'operations' ? 'rgba(161, 161, 170, 0.15)' : 'transparent',
+            color: activeTab === 'operations' ? '#d4d4d8' : 'var(--text-secondary)',
             fontWeight: 700,
             fontSize: 13,
             cursor: 'pointer',
@@ -180,7 +180,7 @@ export default function ScoutNodesPanel() {
           }}
         >
           <span>⚡ Operations & Kill Switches</span>
-          <span style={{ fontSize: 10, background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc', padding: '1px 6px', borderRadius: 4, fontWeight: 800 }}>SCOUT 2.0</span>
+          <span style={{ fontSize: 10, background: 'rgba(161, 161, 170, 0.2)', color: '#d4d4d8', padding: '1px 6px', borderRadius: 4, fontWeight: 800 }}>SCOUT 2.0</span>
         </button>
       </div>
 
@@ -208,7 +208,7 @@ export default function ScoutNodesPanel() {
 
         <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 18px' }}>
           <div style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 2 }}>STREAMING INGESTION</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: '#3b82f6' }}><AnimatedNumber value={streamingNodes} /></div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#d4d4d8' }}><AnimatedNumber value={streamingNodes} /></div>
           <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>Actively pushing discoveries</div>
         </div>
 
@@ -245,8 +245,8 @@ export default function ScoutNodesPanel() {
                       width: 38,
                       height: 38,
                       borderRadius: 8,
-                      background: 'rgba(59, 130, 246, 0.15)',
-                      color: '#3b82f6',
+                      background: 'rgba(212, 212, 216, 0.15)',
+                      color: '#d4d4d8',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -289,7 +289,7 @@ export default function ScoutNodesPanel() {
                         onClick={() => handleRename(node.device_id, node.device_name)}
                         title="Rename Device"
                         style={{
-                          background: '#1e293b', border: '1px solid #334155', color: '#94a3b8',
+                          background: '#232326', border: '1px solid #27272a', color: '#a1a1aa',
                           borderRadius: 6, padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center'
                         }}
                       >
@@ -336,7 +336,7 @@ export default function ScoutNodesPanel() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
                 <div style={{ display: 'flex', gap: 16 }}>
                   <span>Captures: <strong>{node.captures_today}</strong></span>
-                  <span>Enriched Today: <strong style={{ color: '#06b6d4' }}>+{node.records_enriched}</strong></span>
+                  <span>Enriched Today: <strong style={{ color: '#d4d4d8' }}>+{node.records_enriched}</strong></span>
                   <span>New People: <strong style={{ color: '#ec4899' }}>+{node.new_records_created}</strong></span>
                   <span>Fields Added: <strong style={{ color: '#10b981' }}>+{node.fields_added}</strong></span>
                 </div>

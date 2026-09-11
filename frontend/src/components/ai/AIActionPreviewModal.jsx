@@ -40,11 +40,11 @@ export default function AIActionPreviewModal({
           maxWidth: '680px',
           maxHeight: '85vh',
           overflowY: 'auto',
-          backgroundColor: 'var(--bg-card, #0f172a)',
-          border: '1px solid var(--border-ai, rgba(139, 92, 246, 0.4))',
+          backgroundColor: 'var(--bg-card, #121214)',
+          border: '1px solid var(--border-ai, rgba(161, 161, 170, 0.4))',
           borderRadius: '12px',
           padding: '24px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 30px rgba(139, 92, 246, 0.2)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 30px rgba(161, 161, 170, 0.2)',
           display: 'flex',
           flexDirection: 'column',
           gap: '18px'
@@ -52,7 +52,7 @@ export default function AIActionPreviewModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border, #1e293b)', paddingBottom: '14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border, #232326)', paddingBottom: '14px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
               <span style={{ fontSize: '12px', color: '#f59e0b' }}>⚠</span>
@@ -91,19 +91,19 @@ export default function AIActionPreviewModal({
 
         {/* Impact Scope Breakdown */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
-          <div style={{ background: 'var(--bg-base, #090d14)', border: '1px solid var(--border, #1e293b)', borderRadius: '6px', padding: '10px', textAlign: 'center' }}>
+          <div style={{ background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--border, #232326)', borderRadius: '6px', padding: '10px', textAlign: 'center' }}>
             <div style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Records Added</div>
             <div style={{ fontSize: '18px', fontWeight: 900, color: '#10b981', marginTop: '2px' }}>{summaryMetrics.added || 0}</div>
           </div>
-          <div style={{ background: 'var(--bg-base, #090d14)', border: '1px solid var(--border, #1e293b)', borderRadius: '6px', padding: '10px', textAlign: 'center' }}>
+          <div style={{ background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--border, #232326)', borderRadius: '6px', padding: '10px', textAlign: 'center' }}>
             <div style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Updated</div>
-            <div style={{ fontSize: '18px', fontWeight: 900, color: '#38bdf8', marginTop: '2px' }}>{summaryMetrics.updated || 0}</div>
+            <div style={{ fontSize: '18px', fontWeight: 900, color: '#e4e4e7', marginTop: '2px' }}>{summaryMetrics.updated || 0}</div>
           </div>
-          <div style={{ background: 'var(--bg-base, #090d14)', border: '1px solid var(--border, #1e293b)', borderRadius: '6px', padding: '10px', textAlign: 'center' }}>
+          <div style={{ background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--border, #232326)', borderRadius: '6px', padding: '10px', textAlign: 'center' }}>
             <div style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Merged</div>
-            <div style={{ fontSize: '18px', fontWeight: 900, color: '#a78bfa', marginTop: '2px' }}>{summaryMetrics.merged || 0}</div>
+            <div style={{ fontSize: '18px', fontWeight: 900, color: '#a1a1aa', marginTop: '2px' }}>{summaryMetrics.merged || 0}</div>
           </div>
-          <div style={{ background: 'var(--bg-base, #090d14)', border: '1px solid var(--border, #1e293b)', borderRadius: '6px', padding: '10px', textAlign: 'center' }}>
+          <div style={{ background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--border, #232326)', borderRadius: '6px', padding: '10px', textAlign: 'center' }}>
             <div style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Flagged Stale</div>
             <div style={{ fontSize: '18px', fontWeight: 900, color: '#ef4444', marginTop: '2px' }}>{summaryMetrics.flagged || 0}</div>
           </div>
@@ -126,15 +126,15 @@ export default function AIActionPreviewModal({
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
-                  backgroundColor: 'var(--bg-base, #090d14)',
-                  border: '1px solid var(--border, #1e293b)',
+                  backgroundColor: 'var(--bg-base, #0b0b0c)',
+                  border: '1px solid var(--border, #232326)',
                   borderRadius: '6px',
                   padding: '8px 12px',
                   fontSize: '12px',
                   color: 'var(--text-primary)'
                 }}
               >
-                <span style={{ color: '#38bdf8' }}>✓</span>
+                <span style={{ color: '#e4e4e7' }}>✓</span>
                 <span>{desc}</span>
               </div>
             ))}
@@ -142,12 +142,12 @@ export default function AIActionPreviewModal({
         </div>
 
         {/* Action Controls */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid var(--border, #1e293b)', paddingTop: '14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid var(--border, #232326)', paddingTop: '14px' }}>
           <button
             onClick={onClose}
             style={{
-              background: 'var(--bg-base, #090d14)',
-              border: '1px solid var(--border, #1e293b)',
+              background: 'var(--bg-base, #0b0b0c)',
+              border: '1px solid var(--border, #232326)',
               borderRadius: '6px',
               padding: '8px 16px',
               fontSize: '12px',
@@ -160,7 +160,7 @@ export default function AIActionPreviewModal({
           <button
             onClick={onConfirm}
             style={{
-              background: 'linear-gradient(135deg, #10b981, #38bdf8)',
+              background: 'linear-gradient(135deg, #10b981, #e4e4e7)',
               border: 'none',
               borderRadius: '6px',
               padding: '8px 20px',

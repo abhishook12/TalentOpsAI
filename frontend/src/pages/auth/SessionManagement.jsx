@@ -33,7 +33,7 @@ const SessionManagement = () => {
   };
 
   if (loading) {
-    return <div style={{ display: 'grid', placeItems: 'center', minHeight: '60vh', color: '#a1a1aa' }}><i className="ti ti-loader animate-spin" style={{ fontSize: 24, color: '#3b82f6', marginBottom: 12 }} />Loading sessions...</div>;
+    return <div style={{ display: 'grid', placeItems: 'center', minHeight: '60vh', color: '#a1a1aa' }}><i className="ti ti-loader animate-spin" style={{ fontSize: 24, color: '#d4d4d8', marginBottom: 12 }} />Loading sessions...</div>;
   }
 
   return (

@@ -79,8 +79,8 @@ export default function IntelligenceFeed({ onTriggerAction }) {
   return (
     <div
       style={{
-        backgroundColor: 'var(--bg-card, #0f172a)',
-        border: '1px solid var(--border, #1e293b)',
+        backgroundColor: 'var(--bg-card, #121214)',
+        border: '1px solid var(--border, #232326)',
         borderRadius: '12px',
         padding: '20px',
         display: 'flex',
@@ -92,7 +92,7 @@ export default function IntelligenceFeed({ onTriggerAction }) {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '14px', color: '#38bdf8' }}>⚡</span>
+          <span style={{ fontSize: '14px', color: '#e4e4e7' }}>⚡</span>
           <div>
             <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)' }}>
               Proactive Intelligence Feed
@@ -104,7 +104,7 @@ export default function IntelligenceFeed({ onTriggerAction }) {
         </div>
 
         {/* Priority Filter Tabs */}
-        <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-base, #090d14)', padding: '3px', borderRadius: '8px', border: '1px solid var(--border, #1e293b)' }}>
+        <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-base, #0b0b0c)', padding: '3px', borderRadius: '8px', border: '1px solid var(--border, #232326)' }}>
           {[
             { id: 'all', label: 'All' },
             { id: 'critical', label: 'Critical' },
@@ -115,13 +115,13 @@ export default function IntelligenceFeed({ onTriggerAction }) {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               style={{
-                background: activeTab === tab.id ? 'var(--bg-surface, #1e293b)' : 'transparent',
+                background: activeTab === tab.id ? 'var(--bg-surface, #232326)' : 'transparent',
                 border: 'none',
                 borderRadius: '5px',
                 padding: '4px 10px',
                 fontSize: '11px',
                 fontWeight: activeTab === tab.id ? 700 : 500,
-                color: activeTab === tab.id ? '#38bdf8' : 'var(--text-secondary)',
+                color: activeTab === tab.id ? '#e4e4e7' : 'var(--text-secondary)',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease'
               }}
@@ -151,8 +151,8 @@ export default function IntelligenceFeed({ onTriggerAction }) {
                 display: 'flex',
                 alignItems: 'flex-start',
                 justifyContent: 'space-between',
-                backgroundColor: 'var(--bg-base, #090d14)',
-                border: '1px solid var(--border, #1e293b)',
+                backgroundColor: 'var(--bg-base, #0b0b0c)',
+                border: '1px solid var(--border, #232326)',
                 borderRadius: '8px',
                 padding: '12px 16px',
                 gap: '12px',
@@ -167,7 +167,7 @@ export default function IntelligenceFeed({ onTriggerAction }) {
                     height: '32px',
                     borderRadius: '8px',
                     backgroundColor: 'rgba(255,255,255,0.03)',
-                    border: '1px solid var(--border, #1e293b)',
+                    border: '1px solid var(--border, #232326)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -200,10 +200,10 @@ export default function IntelligenceFeed({ onTriggerAction }) {
                       else toast.success(`Triggered: ${item.action_label}`)
                     }}
                     style={{
-                      background: 'rgba(56, 189, 248, 0.1)',
-                      border: '1px solid rgba(56, 189, 248, 0.3)',
+                      background: 'rgba(228, 228, 231, 0.1)',
+                      border: '1px solid rgba(228, 228, 231, 0.3)',
                       borderRadius: '6px',
-                      color: '#38bdf8',
+                      color: '#e4e4e7',
                       fontSize: '11px',
                       fontWeight: 700,
                       padding: '5px 10px',

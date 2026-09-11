@@ -39,16 +39,16 @@ export default function Maintenance() {
           <div style={{
             width: 72,
             height: 72,
-            background: 'linear-gradient(135deg, rgba(56,189,248,0.1), rgba(59,130,246,0.15))',
+            background: 'linear-gradient(135deg, rgba(228, 228, 231,0.1), rgba(212, 212, 216,0.15))',
             borderRadius: 6,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             marginBottom: 24,
-            border: '1px solid rgba(56,189,248,0.2)',
-            boxShadow: '0 0 40px rgba(56,189,248,0.05)',
+            border: '1px solid rgba(228, 228, 231,0.2)',
+            boxShadow: '0 0 40px rgba(228, 228, 231,0.05)',
           }}>
-            <i className="ti ti-terminal-2" style={{ fontSize: 32, color: '#38bdf8' }} />
+            <i className="ti ti-terminal-2" style={{ fontSize: 32, color: '#e4e4e7' }} />
           </div>
 
           <h1 style={{

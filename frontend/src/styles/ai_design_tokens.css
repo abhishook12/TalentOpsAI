@@ -4,34 +4,34 @@
  */
 
 :root {
-  /* Semantic Enterprise Dark Palette */
-  --ai-bg-canvas: #090d14;
-  --ai-bg-surface: #0f172a;
-  --ai-bg-surface-raised: #161f30;
-  --ai-bg-surface-elevated: #1e293b;
+  /* Semantic Enterprise Dark Charcoal Palette */
+  --ai-bg-canvas: #0b0b0c;
+  --ai-bg-surface: #121214;
+  --ai-bg-surface-raised: #161618;
+  --ai-bg-surface-elevated: #1e1e22;
   --ai-border-subtle: rgba(255, 255, 255, 0.08);
   --ai-border-medium: rgba(255, 255, 255, 0.14);
-  --ai-border-focus: #38bdf8;
+  --ai-border-focus: #d4d4d8;
 
-  /* Primary Brand & AI Accents */
-  --ai-primary-cyan: #38bdf8;
-  --ai-accent-violet: #8b5cf6;
-  --ai-accent-indigo: #6366f1;
-  --ai-accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #38bdf8 100%);
-  --ai-accent-subtle-glow: rgba(139, 92, 246, 0.16);
+  /* Primary Brand & AI Accents - Silver & Platinum */
+  --ai-primary-cyan: #e4e4e7;
+  --ai-accent-violet: #d4d4d8;
+  --ai-accent-indigo: #a1a1aa;
+  --ai-accent-gradient: linear-gradient(135deg, #ffffff 0%, #e4e4e7 50%, #a1a1aa 100%);
+  --ai-accent-subtle-glow: rgba(228, 228, 231, 0.12);
 
   /* Semantic Data Provenance Status */
   --ai-status-verified: #10b981;
-  --ai-status-observed: #38bdf8;
+  --ai-status-observed: #d4d4d8;
   --ai-status-inferred: #f59e0b;
-  --ai-status-derived: #8b5cf6;
+  --ai-status-derived: #d4d4d8;
   --ai-status-predicted: #ec4899;
-  --ai-status-unknown: #94a3b8;
+  --ai-status-unknown: #a1a1aa;
   --ai-status-danger: #ef4444;
 
   /* Typography */
-  --ai-font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --ai-font-mono: 'JetBrains Mono', monospace;
+  --ai-font-sans: 'Inter', system-ui, sans-serif;
+  --ai-font-mono: 'IBM Plex Mono', monospace;
 }
 
 /* Subtle AI Ambient Glow */
@@ -47,8 +47,8 @@
 }
 
 .ai-card:hover {
-  border-color: rgba(139, 92, 246, 0.35);
-  box-shadow: 0 4px 24px -6px rgba(139, 92, 246, 0.12);
+  border-color: rgba(212, 212, 216, 0.35);
+  box-shadow: 0 4px 24px -6px rgba(212, 212, 216, 0.1);
 }
 
 /* Gradient Header Text */
@@ -79,9 +79,9 @@
 }
 
 .ai-badge-observed {
-  background: rgba(56, 189, 248, 0.12);
-  color: #38bdf8;
-  border-color: rgba(56, 189, 248, 0.28);
+  background: rgba(212, 212, 216, 0.12);
+  color: #e4e4e7;
+  border-color: rgba(212, 212, 216, 0.28);
 }
 
 .ai-badge-inferred {
@@ -91,9 +91,9 @@
 }
 
 .ai-badge-derived {
-  background: rgba(139, 92, 246, 0.12);
-  color: #a78bfa;
-  border-color: rgba(139, 92, 246, 0.28);
+  background: rgba(161, 161, 170, 0.12);
+  color: #a1a1aa;
+  border-color: rgba(161, 161, 170, 0.28);
 }
 
 .ai-badge-predicted {
@@ -104,7 +104,7 @@
 
 .ai-badge-unknown {
   background: rgba(148, 163, 184, 0.12);
-  color: #94a3b8;
+  color: #a1a1aa;
   border-color: rgba(148, 163, 184, 0.28);
 }
 
@@ -117,7 +117,7 @@
   50% {
     opacity: 1;
     transform: scale(1.05);
-    filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.6));
+    filter: drop-shadow(0 0 8px rgba(161, 161, 170, 0.6));
   }
 }
 

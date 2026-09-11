@@ -27,6 +27,8 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
     scrollToBottom()
   }, [messages])
 
+  const handleSendMessageRef = useRef(null)
+
   useEffect(() => {
     const handleSetContext = (e) => {
       if (e.detail) {
@@ -47,7 +49,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
     const handleOpenCopilot = (e) => {
       if (!isOpen && onToggle) onToggle()
       if (e.detail?.prompt) {
-        setTimeout(() => handleSendMessage(e.detail.prompt), 300)
+        setTimeout(() => handleSendMessageRef.current?.(e.detail.prompt), 300)
       }
     }
 
@@ -60,6 +62,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
   }, [isOpen, onToggle])
 
   const handleSendMessage = async (textToSend) => {
+    handleSendMessageRef.current = handleSendMessage
     const query = textToSend || input
     if (!query.trim()) return
 

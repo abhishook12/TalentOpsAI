@@ -126,8 +126,10 @@ export default function DownloadScout() {
               claim_secret: claimData.claim_secret,
             }),
             mode: 'cors',
-          }).catch(() => {});
-        } catch (_) {}
+          }).catch((err) => { console.debug('Direct local loopback not reachable:', err); });
+        } catch (err) {
+          console.debug('Loopback claim error:', err);
+        }
 
         // Poll claim status every 3s to notify user when Scout launches and pairs
         if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
@@ -143,7 +145,9 @@ export default function DownloadScout() {
                 refetch();
               }
             }
-          } catch (_) {}
+          } catch (pollErr) {
+            console.debug('Claim status poll retry note:', pollErr);
+          }
         }, 3000);
       }
     } catch (err) {
@@ -156,7 +160,9 @@ export default function DownloadScout() {
         version: releaseInfo.version || contribData?.latest_production_version || 'latest',
         source: 'desktop_scout_page'
       });
-    } catch (err) {}
+    } catch (err) {
+      console.debug('Download telemetry track note:', err);
+    }
 
     // 3. Initiate browser download of the installer using canonical public endpoint
     const downloadUrl = releaseInfo.download_url || '/download/scout/windows';

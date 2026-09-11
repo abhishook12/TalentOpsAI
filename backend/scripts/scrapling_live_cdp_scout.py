@@ -28,7 +28,7 @@ async def run_cdp_scout(target_urls, cdp_port=9222):
             print(f"Status: {res.status} | URL: {res.url}")
             print("Extracted content snippet:")
             for chunk in res.content[:2]:
-                print(chunk+100] + "...")
+                print(chunk[:100] + "...")
         except Exception as se:
             print(f"Fetch error on {url}: {se}")
 

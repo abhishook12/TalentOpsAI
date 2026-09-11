@@ -481,12 +481,38 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12
                     }}>
                       <div>
-                        <div style={{ fontWeight: 700, color: '#fafafa' }}>
-                          {p.candidate_name} • <span style={{ color: '#a1a1aa' }}>{p.company_name} ({p.title})</span>
+                        <div style={{ fontWeight: 700, color: '#fafafa', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span>{p.candidate_name}</span>
+                          <span style={{ color: '#a1a1aa' }}>• {p.company_name} ({p.title})</span>
+                          {p.canonical_profile_url && (
+                            <a
+                              href={p.canonical_profile_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{ color: '#38bdf8', fontSize: 11, textDecoration: 'none', fontWeight: 600 }}
+                            >
+                              [Open ↗]
+                            </a>
+                          )}
                         </div>
                         <div style={{ fontSize: 11, color: '#71717a', marginTop: 2 }}>
                           {p.source_url} • Capture: {p.capture_id} • {p.timestamp}
                         </div>
+                        {p.evidence_checklist && p.evidence_checklist.length > 0 && (
+                          <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                            {p.evidence_checklist.map((chk, ci) => (
+                              <span
+                                key={ci}
+                                style={{
+                                  fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4,
+                                  background: 'rgba(16,185,129,0.12)', color: '#4ade80', border: '1px solid rgba(16,185,129,0.25)'
+                                }}
+                              >
+                                ✓ {chk}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       <div style={{ textAlign: 'right' }}>

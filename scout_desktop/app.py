@@ -42,6 +42,8 @@ from .extractor.grounding_gate import GroundingGate
 from .extractor.identity_resolver import IdentityResolver
 from .extractor.cross_channel_stitcher import CrossChannelStitcher
 from .extractor.timeline_parser import TimelineParser
+from .extractor.page_classifier import PageClassifier
+from .extractor.extraction_engine import ScoutExtractionEngine, CanonicalCandidate
 from .sync.local_queue import LocalQueue
 from .sync.backend_client import BackendClient
 from .sync.batch_processor import BatchProcessor
@@ -157,7 +159,7 @@ class AppBridge(QObject):
     capture_view_updated = Signal(str, float, str, object, dict, str) # (capture_id, delta, reason, img, breakdown, status)
     extraction_proof_updated = Signal(list)       # (observations)
     db_proof_updated = Signal(str, dict, str)     # (status, response_dict, result_str)
-    candidate_card_updated = Signal(str, str, str, str, str, str, object) # (name, title, company, location, status, desc, copilot_info)
+    candidate_card_updated = Signal(str, str, str, str, str, str, object, str, int, object, object) # (name, title, company, location, status, desc, copilot_info, profile_url, confidence, checklist, field_confidence)
 
 
 class ScoutDesktopApp:
@@ -170,6 +172,7 @@ class ScoutDesktopApp:
         self.evidence_store = EvidenceStore()
         self.ocr_engine = OcrEngine()
         self.entity_extractor = EntityExtractor()
+        self.extraction_engine = ScoutExtractionEngine()
         self.local_queue = LocalQueue()
         self.backend_client = BackendClient()
 
@@ -1073,13 +1076,27 @@ class ScoutDesktopApp:
 
         lines = list(ocr_lines)
 
-        clusters = self.entity_extractor.extract_from_lines(
-            lines=lines,
-            capture_id=capture_id,
-            source_url=page_url,
+        # High-Precision Semantic Extraction Engine (Structure & Meaning Aware)
+        canonical_cands, engine_telemetry = self.extraction_engine.process_frame(
+            img=img,
+            delta=delta,
+            ocr_lines=lines,
             window_title=page_title,
-            inferred_candidate=cand_name,
+            source_url=page_url,
+            platform=target_type,
+            capture_id=capture_id,
         )
+
+        clusters = [c.raw_cluster for c in canonical_cands if c.raw_cluster]
+        if not clusters and is_chat_or_doc_window:
+            # Fallback for chat/pdf document streams
+            clusters = self.entity_extractor.extract_from_lines(
+                lines=lines,
+                capture_id=capture_id,
+                source_url=page_url,
+                window_title=page_title,
+                inferred_candidate=cand_name,
+            )
 
         # 3. Stage & transition capture lifecycle
         breakdown = {"people": 0, "companies": 0, "locations": 0, "jobs": 0, "signals": 0}
@@ -1140,6 +1157,19 @@ class ScoutDesktopApp:
                 staged_contact["visual_change_score"] = delta
                 if not staged_contact.get("linkedin_url") and page_url and "linkedin.com/in/" in page_url:
                     staged_contact["linkedin_url"] = page_url
+
+                # Link canonical candidate metadata if available
+                matching_canon = next(
+                    (can for can in canonical_cands if can.raw_cluster == c or can.canonical_name == c.canonical_name),
+                    None
+                )
+                if matching_canon:
+                    staged_contact["canonical_profile_url"] = matching_canon.canonical_profile_url
+                    staged_contact["page_type"] = matching_canon.page_type
+                    staged_contact["field_confidence"] = matching_canon.confidence_report.field_breakdown
+                    staged_contact["evidence_checklist"] = matching_canon.audit_trail.checklist
+                    if not staged_contact.get("linkedin_url") and matching_canon.canonical_profile_url:
+                        staged_contact["linkedin_url"] = matching_canon.canonical_profile_url
 
                 # Continuous Multi-Hop Cross-Channel Graph Stitching & Peak Enrichment
                 try:
@@ -1244,7 +1274,13 @@ class ScoutDesktopApp:
             except Exception as e:
                 logger.debug("Live Copilot lookup error: %s", e)
 
-            card_status = "IN DATABASE" if (copilot_info and copilot_info.get("found")) else "STAGED"
+            first_canon = canonical_cands[0] if canonical_cands else None
+            card_status = first_canon.status if first_canon else ("IN DATABASE" if (copilot_info and copilot_info.get("found")) else "STAGED")
+            card_profile_url = first_canon.canonical_profile_url if first_canon else (getattr(first, "linkedin_url", None) or page_url)
+            card_confidence = int(first_canon.overall_confidence * 100) if first_canon else int(getattr(first, "confidence", 0.90) * 100)
+            card_checklist = first_canon.audit_trail.checklist if (first_canon and first_canon.audit_trail) else []
+            card_field_conf = first_canon.confidence_report.field_breakdown if first_canon else {}
+
             self.bridge.candidate_card_updated.emit(
                 first.canonical_name,
                 first.current_title or "",
@@ -1252,7 +1288,11 @@ class ScoutDesktopApp:
                 first.location or "",
                 card_status,
                 desc,
-                copilot_info
+                copilot_info,
+                card_profile_url or "",
+                card_confidence,
+                card_checklist,
+                card_field_conf
             )
         else:
             # Discard immediately on NO_USEFUL_DATA (0ms)
@@ -1429,8 +1469,21 @@ class ScoutDesktopApp:
             self.edge_handle.set_status_state("IDLE")
             self.tray.update_icon_status("IDLE")
 
-    @Slot(str, str, str, str, str, str, object)
-    def _handle_candidate_card_update(self, name: str, title: str, company: str, location: str, status: str, desc: str, copilot_info: Optional[dict] = None):
+    @Slot(str, str, str, str, str, str, object, str, int, object, object)
+    def _handle_candidate_card_update(
+        self,
+        name: str,
+        title: str,
+        company: str,
+        location: str,
+        status: str,
+        desc: str,
+        copilot_info: Optional[dict] = None,
+        profile_url: Optional[str] = None,
+        confidence: int = 95,
+        checklist: Optional[list] = None,
+        field_confidence: Optional[dict] = None,
+    ):
         self.main_window.lbl_target_desc.setText(f"Extracted: {desc}")
         self.main_window.update_candidate_card(
             name=name,
@@ -1438,7 +1491,11 @@ class ScoutDesktopApp:
             company=company,
             location=location,
             status=status,
-            copilot_info=copilot_info
+            copilot_info=copilot_info,
+            profile_url=profile_url,
+            confidence=confidence,
+            checklist=checklist,
+            field_confidence=field_confidence,
         )
 
     @Slot(str)

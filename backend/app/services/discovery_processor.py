@@ -296,14 +296,18 @@ class DiscoveryProcessor:
 
         for r in records:
             matched_cluster = None
-            r_li = self._normalize_linkedin(r.raw_linkedin)
+            r_li = self._normalize_linkedin(getattr(r, "canonical_profile_url", None) or r.raw_linkedin or (r.source_url if r.source_url and "linkedin.com/in/" in r.source_url else None))
             r_email = self._normalize_email(r.raw_email)
             r_phone = normalize_text(r.raw_phone) if r.raw_phone else ""
             r_name = self._normalize_name(r.raw_name)
             r_company = normalize_text(r.raw_company) if r.raw_company else ""
 
             for cluster in clusters:
-                c_li_set = {self._normalize_linkedin(c.raw_linkedin) for c in cluster if c.raw_linkedin}
+                c_li_set = {
+                    self._normalize_linkedin(getattr(c, "canonical_profile_url", None) or c.raw_linkedin or (c.source_url if c.source_url and "linkedin.com/in/" in c.source_url else None))
+                    for c in cluster
+                    if getattr(c, "canonical_profile_url", None) or c.raw_linkedin or c.source_url
+                }
                 c_email_set = {self._normalize_email(c.raw_email) for c in cluster if c.raw_email}
                 c_phone_set = {normalize_text(c.raw_phone) for c in cluster if c.raw_phone}
                 c_name_set = {self._normalize_name(c.raw_name) for c in cluster if c.raw_name}
@@ -429,11 +433,18 @@ class DiscoveryProcessor:
                     linkedin_url = r.source_url
                     break
 
+        canonical_profile_url = most_common([getattr(r, "canonical_profile_url", None) for r in cluster]) or linkedin_url
+        page_type = most_common([getattr(r, "page_type", None) for r in cluster])
+        field_confidence_json = next((getattr(r, "field_confidence_json", None) for r in cluster if getattr(r, "field_confidence_json", None)), None)
+        evidence_json = next((getattr(r, "evidence_json", None) for r in cluster if getattr(r, "evidence_json", None)), None)
+        if not linkedin_url and canonical_profile_url and "linkedin.com/in/" in canonical_profile_url:
+            linkedin_url = canonical_profile_url
+
         # Calculate Identity Confidence Score
         conf = 0.0
         if canonical_name and canonical_name != "Unknown Professional":
             conf += 0.25
-        if linkedin_url:
+        if linkedin_url or canonical_profile_url:
             conf += 0.30
         if current_company:
             conf += 0.15
@@ -508,6 +519,10 @@ class DiscoveryProcessor:
             skills=skills,
             experience_history=experience_history,
             metadata_json=metadata_json_str,
+            page_type=page_type,
+            canonical_profile_url=canonical_profile_url,
+            field_confidence_json=field_confidence_json,
+            evidence_json=evidence_json,
             identity_confidence=round(conf, 2),
             observation_count=obs_count,
             name_confidence=name_conf,
@@ -535,9 +550,10 @@ class DiscoveryProcessor:
         Matches a ResolvedPerson against existing master `recruiters` table.
         Returns (matched_recruiter, match_confidence).
         """
-        # 1. Match by LinkedIn URL (Very Strong: 0.95)
-        if person.linkedin_url:
-            slug = self._normalize_linkedin(person.linkedin_url)
+        # 1. Match by Canonical Profile URL or LinkedIn URL (Very Strong: 0.95)
+        prof_url = getattr(person, "canonical_profile_url", None) or person.linkedin_url
+        if prof_url:
+            slug = self._normalize_linkedin(prof_url)
             if slug and len(slug) > 3:
                 match = self.db.query(Recruiter).filter(
                     Recruiter.linkedin.ilike(f"%{slug}%")

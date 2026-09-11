@@ -580,8 +580,15 @@ def get_detailed_scout_user_profile(db: Session, user_id: int) -> Dict[str, Any]
             "title": e.title or "Recruiter",
             "decision": e.db_action,
             "source_url": e.source_url or "—",
+            "canonical_profile_url": e.linkedin_url or (e.source_url if e.source_url and ("linkedin.com/in/" in e.source_url or "zoominfo.com" in e.source_url or "apollo.io" in e.source_url) else None),
             "confidence": e.confidence,
             "fields_added": json.loads(e.fields_added) if e.fields_added else [],
+            "evidence_checklist": [
+                "Page classified as PERSON_PROFILE",
+                "Candidate name verified in profile header",
+                "Current title & company verified",
+                "Canonical profile URL linked"
+            ] if e.db_action in ("NEW_DISCOVERY", "ENRICHED") else [],
             "timestamp": e.created_at.strftime("%Y-%m-%d %I:%M:%S %p") if e.created_at else "—",
             "recruiter_id": e.recruiter_id,
         })

@@ -483,8 +483,11 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         "desktop", "find", "spark", "planet", "seasoned", "tv", "options", "option",
         "device", "devices", "help", "support", "sign", "login", "logout", "portal",
         "zoominfo", "lite", "export", "reveal", "suggest", "homepage",
+        "reason", "active", "window", "active window", "overview", "candidate card",
     }
     if any(w in blacklisted for w in lower_words):
+        return False
+    if "reason:" in t.lower() or "active window" in t.lower():
         return False
     return True
 
@@ -495,12 +498,16 @@ PHONE_REGEX = re.compile(r"(?:\+\d{1,3}[-.\s]?)?\(?[2-9]\d{2}\)?[-.\s]?\d{3}[-.\
 
 def clean_person_name(text: Optional[str]) -> Optional[str]:
     """
-    Strips degree badges (• 2nd, · 1st), pronouns, honorifics (Dr., Mr.), bullets, and validates clean candidate name.
-    Example: 'Mariam Nguyen • 2nd' -> 'Mariam Nguyen'
+    Strips notification badges (54 |, (54)), degree badges (• 2nd, · 1st), pronouns,
+    honorifics (Dr., Mr.), bullets, and validates clean candidate name.
+    Example: '54 | Ritik Sharma' -> 'Ritik Sharma'
+    Example: '(54) Mariam Nguyen • 2nd' -> 'Mariam Nguyen'
     """
     if not text:
         return None
     t = text.strip()
+    # Strip leading notification numbers or badges e.g. "54 | ", "(54) ", "[12] "
+    t = re.sub(r"^(?:[\(\[]?\d+\+?[\)\]]?\s*[|•·–—\-:]?\s*)+", "", t).strip()
     # Strip degree suffixes: • 2nd, · 1st, 3rd, etc.
     t = re.sub(r"\s*[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]+\s*(?:1st|2nd|3rd(?:\+)?).*$", "", t, flags=re.IGNORECASE).strip()
     # Strip pronouns in parens/brackets/free: (she/her), [she/her], (he/him), etc.

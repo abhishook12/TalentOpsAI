@@ -109,6 +109,10 @@ class ExtensionContact(BaseModel):
     github: Optional[str] = None
     twitter: Optional[str] = None
     portfolio: Optional[str] = None
+    page_type: Optional[str] = None
+    canonical_profile_url: Optional[str] = None
+    field_confidence: Optional[dict] = None
+    evidence_checklist: Optional[list] = None
 
 
 class BatchRequest(BaseModel):
@@ -392,6 +396,10 @@ def ingest_extension_batch(
                     contact.specialties, contact.founded, contact.company_type, contact.open_roles,
                     contact.overview, contact.github, contact.twitter, contact.portfolio
                 ]) else None,
+                page_type=contact.page_type,
+                canonical_profile_url=contact.canonical_profile_url or contact.linkedin_url or (contact.source_url if contact.source_url and "linkedin.com/in/" in contact.source_url else None),
+                field_confidence_json=json.dumps(contact.field_confidence) if contact.field_confidence else None,
+                evidence_json=json.dumps(contact.evidence_checklist) if contact.evidence_checklist else None,
             )
             db.add(staging_record)
             staged += 1

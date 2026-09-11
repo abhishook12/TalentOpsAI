@@ -382,26 +382,18 @@ class BackendClient:
             return False, {"status": "ERROR", "error": str(e)}
 
     def ensure_authenticated(self) -> bool:
-        """Auto-activates device to acquire valid JWT token if needed."""
+        """
+        Checks if a valid auth token exists.
+        Returns True if authenticated, False if device needs pairing.
+        
+        NOTE: Previously this method silently called /recruiters/extension/auto-activate
+        which hardcoded the device owner to the admin account — hijacking every new
+        user's machine. Now it simply checks for an existing token, letting the
+        ActivationWindow / Device Flow handle proper user-bound pairing.
+        """
         if self.auth_token:
             return True
-
-        url = f"{self.active_api_base}/recruiters/extension/auto-activate"
-        payload = {
-            "device_id": self.device_id,
-            "browser_info": "TalentOps Scout Desktop / Windows Native",
-            "extension_version": f"{CURRENT_VERSION}-desktop",
-        }
-        try:
-            res = requests.post(url, json=payload, timeout=5.0)
-            if res.status_code == 200:
-                token = res.json().get("access_token")
-                if token:
-                    self._save_token_to_config(token)
-                    logger.info("⚡ Scout Desktop successfully activated with backend!")
-                    return True
-        except Exception as e:
-            logger.warning("Auto-activation request failed: %s", e)
+        logger.debug("Scout Desktop is not authenticated — awaiting user pairing via Device Flow.")
         return False
 
     def _get_headers(self) -> Dict[str, str]:

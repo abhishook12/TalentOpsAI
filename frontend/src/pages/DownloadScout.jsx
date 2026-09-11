@@ -1006,7 +1006,7 @@ export default function DownloadScout() {
               </span>
             </div>
             <button
-              onClick={() => setActiveView('fleet_nodes')}
+              onClick={() => setAdminView('fleet_nodes')}
               style={{
                 padding: '5px 14px', background: '#0284c7', color: '#fff',
                 border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer',
@@ -1030,7 +1030,7 @@ export default function DownloadScout() {
                 color: '#22c55e',
                 sub: `${totalDevicesCount} nodes (Click to view fleet)`,
                 clickable: true,
-                onClick: () => setActiveView('fleet_nodes')
+                onClick: () => setAdminView('fleet_nodes')
               },
               { label: 'CONTRIBUTING USERS', value: contributingUsersCount, icon: Sparkles, color: '#a855f7', sub: 'Added / enriched data' },
               { label: 'OFFLINE USERS', value: offlineUsersCount, icon: Clock, color: '#94a3b8', sub: 'No signal > 7d' },

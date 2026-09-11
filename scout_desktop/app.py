@@ -308,9 +308,6 @@ class ScoutDesktopApp:
         self.main_window.update_account_display(user_display)
         self.bridge.event_logged.emit("ACCOUNT_PAIRED", f"Device paired to: {user_display}")
 
-        # Send initial proof of life heartbeat under the new user identity
-        self.backend_client.send_heartbeat(status="ACTIVE")
-
         # Show notification
         try:
             if hasattr(self, "tray") and hasattr(self.tray, "tray"):
@@ -322,6 +319,11 @@ class ScoutDesktopApp:
                 )
         except Exception:
             pass
+
+        # Now that we're properly authenticated under the correct user,
+        # start the scanning engine (heartbeat, window tracking, sampling, etc.)
+        # This was deferred from start() because the device was not yet paired.
+        self._start_engine()
 
     def _dock_to_edge(self):
         """Hides MainWindow while ensuring the screen-edge handle is active and visible."""
@@ -571,6 +573,17 @@ class ScoutDesktopApp:
             self.tray.update_icon_status("PENDING")
             self.bridge.event_logged.emit("REGISTRATION_PENDING", "Waiting for account pairing code (TOS-XXXX-XXXX)...")
 
+            # Update environment badge before returning
+            self.main_window.update_environment(
+                self.backend_client.environment_name,
+                self.backend_client.active_api_base
+            )
+            self.main_window.update_account_display(self.backend_client.current_user_email)
+
+            # CRITICAL: Return early — do NOT start the scanning engine until pairing completes.
+            # _on_activation_complete() will call _start_engine() after successful pairing.
+            return
+
         # Update environment badge
         self.main_window.update_environment(
             self.backend_client.environment_name,
@@ -578,6 +591,18 @@ class ScoutDesktopApp:
         )
         self.main_window.update_account_display(self.backend_client.current_user_email)
 
+        # Already authenticated — start the engine immediately
+        self._start_engine()
+
+    def _start_engine(self):
+        """
+        Initializes and starts all autonomous subsystems: heartbeat, window tracking,
+        visual sampling, hotkeys, and auto-updater.
+        
+        Called ONLY after the device has been properly paired to a user account,
+        either during startup (if already authenticated) or from _on_activation_complete()
+        after the user finishes pairing via ActivationWindow.
+        """
 
         # Step 1: STARTING
         self.main_window.update_status_state("STARTING")

@@ -98,7 +98,7 @@ class BackendClient:
             except Exception:
                 pass
 
-        GENERIC_DEFAULTS = {"DESKTOP-SCOUT-WIN", "DEVICE-ENTERPRISE-VERIFY-99", "SCOUT-NODE-01", "TEST-NODE-E2E"}
+        GENERIC_DEFAULTS = {"DESKTOP-SCOUT-WIN", "DEVICE-ENTERPRISE-VERIFY-99", "SCOUT-NODE-01"}
         if device_id and device_id not in GENERIC_DEFAULTS:
             self.device_id = device_id
         elif cfg_dev_id:

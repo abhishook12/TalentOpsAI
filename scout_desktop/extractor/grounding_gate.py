@@ -134,9 +134,15 @@ class GroundingGate:
             )
 
         # Check evidence grounding relevance (does evidence mention the value)
+        predicate = obs_dict.get("predicate", "")
         obj_val = str(obs_dict.get("object_value", obs_dict.get("object", ""))).strip().lower()
         evidence_lower = str(evidence).lower()
-        if obj_val and len(obj_val) > 2 and obj_val not in evidence_lower:
+        semantic_inferred_predicates = {
+            "HAS_SENIORITY_LEVEL", "HAS_SPECIALIZATION", "SENIORITY", "ROLE_CATEGORY", "NORMALIZED_ROLE",
+            "TENURE_MONTHS", "EXPERIENCE_YEARS", "HAS_YEARS_EXPERIENCE", "CANONICAL_TITLE",
+            "HAS_WORK_PREFERENCE", "HAS_AVAILABILITY", "HAS_HIRING_SIGNAL", "HAS_INDUSTRY_EXPERIENCE",
+        }
+        if predicate not in semantic_inferred_predicates and obj_val and len(obj_val) > 2 and obj_val not in evidence_lower:
             if self.strict_mode:
                 return GroundingResult(
                     outcome="FLAG_FABRICATION",

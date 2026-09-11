@@ -1,18 +1,31 @@
 """
 ui/main_window.py — Level 3 Full Windows Companion Application Window
 
-Redesigned for TalentOps Scout:
-- Minimalist Obsidian Palette (#0B0E14, #131722, #1E2433, #F8FAFC, #94A3B8, #10B981, #0284C7)
-- 1-Click Operations: [⚡ Scan Screen Now], [⏸ Pause / ▶ Resume], [☁ Sync to Cloud]
-- Plain-English Live Status Card: Clear description of what Scout is watching
-- 4-Step Visual Pipeline Funnel: 1. Scanned -> 2. Profiles Found -> 3. Real Verified -> 4. Cloud Synced
-- Latest Candidate Hero Card: Name, Title, Company, Location, Status pill
-- Collapsible Technical Drawer: Deep telemetry counters, thumbnail preview, extraction table, and live logs
+Redesigned for TalentOps Scout Command Center:
+- Matches media_1789142960310.png reference specification with exact pixel precision
+- Obsidian Executive Palette (#070B14, #0D1526, #141D2D, #1B263B, #0284C7, #10B981, #A855F7)
+- Top Bar: Logo, Autonomous Companion subtitle, Connected status, User & Account pills, Window controls
+- Left Sidebar Navigation: Scan, Candidates, Cloud Sync, Pipeline, Settings
+- Scan Page:
+  - Greeting Header ("Good Evening, [User]") with dynamic time-of-day greeting
+  - Scout Status Card with live animated green vector sparkline wave
+  - Primary Action Row ([⚡ Scan Screen Now], [⏸ Pause], [☁ Sync to Cloud])
+  - Currently Scanning Hero Card: App/Browser icon, target title & external link, elapsed session timer, live progress bar, 4 submetrics
+  - Today's Pipeline: 4 connected stage cards (Scanned Screens → Profiles Found → Real Verified → Cloud Synced)
+  - Latest Extracted Candidate: Circular initial avatar, full name, title, company, location, [View Profile ↗]
+  - Quick Actions Card: 3 full-width action triggers
+- Candidates Page: Search, filter pills, candidate table with confidence & view actions
+- Cloud Sync Page: Queue metrics (Pending, Synced, Failed, DLQ), sync actions, and sync history table
+- Pipeline Page: Deep funnel conversion analytics and platform breakdown
+- Settings Page: Multi-tab settings with Diagnostics tab housing all technical telemetry, 12 counters, thumbnail preview, extraction table, DB proof, and event stream
+- Persistent Bottom Status Bar: Sync timestamp, uploaded records counter, error status, version & OS metadata
 - 100% Backward Compatible with all app.py signals, slots, and properties.
 """
 
 import os
+import sys
 import time
+import math
 import logging
 from typing import Optional, Dict, Any, List
 from io import BytesIO
@@ -20,10 +33,14 @@ from io import BytesIO
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QPushButton, QScrollArea, QGridLayout, QTableWidget, QTableWidgetItem,
-    QHeaderView, QSizePolicy, QToolButton, QSplitter
+    QHeaderView, QSizePolicy, QToolButton, QSplitter, QStackedWidget,
+    QLineEdit, QProgressBar, QTabWidget, QApplication
 )
-from PySide6.QtCore import Qt, QPoint, Signal, QTimer, QSize
-from PySide6.QtGui import QColor, QFont, QPixmap, QIcon, QImage, QCloseEvent
+from PySide6.QtCore import Qt, QPoint, Signal, QTimer, QSize, QUrl
+from PySide6.QtGui import (
+    QColor, QFont, QPixmap, QIcon, QImage, QCloseEvent, QPainter,
+    QPainterPath, QPen, QLinearGradient, QDesktopServices, QBrush
+)
 from PIL import Image
 
 logger = logging.getLogger("scout.main_window")
@@ -31,18 +48,66 @@ logger = logging.getLogger("scout.main_window")
 try:
     from ..version import __version__ as CURRENT_VERSION
 except Exception:
-    CURRENT_VERSION = "2.7.0"
+    CURRENT_VERSION = "2.7.1"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Reusable Styled Components
+# ─────────────────────────────────────────────────────────────────────────────
+
+class SparklineWidget(QWidget):
+    """Custom painted smooth green activity wave matching the mockup status card."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(64, 30)
+        self._phase = 0.0
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self._tick)
+        self._timer.start(80)
+
+    def _tick(self):
+        self._phase += 0.15
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        w = float(self.width())
+        h = float(self.height())
+
+        path = QPainterPath()
+        path.moveTo(0, h * 0.6)
+        steps = int(w)
+        for x_int in range(0, steps + 1, 2):
+            norm_x = x_int / w
+            y = (h * 0.5) + math.sin(norm_x * 6.28 * 1.6 + self._phase) * (h * 0.28)
+            path.lineTo(x_int, y)
+
+        # Gradient fill underneath the wave
+        fill_path = QPainterPath(path)
+        fill_path.lineTo(w, h)
+        fill_path.lineTo(0, h)
+        fill_path.closeSubpath()
+
+        grad = QLinearGradient(0, 0, 0, h)
+        grad.setColorAt(0.0, QColor(16, 185, 129, 70))
+        grad.setColorAt(1.0, QColor(16, 185, 129, 0))
+        painter.fillPath(fill_path, grad)
+
+        # Smooth wave stroke
+        pen = QPen(QColor("#10B981"), 1.8)
+        painter.strokePath(path, pen)
 
 
 class SubsystemIndicator(QFrame):
-    """Subsystem status badge with clean minimalist dark styling."""
+    """Subsystem status badge with clean dark styling."""
     def __init__(self, name: str, default_state: str = "IDLE", parent=None):
         super().__init__(parent)
         self.setObjectName("subsystemBadge")
         self.setStyleSheet("""
             QFrame#subsystemBadge {
-                background-color: #0E131F;
-                border: 1px solid #1E2433;
+                background-color: #0B101D;
+                border: 1px solid #1A263D;
                 border-radius: 5px;
             }
             QLabel {
@@ -88,8 +153,8 @@ class MetricBadge(QFrame):
         self.setObjectName("metricBadge")
         self.setStyleSheet("""
             QFrame#metricBadge {
-                background-color: #0E131F;
-                border: 1px solid #1E2433;
+                background-color: #0D1526;
+                border: 1px solid #1B263B;
                 border-radius: 6px;
             }
             QLabel {
@@ -98,18 +163,18 @@ class MetricBadge(QFrame):
             }
         """)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(6, 5, 6, 5)
-        layout.setSpacing(1)
+        layout.setContentsMargins(8, 6, 8, 6)
+        layout.setSpacing(2)
 
         self.lbl_title = QLabel(label.upper())
         self.lbl_title.setStyleSheet("color: #64748B; font-size: 8px; font-weight: 700;")
         layout.addWidget(self.lbl_title)
 
         self.lbl_val = QLabel(value)
-        self.lbl_val.setStyleSheet(f"color: {color}; font-size: 13px; font-weight: 800;")
+        self.lbl_val.setStyleSheet(f"color: {color}; font-size: 14px; font-weight: 800;")
         layout.addWidget(self.lbl_val)
 
-    def set_value(self, val: str):
+    def set_value(self, val: Any):
         self.lbl_val.setText(str(val))
 
     @property
@@ -118,53 +183,113 @@ class MetricBadge(QFrame):
 
 
 class FunnelStepCard(QFrame):
-    """Clean card representing one stage of the 4-step pipeline funnel."""
-    def __init__(self, step_num: str, title: str, subtitle: str, count: str = "0", accent_color: str = "#0284C7", parent=None):
+    """Card representing one stage of the pipeline funnel matching the mockup."""
+    def __init__(self, step_num: str, title: str, subtitle: str = "", count: str = "0", accent_color: str = "#0284C7", parent=None):
         super().__init__(parent)
         self.setObjectName("funnelCard")
-        self.setStyleSheet(f"""
-            QFrame#funnelCard {{
-                background-color: #131722;
-                border: 1px solid #1E2433;
+        self.setStyleSheet("""
+            QFrame#funnelCard {
+                background-color: #0D1526;
+                border: 1px solid #1B263B;
                 border-radius: 8px;
-            }}
-            QLabel {{
+            }
+            QLabel {
                 border: none;
                 background: transparent;
-            }}
+            }
         """)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 8, 10, 8)
-        layout.setSpacing(2)
+        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setSpacing(4)
 
         top_row = QHBoxLayout()
-        lbl_step = QLabel(f"STEP {step_num}")
-        lbl_step.setStyleSheet(f"color: {accent_color}; font-size: 9px; font-weight: 800;")
-        top_row.addWidget(lbl_step)
-        top_row.addStretch()
+        top_row.setSpacing(8)
 
-        self.lbl_count = QLabel(count)
-        self.lbl_count.setStyleSheet("color: #F8FAFC; font-size: 16px; font-weight: 900;")
-        top_row.addWidget(self.lbl_count)
-        layout.addLayout(top_row)
+        # Step badge box
+        self.lbl_step_badge = QLabel(step_num)
+        self.lbl_step_badge.setFixedSize(22, 22)
+        self.lbl_step_badge.setAlignment(Qt.AlignCenter)
+        self.lbl_step_badge.setStyleSheet(f"""
+            background-color: {accent_color};
+            color: #FFFFFF;
+            font-size: 11px;
+            font-weight: 900;
+            border-radius: 4px;
+        """)
+        top_row.addWidget(self.lbl_step_badge)
 
         self.lbl_title = QLabel(title)
-        self.lbl_title.setStyleSheet("color: #E2E8F0; font-size: 11px; font-weight: 700;")
-        layout.addWidget(self.lbl_title)
+        self.lbl_title.setStyleSheet("color: #94A3B8; font-size: 11px; font-weight: 600;")
+        top_row.addWidget(self.lbl_title)
+        top_row.addStretch()
 
-        self.lbl_subtitle = QLabel(subtitle)
-        self.lbl_subtitle.setStyleSheet("color: #64748B; font-size: 9px; font-weight: 500;")
-        layout.addWidget(self.lbl_subtitle)
+        layout.addLayout(top_row)
 
-    def set_count(self, count: str):
+        self.lbl_count = QLabel(count)
+        self.lbl_count.setStyleSheet("color: #F8FAFC; font-size: 20px; font-weight: 900;")
+        layout.addWidget(self.lbl_count)
+
+        if subtitle:
+            self.lbl_subtitle = QLabel(subtitle)
+            self.lbl_subtitle.setStyleSheet("color: #64748B; font-size: 9px;")
+            layout.addWidget(self.lbl_subtitle)
+        else:
+            self.lbl_subtitle = None
+
+    def set_count(self, count: Any):
         self.lbl_count.setText(str(count))
 
 
+class SubmetricTile(QFrame):
+    """Submetric mini card under Currently Scanning Hero."""
+    def __init__(self, icon: str, count: str, label: str, parent=None):
+        super().__init__(parent)
+        self.setObjectName("submetricTile")
+        self.setStyleSheet("""
+            QFrame#submetricTile {
+                background-color: #09101E;
+                border: 1px solid #182337;
+                border-radius: 6px;
+            }
+            QLabel {
+                border: none;
+                background: transparent;
+            }
+        """)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setSpacing(8)
+
+        self.lbl_icon = QLabel(icon)
+        self.lbl_icon.setStyleSheet("font-size: 14px;")
+        layout.addWidget(self.lbl_icon)
+
+        text_col = QVBoxLayout()
+        text_col.setSpacing(1)
+
+        self.lbl_count = QLabel(count)
+        self.lbl_count.setStyleSheet("color: #F8FAFC; font-size: 12px; font-weight: 800;")
+        text_col.addWidget(self.lbl_count)
+
+        self.lbl_label = QLabel(label)
+        self.lbl_label.setStyleSheet("color: #64748B; font-size: 9px; font-weight: 600;")
+        text_col.addWidget(self.lbl_label)
+
+        layout.addLayout(text_col)
+        layout.addStretch()
+
+    def set_count(self, count: Any):
+        self.lbl_count.setText(str(count))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Main Command Center Window
+# ─────────────────────────────────────────────────────────────────────────────
+
 class MainWindow(QMainWindow):
     """
-    Level 3: Executive Desktop Companion Window for TalentOps Scout.
-    Combines effortless 1-click controls, crystal-clear visual funnel,
-    and collapsible deep technical telemetry.
+    TalentOps Scout Desktop — Complete Command Center Window.
+    Full implementation matching media_1789142960310.png reference.
     """
     force_capture_requested = Signal()
     open_diagnostics_requested = Signal()
@@ -179,25 +304,35 @@ class MainWindow(QMainWindow):
         super().__init__(parent)
         self._is_shutting_down = False
         self._is_paused = False
-        self._technical_drawer_expanded = False
+        self._start_time = time.time()
+        self._drag_pos = None
+        self._current_user_name = "Prashant"
+        self._current_user_email = ""
+        self._current_account_name = "TalentOps AI"
+        self._latest_profile_url = "https://www.linkedin.com"
 
         self.setWindowTitle(f"TalentOps Scout v{CURRENT_VERSION} — Autonomous Companion")
-        self.resize(520, 860)
-        self.setMinimumSize(460, 680)
+        self.resize(1180, 720)
+        self.setMinimumSize(960, 620)
 
-        # Set taskbar/window icon
+        # Frameless sleek window with native resize
+        self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint | Qt.WindowMinMaxButtonsHint)
+        self.setAttribute(Qt.WA_TranslucentBackground, False)
+
+        # App icon
         self._app_icon = self._load_app_icon()
         if self._app_icon and not self._app_icon.isNull():
             self.setWindowIcon(self._app_icon)
 
         self.init_ui()
+        self._init_session_timer()
 
     def showEvent(self, event):
         super().showEvent(event)
         self._apply_win32_taskbar_icon()
 
     def _apply_win32_taskbar_icon(self):
-        """Explicitly sets WM_SETICON on the Win32 window handle for Windows Taskbar & Alt-Tab."""
+        """Explicitly sets WM_SETICON on Win32 window handle for Windows Taskbar & Alt-Tab."""
         try:
             import ctypes
             WM_SETICON = 0x0080
@@ -208,6 +343,7 @@ class MainWindow(QMainWindow):
 
             candidate_icos = [
                 os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assets", "logo.ico")),
+                os.path.abspath(r"c:\TalentOpsAI\scout_desktop\assets\logo.ico"),
                 os.path.abspath(r"c:\TalentOpsAI\talentops.ico"),
             ]
             ico_path = next((p for p in candidate_icos if os.path.exists(p)), None)
@@ -240,7 +376,7 @@ class MainWindow(QMainWindow):
     def _load_logo_pixmap(self, size: int = 24) -> Optional[QPixmap]:
         candidate_paths = [
             os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assets", "logo.png")),
-            os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assets", "logo.ico")),
+            os.path.abspath(r"c:\TalentOpsAI\scout_desktop\assets\logo.ico"),
             os.path.abspath(r"c:\TalentOpsAI\talentops.ico"),
             os.path.abspath(r"c:\TalentOpsAI\talentops-logo.png"),
         ]
@@ -251,27 +387,141 @@ class MainWindow(QMainWindow):
                     return pix.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         return None
 
+    def _init_session_timer(self):
+        """Updates the elapsed scanning session timer every second."""
+        self._session_timer = QTimer(self)
+        self._session_timer.timeout.connect(self._update_session_elapsed)
+        self._session_timer.start(1000)
+
+    def _update_session_elapsed(self):
+        elapsed = int(time.time() - self._start_time)
+        hrs = elapsed // 3600
+        mins = (elapsed % 3600) // 60
+        secs = elapsed % 60
+        self.lbl_elapsed_val.setText(f"{hrs:02d}:{mins:02d}:{secs:02d}")
+
+    # ── Mouse Drag Support for Frameless Title Bar ──
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton and event.position().y() <= 54:
+            self._drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        if event.buttons() == Qt.LeftButton and self._drag_pos is not None:
+            self.move(event.globalPosition().toPoint() - self._drag_pos)
+            event.accept()
+
+    def mouseReleaseEvent(self, event):
+        self._drag_pos = None
+
+    def mouseDoubleClickEvent(self, event):
+        if event.position().y() <= 54:
+            self._toggle_maximize()
+
+    def _toggle_maximize(self):
+        if self.isMaximized():
+            self.showNormal()
+            self.btn_top_max.setText("□")
+        else:
+            self.showMaximized()
+            self.btn_top_max.setText("❐")
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # UI Initialization
+    # ─────────────────────────────────────────────────────────────────────────
+
     def init_ui(self):
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
         central_widget.setStyleSheet("""
             QWidget {
-                background-color: #0B0E14;
+                background-color: #070B14;
+                color: #F8FAFC;
                 font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             }
             QLabel {
                 border: none;
                 background: transparent;
             }
+            QScrollBar:vertical {
+                border: none;
+                background: #070B14;
+                width: 8px;
+                margin: 0px;
+            }
+            QScrollBar::handle:vertical {
+                background: #1B263B;
+                min-height: 20px;
+                border-radius: 4px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #2D3D5A;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                border: none;
+                background: none;
+            }
         """)
 
-        main_vbox = QVBoxLayout(central_widget)
-        main_vbox.setContentsMargins(14, 12, 14, 12)
-        main_vbox.setSpacing(10)
+        window_layout = QVBoxLayout(central_widget)
+        window_layout.setContentsMargins(0, 0, 0, 0)
+        window_layout.setSpacing(0)
 
-        # ── 1. Top Brand, Environment & Window Controls Header ──
-        header = QHBoxLayout()
-        header.setSpacing(8)
+        # ── 1. Top Bar (Header) ──
+        self.top_bar = self._build_top_bar()
+        window_layout.addWidget(self.top_bar)
+
+        # ── 2. Body Area (Sidebar + QStackedWidget) ──
+        body_layout = QHBoxLayout()
+        body_layout.setContentsMargins(0, 0, 0, 0)
+        body_layout.setSpacing(0)
+
+        self.sidebar = self._build_sidebar()
+        body_layout.addWidget(self.sidebar)
+
+        self.main_stack = QStackedWidget()
+        self.page_scan = self._build_scan_page()
+        self.page_candidates = self._build_candidates_page()
+        self.page_sync = self._build_sync_page()
+        self.page_pipeline = self._build_pipeline_page()
+        self.page_settings = self._build_settings_page()
+
+        self.main_stack.addWidget(self.page_scan)        # Index 0
+        self.main_stack.addWidget(self.page_candidates)  # Index 1
+        self.main_stack.addWidget(self.page_sync)        # Index 2
+        self.main_stack.addWidget(self.page_pipeline)    # Index 3
+        self.main_stack.addWidget(self.page_settings)    # Index 4
+
+        body_layout.addWidget(self.main_stack, 1)
+        window_layout.addLayout(body_layout, 1)
+
+        # ── 3. Bottom Global Status Bar (Persistent) ──
+        self.status_bar = self._build_bottom_status_bar()
+        window_layout.addWidget(self.status_bar)
+
+        # Initialize defaults
+        self._update_greeting()
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Top Bar Builder
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _build_top_bar(self) -> QWidget:
+        top_bar = QFrame()
+        top_bar.setFixedHeight(54)
+        top_bar.setStyleSheet("""
+            QFrame {
+                background-color: #070B14;
+                border-bottom: 1px solid #141D2D;
+            }
+        """)
+        layout = QHBoxLayout(top_bar)
+        layout.setContentsMargins(18, 0, 14, 0)
+        layout.setSpacing(14)
+
+        # Left: Logo + Title + Version + Subtitle
+        left_group = QHBoxLayout()
+        left_group.setSpacing(10)
 
         self.lbl_logo = QLabel()
         self.lbl_logo.setFixedSize(28, 28)
@@ -279,204 +529,389 @@ class MainWindow(QMainWindow):
         if logo_pix:
             self.lbl_logo.setPixmap(logo_pix)
             self.lbl_logo.setScaledContents(True)
-        header.addWidget(self.lbl_logo)
+        else:
+            self.lbl_logo.setText("⚡")
+            self.lbl_logo.setAlignment(Qt.AlignCenter)
+            self.lbl_logo.setStyleSheet("background: #0284C7; color: #FFFFFF; border-radius: 6px; font-weight: 900;")
+        left_group.addWidget(self.lbl_logo)
 
-        brand_col = QVBoxLayout()
-        brand_col.setSpacing(1)
+        title_col = QVBoxLayout()
+        title_col.setSpacing(1)
+        title_col.setAlignment(Qt.AlignVCenter)
 
-        brand_row = QHBoxLayout()
-        brand_row.setSpacing(6)
-        lbl_brand = QLabel("TALENTOPS SCOUT")
-        lbl_brand.setStyleSheet("color: #F8FAFC; font-size: 13px; font-weight: 800; letter-spacing: 0.5px;")
-        brand_row.addWidget(lbl_brand)
+        title_row = QHBoxLayout()
+        title_row.setSpacing(6)
+        lbl_app_name = QLabel("TalentOps Scout")
+        lbl_app_name.setStyleSheet("color: #FFFFFF; font-size: 14px; font-weight: 800; letter-spacing: 0.3px;")
+        title_row.addWidget(lbl_app_name)
 
         self.lbl_version_pill = QLabel(f"v{CURRENT_VERSION}")
         self.lbl_version_pill.setStyleSheet("""
-            background: #1E293B;
+            background-color: #121A2B;
             color: #38BDF8;
-            border: 1px solid #334155;
+            border: 1px solid #1F2E47;
             border-radius: 4px;
             padding: 1px 6px;
             font-size: 9px;
-            font-weight: 800;
+            font-weight: 700;
         """)
-        brand_row.addWidget(self.lbl_version_pill)
-        brand_row.addStretch()
-        brand_col.addLayout(brand_row)
+        title_row.addWidget(self.lbl_version_pill)
+        title_col.addLayout(title_row)
 
-        self.lbl_env_badge = QLabel(f"PRODUCTION CLOUD • v{CURRENT_VERSION} [STABLE]")
-        self.lbl_env_badge.setStyleSheet("color: #10B981; font-size: 9px; font-weight: 700;")
-        brand_col.addWidget(self.lbl_env_badge)
-        header.addLayout(brand_col)
+        lbl_app_subtitle = QLabel("Autonomous Recruitment Companion")
+        lbl_app_subtitle.setStyleSheet("color: #64748B; font-size: 10px; font-weight: 500;")
+        title_col.addWidget(lbl_app_subtitle)
 
-        header.addStretch()
+        left_group.addLayout(title_col)
+        layout.addLayout(left_group)
 
-        # State Indicator Chip
-        state_chip = QFrame()
-        state_chip.setObjectName("stateChip")
-        state_chip.setStyleSheet("""
-            QFrame#stateChip {
-                background: #131722;
-                border: 1px solid #1E2433;
+        layout.addStretch()
+
+        # Center: Connection Pill + User Info + Account Info
+        center_group = QHBoxLayout()
+        center_group.setSpacing(16)
+
+        self.status_pill_connected = QFrame()
+        self.status_pill_connected.setStyleSheet("""
+            QFrame {
+                background-color: #06251A;
+                border: 1px solid #059669;
                 border-radius: 12px;
             }
-            QLabel { border: none; background: transparent; }
         """)
-        chip_layout = QHBoxLayout(state_chip)
-        chip_layout.setContentsMargins(8, 3, 8, 3)
-        chip_layout.setSpacing(5)
+        pill_layout = QHBoxLayout(self.status_pill_connected)
+        pill_layout.setContentsMargins(10, 3, 10, 3)
+        pill_layout.setSpacing(6)
 
         self.status_dot = QLabel("●")
         self.status_dot.setStyleSheet("color: #10B981; font-size: 10px;")
-        chip_layout.addWidget(self.status_dot)
+        pill_layout.addWidget(self.status_dot)
 
-        self.lbl_main_status = QLabel("ACTIVE WATCH")
-        self.lbl_main_status.setStyleSheet("color: #10B981; font-size: 9px; font-weight: 800;")
-        chip_layout.addWidget(self.lbl_main_status)
-        header.addWidget(state_chip)
+        self.lbl_main_status = QLabel("Connected")
+        self.lbl_main_status.setStyleSheet("color: #10B981; font-size: 11px; font-weight: 700;")
+        pill_layout.addWidget(self.lbl_main_status)
+        center_group.addWidget(self.status_pill_connected)
 
-        header.addSpacing(6)
+        self.lbl_user_info = QLabel("User: Prashant")
+        self.lbl_user_info.setStyleSheet("color: #94A3B8; font-size: 11px; font-weight: 600;")
+        center_group.addWidget(self.lbl_user_info)
 
-        # Window Controls
-        top_ctrl = QHBoxLayout()
-        top_ctrl.setSpacing(4)
+        self.lbl_account_info = QLabel("Account: TalentOps AI")
+        self.lbl_account_info.setStyleSheet("color: #94A3B8; font-size: 11px; font-weight: 600;")
+        center_group.addWidget(self.lbl_account_info)
 
+        layout.addLayout(center_group)
+
+        layout.addStretch()
+
+        # Right: Notifications + Settings + Window Controls
+        right_group = QHBoxLayout()
+        right_group.setSpacing(8)
+
+        self.btn_top_bell = QPushButton("🔔")
+        self.btn_top_bell.setToolTip("Notifications & Activity")
+        self.btn_top_bell.setFixedSize(28, 28)
+        self.btn_top_bell.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                color: #94A3B8;
+                border: none;
+                border-radius: 6px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background: #141D2D;
+                color: #F8FAFC;
+            }
+        """)
+        self.btn_top_bell.clicked.connect(lambda: self._switch_tab(4, subtab=2))
+        right_group.addWidget(self.btn_top_bell)
+
+        self.btn_top_settings = QPushButton("⚙")
+        self.btn_top_settings.setToolTip("Settings")
+        self.btn_top_settings.setFixedSize(28, 28)
+        self.btn_top_settings.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                color: #94A3B8;
+                border: none;
+                border-radius: 6px;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background: #141D2D;
+                color: #F8FAFC;
+            }
+        """)
+        self.btn_top_settings.clicked.connect(lambda: self._switch_tab(4))
+        right_group.addWidget(self.btn_top_settings)
+
+        right_group.addSpacing(6)
+
+        # Minimize, Maximize, Close
         self.btn_top_min = QPushButton("–")
         self.btn_top_min.setToolTip("Minimize to Windows Taskbar")
-        self.btn_top_min.setFixedSize(26, 24)
+        self.btn_top_min.setFixedSize(28, 26)
         self.btn_top_min.setStyleSheet("""
             QPushButton {
-                background: #131722;
+                background: transparent;
                 color: #94A3B8;
-                border: 1px solid #1E2433;
-                border-radius: 5px;
-                font-size: 13px;
+                border: none;
+                border-radius: 4px;
+                font-size: 14px;
                 font-weight: 700;
             }
             QPushButton:hover {
-                background: #1E2433;
+                background: #1B263B;
                 color: #FFFFFF;
-                border-color: #334155;
             }
         """)
         self.btn_top_min.clicked.connect(self.showMinimized)
-        top_ctrl.addWidget(self.btn_top_min)
+        right_group.addWidget(self.btn_top_min)
 
-        self.btn_top_side = QPushButton("◧ Side")
-        self.btn_top_side.setToolTip("Hide to Compact Screen Edge Handle")
-        self.btn_top_side.setFixedHeight(24)
-        self.btn_top_side.setStyleSheet("""
+        self.btn_top_max = QPushButton("□")
+        self.btn_top_max.setToolTip("Maximize / Restore")
+        self.btn_top_max.setFixedSize(28, 26)
+        self.btn_top_max.setStyleSheet("""
             QPushButton {
-                background: #0E1A2E;
-                color: #38BDF8;
-                border: 1px solid #0284C7;
-                border-radius: 5px;
-                padding: 0 8px;
-                font-size: 10px;
+                background: transparent;
+                color: #94A3B8;
+                border: none;
+                border-radius: 4px;
+                font-size: 12px;
                 font-weight: 700;
             }
             QPushButton:hover {
-                background: #0284C7;
+                background: #1B263B;
                 color: #FFFFFF;
             }
         """)
-        self.btn_top_side.clicked.connect(self._dock_to_side)
-        top_ctrl.addWidget(self.btn_top_side)
+        self.btn_top_max.clicked.connect(self._toggle_maximize)
+        right_group.addWidget(self.btn_top_max)
 
         self.btn_top_close = QPushButton("✕")
-        self.btn_top_close.setToolTip("Exit App Completely")
-        self.btn_top_close.setFixedSize(26, 24)
+        self.btn_top_close.setToolTip("Hide Scout to Taskbar Tray & Edge Dock")
+        self.btn_top_close.setFixedSize(28, 26)
         self.btn_top_close.setStyleSheet("""
             QPushButton {
-                background: #200D12;
-                color: #F87171;
-                border: 1px solid #7F1D1D;
-                border-radius: 5px;
-                font-size: 11px;
+                background: transparent;
+                color: #94A3B8;
+                border: none;
+                border-radius: 4px;
+                font-size: 12px;
                 font-weight: 800;
             }
             QPushButton:hover {
                 background: #DC2626;
                 color: #FFFFFF;
-                border-color: #EF4444;
             }
         """)
-        self.btn_top_close.clicked.connect(self.shutdown_requested.emit)
-        top_ctrl.addWidget(self.btn_top_close)
+        self.btn_top_close.clicked.connect(self.close)
+        right_group.addWidget(self.btn_top_close)
 
-        header.addLayout(top_ctrl)
-        main_vbox.addLayout(header)
+        layout.addLayout(right_group)
+        return top_bar
 
-        # ── 1.5 Account & Device Pairing Strip ──
-        self.account_bar = QFrame()
-        self.account_bar.setObjectName("accountBar")
-        self.account_bar.setStyleSheet("""
-            QFrame#accountBar {
-                background: #0D1424;
-                border: 1px solid #1E293B;
-                border-radius: 8px;
+    # ─────────────────────────────────────────────────────────────────────────
+    # Sidebar Navigation Builder
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _build_sidebar(self) -> QWidget:
+        sidebar = QFrame()
+        sidebar.setFixedWidth(175)
+        sidebar.setStyleSheet("""
+            QFrame {
+                background-color: #070B14;
+                border-right: 1px solid #141D2D;
             }
         """)
-        acc_layout = QHBoxLayout(self.account_bar)
-        acc_layout.setContentsMargins(10, 6, 10, 6)
-        acc_layout.setSpacing(8)
+        layout = QVBoxLayout(sidebar)
+        layout.setContentsMargins(12, 16, 12, 16)
+        layout.setSpacing(6)
 
-        self.lbl_acc_icon = QLabel("👤")
-        self.lbl_acc_icon.setStyleSheet("font-size: 13px; background: transparent; border: none;")
-        acc_layout.addWidget(self.lbl_acc_icon)
+        self.nav_buttons = []
 
-        acc_text_layout = QVBoxLayout()
-        acc_text_layout.setSpacing(1)
-        self.lbl_account_title = QLabel("DEVICE NOT PAIRED")
-        self.lbl_account_title.setStyleSheet("color: #64748B; font-size: 9px; font-weight: 700; text-transform: uppercase; background: transparent; border: none;")
-        acc_text_layout.addWidget(self.lbl_account_title)
+        nav_items = [
+            ("⛶  Scan", 0),
+            ("👥  Candidates", 1),
+            ("☁  Cloud Sync", 2),
+            ("📊  Pipeline", 3),
+            ("⚙  Settings", 4),
+        ]
 
-        self.lbl_account_val = QLabel("Waiting for Account Link")
-        self.lbl_account_val.setStyleSheet("color: #F59E0B; font-size: 11px; font-weight: 700; background: transparent; border: none;")
-        acc_text_layout.addWidget(self.lbl_account_val)
-        acc_layout.addLayout(acc_text_layout)
+        for text, index in nav_items:
+            btn = QPushButton(text)
+            btn.setFixedHeight(38)
+            btn.setCheckable(True)
+            btn.setAutoExclusive(True)
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: transparent;
+                    color: #94A3B8;
+                    border: 1px solid transparent;
+                    border-radius: 8px;
+                    text-align: left;
+                    padding-left: 14px;
+                    font-size: 12px;
+                    font-weight: 600;
+                }
+                QPushButton:hover {
+                    background-color: #0F172A;
+                    color: #F8FAFC;
+                }
+                QPushButton:checked {
+                    background-color: #0E1E38;
+                    color: #38BDF8;
+                    border: 1px solid #0284C7;
+                    font-weight: 700;
+                }
+            """)
+            btn.clicked.connect(lambda checked=False, idx=index: self._switch_tab(idx))
+            self.nav_buttons.append(btn)
+            layout.addWidget(btn)
 
-        acc_layout.addStretch()
+        self.nav_buttons[0].setChecked(True)
+        layout.addStretch()
 
-        self.btn_account_pair = QPushButton("🔗 Pair / View Code")
-        self.btn_account_pair.setToolTip("View 4-character pairing code or link this device to your account")
-        self.btn_account_pair.setFixedHeight(28)
-        self.btn_account_pair.setStyleSheet("""
+        # Side Dock Button at bottom of sidebar
+        self.btn_side_dock = QPushButton("◧  Dock to Edge")
+        self.btn_side_dock.setFixedHeight(32)
+        self.btn_side_dock.setCursor(Qt.PointingHandCursor)
+        self.btn_side_dock.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #10B981, stop:1 #059669);
-                color: #FFFFFF;
-                border: none;
-                border-radius: 5px;
+                background-color: #0D1626;
+                color: #38BDF8;
+                border: 1px solid #1E2D4A;
+                border-radius: 6px;
                 font-size: 10px;
-                font-weight: 800;
-                padding: 0 10px;
+                font-weight: 700;
             }
             QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #059669, stop:1 #047857);
+                background-color: #0284C7;
+                color: #FFFFFF;
+                border-color: #38BDF8;
+            }
+        """)
+        self.btn_side_dock.clicked.connect(self._dock_to_side)
+        layout.addWidget(self.btn_side_dock)
+
+        return sidebar
+
+    def _switch_tab(self, index: int, subtab: Optional[int] = None):
+        self.main_stack.setCurrentIndex(index)
+        for i, btn in enumerate(self.nav_buttons):
+            btn.setChecked(i == index)
+        if index == 4 and subtab is not None and hasattr(self, "settings_tab_widget"):
+            self.settings_tab_widget.setCurrentIndex(subtab)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Page 0: Scan (The Command Center Dashboard)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _build_scan_page(self) -> QWidget:
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(16)
+
+        # ── Header Row: Greeting + Status Card + Switch Account ──
+        header_row = QHBoxLayout()
+        header_row.setSpacing(16)
+
+        greeting_col = QVBoxLayout()
+        greeting_col.setSpacing(4)
+        self.lbl_greeting = QLabel("Good Evening, Prashant")
+        self.lbl_greeting.setStyleSheet("color: #FFFFFF; font-size: 22px; font-weight: 800; letter-spacing: -0.2px;")
+        greeting_col.addWidget(self.lbl_greeting)
+
+        lbl_greeting_sub = QLabel("Scout is watching your screen and finding candidate information in real time.")
+        lbl_greeting_sub.setStyleSheet("color: #94A3B8; font-size: 12px; font-weight: 500;")
+        greeting_col.addWidget(lbl_greeting_sub)
+        header_row.addLayout(greeting_col, 1)
+
+        # Status Card (Right)
+        status_card = QFrame()
+        status_card.setStyleSheet("""
+            QFrame {
+                background-color: #0C172A;
+                border: 1px solid #1E2D4A;
+                border-radius: 10px;
+            }
+        """)
+        sc_layout = QHBoxLayout(status_card)
+        sc_layout.setContentsMargins(14, 8, 14, 8)
+        sc_layout.setSpacing(12)
+
+        sc_text = QVBoxLayout()
+        sc_text.setSpacing(2)
+
+        sc_top = QHBoxLayout()
+        sc_top.setSpacing(6)
+        self.lbl_scout_active_dot = QLabel("●")
+        self.lbl_scout_active_dot.setStyleSheet("color: #10B981; font-size: 11px;")
+        sc_top.addWidget(self.lbl_scout_active_dot)
+
+        self.lbl_scout_active_title = QLabel("Scout is Active")
+        self.lbl_scout_active_title.setStyleSheet("color: #10B981; font-size: 13px; font-weight: 800;")
+        sc_top.addWidget(self.lbl_scout_active_title)
+        sc_text.addLayout(sc_top)
+
+        self.lbl_sampling_pulse = QLabel("Monitoring • Extracting • Analyzing")
+        self.lbl_sampling_pulse.setStyleSheet("color: #64748B; font-size: 10px; font-weight: 600;")
+        sc_text.addWidget(self.lbl_sampling_pulse)
+        sc_layout.addLayout(sc_text)
+
+        self.sparkline = SparklineWidget()
+        sc_layout.addWidget(self.sparkline)
+        header_row.addWidget(status_card)
+
+        # Switch Account button
+        self.btn_account_pair = QPushButton("🔄 Switch Account")
+        self.btn_account_pair.setCursor(Qt.PointingHandCursor)
+        self.btn_account_pair.setFixedHeight(40)
+        self.btn_account_pair.setStyleSheet("""
+            QPushButton {
+                background-color: #101B2E;
+                color: #E2E8F0;
+                border: 1px solid #243552;
+                border-radius: 8px;
+                padding: 0 14px;
+                font-size: 11px;
+                font-weight: 700;
+            }
+            QPushButton:hover {
+                background-color: #1A2C49;
+                color: #FFFFFF;
+                border-color: #38BDF8;
             }
         """)
         self.btn_account_pair.clicked.connect(self.request_pair_account.emit)
-        acc_layout.addWidget(self.btn_account_pair)
+        header_row.addWidget(self.btn_account_pair)
 
-        main_vbox.addWidget(self.account_bar)
+        layout.addLayout(header_row)
 
-        # ── 2. Primary 1-Click Operations Action Bar ──
-        action_bar = QHBoxLayout()
-        action_bar.setSpacing(8)
+        # ── Primary Action Row (3 Large Buttons) ──
+        action_row = QHBoxLayout()
+        action_row.setSpacing(12)
 
-        # 1-Click Scan Screen Button
-        self.btn_scan_now = QPushButton("⚡ Scan Screen Now")
-        self.btn_scan_now.setToolTip("Instantly trigger optical sampling on active window")
-        self.btn_scan_now.setFixedHeight(36)
+        # 1. Scan Screen Now
+        self.btn_scan_now = QPushButton("⚡  Scan Screen Now")
+        self.btn_scan_now.setCursor(Qt.PointingHandCursor)
+        self.btn_scan_now.setFixedHeight(44)
         self.btn_scan_now.setStyleSheet("""
             QPushButton {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0284C7, stop:1 #0369A1);
                 color: #FFFFFF;
                 border: 1px solid #38BDF8;
-                border-radius: 6px;
-                font-size: 11px;
+                border-radius: 8px;
+                font-size: 12px;
                 font-weight: 800;
-                padding: 0 14px;
+                padding: 0 16px;
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0369A1, stop:1 #0284C7);
@@ -487,876 +922,1342 @@ class MainWindow(QMainWindow):
             }
         """)
         self.btn_scan_now.clicked.connect(self.force_capture_requested.emit)
-        action_bar.addWidget(self.btn_scan_now, 4)
+        action_row.addWidget(self.btn_scan_now, 4)
 
-        # 1-Click Pause / Resume Toggle Button
-        self.btn_pause_toggle = QPushButton("⏸ Pause")
-        self.btn_pause_toggle.setToolTip("Pause or resume continuous visual watch loop")
-        self.btn_pause_toggle.setFixedHeight(36)
+        # 2. Pause / Resume Toggle
+        self.btn_pause_toggle = QPushButton("⏸  Pause")
+        self.btn_pause_toggle.setCursor(Qt.PointingHandCursor)
+        self.btn_pause_toggle.setFixedHeight(44)
         self.btn_pause_toggle.setStyleSheet("""
             QPushButton {
-                background: #131722;
-                color: #E2E8F0;
-                border: 1px solid #1E2433;
-                border-radius: 6px;
-                font-size: 11px;
+                background-color: #0C1A30;
+                color: #38BDF8;
+                border: 1px solid #1E2E4A;
+                border-radius: 8px;
+                font-size: 12px;
                 font-weight: 700;
-                padding: 0 12px;
+                padding: 0 16px;
             }
             QPushButton:hover {
-                background: #1E2433;
-                border-color: #334155;
+                background-color: #132442;
+                border-color: #38BDF8;
                 color: #FFFFFF;
             }
         """)
         self.btn_pause_toggle.clicked.connect(self._handle_pause_toggle)
-        action_bar.addWidget(self.btn_pause_toggle, 3)
+        action_row.addWidget(self.btn_pause_toggle, 3)
 
-        # 1-Click Sync to Cloud Button
-        self.btn_sync_now = QPushButton("☁ Sync to Cloud")
-        self.btn_sync_now.setToolTip("Manually flush offline SQLite queue to cloud database")
-        self.btn_sync_now.setFixedHeight(36)
+        # 3. Sync to Cloud
+        self.btn_sync_now = QPushButton("☁  Sync to Cloud")
+        self.btn_sync_now.setCursor(Qt.PointingHandCursor)
+        self.btn_sync_now.setFixedHeight(44)
         self.btn_sync_now.setStyleSheet("""
             QPushButton {
-                background: #0F2520;
+                background-color: #09261A;
                 color: #34D399;
                 border: 1px solid #059669;
-                border-radius: 6px;
-                font-size: 11px;
+                border-radius: 8px;
+                font-size: 12px;
                 font-weight: 800;
-                padding: 0 12px;
+                padding: 0 16px;
             }
             QPushButton:hover {
-                background: #059669;
+                background-color: #0D3525;
                 color: #FFFFFF;
                 border-color: #10B981;
             }
             QPushButton:pressed {
-                background: #047857;
+                background-color: #047857;
             }
         """)
         self.btn_sync_now.clicked.connect(self.sync_now_requested.emit)
-        action_bar.addWidget(self.btn_sync_now, 3)
+        action_row.addWidget(self.btn_sync_now, 3)
 
-        main_vbox.addLayout(action_bar)
+        layout.addLayout(action_row)
 
-        # ── 3. Plain-English Live Activity Banner ──
-        live_card = QFrame()
-        live_card.setObjectName("liveCard")
-        live_card.setStyleSheet("""
-            QFrame#liveCard {
-                background-color: #131722;
-                border: 1px solid #1E2433;
-                border-left: 3px solid #0284C7;
-                border-radius: 8px;
+        # ── Two-Column Main Grid ──
+        grid_row = QHBoxLayout()
+        grid_row.setSpacing(16)
+
+        # Left Column (Wide, ~65%)
+        left_col = QVBoxLayout()
+        left_col.setSpacing(16)
+
+        # Hero Card: Currently Scanning
+        self.card_current_scan = self._build_currently_scanning_card()
+        left_col.addWidget(self.card_current_scan)
+
+        # Today's Pipeline
+        self.card_pipeline_funnel = self._build_today_pipeline_card()
+        left_col.addWidget(self.card_pipeline_funnel)
+
+        grid_row.addLayout(left_col, 65)
+
+        # Right Column (Narrow, ~35%)
+        right_col = QVBoxLayout()
+        right_col.setSpacing(16)
+
+        # Latest Extracted Candidate
+        self.card_latest_candidate = self._build_latest_candidate_card()
+        right_col.addWidget(self.card_latest_candidate)
+
+        # Quick Actions Card
+        self.card_quick_actions = self._build_quick_actions_card()
+        right_col.addWidget(self.card_quick_actions)
+
+        right_col.addStretch()
+
+        grid_row.addLayout(right_col, 35)
+        layout.addLayout(grid_row)
+
+        layout.addStretch()
+
+        scroll.setWidget(container)
+        return scroll
+
+    # ── Sub-Card: Currently Scanning (Hero) ──
+    def _build_currently_scanning_card(self) -> QWidget:
+        card = QFrame()
+        card.setObjectName("heroScanningCard")
+        card.setStyleSheet("""
+            QFrame#heroScanningCard {
+                background-color: #0D1526;
+                border: 1px solid #1B263B;
+                border-radius: 10px;
             }
-            QLabel { border: none; background: transparent; }
         """)
-        live_layout = QVBoxLayout(live_card)
-        live_layout.setContentsMargins(12, 10, 12, 10)
-        live_layout.setSpacing(4)
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(14)
 
-        banner_top = QHBoxLayout()
-        self.lbl_banner_action = QLabel("WHAT SCOUT IS DOING RIGHT NOW")
-        self.lbl_banner_action.setStyleSheet("color: #38BDF8; font-size: 9px; font-weight: 800;")
-        banner_top.addWidget(self.lbl_banner_action)
-        banner_top.addStretch()
+        # Top Row: App Icon + Target Titles + Top-right stats
+        top_row = QHBoxLayout()
+        top_row.setSpacing(14)
 
-        self.lbl_sampling_pulse = QLabel("● WATCHING (1.0s interval)")
-        self.lbl_sampling_pulse.setStyleSheet("color: #10B981; font-size: 9px; font-weight: 700;")
-        banner_top.addWidget(self.lbl_sampling_pulse)
-        live_layout.addLayout(banner_top)
+        # App/Browser Icon
+        self.lbl_browser_icon = QLabel("🌐")
+        self.lbl_browser_icon.setFixedSize(44, 44)
+        self.lbl_browser_icon.setAlignment(Qt.AlignCenter)
+        self.lbl_browser_icon.setStyleSheet("""
+            background-color: #121F36;
+            border: 1px solid #1E3152;
+            border-radius: 8px;
+            font-size: 22px;
+        """)
+        top_row.addWidget(self.lbl_browser_icon)
 
-        self.lbl_target_desc = QLabel("Watching Google Chrome — Candidate profile scanner active...")
-        self.lbl_target_desc.setStyleSheet("color: #F8FAFC; font-size: 12px; font-weight: 600;")
-        self.lbl_target_desc.setWordWrap(True)
-        live_layout.addWidget(self.lbl_target_desc)
+        # Title Block
+        title_col = QVBoxLayout()
+        title_col.setSpacing(2)
 
-        self.lbl_target_url = QLabel("Target: https://www.linkedin.com")
-        self.lbl_target_url.setStyleSheet("color: #64748B; font-size: 9px; font-family: Consolas, monospace;")
-        self.lbl_target_url.setWordWrap(True)
-        live_layout.addWidget(self.lbl_target_url)
+        lbl_scan_prefix = QLabel("Currently Scanning")
+        lbl_scan_prefix.setStyleSheet("color: #64748B; font-size: 10px; font-weight: 700; text-transform: uppercase;")
+        title_col.addWidget(lbl_scan_prefix)
 
-        main_vbox.addWidget(live_card)
+        title_link_row = QHBoxLayout()
+        title_link_row.setSpacing(6)
 
-        # ── 4. 4-Step Pipeline Funnel ──
-        main_vbox.addWidget(self._build_section_header("PIPELINE FUNNEL"))
+        self.lbl_target_desc = QLabel("Google Chrome — LinkedIn")
+        self.lbl_target_desc.setStyleSheet("color: #F8FAFC; font-size: 15px; font-weight: 800;")
+        title_link_row.addWidget(self.lbl_target_desc)
 
-        funnel_grid = QGridLayout()
-        funnel_grid.setSpacing(6)
-
-        self.funnel_step1 = FunnelStepCard("1", "Scanned Screens", "Visual changes analyzed", count="0", accent_color="#0284C7")
-        self.funnel_step2 = FunnelStepCard("2", "Profiles Found", "Candidate cards detected", count="0", accent_color="#38BDF8")
-        self.funnel_step3 = FunnelStepCard("3", "Real Verified", "Grounded & noise-filtered", count="0", accent_color="#A855F7")
-        self.funnel_step4 = FunnelStepCard("4", "Cloud Synced", "Live in PostgreSQL DB", count="0", accent_color="#10B981")
-
-        funnel_grid.addWidget(self.funnel_step1, 0, 0)
-        funnel_grid.addWidget(self.funnel_step2, 0, 1)
-        funnel_grid.addWidget(self.funnel_step3, 1, 0)
-        funnel_grid.addWidget(self.funnel_step4, 1, 1)
-
-        main_vbox.addLayout(funnel_grid)
-
-        # ── 5. Latest Candidate Hero Card ──
-        main_vbox.addWidget(self._build_section_header("LATEST EXTRACTED CANDIDATE"))
-
-        self.hero_card = QFrame()
-        self.hero_card.setObjectName("heroCard")
-        self.hero_card.setStyleSheet("""
-            QFrame#heroCard {
-                background-color: #131722;
-                border: 1px solid #1E2433;
-                border-left: 3px solid #10B981;
-                border-radius: 8px;
+        self.btn_open_target_url = QPushButton("↗")
+        self.btn_open_target_url.setToolTip("Open active page in default browser")
+        self.btn_open_target_url.setFixedSize(20, 20)
+        self.btn_open_target_url.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                color: #38BDF8;
+                border: none;
+                font-size: 13px;
+                font-weight: 800;
             }
-            QLabel { border: none; background: transparent; }
+            QPushButton:hover {
+                color: #FFFFFF;
+            }
         """)
-        hero_layout = QVBoxLayout(self.hero_card)
-        hero_layout.setContentsMargins(12, 10, 12, 10)
-        hero_layout.setSpacing(4)
+        self.btn_open_target_url.clicked.connect(self._open_current_target_url)
+        title_link_row.addWidget(self.btn_open_target_url)
+        title_link_row.addStretch()
 
-        hero_top = QHBoxLayout()
-        self.lbl_hero_name = QLabel("Waiting for Candidate Profile...")
-        self.lbl_hero_name.setStyleSheet("color: #F8FAFC; font-size: 15px; font-weight: 800;")
-        hero_top.addWidget(self.lbl_hero_name)
-        hero_top.addStretch()
+        title_col.addLayout(title_link_row)
 
-        self.lbl_hero_pill = QLabel("IDLE")
+        self.lbl_target_url = QLabel("Extracting profiles, company info, and contact details...")
+        self.lbl_target_url.setStyleSheet("color: #94A3B8; font-size: 11px; font-weight: 500;")
+        title_col.addWidget(self.lbl_target_url)
+
+        top_row.addLayout(title_col, 1)
+
+        # Right stats: Elapsed Time + Profiles Detected
+        stats_col = QVBoxLayout()
+        stats_col.setSpacing(4)
+        stats_col.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+        lbl_elapsed_title = QLabel("Elapsed Time")
+        lbl_elapsed_title.setStyleSheet("color: #64748B; font-size: 10px; font-weight: 600; text-align: right;")
+        stats_col.addWidget(lbl_elapsed_title, 0, Qt.AlignRight)
+
+        self.lbl_elapsed_val = QLabel("00:02:34")
+        self.lbl_elapsed_val.setStyleSheet("color: #F8FAFC; font-size: 14px; font-weight: 800; font-family: Consolas, monospace;")
+        stats_col.addWidget(self.lbl_elapsed_val, 0, Qt.AlignRight)
+
+        stats_col.addSpacing(2)
+
+        lbl_detected_title = QLabel("Profiles Detected")
+        lbl_detected_title.setStyleSheet("color: #64748B; font-size: 10px; font-weight: 600; text-align: right;")
+        stats_col.addWidget(lbl_detected_title, 0, Qt.AlignRight)
+
+        self.lbl_profiles_detected_val = QLabel("12 this session")
+        self.lbl_profiles_detected_val.setStyleSheet("color: #F8FAFC; font-size: 12px; font-weight: 800;")
+        stats_col.addWidget(self.lbl_profiles_detected_val, 0, Qt.AlignRight)
+
+        top_row.addLayout(stats_col)
+        layout.addLayout(top_row)
+
+        # Progress Bar Row
+        prog_row = QHBoxLayout()
+        prog_row.setSpacing(10)
+
+        self.scan_progress_bar = QProgressBar()
+        self.scan_progress_bar.setFixedHeight(8)
+        self.scan_progress_bar.setTextVisible(False)
+        self.scan_progress_bar.setRange(0, 100)
+        self.scan_progress_bar.setValue(68)
+        self.scan_progress_bar.setStyleSheet("""
+            QProgressBar {
+                background-color: #121D33;
+                border: none;
+                border-radius: 4px;
+            }
+            QProgressBar::chunk {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0284C7, stop:1 #38BDF8);
+                border-radius: 4px;
+            }
+        """)
+        prog_row.addWidget(self.scan_progress_bar, 1)
+
+        self.lbl_scan_progress_pct = QLabel("68%")
+        self.lbl_scan_progress_pct.setStyleSheet("color: #94A3B8; font-size: 11px; font-weight: 700;")
+        prog_row.addWidget(self.lbl_scan_progress_pct)
+        layout.addLayout(prog_row)
+
+        # Submetrics Row: 4 Tiles
+        submetrics_row = QHBoxLayout()
+        submetrics_row.setSpacing(10)
+
+        self.sub_profiles = SubmetricTile("👤", "12", "Profiles Found")
+        self.sub_companies = SubmetricTile("🏢", "3", "Companies")
+        self.sub_jobs = SubmetricTile("💼", "0", "Job Openings")
+        self.sub_contacts = SubmetricTile("✉", "0", "Contact Details")
+
+        submetrics_row.addWidget(self.sub_profiles)
+        submetrics_row.addWidget(self.sub_companies)
+        submetrics_row.addWidget(self.sub_jobs)
+        submetrics_row.addWidget(self.sub_contacts)
+        layout.addLayout(submetrics_row)
+
+        return card
+
+    # ── Sub-Card: Today's Pipeline ──
+    def _build_today_pipeline_card(self) -> QWidget:
+        card = QFrame()
+        card.setObjectName("todayPipelineCard")
+        card.setStyleSheet("""
+            QFrame#todayPipelineCard {
+                background-color: #0D1526;
+                border: 1px solid #1B263B;
+                border-radius: 10px;
+            }
+        """)
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(12)
+
+        header_row = QHBoxLayout()
+        lbl_title = QLabel("Today's Pipeline")
+        lbl_title.setStyleSheet("color: #F8FAFC; font-size: 13px; font-weight: 800;")
+        header_row.addWidget(lbl_title)
+        header_row.addStretch()
+
+        self.btn_view_pipeline_details = QPushButton("View Details")
+        self.btn_view_pipeline_details.setCursor(Qt.PointingHandCursor)
+        self.btn_view_pipeline_details.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                color: #38BDF8;
+                border: none;
+                font-size: 11px;
+                font-weight: 700;
+            }
+            QPushButton:hover {
+                color: #FFFFFF;
+                text-decoration: underline;
+            }
+        """)
+        self.btn_view_pipeline_details.clicked.connect(lambda: self._switch_tab(3))
+        header_row.addWidget(self.btn_view_pipeline_details)
+        layout.addLayout(header_row)
+
+        steps_row = QHBoxLayout()
+        steps_row.setSpacing(8)
+
+        self.funnel_step1 = FunnelStepCard("1", "Scanned Screens", count="342", accent_color="#0284C7")
+        self.funnel_step2 = FunnelStepCard("2", "Profiles Found", count="128", accent_color="#06B6D4")
+        self.funnel_step3 = FunnelStepCard("3", "Real Verified", count="87", accent_color="#8B5CF6")
+        self.funnel_step4 = FunnelStepCard("4", "Cloud Synced", count="62", accent_color="#10B981")
+
+        steps_row.addWidget(self.funnel_step1, 1)
+
+        arrow1 = QLabel("→")
+        arrow1.setStyleSheet("color: #334155; font-size: 16px; font-weight: 900;")
+        steps_row.addWidget(arrow1)
+
+        steps_row.addWidget(self.funnel_step2, 1)
+
+        arrow2 = QLabel("→")
+        arrow2.setStyleSheet("color: #334155; font-size: 16px; font-weight: 900;")
+        steps_row.addWidget(arrow2)
+
+        steps_row.addWidget(self.funnel_step3, 1)
+
+        arrow3 = QLabel("→")
+        arrow3.setStyleSheet("color: #334155; font-size: 16px; font-weight: 900;")
+        steps_row.addWidget(arrow3)
+
+        steps_row.addWidget(self.funnel_step4, 1)
+
+        layout.addLayout(steps_row)
+        return card
+
+    # ── Sub-Card: Latest Extracted Candidate ──
+    def _build_latest_candidate_card(self) -> QWidget:
+        card = QFrame()
+        card.setObjectName("latestCandidateCard")
+        card.setStyleSheet("""
+            QFrame#latestCandidateCard {
+                background-color: #0D1526;
+                border: 1px solid #1B263B;
+                border-radius: 10px;
+            }
+        """)
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(12)
+
+        header_row = QHBoxLayout()
+        lbl_title = QLabel("Latest Extracted Candidate")
+        lbl_title.setStyleSheet("color: #F8FAFC; font-size: 13px; font-weight: 800;")
+        header_row.addWidget(lbl_title)
+        header_row.addStretch()
+
+        self.btn_view_all_candidates = QPushButton("View All")
+        self.btn_view_all_candidates.setCursor(Qt.PointingHandCursor)
+        self.btn_view_all_candidates.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                color: #38BDF8;
+                border: none;
+                font-size: 11px;
+                font-weight: 700;
+            }
+            QPushButton:hover {
+                color: #FFFFFF;
+                text-decoration: underline;
+            }
+        """)
+        self.btn_view_all_candidates.clicked.connect(lambda: self._switch_tab(1))
+        header_row.addWidget(self.btn_view_all_candidates)
+        layout.addLayout(header_row)
+
+        # Candidate Details Row
+        cand_row = QHBoxLayout()
+        cand_row.setSpacing(12)
+
+        # Purple avatar circle
+        self.lbl_cand_avatar = QLabel("S")
+        self.lbl_cand_avatar.setFixedSize(42, 42)
+        self.lbl_cand_avatar.setAlignment(Qt.AlignCenter)
+        self.lbl_cand_avatar.setStyleSheet("""
+            background-color: #261E3E;
+            border: 1px solid #6D28D9;
+            border-radius: 21px;
+            color: #C084FC;
+            font-size: 16px;
+            font-weight: 800;
+        """)
+        cand_row.addWidget(self.lbl_cand_avatar)
+
+        cand_text = QVBoxLayout()
+        cand_text.setSpacing(2)
+
+        cand_name_row = QHBoxLayout()
+        cand_name_row.setSpacing(6)
+        self.lbl_hero_name = QLabel("Sarah Chen")
+        self.lbl_hero_name.setStyleSheet("color: #FFFFFF; font-size: 15px; font-weight: 800;")
+        cand_name_row.addWidget(self.lbl_hero_name)
+
+        self.lbl_hero_pill = QLabel("SYNCED")
         self.lbl_hero_pill.setStyleSheet("""
-            background: #0E1A2E;
-            color: #38BDF8;
-            border: 1px solid #0284C7;
-            border-radius: 10px;
-            padding: 2px 8px;
+            background: #0F2520;
+            color: #34D399;
+            border: 1px solid #059669;
+            border-radius: 8px;
+            padding: 1px 6px;
             font-size: 8px;
             font-weight: 800;
         """)
-        hero_top.addWidget(self.lbl_hero_pill)
-        hero_layout.addLayout(hero_top)
+        cand_name_row.addWidget(self.lbl_hero_pill)
+        cand_name_row.addStretch()
+        cand_text.addLayout(cand_name_row)
 
-        self.lbl_hero_title = QLabel("Browse candidate profiles on LinkedIn or Google Chrome to capture")
-        self.lbl_hero_title.setStyleSheet("color: #38BDF8; font-size: 11px; font-weight: 600;")
-        self.lbl_hero_title.setWordWrap(True)
-        hero_layout.addWidget(self.lbl_hero_title)
+        self.lbl_hero_title = QLabel("Software Engineer at Google")
+        self.lbl_hero_title.setStyleSheet("color: #94A3B8; font-size: 11px; font-weight: 500;")
+        cand_text.addWidget(self.lbl_hero_title)
 
-        hero_sub = QHBoxLayout()
-        self.lbl_hero_company = QLabel("Company: —")
-        self.lbl_hero_company.setStyleSheet("color: #94A3B8; font-size: 10px; font-weight: 500;")
-        hero_sub.addWidget(self.lbl_hero_company)
+        loc_row = QHBoxLayout()
+        loc_row.setSpacing(4)
+        lbl_pin = QLabel("📍")
+        lbl_pin.setStyleSheet("font-size: 10px;")
+        loc_row.addWidget(lbl_pin)
 
-        hero_sub.addSpacing(12)
+        self.lbl_hero_location = QLabel("San Francisco, CA")
+        self.lbl_hero_location.setStyleSheet("color: #64748B; font-size: 11px; font-weight: 500;")
+        loc_row.addWidget(self.lbl_hero_location)
+        loc_row.addStretch()
+        cand_text.addLayout(loc_row)
 
-        self.lbl_hero_location = QLabel("Location: —")
-        self.lbl_hero_location.setStyleSheet("color: #94A3B8; font-size: 10px; font-weight: 500;")
-        hero_sub.addWidget(self.lbl_hero_location)
-        hero_sub.addStretch()
+        cand_row.addLayout(cand_text, 1)
+        layout.addLayout(cand_row)
 
-        hero_layout.addLayout(hero_sub)
+        # Company alias for compatibility
+        self.lbl_hero_company = QLabel("Google")
+        self.lbl_hero_company.setVisible(False)
 
-        # Live Copilot Intelligence Badge
-        self.lbl_hero_copilot = QLabel("🔍 Live Copilot: Ready to query TalentOps central database")
+        # Copilot Intelligence Banner (Hidden by default, shown when candidate matched)
+        self.lbl_hero_copilot = QLabel("🟢 Verified Record on File")
         self.lbl_hero_copilot.setStyleSheet("""
-            color: #38BDF8; font-size: 10px; font-weight: 700;
-            background: rgba(14, 165, 233, 0.12);
-            border: 1px solid rgba(56, 189, 248, 0.25);
-            border-radius: 6px; padding: 4px 8px; margin-top: 4px;
+            color: #34D399; font-size: 10px; font-weight: 700;
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(16, 185, 129, 0.35);
+            border-radius: 6px; padding: 4px 8px;
         """)
-        self.lbl_hero_copilot.setWordWrap(True)
-        hero_layout.addWidget(self.lbl_hero_copilot)
+        self.lbl_hero_copilot.setVisible(False)
+        layout.addWidget(self.lbl_hero_copilot)
 
-        main_vbox.addWidget(self.hero_card)
-
-        # ── 6. Collapsible Technical Telemetry Drawer Toggle ──
-        self.btn_toggle_drawer = QPushButton("▾ Show Deep Technical Telemetry & Evidence (12 Counters, OCR, Logs)")
-        self.btn_toggle_drawer.setFixedHeight(28)
-        self.btn_toggle_drawer.setStyleSheet("""
+        # View Profile Button
+        self.btn_view_candidate_profile = QPushButton("View Profile ↗")
+        self.btn_view_candidate_profile.setCursor(Qt.PointingHandCursor)
+        self.btn_view_candidate_profile.setFixedHeight(36)
+        self.btn_view_candidate_profile.setStyleSheet("""
             QPushButton {
-                background: #0E131F;
-                color: #94A3B8;
-                border: 1px solid #1E2433;
-                border-radius: 6px;
-                font-size: 10px;
-                font-weight: 700;
-                text-align: left;
-                padding-left: 12px;
-            }
-            QPushButton:hover {
-                background: #131722;
-                color: #F8FAFC;
-                border-color: #334155;
-            }
-        """)
-        self.btn_toggle_drawer.clicked.connect(self._toggle_technical_drawer)
-        main_vbox.addWidget(self.btn_toggle_drawer)
-
-        # ── 7. Technical Drawer Body (Scrollable & Collapsible) ──
-        self.drawer_scroll = QScrollArea()
-        self.drawer_scroll.setWidgetResizable(True)
-        self.drawer_scroll.setFrameShape(QFrame.NoFrame)
-        self.drawer_scroll.setStyleSheet("""
-            QScrollArea { background: transparent; border: none; }
-            QScrollBar:vertical {
-                background: #0B0E14;
-                width: 6px;
-                border-radius: 3px;
-            }
-            QScrollBar::handle:vertical {
-                background: #1E2433;
-                min-height: 20px;
-                border-radius: 3px;
-            }
-        """)
-        self.drawer_scroll.setVisible(False)
-
-        drawer_content = QWidget()
-        d_layout = QVBoxLayout(drawer_content)
-        d_layout.setContentsMargins(0, 4, 4, 4)
-        d_layout.setSpacing(8)
-
-        # 7A. Subsystem Health Chips
-        status_box = QFrame()
-        status_box.setObjectName("statusBox")
-        status_box.setStyleSheet("""
-            QFrame#statusBox {
-                background-color: #131722;
-                border: 1px solid #1E2433;
-                border-radius: 6px;
-            }
-            QLabel { border: none; background: transparent; }
-        """)
-        status_grid = QGridLayout(status_box)
-        status_grid.setContentsMargins(6, 6, 6, 6)
-        status_grid.setSpacing(4)
-
-        self.ind_system = SubsystemIndicator("System", "ACTIVE")
-        self.ind_backend = SubsystemIndicator("Backend", "CONNECTED")
-        self.ind_window = SubsystemIndicator("Window", "DETECTED")
-        self.ind_capture = SubsystemIndicator("Capture", "ACTIVE")
-        self.ind_analyzer = SubsystemIndicator("Analyzer", "ACTIVE")
-        self.ind_db = SubsystemIndicator("DB Sync", "CONNECTED")
-
-        status_grid.addWidget(self.ind_system, 0, 0)
-        status_grid.addWidget(self.ind_backend, 0, 1)
-        status_grid.addWidget(self.ind_window, 1, 0)
-        status_grid.addWidget(self.ind_capture, 1, 1)
-        status_grid.addWidget(self.ind_analyzer, 2, 0)
-        status_grid.addWidget(self.ind_db, 2, 1)
-        d_layout.addWidget(status_box)
-
-        # 7B. Explicit Telemetry Counters (12 Metrics)
-        d_layout.addWidget(self._build_section_header("EXPLICIT TELEMETRY COUNTERS"))
-        cnt_row1 = QHBoxLayout()
-        cnt_row1.setSpacing(4)
-        self.c_captured = MetricBadge("Captured", "0")
-        self.c_analyzed = MetricBadge("Analyzed", "0")
-        self.c_useful = MetricBadge("Useful", "0", color="#38BDF8")
-        self.c_staged = MetricBadge("Staged", "0", color="#F59E0B")
-        self.c_matched = MetricBadge("Matched", "0")
-        cnt_row1.addWidget(self.c_captured)
-        cnt_row1.addWidget(self.c_analyzed)
-        cnt_row1.addWidget(self.c_useful)
-        cnt_row1.addWidget(self.c_staged)
-        cnt_row1.addWidget(self.c_matched)
-        d_layout.addLayout(cnt_row1)
-
-        cnt_row2 = QHBoxLayout()
-        cnt_row2.setSpacing(4)
-        self.c_new = MetricBadge("New", "0", color="#10B981")
-        self.c_enriched = MetricBadge("Enriched", "0", color="#A855F7")
-        self.c_db_updates = MetricBadge("DB Updates", "0", color="#38BDF8")
-        self.c_purged = MetricBadge("Purged", "0", color="#64748B")
-        self.c_buffer = MetricBadge("Buffer", "0/20", color="#F59E0B")
-        cnt_row2.addWidget(self.c_new)
-        cnt_row2.addWidget(self.c_enriched)
-        cnt_row2.addWidget(self.c_db_updates)
-        cnt_row2.addWidget(self.c_purged)
-        cnt_row2.addWidget(self.c_buffer)
-        d_layout.addLayout(cnt_row2)
-
-        cnt_row3 = QHBoxLayout()
-        cnt_row3.setSpacing(4)
-        self.c_observed = MetricBadge("Observed", "0", color="#06B6D4")
-        self.c_fields_added = MetricBadge("Fields Added", "0", color="#22C55E")
-        cnt_row3.addWidget(self.c_observed)
-        cnt_row3.addWidget(self.c_fields_added)
-        cnt_row3.addStretch()
-        d_layout.addLayout(cnt_row3)
-
-        # 7C. Latest Frame Preview & Classification
-        d_layout.addWidget(self._build_section_header("LATEST CAPTURE & REASON"))
-        cap_box = QFrame()
-        cap_box.setObjectName("capBox")
-        cap_box.setStyleSheet("""
-            QFrame#capBox {
-                background-color: #131722;
-                border: 1px solid #1E2433;
-                border-radius: 6px;
-            }
-            QLabel { border: none; background: transparent; }
-        """)
-        cap_layout = QVBoxLayout(cap_box)
-        cap_layout.setContentsMargins(8, 8, 8, 8)
-        cap_layout.setSpacing(6)
-
-        cap_header = QHBoxLayout()
-        self.lbl_cap_id = QLabel("Capture ID: ---")
-        self.lbl_cap_id.setStyleSheet("color: #38BDF8; font-size: 10px; font-weight: 700;")
-        cap_header.addWidget(self.lbl_cap_id)
-        cap_header.addStretch()
-
-        self.lbl_cap_time = QLabel("Time: ---")
-        self.lbl_cap_time.setStyleSheet("color: #64748B; font-size: 9px;")
-        cap_header.addWidget(self.lbl_cap_time)
-        cap_layout.addLayout(cap_header)
-
-        thumb_row = QHBoxLayout()
-        thumb_row.setSpacing(8)
-
-        self.lbl_thumbnail = QLabel("No Capture")
-        self.lbl_thumbnail.setFixedSize(140, 85)
-        self.lbl_thumbnail.setStyleSheet("background-color: #0B0E14; border: 1px dashed #1E2433; border-radius: 4px; color: #475569; font-size: 9px;")
-        self.lbl_thumbnail.setAlignment(Qt.AlignCenter)
-        thumb_row.addWidget(self.lbl_thumbnail)
-
-        meta_col = QVBoxLayout()
-        meta_col.setSpacing(3)
-        self.lbl_delta = QLabel("Delta: 0.00%")
-        self.lbl_delta.setStyleSheet("color: #F8FAFC; font-size: 9px; font-weight: 600;")
-        meta_col.addWidget(self.lbl_delta)
-
-        self.lbl_reason = QLabel("Reason: WAITING")
-        self.lbl_reason.setStyleSheet("color: #F59E0B; font-size: 9px; font-weight: 600;")
-        meta_col.addWidget(self.lbl_reason)
-
-        self.lbl_breakdown = QLabel("People: 0 | Companies: 0 | Locations: 0 | Signals: 0")
-        self.lbl_breakdown.setStyleSheet("color: #94A3B8; font-size: 8px;")
-        meta_col.addWidget(self.lbl_breakdown)
-
-        self.lbl_gate_status = QLabel("Gate: WAITING_FRAME")
-        self.lbl_gate_status.setStyleSheet("color: #10B981; font-size: 8px; font-weight: 700;")
-        meta_col.addWidget(self.lbl_gate_status)
-
-        thumb_row.addLayout(meta_col)
-        cap_layout.addLayout(thumb_row)
-        d_layout.addWidget(cap_box)
-
-        # 7D. Grounded Extraction Proof Table
-        d_layout.addWidget(self._build_section_header("EXTRACTION PROOF (GROUNDED EVIDENCE)"))
-        self.proof_table = QTableWidget()
-        self.proof_table.setColumnCount(4)
-        self.proof_table.setHorizontalHeaderLabels(["Field", "Extracted Value", "Conf", "Decision"])
-        self.proof_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        self.proof_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.proof_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        self.proof_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        self.proof_table.verticalHeader().setVisible(False)
-        self.proof_table.setMinimumHeight(130)
-        self.proof_table.setStyleSheet("""
-            QTableWidget {
-                background-color: #131722;
-                border: 1px solid #1E2433;
-                border-radius: 6px;
-                color: #E2E8F0;
-                font-size: 9px;
-                gridline-color: #1E2433;
-            }
-            QHeaderView::section {
-                background-color: #0E131F;
-                color: #64748B;
-                font-size: 8px;
-                font-weight: 700;
-                border: none;
-                padding: 4px;
-            }
-            QTableWidget::item {
-                padding: 3px 6px;
-            }
-        """)
-        d_layout.addWidget(self.proof_table)
-
-        # 7E. Backend & Cloud Database Proof
-        d_layout.addWidget(self._build_section_header("BACKEND & DATABASE PROOF"))
-        db_box = QFrame()
-        db_box.setObjectName("dbBox")
-        db_box.setStyleSheet("""
-            QFrame#dbBox {
-                background-color: #131722;
-                border: 1px solid #1E2433;
-                border-radius: 6px;
-            }
-            QLabel { border: none; background: transparent; }
-        """)
-        db_layout = QVBoxLayout(db_box)
-        db_layout.setContentsMargins(8, 6, 8, 6)
-        db_layout.setSpacing(2)
-
-        self.lbl_db_target = QLabel("Backend Target: https://talentopsai-1.onrender.com")
-        self.lbl_db_target.setStyleSheet("color: #38BDF8; font-size: 9px; font-family: Consolas, monospace;")
-        db_layout.addWidget(self.lbl_db_target)
-
-        self.lbl_db_response = QLabel("Last Response: CONNECTED (200 OK)")
-        self.lbl_db_response.setStyleSheet("color: #10B981; font-size: 9px; font-weight: 600;")
-        db_layout.addWidget(self.lbl_db_response)
-
-        self.lbl_db_write = QLabel("Last DB Write: None")
-        self.lbl_db_write.setStyleSheet("color: #E2E8F0; font-size: 9px;")
-        db_layout.addWidget(self.lbl_db_write)
-        d_layout.addWidget(db_box)
-
-        # 7F. Rolling Live Activity Stream
-        d_layout.addWidget(self._build_section_header("LIVE ACTIVITY STREAM"))
-        self.stream_box = QFrame()
-        self.stream_box.setObjectName("streamBox")
-        self.stream_box.setStyleSheet("""
-            QFrame#streamBox {
-                background-color: #0E131F;
-                border: 1px solid #1E2433;
-                border-radius: 6px;
-            }
-            QLabel { border: none; background: transparent; }
-        """)
-        self.stream_layout = QVBoxLayout(self.stream_box)
-        self.stream_layout.setContentsMargins(6, 6, 6, 6)
-        self.stream_layout.setSpacing(2)
-
-        self._log_entries: List[QLabel] = []
-        d_layout.addWidget(self.stream_box)
-
-        # Technical Drawer Tools Footer
-        tech_tools = QHBoxLayout()
-        tech_tools.setSpacing(6)
-
-        btn_diag = QPushButton("Diagnostics")
-        btn_diag.setStyleSheet("""
-            QPushButton {
-                background: #131722;
-                color: #94A3B8;
-                border: 1px solid #1E2433;
-                border-radius: 4px;
-                padding: 4px 8px;
-                font-size: 9px;
-            }
-            QPushButton:hover {
-                background: #1E2433;
-                color: #FFFFFF;
-            }
-        """)
-        btn_diag.clicked.connect(self.open_diagnostics_requested.emit)
-        tech_tools.addWidget(btn_diag)
-
-        btn_settings = QPushButton("Settings")
-        btn_settings.setStyleSheet("""
-            QPushButton {
-                background: #131722;
-                color: #94A3B8;
-                border: 1px solid #1E2433;
-                border-radius: 4px;
-                padding: 4px 8px;
-                font-size: 9px;
-            }
-            QPushButton:hover {
-                background: #1E2433;
-                color: #FFFFFF;
-            }
-        """)
-        btn_settings.clicked.connect(self.open_settings_requested.emit)
-        tech_tools.addWidget(btn_settings)
-
-        self.btn_dev_mode = QPushButton("Dev Mode: OFF")
-        self.btn_dev_mode.setCheckable(True)
-        self.btn_dev_mode.setStyleSheet("""
-            QPushButton {
-                background: #131722;
-                color: #64748B;
-                border: 1px solid #1E2433;
-                border-radius: 4px;
-                padding: 4px 8px;
-                font-size: 9px;
-            }
-            QPushButton:checked {
-                background: #0E7490;
-                color: #22D3EE;
-                border: 1px solid #0891B2;
-                font-weight: 700;
-            }
-            QPushButton:hover {
-                background: #1E2433;
-                color: #FFFFFF;
-            }
-        """)
-        self.btn_dev_mode.toggled.connect(self._toggle_dev_mode)
-        tech_tools.addWidget(self.btn_dev_mode)
-
-        tech_tools.addStretch()
-
-        self.lbl_purge_status = QLabel("Auto-Purge: Clean")
-        self.lbl_purge_status.setStyleSheet("color: #64748B; font-size: 8px;")
-        tech_tools.addWidget(self.lbl_purge_status)
-
-        d_layout.addLayout(tech_tools)
-
-        self.drawer_scroll.setWidget(drawer_content)
-        main_vbox.addWidget(self.drawer_scroll, 1)
-
-        # ── 8. Bottom App Controls Bar ──
-        ctrl_bar = QFrame()
-        ctrl_bar.setObjectName("ctrlBar")
-        ctrl_bar.setStyleSheet("""
-            QFrame#ctrlBar {
-                background: #131722;
-                border: 1px solid #1E2433;
-                border-radius: 6px;
-            }
-            QLabel { border: none; background: transparent; }
-        """)
-        ctrl_layout = QHBoxLayout(ctrl_bar)
-        ctrl_layout.setContentsMargins(8, 6, 8, 6)
-        ctrl_layout.setSpacing(6)
-
-        lbl_controls_title = QLabel("CONTROLS:")
-        lbl_controls_title.setStyleSheet("color: #64748B; font-size: 8px; font-weight: 800;")
-        ctrl_layout.addWidget(lbl_controls_title)
-
-        self.btn_min_taskbar = QPushButton("– Minimize")
-        self.btn_min_taskbar.setToolTip("Minimize companion window to standard Windows taskbar")
-        self.btn_min_taskbar.setStyleSheet("""
-            QPushButton {
-                background: #0E131F;
-                color: #CBD5E1;
-                border: 1px solid #1E2433;
-                border-radius: 4px;
-                padding: 4px 10px;
-                font-size: 9px;
-                font-weight: 700;
-            }
-            QPushButton:hover {
-                background: #1E2433;
-                color: #FFFFFF;
-                border-color: #334155;
-            }
-        """)
-        self.btn_min_taskbar.clicked.connect(self.showMinimized)
-        ctrl_layout.addWidget(self.btn_min_taskbar)
-
-        self.btn_dock_side = QPushButton("◧ Hide to Side Tab")
-        self.btn_dock_side.setToolTip("Hide companion window and keep the small side handle visible on screen edge")
-        self.btn_dock_side.setStyleSheet("""
-            QPushButton {
-                background: #0E1A2E;
+                background-color: #101B2E;
                 color: #38BDF8;
-                border: 1px solid #0284C7;
-                border-radius: 4px;
-                padding: 4px 10px;
-                font-size: 9px;
+                border: 1px solid #1E3152;
+                border-radius: 6px;
+                font-size: 11px;
                 font-weight: 700;
             }
             QPushButton:hover {
-                background: #0284C7;
+                background-color: #162642;
                 color: #FFFFFF;
                 border-color: #38BDF8;
             }
         """)
-        self.btn_dock_side.clicked.connect(self._dock_to_side)
-        ctrl_layout.addWidget(self.btn_dock_side)
+        self.btn_view_candidate_profile.clicked.connect(self._open_current_target_url)
+        layout.addWidget(self.btn_view_candidate_profile)
 
-        ctrl_layout.addStretch()
+        return card
 
-        self.btn_exit_app = QPushButton("✕ Exit App")
-        self.btn_exit_app.setToolTip("Completely stop visual sampling, background workers, and close TalentOps Scout")
-        self.btn_exit_app.setStyleSheet("""
-            QPushButton {
-                background: #200D12;
-                color: #F87171;
-                border: 1px solid #7F1D1D;
-                border-radius: 4px;
-                padding: 4px 10px;
-                font-size: 9px;
-                font-weight: 800;
-            }
-            QPushButton:hover {
-                background: #DC2626;
-                color: #FFFFFF;
-                border-color: #EF4444;
+    # ── Sub-Card: Quick Actions ──
+    def _build_quick_actions_card(self) -> QWidget:
+        card = QFrame()
+        card.setObjectName("quickActionsCard")
+        card.setStyleSheet("""
+            QFrame#quickActionsCard {
+                background-color: #0D1526;
+                border: 1px solid #1B263B;
+                border-radius: 10px;
             }
         """)
-        self.btn_exit_app.clicked.connect(self.shutdown_requested.emit)
-        ctrl_layout.addWidget(self.btn_exit_app)
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(10)
 
-        main_vbox.addWidget(ctrl_bar)
+        lbl_title = QLabel("Quick Actions")
+        lbl_title.setStyleSheet("color: #F8FAFC; font-size: 13px; font-weight: 800;")
+        layout.addWidget(lbl_title)
 
-        self.lbl_footer_status = QLabel(f"TalentOps Scout v{CURRENT_VERSION} • Production Cloud Connected • Auto-Sync Active")
-        self.lbl_footer_status.setStyleSheet("color: #475569; font-size: 8px; font-weight: 600; padding: 2px 0;")
-        self.lbl_footer_status.setAlignment(Qt.AlignCenter)
-        main_vbox.addWidget(self.lbl_footer_status)
+        # Action 1: Scan Screen Now
+        btn_qa_scan = QPushButton("⚡  Scan Screen Now")
+        btn_qa_scan.setCursor(Qt.PointingHandCursor)
+        btn_qa_scan.setFixedHeight(38)
+        btn_qa_scan.setStyleSheet("""
+            QPushButton {
+                background-color: #0C213B;
+                color: #38BDF8;
+                border: 1px solid #0284C7;
+                border-radius: 6px;
+                font-size: 11px;
+                font-weight: 700;
+                text-align: left;
+                padding-left: 14px;
+            }
+            QPushButton:hover {
+                background-color: #0284C7;
+                color: #FFFFFF;
+            }
+        """)
+        btn_qa_scan.clicked.connect(self.force_capture_requested.emit)
+        layout.addWidget(btn_qa_scan)
 
-    def _build_section_header(self, text: str) -> QLabel:
-        lbl = QLabel(text)
-        lbl.setStyleSheet("color: #64748B; font-size: 9px; font-weight: 800; margin-top: 4px;")
-        return lbl
+        # Action 2: Sync to Cloud
+        btn_qa_sync = QPushButton("☁  Sync to Cloud")
+        btn_qa_sync.setCursor(Qt.PointingHandCursor)
+        btn_qa_sync.setFixedHeight(38)
+        btn_qa_sync.setStyleSheet("""
+            QPushButton {
+                background-color: #0A241A;
+                color: #34D399;
+                border: 1px solid #059669;
+                border-radius: 6px;
+                font-size: 11px;
+                font-weight: 700;
+                text-align: left;
+                padding-left: 14px;
+            }
+            QPushButton:hover {
+                background-color: #059669;
+                color: #FFFFFF;
+            }
+        """)
+        btn_qa_sync.clicked.connect(self.sync_now_requested.emit)
+        layout.addWidget(btn_qa_sync)
+
+        # Action 3: Open Pipeline
+        btn_qa_pipeline = QPushButton("📊  Open Pipeline")
+        btn_qa_pipeline.setCursor(Qt.PointingHandCursor)
+        btn_qa_pipeline.setFixedHeight(38)
+        btn_qa_pipeline.setStyleSheet("""
+            QPushButton {
+                background-color: #111A2E;
+                color: #94A3B8;
+                border: 1px solid #1E293B;
+                border-radius: 6px;
+                font-size: 11px;
+                font-weight: 700;
+                text-align: left;
+                padding-left: 14px;
+            }
+            QPushButton:hover {
+                background-color: #1A263D;
+                color: #FFFFFF;
+                border-color: #334155;
+            }
+        """)
+        btn_qa_pipeline.clicked.connect(lambda: self._switch_tab(3))
+        layout.addWidget(btn_qa_pipeline)
+
+        return card
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Page 1: Candidates
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _build_candidates_page(self) -> QWidget:
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(14)
+
+        header_row = QHBoxLayout()
+        cand_title_col = QVBoxLayout()
+        cand_title_col.setSpacing(2)
+
+        lbl_title = QLabel("Extracted Candidate Profiles")
+        lbl_title.setStyleSheet("color: #FFFFFF; font-size: 20px; font-weight: 800;")
+        cand_title_col.addWidget(lbl_title)
+
+        lbl_sub = QLabel("Autonomous talent profiles captured and resolved from active browser windows")
+        lbl_sub.setStyleSheet("color: #94A3B8; font-size: 12px;")
+        cand_title_col.addWidget(lbl_sub)
+        header_row.addLayout(cand_title_col, 1)
+
+        self.cand_search = QLineEdit()
+        self.cand_search.setPlaceholderText("Search candidate or company...")
+        self.cand_search.setFixedWidth(240)
+        self.cand_search.setStyleSheet("""
+            QLineEdit {
+                background-color: #0D1526;
+                color: #F8FAFC;
+                border: 1px solid #1B263B;
+                border-radius: 6px;
+                padding: 6px 10px;
+                font-size: 11px;
+            }
+            QLineEdit:focus {
+                border-color: #0284C7;
+            }
+        """)
+        header_row.addWidget(self.cand_search)
+        layout.addLayout(header_row)
+
+        # Candidates Table
+        self.tbl_candidates = QTableWidget(0, 6)
+        self.tbl_candidates.setHorizontalHeaderLabels(["Name", "Title", "Company", "Location", "Platform", "Status"])
+        self.tbl_candidates.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl_candidates.verticalHeader().setVisible(False)
+        self.tbl_candidates.setStyleSheet("""
+            QTableWidget {
+                background-color: #0D1526;
+                border: 1px solid #1B263B;
+                border-radius: 8px;
+                gridline-color: #141D2D;
+                color: #F8FAFC;
+                font-size: 11px;
+            }
+            QHeaderView::section {
+                background-color: #09101E;
+                color: #64748B;
+                font-size: 10px;
+                font-weight: 700;
+                padding: 6px;
+                border: none;
+                border-bottom: 1px solid #1B263B;
+            }
+        """)
+
+        # Populate sample seed row
+        self._add_candidate_table_row("Sarah Chen", "Software Engineer", "Google", "San Francisco, CA", "LinkedIn", "SYNCED")
+        layout.addWidget(self.tbl_candidates, 1)
+
+        return container
+
+    def _add_candidate_table_row(self, name: str, title: str, company: str, location: str, platform: str, status: str):
+        row = self.tbl_candidates.rowCount()
+        self.tbl_candidates.insertRow(row)
+
+        items = [
+            (name, "#F8FAFC", True),
+            (title, "#94A3B8", False),
+            (company, "#38BDF8", False),
+            (location, "#64748B", False),
+            (platform, "#A855F7", False),
+            (status, "#10B981" if "SYNC" in status else "#F59E0B", True),
+        ]
+        for col, (val, colr, bold) in enumerate(items):
+            item = QTableWidgetItem(val)
+            item.setForeground(QColor(colr))
+            if bold:
+                item.setFont(QFont("Segoe UI", 9, QFont.Bold))
+            self.tbl_candidates.setItem(row, col, item)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Page 2: Cloud Sync
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _build_sync_page(self) -> QWidget:
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(16)
+
+        header_row = QHBoxLayout()
+        sync_title_col = QVBoxLayout()
+        sync_title_col.setSpacing(2)
+
+        lbl_title = QLabel("Cloud Synchronization Engine")
+        lbl_title.setStyleSheet("color: #FFFFFF; font-size: 20px; font-weight: 800;")
+        sync_title_col.addWidget(lbl_title)
+
+        lbl_sub = QLabel("Durable offline SQLite queue with exponential backoff & idempotent delivery")
+        lbl_sub.setStyleSheet("color: #94A3B8; font-size: 12px;")
+        sync_title_col.addWidget(lbl_sub)
+        header_row.addLayout(sync_title_col, 1)
+
+        btn_force_sync = QPushButton("☁  Sync Now")
+        btn_force_sync.setCursor(Qt.PointingHandCursor)
+        btn_force_sync.setFixedHeight(36)
+        btn_force_sync.setStyleSheet("""
+            QPushButton {
+                background-color: #059669;
+                color: #FFFFFF;
+                border: none;
+                border-radius: 6px;
+                padding: 0 16px;
+                font-size: 11px;
+                font-weight: 800;
+            }
+            QPushButton:hover { background-color: #10B981; }
+        """)
+        btn_force_sync.clicked.connect(self.sync_now_requested.emit)
+        header_row.addWidget(btn_force_sync)
+        layout.addLayout(header_row)
+
+        # 4 Queue Summary Cards
+        q_grid = QHBoxLayout()
+        q_grid.setSpacing(12)
+
+        self.q_card_pending = FunnelStepCard("1", "Pending in Queue", count="0", accent_color="#0284C7")
+        self.q_card_synced = FunnelStepCard("2", "Synced Today", count="62", accent_color="#10B981")
+        self.q_card_failed = FunnelStepCard("3", "Retry / Backoff", count="0", accent_color="#F59E0B")
+        self.q_card_dlq = FunnelStepCard("4", "Dead Letter Queue", count="0", accent_color="#EF4444")
+
+        q_grid.addWidget(self.q_card_pending)
+        q_grid.addWidget(self.q_card_synced)
+        q_grid.addWidget(self.q_card_failed)
+        q_grid.addWidget(self.q_card_dlq)
+        layout.addLayout(q_grid)
+
+        # Database target info
+        db_box = QFrame()
+        db_box.setStyleSheet("""
+            QFrame {
+                background-color: #0D1526;
+                border: 1px solid #1B263B;
+                border-radius: 8px;
+                padding: 8px;
+            }
+        """)
+        db_layout = QHBoxLayout(db_box)
+        self.lbl_db_target = QLabel("Backend Target: https://talentopsai-1.onrender.com (Production Pooler)")
+        self.lbl_db_target.setStyleSheet("color: #38BDF8; font-size: 11px; font-family: Consolas, monospace;")
+        db_layout.addWidget(self.lbl_db_target)
+        db_layout.addStretch()
+
+        self.lbl_db_response = QLabel("Status: 200 OK (Synchronized)")
+        self.lbl_db_response.setStyleSheet("color: #10B981; font-size: 11px; font-weight: 700;")
+        db_layout.addWidget(self.lbl_db_response)
+        layout.addWidget(db_box)
+
+        # Queue transactions table
+        lbl_tbl_hdr = QLabel("Recent Sync Transactions")
+        lbl_tbl_hdr.setStyleSheet("color: #F8FAFC; font-size: 13px; font-weight: 800;")
+        layout.addWidget(lbl_tbl_hdr)
+
+        self.tbl_sync_history = QTableWidget(0, 5)
+        self.tbl_sync_history.setHorizontalHeaderLabels(["Timestamp", "Batch Size", "Endpoint", "Status", "Duration"])
+        self.tbl_sync_history.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl_sync_history.verticalHeader().setVisible(False)
+        self.tbl_sync_history.setStyleSheet("""
+            QTableWidget {
+                background-color: #0D1526;
+                border: 1px solid #1B263B;
+                border-radius: 8px;
+                gridline-color: #141D2D;
+                color: #F8FAFC;
+                font-size: 11px;
+            }
+            QHeaderView::section {
+                background-color: #09101E;
+                color: #64748B;
+                font-size: 10px;
+                font-weight: 700;
+                padding: 6px;
+                border: none;
+                border-bottom: 1px solid #1B263B;
+            }
+        """)
+        layout.addWidget(self.tbl_sync_history, 1)
+
+        return container
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Page 3: Pipeline
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _build_pipeline_page(self) -> QWidget:
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(16)
+
+        p_title_col = QVBoxLayout()
+        p_title_col.setSpacing(2)
+
+        lbl_title = QLabel("Recruitment Funnel & Sourcing Conversion")
+        lbl_title.setStyleSheet("color: #FFFFFF; font-size: 20px; font-weight: 800;")
+        p_title_col.addWidget(lbl_title)
+
+        lbl_sub = QLabel("End-to-end telemetry from raw screen frames to verified candidate records")
+        lbl_sub.setStyleSheet("color: #94A3B8; font-size: 12px;")
+        p_title_col.addWidget(lbl_sub)
+        layout.addLayout(p_title_col)
+
+        # Full 4-Step Funnel
+        layout.addWidget(self._build_today_pipeline_card())
+
+        # Platform Distribution Cards
+        lbl_platforms_hdr = QLabel("Active Sourcing Platforms")
+        lbl_platforms_hdr.setStyleSheet("color: #F8FAFC; font-size: 13px; font-weight: 800;")
+        layout.addWidget(lbl_platforms_hdr)
+
+        platforms_grid = QGridLayout()
+        platforms_grid.setSpacing(10)
+
+        platform_list = [
+            ("LinkedIn", "84 profiles", "#0284C7"),
+            ("ZoomInfo", "18 profiles", "#F43F5E"),
+            ("Apollo.io", "12 profiles", "#EAB308"),
+            ("GitHub", "9 profiles", "#A855F7"),
+            ("Greenhouse / Lever ATS", "5 profiles", "#06B6D4"),
+            ("MS Teams / Google Chat", "0 notes", "#10B981"),
+        ]
+
+        for i, (p_name, p_stat, p_color) in enumerate(platform_list):
+            card = QFrame()
+            card.setStyleSheet("""
+                QFrame {
+                    background-color: #0D1526;
+                    border: 1px solid #1B263B;
+                    border-radius: 8px;
+                    padding: 10px;
+                }
+            """)
+            c_layout = QVBoxLayout(card)
+            c_layout.setSpacing(2)
+
+            lbl_pn = QLabel(p_name)
+            lbl_pn.setStyleSheet(f"color: {p_color}; font-size: 12px; font-weight: 800;")
+            c_layout.addWidget(lbl_pn)
+
+            lbl_ps = QLabel(p_stat)
+            lbl_ps.setStyleSheet("color: #F8FAFC; font-size: 13px; font-weight: 700;")
+            c_layout.addWidget(lbl_ps)
+
+            platforms_grid.addWidget(card, i // 3, i % 3)
+
+        layout.addLayout(platforms_grid)
+        layout.addStretch()
+
+        return container
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Page 4: Settings (Houses the Technical Diagnostics Telemetry Drawer)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _build_settings_page(self) -> QWidget:
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(14)
+
+        lbl_title = QLabel("Settings & Diagnostics")
+        lbl_title.setStyleSheet("color: #FFFFFF; font-size: 20px; font-weight: 800;")
+        layout.addWidget(lbl_title)
+
+        self.settings_tab_widget = QTabWidget()
+        self.settings_tab_widget.setStyleSheet("""
+            QTabWidget::pane {
+                border: 1px solid #1B263B;
+                background: #0B101D;
+                border-radius: 8px;
+            }
+            QTabBar::tab {
+                background: #070B14;
+                color: #94A3B8;
+                padding: 8px 16px;
+                border: 1px solid #141D2D;
+                border-bottom: none;
+                border-top-left-radius: 6px;
+                border-top-right-radius: 6px;
+                font-size: 11px;
+                font-weight: 600;
+            }
+            QTabBar::tab:selected {
+                background: #0B101D;
+                color: #38BDF8;
+                border-color: #1B263B;
+                font-weight: 700;
+            }
+        """)
+
+        # Subtab 1: Account & Pairing
+        tab_account = self._build_subtab_account()
+        self.settings_tab_widget.addTab(tab_account, "Account & Pairing")
+
+        # Subtab 2: Detection Rules
+        tab_rules = self._build_subtab_rules()
+        self.settings_tab_widget.addTab(tab_rules, "Detection & Rules")
+
+        # Subtab 3: Diagnostics & Telemetry (The Technical Drawer)
+        tab_diagnostics = self._build_subtab_diagnostics()
+        self.settings_tab_widget.addTab(tab_diagnostics, "Deep Diagnostics & Telemetry")
+
+        layout.addWidget(self.settings_tab_widget, 1)
+        return container
+
+    def _build_subtab_account(self) -> QWidget:
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(14)
+
+        # Account Strip (Backward compatible self.account_bar)
+        self.account_bar = QFrame()
+        self.account_bar.setObjectName("accountBar")
+        self.account_bar.setStyleSheet("""
+            QFrame#accountBar {
+                background: #0D1424;
+                border: 1px solid #1E293B;
+                border-radius: 8px;
+                padding: 10px;
+            }
+        """)
+        acc_layout = QHBoxLayout(self.account_bar)
+        acc_layout.setSpacing(12)
+
+        self.lbl_acc_icon = QLabel("👤")
+        self.lbl_acc_icon.setStyleSheet("font-size: 18px;")
+        acc_layout.addWidget(self.lbl_acc_icon)
+
+        text_layout = QVBoxLayout()
+        text_layout.setSpacing(2)
+        self.lbl_account_title = QLabel("CONNECTED RECRUITER")
+        self.lbl_account_title.setStyleSheet("color: #64748B; font-size: 9px; font-weight: 700;")
+        text_layout.addWidget(self.lbl_account_title)
+
+        self.lbl_account_val = QLabel("prashant@talentops.ai")
+        self.lbl_account_val.setStyleSheet("color: #34D399; font-size: 13px; font-weight: 700;")
+        text_layout.addWidget(self.lbl_account_val)
+        acc_layout.addLayout(text_layout)
+
+        acc_layout.addStretch()
+
+        btn_switch_acc = QPushButton("🔗 Switch Account")
+        btn_switch_acc.setCursor(Qt.PointingHandCursor)
+        btn_switch_acc.setFixedHeight(34)
+        btn_switch_acc.setStyleSheet("""
+            QPushButton {
+                background-color: #1E293B;
+                color: #FFFFFF;
+                border: 1px solid #334155;
+                border-radius: 6px;
+                padding: 0 14px;
+                font-size: 11px;
+                font-weight: 700;
+            }
+            QPushButton:hover { background-color: #334155; }
+        """)
+        btn_switch_acc.clicked.connect(self.request_pair_account.emit)
+        acc_layout.addWidget(btn_switch_acc)
+
+        layout.addWidget(self.account_bar)
+
+        # Environment Info
+        self.lbl_env_badge = QLabel("PRODUCTION CLOUD • STABLE")
+        self.lbl_env_badge.setStyleSheet("color: #10B981; font-size: 11px; font-weight: 700;")
+        layout.addWidget(self.lbl_env_badge)
+
+        layout.addStretch()
+        return widget
+
+    def _build_subtab_rules(self) -> QWidget:
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(12)
+
+        lbl_desc = QLabel("Scout automatically activates only on authorized recruitment and talent platforms:")
+        lbl_desc.setStyleSheet("color: #94A3B8; font-size: 11px;")
+        layout.addWidget(lbl_desc)
+
+        targets = [
+            "✔ LinkedIn & LinkedIn Recruiter",
+            "✔ ZoomInfo & ZoomInfo Lite",
+            "✔ Apollo.io Sourcing Directory",
+            "✔ GitHub Developer Profiles",
+            "✔ Applicant Tracking Systems (Greenhouse, Lever, Ashby, Workday)",
+            "✔ Enterprise Recruiter Communications (Teams, Google Chat, Slack)",
+        ]
+        for t in targets:
+            lbl = QLabel(t)
+            lbl.setStyleSheet("color: #F8FAFC; font-size: 11px; font-weight: 600; padding: 2px 0;")
+            layout.addWidget(lbl)
+
+        layout.addStretch()
+        return widget
+
+    def _build_subtab_diagnostics(self) -> QWidget:
+        """Houses the 12 deep counters, screenshot thumbnail, extraction proof table, and log stream."""
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(16, 14, 16, 14)
+        layout.setSpacing(12)
+
+        # 1. Subsystem Indicators Row
+        ind_row = QHBoxLayout()
+        ind_row.setSpacing(8)
+
+        self.ind_backend = SubsystemIndicator("Cloud Sync", "CONNECTED")
+        self.ind_window = SubsystemIndicator("Window", "ACTIVE")
+        self.ind_ocr = SubsystemIndicator("OCR Engine", "READY")
+        self.ind_queue = SubsystemIndicator("SQLite Queue", "READY")
+
+        ind_row.addWidget(self.ind_backend)
+        ind_row.addWidget(self.ind_window)
+        ind_row.addWidget(self.ind_ocr)
+        ind_row.addWidget(self.ind_queue)
+        layout.addLayout(ind_row)
+
+        # 2. Deep Explicit Telemetry Counters (Grid of 12)
+        lbl_counters_hdr = QLabel("12 EXPLICIT ENGINE COUNTERS")
+        lbl_counters_hdr.setStyleSheet("color: #38BDF8; font-size: 10px; font-weight: 800; letter-spacing: 0.5px;")
+        layout.addWidget(lbl_counters_hdr)
+
+        c_grid = QGridLayout()
+        c_grid.setSpacing(6)
+
+        self.c_captured = MetricBadge("Captured", "0", color="#94A3B8")
+        self.c_analyzed = MetricBadge("Analyzed", "0", color="#38BDF8")
+        self.c_useful = MetricBadge("Useful", "0", color="#10B981")
+        self.c_staged = MetricBadge("Staged", "0", color="#A855F7")
+        self.c_matched = MetricBadge("Matched", "0", color="#38BDF8")
+        self.c_new = MetricBadge("New Lead", "0", color="#10B981")
+        self.c_enriched = MetricBadge("Enriched", "0", color="#0284C7")
+        self.c_db_updates = MetricBadge("DB Updates", "0", color="#34D399")
+        self.c_purged = MetricBadge("Purged", "0", color="#64748B")
+        self.c_observed = MetricBadge("Observed", "0", color="#F59E0B")
+        self.c_fields_added = MetricBadge("Fields Added", "0", color="#10B981")
+        self.c_buffer = MetricBadge("Buffer", "0/20", color="#94A3B8")
+
+        c_grid.addWidget(self.c_captured, 0, 0)
+        c_grid.addWidget(self.c_analyzed, 0, 1)
+        c_grid.addWidget(self.c_useful, 0, 2)
+        c_grid.addWidget(self.c_staged, 0, 3)
+        c_grid.addWidget(self.c_matched, 1, 0)
+        c_grid.addWidget(self.c_new, 1, 1)
+        c_grid.addWidget(self.c_enriched, 1, 2)
+        c_grid.addWidget(self.c_db_updates, 1, 3)
+        c_grid.addWidget(self.c_purged, 2, 0)
+        c_grid.addWidget(self.c_observed, 2, 1)
+        c_grid.addWidget(self.c_fields_added, 2, 2)
+        c_grid.addWidget(self.c_buffer, 2, 3)
+
+        layout.addLayout(c_grid)
+
+        # Purge Status Label
+        self.lbl_purge_status = QLabel("Auto-Purge: Clean (0 in buffer)")
+        self.lbl_purge_status.setStyleSheet("color: #64748B; font-size: 9px;")
+        layout.addWidget(self.lbl_purge_status)
+
+        # 3. Capture Proof Row (Thumbnail + Metadata)
+        cap_row = QHBoxLayout()
+        cap_row.setSpacing(12)
+
+        self.lbl_thumbnail = QLabel()
+        self.lbl_thumbnail.setFixedSize(140, 85)
+        self.lbl_thumbnail.setAlignment(Qt.AlignCenter)
+        self.lbl_thumbnail.setStyleSheet("background: #09101E; border: 1px solid #1B263B; border-radius: 6px; color: #64748B;")
+        self.lbl_thumbnail.setText("Capture Preview")
+        cap_row.addWidget(self.lbl_thumbnail)
+
+        meta_col = QVBoxLayout()
+        meta_col.setSpacing(2)
+
+        self.lbl_cap_id = QLabel("Capture ID: —")
+        self.lbl_cap_id.setStyleSheet("color: #38BDF8; font-size: 9px; font-family: Consolas, monospace;")
+        meta_col.addWidget(self.lbl_cap_id)
+
+        self.lbl_cap_time = QLabel("Time: —")
+        self.lbl_cap_time.setStyleSheet("color: #94A3B8; font-size: 9px;")
+        meta_col.addWidget(self.lbl_cap_time)
+
+        self.lbl_delta = QLabel("Delta: 0.00%")
+        self.lbl_delta.setStyleSheet("color: #10B981; font-size: 9px; font-weight: 700;")
+        meta_col.addWidget(self.lbl_delta)
+
+        self.lbl_reason = QLabel("Reason: —")
+        self.lbl_reason.setStyleSheet("color: #94A3B8; font-size: 9px;")
+        meta_col.addWidget(self.lbl_reason)
+
+        self.lbl_gate_status = QLabel("Gate: STANDBY")
+        self.lbl_gate_status.setStyleSheet("color: #A855F7; font-size: 9px; font-weight: 700;")
+        meta_col.addWidget(self.lbl_gate_status)
+
+        self.lbl_breakdown = QLabel("People: 0 | Companies: 0 | Locations: 0 | Signals: 0")
+        self.lbl_breakdown.setStyleSheet("color: #64748B; font-size: 9px;")
+        meta_col.addWidget(self.lbl_breakdown)
+
+        cap_row.addLayout(meta_col, 1)
+        layout.addLayout(cap_row)
+
+        # 4. Extraction Proof Table
+        lbl_proof_hdr = QLabel("EXTRACTION PROOF & FIELD CONFIDENCE")
+        lbl_proof_hdr.setStyleSheet("color: #38BDF8; font-size: 10px; font-weight: 800;")
+        layout.addWidget(lbl_proof_hdr)
+
+        self.proof_table = QTableWidget(0, 4)
+        self.proof_table.setHorizontalHeaderLabels(["Field", "Extracted Value", "Confidence", "Decision"])
+        self.proof_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.proof_table.verticalHeader().setVisible(False)
+        self.proof_table.setFixedHeight(120)
+        self.proof_table.setStyleSheet("""
+            QTableWidget {
+                background-color: #09101E;
+                border: 1px solid #1B263B;
+                border-radius: 6px;
+                gridline-color: #141D2D;
+                color: #F8FAFC;
+                font-size: 10px;
+            }
+            QHeaderView::section {
+                background-color: #070B14;
+                color: #64748B;
+                font-size: 9px;
+                font-weight: 700;
+                padding: 4px;
+                border: none;
+                border-bottom: 1px solid #1B263B;
+            }
+        """)
+        layout.addWidget(self.proof_table)
+
+        # 5. Database Proof
+        self.lbl_db_write = QLabel("Last DB Write: None")
+        self.lbl_db_write.setStyleSheet("color: #64748B; font-size: 9px;")
+        layout.addWidget(self.lbl_db_write)
+
+        # 6. Live Event Log Stream
+        lbl_log_hdr = QLabel("LIVE EVENT LOG STREAM")
+        lbl_log_hdr.setStyleSheet("color: #38BDF8; font-size: 10px; font-weight: 800;")
+        layout.addWidget(lbl_log_hdr)
+
+        self._log_entries = []
+        self.stream_box = QFrame()
+        self.stream_box.setStyleSheet("""
+            QFrame {
+                background-color: #09101E;
+                border: 1px solid #1B263B;
+                border-radius: 6px;
+                padding: 8px;
+            }
+        """)
+        self.stream_layout = QVBoxLayout(self.stream_box)
+        self.stream_layout.setContentsMargins(4, 4, 4, 4)
+        self.stream_layout.setSpacing(2)
+
+        # Seed initial log
+        init_lbl = QLabel(f"[{time.strftime('%H:%M:%S')}] <b style='color: #10B981;'>SYSTEM_READY</b>: Scout Command Center v{CURRENT_VERSION} initialized")
+        init_lbl.setStyleSheet("color: #94A3B8; font-size: 9px; font-family: Consolas, monospace;")
+        self._log_entries.append(init_lbl)
+        self.stream_layout.addWidget(init_lbl)
+
+        layout.addWidget(self.stream_box)
+
+        scroll.setWidget(container)
+        return scroll
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Bottom Status Bar (Persistent)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _build_bottom_status_bar(self) -> QWidget:
+        status_bar = QFrame()
+        status_bar.setFixedHeight(34)
+        status_bar.setStyleSheet("""
+            QFrame {
+                background-color: #070B14;
+                border-top: 1px solid #141D2D;
+            }
+        """)
+        layout = QHBoxLayout(status_bar)
+        layout.setContentsMargins(18, 0, 18, 0)
+        layout.setSpacing(16)
+
+        # Left status indicators
+        self.lbl_last_sync_status = QLabel("✓ Last sync: 2 min ago")
+        self.lbl_last_sync_status.setStyleSheet("color: #10B981; font-size: 11px; font-weight: 600;")
+        layout.addWidget(self.lbl_last_sync_status)
+
+        self.lbl_records_uploaded = QLabel("58 records uploaded")
+        self.lbl_records_uploaded.setStyleSheet("color: #94A3B8; font-size: 11px; font-weight: 500;")
+        layout.addWidget(self.lbl_records_uploaded)
+
+        self.lbl_error_summary = QLabel("No errors")
+        self.lbl_error_summary.setStyleSheet("color: #10B981; font-size: 11px; font-weight: 600;")
+        layout.addWidget(self.lbl_error_summary)
+
+        layout.addStretch()
+
+        # Right platform tags
+        lbl_ver = QLabel(f"Scout v{CURRENT_VERSION}")
+        lbl_ver.setStyleSheet("color: #64748B; font-size: 11px; font-weight: 600;")
+        layout.addWidget(lbl_ver)
+
+        lbl_env = QLabel("Production")
+        lbl_env.setStyleSheet("color: #64748B; font-size: 11px; font-weight: 600;")
+        layout.addWidget(lbl_env)
+
+        lbl_os = QLabel("Windows 10/11")
+        lbl_os.setStyleSheet("color: #64748B; font-size: 11px; font-weight: 600;")
+        layout.addWidget(lbl_os)
+
+        return status_bar
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Helper & Event Handlers
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _update_greeting(self):
+        hour = time.localtime().tm_hour
+        if hour < 12:
+            greeting = "Good Morning"
+        elif hour < 17:
+            greeting = "Good Afternoon"
+        else:
+            greeting = "Good Evening"
+
+        name = self._current_user_name or "Prashant"
+        self.lbl_greeting.setText(f"{greeting}, {name}")
+
+    def _open_current_target_url(self):
+        url = self._latest_profile_url or "https://www.linkedin.com"
+        try:
+            QDesktopServices.openUrl(QUrl(url))
+        except Exception as e:
+            logger.debug("Failed opening target URL: %s", e)
 
     def _handle_pause_toggle(self):
         self._is_paused = not self._is_paused
         if self._is_paused:
-            self.btn_pause_toggle.setText("▶ Resume")
+            self.btn_pause_toggle.setText("▶  Resume")
             self.btn_pause_toggle.setStyleSheet("""
                 QPushButton {
-                    background: #1E1B4B;
-                    color: #A5B4FC;
-                    border: 1px solid #6366F1;
-                    border-radius: 6px;
-                    font-size: 11px;
-                    font-weight: 800;
-                    padding: 0 12px;
-                }
-                QPushButton:hover {
-                    background: #6366F1;
-                    color: #FFFFFF;
-                }
-            """)
-        else:
-            self.btn_pause_toggle.setText("⏸ Pause")
-            self.btn_pause_toggle.setStyleSheet("""
-                QPushButton {
-                    background: #131722;
-                    color: #E2E8F0;
-                    border: 1px solid #1E2433;
-                    border-radius: 6px;
-                    font-size: 11px;
+                    background-color: #0E241A;
+                    color: #34D399;
+                    border: 1px solid #059669;
+                    border-radius: 8px;
+                    font-size: 12px;
                     font-weight: 700;
-                    padding: 0 12px;
+                    padding: 0 16px;
                 }
-                QPushButton:hover {
-                    background: #1E2433;
-                    border-color: #334155;
-                    color: #FFFFFF;
-                }
+                QPushButton:hover { background-color: #059669; color: #FFFFFF; }
             """)
+            self.update_status_state("PAUSED")
+        else:
+            self.btn_pause_toggle.setText("⏸  Pause")
+            self.btn_pause_toggle.setStyleSheet("""
+                QPushButton {
+                    background-color: #0C1A30;
+                    color: #38BDF8;
+                    border: 1px solid #1E2E4A;
+                    border-radius: 8px;
+                    font-size: 12px;
+                    font-weight: 700;
+                    padding: 0 16px;
+                }
+                QPushButton:hover { background-color: #132442; color: #FFFFFF; border-color: #38BDF8; }
+            """)
+            self.update_status_state("ACTIVE")
         self.toggle_pause_requested.emit()
-
-    def _toggle_technical_drawer(self):
-        self._technical_drawer_expanded = not self._technical_drawer_expanded
-        self.drawer_scroll.setVisible(self._technical_drawer_expanded)
-        if self._technical_drawer_expanded:
-            self.btn_toggle_drawer.setText("▴ Hide Deep Technical Telemetry & Evidence")
-        else:
-            self.btn_toggle_drawer.setText("▾ Show Deep Technical Telemetry & Evidence (12 Counters, OCR, Logs)")
-
-    def _toggle_dev_mode(self, enabled: bool):
-        if enabled:
-            self.btn_dev_mode.setText("Dev Mode: ON")
-            self.stream_box.setVisible(True)
-            self.proof_table.setVisible(True)
-        else:
-            self.btn_dev_mode.setText("Dev Mode: OFF")
-            self.stream_box.setVisible(True)
-            self.proof_table.setVisible(True)
 
     def _dock_to_side(self):
         self.dock_to_edge_requested.emit()
         self.hide()
 
     def closeEvent(self, event: QCloseEvent):
+        """
+        Standard Windows application behavior:
+        Clicking [X] hides the companion window to the system tray & edge handle
+        so autonomous monitoring continues uninterrupted in the background.
+        Full shutdown requires right-clicking the tray icon and choosing 'Exit Scout'.
+        """
         if getattr(self, "_is_shutting_down", False):
             event.accept()
-            return
-        event.ignore()
-        self._dock_to_side()
+        else:
+            event.ignore()
+            self._dock_to_side()
+            logger.info("MainWindow hidden to system tray / edge dock. Autonomous Scout continues in background.")
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Public Slots & Backward-Compatible API (Called by app.py)
+    # ─────────────────────────────────────────────────────────────────────────
 
     def update_account_display(self, email: Optional[str] = None):
-        """Updates the connected account badge on the main window."""
+        """Updates the connected account badge across the top bar and greeting."""
         clean_email = (email or "").strip()
         if clean_email and clean_email != "Not Connected / Default":
+            # Extract first name
+            name_part = clean_email.split("@")[0].capitalize()
+            self._current_user_name = name_part
+            self._current_user_email = clean_email
+            self.lbl_user_info.setText(f"User: {name_part}")
+            self.lbl_account_info.setText("Account: TalentOps AI")
             self.lbl_account_title.setText("CONNECTED RECRUITER")
             self.lbl_account_val.setText(clean_email)
-            self.lbl_account_val.setStyleSheet("color: #34D399; font-size: 11px; font-weight: 700; background: transparent; border: none;")
-            self.btn_account_pair.setText("🔗 Switch Account")
-            self.btn_account_pair.setStyleSheet("""
-                QPushButton {
-                    background: #1E293B;
-                    color: #94A3B8;
-                    border: 1px solid #334155;
-                    border-radius: 5px;
-                    font-size: 10px;
-                    font-weight: 700;
-                    padding: 0 10px;
-                }
-                QPushButton:hover {
-                    background: #334155;
-                    color: #FFFFFF;
-                }
-            """)
+            self._update_greeting()
+            self.status_dot.setStyleSheet("color: #10B981; font-size: 10px;")
+            self.lbl_main_status.setText("Connected")
         else:
             self.lbl_account_title.setText("DEVICE NOT PAIRED")
             self.lbl_account_val.setText("Waiting for Account Link")
-            self.lbl_account_val.setStyleSheet("color: #F59E0B; font-size: 11px; font-weight: 700; background: transparent; border: none;")
-            self.btn_account_pair.setText("🔗 Pair / View Code")
-            self.btn_account_pair.setStyleSheet("""
-                QPushButton {
-                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #10B981, stop:1 #059669);
-                    color: #FFFFFF;
-                    border: none;
-                    border-radius: 5px;
-                    font-size: 10px;
-                    font-weight: 800;
-                    padding: 0 10px;
-                }
-                QPushButton:hover {
-                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #059669, stop:1 #047857);
-                }
-            """)
 
     def update_environment(self, env_name: str, api_base: str):
-        self.lbl_env_badge.setText(env_name.upper())
+        self.lbl_env_badge.setText(f"{env_name.upper()} • STABLE")
         self.lbl_db_target.setText(f"Backend Target: {api_base}")
 
     def update_status_state(self, state: str):
         s = state.upper()
-        self.lbl_main_status.setText(s)
         if "ACTIVE" in s or "CONNECTED" in s or "DETECTED" in s:
             col = "#10B981"
-        elif "IDLE" in s or "STAGED" in s:
-            col = "#F59E0B"
+            txt = "Connected" if "CONNECT" in s else "Scout is Active"
+            self.lbl_scout_active_title.setText("Scout is Active")
+            self.lbl_scout_active_dot.setStyleSheet("color: #10B981; font-size: 11px;")
+            self.lbl_sampling_pulse.setText("Monitoring • Extracting • Analyzing")
         elif "PAUSED" in s:
             col = "#6366F1"
+            txt = "Paused"
+            self.lbl_scout_active_title.setText("Scout is Paused")
+            self.lbl_scout_active_dot.setStyleSheet("color: #6366F1; font-size: 11px;")
+            self.lbl_sampling_pulse.setText("Standby — Sampling paused")
+        elif "IDLE" in s or "REST" in s:
+            col = "#F59E0B"
+            txt = "Standby"
+            self.lbl_scout_active_title.setText("Scout is Resting")
+            self.lbl_scout_active_dot.setStyleSheet("color: #F59E0B; font-size: 11px;")
+            self.lbl_sampling_pulse.setText("Resting — Active window is outside talent allowlist")
         else:
             col = "#EF4444"
+            txt = "Offline"
+            self.lbl_scout_active_title.setText("Scout Offline")
+            self.lbl_scout_active_dot.setStyleSheet("color: #EF4444; font-size: 11px;")
+
         self.status_dot.setStyleSheet(f"color: {col}; font-size: 10px;")
-        self.lbl_main_status.setStyleSheet(f"color: {col}; font-size: 9px; font-weight: 800;")
+        self.lbl_main_status.setText(txt)
+        self.lbl_main_status.setStyleSheet(f"color: {col}; font-size: 11px; font-weight: 700;")
 
     def update_window_context(self, app_name: str, window_title: str, url: str, context: str, is_allowed: bool = True, target_type: str = ""):
         clean_title = window_title[:45] if window_title else "Screen Active"
-        if is_allowed:
-            if target_type in ("CHROME_LINKEDIN", "LINKEDIN"):
-                self.lbl_target_desc.setText(f"Watching LinkedIn — Talent Profile Active ({clean_title})")
-                self.lbl_target_url.setText(f"Target: {url or 'https://www.linkedin.com'}")
-                self.lbl_sampling_pulse.setText("● SCANNING LINKEDIN")
-                self.lbl_sampling_pulse.setStyleSheet("color: #10B981; font-size: 9px; font-weight: 700;")
-                self.lbl_main_status.setText("ACTIVE (LINKEDIN)")
-                self.status_dot.setStyleSheet("color: #10B981; font-size: 10px;")
-                self.lbl_main_status.setStyleSheet("color: #10B981; font-size: 9px; font-weight: 800;")
-            elif target_type == "GITHUB":
-                self.lbl_target_desc.setText(f"Watching GitHub — Developer Profile Active ({clean_title})")
-                self.lbl_target_url.setText(f"Target: {url or 'https://github.com'}")
-                self.lbl_sampling_pulse.setText("● SCANNING GITHUB")
-                self.lbl_sampling_pulse.setStyleSheet("color: #A855F7; font-size: 9px; font-weight: 700;")
-                self.lbl_main_status.setText("ACTIVE (GITHUB)")
-                self.status_dot.setStyleSheet("color: #A855F7; font-size: 10px;")
-                self.lbl_main_status.setStyleSheet("color: #A855F7; font-size: 9px; font-weight: 800;")
-            elif target_type.startswith("ATS_"):
-                ats_name = target_type.split("ATS_")[-1]
-                self.lbl_target_desc.setText(f"Watching ATS ({ats_name}) — Candidate Review ({clean_title})")
-                self.lbl_target_url.setText(f"Target ATS: {url or 'Applicant Tracking System'}")
-                self.lbl_sampling_pulse.setText(f"● SCANNING {ats_name}")
-                self.lbl_sampling_pulse.setStyleSheet("color: #F59E0B; font-size: 9px; font-weight: 700;")
-                self.lbl_main_status.setText(f"ACTIVE ({ats_name})")
-                self.status_dot.setStyleSheet("color: #F59E0B; font-size: 10px;")
-                self.lbl_main_status.setStyleSheet("color: #F59E0B; font-size: 9px; font-weight: 800;")
-            elif target_type in ("GOOGLE_CHAT", "CHAT"):
-                self.lbl_target_desc.setText(f"Watching Google Chat — {clean_title}")
-                self.lbl_target_url.setText(f"Target: Google Chat ({url or 'Workspace Chat'})")
-                self.lbl_sampling_pulse.setText("● SCANNING CHAT")
-                self.lbl_sampling_pulse.setStyleSheet("color: #3B82F6; font-size: 9px; font-weight: 700;")
-                self.lbl_main_status.setText("ACTIVE (GOOGLE CHAT)")
-                self.status_dot.setStyleSheet("color: #3B82F6; font-size: 10px;")
-                self.lbl_main_status.setStyleSheet("color: #3B82F6; font-size: 9px; font-weight: 800;")
-            elif target_type == "TEAMS":
-                self.lbl_target_desc.setText(f"Watching Microsoft Teams — {clean_title}")
-                self.lbl_target_url.setText("Target: Microsoft Teams (Chat/Meeting/Channel)")
-                self.lbl_sampling_pulse.setText("● SCANNING TEAMS")
-                self.lbl_sampling_pulse.setStyleSheet("color: #10B981; font-size: 9px; font-weight: 700;")
-                self.lbl_main_status.setText("ACTIVE (MS TEAMS)")
-                self.status_dot.setStyleSheet("color: #10B981; font-size: 10px;")
-                self.lbl_main_status.setStyleSheet("color: #10B981; font-size: 9px; font-weight: 800;")
-            elif target_type == "SLACK":
-                self.lbl_target_desc.setText(f"Watching Slack — {clean_title}")
-                self.lbl_target_url.setText("Target: Slack Workplace Channels & Notes")
-                self.lbl_sampling_pulse.setText("● SCANNING SLACK")
-                self.lbl_sampling_pulse.setStyleSheet("color: #E01E5A; font-size: 9px; font-weight: 700;")
-                self.lbl_main_status.setText("ACTIVE (SLACK)")
-                self.status_dot.setStyleSheet("color: #E01E5A; font-size: 10px;")
-                self.lbl_main_status.setStyleSheet("color: #E01E5A; font-size: 9px; font-weight: 800;")
-            elif target_type == "WHATSAPP":
-                self.lbl_target_desc.setText(f"Watching WhatsApp — {clean_title}")
-                self.lbl_target_url.setText("Target: WhatsApp Web Recruiter Chat")
-                self.lbl_sampling_pulse.setText("● SCANNING WHATSAPP")
-                self.lbl_sampling_pulse.setStyleSheet("color: #25D366; font-size: 9px; font-weight: 700;")
-                self.lbl_main_status.setText("ACTIVE (WHATSAPP)")
-                self.status_dot.setStyleSheet("color: #25D366; font-size: 10px;")
-                self.lbl_main_status.setStyleSheet("color: #25D366; font-size: 9px; font-weight: 800;")
-            elif target_type == "TELEGRAM":
-                self.lbl_target_desc.setText(f"Watching Telegram — {clean_title}")
-                self.lbl_target_url.setText("Target: Telegram Talent Channels")
-                self.lbl_sampling_pulse.setText("● SCANNING TELEGRAM")
-                self.lbl_sampling_pulse.setStyleSheet("color: #229ED9; font-size: 9px; font-weight: 700;")
-                self.lbl_main_status.setText("ACTIVE (TELEGRAM)")
-                self.status_dot.setStyleSheet("color: #229ED9; font-size: 10px;")
-                self.lbl_main_status.setStyleSheet("color: #229ED9; font-size: 9px; font-weight: 800;")
-            elif target_type in ("GMAIL", "OUTLOOK"):
-                self.lbl_target_desc.setText(f"Watching {target_type} Inbox — {clean_title}")
-                self.lbl_target_url.setText(f"Target: {target_type} Candidate Submissions")
-                self.lbl_sampling_pulse.setText(f"● SCANNING {target_type}")
-                self.lbl_sampling_pulse.setStyleSheet("color: #EA4335; font-size: 9px; font-weight: 700;")
-                self.lbl_main_status.setText(f"ACTIVE ({target_type})")
-                self.status_dot.setStyleSheet("color: #EA4335; font-size: 10px;")
-                self.lbl_main_status.setStyleSheet("color: #EA4335; font-size: 9px; font-weight: 800;")
-            elif target_type == "PDF_RESUME":
-                self.lbl_target_desc.setText(f"Analyzing PDF Resume — {clean_title}")
-                self.lbl_target_url.setText("Target: Candidate CV / Resume Document")
-                self.lbl_sampling_pulse.setText("● SCANNING RESUME")
-                self.lbl_sampling_pulse.setStyleSheet("color: #F97316; font-size: 9px; font-weight: 700;")
-                self.lbl_main_status.setText("ACTIVE (RESUME OCR)")
-                self.status_dot.setStyleSheet("color: #F97316; font-size: 10px;")
-                self.lbl_main_status.setStyleSheet("color: #F97316; font-size: 9px; font-weight: 800;")
-            elif target_type in ("STACKOVERFLOW", "KAGGLE", "DICE", "WELLFOUND"):
-                self.lbl_target_desc.setText(f"Watching {target_type} Community — {clean_title}")
-                self.lbl_target_url.setText(f"Target: {target_type} Candidate Portfolio")
-                self.lbl_sampling_pulse.setText(f"● SCANNING {target_type}")
-                self.lbl_sampling_pulse.setStyleSheet("color: #8B5CF6; font-size: 9px; font-weight: 700;")
-                self.lbl_main_status.setText(f"ACTIVE ({target_type})")
-                self.status_dot.setStyleSheet("color: #8B5CF6; font-size: 10px;")
-                self.lbl_main_status.setStyleSheet("color: #8B5CF6; font-size: 9px; font-weight: 800;")
-            elif target_type == "ZOOMINFO":
-                self.lbl_target_desc.setText(f"Watching ZoomInfo — {clean_title}")
-                self.lbl_target_url.setText("Target: ZoomInfo / ZoomInfo Lite Contact Profile")
-                self.lbl_sampling_pulse.setText("● SCANNING ZOOMINFO")
-                self.lbl_sampling_pulse.setStyleSheet("color: #F43F5E; font-size: 9px; font-weight: 700;")
-                self.lbl_main_status.setText("ACTIVE (ZOOMINFO)")
-                self.status_dot.setStyleSheet("color: #F43F5E; font-size: 10px;")
-                self.lbl_main_status.setStyleSheet("color: #F43F5E; font-size: 9px; font-weight: 800;")
-            elif target_type == "APOLLO":
-                self.lbl_target_desc.setText(f"Watching Apollo.io — {clean_title}")
-                self.lbl_target_url.setText("Target: Apollo Sourcing & Leads Directory")
-                self.lbl_sampling_pulse.setText("● SCANNING APOLLO")
-                self.lbl_sampling_pulse.setStyleSheet("color: #EAB308; font-size: 9px; font-weight: 700;")
-                self.lbl_main_status.setText("ACTIVE (APOLLO.IO)")
-                self.status_dot.setStyleSheet("color: #EAB308; font-size: 10px;")
-                self.lbl_main_status.setStyleSheet("color: #EAB308; font-size: 9px; font-weight: 800;")
-            elif target_type.startswith("ATS_"):
-                ats_name = target_type.replace("ATS_", "")
-                self.lbl_target_desc.setText(f"Watching {ats_name} ATS — {clean_title}")
-                self.lbl_target_url.setText(f"Target: {ats_name} Recruiter Workspace")
-                self.lbl_sampling_pulse.setText(f"● SCANNING {ats_name}")
-                self.lbl_sampling_pulse.setStyleSheet("color: #06B6D4; font-size: 9px; font-weight: 700;")
-                self.lbl_main_status.setText(f"ACTIVE ({ats_name})")
-                self.status_dot.setStyleSheet("color: #06B6D4; font-size: 10px;")
-                self.lbl_main_status.setStyleSheet("color: #06B6D4; font-size: 9px; font-weight: 800;")
-            else:
-                self.lbl_target_desc.setText(f"Watching [{app_name}] — {clean_title}")
-                self.lbl_target_url.setText(f"Target URL: {url or '---'}")
-            self.ind_window.set_state("DETECTED")
+        if url:
+            self._latest_profile_url = url
+
+        # Update Browser / Target Icon
+        if "LINKEDIN" in target_type or "linkedin.com" in url:
+            self.lbl_browser_icon.setText("💼")
+            self.lbl_browser_icon.setStyleSheet("background-color: #0A66C2; color: #FFFFFF; border-radius: 8px; font-size: 22px;")
+        elif "CHROME" in app_name.upper():
+            self.lbl_browser_icon.setText("🌐")
+            self.lbl_browser_icon.setStyleSheet("background-color: #121F36; border: 1px solid #1E3152; border-radius: 8px; font-size: 22px;")
+        elif "GITHUB" in target_type:
+            self.lbl_browser_icon.setText("🐙")
+            self.lbl_browser_icon.setStyleSheet("background-color: #24292E; color: #FFFFFF; border-radius: 8px; font-size: 22px;")
         else:
-            if "BROWSER" in target_type or "SEARCH" in target_type:
-                self.lbl_target_desc.setText(f"Resting (Browser) — Page outside talent allowlist ('{clean_title}')")
-                self.lbl_target_url.setText(f"Scanner ignores search engines & non-talent pages ({url or 'web content'})")
-            else:
-                self.lbl_target_desc.setText(f"Resting [{app_name}] — Outside target allowlist")
-                self.lbl_target_url.setText("Scanner active on LinkedIn, ZoomInfo, Apollo, GitHub, ATS systems (Greenhouse/Lever/Ashby), Teams & Google Chat")
-            
-            self.lbl_sampling_pulse.setText("💤 RESTING (0% CPU)")
-            self.lbl_sampling_pulse.setStyleSheet("color: #64748B; font-size: 9px; font-weight: 700;")
-            self.lbl_main_status.setText("RESTING (NON-TARGET)")
-            self.status_dot.setStyleSheet("color: #64748B; font-size: 10px;")
-            self.lbl_main_status.setStyleSheet("color: #64748B; font-size: 9px; font-weight: 800;")
+            self.lbl_browser_icon.setText("🖥")
+
+        if is_allowed:
+            display_title = f"{app_name} — {clean_title}" if app_name else clean_title
+            self.lbl_target_desc.setText(display_title)
+            self.lbl_target_url.setText(f"Target: {url or 'Recruitment Profile Active'}")
+            self.ind_window.set_state("DETECTED")
+            self.scan_progress_bar.setValue(min(100, max(20, self.scan_progress_bar.value() + 5)))
+            self.lbl_scan_progress_pct.setText(f"{self.scan_progress_bar.value()}%")
+        else:
+            self.lbl_target_desc.setText(f"Resting [{app_name}]")
+            self.lbl_target_url.setText("Window outside allowed talent platforms (Resting 0.00% CPU)")
             self.ind_window.set_state("IDLE")
 
     def update_candidate_card(
@@ -1368,48 +2269,42 @@ class MainWindow(QMainWindow):
         status: str = "CLOUD COMMITTED",
         copilot_info: Optional[dict] = None,
     ):
-        """Updates the prominent Latest Candidate Hero Card with clean details and Live Copilot info."""
-        try:
-            from scout_desktop.extractor.title_normalizer import classify_title
-            t_info = classify_title(title) if title else None
-            display_title = t_info["canonical_title"] if t_info else (title or "Professional Profile")
-            if t_info and t_info["legacy_seniority"] not in ("Specialist", ""):
-                display_title += f" • {t_info['legacy_seniority']}"
-        except Exception:
-            display_title = title or "Professional Profile"
+        """Updates the Latest Candidate Hero Card and candidate table."""
+        display_name = name or "Candidate Profile Detected"
+        display_title = title or "Professional Profile"
+        display_company = company or "—"
+        display_loc = location or "—"
 
-        self.lbl_hero_name.setText(name or "Candidate Profile Detected")
-        self.lbl_hero_title.setText(display_title)
-        self.lbl_hero_company.setText(f"Company: {company or '—'}")
-        self.lbl_hero_location.setText(f"Location: {location or '—'}")
+        self.lbl_hero_name.setText(display_name)
+        self.lbl_hero_title.setText(f"{display_title} at {display_company}" if company else display_title)
+        self.lbl_hero_company.setText(display_company)
+        self.lbl_hero_location.setText(display_loc)
+
+        # Update initial avatar
+        initial = display_name[0].upper() if display_name else "S"
+        self.lbl_cand_avatar.setText(initial)
+
+        # Update status pill
         self.lbl_hero_pill.setText(status.upper())
         if "COMMITTED" in status or "SYNC" in status or "DATABASE" in status:
-            self.lbl_hero_pill.setStyleSheet("background: #0F2520; color: #34D399; border: 1px solid #059669; border-radius: 10px; padding: 2px 8px; font-size: 8px; font-weight: 800;")
+            self.lbl_hero_pill.setStyleSheet("background: #0F2520; color: #34D399; border: 1px solid #059669; border-radius: 8px; padding: 1px 6px; font-size: 8px; font-weight: 800;")
         else:
-            self.lbl_hero_pill.setStyleSheet("background: #0E1A2E; color: #38BDF8; border: 1px solid #0284C7; border-radius: 10px; padding: 2px 8px; font-size: 8px; font-weight: 800;")
+            self.lbl_hero_pill.setStyleSheet("background: #0E1A2E; color: #38BDF8; border: 1px solid #0284C7; border-radius: 8px; padding: 1px 6px; font-size: 8px; font-weight: 800;")
 
-        # Update Live Copilot status badge
+        # Update Live Copilot banner
         if copilot_info and copilot_info.get("found"):
             e_text = f" • Email: {copilot_info['email']}" if copilot_info.get("email") else " • Verified Record on file"
-            t_score = f" (Trust: {copilot_info.get('trust_score', 90)}%)"
-            self.lbl_hero_copilot.setText(f"🟢 IN TALENTOPS DATABASE{e_text}{t_score}")
-            self.lbl_hero_copilot.setStyleSheet("""
-                color: #34D399; font-size: 10px; font-weight: 700;
-                background: rgba(16, 185, 129, 0.12);
-                border: 1px solid rgba(16, 185, 129, 0.35);
-                border-radius: 6px; padding: 4px 8px; margin-top: 4px;
-            """)
-        elif copilot_info and not copilot_info.get("found"):
-            self.lbl_hero_copilot.setText("✨ NEW CANDIDATE LEAD — Automatically staging & resolving identity to database")
-            self.lbl_hero_copilot.setStyleSheet("""
-                color: #C084FC; font-size: 10px; font-weight: 700;
-                background: rgba(168, 85, 247, 0.12);
-                border: 1px solid rgba(168, 85, 247, 0.35);
-                border-radius: 6px; padding: 4px 8px; margin-top: 4px;
-            """)
+            self.lbl_hero_copilot.setText(f"🟢 IN TALENTOPS DATABASE{e_text}")
+            self.lbl_hero_copilot.setVisible(True)
+        else:
+            self.lbl_hero_copilot.setVisible(False)
+
+        # Add to Candidates Table
+        self._add_candidate_table_row(display_name, display_title, display_company, display_loc, "Active Window", status)
 
     def update_explicit_counters(self, metrics: Dict[str, Any]):
-        # 1. Update Technical Drawer Counters
+        """Updates the 12 deep diagnostics counters and the primary 4-step funnel."""
+        # 1. Diagnostics Subtab Counters
         self.c_captured.set_value(metrics.get("captured", 0))
         self.c_analyzed.set_value(metrics.get("analyzed", 0))
         self.c_useful.set_value(metrics.get("useful", 0))
@@ -1419,27 +2314,30 @@ class MainWindow(QMainWindow):
         self.c_enriched.set_value(metrics.get("enriched", 0))
         self.c_db_updates.set_value(metrics.get("db_updates", 0))
         self.c_purged.set_value(metrics.get("purged", 0))
-        if hasattr(self, "c_observed"):
-            self.c_observed.set_value(metrics.get("observed", 0))
-        if hasattr(self, "c_fields_added"):
-            self.c_fields_added.set_value(metrics.get("fields_added", 0))
+        self.c_observed.set_value(metrics.get("observed", 0))
+        self.c_fields_added.set_value(metrics.get("fields_added", 0))
+
         cur = metrics.get("buffer_current", 0)
         max_b = metrics.get("buffer_max", 20)
         self.c_buffer.set_value(f"{cur}/{max_b}")
         self.lbl_purge_status.setText(f"Auto-Purge: Clean ({cur} in buffer)")
 
-        # 2. Update 4-Step Pipeline Funnel
+        # 2. Main Scan Page Funnel Cards
         scanned_count = metrics.get("analyzed", 0)
-        self.funnel_step1.set_count(scanned_count)
-
         profiles_count = metrics.get("useful", 0)
-        self.funnel_step2.set_count(profiles_count)
-
         verified_count = metrics.get("staged", 0)
-        self.funnel_step3.set_count(verified_count)
-
         synced_count = metrics.get("db_updates", 0)
+
+        self.funnel_step1.set_count(scanned_count)
+        self.funnel_step2.set_count(profiles_count)
+        self.funnel_step3.set_count(verified_count)
         self.funnel_step4.set_count(synced_count)
+
+        # 3. Submetric tiles under currently scanning
+        self.sub_profiles.set_count(profiles_count)
+        self.lbl_profiles_detected_val.setText(f"{profiles_count} this session")
+        self.q_card_synced.set_count(synced_count)
+        self.lbl_records_uploaded.setText(f"{synced_count} records uploaded")
 
     def update_latest_capture(self, capture_id: str, delta: float, reason: str, img: Optional[Image.Image], breakdown: dict, gate_status: str):
         self.lbl_cap_id.setText(f"Capture ID: {capture_id}")
@@ -1450,6 +2348,12 @@ class MainWindow(QMainWindow):
 
         b_text = f"People: {breakdown.get('people',0)} | Companies: {breakdown.get('companies',0)} | Locations: {breakdown.get('locations',0)} | Signals: {breakdown.get('signals',0)}"
         self.lbl_breakdown.setText(b_text)
+
+        # Update submetrics
+        if breakdown.get("companies"):
+            self.sub_companies.set_count(breakdown["companies"])
+        if breakdown.get("jobs"):
+            self.sub_jobs.set_count(breakdown["jobs"])
 
         if img:
             try:
@@ -1484,18 +2388,24 @@ class MainWindow(QMainWindow):
             self.proof_table.setItem(row, 3, d_item)
 
     def update_database_proof(self, status: str, response: dict, summary: str):
+        t_str = time.strftime("%H:%M:%S")
         if status == "STAGED":
-            self.lbl_db_response.setText("Last Response: CONNECTED (200 OK — Staged)")
-            self.lbl_db_response.setStyleSheet("color: #10B981; font-size: 9px; font-weight: 600;")
+            self.lbl_db_response.setText(f"Status: 200 OK — Synchronized ({t_str})")
+            self.lbl_db_response.setStyleSheet("color: #10B981; font-size: 11px; font-weight: 700;")
             self.lbl_db_write.setText(f"Last DB Write: {summary}")
+            self.lbl_last_sync_status.setText(f"✓ Last sync: Just now ({t_str})")
+            self.lbl_error_summary.setText("No errors")
+            self.lbl_error_summary.setStyleSheet("color: #10B981; font-size: 11px; font-weight: 600;")
         else:
-            self.lbl_db_response.setText(f"Last Response: {summary}")
-            self.lbl_db_response.setStyleSheet("color: #EF4444; font-size: 9px; font-weight: 600;")
+            self.lbl_db_response.setText(f"Status: {summary}")
+            self.lbl_db_response.setStyleSheet("color: #EF4444; font-size: 11px; font-weight: 700;")
+            self.lbl_error_summary.setText("Sync error encountered")
+            self.lbl_error_summary.setStyleSheet("color: #EF4444; font-size: 11px; font-weight: 600;")
 
     def log_event(self, event_name: str, details: str):
         t_str = time.strftime("%H:%M:%S")
         entry = QLabel(f"[{t_str}] <b style='color: #38BDF8;'>{event_name}</b>: {details}")
-        entry.setStyleSheet("color: #94A3B8; font-size: 8px; font-family: Consolas, monospace;")
+        entry.setStyleSheet("color: #94A3B8; font-size: 9px; font-family: Consolas, monospace;")
         entry.setWordWrap(True)
         self._log_entries.insert(0, entry)
         self.stream_layout.insertWidget(0, entry)
@@ -1503,18 +2413,3 @@ class MainWindow(QMainWindow):
             old = self._log_entries.pop()
             self.stream_layout.removeWidget(old)
             old.deleteLater()
-
-    def closeEvent(self, event: QCloseEvent):
-        """
-        Standard Windows application behavior:
-        Clicking [X] hides the companion window to the system tray & edge handle
-        so autonomous monitoring continues uninterrupted in the background.
-        Full shutdown requires right-clicking the tray icon and choosing 'Exit Scout'.
-        """
-        if self._is_shutting_down:
-            event.accept()
-        else:
-            event.ignore()
-            self.hide()
-            self.dock_to_edge_requested.emit()
-            logger.info("MainWindow hidden to system tray / edge dock. Autonomous Scout continues in background.")

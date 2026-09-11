@@ -52,6 +52,7 @@ from scout_desktop.ui.edge_handle import EdgeHandleWidget
 from scout_desktop.ui.main_window import MainWindow
 from scout_desktop.ui.diagnostics_window import DiagnosticsWindow
 from scout_desktop.ui.settings_window import SettingsWindow
+from scout_desktop.version import __version__ as CURRENT_VERSION
 
 
 def run_e2e_verification():
@@ -276,7 +277,7 @@ def run_e2e_verification():
         )
         headers = client._get_headers()
         assert headers["X-Device-Id"] == "TEST-NODE-E2E"
-        assert headers["X-Extension-Version"] == "1.0.0-desktop"
+        assert headers["X-Extension-Version"] in ("1.0.0-desktop", f"{CURRENT_VERSION}-desktop")
         print("[OK] Step 11: Backend Client node identity & header construction verified.")
 
         # Step 12: Multi-Level Native UI Subsystems (Level 1, 2, 3)

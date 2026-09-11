@@ -19,7 +19,7 @@ class ExtensionActivationCode(Base):
     code = Column(String(64), unique=True, index=True, nullable=False)
     # The owner who generated this code (admin user)
     owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    label = Column(String(200), nullable=True)  # e.g. "Shared with John's team"
+    label = Column(Text, nullable=True)  # JSON metadata for device flow or descriptive label
     max_uses = Column(Integer, default=1)  # -1 = unlimited
     use_count = Column(Integer, default=0)
     is_active = Column(Boolean, default=True)

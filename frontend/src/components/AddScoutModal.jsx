@@ -1,37 +1,56 @@
-import React, { useState, useEffect } from 'react';
-import { X, Copy, CheckCircle, ExternalLink, ShieldCheck, Laptop, Zap, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, Copy, CheckCircle, ExternalLink, ShieldCheck, Laptop, Zap, RefreshCw, Users } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
 
 export default function AddScoutModal({ isOpen, onClose, onActivated }) {
+  const { user, isAdmin } = useAuth();
   const [codeData, setCodeData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [timeLeft, setTimeLeft] = useState(600); // 10 mins in sec
+  const [targetEmail, setTargetEmail] = useState('');
+  const [usersList, setUsersList] = useState([]);
 
-  const generateCode = async () => {
+  useEffect(() => {
+    if (isOpen && isAdmin) {
+      api.get('/scout/provisionable-users')
+        .then(res => setUsersList(res.data?.users || []))
+        .catch(() => {});
+    }
+  }, [isOpen, isAdmin]);
+
+  const generateCode = useCallback(async (overrideEmail = null) => {
     setLoading(true);
+    const effEmail = overrideEmail !== null ? overrideEmail : targetEmail;
     try {
-      const res = await api.post('/scout/codes/generate', {
-        label: `Desktop Scout (${new Date().toLocaleDateString()})`,
-        expires_minutes: 10,
-      });
+      const payload = {
+        label: effEmail ? `Admin Force-Provision for ${effEmail}` : `Desktop Scout (${new Date().toLocaleDateString()})`,
+        expires_minutes: effEmail ? 1440 : 10,
+        max_uses: effEmail ? 10 : 1,
+      };
+      if (effEmail) {
+        payload.target_user_email = effEmail;
+      }
+      const res = await api.post('/scout/codes/generate', payload);
       setCodeData(res.data);
-      setTimeLeft(res.data.expires_in_seconds || 600);
+      setTimeLeft(res.data.expires_in_seconds || (effEmail ? 86400 : 600));
     } catch (err) {
-      toast.error('Failed to generate activation code');
+      toast.error(err.response?.data?.detail || 'Failed to generate activation code');
     } finally {
       setLoading(false);
     }
-  };
+  }, [targetEmail]);
 
   useEffect(() => {
     if (isOpen) {
       generateCode();
     } else {
       setCodeData(null);
+      setTargetEmail('');
     }
-  }, [isOpen]);
+  }, [isOpen, generateCode]);
 
   useEffect(() => {
     if (!isOpen || timeLeft <= 0) return;
@@ -104,6 +123,44 @@ export default function AddScoutModal({ isOpen, onClose, onActivated }) {
             </p>
           </div>
         </div>
+
+        {/* Admin Target User Selector */}
+        {isAdmin && (
+          <div style={{
+            background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.25)',
+            borderRadius: 10, padding: '12px 14px', marginBottom: 16
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Users size={12} />
+                <span>Admin Provisioning Target</span>
+              </span>
+              <span style={{ fontSize: 10, color: '#94a3b8' }}>
+                {targetEmail ? 'Targeted Account' : 'Self (Your Account)'}
+              </span>
+            </div>
+            <select
+              value={targetEmail}
+              onChange={(e) => {
+                const val = e.target.value;
+                setTargetEmail(val);
+                generateCode(val);
+              }}
+              style={{
+                width: '100%', background: '#090d16', border: '1px solid #334155', borderRadius: 6,
+                color: targetEmail ? '#38bdf8' : '#f8fafc', padding: '6px 10px', fontSize: 12,
+                fontWeight: 600, outline: 'none', cursor: 'pointer'
+              }}
+            >
+              <option value="">Self — {user?.email || 'My Account'}</option>
+              {usersList.map(u => (
+                <option key={u.id} value={u.email}>
+                  {u.name} ({u.email})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Activation Code Box */}
         <div style={{

@@ -60,7 +60,9 @@ class HeartbeatPayload(BaseModel):
 
 class GenerateCodeRequest(BaseModel):
     label: Optional[str] = "Desktop Scout Node"
-    expires_minutes: int = 10
+    expires_minutes: int = 1440
+    target_user_email: Optional[str] = None
+    max_uses: Optional[int] = 1
 
 
 class ScoutActivationRequest(BaseModel):
@@ -84,6 +86,7 @@ class DeviceFlowInitRequest(BaseModel):
 
 class DeviceFlowVerifyRequest(BaseModel):
     code: str
+    target_user_email: Optional[str] = None
 
 
 # ── Telemetry & Proof-of-Life Endpoints ────────────────────────────────────────
@@ -149,21 +152,45 @@ def generate_scout_activation_code(
     current_user: User = Depends(get_current_user_from_request),
 ):
     """
-    Generates a secure, short-lived (10-minute) single-use activation code: TOS-XXXX-XXXX
+    Generates a secure activation code: TOS-XXXX-XXXX
     Used by the TalentOps website to bootstrap new Scout Desktop installations.
+    Supports Admin Force-Provisioning when target_user_email is specified.
     """
+    owner_user = current_user
+    if req.target_user_email and req.target_user_email.strip():
+        # Security hard-lock: only superadmin or admin can generate codes on behalf of others
+        is_admin_user = (
+            (current_user.email or "").strip().lower() == "abhishekjadon824@gmail.com"
+            or (hasattr(current_user, "role") and getattr(current_user.role, "name", "") == "admin")
+        )
+        if not is_admin_user:
+            raise HTTPException(status_code=403, detail="Only administrators can generate activation codes for other users")
+
+        target_user = db.query(User).filter(User.email.ilike(req.target_user_email.strip())).first()
+        if not target_user:
+            raise HTTPException(status_code=404, detail=f"Target user '{req.target_user_email}' not found")
+        owner_user = target_user
+
     charset = string.ascii_uppercase + string.digits
     part1 = "".join(secrets.choice(charset) for _ in range(4))
     part2 = "".join(secrets.choice(charset) for _ in range(4))
     code = f"TOS-{part1}-{part2}"
 
-    expires_at = datetime.now(timezone.utc) + timedelta(minutes=max(1, min(60, req.expires_minutes)))
+    exp_mins = max(1, min(10080, req.expires_minutes))
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=exp_mins)
+
+    label = req.label
+    if not label or label == "Desktop Scout Node":
+        if owner_user.id != current_user.id:
+            label = f"Admin Force-Provisioned for {owner_user.email}"
+        else:
+            label = f"Scout Activation for {owner_user.email}"
 
     record = ExtensionActivationCode(
         code=code,
-        owner_user_id=current_user.id,
-        label=req.label or f"Scout Activation for {current_user.email}",
-        max_uses=1,
+        owner_user_id=owner_user.id,
+        label=label,
+        max_uses=max(1, req.max_uses or 1),
         use_count=0,
         is_active=True,
         expires_at=expires_at,
@@ -174,14 +201,17 @@ def generate_scout_activation_code(
 
     deep_link = f"talentopsscout://activate?code={code}"
 
-    logger.info("Generated short-lived Scout activation code: %s for user=%d (expires %s)", code, current_user.id, expires_at)
+    logger.info("Generated Scout activation code: %s for user=%d (%s) by admin=%s (expires %s)",
+                code, owner_user.id, owner_user.email, current_user.email, expires_at)
     return {
         "code": record.code,
         "expires_at": record.expires_at.isoformat(),
         "expires_in_seconds": int((expires_at - datetime.now(timezone.utc)).total_seconds()),
         "deep_link": deep_link,
-        "owner_user_id": current_user.id,
-        "owner_email": current_user.email,
+        "owner_user_id": owner_user.id,
+        "owner_email": owner_user.email,
+        "target_user_name": f"{owner_user.first_name or ''} {owner_user.last_name or ''}".strip() or owner_user.email.split('@')[0],
+        "provisioned_by_admin": current_user.email != owner_user.email,
     }
 
 
@@ -465,14 +495,30 @@ def verify_device_flow_code(
     if not device_id:
         raise HTTPException(status_code=400, detail="Device flow record is corrupted — missing device_id")
 
-    # Register or reassign device to current_user
+    # Determine effective target user
+    effective_user = current_user
+    if req.target_user_email and req.target_user_email.strip():
+        # Security hard-lock: only superadmin or admin can force-pair devices to other users
+        is_admin_user = (
+            (current_user.email or "").strip().lower() == "abhishekjadon824@gmail.com"
+            or (hasattr(current_user, "role") and getattr(current_user.role, "name", "") == "admin")
+        )
+        if not is_admin_user:
+            raise HTTPException(status_code=403, detail="Only administrators can force-pair devices to other users")
+
+        target_user = db.query(User).filter(User.email.ilike(req.target_user_email.strip())).first()
+        if not target_user:
+            raise HTTPException(status_code=404, detail=f"Target user '{req.target_user_email}' not found")
+        effective_user = target_user
+
+    # Register or reassign device to effective_user
     device = db.query(ExtensionDevice).filter(ExtensionDevice.device_id == device_id).first()
     device_name = f"{hostname} ({os_info})"
 
     if not device:
         device = ExtensionDevice(
             device_id=device_id,
-            owner_user_id=current_user.id,
+            owner_user_id=effective_user.id,
             user_agent=device_name,
             extension_version=version,
             first_seen_at=now,
@@ -481,7 +527,7 @@ def verify_device_flow_code(
         )
         db.add(device)
     else:
-        device.owner_user_id = current_user.id
+        device.owner_user_id = effective_user.id
         device.user_agent = device_name
         device.extension_version = version
         device.last_seen_at = now
@@ -490,38 +536,40 @@ def verify_device_flow_code(
     db.commit()
     db.refresh(device)
 
-    # Issue scoped token
+    # Issue scoped token for effective_user
     token = create_access_token(
-        data={"sub": str(current_user.id), "scope": "scout_desktop", "device_id": device_id},
+        data={"sub": str(effective_user.id), "scope": "scout_desktop", "device_id": device_id},
         expires_delta=timedelta(days=365),
     )
 
-    user_name = f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or current_user.email.split("@")[0]
+    user_name = f"{effective_user.first_name or ''} {effective_user.last_name or ''}".strip() or effective_user.email.split("@")[0]
     scout_id = f"SCOUT-{device.id:04d}"
 
     # Mark as approved — update metadata with token for the polling desktop app
     meta["status"] = "APPROVED"
     meta["access_token"] = token
-    meta["user_id"] = current_user.id
-    meta["user_email"] = current_user.email
+    meta["user_id"] = effective_user.id
+    meta["user_email"] = effective_user.email
     meta["user_name"] = user_name
     meta["scout_id"] = scout_id
     record.label = _json.dumps(meta)
-    record.owner_user_id = current_user.id
+    record.owner_user_id = effective_user.id
     record.use_count = 1
     record.is_active = True  # Keep active so polling can read the APPROVED status
     db.commit()
 
-    logger.info("Successfully verified Device Flow: paired device %s to user %s (%d)", device_id, current_user.email, current_user.id)
+    logger.info("Successfully verified Device Flow: paired device %s to user %s (%d) (by admin=%s)",
+                device_id, effective_user.email, effective_user.id, current_user.email)
 
     return {
         "ok": True,
         "status": "PAIRED",
-        "message": f"Successfully linked Desktop Scout to {current_user.email}",
+        "message": f"Successfully linked Desktop Scout to {effective_user.email}",
         "device_id": device_id,
-        "user_email": current_user.email,
+        "user_email": effective_user.email,
         "user_name": user_name,
         "scout_id": scout_id,
+        "provisioned_by_admin": current_user.email != effective_user.email,
     }
 
 
@@ -563,6 +611,42 @@ def get_my_scout_device(
         "user_name": f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or current_user.email.split("@")[0],
         "devices": device_list,
     }
+
+
+@router.get("/provisionable-users")
+def get_provisionable_users(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Returns list of users that can be targeted for Desktop Scout force-pairing
+    and activation code provisioning. Accessible only by Administrators.
+    """
+    is_admin_user = (
+        (current_user.email or "").strip().lower() == "abhishekjadon824@gmail.com"
+        or (hasattr(current_user, "role") and getattr(current_user.role, "name", "") == "admin")
+    )
+    if not is_admin_user:
+        raise HTTPException(status_code=403, detail="Admin authorization required")
+
+    users = db.query(User).order_by(User.first_name, User.email).all()
+    devices = db.query(ExtensionDevice.owner_user_id).filter(ExtensionDevice.is_active == True).distinct().all()
+    paired_user_ids = {d[0] for d in devices}
+
+    result = []
+    for u in users:
+        # filter out synthetic test emails from clean view
+        email_clean = (u.email or "").lower()
+        if "@example.com" in email_clean or "@test.com" in email_clean:
+            continue
+        full_name = f"{u.first_name or ''} {u.last_name or ''}".strip() or email_clean.split("@")[0]
+        result.append({
+            "id": u.id,
+            "email": u.email,
+            "name": full_name,
+            "has_device": u.id in paired_user_ids,
+        })
+    return {"users": result}
 
 
 @router.post("/my-device/{device_id}/disconnect")

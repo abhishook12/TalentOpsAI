@@ -39,6 +39,23 @@ export default function DownloadScout() {
   const [pairingError, setPairingError] = useState('');
   const [disconnectingId, setDisconnectingId] = useState(null);
 
+  // Admin Force-Pairing & User Provisioning State
+  const [targetUserEmail, setTargetUserEmail] = useState('');
+  const [adminGeneratedCode, setAdminGeneratedCode] = useState(null);
+  const [generatingCode, setGeneratingCode] = useState(false);
+  const [adminCodeCopied, setAdminCodeCopied] = useState(false);
+
+  // Provisionable users query (for admin force-pairing and code generation)
+  const { data: provUsersData, refetch: refetchProvUsers } = useQuery({
+    queryKey: ['scout-provisionable-users'],
+    queryFn: async () => {
+      const res = await api.get('/scout/provisionable-users');
+      return res.data?.users || [];
+    },
+    enabled: !!isAdmin,
+  });
+  const provisionableUsers = provUsersData || [];
+
   // Dynamic Release Info from Authoritative DB Registry
   const [releaseInfo, setReleaseInfo] = useState({
     version: '',
@@ -177,7 +194,7 @@ export default function DownloadScout() {
     setTimeout(() => setDownloading(false), 2500);
   };
 
-  const handleVerifyPairingCode = async (e) => {
+  const handleVerifyPairingCode = async (e, customTargetEmail = null) => {
     if (e) e.preventDefault();
     const cleanCode = pairingCodeInput.trim().toUpperCase();
     if (!cleanCode) {
@@ -188,14 +205,29 @@ export default function DownloadScout() {
     setPairingError('');
     setPairingSuccess(null);
 
+    const effTarget = customTargetEmail !== null ? customTargetEmail : (isAdmin && targetUserEmail ? targetUserEmail : null);
+
     try {
-      const res = await api.post('/scout/device-flow/verify', { code: cleanCode });
+      const payload = { code: cleanCode };
+      if (effTarget) {
+        payload.target_user_email = effTarget;
+      }
+      const res = await api.post('/scout/device-flow/verify', payload);
       if (res?.data?.ok) {
-        toast.success(`🎉 Desktop Scout paired successfully!`);
-        setPairingSuccess(`Connected: ${res.data.scout_id || 'Device'} linked to ${res.data.user_email || 'your account'}`);
+        const targetDisplay = res.data.user_email || 'your account';
+        if (res.data.provisioned_by_admin) {
+          toast.success(`⚡ Desktop Scout force-paired to ${targetDisplay}!`);
+          setPairingSuccess(`Connected: ${res.data.scout_id || 'Device'} force-paired to ${targetDisplay}`);
+        } else {
+          toast.success(`🎉 Desktop Scout paired successfully!`);
+          setPairingSuccess(`Connected: ${res.data.scout_id || 'Device'} linked to ${targetDisplay}`);
+        }
         setPairingCodeInput('');
         refetchMyDevice();
-        if (isAdmin) refetch();
+        if (isAdmin) {
+          refetch();
+          refetchProvUsers();
+        }
       } else {
         setPairingError(res?.data?.detail || 'Failed to verify pairing code');
       }
@@ -205,6 +237,28 @@ export default function DownloadScout() {
       toast.error(msg);
     } finally {
       setPairingLoading(false);
+    }
+  };
+
+  const handleAdminGenerateCode = async () => {
+    if (!targetUserEmail) {
+      toast.error('Please select a target team member first');
+      return;
+    }
+    setGeneratingCode(true);
+    try {
+      const res = await api.post('/scout/codes/generate', {
+        target_user_email: targetUserEmail,
+        label: `Admin Force-Provision for ${targetUserEmail}`,
+        expires_minutes: 10080, // 7 days
+        max_uses: 20,
+      });
+      setAdminGeneratedCode(res.data);
+      toast.success(`🎉 Activation code generated for ${res.data.target_user_name || targetUserEmail}!`);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to generate activation code');
+    } finally {
+      setGeneratingCode(false);
     }
   };
 
@@ -973,6 +1027,167 @@ export default function DownloadScout() {
                 )}
               </div>
             )}
+          </div>
+
+          {/* Admin Force-Connection & Remote Provisioning Hub */}
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(9, 13, 22, 0.95) 100%)',
+            border: '1px solid rgba(56, 189, 248, 0.35)',
+            borderRadius: 14,
+            padding: '22px 26px',
+            marginBottom: 24,
+            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.3)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14, marginBottom: 18 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 10,
+                  background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.35)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8'
+                }}>
+                  <Zap size={20} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span>Admin Force-Pair &amp; User Provisioning Hub</span>
+                    <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 12, background: 'rgba(56, 189, 248, 0.2)', color: '#38bdf8', fontWeight: 700 }}>
+                      ADMIN OVERRIDE
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                    Pair desktop hardware or generate activation codes on behalf of any team member if they cannot connect themselves.
+                  </div>
+                </div>
+              </div>
+
+              {/* Target User Selector */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 12, color: '#cbd5e1', fontWeight: 700 }}>Target Team Member:</span>
+                <select
+                  value={targetUserEmail}
+                  onChange={(e) => {
+                    setTargetUserEmail(e.target.value);
+                    setAdminGeneratedCode(null);
+                  }}
+                  style={{
+                    background: '#090d16', border: '1px solid #38bdf8', borderRadius: 8,
+                    color: targetUserEmail ? '#38bdf8' : '#94a3b8', padding: '9px 14px', fontSize: 13,
+                    fontWeight: 700, outline: 'none', cursor: 'pointer', minWidth: 280
+                  }}
+                >
+                  <option value="">-- Choose User to Force-Connect --</option>
+                  {provisionableUsers.map(u => (
+                    <option key={u.id} value={u.email}>
+                      {u.name} ({u.email}) {u.has_device ? '✓ [Connected]' : '○ [No Device]'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Two Operational Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16 }}>
+              {/* Option A: Force-Pair 4-char Code from Remote Desktop */}
+              <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: 10, padding: '16px 20px' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#38bdf8', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Key size={15} />
+                  <span>Option 1: Force-Pair 4-Char Desktop Code</span>
+                </div>
+                <p style={{ fontSize: 11, color: '#94a3b8', margin: '0 0 12px 0', lineHeight: 1.5 }}>
+                  Enter the 4-char code displayed on the remote PC (e.g. <b>TOS-8492</b>). Links the device directly to <b>{targetUserEmail || 'the selected user'}</b>.
+                </p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    type="text"
+                    placeholder="TOS-____"
+                    value={pairingCodeInput}
+                    onChange={(e) => {
+                      setPairingCodeInput(e.target.value.toUpperCase());
+                      setPairingError('');
+                    }}
+                    style={{
+                      flex: 1, padding: '9px 14px', background: '#020617', border: '1px solid #334155',
+                      borderRadius: 8, color: '#38bdf8', fontFamily: 'monospace', fontWeight: 800,
+                      fontSize: 15, textTransform: 'uppercase', outline: 'none'
+                    }}
+                  />
+                  <button
+                    onClick={handleVerifyPairingCode}
+                    disabled={pairingLoading || !pairingCodeInput.trim() || !targetUserEmail}
+                    style={{
+                      padding: '9px 18px', background: targetUserEmail ? 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)' : '#334155',
+                      color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                      cursor: (pairingLoading || !pairingCodeInput.trim() || !targetUserEmail) ? 'not-allowed' : 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {pairingLoading ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} />}
+                    <span>⚡ Force-Pair to User</span>
+                  </button>
+                </div>
+                {!targetUserEmail && (
+                  <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 8 }}>
+                    ⚠️ Select a target team member in the dropdown above to enable force-pairing.
+                  </div>
+                )}
+              </div>
+
+              {/* Option B: Generate Dedicated Activation Code */}
+              <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: 10, padding: '16px 20px' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#10b981', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Sparkles size={15} />
+                  <span>Option 2: Generate Dedicated User Code (7-Day Multi-Use)</span>
+                </div>
+                <p style={{ fontSize: 11, color: '#94a3b8', margin: '0 0 12px 0', lineHeight: 1.5 }}>
+                  Generates an authenticated <code>TOS-XXXX-XXXX</code> code bound to <b>{targetUserEmail || 'the selected user'}</b> for manual desktop entry.
+                </p>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={handleAdminGenerateCode}
+                    disabled={generatingCode || !targetUserEmail}
+                    style={{
+                      padding: '9px 18px', background: targetUserEmail ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : '#334155',
+                      color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                      cursor: (generatingCode || !targetUserEmail) ? 'not-allowed' : 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {generatingCode ? <RefreshCw size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                    <span>{adminGeneratedCode ? 'Regenerate Code' : 'Generate User Code'}</span>
+                  </button>
+
+                  {adminGeneratedCode && (
+                    <div style={{
+                      flex: 1, minWidth: 200, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      background: '#020617', border: '1px solid #10b981', borderRadius: 8, padding: '7px 12px'
+                    }}>
+                      <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#34d399', fontSize: 15, letterSpacing: 1 }}>
+                        {adminGeneratedCode.code}
+                      </span>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(adminGeneratedCode.code);
+                          setAdminCodeCopied(true);
+                          toast.success('Activation code copied!');
+                          setTimeout(() => setAdminCodeCopied(false), 2000);
+                        }}
+                        style={{
+                          background: adminCodeCopied ? '#10b981' : '#1e293b', border: 'none',
+                          borderRadius: 6, color: '#fff', fontSize: 11, fontWeight: 700, padding: '4px 10px', cursor: 'pointer'
+                        }}
+                      >
+                        {adminCodeCopied ? '✓ Copied' : 'Copy'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {adminGeneratedCode && (
+                  <div style={{ fontSize: 11, color: '#34d399', marginTop: 8 }}>
+                    ✓ Pre-bound to {adminGeneratedCode.target_user_name || adminGeneratedCode.owner_email}. Valid for 7 days (up to 20 installations).
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Reconnection / Error Banner */}

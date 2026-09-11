@@ -249,12 +249,12 @@ export default function DownloadScout() {
     try {
       const res = await api.post('/scout/codes/generate', {
         target_user_email: targetUserEmail,
-        label: `Admin Force-Provision for ${targetUserEmail}`,
-        expires_minutes: 10080, // 7 days
-        max_uses: 20,
+        label: `Admin Force-Provision for ${targetUserEmail} (Permanent)`,
+        expires_minutes: 0, // 0 = Permanent, Never Expires!
+        max_uses: -1, // Unlimited uses
       });
       setAdminGeneratedCode(res.data);
-      toast.success(`🎉 Activation code generated for ${res.data.target_user_name || targetUserEmail}!`);
+      toast.success(`🎉 Permanent activation code generated for ${res.data.target_user_name || targetUserEmail}!`);
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Failed to generate activation code');
     } finally {
@@ -1136,10 +1136,10 @@ export default function DownloadScout() {
               <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: 10, padding: '16px 20px' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#10b981', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <Sparkles size={15} />
-                  <span>Option 2: Generate Dedicated User Code (7-Day Multi-Use)</span>
+                  <span>Option 2: Generate Dedicated User Code (Permanent • Never Expires)</span>
                 </div>
                 <p style={{ fontSize: 11, color: '#94a3b8', margin: '0 0 12px 0', lineHeight: 1.5 }}>
-                  Generates an authenticated <code>TOS-XXXX-XXXX</code> code bound to <b>{targetUserEmail || 'the selected user'}</b> for manual desktop entry.
+                  Generates an authenticated <code>TOS-XXXX-XXXX</code> code bound to <b>{targetUserEmail || 'the selected user'}</b> for manual desktop entry. Once paired, the device remains paired forever.
                 </p>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <button
@@ -1183,7 +1183,7 @@ export default function DownloadScout() {
                 </div>
                 {adminGeneratedCode && (
                   <div style={{ fontSize: 11, color: '#34d399', marginTop: 8 }}>
-                    ✓ Pre-bound to {adminGeneratedCode.target_user_name || adminGeneratedCode.owner_email}. Valid for 7 days (up to 20 installations).
+                    ✓ Pre-bound to {adminGeneratedCode.target_user_name || adminGeneratedCode.owner_email}. Permanent (Never Expires • Unlimited Uses).
                   </div>
                 )}
               </div>

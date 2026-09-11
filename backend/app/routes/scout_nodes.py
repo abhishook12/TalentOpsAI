@@ -176,13 +176,18 @@ def generate_scout_activation_code(
     part2 = "".join(secrets.choice(charset) for _ in range(4))
     code = f"TOS-{part1}-{part2}"
 
-    exp_mins = max(1, min(10080, req.expires_minutes))
-    expires_at = datetime.now(timezone.utc) + timedelta(minutes=exp_mins)
+    if req.target_user_email or req.expires_minutes <= 0:
+        expires_at = None  # Permanent — never expires!
+        max_uses_val = -1  # Unlimited uses
+    else:
+        exp_mins = max(1, min(10080, req.expires_minutes))
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=exp_mins)
+        max_uses_val = max(1, req.max_uses or 1)
 
     label = req.label
     if not label or label == "Desktop Scout Node":
         if owner_user.id != current_user.id:
-            label = f"Admin Force-Provisioned for {owner_user.email}"
+            label = f"Admin Force-Provisioned for {owner_user.email} (Permanent)"
         else:
             label = f"Scout Activation for {owner_user.email}"
 
@@ -190,7 +195,7 @@ def generate_scout_activation_code(
         code=code,
         owner_user_id=owner_user.id,
         label=label,
-        max_uses=max(1, req.max_uses or 1),
+        max_uses=max_uses_val,
         use_count=0,
         is_active=True,
         expires_at=expires_at,
@@ -205,8 +210,9 @@ def generate_scout_activation_code(
                 code, owner_user.id, owner_user.email, current_user.email, expires_at)
     return {
         "code": record.code,
-        "expires_at": record.expires_at.isoformat(),
-        "expires_in_seconds": int((expires_at - datetime.now(timezone.utc)).total_seconds()),
+        "expires_at": record.expires_at.isoformat() if record.expires_at else None,
+        "expires_in_seconds": int((expires_at - datetime.now(timezone.utc)).total_seconds()) if expires_at else None,
+        "is_permanent": record.expires_at is None,
         "deep_link": deep_link,
         "owner_user_id": owner_user.id,
         "owner_email": owner_user.email,
@@ -301,13 +307,14 @@ def activate_scout_desktop(
     db.commit()
     db.refresh(device)
 
+    # Issue permanent scoped token (100-year validity — never requires re-pairing)
     token = create_access_token(
         data={"sub": str(owner.id), "scope": "scout_desktop", "device_id": req.device_id},
-        expires_delta=timedelta(days=365),
+        expires_delta=timedelta(days=36500),
     )
 
     scout_id = f"SCOUT-{device.id:04d}"
-    logger.info("Successfully activated Scout Desktop device=%s (scout_id=%s) for user=%s", req.device_id, scout_id, owner.email)
+    logger.info("Successfully activated Scout Desktop device=%s (scout_id=%s) for user=%s (Permanent)", req.device_id, scout_id, owner.email)
 
     return {
         "status": "ACTIVATED",
@@ -319,7 +326,8 @@ def activate_scout_desktop(
         "user_email": owner.email,
         "user_name": f"{owner.first_name or ''} {owner.last_name or ''}".strip() or owner.email.split('@')[0],
         "environment": "PRODUCTION",
-        "expires_in_days": 365,
+        "is_permanent": True,
+        "expires_in_days": 36500,
     }
 
 
@@ -341,7 +349,7 @@ def init_device_flow(req: DeviceFlowInitRequest, db: Session = Depends(get_db)):
     code_part = "".join(secrets.choice(charset) for _ in range(4))
     code = f"TOS-{code_part}"
 
-    expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
 
     # Store device flow metadata as JSON in the label field
     import json as _json
@@ -379,7 +387,7 @@ def init_device_flow(req: DeviceFlowInitRequest, db: Session = Depends(get_db)):
         "ok": True,
         "code": code,
         "device_id": req.device_id,
-        "expires_in_seconds": 900,
+        "expires_in_seconds": 86400,
         "verification_url": "https://talent-ops-ai.vercel.app/download-scout",
     }
 
@@ -536,10 +544,10 @@ def verify_device_flow_code(
     db.commit()
     db.refresh(device)
 
-    # Issue scoped token for effective_user
+    # Issue permanent scoped token for effective_user (100-year validity — never expires)
     token = create_access_token(
         data={"sub": str(effective_user.id), "scope": "scout_desktop", "device_id": device_id},
-        expires_delta=timedelta(days=365),
+        expires_delta=timedelta(days=36500),
     )
 
     user_name = f"{effective_user.first_name or ''} {effective_user.last_name or ''}".strip() or effective_user.email.split("@")[0]

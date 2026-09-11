@@ -1,11 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="46" viewBox="0 0 48 46" fill="none">
   <defs>
     <linearGradient id="favicon-gradient" x1="8" y1="4" x2="40" y2="42" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0ea5e9"/>
-      <stop offset="1" stop-color="#2563eb"/>
+      <stop offset="0" stop-color="#f4f4f5"/>
+      <stop offset="0.5" stop-color="#a1a1aa"/>
+      <stop offset="1" stop-color="#52525b"/>
     </linearGradient>
   </defs>
   <path d="M24 2L7 11.5V24c0 10.7 7.3 17.8 17 20 9.7-2.2 17-9.3 17-20V11.5L24 2Z" fill="url(#favicon-gradient)"/>
   <path d="M17 21.5h14M24 14v18" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/>
-  <path d="M11 29.5c3.4 6 8.5 9.6 13 10.5 4.5-.9 9.6-4.5 13-10.5" stroke="#dbeafe" stroke-width="2.4" stroke-linecap="round" opacity="0.9"/>
+  <path d="M11 29.5c3.4 6 8.5 9.6 13 10.5 4.5-.9 9.6-4.5 13-10.5" stroke="#e4e4e7" stroke-width="2.4" stroke-linecap="round" opacity="0.9"/>
 </svg>

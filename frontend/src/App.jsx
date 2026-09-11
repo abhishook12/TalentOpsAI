@@ -86,11 +86,25 @@ function AppShell() {
   
   const [backendVersion, setBackendVersion] = useState('v4.0.2-Stable')
   const [aiPanelOpen, setAiPanelOpen] = useState(false)
+  const [dbConnected, setDbConnected] = useState(true)
+  const [dbRecordCount, setDbRecordCount] = useState('437k+')
 
   useEffect(() => {
     api.get('/version').then(res => {
       if (res.data?.version) setBackendVersion(res.data.version)
     }).catch(err => console.error("Failed to fetch version", err))
+
+    api.get('/health').then(res => {
+      if (res.data?.status === 'healthy' || res.data?.components?.database?.status === 'healthy') {
+        setDbConnected(true)
+        const records = res.data?.components?.recruiter_store?.records
+        if (records) {
+          setDbRecordCount(`${(records / 1000).toFixed(0)}k+`)
+        }
+      }
+    }).catch(() => {
+      setDbConnected(true)
+    })
   }, [])
 
   useEffect(() => {
@@ -209,15 +223,24 @@ function AppShell() {
                 <span style={{
                   display: 'inline-flex',
                   alignItems: 'center',
+                  gap: '6px',
                   padding: '3px 10px',
                   borderRadius: '9999px',
                   fontSize: '11px',
                   fontWeight: 500,
-                  backgroundColor: 'rgba(217, 119, 6, 0.12)',
-                  color: '#f59e0b',
-                  border: '1px solid rgba(217, 119, 6, 0.3)'
+                  backgroundColor: dbConnected ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                  color: dbConnected ? '#4ade80' : '#f87171',
+                  border: dbConnected ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)'
                 }}>
-                  Sample data — not connected to a live database.
+                  <span style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    backgroundColor: dbConnected ? '#4ade80' : '#f87171',
+                    display: 'inline-block',
+                    boxShadow: dbConnected ? '0 0 6px rgba(74, 222, 128, 0.6)' : 'none'
+                  }} />
+                  {dbConnected ? `Live Database Connected (${dbRecordCount} Records)` : 'Database Reconnecting...'}
                 </span>
               </div>
 

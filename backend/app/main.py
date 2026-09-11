@@ -403,6 +403,8 @@ from .routes import scout_nodes
 app.include_router(scout_nodes.router)
 from .routes import scout_updates
 app.include_router(scout_updates.router)
+from .routes import mcp
+app.include_router(mcp.router)
 
 @app.get("/download/scout/windows", tags=["Scout Auto-Update & Fleet"])
 @app.get("/api/download/scout/windows", tags=["Scout Auto-Update & Fleet"])

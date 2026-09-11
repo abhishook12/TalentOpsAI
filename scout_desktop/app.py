@@ -305,8 +305,9 @@ class ScoutDesktopApp:
         self.edge_handle.set_status_state("ACTIVE")
         self.tray.update_icon_status("ACTIVE")
         user_display = self.backend_client.current_user_email
-        self.main_window.update_account_display(user_display)
-        self.bridge.event_logged.emit("ACCOUNT_PAIRED", f"Device paired to: {user_display}")
+        user_name = self.backend_client.user_name or (data.get("user_name") if data else None)
+        self.main_window.update_account_display(user_display, user_name)
+        self.bridge.event_logged.emit("ACCOUNT_PAIRED", f"Device paired to: {user_name or user_display} ({user_display})")
 
         # Show notification
         try:
@@ -578,7 +579,10 @@ class ScoutDesktopApp:
                 self.backend_client.environment_name,
                 self.backend_client.active_api_base
             )
-            self.main_window.update_account_display(self.backend_client.current_user_email)
+            self.main_window.update_account_display(
+                self.backend_client.current_user_email,
+                self.backend_client.user_name
+            )
 
             # CRITICAL: Return early — do NOT start the scanning engine until pairing completes.
             # _on_activation_complete() will call _start_engine() after successful pairing.
@@ -589,7 +593,10 @@ class ScoutDesktopApp:
             self.backend_client.environment_name,
             self.backend_client.active_api_base
         )
-        self.main_window.update_account_display(self.backend_client.current_user_email)
+        self.main_window.update_account_display(
+            self.backend_client.current_user_email,
+            self.backend_client.user_name
+        )
 
         # Already authenticated — start the engine immediately
         self._start_engine()

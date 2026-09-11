@@ -306,7 +306,7 @@ class MainWindow(QMainWindow):
         self._is_paused = False
         self._start_time = time.time()
         self._drag_pos = None
-        self._current_user_name = "Prashant"
+        self._current_user_name = ""
         self._current_user_email = ""
         self._current_account_name = "TalentOps AI"
         self._latest_profile_url = "https://www.linkedin.com"
@@ -592,7 +592,7 @@ class MainWindow(QMainWindow):
         pill_layout.addWidget(self.lbl_main_status)
         center_group.addWidget(self.status_pill_connected)
 
-        self.lbl_user_info = QLabel("User: Prashant")
+        self.lbl_user_info = QLabel("User: Not Connected")
         self.lbl_user_info.setStyleSheet("color: #94A3B8; font-size: 11px; font-weight: 600;")
         center_group.addWidget(self.lbl_user_info)
 
@@ -825,7 +825,7 @@ class MainWindow(QMainWindow):
 
         greeting_col = QVBoxLayout()
         greeting_col.setSpacing(4)
-        self.lbl_greeting = QLabel("Good Evening, Prashant")
+        self.lbl_greeting = QLabel("Welcome to TalentOps Scout")
         self.lbl_greeting.setStyleSheet("color: #FFFFFF; font-size: 22px; font-weight: 800; letter-spacing: -0.2px;")
         greeting_col.addWidget(self.lbl_greeting)
 
@@ -1812,12 +1812,12 @@ class MainWindow(QMainWindow):
 
         text_layout = QVBoxLayout()
         text_layout.setSpacing(2)
-        self.lbl_account_title = QLabel("CONNECTED RECRUITER")
+        self.lbl_account_title = QLabel("DEVICE NOT PAIRED")
         self.lbl_account_title.setStyleSheet("color: #64748B; font-size: 9px; font-weight: 700;")
         text_layout.addWidget(self.lbl_account_title)
 
-        self.lbl_account_val = QLabel("prashant@talentops.ai")
-        self.lbl_account_val.setStyleSheet("color: #34D399; font-size: 13px; font-weight: 700;")
+        self.lbl_account_val = QLabel("Waiting for Account Link")
+        self.lbl_account_val.setStyleSheet("color: #94A3B8; font-size: 13px; font-weight: 700;")
         text_layout.addWidget(self.lbl_account_val)
         acc_layout.addLayout(text_layout)
 
@@ -2111,8 +2111,11 @@ class MainWindow(QMainWindow):
         else:
             greeting = "Good Evening"
 
-        name = self._current_user_name or "Prashant"
-        self.lbl_greeting.setText(f"{greeting}, {name}")
+        name = self._current_user_name
+        if name:
+            self.lbl_greeting.setText(f"{greeting}, {name}")
+        else:
+            self.lbl_greeting.setText(f"{greeting}, Recruiter")
 
     def _open_current_target_url(self):
         url = self._latest_profile_url or "https://www.linkedin.com"
@@ -2177,15 +2180,23 @@ class MainWindow(QMainWindow):
     # Public Slots & Backward-Compatible API (Called by app.py)
     # ─────────────────────────────────────────────────────────────────────────
 
-    def update_account_display(self, email: Optional[str] = None):
+    def update_account_display(self, email: Optional[str] = None, name: Optional[str] = None):
         """Updates the connected account badge across the top bar and greeting."""
         clean_email = (email or "").strip()
+        clean_name = (name or "").strip()
+
         if clean_email and clean_email != "Not Connected / Default":
-            # Extract first name
-            name_part = clean_email.split("@")[0].capitalize()
-            self._current_user_name = name_part
+            if clean_name and clean_name not in ("User", "None"):
+                display_name = clean_name
+            else:
+                raw_handle = clean_email.split("@")[0]
+                import re
+                letters_only = re.sub(r"\d+", "", raw_handle).strip().capitalize()
+                display_name = letters_only if len(letters_only) >= 2 else raw_handle.capitalize()
+
+            self._current_user_name = display_name
             self._current_user_email = clean_email
-            self.lbl_user_info.setText(f"User: {name_part}")
+            self.lbl_user_info.setText(f"User: {display_name}")
             self.lbl_account_info.setText("Account: TalentOps AI")
             self.lbl_account_title.setText("CONNECTED RECRUITER")
             self.lbl_account_val.setText(clean_email)
@@ -2193,8 +2204,15 @@ class MainWindow(QMainWindow):
             self.status_dot.setStyleSheet("color: #10B981; font-size: 10px;")
             self.lbl_main_status.setText("Connected")
         else:
+            self._current_user_name = ""
+            self._current_user_email = ""
+            self.lbl_user_info.setText("User: Not Connected")
+            self.lbl_account_info.setText("Account: Unpaired")
             self.lbl_account_title.setText("DEVICE NOT PAIRED")
             self.lbl_account_val.setText("Waiting for Account Link")
+            self._update_greeting()
+            self.status_dot.setStyleSheet("color: #F59E0B; font-size: 10px;")
+            self.lbl_main_status.setText("Pairing Required")
 
     def update_environment(self, env_name: str, api_base: str):
         self.lbl_env_badge.setText(f"{env_name.upper()} • STABLE")

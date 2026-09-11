@@ -5,7 +5,7 @@ import {
   Database, RefreshCw, Layers, Terminal, Sparkles, AlertCircle, HelpCircle,
   Users, Activity, Server, FileText, Check, Shield, Search, Filter,
   ChevronRight, ArrowUpDown, Cpu, Clock, AlertTriangle, ShieldAlert, Award,
-  ChevronDown, ChevronUp, ExternalLink, Info, UserCheck, Trash2, Key, Link2
+  ChevronDown, ChevronUp, ExternalLink, Info, UserCheck, Trash2, Key, Link2, Copy
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -596,12 +596,82 @@ export default function DownloadScout() {
                   </div>
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: '#e4e4e7', letterSpacing: 0.5 }}>STEP 2: LINK TO YOUR ACCOUNT</div>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: '#fafafa' }}>Enter Desktop Pairing Code</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: '#fafafa' }}>Pair Desktop Scout</div>
                   </div>
                 </div>
 
+                {/* Personal Dedicated Activation Code (if assigned) */}
+                {myDeviceData?.active_activation_code && (
+                  <div style={{
+                    background: 'rgba(59, 130, 246, 0.1)',
+                    border: '1px solid rgba(59, 130, 246, 0.35)',
+                    borderRadius: 10,
+                    padding: '14px 16px',
+                    marginBottom: 16
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Key size={14} color="#60a5fa" />
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                          Your Dedicated Activation Code
+                        </span>
+                      </div>
+                      <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'rgba(59, 130, 246, 0.25)', color: '#bfdbfe', fontWeight: 600 }}>
+                        {myDeviceData.active_activation_label || 'Permanent'}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                      <code style={{
+                        flex: 1,
+                        padding: '10px 14px',
+                        background: '#09090b',
+                        border: '1px dashed rgba(59, 130, 246, 0.6)',
+                        borderRadius: 8,
+                        color: '#60a5fa',
+                        fontSize: 16,
+                        fontWeight: 800,
+                        letterSpacing: 2,
+                        fontFamily: 'monospace',
+                        textAlign: 'center'
+                      }}>
+                        {myDeviceData.active_activation_code}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(myDeviceData.active_activation_code);
+                          toast.success('Activation code copied to clipboard!');
+                        }}
+                        style={{
+                          padding: '10px 14px',
+                          background: '#2563eb',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: 8,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6
+                        }}
+                      >
+                        <Copy size={14} />
+                        <span>Copy</span>
+                      </button>
+                    </div>
+
+                    <p style={{ color: '#94a3b8', fontSize: 11, lineHeight: 1.4, margin: 0 }}>
+                      💡 <b>Where to enter in Scout:</b> In Desktop Scout, click <b>&quot;Switch Account&quot;</b> at top-right (or <b>Settings → Node Identity</b>), click <i>&quot;Have an admin activation code? Enter it manually&quot;</i>, paste this code, and click <b>Connect Account</b>.
+                    </p>
+                  </div>
+                )}
+
                 <p style={{ color: '#a1a1aa', fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
-                  Launch Desktop Scout on your PC. It displays a 4-character pairing code on your screen (e.g. <b>TOS-8492</b>). Enter that code below to connect your device:
+                  {myDeviceData?.active_activation_code
+                    ? 'Alternatively, enter the 4-character code shown on your Desktop Scout app (e.g. TOS-8492) below:'
+                    : 'Launch Desktop Scout on your PC. It displays a 4-character pairing code on your screen (e.g. TOS-8492). Enter that code below to connect your device:'}
                 </p>
 
                 <form onSubmit={handleVerifyPairingCode} style={{ marginBottom: 12 }}>

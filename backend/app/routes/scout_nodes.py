@@ -613,11 +613,23 @@ def get_my_scout_device(
             "is_online": is_online,
         })
 
+    active_code = (
+        db.query(ExtensionActivationCode)
+        .filter(
+            ExtensionActivationCode.owner_user_id == current_user.id,
+            ExtensionActivationCode.is_active == True,
+        )
+        .order_by(ExtensionActivationCode.created_at.desc())
+        .first()
+    )
+
     return {
         "has_device": len(devices) > 0,
         "user_email": current_user.email,
         "user_name": f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or current_user.email.split("@")[0],
         "devices": device_list,
+        "active_activation_code": active_code.code if active_code else None,
+        "active_activation_label": active_code.label if active_code else None,
     }
 
 

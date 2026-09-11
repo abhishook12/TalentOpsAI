@@ -1733,11 +1733,12 @@ class MainWindow(QMainWindow):
             self.lbl_detail_url.setText('<span style="color: #64748B;">No profile URL captured</span>')
 
         # Update bars
-        name_c = int(field_conf.get("name", conf / 100.0) * 100)
-        title_c = int(field_conf.get("title", conf / 100.0) * 100)
-        comp_c = int(field_conf.get("company", conf / 100.0) * 100)
-        loc_c = int(field_conf.get("location", conf / 100.0) * 100)
-        url_c = int(field_conf.get("profile_url", 1.0 if url else 0.0) * 100)
+        fc = field_conf or {}
+        name_c = int(fc.get("name", conf / 100.0) * 100) if isinstance(fc.get("name"), (int, float)) else conf
+        title_c = int(fc.get("title", conf / 100.0) * 100) if isinstance(fc.get("title"), (int, float)) else conf
+        comp_c = int(fc.get("company", conf / 100.0) * 100) if isinstance(fc.get("company"), (int, float)) else conf
+        loc_c = int(fc.get("location", conf / 100.0) * 100) if isinstance(fc.get("location"), (int, float)) else conf
+        url_c = int(fc.get("profile_url", 1.0 if url else 0.0) * 100) if isinstance(fc.get("profile_url"), (int, float)) else (100 if url else 0)
 
         mapping = {
             "Name": name_c,

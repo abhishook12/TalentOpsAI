@@ -5,7 +5,7 @@
 ; Persistent user state (%LOCALAPPDATA%\TalentOpsAI\Scout\) is strictly preserved across updates and uninstalls.
 
 #define MyAppName "TalentOps Scout"
-#define MyAppVersion "2.0.0"
+#define MyAppVersion "2.7.0"
 #define MyAppPublisher "TalentOps AI"
 #define MyAppURL "https://talentopsai-1.onrender.com"
 #define MyAppExeName "TalentOpsScout.exe"
@@ -31,13 +31,11 @@ SetupIconFile=..\assets\logo.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription={#MyAppName} Windows Setup
-VersionInfoVersion=2.0.0.0
+VersionInfoVersion=2.7.0.0
 VersionInfoTextVersion={#MyAppVersion}
 VersionInfoCopyright=© 2026 TalentOps AI
 VersionInfoProductName={#MyAppName}
-VersionInfoProductVersion=2.0.0.0
-SignedUninstaller=yes
-SignTool=signtool sign /fd sha256 /tr http://timestamp.digicert.com /td sha256 $f
+VersionInfoProductVersion=2.7.0.0
 
 [Languages]
 

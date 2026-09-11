@@ -245,6 +245,17 @@ class EntityExtractor:
         if not target_name:
             return []
 
+        # Enforce candidate gate on target_name (Rule 1 & 2)
+        from scout_desktop.extractor.candidate_gate import create_candidate_if_valid
+        gate_res = create_candidate_if_valid({
+            "name": target_name,
+            "source_url": source_url,
+            "window_title": window_title,
+        })
+        if not gate_res.is_valid_candidate and gate_res.decision in ("UNRESOLVED_UI_TEXT", "REJECTED_OBSERVATION"):
+            logger.info("Quality Gate: Rejected frame name '%s' (%s)", target_name, gate_res.decision)
+            return []
+
         # Always scan for pronouns across header/top lines
         if not pronouns_found:
             search_pool = header_lines if header_lines else clean_lines[:15]
@@ -1490,8 +1501,27 @@ class EntityExtractor:
                     company = dom.split(".")[0].capitalize()
                     break
 
-        # 6. Build EntityCluster
-        cluster = EntityCluster(canonical_name=cand_name, entity_type="PERSON")
+        # 6. Candidate Creation Gate Enforcement (Rule 2)
+        from scout_desktop.extractor.candidate_gate import create_candidate_if_valid
+        gate_res = create_candidate_if_valid({
+            "name": cand_name,
+            "title": title,
+            "company": company,
+            "source_url": source_url,
+            "canonical_profile_url": linkedin_url,
+            "email": primary_email,
+            "phone": primary_phone,
+            "window_title": window_title,
+            "page_type": "CHAT_RECRUITER_STREAM",
+        })
+        if not gate_res.is_valid_candidate:
+            logger.info("Quality Gate: Rejected chat candidate '%s' — %s", cand_name, gate_res.reasons)
+            return None
+
+        # Build EntityCluster
+        cluster = EntityCluster(canonical_name=gate_res.canonical_name or cand_name, entity_type="PERSON")
+        cluster.current_company = gate_res.company
+        cluster.current_title = gate_res.title
         cluster.add_observation(Observation(
             semantic_type="PERSON",
             subject=cand_name,

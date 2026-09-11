@@ -1769,6 +1769,9 @@ class MainWindow(QMainWindow):
         ]
 
         for it in items_to_show:
+            if isinstance(it, str):
+                status_str = "PASS" if not any(w in it.lower() for w in ["fail", "warn", "corrupt", "reject"]) else "WARN"
+                it = {"status": status_str, "label": it, "detail": "Gate Verification Check"}
             c_row = QHBoxLayout()
             c_row.setSpacing(6)
             ico = "✓" if it.get("status") == "PASS" else ("⚠" if it.get("status") == "WARN" else "ℹ")
@@ -1825,24 +1828,46 @@ class MainWindow(QMainWindow):
         field_confidence: Optional[dict] = None,
     ):
         p_url = profile_url or (platform if platform and platform.startswith("http") else "")
-        row = self.tbl_candidates.rowCount()
-        self.tbl_candidates.insertRow(row)
 
-        record = {
+        # Gate check: only valid candidates appear in Candidates table (Rule 2, 22)
+        from scout_desktop.extractor.candidate_gate import create_candidate_if_valid, normalize_platform
+        gate_res = create_candidate_if_valid({
             "name": name,
             "title": title,
             "company": company,
             "location": location,
             "profile_url": p_url,
-            "confidence": confidence,
+            "platform": platform,
+        })
+        if not gate_res.is_valid_candidate:
+            return
+
+        clean_plat = normalize_platform(platform, p_url)
+        c_name = gate_res.canonical_name or name
+        c_title = gate_res.title or title
+        c_comp = gate_res.company or company
+        c_loc = gate_res.location or location
+        c_conf = int(gate_res.identity_confidence * 100) if gate_res.identity_confidence > 0 else confidence
+
+        row = self.tbl_candidates.rowCount()
+        self.tbl_candidates.insertRow(row)
+
+        record = {
+            "name": c_name,
+            "title": c_title,
+            "company": c_comp,
+            "location": c_loc,
+            "platform": clean_plat,
+            "profile_url": p_url,
+            "confidence": c_conf,
             "status": status,
-            "checklist": checklist,
-            "field_confidence": field_confidence,
+            "checklist": checklist or gate_res.audit_checklist,
+            "field_confidence": field_confidence or gate_res.field_confidence,
         }
         self._candidate_records.append(record)
 
         # Col 0: Candidate
-        item_name = QTableWidgetItem(name)
+        item_name = QTableWidgetItem(c_name)
         item_name.setForeground(QColor("#F8FAFC"))
         item_name.setFont(QFont("Segoe UI", 9, QFont.Bold))
         self.tbl_candidates.setItem(row, 0, item_name)

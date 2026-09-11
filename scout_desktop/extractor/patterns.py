@@ -265,8 +265,34 @@ def is_valid_company_name(text: Optional[str]) -> bool:
 
     t_lower = t.lower()
 
-    # Reject window titles and platform URLs
+    # Reject window titles, platform URLs, and navigation/inbox patterns
     if " | linkedin" in t_lower or " - linkedin" in t_lower or t_lower.endswith("linkedin") or "linkedin.com" in t_lower:
+        return False
+
+    # Reject email/inbox, mailings, and chat/message titles
+    if any(m in t_lower for m in ["inbox", "mailings", "domain search", "messaged you", "active window", "overview", "candidate card", "quick easy prompt"]):
+        return False
+
+    # Reject notification counters e.g. (121), (2), (54)
+    if re.search(r"\(\d+\+?\)", t):
+        return False
+
+    # Reject truncated strings ending with ellipses e.g. "54 Ri Ht...", "abhish..."
+    if t.endswith("...") or t.endswith("..") or re.search(r"\.{2,}", t):
+        return False
+
+    # Reject leading notification digits e.g. "355 M Inbox", "54 Ri"
+    if re.match(r"^\d+\s+[A-Za-z0-9]\b", t):
+        return False
+
+    # Reject short words that are pronouns, prepositions, or OCR fragments (e.g. "My", "In", "At", "By", "To", "iHHI")
+    if len(t) <= 2:
+        return False
+    if t_lower in {"my", "to", "in", "at", "by", "we", "he", "me", "us", "it", "or", "if", "on", "as", "an", "so", "no", "up", "do", "go", "is", "be"}:
+        return False
+
+    # Reject OCR artifacts with repeated letters or barcode-like patterns e.g. "iHHI", "lIllI", "|||"
+    if re.match(r"^[iIl1|Hh]{3,}$", t):
         return False
 
     # ===== Chrome / Browser / System UI Noise Blocklist =====
@@ -423,8 +449,12 @@ def is_valid_person_name(text: Optional[str]) -> bool:
     if UI_ACTIONS.match(t) or re.search(r"^[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]", t):
         return False
 
-    # A person name cannot contain digits or punctuation/math/wildcard symbols
+    # A person name cannot contain digits, colons, or punctuation/math/wildcard symbols
     if any(c.isdigit() or c in "*@/\\()_~!+=<>[]{}^%$#:;?\"" for c in t):
+        return False
+
+    # Reject truncated strings ending with dots or ellipses e.g. "54 Ri Ht...", "John..."
+    if t.endswith(".") or ".." in t:
         return False
 
     # A person name CANNOT be a job title!
@@ -443,6 +473,11 @@ def is_valid_person_name(text: Optional[str]) -> bool:
     if len(clean_words) < 2 or len(clean_words) > 4:
         return False
     if any(len(w) < 2 for w in clean_words):
+        return False
+
+    # Reject if all words are 2-letter fragments (e.g. "Ri Ht" -> OCR truncation)
+    # Real names must have at least one name component with length >= 3
+    if all(len(w) <= 2 for w in clean_words):
         return False
 
     # Every word must be capitalized: First char upper, rest lower or hyphenated (e.g. 'John', 'O'Neill', 'Mary-Jane')
@@ -484,10 +519,13 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         "device", "devices", "help", "support", "sign", "login", "logout", "portal",
         "zoominfo", "lite", "export", "reveal", "suggest", "homepage",
         "reason", "active", "window", "active window", "overview", "candidate card",
+        # Executive role acronyms & tokens
+        "cto", "ceo", "cfo", "coo", "cio", "cmo", "cpo", "cro", "vp", "svp", "evp", "hr",
+        "myridius",
     }
     if any(w in blacklisted for w in lower_words):
         return False
-    if "reason:" in t.lower() or "active window" in t.lower():
+    if "reason:" in t.lower() or "active window" in t.lower() or "overview" in t.lower():
         return False
     return True
 
@@ -505,7 +543,11 @@ def clean_person_name(text: Optional[str]) -> Optional[str]:
     """
     if not text:
         return None
-    t = text.strip()
+    raw_str = text.strip()
+    # Immediate rejection of key-value / label pairs with colons or truncated strings with ellipses
+    if ":" in raw_str or ".." in raw_str or raw_str.endswith("..."):
+        return None
+    t = raw_str
     # Strip leading notification numbers or badges e.g. "54 | ", "(54) ", "[12] "
     t = re.sub(r"^(?:[\(\[]?\d+\+?[\)\]]?\s*[|•·–—\-:]?\s*)+", "", t).strip()
     # Strip degree suffixes: • 2nd, · 1st, 3rd, etc.

@@ -215,6 +215,9 @@ COMPANY_NOISE_PATTERNS = {
     'linkedin', 'new tab', 'inbox', 'outlook', 'gmail', 'chrome', 'firefox',
     'edge', 'safari', 'brave', 'windows', 'desktop', 'start a post',
     'corporate email', 'corporate contact', '7 profiles', 'professional',
+    'active window', 'overview', 'people', 'reason', 'candidate card',
+    'mailings', 'domain search', 'messaged you', 'quick easy prompt',
+    'experience', 'my network', 'followed by', 'ihhi', 'my',
 }
 
 def validate_company_for_person(company_name: Optional[str], person_name: Optional[str] = None) -> Tuple[bool, Optional[str]]:
@@ -231,9 +234,27 @@ def validate_company_for_person(company_name: Optional[str], person_name: Option
 
     lower = raw.lower()
 
-    # Reject LinkedIn notification count patterns like "(1) Rachel Pitrolo", "(2) Feed"
-    if re.match(r'^\(\d+\)\s+', raw):
-        return False, f"Company starts with notification count pattern: '{raw}'"
+    # Reject notification count patterns like "(121)", "(2)", "(1) Rachel"
+    if re.search(r'\(\d+\+?\)', raw):
+        return False, f"Company contains notification count pattern: '{raw}'"
+
+    # Reject truncated strings ending with dots or ellipses e.g. "54 Ri Ht...", "355 M..."
+    if raw.endswith("...") or raw.endswith("..") or ".." in raw:
+        return False, f"Company contains truncated ellipsis: '{raw}'"
+
+    # Reject leading notification digits e.g. "355 M Inbox", "54 Ri"
+    if re.match(r'^\d+\s+[A-Za-z0-9]\b', raw):
+        return False, f"Company starts with notification digits: '{raw}'"
+
+    # Reject short words that are pronouns, prepositions, or OCR fragments (e.g. "My", "iHHI")
+    if len(raw) <= 2:
+        return False, f"Company name too short ({len(raw)} chars): '{raw}'"
+    if lower in {'my', 'to', 'in', 'at', 'by', 'we', 'he', 'me', 'us', 'it', 'or', 'if', 'on', 'as', 'an', 'so', 'no', 'up', 'do', 'go', 'is', 'be', 'ihhi'}:
+        return False, f"Company is a pronoun/OCR fragment: '{raw}'"
+
+    # Reject OCR artifacts with repeated letters or barcode-like patterns e.g. "iHHI", "lIllI"
+    if re.match(r'^[iIl1|Hh]{3,}$', raw):
+        return False, f"Company is OCR barcode noise: '{raw}'"
 
     # Reject if company name IS the person's own name
     if person_name:
@@ -266,6 +287,15 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
         return False, None, "Empty name"
 
     name = str(raw_name).strip()
+
+    # Reject colons (key-value or label strings e.g. "Myridius: People", "CTO: Overview")
+    if ":" in name:
+        return False, None, f"Name contains colon delimiter ('{name}')"
+
+    # Reject truncated strings ending with dots/ellipses (e.g. "54 Ri Ht...")
+    if name.endswith("...") or name.endswith("..") or ".." in name:
+        return False, None, f"Name contains truncation ellipses ('{name}')"
+
     # Strip degree connection bullets and numbers
     name = re.sub(r'[·•]\s*\d*(?:st|nd|rd|th)?(?:\s*degree(?:\s+connection)?)?', ' ', name, flags=re.IGNORECASE)
     name = re.sub(r'\b\d+(?:st|nd|rd|th)?\s+degree(?:\s+connection)?\b', '', name, flags=re.IGNORECASE)
@@ -289,8 +319,8 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
             if re.match(r'^(founder|ceo|cto|cpo|coo|vp|recruiter|sourcer|consultant|manager|director|managing|engineer|developer|analyst|specialist|partner|lead|head|architect|sap|oracle|staffing|talent|hiring|hr|human|resources|operations)$', tok_lower):
                 cut_idx = i
                 break
-        if cut_idx >= 2:
-            cleaned = " ".join(tokens[:cut_idx])
+            if cut_idx >= 2:
+                cleaned = " ".join(tokens[:cut_idx])
 
     if not cleaned or len(cleaned) < 2 or len(cleaned) > 50:
         return False, None, "Invalid length for person name"
@@ -298,6 +328,10 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
     lower = cleaned.lower()
     words = cleaned.split()
     lower_words = [w.lower() for w in words]
+
+    # Reject if all words are <= 2 letters (e.g. "Ri Ht")
+    if all(len(w) <= 2 for w in words):
+        return False, None, f"Name consists solely of short 2-letter fragments ('{cleaned}')"
 
     # Reject system noise tokens (e.g. Gemini, Outlook, Inbox, Tab, Apply, etc.)
     SYSTEM_NOISE_TOKENS = {
@@ -308,6 +342,8 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
         'post', 'posts', 'pipeline', 'scout', 'lead', 'leads',
         'history', 'conversation', 'conversations', 'profile', 'profiles',
         'message', 'messages', 'filter', 'filters', 'dialog', 'session', 'menu',
+        'overview', 'people', 'reason', 'active window', 'active', 'window',
+        'cto', 'ceo', 'cfo', 'coo', 'vp', 'hr', 'myridius', 'candidate card',
     }
     if any(w in SYSTEM_NOISE_TOKENS for w in lower_words):
         return False, None, f"Name contains system or application noise ('{cleaned}')"

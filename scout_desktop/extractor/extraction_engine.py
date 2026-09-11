@@ -267,16 +267,34 @@ class ScoutExtractionEngine:
         cluster.current_company = company
         cluster.location = clean_location
         cluster.linkedin_url = canonical_url
-        cluster.confidence = conf_report.overall_confidence
+        # Step 8: Centralized Candidate Creation Gate Enforcement (Rule 2)
+        from scout_desktop.extractor.candidate_gate import create_candidate_if_valid
+
+        gate_res = create_candidate_if_valid({
+            "name": name,
+            "title": title,
+            "company": company,
+            "location": clean_location,
+            "source_url": source_url,
+            "canonical_profile_url": canonical_url,
+            "platform": p_class["platform"],
+            "page_type": page_type,
+            "window_title": window_title,
+        })
+
+        if not gate_res.is_valid_candidate:
+            telemetry["reason"] = f"Candidate Gate Rejected: {gate_res.decision} — {', '.join(gate_res.reasons)}"
+            logger.info("Quality Gate: Rejected candidate '%s' — %s", name, telemetry["reason"])
+            return [], telemetry
 
         candidate = CanonicalCandidate(
             candidate_id=cand_id,
-            canonical_name=name,
-            current_title=title,
-            current_company=company,
-            location=clean_location,
-            canonical_profile_url=canonical_url,
-            platform=p_class["platform"],
+            canonical_name=gate_res.canonical_name or name,
+            current_title=gate_res.title,
+            current_company=gate_res.company,
+            location=gate_res.location,
+            canonical_profile_url=gate_res.canonical_profile_url or canonical_url,
+            platform=gate_res.platform,
             confidence_report=conf_report,
             audit_trail=audit,
             raw_cluster=cluster,

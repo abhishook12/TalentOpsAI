@@ -1203,33 +1203,31 @@ class ScoutDesktopApp:
                 except Exception as stitch_err:
                     logger.debug("CrossChannelStitcher error: %s", stitch_err)
 
-                # Data Quality Gate: Validate person name, clean company noise, and check signals
-                cand_name = staged_contact.get("recruiter_name") or staged_contact.get("raw_name")
+                # Data Quality Gate: Centralized Candidate Creation Gate Enforcement (Rule 2)
+                from scout_desktop.extractor.candidate_gate import create_candidate_if_valid
+                gate_res = create_candidate_if_valid(
+                    staged_contact,
+                    context={
+                        "source_url": page_url,
+                        "window_title": page_title,
+                        "platform": target_type,
+                        "page_type": matching_canon.page_type if matching_canon else "",
+                    }
+                )
+
                 if c.entity_type != "JOB":
-                    if not cand_name or not is_valid_person_name(cand_name):
-                        logger.info("Quality Gate: Rejected invalid candidate name '%s'", cand_name)
+                    if not gate_res.is_valid_candidate:
+                        logger.info("Quality Gate: Rejected observation '%s' (%s) — %s",
+                                    staged_contact.get("recruiter_name"), gate_res.decision, gate_res.reasons)
                         continue
 
-                    # Clean invalid company name to None
-                    cur_comp = staged_contact.get("company_name")
-                    if cur_comp and not is_valid_company_name(cur_comp):
-                        logger.info("Quality Gate: Stripped invalid company noise '%s'", cur_comp)
-                        staged_contact["company_name"] = None
-                        staged_contact["raw_company"] = ""
-
-                    # Require at least one meaningful signal (title, company, contact, skills, or education)
-                    has_signals = bool(
-                        staged_contact.get("title")
-                        or staged_contact.get("company_name")
-                        or staged_contact.get("email")
-                        or staged_contact.get("phone")
-                        or staged_contact.get("linkedin_url")
-                        or staged_contact.get("skills")
-                        or staged_contact.get("education")
-                    )
-                    if not has_signals:
-                        logger.info("Quality Gate: Rejected candidate with zero professional signals '%s'", cand_name)
-                        continue
+                    # Overwrite with sanitized and normalized values
+                    staged_contact["recruiter_name"] = gate_res.canonical_name
+                    staged_contact["title"] = gate_res.title
+                    staged_contact["company_name"] = gate_res.company
+                    staged_contact["location"] = gate_res.location
+                    staged_contact["platform"] = gate_res.platform
+                    staged_contact["canonical_profile_url"] = gate_res.canonical_profile_url
 
                 qid = self.local_queue.enqueue_cluster(staged_contact)
                 if qid != -1:
@@ -1250,50 +1248,65 @@ class ScoutDesktopApp:
             self.bridge.event_logged.emit("STAGING_CREATED", f"Enqueued to SQLite buffer ({len(clusters)} items)")
 
             first = clusters[0]
-            desc = f"👤 {first.canonical_name}"
-            if first.current_title:
-                desc += f" — {first.current_title}"
-            if first.current_company:
-                desc += f" @ {first.current_company}"
-            if first.location:
-                desc += f" ({first.location})"
+            # Final validation check before promoting to candidate hero card / table
+            first_gate = create_candidate_if_valid({
+                "recruiter_name": first.canonical_name,
+                "title": first.current_title,
+                "company_name": first.current_company,
+                "location": first.location,
+                "source_url": page_url,
+                "canonical_profile_url": getattr(first, "linkedin_url", None) or page_url,
+                "platform": target_type,
+            })
 
-            # Live Copilot Intelligence Query
-            copilot_info = None
-            try:
-                cand_email = getattr(first, "primary_email", None) or getattr(first, "email", None)
-                cand_linkedin = page_url if "linkedin.com/in/" in page_url else getattr(first, "linkedin_url", None)
-                copilot_info = self.backend_client.lookup_candidate(
-                    name=first.canonical_name,
-                    company=first.current_company,
-                    linkedin=cand_linkedin,
-                    email=cand_email,
+            if first_gate.is_valid_candidate and first_gate.decision == "CANDIDATE_VERIFIED":
+                desc = f"👤 {first_gate.canonical_name}"
+                if first_gate.title:
+                    desc += f" — {first_gate.title}"
+                if first_gate.company:
+                    desc += f" @ {first_gate.company}"
+                if first_gate.location:
+                    desc += f" ({first_gate.location})"
+
+                # Live Copilot Intelligence Query
+                copilot_info = None
+                try:
+                    cand_email = getattr(first, "primary_email", None) or getattr(first, "email", None)
+                    cand_linkedin = page_url if "linkedin.com/in/" in page_url else getattr(first, "linkedin_url", None)
+                    copilot_info = self.backend_client.lookup_candidate(
+                        name=first_gate.canonical_name,
+                        company=first_gate.company,
+                        linkedin=cand_linkedin,
+                        email=cand_email,
+                    )
+                    if copilot_info and copilot_info.get("found"):
+                        self.cnt_matched += 1
+                except Exception as e:
+                    logger.debug("Live Copilot lookup error: %s", e)
+
+                first_canon = canonical_cands[0] if canonical_cands else None
+                card_status = "VERIFIED" if not (copilot_info and copilot_info.get("found")) else "IN DATABASE"
+                card_profile_url = first_gate.canonical_profile_url or (first_canon.canonical_profile_url if first_canon else "")
+                card_confidence = int(first_gate.identity_confidence * 100)
+                card_checklist = first_gate.audit_checklist
+                card_field_conf = first_gate.field_confidence
+
+                self.bridge.candidate_card_updated.emit(
+                    first_gate.canonical_name,
+                    first_gate.title or "",
+                    first_gate.company or "",
+                    first_gate.location or "",
+                    card_status,
+                    desc,
+                    copilot_info,
+                    card_profile_url or "",
+                    card_confidence,
+                    card_checklist,
+                    card_field_conf
                 )
-                if copilot_info and copilot_info.get("found"):
-                    self.cnt_matched += 1
-            except Exception as e:
-                logger.debug("Live Copilot lookup error: %s", e)
-
-            first_canon = canonical_cands[0] if canonical_cands else None
-            card_status = first_canon.status if first_canon else ("IN DATABASE" if (copilot_info and copilot_info.get("found")) else "STAGED")
-            card_profile_url = first_canon.canonical_profile_url if first_canon else (getattr(first, "linkedin_url", None) or page_url)
-            card_confidence = int(first_canon.overall_confidence * 100) if first_canon else int(getattr(first, "confidence", 0.90) * 100)
-            card_checklist = first_canon.audit_trail.checklist if (first_canon and first_canon.audit_trail) else []
-            card_field_conf = first_canon.confidence_report.field_breakdown if first_canon else {}
-
-            self.bridge.candidate_card_updated.emit(
-                first.canonical_name,
-                first.current_title or "",
-                first.current_company or "",
-                first.location or "",
-                card_status,
-                desc,
-                copilot_info,
-                card_profile_url or "",
-                card_confidence,
-                card_checklist,
-                card_field_conf
-            )
+            else:
+                logger.debug("Omitted unverified capture '%s' from Candidates table (%s)",
+                             first.canonical_name, first_gate.decision)
         else:
             # Discard immediately on NO_USEFUL_DATA (0ms)
             self.evidence_store.update_status(capture_id, "NO_USEFUL_DATA")

@@ -74,6 +74,17 @@ class PageClassifier:
                 "reason": "Empty URL and Window Title",
             }
 
+        # Check for window titles that represent UI navigation or diagnostic labels
+        if any(term in title_lower for term in [": people", ": overview", "reason:", "active window", "latest capture", "mailings - overview", "inbox ("]):
+            return {
+                "page_type": PAGE_TYPE_UNKNOWN,
+                "platform": "DESKTOP_CAPTURE",
+                "is_candidate_eligible": False,
+                "confidence": 1.0,
+                "canonical_url": None,
+                "reason": "Window title represents UI navigation, inbox, or diagnostic label",
+            }
+
         # 1. LinkedIn Classification
         if "linkedin.com" in url_lower or "linkedin" in title_lower or plat == "LINKEDIN":
             resolved_plat = "LINKEDIN"
@@ -101,15 +112,15 @@ class PageClassifier:
                     "reason": "LinkedIn people search results URL detected",
                 }
 
-            # Company directory: /company/.../people
-            if "/company/" in url_lower and ("/people" in url_lower or "/about" in url_lower):
+            # Company directory: /company/...
+            if "/company/" in url_lower:
                 return {
-                    "page_type": PAGE_TYPE_COMPANY_PAGE if "/about" in url_lower else PAGE_TYPE_PEOPLE_SEARCH,
+                    "page_type": PAGE_TYPE_COMPANY_PAGE,
                     "platform": resolved_plat,
-                    "is_candidate_eligible": "/people" in url_lower,
-                    "confidence": 0.92,
+                    "is_candidate_eligible": False,
+                    "confidence": 0.95,
                     "canonical_url": raw_url.split("?")[0] if raw_url else None,
-                    "reason": "LinkedIn company people/about directory",
+                    "reason": "LinkedIn company page / directory view (not a single candidate profile)",
                 }
 
             # Company page general

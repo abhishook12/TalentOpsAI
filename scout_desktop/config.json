@@ -1,6 +1,6 @@
 {
   "app_name": "TalentOps Scout Desktop",
-  "version": "2.7.0",
+  "version": "2.7.1",
   "environment": "PRODUCTION",
   "api_base": "https://talentopsai-1.onrender.com",
   "local_api_base": "http://localhost:8000",

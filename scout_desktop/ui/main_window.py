@@ -1497,7 +1497,12 @@ class MainWindow(QMainWindow):
         entry = QLabel(f"[{t_str}] <b style='color: #38BDF8;'>{event_name}</b>: {details}")
         entry.setStyleSheet("color: #94A3B8; font-size: 8px; font-family: Consolas, monospace;")
         entry.setWordWrap(True)
+        self._log_entries.insert(0, entry)
         self.stream_layout.insertWidget(0, entry)
+        while len(self._log_entries) > 50:
+            old = self._log_entries.pop()
+            self.stream_layout.removeWidget(old)
+            old.deleteLater()
 
     def closeEvent(self, event: QCloseEvent):
         """

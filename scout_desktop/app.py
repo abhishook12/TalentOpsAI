@@ -632,7 +632,9 @@ class ScoutDesktopApp:
             self.current_window = win
             b_ctx = {}
             if win.is_browser:
-                b_ctx = self.browser_tracker.resolve_browser_context(win.hwnd, win.title)
+                b_ctx = self.browser_tracker.resolve_browser_context(
+                    win.hwnd, win.title, browser_hint=win.process_name
+                )
                 self.current_browser_context = b_ctx
 
             is_allowed, target_type = is_allowed_scout_target(win, b_ctx)
@@ -889,34 +891,51 @@ class ScoutDesktopApp:
             logger.debug("Error checking recent update state: %s", e)
 
     def _poll_active_window(self):
-        """Checks foreground window and enforces strict targeting rule (LinkedIn on Chrome or MS Teams only)."""
+        """
+        Checks foreground window and enforces strict targeting rule.
+        Ultra-fast zero-CPU fast path: If active window & title haven't changed, returns immediately (< 0.01ms).
+        """
         try:
             win = self.window_tracker.get_active_window()
             if not win.is_valid:
                 return
 
             has_changed = self.window_tracker.has_active_window_changed(win)
+            if not has_changed:
+                # Zero-CPU Idle: User is still on the same window and tab.
+                # No COM calls, no UIA queries, no UI repaints.
+                return
+
             b_ctx = {}
             if win.is_browser:
-                b_ctx = self.browser_tracker.resolve_browser_context(win.hwnd, win.title)
+                b_ctx = self.browser_tracker.resolve_browser_context(
+                    win.hwnd, win.title, browser_hint=win.process_name
+                )
                 self.current_browser_context = b_ctx
 
             is_allowed, target_type = is_allowed_scout_target(win, b_ctx)
             self.sampler.set_target_allowed(is_allowed)
 
-            if has_changed:
-                self.current_window = win
-                self.sampler.set_current_window(win)
+            # Adaptive timer interval:
+            # When resting on a non-target, poll every 1200ms to save CPU.
+            # When on an active target, poll every 600ms for responsive tracking.
+            if hasattr(self, "window_timer"):
+                new_interval = 600 if is_allowed else 1200
+                if self.window_timer.interval() != new_interval:
+                    self.window_timer.setInterval(new_interval)
 
-                logger.info("Active window switched: [%s] '%s' (Allowed: %s, Type: %s)",
-                            win.process_name, win.title[:40], is_allowed, target_type)
-                self.bridge.window_updated.emit(win, b_ctx, is_allowed, target_type)
+            self.current_window = win
+            self.sampler.set_current_window(win)
 
-                if is_allowed:
-                    self.bridge.event_logged.emit("TARGET_ACTIVE", f"[{target_type}] {win.title[:35]}")
-                    self.sampler.trigger_immediate_capture(win, reason="window_changed")
-                else:
-                    self.bridge.event_logged.emit("TARGET_RESTING", f"Outside allowed target ({target_type})")
+            logger.info("Active window switched: [%s] '%s' (Allowed: %s, Type: %s)",
+                        win.process_name, win.title[:40], is_allowed, target_type)
+            self.bridge.window_updated.emit(win, b_ctx, is_allowed, target_type)
+
+            if is_allowed:
+                self.bridge.event_logged.emit("TARGET_ACTIVE", f"[{target_type}] {win.title[:35]}")
+                self.sampler.trigger_immediate_capture(win, reason="window_changed")
+            else:
+                self.bridge.event_logged.emit("TARGET_RESTING", f"Outside allowed target ({target_type})")
         except Exception as e:
             logger.debug("Active window poll error: %s", e)
 

@@ -289,27 +289,36 @@ class WindowTracker:
         self._last_user_window: Optional[WindowInfo] = None
         self._desktop_attached = ensure_interactive_desktop()
         self._own_pid = os.getpid()
+        self._proc_cache: Dict[int, str] = {}
 
     def get_process_name(self, pid: int) -> str:
-        """Resolves process name from PID via Win32 query."""
+        """Resolves process name from PID via Win32 query with LRU caching."""
         if not pid:
             return "unknown"
+        if pid in self._proc_cache:
+            return self._proc_cache[pid]
+
         PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
         h_process = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
         if not h_process:
             return "unknown"
+        name = "unknown"
         try:
             buf = ctypes.create_unicode_buffer(1024)
             size = wintypes.DWORD(1024)
             # QueryFullProcessImageNameW is standard across modern Windows
             if ctypes.windll.kernel32.QueryFullProcessImageNameW(h_process, 0, buf, ctypes.byref(size)):
                 full_path = buf.value
-                return os.path.basename(full_path).lower()
+                name = os.path.basename(full_path).lower()
         except Exception:
             pass
         finally:
             kernel32.CloseHandle(h_process)
-        return "unknown"
+
+        if len(self._proc_cache) > 256:
+            self._proc_cache.clear()
+        self._proc_cache[pid] = name
+        return name
 
     def get_active_window(self) -> WindowInfo:
         """

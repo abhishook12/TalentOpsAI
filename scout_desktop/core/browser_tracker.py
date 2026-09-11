@@ -71,14 +71,16 @@ class BrowserTracker:
             logger.debug("UIA COM initialization deferred: %s", e)
             self._uia = None
 
-    def get_url_from_window_uia(self, hwnd: int) -> Optional[str]:
-        """Attempts to read URL from address bar edit control via UIA with multi-tier targeting."""
+    def get_url_from_window_uia(self, hwnd: int, browser_hint: Optional[str] = None) -> Optional[str]:
+        """
+        Attempts to read URL from address bar edit control via UIA with targeted single-pass search.
+        Eliminates redundant multi-pass descendant tree traversals that trigger Chromium accessibility overhead.
+        """
         if not self._uia or not hwnd:
             return None
         try:
             from comtypes.gen.UIAutomationClient import (
                 TreeScope_Descendants,
-                UIA_EditControlTypeId,
                 UIA_ValuePatternId,
                 IUIAutomationValuePattern,
             )
@@ -86,13 +88,18 @@ class BrowserTracker:
             if not el:
                 return None
 
-            # Tier 1: Target by known AutomationId or Name first
-            # Chrome/Edge: AutomationId='addressEditBox' or Name='Address and search bar'
-            # Firefox: AutomationId='urlbar-input'
-            known_auto_ids = ["addressEditBox", "view_1020", "urlbar-input", "AddressBar"]
-            for auto_id in known_auto_ids:
+            # Fast targeting by primary browser automation ID
+            # Chrome / Edge / Brave -> 'addressEditBox'
+            # Firefox -> 'urlbar-input'
+            b_lower = (browser_hint or "").lower()
+            if "firefox" in b_lower:
+                target_ids = ["urlbar-input"]
+            else:
+                target_ids = ["addressEditBox"]
+
+            for auto_id in target_ids:
                 try:
-                    cond_id = self._uia.CreatePropertyCondition(30011, auto_id) # 30011 = UIA_AutomationIdPropertyId
+                    cond_id = self._uia.CreatePropertyCondition(30011, auto_id)  # 30011 = UIA_AutomationIdPropertyId
                     target = el.FindFirst(TreeScope_Descendants, cond_id)
                     if target:
                         pat = target.GetCurrentPattern(UIA_ValuePatternId)
@@ -106,7 +113,6 @@ class BrowserTracker:
                 except Exception:
                     pass
 
-            # Safe return without deep TreeScope_Descendants search to prevent UI thread lockups
             return None
         except Exception as e:
             logger.debug("UIA address bar read failed: %s", e)
@@ -347,23 +353,36 @@ class BrowserTracker:
             "candidate_name": candidate_name,
         }
 
-    def resolve_browser_context(self, hwnd: int, window_title: str) -> Dict[str, Any]:
+    def resolve_browser_context(self, hwnd: int, window_title: str, browser_hint: Optional[str] = None) -> Dict[str, Any]:
         """
         Resolves the comprehensive browser context using UIA + Title heuristics and page type classification.
-        Cached by (hwnd, window_title) with 5.0s TTL to prevent freezing the UI thread.
+        Cached by (hwnd, window_title) with 15.0s TTL to prevent freezing the UI thread.
+        Gates UIA calls: only attempts address bar reading for target talent/recruiting platforms.
         """
         cache_key = (hwnd, window_title)
         now = time.time()
         if cache_key in self._cache:
             ts, res = self._cache[cache_key]
-            if now - ts < 5.0:
+            if now - ts < 15.0:
                 return res
 
         inferred = self.infer_context_from_title(window_title)
-        
-        # Try reading UIA address bar
-        active_url = self.get_url_from_window_uia(hwnd)
+        platform = inferred["platform"]
+        active_url = None
         domain = inferred["probable_domain"]
+
+        # Performance Gate: ONLY inspect address bar via UIA if the tab title indicates a supported platform.
+        # This completely stops Chromium from triggering accessibility DOM serialization on non-target tabs.
+        TARGET_UIA_PLATFORMS = {
+            "LINKEDIN", "ZOOMINFO", "APOLLO", "GITHUB", "STACKOVERFLOW",
+            "KAGGLE", "DICE", "WELLFOUND", "ATS_GREENHOUSE", "ATS_LEVER",
+            "ATS_ASHBY", "ATS_WORKDAY", "ATS_ICIMS", "ATS_SMARTRECRUITERS",
+            "GOOGLE_CHAT", "CHAT", "TEAMS", "SLACK", "WHATSAPP", "TELEGRAM",
+            "GMAIL", "OUTLOOK", "PDF_RESUME"
+        }
+
+        if platform in TARGET_UIA_PLATFORMS or inferred.get("candidate_name"):
+            active_url = self.get_url_from_window_uia(hwnd, browser_hint=browser_hint)
 
         # Protect against stale UIA address bar: If title is Google Search or non-LinkedIn,
         # do not let a stale UIA URL from another tab re-classify it as LinkedIn.
@@ -394,7 +413,7 @@ class BrowserTracker:
         }
 
         # Keep cache size bounded
-        if len(self._cache) > 50:
+        if len(self._cache) > 100:
             self._cache.clear()
         self._cache[cache_key] = (now, result)
         return result

@@ -680,17 +680,11 @@ class ScoutDesktopApp:
         self.bridge.event_logged.emit("BACKEND_CONNECTING", f"Connecting to {self.backend_client.environment_name}...")
         QApplication.processEvents()
 
-        # Step 3: BACKEND CONNECTED / OFFLINE
-        ok, res = self.backend_client.send_heartbeat(status="STARTING")
-        if ok:
-            self.main_window.update_status_state("BACKEND CONNECTED")
-            self.main_window.ind_backend.set_state("CONNECTED")
-            self.bridge.event_logged.emit("BACKEND_CONNECTED", f"Ready ({self.backend_client.environment_name})")
-        else:
-            self.main_window.update_status_state("CONNECTING")
-            self.main_window.ind_backend.set_state("OFFLINE")
-            self.bridge.event_logged.emit("BACKEND_OFFLINE", f"Offline mode active: {res.get('error', '')}")
-        QApplication.processEvents()
+        # Step 3: BACKEND CONNECTED / OFFLINE (Asynchronous to eliminate startup freeze)
+        self.main_window.update_status_state("BACKEND CONNECTED")
+        self.main_window.ind_backend.set_state("CONNECTED")
+        self.bridge.event_logged.emit("BACKEND_CONNECTED", f"Ready ({self.backend_client.environment_name})")
+        self._send_heartbeat()
 
         # Step 4: WINDOW DETECTED
         win = self.window_tracker.get_active_window()

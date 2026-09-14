@@ -31,6 +31,7 @@ from .scout_data import (
     CLOUD_SYNC_DATA, PIPELINE_DATA, ACTIVITY_FEED, SETTINGS_DATA,
     DEVICE_CLAIM_STATE, get_candidate_by_id, approve_review_item,
     dismiss_review_item, mark_all_activities_read, perform_device_claim,
+    perform_account_signin,
     ACTIVITY_FEED_SUBTITLE, ACTIVITY_FOOTNOTE, SETTINGS_SUBTITLE
 )
 from .components import (
@@ -608,9 +609,11 @@ class CandidatesPage(QWidget):
         # Scrollable Cards Grid Container
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setStyleSheet(f"QScrollArea {{ background-color: {COLOR_BG_BASE}; border: none; }} QScrollArea > QWidget {{ background-color: {COLOR_BG_BASE}; border: none; }}")
 
         self.cards_container = QWidget()
+        self.cards_container.setStyleSheet(f"background-color: {COLOR_BG_BASE};")
         self.cards_grid = QGridLayout(self.cards_container)
         self.cards_grid.setContentsMargins(0, 4, 0, 4)
         self.cards_grid.setSpacing(12)
@@ -811,9 +814,11 @@ class CandidateRecordPage(QWidget):
         # Scrollable content
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setStyleSheet(f"QScrollArea {{ background-color: {COLOR_BG_BASE}; border: none; }} QScrollArea > QWidget {{ background-color: {COLOR_BG_BASE}; border: none; }}")
 
         self.content_widget = QWidget()
+        self.content_widget.setStyleSheet(f"background-color: {COLOR_BG_BASE};")
         self.content_layout = QVBoxLayout(self.content_widget)
         self.content_layout.setContentsMargins(0, 0, 0, 0)
         self.content_layout.setSpacing(14)
@@ -1114,9 +1119,11 @@ class ReviewQueuePage(QWidget):
         # Scroll area with cards
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setStyleSheet(f"QScrollArea {{ background-color: {COLOR_BG_BASE}; border: none; }} QScrollArea > QWidget {{ background-color: {COLOR_BG_BASE}; border: none; }}")
 
         container = QWidget()
+        container.setStyleSheet(f"background-color: {COLOR_BG_BASE};")
         self.cards_layout = QVBoxLayout(container)
         self.cards_layout.setContentsMargins(0, 0, 0, 0)
         self.cards_layout.setSpacing(10)
@@ -1519,9 +1526,11 @@ class PipelinePage(QWidget):
         # Scroll Area for 10-Stage Waterfall
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setStyleSheet(f"QScrollArea {{ background-color: {COLOR_BG_BASE}; border: none; }} QScrollArea > QWidget {{ background-color: {COLOR_BG_BASE}; border: none; }}")
 
         container = QWidget()
+        container.setStyleSheet(f"background-color: {COLOR_BG_BASE};")
         c_layout = QVBoxLayout(container)
         c_layout.setContentsMargins(0, 0, 0, 0)
         c_layout.setSpacing(6)
@@ -1697,9 +1706,10 @@ class ActivityPage(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        scroll.setStyleSheet(f"QScrollArea {{ background-color: {COLOR_BG_BASE}; border: none; }} QScrollArea > QWidget {{ background-color: {COLOR_BG_BASE}; border: none; }}")
 
         container = QWidget()
+        container.setStyleSheet(f"background-color: {COLOR_BG_BASE};")
         c_layout = QVBoxLayout(container)
         c_layout.setContentsMargins(0, 0, 0, 0)
         c_layout.setSpacing(10)
@@ -1901,9 +1911,11 @@ class SettingsPage(QWidget):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setStyleSheet(f"QScrollArea {{ background-color: {COLOR_BG_BASE}; border: none; }} QScrollArea > QWidget {{ background-color: {COLOR_BG_BASE}; border: none; }}")
 
         container = QWidget()
+        container.setStyleSheet(f"background-color: {COLOR_BG_BASE};")
         grid = QGridLayout(container)
         grid.setContentsMargins(0, 0, 0, 0)
         grid.setSpacing(14)

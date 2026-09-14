@@ -881,7 +881,7 @@ export default function DownloadScout() {
                     }}
                   >
                     <Download size={14} />
-                    <span>Download Scout v2.7.1</span>
+                    <span>Download Scout {displayVersion}</span>
                   </button>
                 </div>
               </div>

@@ -30,7 +30,7 @@ logger = logging.getLogger("talentops.scout_updates")
 router = APIRouter(prefix="/scout", tags=["Scout Auto-Update & Fleet"])
 
 # Production Fallbacks
-DEFAULT_RELEASE_VERSION = "2.7.0"
+DEFAULT_RELEASE_VERSION = "2.7.2"
 DEFAULT_MINIMUM_VERSION = "1.0.0"
 DEFAULT_DOWNLOAD_URL = "https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup_v2.7.0.exe"
 DEFAULT_SHA256 = "4a7e93f6c8d19a2b3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d"
@@ -298,15 +298,15 @@ def get_update_manifest(
                 "config": config,
             }
 
-            # Generate or attach Ed25519 signature
-            sig = selected_release.signature
-            if not sig:
-                try:
-                    sig = sign_manifest(manifest_payload)
+            # Dynamically sign manifest payload with Ed25519 trust chain
+            try:
+                sig = sign_manifest(manifest_payload)
+                if selected_release.signature != sig:
                     selected_release.signature = sig
                     db.commit()
-                except Exception as sign_err:
-                    logger.warning("Could not dynamically sign manifest: %s", sign_err)
+            except Exception as sign_err:
+                sig = selected_release.signature
+                logger.warning("Could not dynamically sign manifest: %s", sign_err)
 
             pkg_sig = selected_release.package_signature
             if not pkg_sig and selected_release.sha256:

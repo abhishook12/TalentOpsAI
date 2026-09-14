@@ -48,7 +48,7 @@ logger = logging.getLogger("scout.main_window")
 try:
     from ..version import __version__ as CURRENT_VERSION
 except Exception:
-    CURRENT_VERSION = "2.7.1"
+    CURRENT_VERSION = "2.7.2"
 
 
 # ─────────────────────────────────────────────────────────────────────────────

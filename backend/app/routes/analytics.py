@@ -47,6 +47,10 @@ class SimpleCache:
             if key in self._cache:
                 del self._cache[key]
 
+    def clear(self):
+        with self._lock:
+            self._cache.clear()
+
 analytics_cache = SimpleCache()
 # Cache to hold expensive analytical queries
 

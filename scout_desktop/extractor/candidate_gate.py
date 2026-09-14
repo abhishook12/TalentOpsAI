@@ -32,9 +32,8 @@ from scout_desktop.extractor.patterns import (
 
 logger = logging.getLogger("scout.candidate_gate")
 
-# Disallowed page types for person candidate creation
 DISALLOWED_PAGE_TYPES = {
-    "HOME", "NAVIGATION", "INBOX", "MESSAGING", "SETTINGS",
+    "HOME", "NAVIGATION", "INBOX", "SETTINGS",
     "JOB_PAGE", "COMPANY_PAGE", "FEED", "LOADING", "UNKNOWN", "UNCLASSIFIED"
 }
 
@@ -107,7 +106,15 @@ def normalize_platform(platform: Optional[str], source_url: Optional[str] = None
             return "Indeed"
         elif "github.com" in url_low:
             return "GitHub"
-        elif "chat.google.com" in url_low or "teams.microsoft.com" in url_low:
+        elif "simplyhired.com" in url_low:
+            return "SimplyHired"
+        elif "jobright.ai" in url_low:
+            return "Jobright"
+        elif "glassdoor.com" in url_low:
+            return "Glassdoor"
+        elif "ziprecruiter.com" in url_low:
+            return "ZipRecruiter"
+        elif "chat.google.com" in url_low or "teams.microsoft.com" in url_low or "slack.com" in url_low:
             return "Recruiter Chat"
         return "DESKTOP_CAPTURE"
 
@@ -121,6 +128,16 @@ def normalize_platform(platform: Optional[str], source_url: Optional[str] = None
         return "Indeed"
     elif "github" in p_low:
         return "GitHub"
+    elif "simplyhired" in p_low:
+        return "SimplyHired"
+    elif "jobright" in p_low:
+        return "Jobright"
+    elif "glassdoor" in p_low:
+        return "Glassdoor"
+    elif "ziprecruiter" in p_low:
+        return "ZipRecruiter"
+    elif "chat" in p_low or "teams" in p_low or "slack" in p_low:
+        return "Recruiter Chat"
     return p_raw
 
 
@@ -171,7 +188,7 @@ def create_candidate_if_valid(
     # was not readable via UIA, but the window title clearly shows a LinkedIn profile.
     # e.g. "Elizabeth Bowers | LinkedIn - Google Chrome" → platform = LinkedIn
     wt_lower = window_title.lower()
-    if not source_url and platform not in ("LinkedIn", "ZoomInfo", "Apollo"):
+    if not source_url and platform not in ("LinkedIn", "ZoomInfo", "Apollo", "Indeed", "SimplyHired", "Jobright", "Glassdoor", "ZipRecruiter", "Recruiter Chat"):
         import re as _re
         _li_title_m = _re.match(
             r"^(?:\(\d+\+?\)\s*)?([^|•·\n]+?)\s*[|•·]\s*LinkedIn",
@@ -185,6 +202,18 @@ def create_candidate_if_valid(
             platform = "ZoomInfo"
         elif "apollo" in wt_lower:
             platform = "Apollo"
+        elif "simplyhired" in wt_lower:
+            platform = "SimplyHired"
+        elif "jobright" in wt_lower:
+            platform = "Jobright"
+        elif "indeed" in wt_lower:
+            platform = "Indeed"
+        elif "glassdoor" in wt_lower:
+            platform = "Glassdoor"
+        elif "ziprecruiter" in wt_lower:
+            platform = "ZipRecruiter"
+        elif any(s in wt_lower for s in ("- chat", "google chat", "teams", "slack")):
+            platform = "Recruiter Chat"
 
     # 2. Context & Page Type Gating (Rule 4)
     if page_type and page_type.upper() in DISALLOWED_PAGE_TYPES:
@@ -316,7 +345,10 @@ def create_candidate_if_valid(
     # 9. Garbage & Confidence Scoring (Rule 12)
     # Platform context bonus: a LinkedIn/ZoomInfo/Apollo window title without a URL is still
     # strong evidence this is a real sourcing platform candidate, not UI noise.
-    is_verified_sourcing_platform = platform in ("LinkedIn", "ZoomInfo", "Apollo", "Indeed", "GitHub")
+    is_verified_sourcing_platform = platform in (
+        "LinkedIn", "ZoomInfo", "Apollo", "Indeed", "GitHub",
+        "SimplyHired", "Jobright", "Glassdoor", "ZipRecruiter"
+    )
     has_platform_context = is_verified_sourcing_platform and not canonical_url
 
     is_recruiter_chat = (

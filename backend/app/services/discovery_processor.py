@@ -243,6 +243,12 @@ class DiscoveryProcessor:
                     logger.info("Triggered real-time sync_manager reload for live search & DB consistency")
                 except Exception as se:
                     logger.debug("SyncManager notification note: %s", se)
+                try:
+                    from ..routes.analytics import analytics_cache
+                    analytics_cache.clear()
+                    logger.info("Cleared analytics cache for immediate UI freshness")
+                except Exception as ce:
+                    logger.debug("AnalyticsCache clear note: %s", ce)
 
             stats['processed'] = len(records)
             logger.info("Discovery batch processed: %s", stats)

@@ -120,18 +120,64 @@ class MainWindow(QMainWindow):
     def _build_shell(self):
         """Build ScoutShell global frame and pages"""
         self.setStyleSheet(f"""
-            QMainWindow {{
+            QMainWindow, QWidget#ScoutCentralRoot, QWidget#ScoutCenterRow, QStackedWidget#ScoutPagesStack {{
                 background-color: {COLOR_BG_BASE};
             }}
             QWidget {{
-                background-color: transparent;
                 color: {COLOR_TEXT_PRIMARY};
                 font-family: 'Segoe UI', -apple-system, sans-serif;
+            }}
+            QScrollArea, QScrollArea > QWidget, QScrollArea > QWidget > QWidget {{
+                background-color: {COLOR_BG_BASE};
+                border: none;
+            }}
+            QScrollBar:vertical {{
+                background: #070D18;
+                width: 8px;
+                border: none;
+                border-radius: 4px;
+                margin: 0;
+            }}
+            QScrollBar::handle:vertical {{
+                background: #1E293B;
+                min-height: 24px;
+                border-radius: 4px;
+            }}
+            QScrollBar::handle:vertical:hover {{
+                background: #334155;
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+                border: none;
+                background: none;
+                height: 0;
+            }}
+            QScrollBar:horizontal {{
+                background: #070D18;
+                height: 8px;
+                border: none;
+                border-radius: 4px;
+                margin: 0;
+            }}
+            QScrollBar::handle:horizontal {{
+                background: #1E293B;
+                min-width: 24px;
+                border-radius: 4px;
+            }}
+            QScrollBar::handle:horizontal:hover {{
+                background: #334155;
+            }}
+            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
+                border: none;
+                background: none;
+                width: 0;
             }}
         """)
 
         # Central Root Widget
         root = QWidget()
+        root.setObjectName("ScoutCentralRoot")
+        root.setStyleSheet(f"background-color: {COLOR_BG_BASE};")
+        root.setAutoFillBackground(True)
         root_layout = QVBoxLayout(root)
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(0)
@@ -146,6 +192,8 @@ class MainWindow(QMainWindow):
 
         # 3. Main Center Area (Left Rail + Content Stack)
         center_row = QWidget()
+        center_row.setObjectName("ScoutCenterRow")
+        center_row.setStyleSheet(f"background-color: {COLOR_BG_BASE};")
         center_layout = QHBoxLayout(center_row)
         center_layout.setContentsMargins(0, 0, 0, 0)
         center_layout.setSpacing(0)
@@ -156,6 +204,9 @@ class MainWindow(QMainWindow):
 
         # Central Pages StackedWidget
         self.pages_stack = QStackedWidget(self)
+        self.pages_stack.setObjectName("ScoutPagesStack")
+        self.pages_stack.setStyleSheet(f"background-color: {COLOR_BG_BASE};")
+        self.pages_stack.setAutoFillBackground(True)
 
         # Instantiate 9 Pages
         self.page_scan = ScanPage(self)

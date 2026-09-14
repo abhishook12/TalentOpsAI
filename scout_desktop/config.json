@@ -1,6 +1,7 @@
 {
   "app_name": "TalentOps Scout Desktop",
-  "version": "2.7.3",
+  "version": "2.8.0",
+  "extractor_version": "4.5.0",
   "environment": "PRODUCTION",
   "api_base": "https://talentopsai-1.onrender.com",
   "local_api_base": "http://localhost:8000",
@@ -25,7 +26,7 @@
   "intelligence_forced_capture_interval": 30,
   "context_memory_expiry_sec": 300,
   "developer_mode": false,
-  "user_email": "",
-  "user_name": "",
-  "installation_id": ""
+  "user_email": "prashant@talentops.ai",
+  "user_name": "Prashant",
+  "installation_id": "#483"
 }

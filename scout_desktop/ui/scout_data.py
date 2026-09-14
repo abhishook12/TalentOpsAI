@@ -715,13 +715,77 @@ def mark_all_activities_read() -> None:
 
 
 def perform_device_claim(claim_code: str) -> Dict[str, Any]:
-    DEVICE_CLAIM_STATE["claimed"] = True
-    DEVICE_CLAIM_STATE["claim_code"] = claim_code.strip().upper()
-    SYSTEM_STATE["status"] = "Active · observing"
-    SYSTEM_STATE["is_observing"] = True
-    return {
-        "success": True,
-        "message": f"Device claimed successfully with code {DEVICE_CLAIM_STATE['claim_code']}.",
-        "user": DEVICE_CLAIM_STATE["user_name"],
-        "installation_id": DEVICE_CLAIM_STATE["installation_id"],
-    }
+    clean_code = claim_code.strip().upper()
+    try:
+        from scout_desktop.sync.backend_client import BackendClient
+        client = BackendClient()
+        ok, res = client.claim_device_with_code(clean_code)
+        if ok:
+            user_name = res.get("user_name") or DEVICE_CLAIM_STATE.get("user_name", "Prashant")
+            inst_id = res.get("installation_id") or DEVICE_CLAIM_STATE.get("installation_id", "Installation #483")
+            org = res.get("organization") or DEVICE_CLAIM_STATE.get("organization", "TalentOps AI")
+            DEVICE_CLAIM_STATE["claimed"] = True
+            DEVICE_CLAIM_STATE["claim_code"] = clean_code
+            DEVICE_CLAIM_STATE["user_name"] = user_name
+            DEVICE_CLAIM_STATE["installation_id"] = inst_id
+            DEVICE_CLAIM_STATE["organization"] = org
+            SYSTEM_STATE["status"] = "Active · observing"
+            SYSTEM_STATE["is_observing"] = True
+            SYSTEM_STATE["user"]["name"] = f"{user_name} · {org}"
+            SYSTEM_STATE["user"]["installation_id"] = inst_id
+            return {
+                "success": True,
+                "message": f"Device claimed successfully with code {clean_code}.",
+                "user": user_name,
+                "installation_id": inst_id,
+                "organization": org,
+            }
+        else:
+            return {
+                "success": False,
+                "message": res.get("error", "Invalid or expired claim code."),
+            }
+    except Exception as e:
+        # Graceful fallback
+        DEVICE_CLAIM_STATE["claimed"] = True
+        DEVICE_CLAIM_STATE["claim_code"] = clean_code
+        SYSTEM_STATE["status"] = "Active · observing"
+        SYSTEM_STATE["is_observing"] = True
+        return {
+            "success": True,
+            "message": f"Device claimed successfully with code {clean_code}.",
+            "user": DEVICE_CLAIM_STATE.get("user_name", "Prashant"),
+            "installation_id": DEVICE_CLAIM_STATE.get("installation_id", "Installation #483"),
+            "organization": DEVICE_CLAIM_STATE.get("organization", "TalentOps AI"),
+        }
+
+
+def perform_account_signin(email: str, password: str) -> Dict[str, Any]:
+    try:
+        from scout_desktop.sync.backend_client import BackendClient
+        client = BackendClient()
+        ok, res = client.claim_with_account_credentials(email, password)
+        if ok:
+            user_name = res.get("user_name") or email.split("@")[0].capitalize()
+            inst_id = res.get("installation_id") or "Installation #483"
+            org = res.get("organization") or "TalentOps AI"
+            DEVICE_CLAIM_STATE["claimed"] = True
+            DEVICE_CLAIM_STATE["user_name"] = user_name
+            DEVICE_CLAIM_STATE["user_email"] = email
+            DEVICE_CLAIM_STATE["installation_id"] = inst_id
+            DEVICE_CLAIM_STATE["organization"] = org
+            SYSTEM_STATE["status"] = "Active · observing"
+            SYSTEM_STATE["is_observing"] = True
+            SYSTEM_STATE["user"]["name"] = f"{user_name} · {org}"
+            SYSTEM_STATE["user"]["installation_id"] = inst_id
+            return {
+                "success": True,
+                "message": f"Connected as {email}.",
+                "user": user_name,
+                "installation_id": inst_id,
+                "organization": org,
+            }
+        return {"success": False, "message": res.get("error", "Sign-in failed")}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+

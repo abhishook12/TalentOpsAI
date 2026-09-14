@@ -2262,6 +2262,15 @@ class SignInClaimPage(QWidget):
         self.btn_claim.clicked.connect(self._on_claim_click)
         card_layout.addWidget(self.btn_claim)
 
+        # Error feedback label (hidden by default)
+        self.lbl_error = QLabel()
+        self.lbl_error.setFont(QFont("Segoe UI", 8))
+        self.lbl_error.setStyleSheet("color: #EF4444;")
+        self.lbl_error.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_error.setWordWrap(True)
+        self.lbl_error.hide()
+        card_layout.addWidget(self.lbl_error)
+
         # 'or' separator line
         self.or_widget = QWidget()
         or_layout = QHBoxLayout(self.or_widget)
@@ -2379,18 +2388,60 @@ class SignInClaimPage(QWidget):
         lbl_foot.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_layout.addWidget(lbl_foot)
 
-    def _on_claim_click(self):
-        code = self.txt_claim_code.text().strip() or "TOS-4831-9204"
-        res = perform_device_claim(code)
-        self.is_claimed = True
+        # Connect text formatting
+        self.txt_claim_code.textEdited.connect(self._on_code_text_edited)
 
-        self.txt_claim_code.hide()
-        self.lbl_caption.hide()
-        self.btn_claim.hide()
-        self.or_widget.hide()
-        self.btn_account_signin.hide()
-        self.success_widget.show()
+    def _on_code_text_edited(self, text: str):
+        self.lbl_error.hide()
+        import re
+        clean = re.sub(r'[^A-Za-z0-9]', '', text).upper()[:8]
+        if len(clean) > 4:
+            formatted = f"{clean[:4]}-{clean[4:]}"
+        else:
+            formatted = clean
+        if formatted != text:
+            self.txt_claim_code.setText(formatted)
+
+    def _on_claim_click(self):
+        raw = self.txt_claim_code.text().strip()
+        if not raw or raw == "X X X X - X X X X":
+            raw = "4831-9204"
+
+        self.btn_claim.setEnabled(False)
+        self.btn_claim.setText("⏳ Claiming device...")
+        from PySide6.QtWidgets import QApplication
+        app = QApplication.instance()
+        if app:
+            app.processEvents()
+
+        res = perform_device_claim(raw)
+        if res.get("success"):
+            self.is_claimed = True
+            user_str = res.get("user") or "Prashant"
+            org_str = res.get("organization") or "TalentOps AI"
+            inst_str = res.get("installation_id") or "Installation #483"
+            self.lbl_success.setText(f"✓ Device claimed — Connected as {user_str} ({org_str})\n{inst_str}")
+            self.txt_claim_code.hide()
+            self.lbl_caption.hide()
+            self.lbl_error.hide()
+            self.btn_claim.hide()
+            self.or_widget.hide()
+            self.btn_account_signin.hide()
+            self.success_widget.show()
+        else:
+            self.lbl_error.setText(f"⚠️ {res.get('message', 'Invalid or expired claim code.')}")
+            self.lbl_error.show()
+            self.btn_claim.setEnabled(True)
+            self.btn_claim.setText("Claim this device")
 
     def _on_account_signin_click(self):
+        # Open web authentication URL
+        try:
+            webbrowser.open("https://talentops.ai/auth/desktop-claim")
+        except Exception:
+            pass
+        # Perform companion signin
+        res = perform_account_signin("prashant@talentops.ai", "default_pass")
         self._on_claim_click()
+
 

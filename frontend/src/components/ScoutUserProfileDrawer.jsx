@@ -445,6 +445,11 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                     else if (src === 'Microsoft Teams' || src === 'TEAMS') { srcColor = '#a1a1aa'; srcBg = 'rgba(161, 161, 170, 0.15)'; }
                     else if (src === 'Google Chat' || src === 'GOOGLE_CHAT') { srcColor = '#10b981'; srcBg = 'rgba(16, 185, 129, 0.15)'; }
                     else if (src === 'Indeed') { srcColor = '#3b82f6'; srcBg = 'rgba(59, 130, 246, 0.15)'; }
+                    else if (src === 'SimplyHired' || src === 'SIMPLYHIRED') { srcColor = '#06b6d4'; srcBg = 'rgba(6, 182, 212, 0.15)'; }
+                    else if (src === 'Jobright AI' || src === 'JOBRIGHT') { srcColor = '#8b5cf6'; srcBg = 'rgba(139, 92, 246, 0.15)'; }
+                    else if (src === 'Glassdoor' || src === 'GLASSDOOR') { srcColor = '#059669'; srcBg = 'rgba(5, 150, 105, 0.15)'; }
+                    else if (src === 'ZipRecruiter' || src === 'ZIPRECRUITER') { srcColor = '#10b981'; srcBg = 'rgba(16, 185, 129, 0.15)'; }
+                    else if (src === 'Recruitment Agency' || src === 'RECRUITMENT_AGENCY') { srcColor = '#f97316'; srcBg = 'rgba(249, 115, 22, 0.15)'; }
                     else if (src === 'GitHub') { srcColor = '#a855f7'; srcBg = 'rgba(168, 85, 247, 0.15)'; }
                     return (
                       <div key={idx} style={{

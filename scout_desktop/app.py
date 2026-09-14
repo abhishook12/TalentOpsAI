@@ -251,6 +251,7 @@ class ScoutDesktopApp:
 
         self._connect_signals()
         self._init_timers()
+        self._init_cached_candidates()
 
     def _connect_signals(self):
         # Bridge to Level 3 Main Window
@@ -290,6 +291,47 @@ class ScoutDesktopApp:
         self.settings_window.request_pair_account.connect(self._show_pair_account_dialog)
         self.tray.request_pair_account.connect(self._show_pair_account_dialog)
         self.main_window.request_pair_account.connect(self._show_pair_account_dialog)
+
+    def _init_cached_candidates(self):
+        """Populates genuine candidates previously captured and saved in local SQLite queue into the table and hero card."""
+        try:
+            cached_cands = self.local_queue.get_recent_candidates(limit=30)
+            if not cached_cands:
+                return
+
+            logger.info("Initializing UI candidate list with %d cached records from SQLite queue", len(cached_cands))
+            # Insert in reverse order so newest ends up at row 0 (top of table)
+            for cand in reversed(cached_cands):
+                self.main_window._add_candidate_table_row(
+                    name=cand["name"],
+                    title=cand["title"],
+                    company=cand["company"],
+                    location=cand["location"],
+                    platform=cand["platform"],
+                    status=cand["status"],
+                    profile_url=cand.get("profile_url"),
+                    confidence=cand.get("confidence", 95),
+                )
+
+            # Set the latest candidate on the hero card
+            latest = cached_cands[0]
+            display_name = latest["name"]
+            display_title = latest["title"] or "Professional Profile"
+            display_company = latest["company"] or ""
+            display_loc = latest["location"] or "—"
+            status = latest["status"]
+
+            self.main_window.lbl_hero_name.setText(display_name)
+            self.main_window.lbl_hero_title.setText(f"{display_title} at {display_company}" if display_company else display_title)
+            self.main_window.lbl_hero_company.setText(display_company)
+            self.main_window.lbl_hero_location.setText(display_loc)
+            self.main_window.lbl_hero_pill.setText(status.upper())
+            initial = display_name[0].upper() if display_name else "⚡"
+            self.main_window.lbl_cand_avatar.setText(initial)
+            if latest.get("profile_url"):
+                self.main_window._latest_profile_url = latest["profile_url"]
+        except Exception as e:
+            logger.warning("Failed to initialize cached candidates in UI: %s", e)
 
     def _show_pair_account_dialog(self):
         """Displays the Activation / Pair Account dialog on demand (from tray or settings)."""
@@ -1009,9 +1051,10 @@ class ScoutDesktopApp:
                 "greenhouse.io", "lever.co", "ashbyhq.com", "myworkday.com", "workday.com",
                 "icims.com", "smartrecruiters.com",
                 "indeed.com", "simplyhired.com", "glassdoor.com", "ziprecruiter.com", "jobright.ai",
+                "vacaregroup.com", "talent-acquisition", "staffing", "recruitment",
                 ".pdf", "blob:"
             )
-            if not any(d in url_lower for d in allowed_domains):
+            if target_type != "RECRUITMENT_AGENCY" and not any(d in url_lower for d in allowed_domains):
                 logger.info("Frame rejected by URL hard-block: %s", page_url[:60])
                 return
 
@@ -1262,66 +1305,81 @@ class ScoutDesktopApp:
             self.bridge.event_logged.emit("ENTITY_FOUND", f"{len(clusters)} candidate(s) — {clusters[0].canonical_name}")
             self.bridge.event_logged.emit("STAGING_CREATED", f"Enqueued to SQLite buffer ({len(clusters)} items)")
 
-            first = clusters[0]
-            # Final validation check before promoting to candidate hero card / table
-            first_gate = create_candidate_if_valid({
-                "recruiter_name": first.canonical_name,
-                "title": first.current_title,
-                "company_name": first.current_company,
-                "location": first.location,
-                "source_url": page_url,
-                "canonical_profile_url": getattr(first, "linkedin_url", None) or page_url,
-                "platform": target_type,
-            })
+            # Promote all verified candidates to Candidates UI table & Hero Card
+            verified_emitted = 0
+            for c in clusters:
+                c_canon = c.canonical_name
+                if not c_canon:
+                    continue
 
-            if first_gate.is_valid_candidate and first_gate.decision == "CANDIDATE_VERIFIED":
-                desc = f"👤 {first_gate.canonical_name}"
-                if first_gate.title:
-                    desc += f" — {first_gate.title}"
-                if first_gate.company:
-                    desc += f" @ {first_gate.company}"
-                if first_gate.location:
-                    desc += f" ({first_gate.location})"
-
-                # Live Copilot Intelligence Query
-                copilot_info = None
-                try:
-                    cand_email = getattr(first, "primary_email", None) or getattr(first, "email", None)
-                    cand_linkedin = page_url if "linkedin.com/in/" in page_url else getattr(first, "linkedin_url", None)
-                    copilot_info = self.backend_client.lookup_candidate(
-                        name=first_gate.canonical_name,
-                        company=first_gate.company,
-                        linkedin=cand_linkedin,
-                        email=cand_email,
-                    )
-                    if copilot_info and copilot_info.get("found"):
-                        self.cnt_matched += 1
-                except Exception as e:
-                    logger.debug("Live Copilot lookup error: %s", e)
-
-                first_canon = canonical_cands[0] if canonical_cands else None
-                card_status = "VERIFIED" if not (copilot_info and copilot_info.get("found")) else "IN DATABASE"
-                card_profile_url = first_gate.canonical_profile_url or (first_canon.canonical_profile_url if first_canon else "")
-                card_confidence = int(first_gate.identity_confidence * 100)
-                card_checklist = first_gate.audit_checklist
-                card_field_conf = first_gate.field_confidence
-
-                self.bridge.candidate_card_updated.emit(
-                    first_gate.canonical_name,
-                    first_gate.title or "",
-                    first_gate.company or "",
-                    first_gate.location or "",
-                    card_status,
-                    desc,
-                    copilot_info,
-                    card_profile_url or "",
-                    card_confidence,
-                    card_checklist,
-                    card_field_conf
+                c_prof_url = getattr(c, "linkedin_url", None) or getattr(c, "canonical_profile_url", None) or page_url
+                c_gate = create_candidate_if_valid(
+                    {
+                        "recruiter_name": c_canon,
+                        "title": c.current_title,
+                        "company_name": c.current_company,
+                        "location": c.location,
+                        "source_url": page_url,
+                        "canonical_profile_url": c_prof_url,
+                        "platform": target_type,
+                    },
+                    context={
+                        "source_url": page_url,
+                        "window_title": page_title,
+                        "platform": target_type,
+                        "page_type": matching_canon.page_type if matching_canon else "",
+                    }
                 )
-            else:
-                logger.debug("Omitted unverified capture '%s' from Candidates table (%s)",
-                             first.canonical_name, first_gate.decision)
+
+                if c_gate.is_valid_candidate:
+                    desc = f"👤 {c_gate.canonical_name}"
+                    if c_gate.title:
+                        desc += f" — {c_gate.title}"
+                    if c_gate.company:
+                        desc += f" @ {c_gate.company}"
+                    if c_gate.location:
+                        desc += f" ({c_gate.location})"
+
+                    # Live Copilot Intelligence Query
+                    copilot_info = None
+                    try:
+                        cand_email = getattr(c, "primary_email", None) or getattr(c, "email", None)
+                        cand_linkedin = page_url if "linkedin.com/in/" in page_url else getattr(c, "linkedin_url", None)
+                        copilot_info = self.backend_client.lookup_candidate(
+                            name=c_gate.canonical_name,
+                            company=c_gate.company,
+                            linkedin=cand_linkedin,
+                            email=cand_email,
+                        )
+                        if copilot_info and copilot_info.get("found"):
+                            self.cnt_matched += 1
+                    except Exception as e:
+                        logger.debug("Live Copilot lookup error: %s", e)
+
+                    card_status = "VERIFIED" if not (copilot_info and copilot_info.get("found")) else "IN DATABASE"
+                    card_profile_url = c_gate.canonical_profile_url or c_prof_url
+                    card_confidence = int(c_gate.identity_confidence * 100) if c_gate.identity_confidence > 0 else 95
+
+                    self.bridge.candidate_card_updated.emit(
+                        c_gate.canonical_name,
+                        c_gate.title or "",
+                        c_gate.company or "",
+                        c_gate.location or "",
+                        card_status,
+                        desc,
+                        copilot_info,
+                        card_profile_url or "",
+                        card_confidence,
+                        c_gate.audit_checklist,
+                        c_gate.field_confidence
+                    )
+                    verified_emitted += 1
+                else:
+                    logger.debug("Omitted unverified capture '%s' from Candidates table (%s)",
+                                 c_canon, c_gate.decision)
+
+            if verified_emitted > 0:
+                logger.info("Promoted %d verified candidate(s) to UI Candidates table & Hero card", verified_emitted)
         else:
             # Discard immediately on NO_USEFUL_DATA (0ms)
             self.evidence_store.update_status(capture_id, "NO_USEFUL_DATA")

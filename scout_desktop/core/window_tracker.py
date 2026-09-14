@@ -209,6 +209,12 @@ def is_allowed_scout_target(win_info: Optional['WindowInfo'], b_ctx: Optional[Di
         if "jobright.ai" in url or "jobright" in title_lower:
             return True, "JOBRIGHT"
 
+        # Target 9: Staffing, Recruiting & Talent Acquisition Portals & Firm Websites
+        if any(kw in url for kw in ("vacaregroup.com", "talent-acquisition", "staffing", "recruitment", "executive-search")):
+            return True, "RECRUITMENT_AGENCY"
+        if any(kw in title_lower for kw in ("talent acquisition", "recruitment", "executive search", "search firm", "staffing agency", "vacaré", "vacare")):
+            return True, "RECRUITMENT_AGENCY"
+
         return False, "UNSUPPORTED_BROWSER_PAGE"
 
     # All other applications are strictly ignored

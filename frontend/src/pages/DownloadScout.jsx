@@ -813,7 +813,7 @@ export default function DownloadScout() {
                         <div>
                           <div style={{ fontSize: 10, color: '#71717a', textTransform: 'uppercase' }}>Version</div>
                           <div style={{ fontSize: 12, fontWeight: 700, color: '#e4e4e7', fontFamily: 'monospace' }}>
-                            v{dev.version || '2.7.0'}
+                            v{dev.version || '2.7.3'}
                           </div>
                         </div>
                         <div>

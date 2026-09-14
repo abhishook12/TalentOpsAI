@@ -1274,7 +1274,7 @@ class MainWindow(QMainWindow):
         cand_row.setSpacing(12)
 
         # Purple avatar circle
-        self.lbl_cand_avatar = QLabel("S")
+        self.lbl_cand_avatar = QLabel("⚡")
         self.lbl_cand_avatar.setFixedSize(42, 42)
         self.lbl_cand_avatar.setAlignment(Qt.AlignCenter)
         self.lbl_cand_avatar.setStyleSheet("""
@@ -1292,15 +1292,15 @@ class MainWindow(QMainWindow):
 
         cand_name_row = QHBoxLayout()
         cand_name_row.setSpacing(6)
-        self.lbl_hero_name = QLabel("Sarah Chen")
+        self.lbl_hero_name = QLabel("Ready to Scan")
         self.lbl_hero_name.setStyleSheet("color: #FFFFFF; font-size: 15px; font-weight: 800;")
         cand_name_row.addWidget(self.lbl_hero_name)
 
-        self.lbl_hero_pill = QLabel("SYNCED")
+        self.lbl_hero_pill = QLabel("READY")
         self.lbl_hero_pill.setStyleSheet("""
-            background: #0F2520;
-            color: #34D399;
-            border: 1px solid #059669;
+            background: #0E1A2E;
+            color: #38BDF8;
+            border: 1px solid #0284C7;
             border-radius: 8px;
             padding: 1px 6px;
             font-size: 8px;
@@ -1310,7 +1310,7 @@ class MainWindow(QMainWindow):
         cand_name_row.addStretch()
         cand_text.addLayout(cand_name_row)
 
-        self.lbl_hero_title = QLabel("Software Engineer at Google")
+        self.lbl_hero_title = QLabel("Browse LinkedIn, Job Portals, or Agency Sites")
         self.lbl_hero_title.setStyleSheet("color: #94A3B8; font-size: 11px; font-weight: 500;")
         cand_text.addWidget(self.lbl_hero_title)
 
@@ -1320,7 +1320,7 @@ class MainWindow(QMainWindow):
         lbl_pin.setStyleSheet("font-size: 10px;")
         loc_row.addWidget(lbl_pin)
 
-        self.lbl_hero_location = QLabel("San Francisco, CA")
+        self.lbl_hero_location = QLabel("Autonomous screen extraction active")
         self.lbl_hero_location.setStyleSheet("color: #64748B; font-size: 11px; font-weight: 500;")
         loc_row.addWidget(self.lbl_hero_location)
         loc_row.addStretch()
@@ -1330,7 +1330,7 @@ class MainWindow(QMainWindow):
         layout.addLayout(cand_row)
 
         # Company alias for compatibility
-        self.lbl_hero_company = QLabel("Google")
+        self.lbl_hero_company = QLabel("")
         self.lbl_hero_company.setVisible(False)
 
         # Copilot Intelligence Banner (Hidden by default, shown when candidate matched)
@@ -1563,19 +1563,8 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(splitter, 1)
 
-        # Internal candidate records storage
+        # Internal candidate records storage (populated dynamically from real captures)
         self._candidate_records = []
-
-        # Populate sample seed row
-        self._add_candidate_table_row(
-            name="Sarah Chen",
-            title="Software Engineer",
-            company="Google",
-            location="San Francisco, CA",
-            platform="https://www.linkedin.com/in/sarah-chen",
-            status="VERIFIED",
-            confidence=98,
-        )
 
         return container
 
@@ -1839,7 +1828,8 @@ class MainWindow(QMainWindow):
             "profile_url": p_url,
             "platform": platform,
         })
-        if not gate_res.is_valid_candidate:
+        is_pre_verified = status.upper() in ("VERIFIED", "SYNCED", "IN DATABASE", "STAGED", "COMMITTED")
+        if not gate_res.is_valid_candidate and not is_pre_verified:
             return
 
         clean_plat = normalize_platform(platform, p_url)
@@ -1849,7 +1839,25 @@ class MainWindow(QMainWindow):
         c_loc = gate_res.location or location
         c_conf = int(gate_res.identity_confidence * 100) if gate_res.identity_confidence > 0 else confidence
 
-        row = self.tbl_candidates.rowCount()
+        # Deduplication check: if candidate is already in table, update in-place
+        for idx, rec in enumerate(self._candidate_records):
+            if rec.get("name", "").strip().lower() == c_name.strip().lower():
+                rec["status"] = status
+                rec["confidence"] = max(rec.get("confidence", 0), c_conf)
+                if c_title and c_title != "—":
+                    rec["title"] = c_title
+                    self.tbl_candidates.setItem(idx, 1, QTableWidgetItem(c_title))
+                if c_comp and c_comp != "—":
+                    rec["company"] = c_comp
+                    self.tbl_candidates.setItem(idx, 2, QTableWidgetItem(c_comp))
+                # Update status badge item
+                badge = QLabel(status.upper())
+                badge.setAlignment(Qt.AlignCenter)
+                badge.setStyleSheet("background: #0F2520; color: #34D399; border: 1px solid #059669; border-radius: 4px; font-size: 9px; font-weight: 800;")
+                self.tbl_candidates.setCellWidget(idx, 6, badge)
+                return
+
+        row = 0
         self.tbl_candidates.insertRow(row)
 
         record = {
@@ -1864,7 +1872,7 @@ class MainWindow(QMainWindow):
             "checklist": checklist or gate_res.audit_checklist,
             "field_confidence": field_confidence or gate_res.field_confidence,
         }
-        self._candidate_records.append(record)
+        self._candidate_records.insert(0, record)
 
         # Col 0: Candidate
         item_name = QTableWidgetItem(c_name)

@@ -317,3 +317,51 @@ class LocalQueue:
                 "dlq": counts.get("DLQ", 0),
                 "total": sum(counts.values()),
             }
+
+    def get_recent_candidates(self, limit: int = 30) -> List[Dict[str, Any]]:
+        """
+        Returns the most recent valid candidate records (synced or pending) for UI initialization.
+        Eliminates duplicate candidate names and orders from newest to oldest.
+        """
+        candidates: List[Dict[str, Any]] = []
+        seen_names = set()
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                "SELECT id, cluster_json, status, created_at FROM queued_observations WHERE status IN ('SYNCED', 'PENDING') ORDER BY id DESC LIMIT ?",
+                (limit * 3,)
+            )
+            for row in cur.fetchall():
+                try:
+                    data = json.loads(row[1])
+                    contacts = data.get("contacts", [data] if "recruiter_name" in data else [])
+                    for c in contacts:
+                        raw_name = c.get("recruiter_name") or c.get("canonical_name") or c.get("raw_name")
+                        if not raw_name or not isinstance(raw_name, str):
+                            continue
+                        name = raw_name.replace("\ufffd", " ").strip()
+                        name = " ".join(name.split())
+                        if len(name) < 3 or name.lower() in seen_names:
+                            continue
+
+                        seen_names.add(name.lower())
+                        raw_comp = c.get("company_name") or c.get("current_company", "") or ""
+                        raw_title = c.get("title") or c.get("current_title", "") or ""
+                        raw_loc = c.get("location") or ""
+                        candidates.append({
+                            "name": name,
+                            "title": raw_title.replace("\ufffd", " ").strip(),
+                            "company": raw_comp.replace("\ufffd", " ").strip(),
+                            "location": raw_loc.replace("\ufffd", " ").strip(),
+                            "platform": c.get("platform") or c.get("canonical_profile_url") or "",
+                            "status": row[2] or "VERIFIED",
+                            "confidence": c.get("confidence", 95),
+                            "profile_url": c.get("canonical_profile_url") or c.get("linkedin_url") or "",
+                            "created_at": row[3],
+                        })
+                        if len(candidates) >= limit:
+                            break
+                    if len(candidates) >= limit:
+                        break
+                except Exception as e:
+                    logger.debug("Failed parsing row %s: %s", row[0], e)
+        return candidates

@@ -997,11 +997,13 @@ class ScoutDesktopApp:
                         win.process_name, win.title[:40], is_allowed, target_type)
             self.bridge.window_updated.emit(win, b_ctx, is_allowed, target_type)
 
+            was_allowed = getattr(self, "_last_window_was_allowed", False)
+            self._last_window_was_allowed = is_allowed
             if is_allowed:
                 self.bridge.event_logged.emit("TARGET_ACTIVE", f"[{target_type}] {win.title[:35]}")
                 self.sampler.trigger_immediate_capture(win, reason="window_changed")
-            else:
-                self.bridge.event_logged.emit("TARGET_RESTING", f"Outside allowed target ({target_type})")
+            elif was_allowed:
+                self.bridge.event_logged.emit("TARGET_RESTING", f"Resting — outside allowed target ({target_type})")
         except Exception as e:
             logger.debug("Active window poll error: %s", e)
 
@@ -1431,10 +1433,7 @@ class ScoutDesktopApp:
             if not pending:
                 stats = self.local_queue.get_queue_stats()
                 synced_cnt = stats.get("synced", 0)
-                self.bridge.event_logged.emit(
-                    "DB_SYNC_UP_TO_DATE",
-                    f"Local SQLite queue is 100% synchronized with Cloud (0 pending, {synced_cnt} synced)"
-                )
+                logger.debug("Local SQLite queue is 100%% synchronized with Cloud (0 pending, %d synced)", synced_cnt)
                 return
 
             queue_ids = [item.pop("_local_queue_id") for item in pending]

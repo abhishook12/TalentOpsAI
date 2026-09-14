@@ -1696,6 +1696,7 @@ class ActivityPage(QWidget):
         # Scroll Area for Activity Card
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
 
         container = QWidget()
@@ -1730,8 +1731,10 @@ class ActivityPage(QWidget):
     def _render_feed(self):
         while self.feed_layout.count():
             item = self.feed_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+            w = item.widget()
+            if w:
+                w.hide()
+                w.deleteLater()
 
         items_to_show = []
         for act in ACTIVITY_FEED:
@@ -1745,15 +1748,17 @@ class ActivityPage(QWidget):
                 continue
             items_to_show.append(act)
 
-        for i, act in enumerate(items_to_show):
+        # Cap visible rows to top 25 items to ensure instantaneous rendering
+        capped_items = items_to_show[:25]
+        for i, act in enumerate(capped_items):
             row_widget = self._create_activity_row(act)
             self.feed_layout.addWidget(row_widget)
 
             # Subtle separator between rows
-            if i < len(items_to_show) - 1:
+            if i < len(capped_items) - 1:
                 sep = QFrame()
                 sep.setFrameShape(QFrame.Shape.HLine)
-                sep.setStyleSheet(f"color: #121E32; margin: 4px 0;")
+                sep.setStyleSheet("color: #121E32; margin: 4px 0;")
                 self.feed_layout.addWidget(sep)
 
         # Update button text with current unread count

@@ -90,12 +90,23 @@ class MainWindow(QMainWindow):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setWindowTitle("TalentOps Scout v2.8.0")
-        self.resize(1120, 750)
-        self.setMinimumSize(980, 640)
+        
+        # Responsive geometry: Constrain within available work area above Windows taskbar
+        screen = QApplication.primaryScreen()
+        if screen:
+            avail = screen.availableGeometry()
+            w = min(1120, avail.width() - 24)
+            h = min(720, avail.height() - 48)
+            self.resize(w, h)
+            self.move(avail.x() + (avail.width() - w) // 2, avail.y() + (avail.height() - h) // 2)
+        else:
+            self.resize(1120, 700)
+        self.setMinimumSize(880, 520)
 
         # Backward compatibility attributes for app.py
         self._is_paused = False
         self._latest_profile_url = "https://www.linkedin.com/in/sarahchen-cloud"
+        self._activity_feed_dirty = False
         self.ind_backend = _IndicatorStub("backend")
         self.ind_window = _IndicatorStub("window")
         self.lbl_target_desc = QLabel("")
@@ -226,7 +237,7 @@ class MainWindow(QMainWindow):
         if index < 0 or index > 8:
             return
         self.pages_stack.setCurrentIndex(index)
-        if index <= 6:
+        if index <= 7:
             # Map index to rail
             rail_map = {0: 0, 1: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6}
             if index in rail_map:
@@ -245,6 +256,9 @@ class MainWindow(QMainWindow):
         }
         target_page = page_map.get(rail_index, 0)
         self.pages_stack.setCurrentIndex(target_page)
+        if target_page == 6 and getattr(self, "_activity_feed_dirty", False):
+            self.page_activity._render_feed()
+            self._activity_feed_dirty = False
 
     def open_candidate_record(self, candidate_id: str):
         """Open detailed candidate inspector at /candidates/:id"""
@@ -277,16 +291,26 @@ class MainWindow(QMainWindow):
 
     def update_status_state(self, state_text: str):
         """Called by app.py to update edge intelligence status state"""
-        is_active = "ACTIVE" in state_text or "CONNECTED" in state_text or "OBSERVING" in state_text
-        self.top_bar.set_status(state_text, is_active=is_active)
+        st_upper = (state_text or "").upper()
+        is_active = any(k in st_upper for k in ("ACTIVE", "SAMPLING", "CONNECTED", "OBSERVING"))
+        if is_active and "PAUSE" not in st_upper:
+            display_text = "Active · observing"
+        elif "PAUSE" in st_upper:
+            display_text = "Paused"
+        elif "PENDING" in st_upper:
+            display_text = "Setup required"
+        else:
+            display_text = "Idle · ready"
+        self.top_bar.set_status(display_text, is_active=is_active)
 
     def update_account_display(self, user_display: str, user_name: str):
         """Called by app.py to update signed-in user label"""
-        if user_display:
-            self.top_bar.lbl_user.setText(user_display)
-            SYSTEM_STATE["user"]["display"] = user_display
-        if user_name:
-            SYSTEM_STATE["user"]["name"] = user_name
+        name = user_name or (user_display if user_display and not user_display.startswith("User #") else "Prashant")
+        disp = f"{name} · TalentOps AI" if "·" not in name else name
+        self.top_bar.lbl_user.setText(disp)
+        SYSTEM_STATE["user"]["display"] = disp
+        SYSTEM_STATE["user"]["name"] = name
+        self.top_bar.lbl_inst.setText("Installation #483")
 
     def update_environment(self, env: str, api_base: str):
         """Called by app.py to update environment configuration"""
@@ -317,38 +341,92 @@ class MainWindow(QMainWindow):
         )
 
     def log_event(self, *args, **kwargs):
-        """Called by app.py event bridge (accepts event_data dict or (event_name, details) strings)"""
+        """
+        Called by app.py event bridge.
+        High-performance filtered event ingestion: Prevents heartbeat spam from flooding
+        the UI thread, caps the activity feed to 30 items, and debounces rendering.
+        """
         if len(args) >= 2:
-            title = f"{args[0]}: {args[1]}"
-            cat = kwargs.get("category", "Decisions")
+            event_name = str(args[0])
             detail = str(args[1])
+            title = f"{event_name}: {detail}"
+            cat = kwargs.get("category", "Decisions")
         elif len(args) == 1:
             item = args[0]
             if isinstance(item, dict):
                 title = item.get("description", str(item))
                 cat = item.get("category", "Decisions")
                 detail = item.get("detail", title)
+                event_name = item.get("event", "EVENT")
             else:
                 title = str(item)
                 cat = kwargs.get("category", "Decisions")
                 detail = title
+                event_name = "EVENT"
         else:
             title = kwargs.get("description", "System Event")
             cat = kwargs.get("category", "Decisions")
             detail = title
+            event_name = "EVENT"
+
+        # Suppress spam telemetry from user-facing Activity Feed
+        SPAM_NAMES = ("DB_SYNC_UP_TO_DATE", "WINDOW_DETECTED", "SCOUT_RESTING", "DB_SYNC_STARTED")
+        if any(k in event_name for k in SPAM_NAMES) or any(k in title for k in SPAM_NAMES):
+            return
+
+        # Suppress consecutive duplicate logs (e.g. repeated TARGET_RESTING)
+        if getattr(self, "_last_logged_title", None) == title:
+            return
+        self._last_logged_title = title
+
+        # Choose appropriate icon & category
+        icon = "•"
+        sev = "info"
+        if any(k in event_name for k in ("ERROR", "REJECT", "FAILED")):
+            cat = "Errors"
+            sev = "error"
+            icon = "🛡️"
+        elif any(k in event_name for k in ("WARN", "UNSTABLE", "DUPLICATE")):
+            cat = "Warnings"
+            sev = "warn"
+            icon = "⚠️"
+        elif any(k in event_name for k in ("SUCCESS", "COMMITTED", "PROMOTED", "ACCEPTED", "FOUND")):
+            cat = "Decisions"
+            sev = "success"
+            icon = "✅"
+        elif "RESTING" in event_name:
+            cat = "Decisions"
+            sev = "info"
+            icon = "💤"
 
         ACTIVITY_FEED.insert(0, {
-            "id": f"act-{int(time.time())}",
+            "id": f"act-{int(time.time()*1000)%1000000}",
             "time": time.strftime("%H:%M:%S"),
             "title": title,
             "category": cat,
-            "severity": "info",
+            "severity": sev,
+            "icon": icon,
             "unread": True,
             "detail": detail
         })
-        SYSTEM_STATE["badges"]["activity"] += 1
+
+        # Cap ACTIVITY_FEED to max 30 items
+        while len(ACTIVITY_FEED) > 30:
+            ACTIVITY_FEED.pop()
+
+        SYSTEM_STATE["badges"]["activity"] = min(30, SYSTEM_STATE["badges"]["activity"] + 1)
         self.left_rail.update_badge("activity", SYSTEM_STATE["badges"]["activity"])
-        self.page_activity._render_feed()
+
+        # Throttled debounce render: ONLY re-render if user is currently looking at Activity page
+        if self.pages_stack.currentIndex() == 6:
+            if not hasattr(self, "_activity_render_timer"):
+                self._activity_render_timer = QTimer(self)
+                self._activity_render_timer.setSingleShot(True)
+                self._activity_render_timer.timeout.connect(self.page_activity._render_feed)
+            if not self._activity_render_timer.isActive():
+                self._activity_render_timer.start(250)
+        else:
+            self._activity_feed_dirty = True
 
     def update_latest_capture(self, *args, **kwargs):
         pass
@@ -359,14 +437,36 @@ class MainWindow(QMainWindow):
     def update_database_proof(self, *args, **kwargs):
         pass
 
-    def update_candidate_card(self, display_name: str, display_title: str, display_company: str, display_loc: str, status: str, initial: str, profile_url: str = "", *args, **kwargs):
+    def update_candidate_card(
+        self,
+        name: str = "",
+        title: str = "",
+        company: str = "",
+        location: str = "",
+        status: str = "CANONICAL",
+        initial: str = "",
+        profile_url: str = "",
+        display_name: str = "",
+        display_title: str = "",
+        display_company: str = "",
+        display_loc: str = "",
+        *args,
+        **kwargs
+    ):
         """Called by app.py when candidate is extracted or verified"""
-        self.page_scan.lbl_cand_name.setText(display_name)
-        self.page_scan.lbl_cand_subtitle.setText(f"{display_title} · {display_company}")
-        self.page_scan.lbl_cand_loc.setText(f"📍 {display_loc}")
-        self.page_scan.chip_latest.set_state(status.upper())
-        if profile_url:
-            self._latest_profile_url = profile_url
+        cand_name = display_name or name or kwargs.get("recruiter_name", "Sarah Chen")
+        cand_title = display_title or title or kwargs.get("raw_title", "Engineering Lead")
+        cand_company = display_company or company or kwargs.get("raw_company", "Cloud Systems")
+        cand_loc = display_loc or location or kwargs.get("raw_location", "San Francisco, CA")
+        cand_status = (status or "CANONICAL").upper()
+        p_url = profile_url or kwargs.get("linkedin_url", "")
+
+        self.page_scan.lbl_cand_name.setText(cand_name)
+        self.page_scan.lbl_cand_subtitle.setText(f"{cand_title} · {cand_company}")
+        self.page_scan.lbl_cand_loc.setText(f"📍 {cand_loc}")
+        self.page_scan.chip_latest.set_state(cand_status)
+        if p_url:
+            self._latest_profile_url = p_url
 
     def _add_candidate_table_row(self, *args, **kwargs):
         """Called by app.py to add extracted person to candidates list (supports dict or keyword args)"""

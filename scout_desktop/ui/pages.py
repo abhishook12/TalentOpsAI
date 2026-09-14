@@ -36,10 +36,10 @@ from .scout_data import (
 )
 from .components import (
     Card, PageHead, StateChip, ConfidenceMeter, ToggleSwitch,
-    COLOR_BG_BASE, COLOR_SURFACE_CARD, COLOR_SURFACE_HOVER,
+    COLOR_BG_BASE, COLOR_RAIL, COLOR_SURFACE, COLOR_SURFACE_CARD, COLOR_SURFACE_HOVER,
     COLOR_SURFACE_BORDER, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
     COLOR_TEXT_MUTED, COLOR_CANONICAL, COLOR_HYPOTHESIS,
-    COLOR_REVIEW, COLOR_REJECTED, COLOR_CYAN_ACCENT
+    COLOR_REVIEW, COLOR_REJECTED, COLOR_CYAN_ACCENT, COLOR_PRIMARY
 )
 from scout_desktop.extractor.candidate_gate import clean_candidate_url
 
@@ -69,25 +69,74 @@ class ScanPage(QWidget):
         self._build_ui()
 
     def _build_ui(self):
-        main_layout = QVBoxLayout(self)
+        root_layout = QVBoxLayout(self)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setStyleSheet(f"QScrollArea {{ background-color: {COLOR_BG_BASE}; border: none; }} QScrollArea > QWidget {{ background-color: {COLOR_BG_BASE}; border: none; }}")
+
+        container = QWidget()
+        container.setStyleSheet(f"background-color: {COLOR_BG_BASE};")
+        main_layout = QVBoxLayout(container)
         main_layout.setContentsMargins(20, 16, 20, 16)
         main_layout.setSpacing(16)
 
-        # ── Top Action Buttons Row ──────────────────────────────────────────
+        # ── Page Header matching routes/index.tsx ───────────────────────────
+        act_box = QFrame()
+        act_box.setStyleSheet(f"""
+            QFrame {{
+                background-color: {COLOR_SURFACE};
+                border: 1px solid {COLOR_SURFACE_BORDER};
+                border-radius: 8px;
+            }}
+        """)
+        act_layout = QHBoxLayout(act_box)
+        act_layout.setContentsMargins(12, 6, 14, 6)
+        act_layout.setSpacing(8)
+
+        lbl_act_icon = QLabel("📈")
+        lbl_act_icon.setFont(QFont("Segoe UI", 10))
+        lbl_act_icon.setStyleSheet(f"color: {COLOR_CANONICAL}; border: none; background: transparent;")
+        act_layout.addWidget(lbl_act_icon)
+
+        act_text = QVBoxLayout()
+        act_text.setSpacing(1)
+        lbl_stable = QLabel("Screen stable")
+        lbl_stable.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
+        lbl_stable.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; border: none; background: transparent;")
+        act_text.addWidget(lbl_stable)
+        lbl_uptime = QLabel("uptime 01:39:38")
+        lbl_uptime.setFont(QFont("Consolas", 7))
+        lbl_uptime.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; border: none; background: transparent;")
+        act_text.addWidget(lbl_uptime)
+        act_layout.addLayout(act_text)
+
+        self.page_head = PageHead(
+            "Scout is working for you",
+            "Watching authorized sources only. An observation becomes a candidate only when the gate passes.",
+            action_widget=act_box
+        )
+        main_layout.addWidget(self.page_head)
+
+        # ── Top Action Buttons Row (Equal 3-column stretch) ─────────────────
         action_row = QHBoxLayout()
-        action_row.setSpacing(10)
+        action_row.setSpacing(12)
 
         # 1. Scan now (Primary Cyan highlight button)
         self.btn_scan = QPushButton("⚡ Scan now")
         self.btn_scan.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
-        self.btn_scan.setFixedSize(140, 36)
+        self.btn_scan.setFixedHeight(42)
+        self.btn_scan.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.btn_scan.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_scan.setStyleSheet(f"""
             QPushButton {{
                 background-color: {COLOR_CYAN_ACCENT};
-                color: #030712;
+                color: #0B0F19;
                 border: none;
-                border-radius: 6px;
+                border-radius: 8px;
             }}
             QPushButton:hover {{
                 background-color: #7DD3FC;
@@ -97,49 +146,48 @@ class ScanPage(QWidget):
             }}
         """)
         self.btn_scan.clicked.connect(self._on_scan_click)
-        action_row.addWidget(self.btn_scan)
+        action_row.addWidget(self.btn_scan, stretch=1)
 
         # 2. Pause / Resume button
         self.btn_pause = QPushButton("⏸ Pause")
         self.btn_pause.setFont(QFont("Segoe UI", 9, QFont.Weight.Medium))
-        self.btn_pause.setFixedSize(110, 36)
+        self.btn_pause.setFixedHeight(42)
+        self.btn_pause.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.btn_pause.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_pause.setStyleSheet(f"""
             QPushButton {{
-                background-color: {COLOR_SURFACE_CARD};
+                background-color: {COLOR_SURFACE};
                 color: {COLOR_TEXT_PRIMARY};
                 border: 1px solid {COLOR_SURFACE_BORDER};
-                border-radius: 6px;
+                border-radius: 8px;
             }}
             QPushButton:hover {{
                 background-color: {COLOR_SURFACE_HOVER};
-                border: 1px solid #1E2E48;
             }}
         """)
         self.btn_pause.clicked.connect(self._on_pause_click)
-        action_row.addWidget(self.btn_pause)
+        action_row.addWidget(self.btn_pause, stretch=1)
 
         # 3. Sync to cloud button
         self.btn_sync = QPushButton("☁ Sync to cloud")
-        self.btn_sync.setFont(QFont("Segoe UI", 9, QFont.Weight.Medium))
-        self.btn_sync.setFixedSize(140, 36)
+        self.btn_sync.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
+        self.btn_sync.setFixedHeight(42)
+        self.btn_sync.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.btn_sync.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_sync.setStyleSheet(f"""
             QPushButton {{
-                background-color: {COLOR_SURFACE_CARD};
-                color: {COLOR_TEXT_PRIMARY};
-                border: 1px solid {COLOR_SURFACE_BORDER};
-                border-radius: 6px;
+                background-color: rgba(16, 185, 129, 0.10);
+                color: {COLOR_CANONICAL};
+                border: 1px solid rgba(16, 185, 129, 0.35);
+                border-radius: 8px;
             }}
             QPushButton:hover {{
-                background-color: {COLOR_SURFACE_HOVER};
-                border: 1px solid #1E2E48;
+                background-color: rgba(16, 185, 129, 0.15);
             }}
         """)
         self.btn_sync.clicked.connect(self._on_sync_click)
-        action_row.addWidget(self.btn_sync)
+        action_row.addWidget(self.btn_sync, stretch=1)
 
-        action_row.addStretch()
         main_layout.addLayout(action_row)
 
         # ── Two Columns Main Content ────────────────────────────────────────
@@ -343,17 +391,17 @@ class ScanPage(QWidget):
 
         self.lbl_cand_name = QLabel("Sarah Chen")
         self.lbl_cand_name.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
-        self.lbl_cand_name.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
+        self.lbl_cand_name.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; background: transparent; border: none;")
         name_box.addWidget(self.lbl_cand_name)
 
         self.lbl_cand_subtitle = QLabel("Software Engineer · Google")
         self.lbl_cand_subtitle.setFont(QFont("Segoe UI", 8))
-        self.lbl_cand_subtitle.setStyleSheet(f"color: {COLOR_TEXT_SECONDARY};")
+        self.lbl_cand_subtitle.setStyleSheet(f"color: {COLOR_TEXT_SECONDARY}; background: transparent; border: none;")
         name_box.addWidget(self.lbl_cand_subtitle)
 
         self.lbl_cand_loc = QLabel("📍 San Francisco, CA")
         self.lbl_cand_loc.setFont(QFont("Segoe UI", 7))
-        self.lbl_cand_loc.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
+        self.lbl_cand_loc.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; background: transparent; border: none;")
         name_box.addWidget(self.lbl_cand_loc)
 
         entity_header.addLayout(name_box)
@@ -427,21 +475,24 @@ class ScanPage(QWidget):
         cols_layout.addLayout(right_col, stretch=2)
         main_layout.addLayout(cols_layout)
 
+        scroll.setWidget(container)
+        root_layout.addWidget(scroll)
+
     def _create_mini_stat(self, icon: str, count: str, label: str) -> QWidget:
         box = QFrame()
         box.setStyleSheet(f"""
             QFrame {{
-                background-color: #070D18;
-                border: 1px solid #16233B;
-                border-radius: 6px;
+                background-color: {COLOR_SURFACE};
+                border: 1px solid {COLOR_SURFACE_BORDER};
+                border-radius: 8px;
             }}
         """)
         l = QVBoxLayout(box)
-        l.setContentsMargins(10, 8, 10, 8)
-        l.setSpacing(2)
+        l.setContentsMargins(12, 10, 12, 10)
+        l.setSpacing(3)
 
         lbl_i = QLabel(icon)
-        lbl_i.setFont(QFont("Segoe UI", 9))
+        lbl_i.setFont(QFont("Segoe UI", 10))
         lbl_i.setStyleSheet("border: none; background: transparent;")
         l.addWidget(lbl_i)
 
@@ -451,7 +502,7 @@ class ScanPage(QWidget):
         l.addWidget(lbl_c)
 
         lbl_l = QLabel(label)
-        lbl_l.setFont(QFont("Segoe UI", 7))
+        lbl_l.setFont(QFont("Segoe UI", 8))
         lbl_l.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; border: none; background: transparent;")
         l.addWidget(lbl_l)
         return box
@@ -460,28 +511,28 @@ class ScanPage(QWidget):
         box = QFrame()
         box.setStyleSheet(f"""
             QFrame {{
-                background-color: #070D18;
-                border: 1px solid #16233B;
-                border-radius: 6px;
+                background-color: {COLOR_SURFACE};
+                border: 1px solid {COLOR_SURFACE_BORDER};
+                border-radius: 8px;
             }}
         """)
         l = QVBoxLayout(box)
-        l.setContentsMargins(10, 8, 10, 8)
-        l.setSpacing(2)
+        l.setContentsMargins(12, 10, 12, 10)
+        l.setSpacing(3)
 
         lbl_tag = QLabel(stage_tag)
         lbl_tag.setFont(QFont("Segoe UI", 7, QFont.Weight.DemiBold))
-        lbl_tag.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; border: none;")
+        lbl_tag.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; border: none; background: transparent;")
         l.addWidget(lbl_tag)
 
         lbl_c = QLabel(count)
         lbl_c.setFont(QFont("Segoe UI", 14, QFont.Weight.Bold))
-        lbl_c.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; border: none;")
+        lbl_c.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; border: none; background: transparent;")
         l.addWidget(lbl_c)
 
         lbl_n = QLabel(name)
         lbl_n.setFont(QFont("Segoe UI", 8))
-        lbl_n.setStyleSheet(f"color: {COLOR_TEXT_SECONDARY}; border: none;")
+        lbl_n.setStyleSheet(f"color: {COLOR_TEXT_SECONDARY}; border: none; background: transparent;")
         l.addWidget(lbl_n)
         return box
 
@@ -522,20 +573,23 @@ class ScanPage(QWidget):
             self.btn_pause.setText("▶ Resume")
             self.btn_pause.setStyleSheet(f"""
                 QPushButton {{
-                    background-color: #2B1D0E;
+                    background-color: {COLOR_REVIEW_BG};
                     color: {COLOR_REVIEW};
-                    border: 1px solid #B45309;
-                    border-radius: 6px;
+                    border: 1px solid {COLOR_REVIEW_BORDER};
+                    border-radius: 8px;
                 }}
             """)
         else:
             self.btn_pause.setText("⏸ Pause")
             self.btn_pause.setStyleSheet(f"""
                 QPushButton {{
-                    background-color: {COLOR_SURFACE_CARD};
+                    background-color: {COLOR_SURFACE};
                     color: {COLOR_TEXT_PRIMARY};
                     border: 1px solid {COLOR_SURFACE_BORDER};
-                    border-radius: 6px;
+                    border-radius: 8px;
+                }}
+                QPushButton:hover {{
+                    background-color: {COLOR_SURFACE_HOVER};
                 }}
             """)
         self.pause_toggled.emit()
@@ -751,23 +805,24 @@ class CandidatesPage(QWidget):
             if k == self.active_filter:
                 btn.setStyleSheet(f"""
                     QPushButton {{
-                        background-color: #1E3A5F;
-                        color: #F8FAFC;
-                        border: 1px solid {COLOR_CYAN_ACCENT};
-                        border-radius: 15px;
+                        background-color: rgba(56, 189, 248, 0.12);
+                        color: {COLOR_CYAN_ACCENT};
+                        border: 1px solid rgba(56, 189, 248, 0.25);
+                        border-radius: 6px;
                         padding: 0 12px;
                     }}
                 """)
             else:
                 btn.setStyleSheet(f"""
                     QPushButton {{
-                        background-color: {COLOR_SURFACE_CARD};
+                        background-color: {COLOR_SURFACE};
                         color: {COLOR_TEXT_MUTED};
                         border: 1px solid {COLOR_SURFACE_BORDER};
-                        border-radius: 15px;
+                        border-radius: 6px;
                         padding: 0 12px;
                     }}
                     QPushButton:hover {{
+                        background-color: {COLOR_SURFACE_HOVER};
                         color: {COLOR_TEXT_PRIMARY};
                     }}
                 """)
@@ -804,18 +859,18 @@ class CandidateRecordPage(QWidget):
         main_layout.setSpacing(14)
 
         # Back link
-        btn_back = QPushButton("< Back to candidates")
+        btn_back = QPushButton("← All candidates")
         btn_back.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
         btn_back.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         btn_back.setStyleSheet(f"""
             QPushButton {{
                 background: transparent;
                 border: none;
-                color: {COLOR_CYAN_ACCENT};
+                color: {COLOR_TEXT_SECONDARY};
                 text-align: left;
             }}
             QPushButton:hover {{
-                text-decoration: underline;
+                color: {COLOR_TEXT_PRIMARY};
             }}
         """)
         btn_back.clicked.connect(self.back_requested.emit)
@@ -868,22 +923,52 @@ class CandidateRecordPage(QWidget):
         name_box = QVBoxLayout()
         name_box.setSpacing(3)
 
+        name_row = QHBoxLayout()
+        name_row.setSpacing(8)
         lbl_name = QLabel(cand["name"])
         lbl_name.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))
         lbl_name.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
-        name_box.addWidget(lbl_name)
+        name_row.addWidget(lbl_name)
 
-        lbl_sub = QLabel(f"{cand['title']} · {cand['company']} · {cand['location']}")
+        chip = StateChip(cand["state"])
+        name_row.addWidget(chip)
+        name_row.addStretch()
+        name_box.addLayout(name_row)
+
+        lbl_sub = QLabel(f"{cand['title']} · {cand['company']}")
         lbl_sub.setFont(QFont("Segoe UI", 9))
         lbl_sub.setStyleSheet(f"color: {COLOR_TEXT_SECONDARY};")
         name_box.addWidget(lbl_sub)
 
+        lbl_meta_row = QLabel(f"📍 {cand['location']}   🕒 {cand.get('observed', cand.get('time_ago', '2 min ago'))}")
+        lbl_meta_row.setFont(QFont("Segoe UI", 8))
+        lbl_meta_row.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
+        name_box.addWidget(lbl_meta_row)
+
         hero_layout.addLayout(name_box)
         hero_layout.addStretch()
 
-        # State Chip
-        chip = StateChip(cand["state"])
-        hero_layout.addWidget(chip)
+        # Overall confidence box
+        conf_box = QFrame()
+        conf_box.setStyleSheet(f"""
+            QFrame {{
+                background-color: {COLOR_SURFACE};
+                border: 1px solid {COLOR_SURFACE_BORDER};
+                border-radius: 8px;
+            }}
+        """)
+        conf_layout = QVBoxLayout(conf_box)
+        conf_layout.setContentsMargins(14, 8, 14, 8)
+        conf_layout.setSpacing(2)
+        lbl_c_tag = QLabel("Overall confidence")
+        lbl_c_tag.setFont(QFont("Segoe UI", 7))
+        lbl_c_tag.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; border: none; background: transparent;")
+        conf_layout.addWidget(lbl_c_tag)
+        lbl_c_score = QLabel(f"{cand['confidence']}%")
+        lbl_c_score.setFont(QFont("Consolas", 16, QFont.Weight.Bold))
+        lbl_c_score.setStyleSheet(f"color: {COLOR_CANONICAL}; border: none; background: transparent;")
+        conf_layout.addWidget(lbl_c_score)
+        hero_layout.addWidget(conf_box)
 
         # Open in LinkedIn Button
         if cand.get("profile_url"):
@@ -892,14 +977,14 @@ class CandidateRecordPage(QWidget):
             btn_open.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
             btn_open.setStyleSheet(f"""
                 QPushButton {{
-                    background-color: #0F172A;
+                    background-color: {COLOR_SURFACE};
                     color: {COLOR_TEXT_PRIMARY};
                     border: 1px solid {COLOR_SURFACE_BORDER};
                     border-radius: 6px;
                     padding: 6px 12px;
                 }}
                 QPushButton:hover {{
-                    background-color: #1E293B;
+                    background-color: {COLOR_SURFACE_HOVER};
                 }}
             """)
             url = cand["profile_url"]
@@ -1215,14 +1300,14 @@ class ReviewQueuePage(QWidget):
         btn_app.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         btn_app.setStyleSheet(f"""
             QPushButton {{
-                background-color: #0F172A;
+                background-color: rgba(16, 185, 129, 0.10);
                 color: {COLOR_CANONICAL};
-                border: 1px solid #134E48;
-                border-radius: 4px;
-                padding: 4px 10px;
+                border: 1px solid rgba(16, 185, 129, 0.35);
+                border-radius: 6px;
+                padding: 4px 12px;
             }}
             QPushButton:hover {{
-                background-color: #06281D;
+                background-color: rgba(16, 185, 129, 0.15);
             }}
         """)
         iid = item["id"]
@@ -1230,19 +1315,18 @@ class ReviewQueuePage(QWidget):
         act_l.addWidget(btn_app)
 
         btn_dism = QPushButton("✕ Dismiss")
-        btn_dism.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
+        btn_dism.setFont(QFont("Segoe UI", 8, QFont.Weight.Medium))
         btn_dism.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         btn_dism.setStyleSheet(f"""
             QPushButton {{
-                background-color: #0F172A;
-                color: {COLOR_TEXT_MUTED};
+                background-color: {COLOR_SURFACE};
+                color: {COLOR_TEXT_PRIMARY};
                 border: 1px solid {COLOR_SURFACE_BORDER};
-                border-radius: 4px;
-                padding: 4px 10px;
+                border-radius: 6px;
+                padding: 4px 12px;
             }}
             QPushButton:hover {{
-                color: {COLOR_TEXT_PRIMARY};
-                background-color: #1E293B;
+                background-color: {COLOR_SURFACE_HOVER};
             }}
         """)
         btn_dism.clicked.connect(lambda checked=False, i=iid, c=card, a=actions_box: self._on_dismiss(i, c, a))
@@ -1297,19 +1381,18 @@ class CloudSyncPage(QWidget):
 
         # Page Head with Sync Now button
         self.btn_sync_now = QPushButton("☁ Sync now")
-        self.btn_sync_now.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
+        self.btn_sync_now.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
         self.btn_sync_now.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_sync_now.setStyleSheet(f"""
             QPushButton {{
-                background-color: #0F172A;
-                color: {COLOR_TEXT_PRIMARY};
-                border: 1px solid {COLOR_SURFACE_BORDER};
-                border-radius: 6px;
+                background-color: rgba(16, 185, 129, 0.10);
+                color: {COLOR_CANONICAL};
+                border: 1px solid rgba(16, 185, 129, 0.35);
+                border-radius: 8px;
                 padding: 6px 14px;
             }}
             QPushButton:hover {{
-                background-color: #1E293B;
-                border: 1px solid #334155;
+                background-color: rgba(16, 185, 129, 0.15);
             }}
         """)
         self.btn_sync_now.clicked.connect(self._on_sync_now_click)
@@ -2270,20 +2353,20 @@ class SignInClaimPage(QWidget):
         # 'Claim this device' primary button
         self.btn_claim = QPushButton("Claim this device")
         self.btn_claim.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
-        self.btn_claim.setFixedHeight(38)
+        self.btn_claim.setFixedHeight(40)
         self.btn_claim.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.btn_claim.setStyleSheet("""
+        self.btn_claim.setStyleSheet(f"""
             QPushButton {{
-                background-color: #64A3B1;
-                color: #040E18;
+                background-color: {COLOR_PRIMARY};
+                color: #0B0F19;
                 border: none;
                 border-radius: 6px;
             }}
             QPushButton:hover {{
-                background-color: #7BB4C2;
+                background-color: #7DD3FC;
             }}
             QPushButton:pressed {{
-                background-color: #5593A1;
+                background-color: #0284C7;
             }}
         """)
         self.btn_claim.clicked.connect(self._on_claim_click)
@@ -2323,19 +2406,18 @@ class SignInClaimPage(QWidget):
 
         # 'Sign in with TalentOps account' secondary button
         self.btn_account_signin = QPushButton("Sign in with TalentOps account")
-        self.btn_account_signin.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
-        self.btn_account_signin.setFixedHeight(38)
+        self.btn_account_signin.setFont(QFont("Segoe UI", 8, QFont.Weight.Medium))
+        self.btn_account_signin.setFixedHeight(40)
         self.btn_account_signin.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_account_signin.setStyleSheet(f"""
             QPushButton {{
-                background-color: #070D18;
-                color: #F8FAFC;
-                border: 1px solid #1E293B;
+                background-color: {COLOR_SURFACE};
+                color: {COLOR_TEXT_PRIMARY};
+                border: 1px solid {COLOR_SURFACE_BORDER};
                 border-radius: 6px;
             }}
             QPushButton:hover {{
-                background-color: #0F172A;
-                border-color: #334155;
+                background-color: {COLOR_SURFACE_HOVER};
             }}
         """)
         self.btn_account_signin.clicked.connect(self._on_account_signin_click)
@@ -2344,28 +2426,54 @@ class SignInClaimPage(QWidget):
         # Success Message Widget (Hidden by default, shown on successful claim)
         self.success_widget = QWidget()
         sw_layout = QVBoxLayout(self.success_widget)
-        sw_layout.setContentsMargins(0, 4, 0, 4)
-        sw_layout.setSpacing(8)
+        sw_layout.setContentsMargins(0, 10, 0, 10)
+        sw_layout.setSpacing(10)
+        sw_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.lbl_success = QLabel("✓ Device claimed — Connected as Prashant (TalentOps AI)")
-        self.lbl_success.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
+        shield_icon = QLabel("🛡️")
+        shield_icon.setFont(QFont("Segoe UI", 16))
+        shield_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        shield_icon.setStyleSheet(f"""
+            background-color: rgba(16, 185, 129, 0.15);
+            color: {COLOR_CANONICAL};
+            border-radius: 20px;
+            border: 1px solid rgba(16, 185, 129, 0.30);
+            min-width: 40px;
+            min-height: 40px;
+            max-width: 40px;
+            max-height: 40px;
+        """)
+        sw_layout.addWidget(shield_icon, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        self.lbl_success = QLabel("Device claimed")
+        self.lbl_success.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))
         self.lbl_success.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_success.setStyleSheet(f"color: {COLOR_CANONICAL};")
+        self.lbl_success.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
         sw_layout.addWidget(self.lbl_success)
 
-        self.btn_start_observing = QPushButton("Start Observing >")
+        self.lbl_success_sub = QLabel("Installation #483 · WIN-PRASHANT-01 is now linked to prashant@talentops.ai.")
+        self.lbl_success_sub.setFont(QFont("Segoe UI", 8))
+        self.lbl_success_sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_success_sub.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
+        self.lbl_success_sub.setWordWrap(True)
+        sw_layout.addWidget(self.lbl_success_sub)
+
+        self.btn_start_observing = QPushButton("Start observing")
         self.btn_start_observing.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
-        self.btn_start_observing.setFixedHeight(38)
+        self.btn_start_observing.setFixedHeight(40)
         self.btn_start_observing.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_start_observing.setStyleSheet(f"""
             QPushButton {{
-                background-color: {COLOR_CANONICAL};
-                color: #030712;
+                background-color: {COLOR_PRIMARY};
+                color: #0B0F19;
                 border: none;
                 border-radius: 6px;
             }}
             QPushButton:hover {{
-                background-color: #34D399;
+                background-color: #7DD3FC;
+            }}
+            QPushButton:pressed {{
+                background-color: #0284C7;
             }}
         """)
         self.btn_start_observing.clicked.connect(self.device_claimed_and_started.emit)
@@ -2444,10 +2552,10 @@ class SignInClaimPage(QWidget):
         res = perform_device_claim(raw)
         if res.get("success"):
             self.is_claimed = True
-            user_str = res.get("user") or "Prashant"
-            org_str = res.get("organization") or "TalentOps AI"
+            user_str = res.get("user") or "prashant@talentops.ai"
             inst_str = res.get("installation_id") or "Installation #483"
-            self.lbl_success.setText(f"✓ Device claimed — Connected as {user_str} ({org_str})\n{inst_str}")
+            self.lbl_success.setText("Device claimed")
+            self.lbl_success_sub.setText(f"{inst_str} · WIN-PRASHANT-01 is now linked to {user_str}.")
             self.txt_claim_code.hide()
             self.lbl_caption.hide()
             self.lbl_error.hide()

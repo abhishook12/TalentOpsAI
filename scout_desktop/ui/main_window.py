@@ -255,7 +255,7 @@ class MainWindow(QMainWindow):
         self.page_scan.pause_toggled.connect(self._on_pause_toggled)
         self.page_scan.sync_requested.connect(self.sync_now_requested.emit)
         self.page_scan.open_candidate_requested.connect(self.open_candidate_record)
-        self.page_scan.view_pipeline_requested.connect(lambda: self.navigate_to_page(4)) # Pipeline tab index
+        self.page_scan.view_pipeline_requested.connect(lambda: self.navigate_to_page(5)) # Pipeline tab index
 
         # Candidates Page Signals
         self.page_candidates.candidate_selected.connect(self.open_candidate_record)

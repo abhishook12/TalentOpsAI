@@ -29,37 +29,40 @@ from .scout_data import SYSTEM_STATE, CANDIDATES, REVIEW_QUEUE_ITEMS, ACTIVITY_F
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Styling Constants (Obsidian Palette)
+# Styling Constants (Obsidian Palette — Exact Reference Alignment)
 # ─────────────────────────────────────────────────────────────────────────────
 
-COLOR_BG_BASE = "#050811"       # Deep obsidian background
-COLOR_SURFACE_CARD = "#0B1120"  # Container card background
-COLOR_SURFACE_HOVER = "#0F1A2E" # Card hover background
-COLOR_SURFACE_BORDER = "#162238"# Subtle card border
-COLOR_SURFACE_BORDER_LIGHT = "#1F2F4D"
+COLOR_BG_BASE = "#0B0F19"       # Deep obsidian background (styles.css: --background)
+COLOR_RAIL = "#080C14"          # Sidebar & top/bottom rails (styles.css: --rail)
+COLOR_SURFACE_CARD = "#111624"  # Container card background (styles.css: --card)
+COLOR_SURFACE = "#0E131F"       # Inner surface & inputs (styles.css: --surface)
+COLOR_SURFACE_HOVER = "#182032" # Secondary highlight (styles.css: --secondary)
+COLOR_SURFACE_BORDER = "#1B2234"# Card border (styles.css: --border)
+COLOR_SURFACE_BORDER_LIGHT = "#243048"
 
 COLOR_TEXT_PRIMARY = "#F8FAFC"
 COLOR_TEXT_SECONDARY = "#94A3B8"
 COLOR_TEXT_MUTED = "#64748B"
 
 # Semantic Accents
-COLOR_CANONICAL = "#10B981"      # Green (90+)
-COLOR_CANONICAL_BG = "#06281D"
-COLOR_CANONICAL_BORDER = "#0F5132"
+COLOR_CANONICAL = "#10B981"      # Emerald Accent Green (styles.css: --accent)
+COLOR_CANONICAL_BG = "rgba(16, 185, 129, 0.10)"
+COLOR_CANONICAL_BORDER = "rgba(16, 185, 129, 0.25)"
 
-COLOR_HYPOTHESIS = "#38BDF8"     # Sky Blue
-COLOR_HYPOTHESIS_BG = "#0B263B"
-COLOR_HYPOTHESIS_BORDER = "#0369A1"
+COLOR_HYPOTHESIS = "#38BDF8"     # Sky Blue Primary (styles.css: --primary)
+COLOR_HYPOTHESIS_BG = "rgba(56, 189, 248, 0.10)"
+COLOR_HYPOTHESIS_BORDER = "rgba(56, 189, 248, 0.25)"
 
-COLOR_REVIEW = "#F59E0B"         # Amber (70-89)
-COLOR_REVIEW_BG = "#2B1D0E"
-COLOR_REVIEW_BORDER = "#B45309"
+COLOR_REVIEW = "#F59E0B"         # Amber Signal (styles.css: --signal)
+COLOR_REVIEW_BG = "rgba(245, 158, 11, 0.12)"
+COLOR_REVIEW_BORDER = "rgba(245, 158, 11, 0.25)"
 
-COLOR_REJECTED = "#EF4444"       # Red (<70)
-COLOR_REJECTED_BG = "#2A0E14"
-COLOR_REJECTED_BORDER = "#991B1B"
+COLOR_REJECTED = "#EF4444"       # Rose Destructive (styles.css: --destructive)
+COLOR_REJECTED_BG = "rgba(239, 68, 68, 0.12)"
+COLOR_REJECTED_BORDER = "rgba(239, 68, 68, 0.25)"
 
 COLOR_CYAN_ACCENT = "#38BDF8"
+COLOR_PRIMARY = "#38BDF8"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -158,11 +161,11 @@ class ConfidenceMeter(QWidget):
             
             self.lbl_title = QLabel(self.label_text)
             self.lbl_title.setFont(QFont("Segoe UI", 9, QFont.Weight.Medium))
-            self.lbl_title.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
+            self.lbl_title.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; background: transparent; border: none;")
             
             self.lbl_pct = QLabel(f"{self.score_pct}%")
             self.lbl_pct.setFont(QFont("Segoe UI", 8, QFont.Weight.Normal))
-            self.lbl_pct.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
+            self.lbl_pct.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; background: transparent; border: none;")
             
             header_layout.addWidget(self.lbl_title)
             header_layout.addStretch()
@@ -233,12 +236,23 @@ class Card(QFrame):
         super().__init__(parent)
         self.clickable = clickable
         self.setObjectName("ScoutCard")
+        hover_css = f"""
+            QFrame#ScoutCard:hover {{
+                background-color: {COLOR_SURFACE_HOVER};
+                border-color: {COLOR_SURFACE_BORDER_LIGHT};
+            }}
+        """ if clickable else ""
         self.setStyleSheet(f"""
             QFrame#ScoutCard {{
                 background-color: {COLOR_SURFACE_CARD};
                 border: 1px solid {COLOR_SURFACE_BORDER};
                 border-radius: 8px;
             }}
+            QFrame#ScoutCard QLabel {{
+                background: transparent;
+                border: none;
+            }}
+            {hover_css}
         """)
         if clickable:
             self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
@@ -292,21 +306,20 @@ class PageHead(QWidget):
 class TopBar(QFrame):
     """
     Top Bar:
-    - Eye logo
-    - "TalentOps Scout"
-    - Version chip "v2.8.0"
+    - Eye logo (32x32 container in secondary bg)
+    - "TalentOps Scout" + version chip "v2.8.0"
     - Subtitle "Edge intelligence agent"
     - Center pill "Active · observing" with pulsing dot
-    - Right side: signed-in user ("Prashant · TalentOps AI"), "Installation #483", and "Sign out" link.
+    - Right side: signed-in user ("Prashant · TalentOps AI"), "Installation #483", and "Sign out" button
     """
     sign_out_clicked = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.setFixedHeight(50)
+        self.setFixedHeight(48)
         self.setStyleSheet(f"""
             QFrame {{
-                background-color: {COLOR_BG_BASE};
+                background-color: {COLOR_RAIL};
                 border-bottom: 1px solid {COLOR_SURFACE_BORDER};
             }}
         """)
@@ -317,34 +330,44 @@ class TopBar(QFrame):
         
         # Left Section: Eye Logo, Title, Version Chip, Subtitle
         left_layout = QHBoxLayout()
-        left_layout.setSpacing(8)
+        left_layout.setSpacing(10)
         
         self.eye_logo = _EyeLogoWidget()
         left_layout.addWidget(self.eye_logo)
         
+        title_box = QVBoxLayout()
+        title_box.setSpacing(1)
+        title_box.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+        
+        title_row = QHBoxLayout()
+        title_row.setSpacing(6)
+        
         self.lbl_title = QLabel("TalentOps Scout")
-        self.lbl_title.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
-        self.lbl_title.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
-        left_layout.addWidget(self.lbl_title)
+        self.lbl_title.setFont(QFont("Segoe UI", 10, QFont.Weight.DemiBold))
+        self.lbl_title.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; border: none; background: transparent;")
+        title_row.addWidget(self.lbl_title)
         
         # Version Chip
         self.lbl_version_chip = QLabel("v2.8.0")
-        self.lbl_version_chip.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
-        self.lbl_version_chip.setStyleSheet("""
-            background-color: #0F172A;
-            color: #94A3B8;
-            border: 1px solid #1E293B;
+        self.lbl_version_chip.setFont(QFont("Consolas", 8, QFont.Weight.Medium))
+        self.lbl_version_chip.setStyleSheet(f"""
+            background-color: {COLOR_SURFACE_HOVER};
+            color: {COLOR_TEXT_SECONDARY};
+            border: 1px solid {COLOR_SURFACE_BORDER};
             border-radius: 4px;
             padding: 1px 5px;
         """)
-        left_layout.addWidget(self.lbl_version_chip)
+        title_row.addWidget(self.lbl_version_chip)
+        title_row.addStretch()
+        title_box.addLayout(title_row)
         
         # Subtitle
         self.lbl_subtitle = QLabel("Edge intelligence agent")
         self.lbl_subtitle.setFont(QFont("Segoe UI", 8, QFont.Weight.Normal))
-        self.lbl_subtitle.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
-        left_layout.addWidget(self.lbl_subtitle)
+        self.lbl_subtitle.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; border: none; background: transparent;")
+        title_box.addWidget(self.lbl_subtitle)
         
+        left_layout.addLayout(title_box)
         layout.addLayout(left_layout)
         layout.addStretch()
         
@@ -354,31 +377,33 @@ class TopBar(QFrame):
         
         layout.addStretch()
         
-        # Right Section: Signed-in User, Installation #483, Sign Out Link
+        # Right Section: Signed-in User, Installation #483, Sign Out Button
         right_layout = QHBoxLayout()
         right_layout.setSpacing(14)
         
         self.lbl_user = QLabel(SYSTEM_STATE["user"]["display"])
         self.lbl_user.setFont(QFont("Segoe UI", 8, QFont.Weight.Normal))
-        self.lbl_user.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
+        self.lbl_user.setStyleSheet(f"color: {COLOR_TEXT_SECONDARY}; border: none; background: transparent;")
         right_layout.addWidget(self.lbl_user)
         
         self.lbl_inst = QLabel(SYSTEM_STATE["user"]["installation_id"])
         self.lbl_inst.setFont(QFont("Segoe UI", 8, QFont.Weight.Normal))
-        self.lbl_inst.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
+        self.lbl_inst.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; border: none; background: transparent;")
         right_layout.addWidget(self.lbl_inst)
         
-        self.btn_signout = QPushButton("[→ Sign out")
-        self.btn_signout.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
+        self.btn_signout = QPushButton("Sign out")
+        self.btn_signout.setFont(QFont("Segoe UI", 8, QFont.Weight.Medium))
         self.btn_signout.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_signout.setStyleSheet(f"""
             QPushButton {{
-                background: transparent;
-                border: none;
-                color: {COLOR_TEXT_MUTED};
-                text-decoration: underline;
+                background-color: transparent;
+                border: 1px solid {COLOR_SURFACE_BORDER};
+                border-radius: 6px;
+                color: {COLOR_TEXT_SECONDARY};
+                padding: 3px 10px;
             }}
             QPushButton:hover {{
+                background-color: {COLOR_SURFACE_HOVER};
                 color: {COLOR_TEXT_PRIMARY};
             }}
         """)
@@ -392,10 +417,10 @@ class TopBar(QFrame):
 
 
 class _EyeLogoWidget(QWidget):
-    """Vector rendered Eye Logo for TalentOps Scout"""
+    """Vector rendered Eye Logo for TalentOps Scout inside a rounded box"""
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.setFixedSize(18, 18)
+        self.setFixedSize(30, 30)
 
     def paintEvent(self, event):
         p = QPainter(self)
@@ -404,21 +429,28 @@ class _EyeLogoWidget(QWidget):
         w = self.width()
         h = self.height()
         
-        # Outer eye curve
-        path = QPainterPath()
-        path.moveTo(2, h / 2.0)
-        path.quadTo(w / 2.0, 2, w - 2, h / 2.0)
-        path.quadTo(w / 2.0, h - 2, 2, h / 2.0)
+        # Rounded background box (bg-secondary ring-1 ring-border)
+        p.setPen(QPen(QColor(COLOR_SURFACE_BORDER), 1))
+        p.setBrush(QColor(COLOR_SURFACE_HOVER))
+        p.drawRoundedRect(0, 0, w - 1, h - 1, 6, 6)
         
-        pen = QPen(QColor(COLOR_TEXT_SECONDARY), 1.5)
+        # Outer eye curve in primary cyan
+        cx = w / 2.0
+        cy = h / 2.0
+        path = QPainterPath()
+        path.moveTo(6, cy)
+        path.quadTo(cx, cy - 6, w - 6, cy)
+        path.quadTo(cx, cy + 6, 6, cy)
+        
+        pen = QPen(QColor(COLOR_CYAN_ACCENT), 1.5)
         p.setPen(pen)
         p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawPath(path)
         
         # Center pupil dot
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor(COLOR_CANONICAL))
-        p.drawEllipse(int(w / 2.0 - 2.5), int(h / 2.0 - 2.5), 5, 5)
+        p.setBrush(QColor(COLOR_CYAN_ACCENT))
+        p.drawEllipse(int(cx - 2.5), int(cy - 2.5), 5, 5)
         p.end()
 
 
@@ -426,19 +458,19 @@ class _ActiveObservingPill(QFrame):
     """Centre status pill 'Active · observing' with a pulsing emerald dot"""
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.setFixedHeight(24)
+        self.setFixedHeight(26)
         self.is_active = True
         self.status_text = "Active · observing"
         
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(10, 0, 10, 0)
+        layout.setContentsMargins(10, 0, 12, 0)
         layout.setSpacing(6)
         
         self.dot = _PulsingDotWidget()
         layout.addWidget(self.dot)
         
         self.lbl_status = QLabel(self.status_text)
-        self.lbl_status.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
+        self.lbl_status.setFont(QFont("Segoe UI", 8, QFont.Weight.Medium))
         layout.addWidget(self.lbl_status)
         
         self._apply_style()
@@ -452,19 +484,19 @@ class _ActiveObservingPill(QFrame):
 
     def _apply_style(self):
         if self.is_active:
-            bg = "#071B14"
-            border = "#134E48"
-            fg = "#A7F3D0"
+            bg = COLOR_SURFACE
+            border = COLOR_SURFACE_BORDER
+            fg = COLOR_CANONICAL
         else:
-            bg = "#1F2937"
-            border = "#374151"
-            fg = "#9CA3AF"
+            bg = COLOR_SURFACE
+            border = COLOR_SURFACE_BORDER
+            fg = COLOR_TEXT_MUTED
             
         self.setStyleSheet(f"""
             QFrame {{
                 background-color: {bg};
                 border: 1px solid {border};
-                border-radius: 12px;
+                border-radius: 13px;
             }}
             QLabel {{
                 color: {fg};
@@ -535,8 +567,8 @@ class UpdateBanner(QFrame):
         self.setFixedHeight(34)
         self.setStyleSheet(f"""
             QFrame {{
-                background-color: #070D18;
-                border-bottom: 1px solid #16233B;
+                background-color: {COLOR_SURFACE};
+                border-bottom: 1px solid {COLOR_SURFACE_BORDER};
             }}
         """)
         
@@ -562,17 +594,17 @@ class UpdateBanner(QFrame):
         self.btn_restart = QPushButton("Restart now")
         self.btn_restart.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
         self.btn_restart.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.btn_restart.setStyleSheet("""
-            QPushButton {
-                background-color: #1E293B;
-                color: #F8FAFC;
-                border: 1px solid #334155;
+        self.btn_restart.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {COLOR_SURFACE_HOVER};
+                color: {COLOR_TEXT_PRIMARY};
+                border: 1px solid {COLOR_SURFACE_BORDER};
                 border-radius: 4px;
-                padding: 2px 8px;
-            }
-            QPushButton:hover {
-                background-color: #334155;
-            }
+                padding: 3px 10px;
+            }}
+            QPushButton:hover {{
+                background-color: #243048;
+            }}
         """)
         self.btn_restart.clicked.connect(self._on_restart_click)
         layout.addWidget(self.btn_restart)
@@ -608,6 +640,7 @@ class UpdateBanner(QFrame):
 class LeftRail(QFrame):
     """
     Left rail:
+    - Width: 224px (w-56)
     - 7 destinations:
       0: Scan
       1: Candidates
@@ -632,10 +665,10 @@ class LeftRail(QFrame):
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.setFixedWidth(190)
+        self.setFixedWidth(224)
         self.setStyleSheet(f"""
             QFrame {{
-                background-color: {COLOR_BG_BASE};
+                background-color: {COLOR_RAIL};
                 border-right: 1px solid {COLOR_SURFACE_BORDER};
             }}
         """)
@@ -644,7 +677,7 @@ class LeftRail(QFrame):
         self.buttons: List[_NavButton] = []
         
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 16, 10, 16)
+        layout.setContentsMargins(12, 16, 12, 16)
         layout.setSpacing(4)
         
         # Navigation buttons
@@ -690,7 +723,7 @@ class _NavButton(QPushButton):
         self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         
         self.h_layout = QHBoxLayout(self)
-        self.h_layout.setContentsMargins(10, 0, 10, 0)
+        self.h_layout.setContentsMargins(12, 0, 12, 0)
         self.h_layout.setSpacing(10)
         
         self.lbl_icon = QLabel(self.icon_str)
@@ -706,7 +739,7 @@ class _NavButton(QPushButton):
         self.h_layout.addStretch()
         
         self.lbl_badge = QLabel("")
-        self.lbl_badge.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
+        self.lbl_badge.setFont(QFont("Consolas", 8, QFont.Weight.Bold))
         self.lbl_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_badge.setFixedHeight(18)
         self.lbl_badge.setMinimumWidth(18)
@@ -726,11 +759,11 @@ class _NavButton(QPushButton):
         if count > 0:
             self.lbl_badge.setText(str(count))
             self.lbl_badge.setStyleSheet("""
-                background-color: #2B1D0E;
+                background-color: rgba(245, 158, 11, 0.15);
                 color: #F59E0B;
-                border: 1px solid #B45309;
+                border: none;
                 border-radius: 9px;
-                padding: 0 4px;
+                padding: 0 5px;
             """)
             self.lbl_badge.show()
         else:
@@ -738,24 +771,21 @@ class _NavButton(QPushButton):
 
     def _apply_style(self):
         if self.is_active:
-            bg = "#0B1626"
-            border = "#1E3A5F"
+            bg = COLOR_SURFACE_HOVER
             fg = COLOR_TEXT_PRIMARY
         else:
             bg = "transparent"
-            border = "transparent"
             fg = COLOR_TEXT_SECONDARY
             
         self.setStyleSheet(f"""
             QPushButton {{
                 background-color: {bg};
-                border: 1px solid {border};
+                border: none;
                 border-radius: 6px;
                 text-align: left;
             }}
             QPushButton:hover {{
-                background-color: #0D1929;
-                border: 1px solid #1E2E48;
+                background-color: {COLOR_SURFACE_HOVER};
             }}
         """)
         self.lbl_title.setStyleSheet(f"color: {fg}; background: transparent; border: none;")
@@ -766,32 +796,32 @@ class _LocalQueueWidget(QFrame):
     """Bottom Left Rail Widget: 'Local queue 14 · durable · retrying in 12s'"""
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.setFixedHeight(70)
+        self.setFixedHeight(76)
         self.setStyleSheet(f"""
             QFrame {{
-                background-color: {COLOR_SURFACE_CARD};
+                background-color: {COLOR_SURFACE};
                 border: 1px solid {COLOR_SURFACE_BORDER};
                 border-radius: 8px;
             }}
         """)
         
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setContentsMargins(12, 10, 12, 10)
         layout.setSpacing(2)
         
         self.lbl_tag = QLabel("LOCAL QUEUE")
         self.lbl_tag.setFont(QFont("Segoe UI", 7, QFont.Weight.Bold))
-        self.lbl_tag.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; border: none;")
+        self.lbl_tag.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; border: none; background: transparent; letter-spacing: 1px;")
         layout.addWidget(self.lbl_tag)
         
         self.lbl_count = QLabel(str(SYSTEM_STATE["local_queue_summary"]["count"]))
-        self.lbl_count.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
-        self.lbl_count.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; border: none;")
+        self.lbl_count.setFont(QFont("Consolas", 18, QFont.Weight.Bold))
+        self.lbl_count.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; border: none; background: transparent;")
         layout.addWidget(self.lbl_count)
         
         self.lbl_sub = QLabel(f"durable · retrying in {SYSTEM_STATE['local_queue_summary']['retry_in_sec']}s")
         self.lbl_sub.setFont(QFont("Segoe UI", 7, QFont.Weight.Normal))
-        self.lbl_sub.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; border: none;")
+        self.lbl_sub.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; border: none; background: transparent;")
         layout.addWidget(self.lbl_sub)
 
     def set_stats(self, count: int, retry_sec: int):
@@ -810,10 +840,10 @@ class BottomStatusBar(QFrame):
     """
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.setFixedHeight(28)
+        self.setFixedHeight(30)
         self.setStyleSheet(f"""
             QFrame {{
-                background-color: {COLOR_BG_BASE};
+                background-color: {COLOR_RAIL};
                 border-top: 1px solid {COLOR_SURFACE_BORDER};
             }}
             QLabel {{
@@ -821,15 +851,17 @@ class BottomStatusBar(QFrame):
                 font-family: 'Segoe UI';
                 font-size: 8pt;
                 border: none;
+                background: transparent;
             }}
         """)
         
         layout = QHBoxLayout(self)
         layout.setContentsMargins(16, 0, 16, 0)
-        layout.setSpacing(14)
+        layout.setSpacing(16)
         
         # Left status group
-        self.lbl_synced = QLabel(f"• Synced {SYSTEM_STATE['status_bar']['synced_time']}")
+        self.lbl_synced = QLabel(f"● Synced {SYSTEM_STATE['status_bar']['synced_time']}")
+        self.lbl_synced.setStyleSheet(f"color: {COLOR_CANONICAL}; font-size: 8pt;")
         self.lbl_uploaded = QLabel(f"{SYSTEM_STATE['status_bar']['records_uploaded']} records uploaded")
         self.lbl_queued = QLabel(f"{SYSTEM_STATE['status_bar']['queued']} queued")
         self.lbl_errors = QLabel(SYSTEM_STATE['status_bar']['errors'])
@@ -851,7 +883,7 @@ class BottomStatusBar(QFrame):
         layout.addWidget(self.lbl_os)
 
     def update_metrics(self, synced_time: str, uploaded: int, queued: int, errors: str = "No errors"):
-        self.lbl_synced.setText(f"• Synced {synced_time}")
+        self.lbl_synced.setText(f"● Synced {synced_time}")
         self.lbl_uploaded.setText(f"{uploaded} records uploaded")
         self.lbl_queued.setText(f"{queued} queued")
         self.lbl_errors.setText(errors)

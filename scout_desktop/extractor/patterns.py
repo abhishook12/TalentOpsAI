@@ -558,6 +558,11 @@ def clean_person_name(text: Optional[str]) -> Optional[str]:
     t = re.sub(r"^(?:Dr|Mr|Ms|Mrs|Prof)\.?\s+", "", t, flags=re.IGNORECASE).strip()
     # Strip trailing badges / dots / icons
     t = re.sub(r"[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]+.*$", "", t).strip()
+    # Strip professional post-nominal credentials appended to names with commas.
+    # e.g. "Kate Threewitts, SPHR, SHRM-SCP" → "Kate Threewitts"
+    # e.g. "Megan Alford, PRC, CIR, CMVR" → "Megan Alford"
+    # Pattern: comma followed by 2-10 uppercase letters/numbers/hyphens (credential abbreviations)
+    t = re.sub(r"(?:,\s*[A-Z][A-Z0-9\-]{1,9})+$", "", t).strip()
     return t if is_valid_person_name(t) else None
 
 

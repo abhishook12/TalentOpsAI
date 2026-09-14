@@ -442,8 +442,10 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                     if (src === 'ZoomInfo') { srcColor = '#f43f5e'; srcBg = 'rgba(244, 63, 94, 0.15)'; }
                     else if (src === 'LinkedIn') { srcColor = '#e4e4e7'; srcBg = 'rgba(228, 228, 231, 0.15)'; }
                     else if (src === 'Apollo') { srcColor = '#eab308'; srcBg = 'rgba(234, 179, 8, 0.15)'; }
-                    else if (src === 'Microsoft Teams') { srcColor = '#a1a1aa'; srcBg = 'rgba(161, 161, 170, 0.15)'; }
-                    else if (src === 'Google Chat') { srcColor = '#10b981'; srcBg = 'rgba(16, 185, 129, 0.15)'; }
+                    else if (src === 'Microsoft Teams' || src === 'TEAMS') { srcColor = '#a1a1aa'; srcBg = 'rgba(161, 161, 170, 0.15)'; }
+                    else if (src === 'Google Chat' || src === 'GOOGLE_CHAT') { srcColor = '#10b981'; srcBg = 'rgba(16, 185, 129, 0.15)'; }
+                    else if (src === 'Indeed') { srcColor = '#3b82f6'; srcBg = 'rgba(59, 130, 246, 0.15)'; }
+                    else if (src === 'GitHub') { srcColor = '#a855f7'; srcBg = 'rgba(168, 85, 247, 0.15)'; }
                     return (
                       <div key={idx} style={{
                         padding: '14px 18px', background: '#0e1526', border: '1px solid #232326', borderRadius: 10,

@@ -300,11 +300,10 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
     name = re.sub(r'[·•]\s*\d*(?:st|nd|rd|th)?(?:\s*degree(?:\s+connection)?)?', ' ', name, flags=re.IGNORECASE)
     name = re.sub(r'\b\d+(?:st|nd|rd|th)?\s+degree(?:\s+connection)?\b', '', name, flags=re.IGNORECASE)
     name = re.sub(r'\b\d+(?:st|nd|rd|th)\b', '', name, flags=re.IGNORECASE)
-    # Clean mashed ordinal suffixes attached to words (e.g. "2ndManaging" -> "Managing", "NdHuma" -> "Huma")
-    name = re.sub(r'\b\d*(?:st|nd|rd|th)([A-Z])', r' \1', name, flags=re.IGNORECASE)
-    name = re.sub(r'\b(?:st|nd|rd|th)([A-Z][a-z]+)', r' \1', name, flags=re.IGNORECASE)
+    # Clean mashed ordinal suffixes attached to words (e.g. "2ndManaging" -> "Managing", "1stEngineer" -> "Engineer")
+    name = re.sub(r'\b\d+(?:st|nd|rd|th)\s*([A-Z])', r' \1', name, flags=re.IGNORECASE)
     name = re.sub(r'\((?:he\/him|she\/her|they\/them|she\/they|he\/they|any)\)', '', name, flags=re.IGNORECASE)
-    name = re.sub(r'\b(?:MBA|SHRM-CP|PHR|SPHR|PMP|CPA|MD|JD|PhD|BSc|MSc|BA|BS|MA|MS)\b', '', name, flags=re.IGNORECASE)
+    name = re.sub(r'\b(?:MBA|SHRM-CP|SHRM-SCP|PHR|SPHR|PRC|CIR|CMVR|PMP|CPA|MD|JD|PhD|BSc|MSc|BA|BS|MA|MS)\b', '', name, flags=re.IGNORECASE)
     # Split hyphens / pipes / commas
     parts = re.split(r'[-–—|,]', name)[0]
     cleaned = re.sub(r'[^\w\s\'.]', ' ', parts).strip()

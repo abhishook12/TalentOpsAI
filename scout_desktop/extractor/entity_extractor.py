@@ -252,7 +252,12 @@ class EntityExtractor:
             "source_url": source_url,
             "window_title": window_title,
         })
-        if not gate_res.is_valid_candidate and gate_res.decision in ("UNRESOLVED_UI_TEXT", "REJECTED_OBSERVATION"):
+        # CRITICAL FIX: Only block garbage/noise names at this early stage.
+        # UNRESOLVED_UI_TEXT = the name itself is OCR garbage or a UI widget string → reject immediately.
+        # REJECTED_OBSERVATION = valid human name but insufficient context alone to verify → do NOT
+        # block here! Let extraction continue to gather title, company, location, and URL from
+        # the remaining OCR lines. The final gate in app.py has full context and makes the true decision.
+        if not gate_res.is_valid_candidate and gate_res.decision == "UNRESOLVED_UI_TEXT":
             logger.info("Quality Gate: Rejected frame name '%s' (%s)", target_name, gate_res.decision)
             return []
 

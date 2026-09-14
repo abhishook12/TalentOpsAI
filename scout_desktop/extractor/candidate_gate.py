@@ -165,6 +165,27 @@ def create_candidate_if_valid(
     # 1. Platform Normalization (Rule 19)
     platform = normalize_platform(raw_platform, source_url)
 
+    # 1b. Window-Title LinkedIn Platform Inference
+    # When source_url is empty (URL not captured from browser address bar), infer LinkedIn
+    # platform from the window title. This is the most common failure case: browser URL
+    # was not readable via UIA, but the window title clearly shows a LinkedIn profile.
+    # e.g. "Elizabeth Bowers | LinkedIn - Google Chrome" → platform = LinkedIn
+    wt_lower = window_title.lower()
+    if not source_url and platform not in ("LinkedIn", "ZoomInfo", "Apollo"):
+        import re as _re
+        _li_title_m = _re.match(
+            r"^(?:\(\d+\+?\)\s*)?([^|•·\n]+?)\s*[|•·]\s*LinkedIn",
+            window_title,
+            flags=_re.IGNORECASE,
+        )
+        if _li_title_m:
+            platform = "LinkedIn"
+            checklist.append("LinkedIn platform inferred from window title (URL not available)")
+        elif "zoominfo" in wt_lower:
+            platform = "ZoomInfo"
+        elif "apollo" in wt_lower:
+            platform = "Apollo"
+
     # 2. Context & Page Type Gating (Rule 4)
     if page_type and page_type.upper() in DISALLOWED_PAGE_TYPES:
         return CandidateGateResult(
@@ -260,6 +281,20 @@ def create_candidate_if_valid(
     if valid_email:
         field_conf["email"] = 0.95
         checklist.append(f"Contact email verified: {valid_email}")
+        # Infer company from corporate email domain if company was not otherwise found
+        if not valid_company:
+            domain = valid_email.split("@")[-1].lower()
+            free_domains = {
+                "gmail.com", "yahoo.com", "hotmail.com", "outlook.com",
+                "icloud.com", "aol.com", "proton.me", "protonmail.com",
+                "live.com", "msn.com", "me.com", "mail.com", "zoho.com"
+            }
+            if domain not in free_domains and "." in domain:
+                derived_comp = domain.split(".")[0].capitalize()
+                if is_valid_company_name(derived_comp):
+                    valid_company = derived_comp
+                    field_conf["company"] = 0.85
+                    checklist.append(f"Company inferred from corporate email domain: {valid_company}")
 
     phone = observation.get("phone") or observation.get("primary_phone") or observation.get("raw_phone")
     valid_phone = phone.strip() if (phone and PHONE_REGEX.search(str(phone))) else None
@@ -279,12 +314,29 @@ def create_candidate_if_valid(
     has_partial_employment = bool(valid_title or valid_company)
 
     # 9. Garbage & Confidence Scoring (Rule 12)
+    # Platform context bonus: a LinkedIn/ZoomInfo/Apollo window title without a URL is still
+    # strong evidence this is a real sourcing platform candidate, not UI noise.
+    is_verified_sourcing_platform = platform in ("LinkedIn", "ZoomInfo", "Apollo", "Indeed", "GitHub")
+    has_platform_context = is_verified_sourcing_platform and not canonical_url
+
+    is_recruiter_chat = (
+        page_type in ("CHAT_RECRUITER_STREAM", "MESSAGING")
+        or platform in ("Recruiter Chat", "GOOGLE_CHAT", "TEAMS", "SLACK")
+    )
+
     quality_score = 0
     quality_score += 35  # Valid human name
     if has_strong_profile:
         quality_score += 35
     elif canonical_url:
         quality_score += 20
+    elif has_platform_context:
+        # Verified sourcing platform window: name seen on LinkedIn/ZoomInfo/Apollo even without URL
+        quality_score += 20
+        checklist.append(f"Verified sourcing platform context: {platform} (URL not captured)")
+    elif is_recruiter_chat and (has_employment or has_verified_contact):
+        quality_score += 15
+        checklist.append("Recruiter chat stream candidate recommendation context")
 
     if has_employment:
         quality_score += 25
@@ -294,28 +346,49 @@ def create_candidate_if_valid(
     if valid_loc:
         quality_score += 10
     if has_verified_contact:
-        quality_score += 15
+        quality_score += 20
 
     quality_score = min(100, quality_score)
 
     identity_conf = (
         (0.35 if cleaned_name else 0.0)
-        + (0.35 if has_strong_profile else (0.15 if canonical_url else 0.0))
+        + (0.35 if has_strong_profile else (0.15 if canonical_url else (0.15 if has_platform_context else 0.0)))
         + (0.20 if has_employment else (0.10 if has_partial_employment else 0.0))
         + (0.10 if valid_loc else 0.0)
+        + (0.20 if has_verified_contact else (0.10 if (is_recruiter_chat and has_employment) else 0.0))
     )
     identity_conf = min(1.0, round(identity_conf, 2))
 
     # 10. Final Gate Decision (Rule 2, 13, 14)
-    # Strict Thresholds:
+    # Standard Thresholds:
     # VERIFIED: score >= 70 AND confidence >= 0.75 AND (has_strong_profile OR has_employment OR has_verified_contact)
-    # REVIEW_REQUIRED: score >= 40 AND (has_partial_employment OR canonical_url)
-    # REJECTED: anything below (name alone with 0 corroborating signals)
-    if quality_score >= 70 and identity_conf >= 0.75 and (has_strong_profile or has_employment or has_verified_contact):
+    # VERIFIED (sourcing platform): score >= 70 AND confidence >= 0.60 AND has_platform_context AND has_partial_employment
+    #   → LinkedIn/ZoomInfo/Apollo window is structural platform evidence. Name + partial employment is sufficient.
+    # VERIFIED (recruiter chat): score >= 70 AND confidence >= 0.65 AND is_recruiter_chat AND (has_employment OR has_verified_contact)
+    # REVIEW_REQUIRED: score >= 40 AND (has_partial_employment OR canonical_url OR has_platform_context)
+    # REJECTED: anything below
+    verified_standard = (
+        quality_score >= 70
+        and identity_conf >= 0.75
+        and (has_strong_profile or has_employment or has_verified_contact)
+    )
+    verified_platform_context = (
+        quality_score >= 70
+        and identity_conf >= 0.60
+        and has_platform_context
+        and has_partial_employment
+    )
+    verified_chat_context = (
+        quality_score >= 70
+        and identity_conf >= 0.65
+        and is_recruiter_chat
+        and (has_employment or has_verified_contact)
+    )
+    if verified_standard or verified_platform_context or verified_chat_context:
         decision = "CANDIDATE_VERIFIED"
         status = "VERIFIED"
         is_valid = True
-    elif quality_score >= 40 and (has_partial_employment or canonical_url):
+    elif quality_score >= 40 and (has_partial_employment or canonical_url or has_platform_context):
         decision = "REVIEW_REQUIRED"
         status = "REVIEW_REQUIRED"
         is_valid = False

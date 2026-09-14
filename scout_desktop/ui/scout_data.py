@@ -483,78 +483,89 @@ PIPELINE_DATA: Dict[str, Any] = {
 # 7. Activity Feed Data
 # ─────────────────────────────────────────────────────────────────────────────
 
+ACTIVITY_FEED_SUBTITLE = "A transparent record of what Scout did and why — every promotion, hold, retry and drop."
+ACTIVITY_FOOTNOTE = "Scout explains itself: every automated decision can be traced back to evidence and gate reasoning."
+
 ACTIVITY_FEED: List[Dict[str, Any]] = [
     {
         "id": "act-1",
-        "time": "00:41:49",
-        "title": "Uploaded 12 verified people to TalentOps Cloud",
+        "time": "2 min ago",
+        "title": "Sarah Chen promoted to canonical",
         "category": "Decisions",
         "severity": "success",
+        "icon": "✅",
         "unread": True,
-        "detail": "Batch #284 committed. 12 canonical identities acknowledged by remote cluster."
+        "detail": "Candidate data passed all 97% confidence. Synced to TalentOps Cloud and acknowledged."
     },
     {
         "id": "act-2",
-        "time": "00:41:02",
-        "title": "Merged duplicate observation into Marcus Webb",
-        "category": "Decisions",
-        "severity": "info",
+        "time": "18 min ago",
+        "title": "Possible duplicate detected",
+        "category": "Warnings",
+        "severity": "warn",
+        "icon": "⚠️",
         "unread": True,
-        "detail": "Secondary LinkedIn public blurb matched existing canonical person with 0.94 confidence."
+        "detail": "Daniel Ortiz matches an existing record on name + company with conflicting title. Sent to review."
     },
     {
         "id": "act-3",
-        "time": "00:40:18",
-        "title": "Rejected capture — page type unknown",
-        "category": "Warnings",
-        "severity": "warn",
+        "time": "41 min ago",
+        "title": "Scout 2.9.0 available",
+        "category": "Decisions",
+        "severity": "info",
+        "icon": "ℹ️",
         "unread": True,
-        "detail": "Active tab was an unclassified document portal. Ignored without parsing."
+        "detail": "Signed release published to the registry. Installs automatically on next restart."
     },
     {
         "id": "act-4",
-        "time": "00:39:55",
-        "title": "Screen unstable, capture deferred",
+        "time": "1 h ago",
+        "title": "Upload retrying — Daniel Ortiz",
         "category": "Warnings",
         "severity": "warn",
+        "icon": "🔄",
         "unread": True,
-        "detail": "Perceptual delta exceeded 0.035. Sampler waited 1.2s for DOM redraw."
+        "detail": "Cloud ACK timed out after 3 attempts. Record breaks in the durable local queue; retrying in 12s."
     },
     {
         "id": "act-5",
-        "time": "00:35:10",
-        "title": "Extractor upgraded to version 4.5.0",
-        "category": "Decisions",
-        "severity": "info",
+        "time": "2 h ago",
+        "title": "Screen unstable on Chrome",
+        "category": "Warnings",
+        "severity": "warn",
+        "icon": "⚠️",
         "unread": False,
-        "detail": "Local engine synchronized with verified release v2.8.0."
+        "detail": "Page kept changing during capture. Observation held — no candidate created."
     },
     {
         "id": "act-6",
-        "time": "00:30:22",
-        "title": "Durable queue retried 2 items with backoff",
-        "category": "Warnings",
-        "severity": "warn",
+        "time": "2 h ago",
+        "title": "Extractor updated to 4.5.0",
+        "category": "Decisions",
+        "severity": "info",
+        "icon": "ℹ️",
         "unread": False,
-        "detail": "Offline socket reconnect successful. Attempt count: 1."
+        "detail": "Extractor packages updated independently of Scout. 14 held observations reprocessed, 3 promoted."
     },
     {
         "id": "act-7",
-        "time": "00:25:01",
-        "title": "Unauthorized source detected: Steam. Ignored.",
-        "category": "Errors",
-        "severity": "error",
+        "time": "6 h ago",
+        "title": "Daily sync complete",
+        "category": "Decisions",
+        "severity": "success",
+        "icon": "✅",
         "unread": False,
-        "detail": "Target window steam.exe is outside recruitment domain whitelist. Gated."
+        "detail": "49 records uploaded, 0 failed, 0 duplicates created. Contribution quality score 96%."
     },
     {
         "id": "act-8",
-        "time": "00:20:44",
-        "title": "Cloud sync completed — 35 records acknowledged",
-        "category": "Decisions",
-        "severity": "success",
+        "time": "Yesterday",
+        "title": "Unauthorized source ignored",
+        "category": "Errors",
+        "severity": "error",
+        "icon": "🛡️",
         "unread": False,
-        "detail": "Remote pipeline stage 4 confirmed zero dropped records."
+        "detail": "14 observations dropped at source awareness — window outside allowed talent platforms."
     },
 ]
 
@@ -563,39 +574,54 @@ ACTIVITY_FEED: List[Dict[str, Any]] = [
 # 8. Settings Configuration Data
 # ─────────────────────────────────────────────────────────────────────────────
 
+SETTINGS_SUBTITLE = "Scout only observes what it is explicitly allowed to observe, and only promotes what clears your thresholds."
+
 SETTINGS_DATA: Dict[str, Any] = {
     "authorized_sources": [
-        {"name": "Google Chrome (chrome.exe)", "enabled": True, "category": "Browser"},
-        {"name": "Microsoft Edge (msedge.exe)", "enabled": True, "category": "Browser"},
-        {"name": "Brave Browser (brave.exe)", "enabled": True, "category": "Browser"},
-        {"name": "LinkedIn (linkedin.com)", "enabled": True, "category": "Recruitment Platform"},
-        {"name": "ZoomInfo (zoominfo.com)", "enabled": True, "category": "Recruitment Platform"},
-        {"name": "Apollo.io (apollo.io)", "enabled": True, "category": "Recruitment Platform"},
-        {"name": "Microsoft Teams (teams.exe)", "enabled": True, "category": "Enterprise Chat"},
-        {"name": "Slack (slack.exe)", "enabled": True, "category": "Enterprise Chat"},
+        {
+            "name": "Chrome — talent platforms",
+            "desc": "person, company and job pages",
+            "enabled": True,
+        },
+        {
+            "name": "Chrome — all other sites",
+            "desc": "never observed",
+            "enabled": False,
+        },
+        {
+            "name": "Applicant tracking system",
+            "desc": "read-only observation",
+            "enabled": True,
+        },
+        {
+            "name": "Email & messaging apps",
+            "desc": "excluded by policy",
+            "enabled": False,
+        },
     ],
-    "gate_thresholds": {
-        "auto_commit": 0.70,
-        "review_threshold": 0.40,
-        "perceptual_stability": 0.035,
-        "min_observations": 1,
-    },
+    "gate_thresholds": [
+        {"name": "Promote to canonical", "score": 95},
+        {"name": "Send to review", "score": 70},
+        {"name": "Discard observation", "score": 40},
+    ],
     "device_identity": {
-        "installation_id": "Installation #483",
-        "device_id": "DEV-98F2-A83B",
-        "tenant_id": "TENANT-TALENTOPS-PROD",
-        "registered_to": "Prashant (TalentOps AI)",
-    },
-    "versions": {
-        "scout_version": "v2.8.0",
-        "extractor_version": "v4.5.0",
-        "os_version": "Windows 11 (Build 26100)",
-        "channel": "Production Stable",
+        "items": [
+            ("Installation", "#483"),
+            ("Device", "WIN-PRASHANT-01"),
+            ("User", "prashant@talentops.ai"),
+            ("Tenant", "TalentOps AI"),
+            ("Registered", "Aug 2, 2026"),
+        ],
+        "footnote": "🔒 Identity survives updates — no credentials are stored locally."
     },
     "updates": {
-        "auto_check": True,
-        "staged_rollouts": True,
-        "status": "Scout 2.9.0 available — ready for next restart",
+        "version": "Scout 2.8.0",
+        "desc": "current: extractor 4.5.0, minimum supported 2.7.0",
+        "status_pill": "Up to date",
+        "auto_install": True,
+        "auto_install_desc": "verify, backup, migrate, health-check, rollback on failure",
+        "beta_channel": False,
+        "beta_desc": "new extraction engines before general release",
     }
 }
 
@@ -606,16 +632,24 @@ SETTINGS_DATA: Dict[str, Any] = {
 
 DEVICE_CLAIM_STATE: Dict[str, Any] = {
     "claimed": True,
-    "claim_code": "TOS-4831-9204",
+    "claim_code": "X X X X - X X X X",
     "user_email": "prashant@talentops.ai",
     "user_name": "Prashant",
     "organization": "TalentOps AI",
     "installation_id": "Installation #483",
+    "subtitle": "Connect this installation to your workspace",
+    "caption": "Generate a short-lived code in TalentOps Cloud under Fleet → Add device. It expires in 10 minutes and can be used once.",
+    "trust_items": [
+        ("🔑", "No passwords stored on device"),
+        ("🪪", "Identity survives updates"),
+        ("🛡️", "Signed releases only"),
+    ],
     "trust_notes": [
-        "🔒 No passwords stored on this device. Auth uses signed short-lived hardware tokens.",
-        "⚡ Identity survives updates and restarts with cryptographic persistent keys.",
-        "🛡️ Only cryptographically signed releases install (Ed25519 validated).",
-    ]
+        "No passwords stored on device",
+        "Identity survives updates",
+        "Signed releases only",
+    ],
+    "footer": "Scout v2.8.0 · Extractor 4.5.0 · Edge intelligence agent",
 }
 
 

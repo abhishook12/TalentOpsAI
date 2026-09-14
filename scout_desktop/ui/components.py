@@ -855,3 +855,64 @@ class BottomStatusBar(QFrame):
         self.lbl_uploaded.setText(f"{uploaded} records uploaded")
         self.lbl_queued.setText(f"{queued} queued")
         self.lbl_errors.setText(errors)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 9. ToggleSwitch
+# ─────────────────────────────────────────────────────────────────────────────
+
+class ToggleSwitch(QWidget):
+    """
+    Modern Obsidian pill toggle switch:
+    - Checked: Emerald Green (#10B981) background, knob on right
+    - Unchecked: Slate dark (#1E293B) background, knob on left
+    """
+    toggled = Signal(bool)
+
+    def __init__(self, checked: bool = False, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self._checked = checked
+        self.setFixedSize(38, 20)
+        self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+
+    def isChecked(self) -> bool:
+        return self._checked
+
+    def setChecked(self, checked: bool):
+        if self._checked != checked:
+            self._checked = checked
+            self.update()
+            self.toggled.emit(self._checked)
+
+    def mousePressEvent(self, event):
+        self.setChecked(not self._checked)
+
+    def paintEvent(self, event):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        w = self.width()
+        h = self.height()
+        r = h / 2.0
+
+        if self._checked:
+            bg_color = QColor("#10B981")
+            border_color = QColor("#059669")
+            knob_x = w - h + 2
+        else:
+            bg_color = QColor("#1E293B")
+            border_color = QColor("#334155")
+            knob_x = 2
+
+        # Draw track
+        p.setPen(QPen(border_color, 1))
+        p.setBrush(bg_color)
+        p.drawRoundedRect(0, 0, w, h, r, r)
+
+        # Draw white knob
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#FFFFFF"))
+        knob_size = h - 4
+        p.drawEllipse(int(knob_x), 2, int(knob_size), int(knob_size))
+        p.end()
+

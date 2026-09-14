@@ -463,6 +463,16 @@ class DiscoveryProcessor:
             conf += 0.05
         if experience_history:
             conf += 0.05
+
+        has_platform_signal = any(
+            (r.source_url and any(s in r.source_url.lower() for s in ["linkedin", "zoominfo", "apollo", "indeed", "chat.google", "teams", "simplyhired"]))
+            or (r.source_page_title and any(s in r.source_page_title.lower() for s in ["linkedin", "zoominfo", "apollo", "indeed", "- chat", "teams", "simplyhired"]))
+            or (getattr(r, "extraction_source", None) and any(s in str(r.extraction_source).lower() for s in ["chat", "teams", "linkedin"]))
+            for r in cluster
+        )
+        if not (linkedin_url or canonical_profile_url) and has_platform_signal:
+            conf += 0.20
+
         conf = min(conf, 1.0)
 
         # Field-level confidences (0-100)
@@ -715,7 +725,14 @@ class DiscoveryProcessor:
 
         # Case 1: No match in master DB
         if not master_match:
-            if person.identity_confidence >= AUTO_COMMIT_THRESHOLD:
+            is_corroborated_profile = (
+                person.canonical_name
+                and person.canonical_name != "Unknown Professional"
+                and person.current_company
+                and person.current_title
+                and person.identity_confidence >= 0.50
+            )
+            if person.identity_confidence >= AUTO_COMMIT_THRESHOLD or is_corroborated_profile:
                 return {
                     'person': person,
                     'recruiter': None,

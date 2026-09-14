@@ -75,7 +75,8 @@ class PageClassifier:
             }
 
         # Check for window titles that represent UI navigation or diagnostic labels
-        if any(term in title_lower for term in [": people", ": overview", "reason:", "active window", "latest capture", "mailings - overview", "inbox ("]):
+        # Note: ': people' on LinkedIn represents Company People directory, which IS candidate-eligible
+        if any(term in title_lower for term in [": overview", ": about", "reason:", "active window", "latest capture", "mailings - overview", "inbox ("]):
             return {
                 "page_type": PAGE_TYPE_UNKNOWN,
                 "platform": "DESKTOP_CAPTURE",
@@ -101,37 +102,31 @@ class PageClassifier:
                     "reason": "LinkedIn /in/ profile URL detected",
                 }
 
-            # Search results: /search/results/people
-            if "/search/results/people" in url_lower or ("/search/results/" in url_lower and "people" in url_lower):
+            # Search results & Company People Directory: /search/results/people or [Company]: People | LinkedIn
+            if (
+                "/search/results/people" in url_lower
+                or ("/search/results/" in url_lower and "people" in url_lower)
+                or ("/company/" in url_lower and "/people" in url_lower)
+                or ": people" in title_lower
+            ):
                 return {
                     "page_type": PAGE_TYPE_PEOPLE_SEARCH,
                     "platform": resolved_plat,
                     "is_candidate_eligible": True,
                     "confidence": 0.95,
                     "canonical_url": raw_url.split("?")[0] if raw_url else None,
-                    "reason": "LinkedIn people search results URL detected",
+                    "reason": "LinkedIn people search or company people directory view",
                 }
 
-            # Company directory: /company/...
-            if "/company/" in url_lower:
+            # Company directory: /company/... (About/Overview tab only)
+            if "/company/" in url_lower or ": overview" in title_lower or ": about" in title_lower:
                 return {
                     "page_type": PAGE_TYPE_COMPANY_PAGE,
                     "platform": resolved_plat,
                     "is_candidate_eligible": False,
                     "confidence": 0.95,
                     "canonical_url": raw_url.split("?")[0] if raw_url else None,
-                    "reason": "LinkedIn company page / directory view (not a single candidate profile)",
-                }
-
-            # Company page general
-            if "/company/" in url_lower:
-                return {
-                    "page_type": PAGE_TYPE_COMPANY_PAGE,
-                    "platform": resolved_plat,
-                    "is_candidate_eligible": False,
-                    "confidence": 0.92,
-                    "canonical_url": raw_url.split("?")[0] if raw_url else None,
-                    "reason": "LinkedIn company page",
+                    "reason": "LinkedIn company overview / about page (not people directory)",
                 }
 
             # Job posting: /jobs/view/ or /jobs/collections/

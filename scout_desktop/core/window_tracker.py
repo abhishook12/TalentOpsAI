@@ -197,6 +197,18 @@ def is_allowed_scout_target(win_info: Optional['WindowInfo'], b_ctx: Optional[Di
         if "apollo.io" in url or "apollo" in title_lower:
             return True, "APOLLO"
 
+        # Target 8: Sourcing & Job Portals (Indeed, SimplyHired, Glassdoor, ZipRecruiter, Jobright)
+        if "indeed.com" in url or "indeed" in title_lower:
+            return True, "INDEED"
+        if "simplyhired.com" in url or "simplyhired" in title_lower:
+            return True, "SIMPLYHIRED"
+        if "glassdoor.com" in url or "glassdoor" in title_lower:
+            return True, "GLASSDOOR"
+        if "ziprecruiter.com" in url or "ziprecruiter" in title_lower:
+            return True, "ZIPRECRUITER"
+        if "jobright.ai" in url or "jobright" in title_lower:
+            return True, "JOBRIGHT"
+
         return False, "UNSUPPORTED_BROWSER_PAGE"
 
     # All other applications are strictly ignored

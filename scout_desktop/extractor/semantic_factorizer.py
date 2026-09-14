@@ -173,7 +173,7 @@ class ProfileJudge:
             )
 
         is_verified_linkedin = (
-            any(k in wt_lower for k in ["| linkedin", "- linkedin", "linkedin recruiter", "sales navigator", "company: people"])
+            any(k in wt_lower for k in ["| linkedin", "- linkedin", "linkedin recruiter", "sales navigator", ": people", "company: people"])
             or "linkedin.com/in/" in url_lower
         )
 
@@ -221,11 +221,16 @@ class ProfileJudge:
                 or PHONE_REGEX.search(l)
                 for l in clean_lines
             )
-            if has_contacts:
+            has_candidate_text = any(
+                re.search(r"\b(?:developer|engineer|recruiter|sourcer|manager|architect|analyst|specialist|lead|consultant|technologies|experience|candidate|resume|profile|hiring|available|rate|ctc|notice)\b", l, re.IGNORECASE)
+                for l in clean_lines
+            )
+            # Accept chat stream if contacts exist OR if candidate text/titles/chat window exists
+            if has_contacts or has_candidate_text or wt_lower.endswith(" - chat"):
                 return JudgmentResult(
                     category="CHAT_CONVERSATION",
                     is_candidate_profile=True,
-                    confidence=0.92,
+                    confidence=0.90,
                     signals_detected=["multi_channel_candidate_data"],
                 )
 
@@ -274,13 +279,14 @@ class ProfileJudge:
         # 3. MULTI-CANDIDATE GRID / SEARCH LISTING
         card_indicators = 0
         for l in clean_lines:
-            if re.search(r"\b(?:view full profile|connect|message|mutual connections?)\b", l, re.IGNORECASE):
+            if re.search(r"\b(?:view full profile|connect|message|mutual connections?|save to list)\b", l, re.IGNORECASE):
                 card_indicators += 1
-        if card_indicators >= 4 and len(clean_lines) > 25:
+        is_people_search_title = ": people" in wt_lower or "search" in wt_lower
+        if (card_indicators >= 2 and (is_people_search_title or len(clean_lines) >= 12)) or card_indicators >= 3:
             return JudgmentResult(
                 category="MULTI_CANDIDATE_GRID",
                 is_candidate_profile=True,
-                confidence=0.85,
+                confidence=0.88,
                 signals_detected=[f"{card_indicators}_profile_action_cards"],
             )
 

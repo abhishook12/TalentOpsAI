@@ -1008,6 +1008,7 @@ class ScoutDesktopApp:
                 "stackoverflow.com", "kaggle.com", "dice.com", "wellfound.com", "angel.co",
                 "greenhouse.io", "lever.co", "ashbyhq.com", "myworkday.com", "workday.com",
                 "icims.com", "smartrecruiters.com",
+                "indeed.com", "simplyhired.com", "glassdoor.com", "ziprecruiter.com", "jobright.ai",
                 ".pdf", "blob:"
             )
             if not any(d in url_lower for d in allowed_domains):

@@ -27,6 +27,7 @@ import sys
 import time
 import math
 import logging
+import webbrowser
 from typing import Optional, Dict, Any, List
 from io import BytesIO
 
@@ -42,6 +43,8 @@ from PySide6.QtGui import (
     QPainterPath, QPen, QLinearGradient, QDesktopServices, QBrush
 )
 from PIL import Image
+
+from scout_desktop.extractor.candidate_gate import clean_candidate_url
 
 logger = logging.getLogger("scout.main_window")
 
@@ -310,6 +313,10 @@ class MainWindow(QMainWindow):
         self._current_user_email = ""
         self._current_account_name = "TalentOps AI"
         self._latest_profile_url = "https://www.linkedin.com"
+        self.all_funnel_step1 = []
+        self.all_funnel_step2 = []
+        self.all_funnel_step3 = []
+        self.all_funnel_step4 = []
 
         self.setWindowTitle(f"TalentOps Scout v{CURRENT_VERSION} — Autonomous Companion")
         self.resize(1180, 720)
@@ -921,7 +928,7 @@ class MainWindow(QMainWindow):
                 background: #075985;
             }
         """)
-        self.btn_scan_now.clicked.connect(self.force_capture_requested.emit)
+        self.btn_scan_now.clicked.connect(self._on_scan_now_clicked)
         action_row.addWidget(self.btn_scan_now, 4)
 
         # 2. Pause / Resume Toggle
@@ -970,7 +977,7 @@ class MainWindow(QMainWindow):
                 background-color: #047857;
             }
         """)
-        self.btn_sync_now.clicked.connect(self.sync_now_requested.emit)
+        self.btn_sync_now.clicked.connect(self._on_sync_now_clicked)
         action_row.addWidget(self.btn_sync_now, 3)
 
         layout.addLayout(action_row)
@@ -1159,7 +1166,7 @@ class MainWindow(QMainWindow):
         return card
 
     # ── Sub-Card: Today's Pipeline ──
-    def _build_today_pipeline_card(self) -> QWidget:
+    def _build_today_pipeline_card(self, show_details_btn: bool = True) -> QWidget:
         card = QFrame()
         card.setObjectName("todayPipelineCard")
         card.setStyleSheet("""
@@ -1179,52 +1186,63 @@ class MainWindow(QMainWindow):
         header_row.addWidget(lbl_title)
         header_row.addStretch()
 
-        self.btn_view_pipeline_details = QPushButton("View Details")
-        self.btn_view_pipeline_details.setCursor(Qt.PointingHandCursor)
-        self.btn_view_pipeline_details.setStyleSheet("""
-            QPushButton {
-                background: transparent;
-                color: #38BDF8;
-                border: none;
-                font-size: 11px;
-                font-weight: 700;
-            }
-            QPushButton:hover {
-                color: #FFFFFF;
-                text-decoration: underline;
-            }
-        """)
-        self.btn_view_pipeline_details.clicked.connect(lambda: self._switch_tab(3))
-        header_row.addWidget(self.btn_view_pipeline_details)
+        if show_details_btn:
+            self.btn_view_pipeline_details = QPushButton("View Details")
+            self.btn_view_pipeline_details.setCursor(Qt.PointingHandCursor)
+            self.btn_view_pipeline_details.setStyleSheet("""
+                QPushButton {
+                    background: transparent;
+                    color: #38BDF8;
+                    border: none;
+                    font-size: 11px;
+                    font-weight: 700;
+                }
+                QPushButton:hover {
+                    color: #FFFFFF;
+                    text-decoration: underline;
+                }
+            """)
+            self.btn_view_pipeline_details.clicked.connect(lambda: self._switch_tab(3))
+            header_row.addWidget(self.btn_view_pipeline_details)
         layout.addLayout(header_row)
 
         steps_row = QHBoxLayout()
         steps_row.setSpacing(8)
 
-        self.funnel_step1 = FunnelStepCard("1", "Scanned Screens", count="342", accent_color="#0284C7")
-        self.funnel_step2 = FunnelStepCard("2", "Profiles Found", count="128", accent_color="#06B6D4")
-        self.funnel_step3 = FunnelStepCard("3", "Real Verified", count="87", accent_color="#8B5CF6")
-        self.funnel_step4 = FunnelStepCard("4", "Cloud Synced", count="62", accent_color="#10B981")
+        step1 = FunnelStepCard("1", "Scanned Screens", count="342", accent_color="#0284C7")
+        step2 = FunnelStepCard("2", "Profiles Found", count="128", accent_color="#06B6D4")
+        step3 = FunnelStepCard("3", "Real Verified", count="87", accent_color="#8B5CF6")
+        step4 = FunnelStepCard("4", "Cloud Synced", count="62", accent_color="#10B981")
 
-        steps_row.addWidget(self.funnel_step1, 1)
+        self.all_funnel_step1.append(step1)
+        self.all_funnel_step2.append(step2)
+        self.all_funnel_step3.append(step3)
+        self.all_funnel_step4.append(step4)
+
+        self.funnel_step1 = step1
+        self.funnel_step2 = step2
+        self.funnel_step3 = step3
+        self.funnel_step4 = step4
+
+        steps_row.addWidget(step1, 1)
 
         arrow1 = QLabel("→")
         arrow1.setStyleSheet("color: #334155; font-size: 16px; font-weight: 900;")
         steps_row.addWidget(arrow1)
 
-        steps_row.addWidget(self.funnel_step2, 1)
+        steps_row.addWidget(step2, 1)
 
         arrow2 = QLabel("→")
         arrow2.setStyleSheet("color: #334155; font-size: 16px; font-weight: 900;")
         steps_row.addWidget(arrow2)
 
-        steps_row.addWidget(self.funnel_step3, 1)
+        steps_row.addWidget(step3, 1)
 
         arrow3 = QLabel("→")
         arrow3.setStyleSheet("color: #334155; font-size: 16px; font-weight: 900;")
         steps_row.addWidget(arrow3)
 
-        steps_row.addWidget(self.funnel_step4, 1)
+        steps_row.addWidget(step4, 1)
 
         layout.addLayout(steps_row)
         return card
@@ -1407,7 +1425,7 @@ class MainWindow(QMainWindow):
                 color: #FFFFFF;
             }
         """)
-        btn_qa_scan.clicked.connect(self.force_capture_requested.emit)
+        btn_qa_scan.clicked.connect(self._on_scan_now_clicked)
         layout.addWidget(btn_qa_scan)
 
         # Action 2: Sync to Cloud
@@ -1430,7 +1448,7 @@ class MainWindow(QMainWindow):
                 color: #FFFFFF;
             }
         """)
-        btn_qa_sync.clicked.connect(self.sync_now_requested.emit)
+        btn_qa_sync.clicked.connect(self._on_sync_now_clicked)
         layout.addWidget(btn_qa_sync)
 
         # Action 3: Open Pipeline
@@ -1554,6 +1572,7 @@ class MainWindow(QMainWindow):
             }
         """)
         self.tbl_candidates.itemSelectionChanged.connect(self._on_candidate_selected)
+        self.tbl_candidates.cellClicked.connect(lambda r, c: self._on_candidate_selected())
         splitter.addWidget(self.tbl_candidates)
 
         # Extraction Detail Panel
@@ -1625,7 +1644,8 @@ class MainWindow(QMainWindow):
 
         self.lbl_detail_url = QLabel("")
         self.lbl_detail_url.setStyleSheet("color: #38BDF8; font-size: 10px; font-weight: 600;")
-        self.lbl_detail_url.setOpenExternalLinks(True)
+        self.lbl_detail_url.setOpenExternalLinks(False)
+        self.lbl_detail_url.linkActivated.connect(self._open_url_safely)
         hb_layout.addWidget(self.lbl_detail_url)
 
         p_layout.addWidget(hero_box)
@@ -1706,20 +1726,31 @@ class MainWindow(QMainWindow):
         company = rec.get("company", "")
         location = rec.get("location", "")
         url = rec.get("profile_url", "")
+        clean_url = clean_candidate_url(url, name, company)
         conf = rec.get("confidence", 90)
         checklist = rec.get("checklist", [])
         field_conf = rec.get("field_confidence", {})
 
-        self.lbl_detail_name.setText(name)
+        self.lbl_detail_name.setText(name or "Selected Candidate")
         role_txt = f"{title} @ {company}" if (title and company) else (title or company or "Professional Profile")
         if location:
             role_txt += f" ({location})"
         self.lbl_detail_role.setText(role_txt)
 
         if url:
-            self.lbl_detail_url.setText(f'<a href="{url}" style="color: #38BDF8; text-decoration: none;">🔗 {url[:45]}... ↗</a>')
+            import re
+            disp_url = re.sub(r'^[0-9\s;:\-_/|🔗•\*\#]+', '', url.strip())
+            disp_url = re.sub(r'\.{2,}$', '', disp_url)
+            if len(disp_url) > 42:
+                disp_url = disp_url[:39] + "..."
+            self.lbl_detail_url.setText(f'<a href="{clean_url}" style="color: #38BDF8; text-decoration: none;">🔗 {disp_url} ↗</a>')
+            self.lbl_detail_url.setToolTip(f"Open profile in browser: {clean_url}")
+        elif name:
+            self.lbl_detail_url.setText(f'<a href="{clean_url}" style="color: #38BDF8; text-decoration: none;">🔗 Search {name} on LinkedIn ↗</a>')
+            self.lbl_detail_url.setToolTip(f"Search candidate on LinkedIn: {clean_url}")
         else:
             self.lbl_detail_url.setText('<span style="color: #64748B;">No profile URL captured</span>')
+            self.lbl_detail_url.setToolTip("")
 
         # Update bars
         fc = field_conf or {}
@@ -1783,13 +1814,49 @@ class MainWindow(QMainWindow):
     def _on_reprocess_clicked(self):
         sel = self.tbl_candidates.selectedItems()
         if not sel:
-            return
-        row = sel[0].row()
+            if self.tbl_candidates.rowCount() > 0:
+                self.tbl_candidates.selectRow(0)
+                row = 0
+            else:
+                return
+        else:
+            row = sel[0].row()
+
         if row < len(self._candidate_records):
             rec = self._candidate_records[row]
-            logger.info("Reprocessing candidate: %s", rec.get("name"))
+            c_name = rec.get("name", "")
+            logger.info("Reprocessing candidate: %s", c_name)
+
+            # Clean and normalize URL
+            clean_url = clean_candidate_url(rec.get("profile_url", ""), c_name, rec.get("company", ""))
+            rec["profile_url"] = clean_url
+
+            # Re-evaluate candidate with candidate gate
+            from scout_desktop.extractor.candidate_gate import create_candidate_if_valid
+            gate_res = create_candidate_if_valid({
+                "name": c_name,
+                "title": rec.get("title", ""),
+                "company": rec.get("company", ""),
+                "location": rec.get("location", ""),
+                "profile_url": clean_url,
+                "platform": rec.get("platform", ""),
+            })
+            if gate_res.is_valid_candidate:
+                rec["status"] = "VERIFIED"
+                rec["confidence"] = max(rec.get("confidence", 90), int(gate_res.identity_confidence * 100))
+                rec["checklist"] = gate_res.audit_checklist
+                rec["field_confidence"] = gate_res.field_confidence
+
+            # Refresh table row items
+            if rec.get("confidence"):
+                self.tbl_candidates.setItem(row, 5, QTableWidgetItem(f"{rec['confidence']}%"))
+            self.tbl_candidates.setItem(row, 6, QTableWidgetItem(rec.get("status", "VERIFIED").upper()))
+
+            # Refresh detail panel
             self._display_candidate_detail(rec)
+
             self.btn_reprocess.setText("✓ Reprocessed")
+            self.log_event("REPROCESS_COMPLETE", f"Candidate {c_name} re-validated & URL normalized")
             QTimer.singleShot(1500, lambda: self.btn_reprocess.setText("🔄 Reprocess"))
 
     def _filter_candidates_table(self, query: str):
@@ -1850,6 +1917,30 @@ class MainWindow(QMainWindow):
                 if c_comp and c_comp != "—":
                     rec["company"] = c_comp
                     self.tbl_candidates.setItem(idx, 2, QTableWidgetItem(c_comp))
+                if p_url:
+                    clean_u = clean_candidate_url(p_url, c_name, c_comp)
+                    rec["profile_url"] = clean_u
+                # Always ensure open button exists and is active
+                btn_open = QPushButton("Open ↗")
+                btn_open.setCursor(Qt.PointingHandCursor)
+                btn_open.setToolTip(f"Open profile or search for {c_name}")
+                btn_open.setStyleSheet("""
+                    QPushButton {
+                        background: #141D2D;
+                        color: #38BDF8;
+                        border: 1px solid #0284C7;
+                        border-radius: 4px;
+                        padding: 2px 6px;
+                        font-size: 9px;
+                        font-weight: 700;
+                    }
+                    QPushButton:hover {
+                        background: #0284C7;
+                        color: #FFFFFF;
+                    }
+                """)
+                btn_open.clicked.connect(lambda _, r=rec: self._open_candidate_url_for_record(r))
+                self.tbl_candidates.setCellWidget(idx, 4, btn_open)
                 # Update status badge item
                 badge = QLabel(status.upper())
                 badge.setAlignment(Qt.AlignCenter)
@@ -1860,13 +1951,14 @@ class MainWindow(QMainWindow):
         row = 0
         self.tbl_candidates.insertRow(row)
 
+        clean_p_url = clean_candidate_url(p_url, c_name, c_comp)
         record = {
             "name": c_name,
             "title": c_title,
             "company": c_comp,
             "location": c_loc,
             "platform": clean_plat,
-            "profile_url": p_url,
+            "profile_url": clean_p_url,
             "confidence": c_conf,
             "status": status,
             "checklist": checklist or gate_res.audit_checklist,
@@ -1895,31 +1987,27 @@ class MainWindow(QMainWindow):
         item_loc.setForeground(QColor("#64748B"))
         self.tbl_candidates.setItem(row, 3, item_loc)
 
-        # Col 4: Profile [Open ↗] Button
-        if p_url:
-            btn_open = QPushButton("Open ↗")
-            btn_open.setStyleSheet("""
-                QPushButton {
-                    background: #141D2D;
-                    color: #38BDF8;
-                    border: 1px solid #0284C7;
-                    border-radius: 4px;
-                    padding: 2px 6px;
-                    font-size: 9px;
-                    font-weight: 700;
-                }
-                QPushButton:hover {
-                    background: #0284C7;
-                    color: #FFFFFF;
-                }
-            """)
-            btn_open.clicked.connect(lambda _, u=p_url: QDesktopServices.openUrl(QUrl(u)))
-            self.tbl_candidates.setCellWidget(row, 4, btn_open)
-        else:
-            item_no_url = QTableWidgetItem("—")
-            item_no_url.setForeground(QColor("#64748B"))
-            item_no_url.setTextAlignment(Qt.AlignCenter)
-            self.tbl_candidates.setItem(row, 4, item_no_url)
+        # Col 4: Profile [Open ↗] Button - Always active for every candidate!
+        btn_open = QPushButton("Open ↗")
+        btn_open.setCursor(Qt.PointingHandCursor)
+        btn_open.setToolTip(f"Open profile or search for {c_name}")
+        btn_open.setStyleSheet("""
+            QPushButton {
+                background: #141D2D;
+                color: #38BDF8;
+                border: 1px solid #0284C7;
+                border-radius: 4px;
+                padding: 2px 6px;
+                font-size: 9px;
+                font-weight: 700;
+            }
+            QPushButton:hover {
+                background: #0284C7;
+                color: #FFFFFF;
+            }
+        """)
+        btn_open.clicked.connect(lambda _, r=record: self._open_candidate_url_for_record(r))
+        self.tbl_candidates.setCellWidget(row, 4, btn_open)
 
         # Col 5: Confidence
         conf_str = f"{confidence}%"
@@ -1981,7 +2069,7 @@ class MainWindow(QMainWindow):
             }
             QPushButton:hover { background-color: #10B981; }
         """)
-        btn_force_sync.clicked.connect(self.sync_now_requested.emit)
+        btn_force_sync.clicked.connect(self._on_sync_now_clicked)
         header_row.addWidget(btn_force_sync)
         layout.addLayout(header_row)
 
@@ -2075,8 +2163,8 @@ class MainWindow(QMainWindow):
         p_title_col.addWidget(lbl_sub)
         layout.addLayout(p_title_col)
 
-        # Full 4-Step Funnel
-        layout.addWidget(self._build_today_pipeline_card())
+        # Full 4-Step Funnel (Hide View Details button since we are already on the Pipeline page)
+        layout.addWidget(self._build_today_pipeline_card(show_details_btn=False))
 
         # Platform Distribution Cards
         lbl_platforms_hdr = QLabel("Active Sourcing Platforms")
@@ -2509,12 +2597,46 @@ class MainWindow(QMainWindow):
         else:
             self.lbl_greeting.setText(f"{greeting}, Recruiter")
 
+    def _open_url_safely(self, url: str):
+        """Opens candidate profile URL or search URL in default browser using Python's webbrowser with QDesktopServices fallback."""
+        if not url:
+            url = "https://www.linkedin.com"
+        clean = clean_candidate_url(url)
+        logger.info("Opening URL safely in browser: %s", clean)
+        self.log_event("BROWSER_OPEN", f"Opening candidate profile: {clean[:45]}...")
+        opened = False
+        try:
+            opened = webbrowser.open(clean, new=2)
+        except Exception as e:
+            logger.warning("webbrowser.open failed: %s", e)
+        if not opened:
+            try:
+                QDesktopServices.openUrl(QUrl(clean))
+            except Exception as e:
+                logger.error("QDesktopServices.openUrl failed: %s", e)
+
+    def _open_candidate_url_for_record(self, rec: dict):
+        """Opens clean candidate profile URL or search URL for given candidate record."""
+        url = clean_candidate_url(rec.get("profile_url", ""), rec.get("name", ""), rec.get("company", ""))
+        self._open_url_safely(url)
+
     def _open_current_target_url(self):
         url = self._latest_profile_url or "https://www.linkedin.com"
-        try:
-            QDesktopServices.openUrl(QUrl(url))
-        except Exception as e:
-            logger.debug("Failed opening target URL: %s", e)
+        self._open_url_safely(url)
+
+    def _on_scan_now_clicked(self):
+        """Gives immediate visual feedback on scan button, then triggers capture."""
+        self.btn_scan_now.setText("⚡ Scanning...")
+        self.btn_scan_now.setEnabled(False)
+        QTimer.singleShot(1200, lambda: (self.btn_scan_now.setText("⚡  Scan Screen Now"), self.btn_scan_now.setEnabled(True)))
+        self.force_capture_requested.emit()
+
+    def _on_sync_now_clicked(self):
+        """Gives immediate visual feedback on sync button, then triggers queue flush."""
+        self.btn_sync_now.setText("☁ Syncing...")
+        self.btn_sync_now.setEnabled(False)
+        QTimer.singleShot(1500, lambda: (self.btn_sync_now.setText("☁  Sync to Cloud"), self.btn_sync_now.setEnabled(True)))
+        self.sync_now_requested.emit()
 
     def _handle_pause_toggle(self):
         self._is_paused = not self._is_paused
@@ -2757,10 +2879,14 @@ class MainWindow(QMainWindow):
         verified_count = metrics.get("staged", 0)
         synced_count = metrics.get("db_updates", 0)
 
-        self.funnel_step1.set_count(scanned_count)
-        self.funnel_step2.set_count(profiles_count)
-        self.funnel_step3.set_count(verified_count)
-        self.funnel_step4.set_count(synced_count)
+        for s in getattr(self, "all_funnel_step1", [self.funnel_step1]):
+            s.set_count(scanned_count)
+        for s in getattr(self, "all_funnel_step2", [self.funnel_step2]):
+            s.set_count(profiles_count)
+        for s in getattr(self, "all_funnel_step3", [self.funnel_step3]):
+            s.set_count(verified_count)
+        for s in getattr(self, "all_funnel_step4", [self.funnel_step4]):
+            s.set_count(synced_count)
 
         # 3. Submetric tiles under currently scanning
         self.sub_profiles.set_count(profiles_count)

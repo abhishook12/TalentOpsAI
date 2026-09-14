@@ -333,9 +333,9 @@ class LocalQueue:
             for row in cur.fetchall():
                 try:
                     data = json.loads(row[1])
-                    contacts = data.get("contacts", [data] if "recruiter_name" in data else [])
+                    contacts = data.get("contacts", [data] if any(k in data for k in ("name", "recruiter_name", "canonical_name", "raw_name")) else [])
                     for c in contacts:
-                        raw_name = c.get("recruiter_name") or c.get("canonical_name") or c.get("raw_name")
+                        raw_name = c.get("name") or c.get("recruiter_name") or c.get("canonical_name") or c.get("raw_name")
                         if not raw_name or not isinstance(raw_name, str):
                             continue
                         name = raw_name.replace("\ufffd", " ").strip()
@@ -344,7 +344,7 @@ class LocalQueue:
                             continue
 
                         seen_names.add(name.lower())
-                        raw_comp = c.get("company_name") or c.get("current_company", "") or ""
+                        raw_comp = c.get("company") or c.get("company_name") or c.get("current_company", "") or ""
                         raw_title = c.get("title") or c.get("current_title", "") or ""
                         raw_loc = c.get("location") or ""
                         candidates.append({
@@ -355,7 +355,7 @@ class LocalQueue:
                             "platform": c.get("platform") or c.get("canonical_profile_url") or "",
                             "status": row[2] or "VERIFIED",
                             "confidence": c.get("confidence", 95),
-                            "profile_url": c.get("canonical_profile_url") or c.get("linkedin_url") or "",
+                            "profile_url": c.get("profile_url") or c.get("canonical_profile_url") or c.get("linkedin_url") or "",
                             "created_at": row[3],
                         })
                         if len(candidates) >= limit:

@@ -1429,6 +1429,12 @@ class ScoutDesktopApp:
         try:
             pending = self.local_queue.get_pending_batch(limit=20)
             if not pending:
+                stats = self.local_queue.get_queue_stats()
+                synced_cnt = stats.get("synced", 0)
+                self.bridge.event_logged.emit(
+                    "DB_SYNC_UP_TO_DATE",
+                    f"Local SQLite queue is 100% synchronized with Cloud (0 pending, {synced_cnt} synced)"
+                )
                 return
 
             queue_ids = [item.pop("_local_queue_id") for item in pending]
@@ -1591,12 +1597,26 @@ class ScoutDesktopApp:
         self.tray.update_icon_status(state)
         pulse_text = "⚡ SAMPLING (1.0s interval)" if "ACTIVE" in state else "💤 IDLE WATCH (10s static rule)"
         self.main_window.lbl_sampling_pulse.setText(pulse_text)
+        if hasattr(self.main_window, "btn_pause_toggle"):
+            if "PAUSED" in state:
+                self.main_window._is_paused = True
+                self.main_window.btn_pause_toggle.setText("▶  Resume")
+            else:
+                self.main_window._is_paused = False
+                self.main_window.btn_pause_toggle.setText("⏸  Pause")
 
     def force_capture(self):
-        """Developer force capture trigger."""
-        if self.current_window:
-            logger.info("⚡ Force Capture initiated.")
-            self.sampler.trigger_immediate_capture(self.current_window, reason="developer_force")
+        """User / Developer force capture trigger."""
+        win = self.current_window or (self.window_tracker.get_active_window() if hasattr(self, "window_tracker") else None)
+        if win:
+            self.current_window = win
+            w_title = getattr(win, "title", "Active Screen")
+            logger.info("⚡ Force Capture initiated for window: %s", w_title)
+            self.bridge.event_logged.emit("SCAN_TRIGGERED", f"⚡ Scanning screen: {w_title[:40]}")
+            self.sampler.trigger_immediate_capture(win, reason="user_manual_trigger")
+        else:
+            logger.warning("Force capture attempted but no active window found.")
+            self.bridge.event_logged.emit("SCAN_SKIPPED", "⚠️ No active recruitment or browser window detected to scan.")
 
     def toggle_pause(self):
         if self.sampler.state == "PAUSED":

@@ -14,6 +14,7 @@ Enforces the hard architectural rules:
 
 from __future__ import annotations
 import re
+import urllib.parse
 import logging
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any, List, Tuple
@@ -83,6 +84,56 @@ class CandidateGateResult:
             "field_confidence": self.field_confidence,
             "sanitized_candidate": self.sanitized_candidate,
         }
+
+
+def clean_candidate_url(raw_url: Optional[str], name: str = "", company: str = "") -> str:
+    """
+    Cleans OCR noise and typos from candidate profile URLs, ensures https:// scheme,
+    or falls back to a clean LinkedIn search URL.
+    """
+    if not raw_url or not isinstance(raw_url, str):
+        raw_url = ""
+    url = raw_url.strip()
+
+    # Strip common OCR noise prefixes like "2; ", "1. ", "🔗 ", "URL: ", etc.
+    url = re.sub(r'^[0-9\s;:\-_/|🔗•\*\#\.]+', '', url)
+    url = re.sub(r'\.{2,}$', '', url)  # strip trailing ellipses
+
+    # Fix common OCR typos in linkedin domain
+    url = re.sub(r'linke?a?d?i?n?\.com', 'linkedin.com', url, flags=re.IGNORECASE)
+    url = re.sub(r'likedin\.com', 'linkedin.com', url, flags=re.IGNORECASE)
+    url = re.sub(r'linkdin\.com', 'linkedin.com', url, flags=re.IGNORECASE)
+    url = re.sub(r'linkid\.com', 'linkedin.com', url, flags=re.IGNORECASE)
+
+    # Check if it contains linkedin.com
+    if "linkedin.com" in url.lower():
+        if not url.startswith(("http://", "https://")):
+            url = "https://" + url.lstrip("/")
+        if "?" in url and "search" not in url.lower():
+            url = url.split("?")[0]
+        url = url.rstrip("/")
+    elif url.startswith(("http://", "https://")):
+        if "?" in url and "search" not in url.lower():
+            url = url.split("?")[0]
+        url = url.rstrip("/")
+    elif "." in url and " " not in url:
+        url = "https://" + url.lstrip("/")
+        if "?" in url and "search" not in url.lower():
+            url = url.split("?")[0]
+        url = url.rstrip("/")
+    else:
+        # Fallback to people search by name & company
+        clean_name = re.sub(r'[^a-zA-Z\s]', '', name).strip() if name else ""
+        clean_comp = re.sub(r'[^a-zA-Z0-9\s]', '', company).strip() if company else ""
+        query_terms = [t for t in [clean_name, clean_comp] if t and t != "—" and t != "Professional Profile"]
+        if query_terms:
+            query = " ".join(query_terms)
+            url = f"https://www.linkedin.com/search/results/people/?keywords={urllib.parse.quote_plus(query)}"
+        elif url:
+            url = f"https://www.google.com/search?q={urllib.parse.quote_plus(url)}"
+        else:
+            url = "https://www.linkedin.com"
+    return url
 
 
 def normalize_platform(platform: Optional[str], source_url: Optional[str] = None) -> str:
@@ -285,7 +336,7 @@ def create_candidate_if_valid(
         checklist.append(f"Location normalized: {valid_loc}")
 
     # 7. Profile URL & Contact Validation (Rule 6, 7)
-    profile_url = (
+    raw_profile_url = (
         observation.get("canonical_profile_url")
         or observation.get("profile_url")
         or observation.get("linkedin_url")
@@ -293,16 +344,20 @@ def create_candidate_if_valid(
         or (source_url if "linkedin.com/in/" in source_url else None)
     )
     canonical_url = None
-    if profile_url and isinstance(profile_url, str):
-        p_clean = profile_url.strip()
-        if "linkedin.com/in/" in p_clean:
-            canonical_url = p_clean.split("?")[0].rstrip("/")
+    if raw_profile_url and isinstance(raw_profile_url, str):
+        cleaned_url = clean_candidate_url(raw_profile_url, cleaned_name or "", valid_company or "")
+        if "linkedin.com/in/" in cleaned_url:
+            canonical_url = cleaned_url
             field_conf["profile_url"] = 0.99
             checklist.append(f"Canonical LinkedIn URL verified: {canonical_url}")
-        elif p_clean.startswith("http"):
-            canonical_url = p_clean.split("?")[0]
+        elif cleaned_url.startswith("http") and "search/results" not in cleaned_url and "google.com" not in cleaned_url:
+            canonical_url = cleaned_url
             field_conf["profile_url"] = 0.90
             checklist.append(f"Source URL verified: {canonical_url}")
+        elif cleaned_url.startswith("http"):
+            canonical_url = cleaned_url
+            field_conf["profile_url"] = 0.75
+            checklist.append(f"Search fallback URL generated: {canonical_url}")
 
     # Emails & Phones
     email = observation.get("email") or observation.get("primary_email") or observation.get("raw_email")
@@ -443,6 +498,7 @@ def create_candidate_if_valid(
         "platform": platform,
         "source_url": source_url,
         "canonical_profile_url": canonical_url,
+        "profile_url": canonical_url,
         "linkedin_url": canonical_url if (canonical_url and "linkedin.com" in canonical_url) else None,
         "email": valid_email,
         "phone": valid_phone,

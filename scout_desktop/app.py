@@ -63,9 +63,23 @@ if sys.stdout is None:
 if sys.stderr is None:
     sys.stderr = NullWriter()
 
+from .core.paths import get_logs_dir
+
+try:
+    _logs_dir = get_logs_dir()
+    os.makedirs(_logs_dir, exist_ok=True)
+    _log_file = os.path.join(_logs_dir, "scout_desktop.log")
+    _file_handler = logging.FileHandler(_log_file, encoding="utf-8", mode="a")
+except Exception:
+    _file_handler = logging.NullHandler()
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        _file_handler,
+        logging.StreamHandler(sys.stderr) if sys.stderr and not isinstance(sys.stderr, NullWriter) else logging.NullHandler(),
+    ]
 )
 logger = logging.getLogger("scout.app")
 
@@ -1596,23 +1610,33 @@ def main():
             logger.warning("TalentOps Scout is already running. Focusing existing window and exiting.")
             try:
                 import ctypes
+                from ctypes import wintypes
                 user32 = ctypes.windll.user32
-                hwnd = user32.FindWindowW(None, "TalentOps Scout")
-                if hwnd:
-                    user32.ShowWindow(hwnd, 9)  # SW_RESTORE
-                    user32.SetForegroundWindow(hwnd)
+
+                def _enum_proc(hwnd, lParam):
+                    length = user32.GetWindowTextLengthW(hwnd)
+                    if length > 0:
+                        buff = ctypes.create_unicode_buffer(length + 1)
+                        user32.GetWindowTextW(hwnd, buff, length + 1)
+                        if "TalentOps Scout" in buff.value:
+                            user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+                            user32.SetForegroundWindow(hwnd)
+                            return False
+                    return True
+
+                WNDENUMPROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+                user32.EnumWindows(WNDENUMPROC(_enum_proc), 0)
             except Exception:
                 pass
             sys.exit(0)
 
-        # 2. Attach to the interactive user desktop and close the open handle immediately
+        # 2. Attach to the interactive user desktop if needed
         try:
             import ctypes
             user32 = ctypes.windll.user32
             h_default = user32.OpenDesktopW("default", 0, False, 0x01FF)
             if h_default:
                 user32.SetThreadDesktop(h_default)
-                user32.CloseDesktop(h_default)
         except Exception as e:
             logger.debug("Failed to set thread desktop: %s", e)
 
@@ -1642,10 +1666,21 @@ def main():
                 app.setWindowIcon(app_icon)
                 break
 
-    scout = ScoutDesktopApp()
-    scout.start()
-
-    sys.exit(app.exec())
+    try:
+        scout = ScoutDesktopApp()
+        scout.start()
+        sys.exit(app.exec())
+    except Exception as e:
+        logger.critical("FATAL: Uncaught exception in Scout main loop: %s", e, exc_info=True)
+        try:
+            crash_path = os.path.join(get_logs_dir(), "scout_crash.log")
+            with open(crash_path, "a", encoding="utf-8") as f:
+                import traceback
+                f.write(f"\n--- CRASH AT {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
+                f.write(traceback.format_exc())
+        except Exception:
+            pass
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -2638,13 +2638,17 @@ class MainWindow(QMainWindow):
             self._latest_profile_url = url
 
         # Update Browser / Target Icon
-        if "LINKEDIN" in target_type or "linkedin.com" in url:
+        url_str = (url or "").lower()
+        target_type_str = (target_type or "").upper()
+        app_name_str = (app_name or "").upper()
+
+        if "LINKEDIN" in target_type_str or "linkedin.com" in url_str:
             self.lbl_browser_icon.setText("💼")
             self.lbl_browser_icon.setStyleSheet("background-color: #0A66C2; color: #FFFFFF; border-radius: 8px; font-size: 22px;")
-        elif "CHROME" in app_name.upper():
+        elif "CHROME" in app_name_str:
             self.lbl_browser_icon.setText("🌐")
             self.lbl_browser_icon.setStyleSheet("background-color: #121F36; border: 1px solid #1E3152; border-radius: 8px; font-size: 22px;")
-        elif "GITHUB" in target_type:
+        elif "GITHUB" in target_type_str:
             self.lbl_browser_icon.setText("🐙")
             self.lbl_browser_icon.setStyleSheet("background-color: #24292E; color: #FFFFFF; border-radius: 8px; font-size: 22px;")
         else:

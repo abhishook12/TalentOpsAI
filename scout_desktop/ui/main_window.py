@@ -519,6 +519,29 @@ class MainWindow(QMainWindow):
         if p_url:
             self._latest_profile_url = p_url
 
+        # Dynamic avatar initials
+        initials = "".join([p[0].upper() for p in cand_name.split()[:2] if p]) or "??"
+        if hasattr(self.page_scan, "lbl_avatar"):
+            self.page_scan.lbl_avatar.setText(initials)
+
+        # Dynamic confidence meters
+        fc = kwargs.get("field_confidence") or {}
+        name_conf = fc.get("name", 99)
+        title_conf = fc.get("title", 96)
+        comp_conf = fc.get("company", 93)
+        loc_conf = fc.get("location", 71)
+        if hasattr(self.page_scan, "update_meters"):
+            self.page_scan.update_meters(
+                name=cand_name,
+                title=cand_title,
+                company=cand_company,
+                location=cand_loc,
+                name_conf=name_conf,
+                title_conf=title_conf,
+                comp_conf=comp_conf,
+                loc_conf=loc_conf,
+            )
+
     def _add_candidate_table_row(self, *args, **kwargs):
         """Called by app.py to add extracted person to candidates list (supports dict or keyword args)"""
         if args and isinstance(args[0], dict):

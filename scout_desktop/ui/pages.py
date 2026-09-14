@@ -326,17 +326,17 @@ class ScanPage(QWidget):
         entity_header = QHBoxLayout()
         entity_header.setSpacing(10)
 
-        lbl_avatar = QLabel("SC")
-        lbl_avatar.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
-        lbl_avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_avatar.setFixedSize(36, 36)
-        lbl_avatar.setStyleSheet("""
+        self.lbl_avatar = QLabel("SC")
+        self.lbl_avatar.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
+        self.lbl_avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_avatar.setFixedSize(36, 36)
+        self.lbl_avatar.setStyleSheet("""
             background-color: #1E293B;
             color: #F8FAFC;
             border-radius: 18px;
             border: 1px solid #334155;
         """)
-        entity_header.addWidget(lbl_avatar)
+        entity_header.addWidget(self.lbl_avatar)
 
         name_box = QVBoxLayout()
         name_box.setSpacing(2)
@@ -361,10 +361,14 @@ class ScanPage(QWidget):
         latest_layout.addLayout(entity_header)
 
         # Per-Field Confidence Meters
-        latest_layout.addWidget(ConfidenceMeter("Name: Sarah Chen", 99))
-        latest_layout.addWidget(ConfidenceMeter("Title: Software Engineer", 96))
-        latest_layout.addWidget(ConfidenceMeter("Company: Google", 93))
-        latest_layout.addWidget(ConfidenceMeter("Location: San Francisco, CA", 71))
+        self.meter_name = ConfidenceMeter("Name: Sarah Chen", 99)
+        self.meter_title = ConfidenceMeter("Title: Software Engineer", 96)
+        self.meter_company = ConfidenceMeter("Company: Google", 93)
+        self.meter_loc = ConfidenceMeter("Location: San Francisco, CA", 71)
+        latest_layout.addWidget(self.meter_name)
+        latest_layout.addWidget(self.meter_title)
+        latest_layout.addWidget(self.meter_company)
+        latest_layout.addWidget(self.meter_loc)
 
         # Open record > button
         self.btn_open_record = QPushButton("Open record >")
@@ -480,6 +484,12 @@ class ScanPage(QWidget):
         lbl_n.setStyleSheet(f"color: {COLOR_TEXT_SECONDARY}; border: none;")
         l.addWidget(lbl_n)
         return box
+
+    def update_meters(self, name: str, title: str, company: str, location: str, name_conf: int = 99, title_conf: int = 96, comp_conf: int = 93, loc_conf: int = 71):
+        self.meter_name.set_score(name_conf, f"Name: {name[:24]}")
+        self.meter_title.set_score(title_conf, f"Title: {title[:28]}")
+        self.meter_company.set_score(comp_conf, f"Company: {company[:26]}")
+        self.meter_loc.set_score(loc_conf, f"Location: {location[:24]}")
 
     def _create_checklist_item(self, icon: str, text: str, passed: bool) -> QWidget:
         w = QWidget()

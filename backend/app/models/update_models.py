@@ -118,6 +118,10 @@ class ScoutInstallation(Base):
     last_update_at = Column(TIMESTAMP, nullable=True)
     last_successful_update = Column(TIMESTAMP, nullable=True)
 
+    # Fleet Broadcast & Notification State
+    last_broadcast_seen_id = Column(String(64), nullable=True)
+    pending_update_version = Column(String(32), nullable=True)
+
 
 class ScoutInstallationClaim(Base):
     """
@@ -165,5 +169,32 @@ class ScoutRemoteConfig(Base):
     updated_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+
+
+class ScoutFleetBroadcast(Base):
+    """
+    Fleet-Wide Update Broadcasts.
+    Enables administrators to dispatch high-priority update notifications
+    and trigger immediate background download & staging on active Desktop Scout nodes.
+    """
+    __tablename__ = "scout_fleet_broadcasts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    broadcast_id = Column(String(64), unique=True, index=True, nullable=False)  # e.g. "BCST-2026-V290"
+    target_version = Column(String(32), index=True, nullable=False)
+    cohort = Column(String(32), default="OUTDATED_ONLY", index=True)  # OUTDATED_ONLY, ALL_ACTIVE, SPECIFIC_DEVICES
+    is_mandatory = Column(Boolean, default=False)
+    title = Column(String(200), nullable=True)
+    message = Column(Text, nullable=True)
+    release_notes = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True, index=True)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(TIMESTAMP, server_default=func.now(), index=True)
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+
+    # Telemetry metrics
+    targeted_count = Column(Integer, default=0)
+    delivered_count = Column(Integer, default=0)
+    acknowledged_count = Column(Integer, default=0)
 
 

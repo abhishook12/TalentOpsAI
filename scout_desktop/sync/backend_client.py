@@ -581,6 +581,25 @@ class BackendClient:
             logger.debug("Heartbeat ping failed: %s", e)
             return False, {"error": str(e)}
 
+    def acknowledge_broadcast(
+        self,
+        broadcast_id: str,
+        status: str = "ACKNOWLEDGED",
+    ) -> bool:
+        """Reports fleet update broadcast reception or installation state back to backend."""
+        try:
+            url = f"{self.active_api_base}/scout/fleet/ack-broadcast"
+            payload = {
+                "device_id": self.device_id,
+                "broadcast_id": broadcast_id,
+                "status": status,
+            }
+            res = requests.post(url, json=payload, headers=self._get_headers(), timeout=4.0)
+            return res.status_code == 200
+        except Exception as e:
+            logger.debug("Failed to acknowledge broadcast: %s", e)
+            return False
+
     def lookup_candidate(
         self,
         name: Optional[str] = None,

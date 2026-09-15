@@ -21,9 +21,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func as sqlfunc
 
 from ..database import get_db
-from ..models.update_models import ScoutRelease, ScoutInstallation, ScoutDownloadEvent, ScoutRemoteConfig
+from ..models.update_models import ScoutRelease, ScoutInstallation, ScoutDownloadEvent, ScoutRemoteConfig, ScoutFleetBroadcast
 from ..models.auth_models import User
-from ..services.auth_service import get_current_user_from_request
+from ..services.auth_service import get_current_user_from_request, get_optional_current_user
 from ..services.release_signer import sign_manifest, sign_package_hash
 
 logger = logging.getLogger("talentops.scout_updates")
@@ -1335,3 +1335,215 @@ def get_fleet_update_stats(
             "releases": [],
             "circuit_breaker_alert": None,
         }
+
+
+# ── Fleet Broadcast Schemas & Endpoints ─────────────────────────────────────
+
+class FleetBroadcastRequest(BaseModel):
+    target_version: str
+    cohort: str = "OUTDATED_ONLY"  # OUTDATED_ONLY, ALL_ACTIVE
+    mandatory: bool = False
+    title: Optional[str] = None
+    message: Optional[str] = None
+    release_notes: Optional[str] = None
+
+
+class AckBroadcastRequest(BaseModel):
+    device_id: str
+    broadcast_id: str
+    status: str = "ACKNOWLEDGED"  # ACKNOWLEDGED, DOWNLOADING, READY_TO_INSTALL, UPDATED
+
+
+def _check_admin(current_user: Optional[User]):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    is_admin = (
+        (current_user.email or "").lower().strip() == "abhishekjadon824@gmail.com"
+        or getattr(current_user, "is_superadmin", False)
+        or (hasattr(current_user, "role") and current_user.role and getattr(current_user.role, "name", "").lower() in ("admin", "superadmin"))
+    )
+    if not is_admin:
+        raise HTTPException(status_code=403, detail="Admin authorization required")
+
+
+def _is_outdated(cur: str, target: str) -> bool:
+    try:
+        from packaging import version as pkg_version
+        return pkg_version.parse(cur.lstrip("v")) < pkg_version.parse(target.lstrip("v"))
+    except Exception:
+        try:
+            c_parts = [int(p) for p in cur.lstrip("v").split(".")[:3]]
+            t_parts = [int(p) for p in target.lstrip("v").split(".")[:3]]
+            return c_parts < t_parts
+        except Exception:
+            return cur != target
+
+
+@router.post("/fleet/broadcast-update")
+def broadcast_fleet_update(
+    req: FleetBroadcastRequest,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
+):
+    """
+    Dispatches a fleet-wide update notification to active Scout Desktop nodes.
+    Recruiter nodes receive the notification on their next heartbeat ping (within 20s)
+    and trigger immediate background download, staging, and user prompt.
+    """
+    _check_admin(current_user)
+
+    # Deactivate existing active broadcasts
+    existing = db.query(ScoutFleetBroadcast).filter(ScoutFleetBroadcast.is_active == True).all()
+    for b in existing:
+        b.is_active = False
+
+    broadcast_id = f"BCST-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+
+    # Calculate target devices count and update their pending status
+    all_installations = db.query(ScoutInstallation).all()
+    targeted_devices = []
+
+    for inst in all_installations:
+        is_target = False
+        if req.cohort == "ALL_ACTIVE":
+            is_target = True
+        else:  # OUTDATED_ONLY
+            is_target = _is_outdated(inst.scout_version, req.target_version)
+
+        if is_target:
+            targeted_devices.append(inst)
+            inst.update_status = "UPDATE_REQUIRED" if req.mandatory else "UPDATE_AVAILABLE"
+            inst.pending_update_version = req.target_version
+
+    targeted_count = len(targeted_devices)
+
+    broadcast = ScoutFleetBroadcast(
+        broadcast_id=broadcast_id,
+        target_version=req.target_version,
+        cohort=req.cohort,
+        is_mandatory=req.mandatory,
+        title=req.title or f"TalentOps Scout v{req.target_version} Available",
+        message=req.message or f"A new version of Scout (v{req.target_version}) is ready to install.",
+        release_notes=req.release_notes,
+        is_active=True,
+        created_by=current_user.id if current_user else None,
+        targeted_count=targeted_count,
+        delivered_count=0,
+        acknowledged_count=0,
+    )
+    db.add(broadcast)
+    db.commit()
+    db.refresh(broadcast)
+
+    logger.info(
+        "Fleet broadcast %s dispatched for v%s targeting %d devices (mandatory=%s)",
+        broadcast_id, req.target_version, targeted_count, req.mandatory
+    )
+
+    return {
+        "ok": True,
+        "broadcast_id": broadcast.broadcast_id,
+        "target_version": broadcast.target_version,
+        "cohort": broadcast.cohort,
+        "targeted_count": targeted_count,
+        "mandatory": broadcast.is_mandatory,
+        "status": "BROADCAST_DISPATCHED",
+        "message": f"Update notification dispatched to {targeted_count} target devices across the fleet.",
+    }
+
+
+@router.get("/fleet/broadcast-status")
+def get_fleet_broadcast_status(
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
+):
+    """
+    Returns live delivery, acknowledgment, and adoption metrics for the active fleet broadcast.
+    """
+    _check_admin(current_user)
+
+    active = (
+        db.query(ScoutFleetBroadcast)
+        .filter(ScoutFleetBroadcast.is_active == True)
+        .order_by(ScoutFleetBroadcast.created_at.desc())
+        .first()
+    )
+
+    if not active:
+        return {"active": False, "broadcast": None}
+
+    # Count how many installations have successfully updated to target_version
+    updated_count = (
+        db.query(sqlfunc.count(ScoutInstallation.id))
+        .filter(ScoutInstallation.scout_version == active.target_version)
+        .scalar()
+        or 0
+    )
+
+    targeted = active.targeted_count or 1
+    delivery_pct = min(100.0, round(((active.delivered_count or 0) / targeted * 100.0), 1))
+    adoption_pct = min(100.0, round((updated_count / targeted * 100.0), 1))
+
+    return {
+        "active": True,
+        "broadcast": {
+            "id": active.id,
+            "broadcast_id": active.broadcast_id,
+            "target_version": active.target_version,
+            "cohort": active.cohort,
+            "is_mandatory": active.is_mandatory,
+            "title": active.title,
+            "message": active.message,
+            "release_notes": active.release_notes,
+            "created_at": active.created_at.isoformat() if active.created_at else None,
+            "targeted_count": active.targeted_count,
+            "delivered_count": active.delivered_count,
+            "acknowledged_count": active.acknowledged_count,
+            "updated_count": updated_count,
+            "delivery_percentage": delivery_pct,
+            "adoption_percentage": adoption_pct,
+        },
+    }
+
+
+@router.post("/fleet/cancel-broadcast")
+def cancel_fleet_broadcast(
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
+):
+    """
+    Cancels any active fleet-wide update broadcast.
+    """
+    _check_admin(current_user)
+
+    broadcasts = db.query(ScoutFleetBroadcast).filter(ScoutFleetBroadcast.is_active == True).all()
+    for b in broadcasts:
+        b.is_active = False
+
+    db.commit()
+    return {"ok": True, "status": "BROADCAST_CANCELLED", "cancelled_count": len(broadcasts)}
+
+
+@router.post("/fleet/ack-broadcast")
+def acknowledge_fleet_broadcast(
+    req: AckBroadcastRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Callback endpoint for Scout Desktop nodes to report broadcast reception and progress.
+    """
+    b = db.query(ScoutFleetBroadcast).filter(ScoutFleetBroadcast.broadcast_id == req.broadcast_id).first()
+    if b:
+        b.acknowledged_count = (b.acknowledged_count or 0) + 1
+
+    inst = db.query(ScoutInstallation).filter(ScoutInstallation.device_id == req.device_id).first()
+    if inst:
+        inst.last_broadcast_seen_id = req.broadcast_id
+        if req.status in ("DOWNLOADING", "READY_TO_INSTALL", "UPDATED"):
+            inst.update_status = req.status
+            if req.status == "UPDATED":
+                inst.scout_version = b.target_version if b else inst.scout_version
+                inst.health_status = "HEALTHY"
+
+    db.commit()
+    return {"ok": True, "device_id": req.device_id, "broadcast_id": req.broadcast_id}

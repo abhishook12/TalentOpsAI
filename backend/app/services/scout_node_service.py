@@ -20,6 +20,7 @@ from sqlalchemy import desc, func as sqlfunc
 from ..models.extension_models import ExtensionDevice, ExtensionDiscoveryEvent
 from ..models.staging_models import DiscoveryStaging
 from ..models.auth_models import User
+from ..models.update_models import ScoutInstallation, ScoutFleetBroadcast
 
 
 def record_scout_heartbeat(
@@ -31,7 +32,8 @@ def record_scout_heartbeat(
     client_metrics: dict = None
 ) -> Dict[str, Any]:
     """
-    Records a live heartbeat from an active browser extension node.
+    Records a live heartbeat from an active browser extension or desktop scout node.
+    Checks for pending fleet broadcast update notifications and returns payload if target is eligible.
     """
     now = datetime.now(timezone.utc)
     
@@ -62,14 +64,75 @@ def record_scout_heartbeat(
         if client_metrics and client_metrics.get("device_name"):
             device.user_agent = client_metrics.get("device_name")
 
+    # Update or track in ScoutInstallation
+    inst = db.query(ScoutInstallation).filter(ScoutInstallation.device_id == device_id).first()
+    if inst:
+        inst.last_seen = now
+        inst.last_check_at = now
+        if version_str:
+            inst.scout_version = str(version_str)
+
+    # Check for active fleet-wide update broadcast
+    update_notification = None
+    active_broadcast = (
+        db.query(ScoutFleetBroadcast)
+        .filter(ScoutFleetBroadcast.is_active == True)
+        .order_by(ScoutFleetBroadcast.created_at.desc())
+        .first()
+    )
+
+    if active_broadcast:
+        target_ver = active_broadcast.target_version
+        current_ver = str(version_str or (inst.scout_version if inst else "1.0.0"))
+
+        def _is_outdated(cur: str, target: str) -> bool:
+            try:
+                from packaging import version as pkg_version
+                return pkg_version.parse(cur.lstrip("v")) < pkg_version.parse(target.lstrip("v"))
+            except Exception:
+                try:
+                    c_parts = [int(p) for p in cur.lstrip("v").split(".")[:3]]
+                    t_parts = [int(p) for p in target.lstrip("v").split(".")[:3]]
+                    return c_parts < t_parts
+                except Exception:
+                    return cur != target
+
+        should_notify = False
+        if active_broadcast.cohort == "ALL_ACTIVE":
+            should_notify = True
+        else:  # OUTDATED_ONLY
+            should_notify = _is_outdated(current_ver, target_ver)
+
+        if should_notify:
+            update_notification = {
+                "broadcast_id": active_broadcast.broadcast_id,
+                "target_version": active_broadcast.target_version,
+                "mandatory": active_broadcast.is_mandatory,
+                "title": active_broadcast.title or f"TalentOps Scout v{active_broadcast.target_version} Available",
+                "message": active_broadcast.message or f"A new version of Scout (v{active_broadcast.target_version}) is ready to install.",
+                "release_notes": active_broadcast.release_notes,
+                "force_check": True,
+            }
+            if inst:
+                if inst.last_broadcast_seen_id != active_broadcast.broadcast_id:
+                    inst.last_broadcast_seen_id = active_broadcast.broadcast_id
+                    inst.pending_update_version = active_broadcast.target_version
+                    active_broadcast.delivered_count = (active_broadcast.delivered_count or 0) + 1
+            else:
+                active_broadcast.delivered_count = (active_broadcast.delivered_count or 0) + 1
+
     db.commit()
 
-    return {
+    response = {
         "status": "HEARTBEAT_ACK",
         "device_id": device_id,
         "recorded_at": now.isoformat(),
         "is_active": True
     }
+    if update_notification:
+        response["update_notification"] = update_notification
+
+    return response
 
 
 def get_all_scout_nodes_telemetry(db: Session) -> Dict[str, Any]:

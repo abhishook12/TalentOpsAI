@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck, AlertTriangle, Play, Pause, RotateCcw, CheckCircle2,
   Sliders, Settings, RefreshCw, Cpu, Layers, Award, Terminal, ArrowRight,
-  ExternalLink, Sparkles, Check, Lock, Laptop
+  ExternalLink, Sparkles, Check, Lock, Laptop, Radio, Send, X, Bell, Users
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -13,6 +13,19 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
   const [remoteConfig, setRemoteConfig] = useState(null);
   const [configSaving, setConfigSaving] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
+
+  // Fleet Broadcast State
+  const [broadcastStatus, setBroadcastStatus] = useState(null);
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [broadcasting, setBroadcasting] = useState(false);
+  const [broadcastForm, setBroadcastForm] = useState({
+    target_version: '',
+    cohort: 'OUTDATED_ONLY',
+    mandatory: false,
+    title: '',
+    message: '',
+    release_notes: '',
+  });
 
   // 7-Point Safety Checklist
   const [checklist, setChecklist] = useState({
@@ -29,16 +42,18 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
   const [approving, setApproving] = useState(false);
   const [rollingBack, setRollingBack] = useState(false);
 
-  // Fetch Releases & Remote Config
+  // Fetch Releases & Remote Config & Fleet Broadcast
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [relRes, cfgRes] = await Promise.all([
+      const [relRes, cfgRes, bcstRes] = await Promise.all([
         api.get('/scout/releases'),
         api.get('/scout/config'),
+        api.get('/scout/fleet/broadcast-status').catch(() => ({ data: { active: false } })),
       ]);
       setReleases(relRes.data || []);
       setRemoteConfig(cfgRes.data || {});
+      setBroadcastStatus(bcstRes.data || { active: false });
 
       // Check if there is a candidate awaiting approval
       const candidate = (relRes.data || []).find(r => !r.is_current && r.status !== 'ROLLED_BACK');
@@ -58,6 +73,51 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
   }, []);
 
   const currentProduction = releases.find(r => r.is_current) || releases[0] || {};
+
+  // Fleet Broadcast Actions
+  const handleOpenBroadcastModal = (version) => {
+    const targetVer = version || currentProduction?.version || '2.8.0';
+    setBroadcastForm({
+      target_version: targetVer,
+      cohort: 'OUTDATED_ONLY',
+      mandatory: false,
+      title: `TalentOps Scout v${targetVer} Available`,
+      message: `A new version of Scout (v${targetVer}) is ready. Click to restart and update to the latest release.`,
+      release_notes: currentProduction?.release_notes || '',
+    });
+    setShowBroadcastModal(true);
+  };
+
+  const handleDispatchBroadcast = async () => {
+    if (!broadcastForm.target_version) {
+      toast.error('Target version is required');
+      return;
+    }
+    setBroadcasting(true);
+    try {
+      const res = await api.post('/scout/fleet/broadcast-update', broadcastForm);
+      if (res.data?.ok) {
+        toast.success(`🚀 Fleet broadcast dispatched to ${res.data.targeted_count} devices!`);
+        setShowBroadcastModal(false);
+        await fetchData();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to dispatch fleet broadcast');
+    } finally {
+      setBroadcasting(false);
+    }
+  };
+
+  const handleCancelBroadcast = async () => {
+    if (!window.confirm('Cancel the active fleet update broadcast?')) return;
+    try {
+      await api.post('/scout/fleet/cancel-broadcast');
+      toast.success('Fleet update broadcast cancelled.');
+      await fetchData();
+    } catch (err) {
+      toast.error('Failed to cancel broadcast');
+    }
+  };
 
   // Approve Production Release
   const handleApproveProduction = async () => {
@@ -207,6 +267,21 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
 
             {currentProduction.version && (
               <button
+                onClick={() => handleOpenBroadcastModal(currentProduction.version)}
+                style={{
+                  padding: '8px 14px', background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
+                  border: '1px solid #38bdf8', color: '#ffffff', borderRadius: 8,
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                  boxShadow: '0 2px 10px rgba(2, 132, 199, 0.4)'
+                }}
+              >
+                <Radio size={14} />
+                <span>Broadcast Update to Fleet</span>
+              </button>
+            )}
+
+            {currentProduction.version && (
+              <button
                 onClick={() => handleRollback(currentProduction.version)}
                 disabled={rollingBack}
                 style={{
@@ -222,6 +297,71 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
           </div>
         </div>
       </div>
+
+      {/* ── ACTIVE FLEET UPDATE BROADCAST BANNER ────────────────────────── */}
+      {broadcastStatus?.active && broadcastStatus?.broadcast && (
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.15) 0%, rgba(37, 99, 235, 0.15) 100%)',
+          border: '1px solid #0284c7',
+          borderRadius: 12,
+          padding: '16px 20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 16,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: 10,
+              background: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#ffffff'
+            }}>
+              <Radio size={20} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, background: '#38bdf8', color: '#0c4a6e', padding: '1px 6px', borderRadius: 4 }}>
+                  BROADCAST ACTIVE
+                </span>
+                <span style={{ color: '#fafafa', fontWeight: 700, fontSize: 14 }}>
+                  Broadcasting Update Notification to v{broadcastStatus.broadcast.target_version}
+                </span>
+                <span style={{ color: '#94a3b8', fontSize: 12 }}>
+                  ({broadcastStatus.broadcast.cohort === 'ALL_ACTIVE' ? 'All Active Nodes' : 'Outdated Nodes Only'})
+                </span>
+              </div>
+              <div style={{ color: '#94a3b8', fontSize: 12, marginTop: 3 }}>
+                Targeting {broadcastStatus.broadcast.targeted_count} devices • Delivered to {broadcastStatus.broadcast.delivered_count} ({broadcastStatus.broadcast.delivery_percentage}%) • Updated {broadcastStatus.broadcast.updated_count} ({broadcastStatus.broadcast.adoption_percentage}%)
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* Progress Bar */}
+            <div style={{ width: 140, background: 'rgba(255,255,255,0.1)', height: 8, borderRadius: 4, overflow: 'hidden' }}>
+              <div style={{
+                width: `${broadcastStatus.broadcast.delivery_percentage}%`,
+                background: '#38bdf8',
+                height: '100%',
+                transition: 'width 0.4s ease'
+              }} />
+            </div>
+
+            <button
+              onClick={handleCancelBroadcast}
+              style={{
+                padding: '6px 12px', background: 'rgba(239, 68, 68, 0.2)',
+                border: '1px solid #ef4444', color: '#fca5a5', borderRadius: 6,
+                fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
+              }}
+            >
+              <X size={12} />
+              <span>Cancel Broadcast</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── SECTION 2: PRODUCTION RELEASE APPROVAL GATE ──────────────────────── */}
       <div style={{
@@ -566,6 +706,164 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
           </div>
         )}
       </div>
+
+      {/* ── FLEET UPDATE BROADCAST MODAL ────────────────────────────── */}
+      {showBroadcastModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
+        }}>
+          <div style={{
+            background: '#0f172a', border: '1px solid #334155', borderRadius: 16,
+            width: '100%', maxWidth: 540, padding: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
+            display: 'flex', flexDirection: 'column', gap: 18
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 34, height: 34, borderRadius: 8, background: '#0284c7',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff'
+                }}>
+                  <Radio size={18} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#f8fafc' }}>
+                    Broadcast Update Notification to Fleet
+                  </h3>
+                  <p style={{ margin: 0, fontSize: 12, color: '#94a3b8' }}>
+                    Active recruiter nodes receive this notification on next heartbeat (within 20s)
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowBroadcastModal(false)}
+                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Target Version & Cohort */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#cbd5e1', marginBottom: 6 }}>
+                  Target Release Version
+                </label>
+                <input
+                  type="text"
+                  value={broadcastForm.target_version}
+                  onChange={(e) => setBroadcastForm({ ...broadcastForm, target_version: e.target.value })}
+                  placeholder="e.g. 2.8.0"
+                  style={{
+                    width: '100%', padding: '8px 12px', background: '#1e293b',
+                    border: '1px solid #475569', borderRadius: 8, color: '#f8fafc', fontSize: 13
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#cbd5e1', marginBottom: 6 }}>
+                  Target Device Cohort
+                </label>
+                <select
+                  value={broadcastForm.cohort}
+                  onChange={(e) => setBroadcastForm({ ...broadcastForm, cohort: e.target.value })}
+                  style={{
+                    width: '100%', padding: '8px 12px', background: '#1e293b',
+                    border: '1px solid #475569', borderRadius: 8, color: '#f8fafc', fontSize: 13
+                  }}
+                >
+                  <option value="OUTDATED_ONLY">Outdated Nodes Only (Recommended)</option>
+                  <option value="ALL_ACTIVE">All Active Fleet Nodes</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Notification Title */}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#cbd5e1', marginBottom: 6 }}>
+                Notification Title (Windows Tray & Banner)
+              </label>
+              <input
+                type="text"
+                value={broadcastForm.title}
+                onChange={(e) => setBroadcastForm({ ...broadcastForm, title: e.target.value })}
+                placeholder="TalentOps Scout Update Available"
+                style={{
+                  width: '100%', padding: '8px 12px', background: '#1e293b',
+                  border: '1px solid #475569', borderRadius: 8, color: '#f8fafc', fontSize: 13
+                }}
+              />
+            </div>
+
+            {/* Message Body */}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#cbd5e1', marginBottom: 6 }}>
+                Notification Message Body
+              </label>
+              <textarea
+                value={broadcastForm.message}
+                onChange={(e) => setBroadcastForm({ ...broadcastForm, message: e.target.value })}
+                rows={3}
+                style={{
+                  width: '100%', padding: '8px 12px', background: '#1e293b',
+                  border: '1px solid #475569', borderRadius: 8, color: '#f8fafc', fontSize: 13, resize: 'vertical'
+                }}
+              />
+            </div>
+
+            {/* Mandatory Checkbox */}
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+              padding: '10px 12px', background: 'rgba(239, 68, 68, 0.08)',
+              border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: 8
+            }}>
+              <input
+                type="checkbox"
+                checked={broadcastForm.mandatory}
+                onChange={(e) => setBroadcastForm({ ...broadcastForm, mandatory: e.target.checked })}
+                style={{ width: 16, height: 16, accentColor: '#ef4444', cursor: 'pointer' }}
+              />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#fca5a5' }}>
+                  Enforce as Mandatory Update
+                </div>
+                <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                  If checked, Scout nodes will require update restart before resuming data capture.
+                </div>
+              </div>
+            </label>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 6 }}>
+              <button
+                type="button"
+                onClick={() => setShowBroadcastModal(false)}
+                style={{
+                  padding: '9px 16px', background: '#334155', border: 'none',
+                  borderRadius: 8, color: '#cbd5e1', fontSize: 13, fontWeight: 600, cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDispatchBroadcast}
+                disabled={broadcasting}
+                style={{
+                  padding: '9px 20px', background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
+                  border: '1px solid #38bdf8', borderRadius: 8, color: '#ffffff',
+                  fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8
+                }}
+              >
+                <Send size={15} />
+                <span>{broadcasting ? 'Dispatching...' : 'Dispatch Notification to Fleet'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

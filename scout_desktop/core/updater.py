@@ -237,6 +237,34 @@ class AutoUpdater:
         except Exception as e:
             logger.warning("Could not persist remote config: %s", e)
 
+    def trigger_update_check_async(self, force_notify: bool = True):
+        """
+        Triggers an immediate asynchronous update check and download/staging cycle
+        in a background thread without waiting for the 6-hour interval.
+        Used when an administrative fleet broadcast is received via heartbeat.
+        """
+        logger.info("Triggering immediate async update check via fleet broadcast signal...")
+        t = threading.Thread(
+            target=self._run_immediate_check_and_stage,
+            args=(force_notify,),
+            daemon=True,
+            name="ScoutFleetUpdateChecker",
+        )
+        t.start()
+
+    def _run_immediate_check_and_stage(self, force_notify: bool = True):
+        try:
+            manifest = self.check_for_updates_now()
+            if manifest and self.pending_version and parse_semver(self.pending_version) > parse_semver(self.current_version):
+                logger.info("Fleet broadcast target v%s verified; beginning download and staging...", self.pending_version)
+                self._download_and_verify(manifest)
+            elif manifest and self.is_mandatory:
+                logger.warning("Mandatory update required by fleet broadcast; triggering mandatory flow...")
+                if self.on_mandatory_update_required:
+                    self.on_mandatory_update_required(self.minimum_version, self.pending_version or "latest")
+        except Exception as e:
+            logger.error("Error during immediate fleet update check: %s", e)
+
     def _update_loop(self):
         time.sleep(5.0)
         while not self._stop_event.is_set():

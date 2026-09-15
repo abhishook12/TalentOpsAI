@@ -1490,7 +1490,7 @@ class ScoutDesktopApp:
         self._is_heartbeating = True
         try:
             b_ctx = self.current_browser_context
-            self.backend_client.send_heartbeat(
+            ok, resp = self.backend_client.send_heartbeat(
                 page_url=b_ctx.get("url"),
                 client_metrics={
                     "state": self.sampler.state,
@@ -1508,10 +1508,63 @@ class ScoutDesktopApp:
                     "frame_queue_depth": self.frame_queue.depth,
                 }
             )
+            if ok and isinstance(resp, dict):
+                notif = resp.get("update_notification")
+                if notif and isinstance(notif, dict):
+                    self._handle_fleet_update_notification(notif)
         except Exception as e:
             logger.debug("Async heartbeat error: %s", e)
         finally:
             self._is_heartbeating = False
+
+    def _handle_fleet_update_notification(self, notif: dict):
+        """
+        Processes real-time fleet broadcast update notifications received via heartbeat ping.
+        Triggers immediate background download & staging, displays tray notice, and updates UI banner.
+        """
+        broadcast_id = notif.get("broadcast_id")
+        target_version = notif.get("target_version", "latest")
+        is_mandatory = bool(notif.get("mandatory", False))
+        title = notif.get("title", f"TalentOps Scout v{target_version} Available")
+        message = notif.get("message", f"TalentOps Scout v{target_version} is available. Click to update now.")
+        force_check = bool(notif.get("force_check", True))
+
+        last_seen = getattr(self, "_last_handled_broadcast_id", None)
+        if last_seen == broadcast_id:
+            return
+        self._last_handled_broadcast_id = broadcast_id
+
+        logger.info("Fleet update broadcast received: %s (v%s, mandatory=%s)", broadcast_id, target_version, is_mandatory)
+        self.bridge.event_logged.emit("FLEET_UPDATE_NOTICE", f"Fleet broadcast: v{target_version} ready to install.")
+
+        # Acknowledge reception to backend in worker thread
+        if broadcast_id:
+            threading.Thread(
+                target=self.backend_client.acknowledge_broadcast,
+                args=(broadcast_id, "ACKNOWLEDGED"),
+                daemon=True,
+                name="ScoutAckBroadcast"
+            ).start()
+
+        # Trigger immediate background update check, download, and staging
+        if force_check and hasattr(self, "updater"):
+            self.updater.trigger_update_check_async(force_notify=True)
+
+        # Show native OS System Tray balloon notification on UI thread
+        try:
+            if hasattr(self, "tray") and hasattr(self.tray, "tray"):
+                QTimer.singleShot(0, lambda: self.tray.tray.showMessage(
+                    title,
+                    message,
+                    QSystemTrayIcon.Information,
+                    10000
+                ))
+        except Exception as e:
+            logger.debug("Tray notification error: %s", e)
+
+        # If mandatory update required, transition immediately
+        if is_mandatory:
+            QTimer.singleShot(0, lambda: self._on_mandatory_update_required(CURRENT_VERSION, target_version))
 
     def _emit_telemetry(self):
         e_stats = self.evidence_store.get_telemetry()

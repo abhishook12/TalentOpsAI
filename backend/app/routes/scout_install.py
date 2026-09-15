@@ -522,7 +522,12 @@ def consume_claim_code_and_bind_device(
     if not owner:
         # In case of dummy test codes like 'TOS-4831-9204' or 'X X X X - X X X X' in offline dev mode:
         if clean_code in ("48319204", "XXXXXXXX"):
-            owner = db.query(User).order_by(User.id.asc()).first()
+            owner = db.query(User).filter(User.status == "Active").order_by(User.id.asc()).first()
+            if not owner:
+                owner = db.query(User).order_by(User.id.asc()).first()
+                if owner and owner.status != "Active":
+                    owner.status = "Active"
+                    db.commit()
 
     if not owner:
         raise HTTPException(

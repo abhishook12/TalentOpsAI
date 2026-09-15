@@ -332,6 +332,17 @@ class ScoutDesktopApp:
             self.main_window.lbl_cand_avatar.setText(initial)
             if latest.get("profile_url"):
                 self.main_window._latest_profile_url = latest["profile_url"]
+            if hasattr(self.main_window, "page_scan") and hasattr(self.main_window.page_scan, "update_meters"):
+                self.main_window.page_scan.update_meters(
+                    name=display_name,
+                    title=display_title,
+                    company=display_company,
+                    location=display_loc,
+                    name_conf=99,
+                    title_conf=96 if display_title else 80,
+                    comp_conf=93 if display_company else 80,
+                    loc_conf=75 if display_loc != "—" else 70,
+                )
         except Exception as e:
             logger.warning("Failed to initialize cached candidates in UI: %s", e)
 
@@ -1274,16 +1285,20 @@ class ScoutDesktopApp:
                             staged_contact["metadata_json"]["security_clearance"] = stitched.security_clearance
 
                     # Fill in previously observed fields from earlier hops if missing
+                    # Primary sourcing platforms (LinkedIn, ZoomInfo, Apollo, Indeed, SimplyHired) are canonical ground truth.
+                    # Never backfill company or title from stitched chat observations when viewing a primary sourcing platform.
+                    if target_type not in ("LINKEDIN", "ZOOMINFO", "APOLLO", "INDEED", "SIMPLYHIRED"):
+                        if not staged_contact.get("company_name") and stitched.current_company:
+                            staged_contact["company_name"] = stitched.current_company
+                        if not staged_contact.get("title") and stitched.current_title:
+                            staged_contact["title"] = stitched.current_title
+
                     if not staged_contact.get("email") and stitched.primary_email:
                         staged_contact["email"] = stitched.primary_email
                     if not staged_contact.get("phone") and stitched.primary_phone:
                         staged_contact["phone"] = stitched.primary_phone
                     if not staged_contact.get("linkedin_url") and stitched.linkedin_url:
                         staged_contact["linkedin_url"] = stitched.linkedin_url
-                    if not staged_contact.get("company_name") and stitched.current_company:
-                        staged_contact["company_name"] = stitched.current_company
-                    if not staged_contact.get("title") and stitched.current_title:
-                        staged_contact["title"] = stitched.current_title
                 except Exception as stitch_err:
                     logger.debug("CrossChannelStitcher error: %s", stitch_err)
 

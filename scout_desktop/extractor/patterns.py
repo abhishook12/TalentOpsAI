@@ -127,10 +127,14 @@ def is_plausible_title(text: Optional[str]) -> bool:
 
 
 def clean_location_text(text: Optional[str]) -> Optional[str]:
-    """Cleans punctuation, bullets, and contact info triggers from location strings."""
+    """Cleans punctuation, bullets, timestamps, and contact info triggers from location strings."""
     if not text:
         return None
     cleaned = re.sub(r"\bcontact\s*info\b", "", text, flags=re.IGNORECASE)
+    # Strip relative timestamps e.g. "4 minutes ago 0", "2 hours ago", "3d ago"
+    cleaned = re.sub(r"\b\d+\s*(?:seconds?|secs?|minutes?|mins?|hours?|hrs?|days?|weeks?|months?|years?)\s*ago\b.*$", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b\d+\s*(?:m|min|h|hr|d|w|mo|y)\s*ago\b.*$", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s+\d+$", "", cleaned)
     cleaned = re.sub(r"[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]+.*$", "", cleaned)
     cleaned = re.sub(r"^[\s\-_,·•|]+|[\s\-_,·•|]+$", "", cleaned)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
@@ -202,13 +206,19 @@ def clean_title_and_company(headline: Optional[str], raw_company: Optional[str] 
     title = headline.strip()
     company = raw_company
 
-    # Split on ' @ ' or ' at ' (requiring whitespace around @ to ignore email addresses)
-    if re.search(r"\s+@\s+", title):
-        parts = re.split(r"\s+@\s+", title, maxsplit=1)
-        title = parts[0].strip()
-        comp_part = parts[1].split("|")[0].split("•")[0].strip()
-        if comp_part and not company:
-            company = comp_part
+    # Split on ' @ ' or ' at ' (supporting leading '@ ' when headline is wrapped across lines)
+    if re.search(r"(?:^|\s+)@\s+", title):
+        parts = re.split(r"(?:^|\s+)@\s+", title, maxsplit=1)
+        if not parts[0].strip() and len(parts) > 1:
+            comp_part = parts[1].split("|")[0].split("•")[0].strip()
+            if comp_part and not company:
+                company = comp_part
+            title = None
+        else:
+            title = parts[0].strip()
+            comp_part = parts[1].split("|")[0].split("•")[0].strip()
+            if comp_part and not company:
+                company = comp_part
     elif re.search(r"\s+at\s+", title, re.IGNORECASE):
         parts = re.split(r"\s+at\s+", title, maxsplit=1, flags=re.IGNORECASE)
         title = parts[0].strip()
@@ -217,7 +227,8 @@ def clean_title_and_company(headline: Optional[str], raw_company: Optional[str] 
             company = comp_part
 
     # Clean separators from title
-    title = re.split(r"\s*[|•·]\s*", title)[0].strip()
+    if title:
+        title = re.split(r"\s*[|•·]\s*", title)[0].strip()
 
     if company:
         company = re.sub(r"^Current\s*company:\s*", "", company, flags=re.IGNORECASE)
@@ -313,6 +324,11 @@ def is_valid_company_name(text: Optional[str]) -> bool:
         # System / taskbar noise
         "ultraviewer", "teamviewer", "anydesk", "task manager",
         "file explorer", "command prompt", "powershell", "terminal",
+        # Chat & Collaboration noise
+        "microsoft teams", "teams", "google chat", "slack", "new chat",
+        "recent chats", "business intelligence", "busmess inteligence",
+        "pinned messages", "chat files", "posts", "activity", "calendar",
+        "channel notifications", "general", "recent",
     }
     if t_lower in chrome_ui_noise:
         return False
@@ -502,6 +518,9 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         "inbox", "mail", "gmail", "outlook", "gemini", "chatgpt", "claude", "copilot",
         "chat", "assistant", "jobs", "apply", "feed", "home", "notifications",
         "network", "windows", "tab", "chrome", "firefox", "edge", "safari",
+        "microsoft", "teams", "slack", "skype", "webex", "zoom", "technovion",
+        "scout", "demand", "lawyers", "lawyer", "legal",
+        "prashant", "tiwari", "gaurav", "dwivedi", "muskan", "tushar",
         "post", "posts", "quick", "easy", "prompt", "top", "united", "states",
         "history", "conversation", "conversations", "profile", "profiles",
         "message", "messages", "filter", "filters", "dialog", "session", "menu",

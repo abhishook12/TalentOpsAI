@@ -147,7 +147,14 @@ class ConfidenceMeter(QWidget):
     """
     def __init__(self, label: str = "", score_pct: int = 95, show_label: bool = True, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.score_pct = max(0, min(100, int(score_pct)))
+        if isinstance(score_pct, float) and 0.0 < score_pct <= 1.0:
+            norm_score = int(round(score_pct * 100))
+        else:
+            try:
+                norm_score = int(score_pct)
+            except (ValueError, TypeError):
+                norm_score = 95
+        self.score_pct = max(0, min(100, norm_score))
         self.label_text = label
         self.show_label = show_label
         
@@ -176,7 +183,14 @@ class ConfidenceMeter(QWidget):
         layout.addWidget(self.bar_widget)
 
     def set_score(self, score_pct: int, label: Optional[str] = None):
-        self.score_pct = max(0, min(100, int(score_pct)))
+        if isinstance(score_pct, float) and 0.0 < score_pct <= 1.0:
+            norm_score = int(round(score_pct * 100))
+        else:
+            try:
+                norm_score = int(score_pct)
+            except (ValueError, TypeError):
+                norm_score = 95
+        self.score_pct = max(0, min(100, norm_score))
         if label is not None and self.show_label:
             self.label_text = label
             self.lbl_title.setText(label)

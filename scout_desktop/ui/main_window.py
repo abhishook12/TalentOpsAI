@@ -568,12 +568,21 @@ class MainWindow(QMainWindow):
         if hasattr(self.page_scan, "lbl_avatar"):
             self.page_scan.lbl_avatar.setText(initials)
 
-        # Dynamic confidence meters
+        # Dynamic confidence meters (normalize float 0.0-1.0 to int 0-100)
+        def _to_pct(val, default_pct):
+            if val is None:
+                return default_pct
+            try:
+                f_val = float(val)
+                return int(f_val * 100) if f_val <= 1.0 else int(f_val)
+            except (ValueError, TypeError):
+                return default_pct
+
         fc = kwargs.get("field_confidence") or {}
-        name_conf = fc.get("name", 99)
-        title_conf = fc.get("title", 96)
-        comp_conf = fc.get("company", 93)
-        loc_conf = fc.get("location", 71)
+        name_conf = _to_pct(fc.get("name"), 99)
+        title_conf = _to_pct(fc.get("title"), 96)
+        comp_conf = _to_pct(fc.get("company"), 93)
+        loc_conf = _to_pct(fc.get("location"), 71)
         if hasattr(self.page_scan, "update_meters"):
             self.page_scan.update_meters(
                 name=cand_name,

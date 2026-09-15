@@ -1434,10 +1434,22 @@ class EntityExtractor:
         # 4. Extract Candidate Name
         cand_name = None
 
+        # Blacklist of software, channels, headers, and internal team members to never extract as candidates
+        CHAT_NOISE_NAMES = {
+            "microsoft teams", "google chat", "slack", "new chat", "recent chats",
+            "technovion", "greater noida", "active window", "talentops", "scout desktop",
+            "messaged you", "quick easy", "inbox", "sent items", "general", "recent",
+            "business intelligence", "busmess inteligence", "prashant tiwari", "prashant",
+            "gaurav dwivedi", "muskan jain", "tushar pal", "channel notifications",
+            "pinned messages", "chat files", "posts", "activity", "calendar"
+        }
+
         # Priority 1: Check chunk lines directly for clean candidate name (2-3 words, no numbers)
         for l in chunk_lines:
             cl = clean_person_name(l)
             if cl and is_valid_person_name(cl) and 2 <= len(cl.split()) <= 3:
+                if cl.lower() in CHAT_NOISE_NAMES:
+                    continue
                 if not is_plausible_title(cl):
                     cand_name = cl
                     break
@@ -1450,7 +1462,10 @@ class EntityExtractor:
                     parts = [p.capitalize() for p in local.split(".") if p.isalpha() and len(p) >= 2]
                     if 2 <= len(parts) <= 3:
                         cand_name = " ".join(parts)
-                        break
+                        if cand_name.lower() in CHAT_NOISE_NAMES:
+                            cand_name = None
+                        else:
+                            break
 
         # Priority 3: Check LinkedIn slug
         if linkedin_url and not cand_name:
@@ -1470,6 +1485,9 @@ class EntityExtractor:
                 cand_name = "Talent Candidate"
             else:
                 return None
+
+        if cand_name and cand_name.lower() in CHAT_NOISE_NAMES:
+            return None
 
         # 5. Extract Title & Company
         company = None
@@ -1491,7 +1509,8 @@ class EntityExtractor:
 
         if not company:
             for l in chunk_lines:
-                m_at = re.search(r"\b(?:at|@|from)\s+([A-Z][A-Za-z0-9&.,'-]+(?:\s+[A-Z][A-Za-z0-9&.,'-]+)?)", l)
+                # In chat, only 'at' and '@' represent employment. 'from' is message sender/origin, not employer.
+                m_at = re.search(r"\b(?:at|@)\s+([A-Z][A-Za-z0-9&.,'-]+(?:\s+[A-Z][A-Za-z0-9&.,'-]+)?)", l)
                 if m_at:
                     c_cand = m_at.group(1).strip()
                     if is_valid_company_name(c_cand):

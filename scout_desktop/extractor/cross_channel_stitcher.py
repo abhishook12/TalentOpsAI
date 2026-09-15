@@ -220,8 +220,6 @@ class CrossChannelStitcher:
             matched_ids.add(self._phone_index[phone])
         if name and company and (name.lower(), company.lower()) in self._name_company_index:
             matched_ids.add(self._name_company_index[(name.lower(), company.lower())])
-        elif name and len(name.split()) >= 2 and name.lower() in self._name_index:
-            matched_ids.add(self._name_index[name.lower()])
 
         now = time.time()
         if matched_ids:

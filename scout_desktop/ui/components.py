@@ -583,7 +583,7 @@ class UpdateBanner(QFrame):
         layout.addWidget(self.lbl_icon)
         
         # Message
-        self.lbl_msg = QLabel("Scout 2.9.0 available — signed release, verified and ready. Installs on next restart.")
+        self.lbl_msg = QLabel("")
         self.lbl_msg.setFont(QFont("Segoe UI", 8, QFont.Weight.Normal))
         self.lbl_msg.setStyleSheet(f"color: {COLOR_TEXT_SECONDARY}; border: none;")
         layout.addWidget(self.lbl_msg)
@@ -626,6 +626,29 @@ class UpdateBanner(QFrame):
         """)
         self.btn_close.clicked.connect(self.hide)
         layout.addWidget(self.btn_close)
+
+        # Hidden by default until an update is actually detected or ready
+        self.hide()
+
+    def show_update_ready(self, version: str, message: Optional[str] = None):
+        """Displays update banner when installer binary is verified and staged."""
+        msg = message or f"Scout v{version} available — signed release, verified and ready. Installs on next restart."
+        self.lbl_msg.setText(msg)
+        self.btn_restart.setText("Restart now")
+        self.btn_restart.setEnabled(True)
+        self.show()
+
+    def show_downloading(self, version: str):
+        """Displays update banner while downloading in background."""
+        self.lbl_msg.setText(f"Scout v{version} available — downloading verified package in background...")
+        self.btn_restart.setText("Downloading...")
+        self.btn_restart.setEnabled(False)
+        self.show()
+
+    def reset_state(self):
+        """Resets the button state if restart was deferred or aborted."""
+        self.btn_restart.setText("Restart now")
+        self.btn_restart.setEnabled(True)
 
     def _on_restart_click(self):
         self.btn_restart.setText("Restarting...")

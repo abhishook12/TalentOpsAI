@@ -285,6 +285,8 @@ class ScoutDesktopApp:
         self.main_window.dock_to_edge_requested.connect(self._dock_to_edge)
         self.main_window.toggle_pause_requested.connect(self.toggle_pause)
         self.main_window.sync_now_requested.connect(self._flush_queue_to_backend)
+        if hasattr(self.main_window, "update_banner"):
+            self.main_window.update_banner.restart_requested.connect(self._on_banner_restart_clicked)
 
         # Settings & Pairing actions
         self.settings_window.force_sync_requested.connect(self._flush_queue_to_backend)
@@ -756,6 +758,10 @@ class ScoutDesktopApp:
         self._pending_release_notes = release_notes
         self.bridge.event_logged.emit("UPDATE_READY", f"TalentOps Scout v{version} is ready to install.")
 
+        # Update top banner in main window
+        if hasattr(self, "main_window") and hasattr(self.main_window, "update_banner"):
+            QTimer.singleShot(0, lambda: self.main_window.update_banner.show_update_ready(version))
+
         # Check snooze/postpone policy
         if hasattr(self, "updater") and not self.updater.is_notification_due():
             logger.info("Update notification is snoozed (within 24h snooze window).")
@@ -841,6 +847,30 @@ class ScoutDesktopApp:
                 self.bridge.event_logged.emit("UPDATE_POSTPONED", f"Update v{version} postponed for 24 hours.")
         except Exception as e:
             logger.warning("Failed to show update prompt dialog: %s", e)
+
+    def _on_banner_restart_clicked(self):
+        """Invoked when user clicks 'Restart now' in the top UpdateBanner."""
+        logger.info("Banner 'Restart now' clicked by user.")
+        installer_path = getattr(self, "_pending_installer_path", None)
+        version = getattr(self, "_pending_update_version", None)
+
+        if hasattr(self, "updater") and self.updater.downloaded_installer_path:
+            if not installer_path or not os.path.exists(installer_path):
+                installer_path = self.updater.downloaded_installer_path
+
+        self.bridge.event_logged.emit("APPLYING_UPDATE", f"Applying update v{version or 'latest'}...")
+        try:
+            if hasattr(self, "local_queue"):
+                self.local_queue.checkpoint()
+        except Exception as e:
+            logger.debug("Local queue checkpoint: %s", e)
+
+        release_single_instance_lock()
+        success = self.updater.apply_update_and_restart(installer_path)
+        if not success:
+            logger.warning("apply_update_and_restart returned False. Resetting banner button.")
+            if hasattr(self, "main_window") and hasattr(self.main_window, "update_banner"):
+                self.main_window.update_banner.reset_state()
 
     def _on_mandatory_update_required(self, min_version: str, remote_version: str):
         """Invoked when local Scout version is below the minimum allowed version."""
@@ -1549,6 +1579,10 @@ class ScoutDesktopApp:
         # Trigger immediate background update check, download, and staging
         if force_check and hasattr(self, "updater"):
             self.updater.trigger_update_check_async(force_notify=True)
+
+        # Update UI banner
+        if hasattr(self, "main_window") and hasattr(self.main_window, "update_banner"):
+            QTimer.singleShot(0, lambda: self.main_window.update_banner.show_downloading(target_version))
 
         # Show native OS System Tray balloon notification on UI thread
         try:

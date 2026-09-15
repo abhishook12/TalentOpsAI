@@ -381,6 +381,22 @@ class AutoUpdater:
         """
         pkg_path = installer_path or self.downloaded_installer_path
         if not pkg_path or not os.path.exists(pkg_path):
+            # If running in development mode from python source: restart Scout process directly!
+            if not getattr(sys, "frozen", False):
+                logger.info("Dev environment restart: Relaunching Scout Python process...")
+                cmd = [sys.executable] + sys.argv
+                flags = 0
+                if sys.platform == "win32":
+                    flags = subprocess.CREATE_NEW_PROCESS_GROUP | (
+                        subprocess.DETACHED_PROCESS if hasattr(subprocess, "DETACHED_PROCESS") else 0
+                    )
+                subprocess.Popen(cmd, creationflags=flags, close_fds=True)
+                try:
+                    sys.exit(0)
+                except SystemExit:
+                    pass
+                return True
+
             logger.error("Cannot apply update: file not found (%s)", pkg_path)
             return False
 

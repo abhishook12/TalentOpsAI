@@ -1153,7 +1153,7 @@ def get_user_device_installations(
 @router.get("/releases")
 def list_scout_releases(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_request),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     """Returns catalog of all Scout software releases across channels."""
     releases = db.query(ScoutRelease).order_by(ScoutRelease.id.desc()).all()

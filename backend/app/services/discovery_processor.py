@@ -589,8 +589,9 @@ class DiscoveryProcessor:
         if person.canonical_name and person.canonical_name != "Unknown Professional":
             norm_name = normalize_text(person.canonical_name)
             candidates = self.db.query(Recruiter).filter(
-                Recruiter.recruiter_name.ilike(f"%{person.canonical_name.strip()}%")
-            ).all()
+                (Recruiter.normalized_recruiter_name == norm_name) |
+                (Recruiter.recruiter_name.ilike(f"%{person.canonical_name.strip()}%"))
+            ).limit(20).all()
 
             for c in candidates:
                 c_norm_name = normalize_text(c.recruiter_name)

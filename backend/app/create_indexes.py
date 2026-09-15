@@ -79,7 +79,17 @@ def create_performance_indexes():
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_contact_hist_person_time ON person_contact_history (person_identity_id, created_at)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_field_obs_entity_time ON field_observations (entity_type, entity_id, observed_at)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_dissimilarity_pair ON dissimilarity_blocklist (entity_type, entity_a_id, entity_b_id)"))
-        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_sla_alert_tenant_time ON sla_health_alerts (tenant_id, triggered_at)"))
+        # 8. Scout Telemetry, Device & Staging Performance Indexes
+        print("Creating Scout telemetry and staging indexes...")
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_extension_devices_owner ON extension_devices (owner_user_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_extension_devices_last_seen ON extension_devices (last_seen_at DESC NULLS LAST)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_extension_heartbeats_owner ON extension_heartbeats (owner_user_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_extension_sub_logs_owner ON extension_submission_logs (owner_user_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ext_disc_events_owner ON extension_discovery_events (owner_user_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ext_disc_events_action ON extension_discovery_events (db_action)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_disc_staging_owner ON discovery_staging (owner_user_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_resolved_persons_owner ON resolved_persons (owner_user_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_scout_inst_user ON scout_installations (user_id)"))
 
         print("All indexes created successfully!")
 

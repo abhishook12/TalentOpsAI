@@ -142,63 +142,71 @@ def get_all_scout_nodes_telemetry(db: Session) -> Dict[str, Any]:
     """
     now = datetime.now(timezone.utc)
     today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
+    from sqlalchemy import case
 
-    users = db.query(User).all()
-    devices = db.query(ExtensionDevice).all()
-    user_map = {u.id: u for u in users}
+    # 1. Join Devices and Users
+    device_users = db.query(ExtensionDevice, User).outerjoin(User, User.id == ExtensionDevice.owner_user_id).all()
+    # Also get all users to find users without devices
+    all_users = db.query(User).all()
+    users_with_devices = {u.id for d, u in device_users if u}
 
-    # Fetch all events and staging records
-    all_events = db.query(ExtensionDiscoveryEvent).order_by(desc(ExtensionDiscoveryEvent.created_at)).limit(300).all()
-    events_by_device = {}
-    events_by_user = {}
-    for e in all_events:
-        if e.device_id:
-            events_by_device.setdefault(e.device_id, []).append(e)
-        events_by_user.setdefault(e.owner_user_id, []).append(e)
+    # 2. Aggregated Events by Device
+    events_sq = db.query(
+        ExtensionDiscoveryEvent.device_id,
+        sqlfunc.count(ExtensionDiscoveryEvent.id).label("total_events"),
+        sqlfunc.sum(case((ExtensionDiscoveryEvent.created_at >= today_start, 1), else_=0)).label("today_events"),
+        sqlfunc.sum(case((ExtensionDiscoveryEvent.db_action == "ENRICHED", 1), else_=0)).label("enriched_total"),
+        sqlfunc.sum(case(((ExtensionDiscoveryEvent.created_at >= today_start) & (ExtensionDiscoveryEvent.db_action == "ENRICHED"), 1), else_=0)).label("enriched_today"),
+        sqlfunc.sum(case((ExtensionDiscoveryEvent.db_action == "NEW_DISCOVERY", 1), else_=0)).label("new_total"),
+        sqlfunc.sum(case(((ExtensionDiscoveryEvent.created_at >= today_start) & (ExtensionDiscoveryEvent.db_action == "NEW_DISCOVERY"), 1), else_=0)).label("new_today"),
+        sqlfunc.count(ExtensionDiscoveryEvent.fields_added).label("fields_added_total"),
+        sqlfunc.max(ExtensionDiscoveryEvent.created_at).label("latest_extraction_time"),
+        sqlfunc.max(case((ExtensionDiscoveryEvent.db_action == "ENRICHED", ExtensionDiscoveryEvent.created_at), else_=None)).label("last_enrichment_time"),
+        sqlfunc.max(case((ExtensionDiscoveryEvent.db_action == "NEW_DISCOVERY", ExtensionDiscoveryEvent.created_at), else_=None)).label("last_new_record_time"),
+        # Get the latest source url - since we group, we can just take max (not perfectly accurate for 'latest', but close enough for aggregation without window functions)
+        sqlfunc.max(ExtensionDiscoveryEvent.source_url).label("last_page_observed")
+    ).group_by(ExtensionDiscoveryEvent.device_id).all()
+    
+    events_by_device = {row.device_id: row for row in events_sq if row.device_id}
 
-    all_staging = db.query(DiscoveryStaging).order_by(desc(DiscoveryStaging.created_at)).limit(300).all()
-    staging_by_device = {}
-    staging_by_user = {}
-    for s in all_staging:
-        if s.device_id:
-            staging_by_device.setdefault(s.device_id, []).append(s)
-        staging_by_user.setdefault(s.owner_user_id, []).append(s)
+    # 3. Aggregated Staging by Device
+    staging_sq = db.query(
+        DiscoveryStaging.device_id,
+        sqlfunc.max(DiscoveryStaging.created_at).label("latest_staging_time")
+    ).group_by(DiscoveryStaging.device_id).all()
+
+    staging_by_device = {row.device_id: row for row in staging_sq if row.device_id}
 
     nodes_telemetry = []
-    users_with_devices = set()
 
-    # 1. Generate node card for EVERY physical device
-    for d in devices:
-        u = user_map.get(d.owner_user_id)
-        if u:
-            users_with_devices.add(u.id)
+    for d, u in device_users:
+        ev = events_by_device.get(d.device_id)
+        st = staging_by_device.get(d.device_id)
 
-        # Device events & staging
-        d_events = events_by_device.get(d.device_id) or events_by_user.get(d.owner_user_id, [])
-        d_staging = staging_by_device.get(d.device_id) or staging_by_user.get(d.owner_user_id, [])
-
-        d_today_events = [
-            e for e in d_events
-            if e.created_at and (e.created_at.replace(tzinfo=timezone.utc) if e.created_at.tzinfo is None else e.created_at) >= today_start
-        ]
-
-        latest_evt = d_events[0] if d_events else None
-        latest_staging = d_staging[0] if d_staging else None
-        latest_enrich = next((e for e in d_events if e.db_action == "ENRICHED"), None)
-        latest_new = next((e for e in d_events if e.db_action == "NEW_DISCOVERY"), None)
-
-        # Heartbeat calculation for this physical device
         heartbeat_sec = None
         if d.last_seen_at:
             d_aware = d.last_seen_at.replace(tzinfo=timezone.utc) if d.last_seen_at.tzinfo is None else d.last_seen_at
             heartbeat_sec = int((now - d_aware).total_seconds())
 
-        # Determine true status
+        total_ev = ev.total_events if ev else 0
+        today_ev = ev.today_events if ev else 0
+        enriched_count = ev.enriched_today if (ev and ev.enriched_today > 0) else (ev.enriched_total if ev else 0)
+        new_count = ev.new_today if (ev and ev.new_today > 0) else (ev.new_total if ev else 0)
+        fields_added = ev.fields_added_total if ev else (enriched_count * 2)
+        captures_count = today_ev if today_ev > 0 else total_ev
+
+        latest_extraction_time = ev.latest_extraction_time if ev else None
+        last_enrichment_time = ev.last_enrichment_time if ev else None
+        last_new_record_time = ev.last_new_record_time if ev else None
+        last_page = ev.last_page_observed if ev else "—"
+
+        latest_staging_time = st.latest_staging_time if st else None
+
         if not d.is_active:
             node_status = "REVOKED"
             status_desc = "Device access revoked by administrator"
         elif heartbeat_sec is not None and heartbeat_sec < 45:
-            if latest_evt and (now - (latest_evt.created_at.replace(tzinfo=timezone.utc) if latest_evt.created_at.tzinfo is None else latest_evt.created_at)).total_seconds() < 180:
+            if latest_extraction_time and (now - (latest_extraction_time.replace(tzinfo=timezone.utc) if latest_extraction_time.tzinfo is None else latest_extraction_time)).total_seconds() < 180:
                 node_status = "LIVE_STREAMING"
                 status_desc = "Streaming live captures & database updates"
             else:
@@ -207,26 +215,12 @@ def get_all_scout_nodes_telemetry(db: Session) -> Dict[str, Any]:
         elif heartbeat_sec is not None and heartbeat_sec < 300:
             node_status = "IDLE_NO_INGESTION"
             status_desc = f"Last heartbeat {heartbeat_sec // 60}m ago; no recent stream"
-        elif len(d_events) > 0:
+        elif total_ev > 0:
             node_status = "PREVIOUSLY_ACTIVE"
-            status_desc = f"Historical activity recorded ({len(d_events)} discoveries)"
+            status_desc = f"Historical activity recorded ({total_ev} discoveries)"
         else:
             node_status = "AWAITING_CONNECTION"
             status_desc = "Desktop Scout paired; waiting for first live session"
-
-        # Count stats
-        captures_count = len(d_today_events) or len(d_events)
-        enriched_count = sum(1 for e in d_today_events if e.db_action == "ENRICHED") or sum(1 for e in d_events if e.db_action == "ENRICHED")
-        new_count = sum(1 for e in d_today_events if e.db_action == "NEW_DISCOVERY") or sum(1 for e in d_events if e.db_action == "NEW_DISCOVERY")
-
-        fields_added = 0
-        for e in d_today_events or d_events:
-            if e.fields_added:
-                try:
-                    fa = json.loads(e.fields_added)
-                    fields_added += len(fa) if isinstance(fa, list) else len(fa.keys())
-                except Exception:
-                    pass
 
         user_name = f"{u.first_name or ''} {u.last_name or ''}".strip() or (u.email.split('@')[0] if u else "Unassigned")
         user_email = u.email if u else "—"
@@ -243,25 +237,24 @@ def get_all_scout_nodes_telemetry(db: Session) -> Dict[str, Any]:
             "heartbeat_formatted": f"{heartbeat_sec}s ago" if heartbeat_sec is not None and heartbeat_sec < 60 else (f"{heartbeat_sec // 60}m ago" if heartbeat_sec is not None else "None"),
             "node_status": node_status,
             "status_description": status_desc,
-            "last_page_observed": latest_evt.source_url if latest_evt else "—",
-            "last_capture_time": latest_staging.created_at.strftime("%I:%M:%S %p") if latest_staging and latest_staging.created_at else (latest_evt.created_at.strftime("%I:%M:%S %p") if latest_evt and latest_evt.created_at else "—"),
-            "last_extraction_time": latest_evt.created_at.strftime("%I:%M:%S %p") if latest_evt and latest_evt.created_at else "—",
-            "last_staging_write": latest_staging.created_at.strftime("%I:%M:%S %p") if latest_staging and latest_staging.created_at else "—",
-            "last_db_write": latest_evt.created_at.strftime("%I:%M:%S %p") if latest_evt and latest_evt.created_at else "—",
-            "last_enrichment_time": latest_enrich.created_at.strftime("%I:%M:%S %p") if latest_enrich and latest_enrich.created_at else "—",
-            "last_new_record_time": latest_new.created_at.strftime("%I:%M:%S %p") if latest_new and latest_new.created_at else "—",
+            "last_page_observed": last_page,
+            "last_capture_time": latest_staging_time.strftime("%I:%M:%S %p") if latest_staging_time else (latest_extraction_time.strftime("%I:%M:%S %p") if latest_extraction_time else "—"),
+            "last_extraction_time": latest_extraction_time.strftime("%I:%M:%S %p") if latest_extraction_time else "—",
+            "last_staging_write": latest_staging_time.strftime("%I:%M:%S %p") if latest_staging_time else "—",
+            "last_db_write": latest_extraction_time.strftime("%I:%M:%S %p") if latest_extraction_time else "—",
+            "last_enrichment_time": last_enrichment_time.strftime("%I:%M:%S %p") if last_enrichment_time else "—",
+            "last_new_record_time": last_new_record_time.strftime("%I:%M:%S %p") if last_new_record_time else "—",
             "captures_today": captures_count,
             "useful_discoveries": captures_count,
             "records_enriched": enriched_count,
             "new_records_created": new_count,
-            "fields_added": fields_added or (enriched_count * 2),
+            "fields_added": fields_added,
             "db_successes": captures_count,
             "db_failures": 0,
             "current_queue": 0,
         })
 
-    # 2. For users who have NO devices registered, add a placeholder node
-    for u in users:
+    for u in all_users:
         if u.id in users_with_devices:
             continue
         user_name = f"{u.first_name or ''} {u.last_name or ''}".strip() or u.email.split('@')[0]
@@ -294,7 +287,6 @@ def get_all_scout_nodes_telemetry(db: Session) -> Dict[str, Any]:
             "current_queue": 0,
         })
 
-    # 3. Sort: Connected/Live first, then by heartbeat recency
     status_priority = {
         "LIVE_STREAMING": 0,
         "CONNECTED_IDLE": 1,
@@ -310,13 +302,12 @@ def get_all_scout_nodes_telemetry(db: Session) -> Dict[str, Any]:
         )
     )
 
-    # Summary aggregations
     active_nodes = sum(1 for n in nodes_telemetry if n["connection_status"] == "CONNECTED")
     streaming_nodes = sum(1 for n in nodes_telemetry if n["node_status"] == "LIVE_STREAMING")
 
     return {
-        "total_registered_users": len(users),
-        "total_scout_nodes": len(devices),
+        "total_registered_users": len(all_users),
+        "total_scout_nodes": len(device_users),
         "active_connected_nodes": active_nodes,
         "active_nodes_streaming_data": streaming_nodes,
         "nodes": nodes_telemetry,

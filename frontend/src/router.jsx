@@ -336,7 +336,7 @@ const routeTree = rootRoute.addChildren([
   notFoundRoute
 ])
 
-export const router = createRouter({ routeTree, defaultPreload: 'intent' })
+export const router = createRouter({ routeTree, defaultPreload: 'intent', defaultPreloadDelay: 200 })
 
 
 

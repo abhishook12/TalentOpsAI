@@ -1,7 +1,7 @@
 import logging
 import os
 import time
-from fastapi import FastAPI, Depends, Request
+from fastapi import FastAPI, Depends, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -448,7 +448,8 @@ except Exception:
 
 @app.get("/api/v1/version")
 @app.get("/version")
-def get_version():
+def get_version(response: Response):
+    response.headers["Cache-Control"] = "public, max-age=60"
     return {"version": _GIT_HASH}
 
 

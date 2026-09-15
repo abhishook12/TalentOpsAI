@@ -23,7 +23,7 @@ class DiscoveryStaging(Base):
     discovery_id = Column(String(64), unique=True, index=True, nullable=False)
     session_id = Column(String(64), index=True, nullable=True)
     device_id = Column(String(64), index=True, nullable=False)
-    owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     raw_name = Column(String(200), nullable=True)
     raw_title = Column(String(200), nullable=True)
     raw_company = Column(String(255), nullable=True)
@@ -70,7 +70,7 @@ class ResolvedPerson(Base):
     __tablename__ = "resolved_persons"
 
     id = Column(Integer, primary_key=True, index=True)
-    owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     canonical_name = Column(String(200), nullable=False)
     current_title = Column(String(200), nullable=True)
     current_company = Column(String(255), nullable=True)

@@ -94,9 +94,18 @@ def unlock_admin(db: Session = Depends(get_db), admin: User = Depends(require_ad
         db.commit()
     return {"status": "unlocked"}
 
+_cached_health_data = None
+_cached_health_time = 0
+_HEALTH_CACHE_TTL = 15.0  # 15 seconds TTL
+
 @router.get("/system")
 def system_health(db: Session = Depends(get_db)):
-    """Comprehensive system health check for infrastructure monitoring."""
+    """Comprehensive system health check for infrastructure monitoring with 15s TTL cache."""
+    global _cached_health_data, _cached_health_time
+    now = time.time()
+    if _cached_health_data and (now - _cached_health_time < _HEALTH_CACHE_TTL):
+        return _cached_health_data
+
     health_data = {
         "status": "healthy",
         "environment": APP_ENV,
@@ -118,7 +127,10 @@ def system_health(db: Session = Depends(get_db)):
         recruiter_store._ensure_loaded()
         comp_count = 0
         if recruiter_store._conn:
-            comp_count = recruiter_store._conn.cursor().execute("SELECT COUNT(*) FROM company_summary").fetchone()[0]
+            try:
+                comp_count = recruiter_store._conn.cursor().execute("SELECT COUNT(*) FROM company_summary").fetchone()[0]
+            except Exception:
+                pass
         health_data["components"]["recruiter_store"] = {
             "status": "healthy" if recruiter_store._record_count > 0 else "empty",
             "records": recruiter_store._record_count,
@@ -131,16 +143,18 @@ def system_health(db: Session = Depends(get_db)):
     # Check System Resources
     disk = get_disk_usage()
     health_data["components"]["disk"] = disk
-    if disk.get("percent", 0) > 90:
+    if isinstance(disk, dict) and disk.get("percent", 0) > 90:
         health_data["status"] = "warning"
         logger.warning(f"Disk usage critically high: {disk.get('percent')}%")
 
     memory = get_memory_usage()
     health_data["components"]["memory"] = memory
-    if memory.get("percent", 0) > 90:
+    if isinstance(memory, dict) and memory.get("percent", 0) > 90:
         health_data["status"] = "warning"
         logger.warning(f"Memory usage critically high: {memory.get('percent')}%")
         
+    _cached_health_data = health_data
+    _cached_health_time = now
     return health_data
 
 

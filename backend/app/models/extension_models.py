@@ -34,11 +34,11 @@ class ExtensionDevice(Base):
     id = Column(Integer, primary_key=True, index=True)
     device_id = Column(String(64), unique=True, index=True, nullable=False)  # crypto.randomUUID()
     activation_code_id = Column(Integer, ForeignKey("extension_activation_codes.id", ondelete="SET NULL"), nullable=True)
-    owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     extension_version = Column(String(20), nullable=True)
     user_agent = Column(String(300), nullable=True)
     first_seen_at = Column(TIMESTAMP, server_default=func.now())
-    last_seen_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+    last_seen_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), index=True)
     # Running totals
     total_submitted = Column(Integer, default=0)
     total_accepted = Column(Integer, default=0)
@@ -52,7 +52,7 @@ class ExtensionHeartbeat(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     device_id = Column(String(64), index=True, nullable=False)
-    owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     session_captured = Column(Integer, default=0)
     session_sent = Column(Integer, default=0)
     session_duplicates = Column(Integer, default=0)
@@ -68,7 +68,7 @@ class ExtensionSubmissionLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     device_id = Column(String(64), index=True, nullable=False)
-    owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     contacts_received = Column(Integer, default=0)
     contacts_accepted = Column(Integer, default=0)
     contacts_duplicate = Column(Integer, default=0)
@@ -85,7 +85,7 @@ class ExtensionDiscoveryEvent(Base):
     discovery_id = Column(String(64), unique=True, index=True, nullable=False)  # e.g. DISC-8F21A91
     capture_id = Column(String(64), index=True, nullable=True)  # e.g. VC-00192
     device_id = Column(String(64), index=True, nullable=False)
-    owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     recruiter_id = Column(Integer, ForeignKey("recruiters.recruiter_id", ondelete="SET NULL"), nullable=True, index=True)
     recruiter_name = Column(String(150), nullable=False)
     company_name = Column(String(255), nullable=True)
@@ -99,6 +99,6 @@ class ExtensionDiscoveryEvent(Base):
     extraction_source = Column(String(50), default="visual_dom_fusion")  # visual_capture, dom, fusion
     visual_change_score = Column(String(20), nullable=True)
     confidence = Column(Integer, default=90)
-    db_action = Column(String(30), default="NEW_DISCOVERY")  # NEW_DISCOVERY, ENRICHED, PREVIOUSLY_KNOWN
+    db_action = Column(String(30), default="NEW_DISCOVERY", index=True)  # NEW_DISCOVERY, ENRICHED, PREVIOUSLY_KNOWN
     fields_added = Column(Text, nullable=True)  # JSON list of fields added
     created_at = Column(TIMESTAMP, server_default=func.now(), index=True)

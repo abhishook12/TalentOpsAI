@@ -177,101 +177,119 @@ def get_all_scout_users_intelligence(
     Returns high-level contributor summary cards and user table with complete metrics.
     """
     now = datetime.now(timezone.utc)
+    from sqlalchemy import case
 
-    def _safe_query(query_fn, model_to_create=None, default=None):
-        if default is None:
-            default = []
+    def _safe_query(query_fn, default=None):
         try:
             return query_fn()
         except Exception as err:
             logger.warning("Scout contributor query fallback note: %s", err)
             try:
                 db.rollback()
-                if model_to_create is not None:
-                    from ..database import Base
-                    from ..models import extension_models, staging_models, update_models
-                    Base.metadata.create_all(bind=db.get_bind())
-                    return query_fn()
-            except Exception as rec_err:
-                logger.error("Contributor auto-creation recovery attempt failed: %s", rec_err)
-                try:
-                    db.rollback()
-                except Exception:
-                    pass
+            except Exception:
+                pass
             return default
 
-    users = _safe_query(lambda: db.query(User).all(), User, [])
-    devices = _safe_query(lambda: db.query(ExtensionDevice).all(), ExtensionDevice, [])
-    installations = _safe_query(lambda: db.query(ScoutInstallation).all(), ScoutInstallation, [])
-    inst_by_device = {i.device_id: i for i in installations}
-
-    # Fetch active release for update required checking
+    # Active release
+    from ..models.update_models import ScoutRelease
     latest_rel = _safe_query(
         lambda: db.query(ScoutRelease).filter(ScoutRelease.status == "ACTIVE").order_by(ScoutRelease.id.desc()).first(),
-        ScoutRelease,
         None
     )
     latest_ver = latest_rel.version if latest_rel else "2.7.0"
 
-    # Bulk pre-fetch events and staging to eliminate N+1 queries
-    all_events = _safe_query(lambda: db.query(ExtensionDiscoveryEvent).all(), ExtensionDiscoveryEvent, [])
-    events_by_user = {}
-    for e in all_events:
-        events_by_user.setdefault(e.owner_user_id, []).append(e)
+    # Subqueries for aggregation
+    events_sq = db.query(
+        ExtensionDiscoveryEvent.owner_user_id,
+        sqlfunc.count(ExtensionDiscoveryEvent.id).label("total_events"),
+        sqlfunc.sum(case((ExtensionDiscoveryEvent.db_action == "NEW_DISCOVERY", 1), else_=0)).label("new_people"),
+        sqlfunc.sum(case((ExtensionDiscoveryEvent.db_action == "ENRICHED", 1), else_=0)).label("enriched_people"),
+        sqlfunc.sum(case((ExtensionDiscoveryEvent.db_action == "PREVIOUSLY_KNOWN", 1), else_=0)).label("duplicates"),
+        sqlfunc.count(ExtensionDiscoveryEvent.fields_added).label("fields_added_count"),
+        sqlfunc.count(sqlfunc.distinct(ExtensionDiscoveryEvent.company_name)).label("companies_added"),
+        sqlfunc.sum(case(((ExtensionDiscoveryEvent.email != None) | (ExtensionDiscoveryEvent.phone != None) | (ExtensionDiscoveryEvent.linkedin_url != None), 1), else_=0)).label("contacts_added"),
+        sqlfunc.max(ExtensionDiscoveryEvent.created_at).label("last_contrib_time"),
+    ).group_by(ExtensionDiscoveryEvent.owner_user_id).subquery()
 
-    all_staging = _safe_query(lambda: db.query(DiscoveryStaging).all(), DiscoveryStaging, [])
-    staging_by_user = {}
-    for s in all_staging:
-        staging_by_user.setdefault(s.owner_user_id, []).append(s)
+    staging_sq = db.query(
+        DiscoveryStaging.owner_user_id,
+        sqlfunc.count(DiscoveryStaging.id).label("total_staging"),
+        sqlfunc.sum(case((DiscoveryStaging.processing_status.in_(["review", "conflict", "quarantined"]), 1), else_=0)).label("quarantined"),
+        sqlfunc.sum(case((DiscoveryStaging.processing_status == "rejected", 1), else_=0)).label("rejected")
+    ).group_by(DiscoveryStaging.owner_user_id).subquery()
 
-    devices_by_user = {}
-    for d in devices:
-        devices_by_user.setdefault(d.owner_user_id, []).append(d)
+    devices_sq = db.query(
+        ExtensionDevice.owner_user_id,
+        sqlfunc.count(ExtensionDevice.id).label("device_count"),
+        sqlfunc.max(ExtensionDevice.last_seen_at).label("latest_hb"),
+        sqlfunc.sum(ExtensionDevice.total_submitted).label("total_submitted"),
+        sqlfunc.sum(case((ExtensionDevice.is_active == True, 1), else_=0)).label("active_devices_count"),
+        sqlfunc.max(ExtensionDevice.extension_version).label("latest_version")
+    ).group_by(ExtensionDevice.owner_user_id).subquery()
+
+    query = db.query(
+        User,
+        events_sq.c.total_events,
+        events_sq.c.new_people,
+        events_sq.c.enriched_people,
+        events_sq.c.duplicates,
+        events_sq.c.fields_added_count,
+        events_sq.c.companies_added,
+        events_sq.c.contacts_added,
+        events_sq.c.last_contrib_time,
+        staging_sq.c.total_staging,
+        staging_sq.c.quarantined,
+        staging_sq.c.rejected,
+        devices_sq.c.device_count,
+        devices_sq.c.latest_hb,
+        devices_sq.c.total_submitted,
+        devices_sq.c.active_devices_count,
+        devices_sq.c.latest_version
+    ).outerjoin(events_sq, User.id == events_sq.c.owner_user_id)\
+     .outerjoin(staging_sq, User.id == staging_sq.c.owner_user_id)\
+     .outerjoin(devices_sq, User.id == devices_sq.c.owner_user_id)
+     
+    rows = _safe_query(lambda: query.all(), [])
 
     contributors = []
 
-    for u in users:
-        u_devices = devices_by_user.get(u.id, [])
-        u_events = events_by_user.get(u.id, [])
-        u_staging = staging_by_user.get(u.id, [])
+    for row in rows:
+        (u, total_events, new_people, enriched_people, duplicates, fields_added_count,
+         companies_added, contacts_added, last_contrib_time, total_staging, quarantined,
+         rejected, device_count, latest_hb, total_submitted, active_devices_count, latest_version) = row
 
-        # Heartbeat calculation
-        latest_device = max(u_devices, key=lambda d: d.last_seen_at) if u_devices and any(d.last_seen_at for d in u_devices) else None
-        last_hb = latest_device.last_seen_at if latest_device else None
+        # Safe defaults
+        total_events = total_events or 0
+        new_people = new_people or 0
+        enriched_people = enriched_people or 0
+        duplicates = duplicates or 0
+        fields_added_count = fields_added_count or 0
+        companies_added = companies_added or 0
+        contacts_added = contacts_added or 0
+        total_staging = total_staging or 0
+        quarantined = quarantined or 0
+        rejected = rejected or 0
+        device_count = device_count or 0
+        total_submitted = total_submitted or 0
+        active_devices_count = active_devices_count or 0
+
+        # Build fake devices array to satisfy get_user_scout_lifecycle_status exactly as it is
+        u_devices = []
+        if device_count > 0:
+            for _ in range(active_devices_count):
+                u_devices.append(ExtensionDevice(is_active=True))
+            for _ in range(device_count - active_devices_count):
+                u_devices.append(ExtensionDevice(is_active=False))
+
         hb_sec = None
-        if last_hb:
-            hb_aware = last_hb.replace(tzinfo=timezone.utc) if last_hb.tzinfo is None else last_hb
+        if latest_hb:
+            hb_aware = latest_hb.replace(tzinfo=timezone.utc) if latest_hb.tzinfo is None else latest_hb
             hb_sec = int((now - hb_aware).total_seconds())
 
-        # Contribution metrics
-        raw_obs = sum(d.total_submitted for d in u_devices) or len(u_staging)
-        new_people = sum(1 for e in u_events if e.db_action == "NEW_DISCOVERY")
-        enriched_people = sum(1 for e in u_events if e.db_action == "ENRICHED")
-        duplicates = sum(1 for e in u_events if e.db_action == "PREVIOUSLY_KNOWN")
-        quarantined = sum(1 for s in u_staging if s.processing_status in ("review", "conflict", "quarantined"))
-        rejected = sum(1 for s in u_staging if s.processing_status == "rejected")
+        raw_obs = total_submitted or total_staging
         accepted = new_people + enriched_people
+        fields_added = fields_added_count * 2
 
-        # Fields added calculation
-        fields_added = 0
-        for e in u_events:
-            if e.fields_added:
-                try:
-                    fa = json.loads(e.fields_added)
-                    fields_added += len(fa) if isinstance(fa, list) else len(fa.keys())
-                except Exception:
-                    fields_added += 2
-            elif e.db_action == "ENRICHED":
-                fields_added += 2
-
-        # Unique companies and jobs
-        companies_added = len(set(e.company_name for e in u_events if e.company_name and e.company_name != "—"))
-        contacts_added = sum(1 for e in u_events if e.email or e.phone or e.linkedin_url)
-
-        # Last contribution timestamp
-        last_contrib_time = max((e.created_at for e in u_events if e.created_at), default=None)
-
-        # Quality scoring
         quality_metrics = compute_contributor_quality_score(
             raw_observations=raw_obs,
             accepted=accepted,
@@ -282,27 +300,24 @@ def get_all_scout_users_intelligence(
             last_contribution_time=last_contrib_time,
         )
 
-        # Lifecycle State
         lifecycle = get_user_scout_lifecycle_status(
             user=u,
             devices=u_devices,
-            events_count=len(u_events),
+            events_count=total_events,
             last_heartbeat_sec=hb_sec,
         )
 
-        # Current version across user's devices
-        user_ver = latest_device.extension_version if latest_device and latest_device.extension_version else "—"
+        user_ver = latest_version or "—"
         update_required = bool(user_ver != "—" and user_ver != latest_ver)
 
         health_state = "HEALTHY"
-        if not latest_device or not latest_device.is_active:
-            health_state = "REVOKED" if (latest_device and not latest_device.is_active) else "INACTIVE"
+        if device_count == 0 or active_devices_count == 0:
+            health_state = "REVOKED" if device_count > 0 and active_devices_count == 0 else "INACTIVE"
         elif hb_sec is not None and hb_sec > 900:
             health_state = "OFFLINE"
 
         name = f"{u.first_name or ''} {u.last_name or ''}".strip() or u.email.split("@")[0]
 
-        # Format relative times
         last_seen_fmt = "—"
         if hb_sec is not None:
             if hb_sec < 60:
@@ -337,14 +352,14 @@ def get_all_scout_users_intelligence(
             "status_label": lifecycle["label"],
             "status_badge_color": lifecycle["badge_color"],
             "status_description": lifecycle["description"],
-            "devices_count": len(u_devices),
+            "devices_count": device_count,
             "current_version": user_ver,
             "update_required": update_required,
             "health": health_state,
             "last_seen": last_seen_fmt,
             "last_seen_seconds": hb_sec,
             "last_contribution": last_contrib_fmt,
-            "people_added": new_people + enriched_people,
+            "people_added": accepted,
             "new_people_created": new_people,
             "people_enriched": enriched_people,
             "companies_added": companies_added,
@@ -358,7 +373,6 @@ def get_all_scout_users_intelligence(
             "account_created": u.created_at.strftime("%Y-%m-%d") if u.created_at else "—",
         }
 
-        # Apply filters
         if status_filter and status_filter.upper() != "ALL":
             if lifecycle["status"].upper() != status_filter.upper():
                 continue
@@ -370,7 +384,6 @@ def get_all_scout_users_intelligence(
 
         contributors.append(user_card)
 
-    # Sorting
     if sort_by == "most_active":
         contributors.sort(key=lambda c: c["last_seen_seconds"] if c["last_seen_seconds"] is not None else 9999999)
     elif sort_by == "most_data":
@@ -380,8 +393,7 @@ def get_all_scout_users_intelligence(
     elif sort_by == "most_devices":
         contributors.sort(key=lambda c: c["devices_count"], reverse=True)
 
-    # Global KPI Aggregates
-    total_users = len(users)
+    total_users = len(rows)
     active_users = sum(1 for c in contributors if c["scout_status"] in ("ACTIVE", "CONTRIBUTING"))
     active_devices = sum(c["devices_count"] for c in contributors if c["health"] == "HEALTHY")
     contributing_users = sum(1 for c in contributors if c["scout_status"] in ("CONTRIBUTING", "CONTRIBUTING_OFFLINE"))
@@ -390,10 +402,11 @@ def get_all_scout_users_intelligence(
     revoked_count = sum(1 for c in contributors if c["scout_status"] == "REVOKED")
 
     # Version Distribution
+    vd_query = _safe_query(lambda: db.query(ExtensionDevice.extension_version, sqlfunc.count(ExtensionDevice.id)).group_by(ExtensionDevice.extension_version).all(), [])
     version_counts = {}
-    for d in devices:
-        v = d.extension_version or "2.0.0"
-        version_counts[v] = version_counts.get(v, 0) + 1
+    for v, c in vd_query:
+        ver = v or "2.0.0"
+        version_counts[ver] = version_counts.get(ver, 0) + c
 
     return {
         "summary": {
@@ -409,7 +422,7 @@ def get_all_scout_users_intelligence(
             "total_companies_contributed": sum(c["companies_added"] for c in contributors),
             "total_contacts_contributed": sum(c["contacts_added"] for c in contributors),
             "total_fields_added": sum(c["fields_added"] for c in contributors),
-            "average_quality_score": round(sum(c["quality_score"] for c in contributors) / max(1, len(contributors)), 1),
+            "average_quality_score": round(sum(c["quality_score"] for c in contributors) / max(1, len(contributors)), 1) if contributors else 0.0,
         },
         "version_distribution": version_counts,
         "latest_production_version": latest_ver,

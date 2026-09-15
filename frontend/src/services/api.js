@@ -12,12 +12,36 @@ export const setOnUnauthorizedCallback = (callback) => {
 
 const createClient = (baseURL) => {
   if (!clientCache.has(baseURL)) {
-    clientCache.set(baseURL, axios.create({
+    const client = axios.create({
       baseURL,
       withCredentials: true,
       headers: { 'Content-Type': 'application/json' },
       timeout: 30000,
-    }))
+    })
+
+    const responseCache = new Map()
+    const CACHE_TTL = 5000 // 5 seconds
+
+    client.interceptors.request.use(config => {
+      if (config.method === 'get' && !config.skipCache) {
+        const key = config.url + JSON.stringify(config.params || {})
+        const cached = responseCache.get(key)
+        if (cached && Date.now() - cached.time < CACHE_TTL) {
+          config.adapter = () => Promise.resolve(cached.response)
+        }
+      }
+      return config
+    })
+
+    client.interceptors.response.use(response => {
+      if (response.config.method === 'get' && !response.config.skipCache) {
+        const key = response.config.url + JSON.stringify(response.config.params || {})
+        responseCache.set(key, { response, time: Date.now() })
+      }
+      return response
+    })
+
+    clientCache.set(baseURL, client)
   }
   return clientCache.get(baseURL)
 }

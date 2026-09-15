@@ -90,21 +90,19 @@ function AppShell() {
   const [dbRecordCount, setDbRecordCount] = useState('437k+')
 
   useEffect(() => {
-    api.get('/version').then(res => {
-      if (res.data?.version) setBackendVersion(res.data.version)
-    }).catch(err => console.error("Failed to fetch version", err))
-
-    api.get('/health').then(res => {
-      if (res.data?.status === 'healthy' || res.data?.components?.database?.status === 'healthy') {
+    const controller = new AbortController()
+    Promise.all([
+      api.get('/version', { signal: controller.signal }).catch(() => null),
+      api.get('/health', { signal: controller.signal }).catch(() => null)
+    ]).then(([versionRes, healthRes]) => {
+      if (versionRes?.data?.version) setBackendVersion(versionRes.data.version)
+      if (healthRes?.data?.status === 'healthy' || healthRes?.data?.components?.database?.status === 'healthy') {
         setDbConnected(true)
-        const records = res.data?.components?.recruiter_store?.records
-        if (records) {
-          setDbRecordCount(`${(records / 1000).toFixed(0)}k+`)
-        }
+        const records = healthRes?.data?.components?.recruiter_store?.records
+        if (records) setDbRecordCount(`${(records / 1000).toFixed(0)}k+`)
       }
-    }).catch(() => {
-      setDbConnected(true)
     })
+    return () => controller.abort()
   }, [])
 
   useEffect(() => {

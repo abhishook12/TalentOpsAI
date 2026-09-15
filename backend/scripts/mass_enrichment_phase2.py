@@ -153,7 +153,7 @@ def run_phase2_enrichment():
     # =========================================================================
     print("\n[Item 6/6] Inferring missing Recruiter States from top US Cities...")
     t0 = time.time()
-    cursor.execute("""
+    cursor.execute(r"""
         UPDATE recruiters
         SET state = CASE
             WHEN LOWER(location) ~ 'austin|dallas|houston|san antonio|fort worth|el paso|arlington|plano' THEN 'TX'

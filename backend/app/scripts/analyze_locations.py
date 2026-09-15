@@ -61,7 +61,7 @@ for r in rows4:
 
 # Count location format patterns
 print("\n=== LOCATION FORMAT PATTERNS ===")
-patterns = conn.execute(text("""
+patterns = conn.execute(text(r"""
     SELECT 
         COUNT(*) FILTER (WHERE location ~ '^[^,]+, [A-Z]{2}$') as city_state_abbrev,
         COUNT(*) FILTER (WHERE location ~ '^[^,]+, [A-Z]{2} \d{5}') as city_state_zip,

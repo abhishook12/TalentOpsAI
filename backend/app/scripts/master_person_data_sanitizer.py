@@ -45,14 +45,14 @@ def run_sanitization():
             
             # 4. Phone Standardization (Simple non-digit stripping, keeping +)
             print("4. Standardizing Phone Numbers (Removing whitespace, dashes, parens)...")
-            res_phones = conn.execute(text("""
+            res_phones = conn.execute(text(r"""
                 UPDATE recruiters 
                 SET phone = REGEXP_REPLACE(phone, '[^\d+]', '', 'g')
                 WHERE phone != REGEXP_REPLACE(phone, '[^\d+]', '', 'g') AND phone IS NOT NULL
             """))
             print(f" -> Updated {res_phones.rowcount} phones.")
 
-            res_phones2 = conn.execute(text("""
+            res_phones2 = conn.execute(text(r"""
                 UPDATE recruiters 
                 SET phone2 = REGEXP_REPLACE(phone2, '[^\d+]', '', 'g')
                 WHERE phone2 != REGEXP_REPLACE(phone2, '[^\d+]', '', 'g') AND phone2 IS NOT NULL

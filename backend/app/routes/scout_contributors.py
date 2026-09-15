@@ -56,8 +56,7 @@ def list_scout_users(
     Returns the comprehensive Scout Users & Contributors list with summary cards,
     lifecycle statuses, device counts, quality scores, and version distribution.
     """
-    if not current_user or (current_user.email or "").lower().strip() != "abhishekjadon824@gmail.com":
-        raise HTTPException(status_code=403, detail="Admin authorization required")
+    _require_admin(current_user)
     try:
         return get_all_scout_users_intelligence(
             db=db,
@@ -103,8 +102,7 @@ def get_contributors_summary(
     """
     Returns global aggregate KPIs for the Scout Contributor Command Center.
     """
-    if not current_user or (current_user.email or "").lower().strip() != "abhishekjadon824@gmail.com":
-        raise HTTPException(status_code=403, detail="Admin authorization required")
+    _require_admin(current_user)
     try:
         data = get_all_scout_users_intelligence(db=db)
         return {
@@ -139,16 +137,28 @@ def get_contributors_summary(
         }
 
 
+def _require_admin(current_user: Optional[User]):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    is_admin = (
+        (current_user.email or "").lower().strip() == "abhishekjadon824@gmail.com"
+        or getattr(current_user, "is_superadmin", False)
+        or (hasattr(current_user, "role") and current_user.role and getattr(current_user.role, "name", "").lower() in ("admin", "superadmin"))
+    )
+    if not is_admin:
+        raise HTTPException(status_code=403, detail="Admin authorization required")
+
+
 def _check_user_access(current_user: Optional[User], user_id: int):
     if not current_user:
         raise HTTPException(status_code=401, detail="Authentication required")
-    if (current_user.email or "").lower().strip() != "abhishekjadon824@gmail.com" and current_user.id != user_id:
+    is_admin = (
+        (current_user.email or "").lower().strip() == "abhishekjadon824@gmail.com"
+        or getattr(current_user, "is_superadmin", False)
+        or (hasattr(current_user, "role") and current_user.role and getattr(current_user.role, "name", "").lower() in ("admin", "superadmin"))
+    )
+    if not is_admin and current_user.id != user_id:
         raise HTTPException(status_code=403, detail="Access denied")
-
-
-def _require_admin(current_user: User):
-    if not current_user or (current_user.email or "").lower().strip() != "abhishekjadon824@gmail.com":
-        raise HTTPException(status_code=403, detail="Admin authorization required: Only abhishekjadon824@gmail.com is permitted")
 
 
 # ── Deep Forensic User Profile Endpoints ─────────────────────────────────────

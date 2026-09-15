@@ -1,4 +1,4 @@
-﻿import re
+import re
 
 with open('backend/enrich_recruiter_contacts.py', 'r', encoding='utf-8') as f:
     content = f.read()

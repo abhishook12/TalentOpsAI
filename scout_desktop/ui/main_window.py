@@ -67,6 +67,17 @@ class _IndicatorStub:
         self.state = state
 
 
+class _CompatCounter:
+    def __init__(self, value: str = "0"):
+        self.value = str(value)
+
+    def setText(self, val: str):
+        self.value = str(val)
+
+    def text(self) -> str:
+        return self.value
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # MainWindow Implementation
 # ─────────────────────────────────────────────────────────────────────────────
@@ -246,6 +257,34 @@ class MainWindow(QMainWindow):
         self.lbl_hero_pill = self.page_scan.chip_latest.lbl_text
         self.btn_pause_toggle = self.page_scan.btn_pause
 
+        # Counter compatibility proxies
+        self._compat_counters = {
+            "captured": _CompatCounter(),
+            "analyzed": _CompatCounter(),
+            "useful": _CompatCounter(),
+            "staged": _CompatCounter(),
+            "matched": _CompatCounter(),
+            "new": _CompatCounter(),
+            "enriched": _CompatCounter(),
+            "db_updates": _CompatCounter(),
+            "purged": _CompatCounter(),
+            "observed": _CompatCounter(),
+            "fields_added": _CompatCounter(),
+            "buffer": _CompatCounter(),
+        }
+        self.c_captured = self._compat_counters["captured"]
+        self.c_analyzed = self._compat_counters["analyzed"]
+        self.c_useful = self._compat_counters["useful"]
+        self.c_staged = self._compat_counters["staged"]
+        self.c_matched = self._compat_counters["matched"]
+        self.c_new = self._compat_counters["new"]
+        self.c_enriched = self._compat_counters["enriched"]
+        self.c_db_updates = self._compat_counters["db_updates"]
+        self.c_purged = self._compat_counters["purged"]
+        self.c_observed = self._compat_counters["observed"]
+        self.c_fields_added = self._compat_counters["fields_added"]
+        self.c_buffer = self._compat_counters["buffer"]
+
     def _connect_signals(self):
         # Navigation from Left Rail
         self.left_rail.nav_changed.connect(self._on_left_rail_nav)
@@ -380,6 +419,11 @@ class MainWindow(QMainWindow):
         useful = counters.get("useful", counters.get("profiles", 128))
         canonical = counters.get("canonical", counters.get("committed", 62))
         staged = counters.get("staged", 87)
+
+        # Update compat proxy counters
+        for key, val in counters.items():
+            if hasattr(self, f"c_{key}"):
+                getattr(self, f"c_{key}").value = str(val)
 
         # Update local queue badge and card
         queued_count = counters.get("queued", 14)

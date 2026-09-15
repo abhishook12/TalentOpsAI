@@ -232,9 +232,13 @@ def validate_company_for_person(company_name: Optional[str], person_name: Option
     if not raw:
         return True, None
 
+    # Strip leading notification count patterns like "(121) ", "(2) ", "(1) "
+    raw = re.sub(r'^(?:[\(\[]?\d+\+?[\)\]]?\s*[|•·–—\-:]?\s*)+', '', raw).strip()
+    if not raw:
+        return False, "Company was solely notification noise"
     lower = raw.lower()
 
-    # Reject notification count patterns like "(121)", "(2)", "(1) Rachel"
+    # Reject remaining notification count patterns if still embedded
     if re.search(r'\(\d+\+?\)', raw):
         return False, f"Company contains notification count pattern: '{raw}'"
 
@@ -295,6 +299,9 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
     # Reject truncated strings ending with dots/ellipses (e.g. "54 Ri Ht...")
     if name.endswith("...") or name.endswith("..") or ".." in name:
         return False, None, f"Name contains truncation ellipses ('{name}')"
+
+    # Strip leading notification numbers or badges e.g. "54 | ", "(54) ", "[12] ", "(1) "
+    name = re.sub(r"^(?:[\(\[]?\d+\+?[\)\]]?\s*[|•·–—\-:]?\s*)+", "", name).strip()
 
     # Strip degree connection bullets and numbers
     name = re.sub(r'[·•]\s*\d*(?:st|nd|rd|th)?(?:\s*degree(?:\s+connection)?)?', ' ', name, flags=re.IGNORECASE)
@@ -439,6 +446,7 @@ def clean_company(raw_company: Optional[str], page_context: Optional[str] = None
     comp = None
     if raw_company and not is_platform_name(raw_company):
         comp = str(raw_company).strip()
+        comp = re.sub(r'^\(\d+\)\s*', '', comp).strip()
         comp = re.sub(r'\s*\|\s*(?:LinkedIn|Indeed|Glassdoor|ZipRecruiter|SimplyHired).*$', '', comp, flags=re.IGNORECASE).strip()
     elif page_context:
         raw_ctx = str(page_context).strip()

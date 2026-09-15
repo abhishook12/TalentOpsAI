@@ -1330,6 +1330,7 @@ class ScoutDesktopApp:
             self.evidence_store.update_status(capture_id, "STAGED")
             self.bridge.event_logged.emit("ENTITY_FOUND", f"{len(clusters)} candidate(s) — {clusters[0].canonical_name}")
             self.bridge.event_logged.emit("STAGING_CREATED", f"Enqueued to SQLite buffer ({len(clusters)} items)")
+            self._flush_queue_to_backend()
 
             # Promote all verified candidates to Candidates UI table & Hero Card
             verified_emitted = 0
@@ -1429,6 +1430,12 @@ class ScoutDesktopApp:
         if purged > 0:
             self.cnt_purged += purged
             self.bridge.event_logged.emit("SCREENSHOT_PURGED", f"Auto-purged {purged} expired screenshot(s)")
+
+        # Periodic watchdog: Auto-rescue any transiently stalled, DLQ, or quarantined items
+        healed = self.local_queue.recover_all_stalled_and_dlq_items()
+        if healed > 0:
+            self.bridge.event_logged.emit("QUEUE_HEALED", f"Auto-healed {healed} stalled/DLQ observation(s) for sync")
+            self._flush_queue_to_backend()
         self._emit_telemetry()
 
     def _flush_queue_to_backend(self):
@@ -1453,7 +1460,7 @@ class ScoutDesktopApp:
 
         self._is_flushing = True
         try:
-            pending = self.local_queue.get_pending_batch(limit=20)
+            pending = self.local_queue.get_pending_batch(limit=50)
             if not pending:
                 stats = self.local_queue.get_queue_stats()
                 synced_cnt = stats.get("synced", 0)
@@ -1500,6 +1507,12 @@ class ScoutDesktopApp:
             logger.debug("Async flush worker error: %s", e)
         finally:
             self._is_flushing = False
+            # Fast-drain chaining: if pending items remain and ready, flush next batch immediately
+            try:
+                if getattr(self, "local_queue", None) and self.local_queue.get_pending_batch(limit=1):
+                    threading.Timer(0.15, self._flush_queue_to_backend).start()
+            except Exception:
+                pass
 
     def _send_heartbeat(self):
         """Dispatches heartbeat network request to background thread to eliminate GUI thread freezes."""

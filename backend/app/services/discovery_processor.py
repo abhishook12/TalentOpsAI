@@ -107,21 +107,16 @@ class DiscoveryProcessor:
                     self.db.add(r)
                     rejected_count += 1
                 else:
-                    # Additional: Validate company name isn't system noise
-                    comp_valid, comp_reason = validate_company_for_person(
-                        r.raw_company, person_name=r.raw_name
-                    )
-                    if not comp_valid:
-                        r.processing_status = 'rejected'
-                        r.decision = 'REJECT_SYSTEM_NOISE'
-                        r.decision_reason = f"Company noise: {comp_reason}"
-                        r.identity_confidence = 0.0
-                        r.processed_at = datetime.now(timezone.utc)
-                        self.db.add(r)
-                        rejected_count += 1
-                    else:
-                        r.processing_status = 'batched'
-                        grounded_records.append(r)
+                    # Additional: Validate company name isn't system noise; if invalid, sanitize to None (do NOT reject human candidate)
+                    if r.raw_company:
+                        comp_valid, comp_reason = validate_company_for_person(
+                            r.raw_company, person_name=r.raw_name
+                        )
+                        if not comp_valid:
+                            logger.info("Sanitizing noise company '%s' for candidate '%s': %s", r.raw_company, r.raw_name, comp_reason)
+                            r.raw_company = None
+                    r.processing_status = 'batched'
+                    grounded_records.append(r)
 
             self.db.commit()
 
@@ -735,9 +730,8 @@ class DiscoveryProcessor:
             is_corroborated_profile = (
                 person.canonical_name
                 and person.canonical_name != "Unknown Professional"
-                and person.current_company
-                and person.current_title
-                and person.identity_confidence >= 0.50
+                and (person.current_company or person.current_title or person.linkedin_url or getattr(person, "canonical_profile_url", None))
+                and person.identity_confidence >= 0.40
             )
             if person.identity_confidence >= AUTO_COMMIT_THRESHOLD or is_corroborated_profile:
                 return {
@@ -840,7 +834,7 @@ class DiscoveryProcessor:
                     }
 
         # Outcome: ENRICH
-        if (len(new_fields) > 0 or has_new_company) and match_confidence >= AUTO_COMMIT_THRESHOLD:
+        if (len(new_fields) > 0 or has_new_company) and match_confidence >= 0.60:
             reason_str = f"Discovered new attributes: {', '.join(new_fields)}"
             if has_new_company and m_comp_name:
                 reason_str += f" (Employer transition detected: {m_comp_name} -> {person.current_company})"
@@ -852,12 +846,21 @@ class DiscoveryProcessor:
             }
 
         # Outcome: DUPLICATE
-        if len(new_fields) == 0 and match_confidence >= AUTO_COMMIT_THRESHOLD:
+        if len(new_fields) == 0 and match_confidence >= 0.60:
             return {
                 'person': person,
                 'recruiter': master_match,
                 'decision': 'DUPLICATE',
                 'reason': 'Record already exists with identical or subset attributes',
+            }
+
+        # If match was weak (< 0.60, e.g. name only match of 0.40) and candidate has distinct attributes
+        if match_confidence < 0.60 and person.canonical_name and person.canonical_name != "Unknown Professional" and (person.current_company or person.current_title or person.linkedin_url or getattr(person, "canonical_profile_url", None)):
+            return {
+                'person': person,
+                'recruiter': None,
+                'decision': 'NEW',
+                'reason': f'Distinct candidate entity (weak name-only match {match_confidence:.2f} with existing recruiter {master_match.recruiter_id})',
             }
 
         # Outcome: REVIEW

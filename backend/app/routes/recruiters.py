@@ -861,8 +861,8 @@ def get_recruiters(
             )
         elif page == 1:
             pg_query = db.query(Recruiter).filter(
-                Recruiter.data_source == 'extension'
-            ).order_by(Recruiter.recruiter_id.desc()).limit(15)
+                Recruiter.data_source.in_(['extension', 'extension_staged', 'visual_capture', 'parquet_canonical'])
+            ).order_by(Recruiter.recruiter_id.desc()).limit(50)
 
         if pg_query:
             pg_recs = pg_query.all()
@@ -1069,7 +1069,8 @@ def get_recruiters(
         "total_pages": total_pages,
         "results": formatted_results
     }
-    analytics_cache.set(cache_key, ret_data, ttl=300)
+    cache_ttl = 5 if (page == 1 and not search) else 120
+    analytics_cache.set(cache_key, ret_data, ttl=cache_ttl)
     return ret_data
 
 import csv

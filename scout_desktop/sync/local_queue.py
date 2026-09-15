@@ -34,6 +34,7 @@ class LocalQueue:
         self.db_path = db_path if db_path == ":memory:" else os.path.abspath(db_path)
         self._mem_conn = sqlite3.connect(":memory:") if self.db_path == ":memory:" else None
         self._init_db()
+        self.recover_all_stalled_and_dlq_items()
 
     @contextmanager
     def _get_conn(self):
@@ -162,7 +163,7 @@ class LocalQueue:
         """Alias for intelligence packet enqueueing."""
         return self.enqueue_cluster(packet_dict, priority=priority, operation=operation)
 
-    def get_pending_batch(self, limit: int = 25) -> List[Dict[str, Any]]:
+    def get_pending_batch(self, limit: int = 50) -> List[Dict[str, Any]]:
         """
         Fetches up to `limit` pending items for synchronization.
         Strictly orders by priority (HIGH -> MEDIUM -> LOW), respecting exponential backoff.
@@ -288,6 +289,25 @@ class LocalQueue:
             conn.commit()
             if count > 0:
                 logger.info("Self-healing watchdog: Recovered %d stalled queue observations", count)
+            return count
+
+    def recover_all_stalled_and_dlq_items(self) -> int:
+        """
+        Self-healing watchdog: Recovers records stuck in DLQ, QUARANTINED, or stalled states
+        due to previous timeouts or false device revocation, resetting them back to PENDING.
+        """
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                """
+                UPDATE queued_observations 
+                SET status = 'PENDING', retry_count = 0, next_retry_at = NULL, dlq_reason = NULL 
+                WHERE status IN ('DLQ', 'QUARANTINED', 'PROCESSING', 'FAILED')
+                """
+            )
+            count = cur.rowcount
+            conn.commit()
+            if count > 0:
+                logger.info("Self-healing watchdog: Recovered %d stalled/DLQ/quarantined observations back to PENDING", count)
             return count
 
     def get_queue_stats(self) -> Dict[str, int]:

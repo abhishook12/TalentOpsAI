@@ -243,6 +243,8 @@ def clean_company_name(comp: Optional[str]) -> Optional[str]:
     if not comp:
         return None
     cleaned = comp.strip()
+    # Strip leading notification numbers or badges e.g. "54 | ", "(54) ", "[12] ", "(1) "
+    cleaned = re.sub(r"^(?:[\(\[]?\d+\+?[\)\]]?\s*[|•·–—\-:]?\s*)+", "", cleaned).strip()
     cleaned = re.sub(r"^Current\s*company:\s*", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\. Click to skip.*$", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(

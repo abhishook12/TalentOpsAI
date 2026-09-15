@@ -460,6 +460,12 @@ def ingest_extension_batch(
         except Exception as pe:
             logger.warning("Auto batch processor / knowledge graph run error: %s", pe)
 
+        try:
+            from .analytics import analytics_cache
+            analytics_cache.clear()
+        except Exception:
+            pass
+
     logger.info(
         "Extension staged: device=%s batch=%s staged=%d duplicates=%d processor_stats=%s kg_stats=%s",
         device_id, batch_id, staged, idempotent_duplicates, processor_stats, kg_stats

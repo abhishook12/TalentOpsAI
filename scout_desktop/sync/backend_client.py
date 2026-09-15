@@ -684,10 +684,17 @@ class BackendClient:
                     res = requests.post(target_url, json=payload, headers=headers, timeout=30.0)
 
             if res.status_code == 403:
-                logger.warning("🚨 Device access REVOKED by backend (HTTP 403). Disabling auto-retry.")
-                self.last_response_status = "REVOKED (HTTP 403)"
-                self.last_db_write_result = "ACCESS REVOKED"
-                return False, {"error": "device_revoked", "detail": "Device access revoked by administrator"}
+                res_body = res.text.lower()
+                if "revoked" in res_body or "permanently blocked" in res_body:
+                    logger.warning("🚨 Device access REVOKED by backend (HTTP 403). Disabling auto-retry.")
+                    self.last_response_status = "REVOKED (HTTP 403)"
+                    self.last_db_write_result = "ACCESS REVOKED"
+                    return False, {"error": "device_revoked", "detail": "Device access revoked by administrator"}
+                else:
+                    logger.info("Batch staging received 403; attempting session re-authentication...")
+                    self.auth_token = None
+                    if self.ensure_authenticated():
+                        res = requests.post(target_url, json=payload, headers=self._get_headers(), timeout=30.0)
 
             if res.status_code == 401:
                 logger.info("Batch staging received 401; auto-reactivating device and retrying...")

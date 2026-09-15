@@ -53,6 +53,19 @@ try:
                 if col not in existing_cols:
                     conn.execute(text(f"ALTER TABLE scout_releases ADD COLUMN IF NOT EXISTS {col} {col_type}"))
     logger.info("Scout release column schema verified.")
+
+    # Ensure critical fleet broadcast columns exist in scout_installations
+    if insp.has_table("scout_installations"):
+        existing_cols = {col["name"] for col in insp.get_columns("scout_installations")}
+        scout_inst_cols = {
+            "last_broadcast_seen_id": "VARCHAR(64)",
+            "pending_update_version": "VARCHAR(32)",
+        }
+        with engine.begin() as conn:
+            for col, col_type in scout_inst_cols.items():
+                if col not in existing_cols:
+                    conn.execute(text(f"ALTER TABLE scout_installations ADD COLUMN IF NOT EXISTS {col} {col_type}"))
+    logger.info("Scout installation broadcast column schema verified.")
 except Exception as e:
     logger.warning("Core database table initialization warning: %s", e)
 

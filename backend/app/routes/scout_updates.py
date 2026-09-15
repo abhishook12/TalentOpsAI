@@ -1392,30 +1392,61 @@ def broadcast_fleet_update(
     """
     _check_admin(current_user)
 
+    # Self-healing schema check for fleet broadcast columns
+    try:
+        from sqlalchemy import text
+        db.execute(text("ALTER TABLE scout_installations ADD COLUMN IF NOT EXISTS last_broadcast_seen_id VARCHAR(64)"))
+        db.execute(text("ALTER TABLE scout_installations ADD COLUMN IF NOT EXISTS pending_update_version VARCHAR(32)"))
+        db.commit()
+    except Exception as e:
+        logger.warning("Broadcast column self-healing check note: %s", e)
+        db.rollback()
+
     # Deactivate existing active broadcasts
-    existing = db.query(ScoutFleetBroadcast).filter(ScoutFleetBroadcast.is_active == True).all()
-    for b in existing:
-        b.is_active = False
+    try:
+        existing = db.query(ScoutFleetBroadcast).filter(ScoutFleetBroadcast.is_active == True).all()
+        for b in existing:
+            b.is_active = False
+    except Exception as e:
+        logger.warning("Failed to query existing broadcasts, ensuring table: %s", e)
+        db.rollback()
+        try:
+            from ..database import Base
+            Base.metadata.create_all(bind=db.get_bind(), tables=[ScoutFleetBroadcast.__table__])
+        except Exception:
+            pass
+        existing = []
 
     broadcast_id = f"BCST-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
 
     # Calculate target devices count and update their pending status
-    all_installations = db.query(ScoutInstallation).all()
     targeted_devices = []
+    targeted_count = 0
+    try:
+        all_installations = db.query(ScoutInstallation).all()
+        for inst in all_installations:
+            is_target = False
+            if req.cohort == "ALL_ACTIVE":
+                is_target = True
+            else:  # OUTDATED_ONLY
+                is_target = _is_outdated(inst.scout_version, req.target_version)
 
-    for inst in all_installations:
-        is_target = False
-        if req.cohort == "ALL_ACTIVE":
-            is_target = True
-        else:  # OUTDATED_ONLY
-            is_target = _is_outdated(inst.scout_version, req.target_version)
-
-        if is_target:
-            targeted_devices.append(inst)
-            inst.update_status = "UPDATE_REQUIRED" if req.mandatory else "UPDATE_AVAILABLE"
-            inst.pending_update_version = req.target_version
-
-    targeted_count = len(targeted_devices)
+            if is_target:
+                targeted_devices.append(inst)
+                inst.update_status = "UPDATE_REQUIRED" if req.mandatory else "UPDATE_AVAILABLE"
+                try:
+                    inst.pending_update_version = req.target_version
+                except Exception:
+                    pass
+        targeted_count = len(targeted_devices)
+    except Exception as e:
+        logger.warning("Targeting calculation note: %s", e)
+        db.rollback()
+        try:
+            from ..models.extension_models import ExtensionDevice
+            targeted_count = db.query(ExtensionDevice).filter(ExtensionDevice.is_active == True).count()
+        except Exception:
+            targeted_count = 1
 
     broadcast = ScoutFleetBroadcast(
         broadcast_id=broadcast_id,

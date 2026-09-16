@@ -53,6 +53,7 @@ from .ui.edge_handle import EdgeHandleWidget
 from .ui.diagnostics_window import DiagnosticsWindow
 from .ui.settings_window import SettingsWindow
 from .ui.activation_window import ActivationWindow
+from .ui.scout_data import CANDIDATES
 
 class NullWriter:
     def write(self, text): pass
@@ -315,13 +316,14 @@ class ScoutDesktopApp:
                     confidence=cand.get("confidence", 95),
                 )
 
-            # Set the latest candidate on the hero card
+            # Set the latest candidate on the hero card and candidate record page
             latest = cached_cands[0]
             display_name = latest["name"]
             display_title = latest["title"] or "Professional Profile"
             display_company = latest["company"] or ""
             display_loc = latest["location"] or "—"
             status = latest["status"]
+            latest_id = CANDIDATES[0]["id"] if CANDIDATES else "sarah-chen"
 
             self.main_window.lbl_hero_name.setText(display_name)
             self.main_window.lbl_hero_title.setText(f"{display_title} at {display_company}" if display_company else display_title)
@@ -332,17 +334,34 @@ class ScoutDesktopApp:
             self.main_window.lbl_cand_avatar.setText(initial)
             if latest.get("profile_url"):
                 self.main_window._latest_profile_url = latest["profile_url"]
-            if hasattr(self.main_window, "page_scan") and hasattr(self.main_window.page_scan, "update_meters"):
-                self.main_window.page_scan.update_meters(
-                    name=display_name,
-                    title=display_title,
-                    company=display_company,
-                    location=display_loc,
-                    name_conf=99,
-                    title_conf=96 if display_title else 80,
-                    comp_conf=93 if display_company else 80,
-                    loc_conf=75 if display_loc != "—" else 70,
-                )
+
+            if hasattr(self.main_window, "page_scan"):
+                if hasattr(self.main_window.page_scan, "set_latest_candidate"):
+                    self.main_window.page_scan.set_latest_candidate(
+                        cand_id=latest_id,
+                        name=display_name,
+                        title=display_title,
+                        company=display_company,
+                        location=display_loc,
+                        status=status,
+                        confidence=latest.get("confidence", 95),
+                        profile_url=latest.get("profile_url", "")
+                    )
+                elif hasattr(self.main_window.page_scan, "update_meters"):
+                    self.main_window.page_scan._current_candidate_id = latest_id
+                    self.main_window.page_scan.update_meters(
+                        name=display_name,
+                        title=display_title,
+                        company=display_company,
+                        location=display_loc,
+                        name_conf=99,
+                        title_conf=96 if display_title else 80,
+                        comp_conf=93 if display_company else 80,
+                        loc_conf=75 if display_loc != "—" else 70,
+                        cand_id=latest_id,
+                    )
+            if hasattr(self.main_window, "page_candidate_record"):
+                self.main_window.page_candidate_record.set_candidate(latest_id)
         except Exception as e:
             logger.warning("Failed to initialize cached candidates in UI: %s", e)
 
@@ -444,6 +463,36 @@ class ScoutDesktopApp:
         self.heartbeat_timer = QTimer()
         self.heartbeat_timer.timeout.connect(self._send_heartbeat)
         self.heartbeat_timer.start(20000)
+
+        # 5. UI Status & Local Queue Refresh Timer (updates Left Rail & Bottom Status Bar every 1000ms)
+        self.ui_status_timer = QTimer()
+        self.ui_status_timer.timeout.connect(self._refresh_ui_status)
+        self.ui_status_timer.start(1000)
+        # Immediate first tick
+        QTimer.singleShot(100, self._refresh_ui_status)
+
+    def _refresh_ui_status(self):
+        """Polls local queue and sync state to keep Left Rail and Bottom Status Bar live and accurate."""
+        try:
+            q_stats = self.local_queue.get_queue_stats()
+            pending = q_stats.get("pending", 0)
+            synced_today = q_stats.get("synced_today", 0)
+            dlq = q_stats.get("dlq", 0)
+            errors = "No errors" if dlq == 0 else f"{dlq} DLQ items"
+            retry_sec = 10 if pending > 0 else 0
+
+            if hasattr(self, "main_window") and self.main_window:
+                if hasattr(self.main_window, "left_rail") and self.main_window.left_rail:
+                    self.main_window.left_rail.update_queue_status(pending, retry_sec)
+                if hasattr(self.main_window, "bottom_bar") and self.main_window.bottom_bar:
+                    self.main_window.bottom_bar.update_metrics(
+                        time.strftime("%H:%M:%S"),
+                        uploaded=synced_today,
+                        queued=pending,
+                        errors=errors
+                    )
+        except Exception as e:
+            logger.debug("Error in _refresh_ui_status: %s", e)
 
     def _check_and_consume_installation_claim(self) -> bool:
         """
@@ -1638,6 +1687,17 @@ class ScoutDesktopApp:
 
     def _emit_telemetry(self):
         e_stats = self.evidence_store.get_telemetry()
+        try:
+            q_stats = self.local_queue.get_queue_stats()
+            queued = q_stats.get("pending", 0)
+            synced_today = q_stats.get("synced_today", 0)
+            dlq = q_stats.get("dlq", 0)
+            err_msg = "No errors" if dlq == 0 else f"{dlq} DLQ items"
+        except Exception:
+            queued = 0
+            synced_today = 0
+            err_msg = "No errors"
+
         metrics = {
             "captured": self.cnt_captured,
             "analyzed": self.cnt_analyzed,
@@ -1652,6 +1712,10 @@ class ScoutDesktopApp:
             "fields_added": self.cnt_fields_added,
             "buffer_current": e_stats["active_buffer_images"],
             "buffer_max": 20,
+            "queued": queued,
+            "canonical": synced_today,
+            "synced_today": synced_today,
+            "errors": err_msg,
         }
         self.bridge.metrics_updated.emit(metrics)
 

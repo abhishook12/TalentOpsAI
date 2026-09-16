@@ -26,6 +26,7 @@ from PySide6.QtGui import (
 )
 
 from .scout_data import SYSTEM_STATE, CANDIDATES, REVIEW_QUEUE_ITEMS, ACTIVITY_FEED
+from scout_desktop.version import __version__, EXTRACTOR_VERSION
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -362,7 +363,7 @@ class TopBar(QFrame):
         title_row.addWidget(self.lbl_title)
         
         # Version Chip
-        self.lbl_version_chip = QLabel("v2.8.0")
+        self.lbl_version_chip = QLabel(f"v{__version__}")
         self.lbl_version_chip.setFont(QFont("Consolas", 8, QFont.Weight.Medium))
         self.lbl_version_chip.setStyleSheet(f"""
             background-color: {COLOR_SURFACE_HOVER};
@@ -856,14 +857,19 @@ class _LocalQueueWidget(QFrame):
         self.lbl_count.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; border: none; background: transparent;")
         layout.addWidget(self.lbl_count)
         
-        self.lbl_sub = QLabel(f"durable · retrying in {SYSTEM_STATE['local_queue_summary']['retry_in_sec']}s")
+        c = SYSTEM_STATE["local_queue_summary"]["count"]
+        sub_str = "durable · all synced" if c == 0 else f"durable · retrying in {SYSTEM_STATE['local_queue_summary']['retry_in_sec']}s"
+        self.lbl_sub = QLabel(sub_str)
         self.lbl_sub.setFont(QFont("Segoe UI", 7, QFont.Weight.Normal))
         self.lbl_sub.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; border: none; background: transparent;")
         layout.addWidget(self.lbl_sub)
 
     def set_stats(self, count: int, retry_sec: int):
         self.lbl_count.setText(str(count))
-        self.lbl_sub.setText(f"durable · retrying in {retry_sec}s")
+        if count == 0:
+            self.lbl_sub.setText("durable · all synced")
+        else:
+            self.lbl_sub.setText(f"durable · retrying in {retry_sec}s")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -873,7 +879,7 @@ class _LocalQueueWidget(QFrame):
 class BottomStatusBar(QFrame):
     """
     Bottom persistent status bar:
-    'Synced 00:41:49', 49 records uploaded, 14 queued, No errors, Extractor 4.5.0, Scout 2.8.0, Windows 11
+    'Synced 00:41:49', 49 records uploaded, 14 queued, No errors, Extractor 4.5.2, Scout 2.8.2, Windows 11
     """
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -911,8 +917,8 @@ class BottomStatusBar(QFrame):
         layout.addStretch()
         
         # Right metadata group
-        self.lbl_extractor = QLabel(SYSTEM_STATE['status_bar']['extractor_version'])
-        self.lbl_scout = QLabel(SYSTEM_STATE['status_bar']['scout_version'])
+        self.lbl_extractor = QLabel(f"Extractor {EXTRACTOR_VERSION}")
+        self.lbl_scout = QLabel(f"Scout {__version__}")
         self.lbl_os = QLabel(SYSTEM_STATE['status_bar']['os_name'])
         
         layout.addWidget(self.lbl_extractor)
@@ -924,6 +930,8 @@ class BottomStatusBar(QFrame):
         self.lbl_uploaded.setText(f"{uploaded} records uploaded")
         self.lbl_queued.setText(f"{queued} queued")
         self.lbl_errors.setText(errors)
+        self.lbl_extractor.setText(f"Extractor {EXTRACTOR_VERSION}")
+        self.lbl_scout.setText(f"Scout {__version__}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

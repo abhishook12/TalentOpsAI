@@ -722,13 +722,23 @@ class RecruiterStore:
             params.extend(hub["states"])
             params.extend(hub["cities"])
 
-        if company_id is not None:
-            where_clauses.append("CAST(company_id AS VARCHAR) = ?")
-            params.append(str(company_id))
-
+        # Company matching: in Parquet, company_id column stores either company_key string or numeric ID
+        comp_candidates = []
         if company_key:
-            where_clauses.append("CAST(company_id AS VARCHAR) = ?")
-            params.append(str(company_key))
+            comp_candidates.append(str(company_key).strip())
+        if company_id is not None and str(company_id).strip() not in comp_candidates:
+            comp_candidates.append(str(company_id).strip())
+        if company_name and str(company_name).strip() not in comp_candidates:
+            comp_candidates.append(str(company_name).strip())
+
+        if comp_candidates:
+            if len(comp_candidates) == 1:
+                where_clauses.append("CAST(company_id AS VARCHAR) = ?")
+                params.append(comp_candidates[0])
+            else:
+                ph = " OR ".join(["CAST(company_id AS VARCHAR) = ?"] * len(comp_candidates))
+                where_clauses.append(f"({ph})")
+                params.extend(comp_candidates)
 
         if specialization:
             where_clauses.append("LOWER(COALESCE(specialization, '')) LIKE ?")

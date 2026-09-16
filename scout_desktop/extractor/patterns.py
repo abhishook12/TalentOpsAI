@@ -536,16 +536,22 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         "solutions", "services", "consulting", "staffing", "workforce", "group",
         "holdings", "partners", "agency", "labs", "software", "international",
         "enterprises", "associates", "associated", "network", "networks", "systems",
-        "global", "capital", "ventures", "management", "financial"
+        "global", "capital", "ventures", "management", "financial", "company", "companies",
+        "college", "university", "institute", "school", "foundation", "queue"
     ]
     if is_valid_company_name(t) and any(re.search(rf"\b{re.escape(d)}\b", t, re.IGNORECASE) for d in corp_designators):
         return False
 
-    # Reject names that end in corporate / agency designations (e.g. "Daley Ard Associates")
+    # Reject names that start with article 'The ' or UI action 'Review '
+    if t.lower().startswith("the ") or t.lower().startswith("review "):
+        return False
+
+    # Reject names that end in corporate / agency designations (e.g. "Daley Ard Associates", "The Davis Companies")
     if any(t.lower().endswith(" " + d) for d in [
         "associates", "associated", "partners", "partner", "group", "holdings",
         "solutions", "consulting", "enterprises", "llc", "inc", "corp", "agency",
-        "network", "networks", "systems", "ventures", "capital"
+        "network", "networks", "systems", "ventures", "capital", "companies", "company",
+        "college", "university", "queue"
     ]):
         return False
 

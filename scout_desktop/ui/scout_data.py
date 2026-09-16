@@ -18,6 +18,7 @@ This module provides the single source of truth for:
 import copy
 import time
 from typing import Dict, Any, List, Optional
+from scout_desktop.version import __version__, EXTRACTOR_VERSION
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -26,41 +27,41 @@ from typing import Dict, Any, List, Optional
 
 SYSTEM_STATE: Dict[str, Any] = {
     "app_name": "TalentOps Scout",
-    "version": "v2.8.0",
+    "version": f"v{__version__}",
     "update_available": {
         "version": "2.9.0",
         "title": "Scout 2.9.0 available — signed release, verified and ready. Installs on next restart.",
-        "visible": True,
+        "visible": False,
     },
     "subtitle": "Edge intelligence agent",
     "status": "Active · observing",
     "is_observing": True,
     "is_paused": False,
     "user": {
-        "name": "Prashant",
+        "name": "Abhishek Jadon",
         "company": "TalentOps AI",
-        "display": "Prashant · TalentOps AI",
+        "display": "Abhishek Jadon · TalentOps AI",
         "installation_id": "Installation #483",
         "device_id": "DEV-98F2-A83B",
         "tenant_id": "TENANT-TALENTOPS-PROD",
     },
     "status_bar": {
-        "synced_time": "00:41:49",
-        "records_uploaded": 49,
-        "queued": 14,
+        "synced_time": time.strftime("%H:%M:%S"),
+        "records_uploaded": 0,
+        "queued": 0,
         "errors": "No errors",
-        "extractor_version": "Extractor 4.5.0",
-        "scout_version": "Scout 2.8.0",
+        "extractor_version": f"Extractor {EXTRACTOR_VERSION}",
+        "scout_version": f"Scout {__version__}",
         "os_name": "Windows 11",
     },
     "local_queue_summary": {
-        "count": 14,
-        "retry_in_sec": 12,
-        "label": "Local queue 14 · durable · retrying in 12s",
+        "count": 0,
+        "retry_in_sec": 0,
+        "label": "Local queue 0 · durable · synced",
     },
     "badges": {
-        "review_queue": 6,
-        "activity": 4,
+        "review_queue": 0,
+        "activity": 0,
     }
 }
 
@@ -73,7 +74,7 @@ CURRENTLY_OBSERVING: Dict[str, Any] = {
     "app_name": "Chrome",
     "window_title": "Google Cloud Leadership Team | Google Cloud",
     "status_label": "Chrome · authorized source",
-    "extractor_badge": "extractor 4.5.0",
+    "extractor_badge": f"extractor {EXTRACTOR_VERSION}",
     "classification": "Page classified as Person profile · confidence 0.97",
     "confidence": 0.97,
     "stability_score": 0.994,
@@ -140,7 +141,7 @@ CANDIDATES: List[Dict[str, Any]] = [
         "provenance": {
             "source": "Google Chrome · Google Cloud Leadership Team page",
             "timestamp": "2026-09-15 00:41:49 UTC",
-            "extractor": "4.5.0 (Perceptual + DOM fusion)",
+            "extractor": f"{EXTRACTOR_VERSION} (Perceptual + DOM fusion)",
             "device": "Installation #483",
         },
         "checklist": [
@@ -169,13 +170,13 @@ CANDIDATES: List[Dict[str, Any]] = [
             {"label": "Company", "value": "Northwind Systems", "raw": "Northwind Systems Inc.", "confidence": 92},
             {"label": "Location", "value": "Austin, TX", "raw": "Austin, Texas Metropolitan Area", "confidence": 89},
             {"label": "LinkedIn", "value": "https://www.linkedin.com/in/marcus-webb-tech", "raw": "linkedin.com/in/marcus-webb-tech", "confidence": 97},
-            {"label": "Email", "value": "mwebb@northwindsys.com", "raw": "mwebb@northwindsys.com", "confidence": 91},
+            {"label": "Email", "value": "mwebb@northwind.io", "raw": "mwebb@northwind.io", "confidence": 91},
         ],
         "gate_reasons": [
             {"text": "Person profile detected", "passed": True, "icon": "check"},
             {"text": "Identity evidence sufficient", "passed": True, "icon": "check"},
             {"text": "Duplicate check passed", "passed": True, "icon": "check"},
-            {"text": "Location corroborated", "passed": True, "icon": "check"},
+            {"text": "Email pattern verified", "passed": True, "icon": "check"},
         ],
         "identity_resolution": {
             "status": "New Canonical Person Created",
@@ -185,7 +186,7 @@ CANDIDATES: List[Dict[str, Any]] = [
         "provenance": {
             "source": "Google Chrome · Northwind Engineering Org Page",
             "timestamp": "2026-09-15 00:30:11 UTC",
-            "extractor": "4.5.0 (DOM tree)",
+            "extractor": f"{EXTRACTOR_VERSION} (DOM tree)",
             "device": "Installation #483",
         },
         "checklist": [
@@ -200,21 +201,21 @@ CANDIDATES: List[Dict[str, Any]] = [
         "id": "priya-nair",
         "initials": "PN",
         "name": "Priya Nair",
-        "title": "Data Platform Lead",
+        "title": "Senior Product Manager",
         "company": "Helix Labs",
-        "location": "Bengaluru, IN",
-        "state": "HYPOTHESIS",
+        "location": "New York, NY",
+        "state": "REVIEW",
         "confidence": 89,
         "time_ago": "23 min ago",
-        "source": "People search · Chrome",
-        "profile_url": "https://www.linkedin.com/in/priya-nair-data",
+        "source": "Search results · Chrome",
+        "profile_url": "https://www.linkedin.com/in/priya-nair-pm",
         "fields": [
-            {"label": "Name", "value": "Priya Nair", "raw": "Priya Nair", "confidence": 92},
-            {"label": "Title", "value": "Data Platform Lead", "raw": "Lead Data Platform Architect", "confidence": 88},
-            {"label": "Company", "value": "Helix Labs", "raw": "Helix Labs Bangalore", "confidence": 85},
-            {"label": "Location", "value": "Bengaluru, IN", "raw": "Bengaluru, Karnataka, India", "confidence": 86},
-            {"label": "LinkedIn", "value": "https://www.linkedin.com/in/priya-nair-data", "raw": "linkedin.com/in/priya-nair-data", "confidence": 90},
-            {"label": "Email", "value": "—", "raw": "—", "confidence": 0},
+            {"label": "Name", "value": "Priya Nair", "raw": "Priya Nair", "confidence": 95},
+            {"label": "Title", "value": "Senior Product Manager", "raw": "Sr. Product Manager - AI Platform", "confidence": 92},
+            {"label": "Company", "value": "Helix Labs", "raw": "Helix Labs, Inc.", "confidence": 88},
+            {"label": "Location", "value": "New York, NY", "raw": "Greater New York City Area", "confidence": 85},
+            {"label": "LinkedIn", "value": "https://www.linkedin.com/in/priya-nair-pm", "raw": "linkedin.com/in/priya-nair-pm", "confidence": 94},
+            {"label": "Email", "value": "priya@helixlabs.ai", "raw": "priya@helixlabs.ai", "confidence": 80},
         ],
         "gate_reasons": [
             {"text": "Search card parsed", "passed": True, "icon": "check"},
@@ -230,7 +231,7 @@ CANDIDATES: List[Dict[str, Any]] = [
         "provenance": {
             "source": "Google Chrome · LinkedIn People Search",
             "timestamp": "2026-09-15 00:18:23 UTC",
-            "extractor": "4.5.0 (Visual OCR)",
+            "extractor": f"{EXTRACTOR_VERSION} (Visual OCR)",
             "device": "Installation #483",
         },
         "checklist": [
@@ -275,7 +276,7 @@ CANDIDATES: List[Dict[str, Any]] = [
         "provenance": {
             "source": "Google Chrome · Cobalt Team Page",
             "timestamp": "2026-09-15 00:00:41 UTC",
-            "extractor": "4.5.0",
+            "extractor": f"{EXTRACTOR_VERSION}",
             "device": "Installation #483",
         },
         "checklist": [
@@ -320,7 +321,7 @@ CANDIDATES: List[Dict[str, Any]] = [
         "provenance": {
             "source": "Google Chrome · Article page",
             "timestamp": "2026-09-14 23:53:12 UTC",
-            "extractor": "4.5.0",
+            "extractor": f"{EXTRACTOR_VERSION}",
             "device": "Installation #483",
         },
         "checklist": [
@@ -432,8 +433,8 @@ CLOUD_SYNC_DATA: Dict[str, Any] = {
     ],
     "offline_resilience_footnote": "Survives outages, restarts and expired sessions.",
     "fleet": [
-        {"name": "Prashant M.", "os": "Windows 11 · v2.8.0", "status": "healthy", "last_seen": "12s", "records": "8,421"},
-        {"name": "Ayesha K.", "os": "Windows 11 · v2.8.0", "status": "healthy", "last_seen": "48s", "records": "6,112"},
+        {"name": "Abhishek J.", "os": f"Windows 11 · v{__version__}", "status": "healthy", "last_seen": "12s", "records": "8,421"},
+        {"name": "Ayesha K.", "os": f"Windows 11 · v{__version__}", "status": "healthy", "last_seen": "48s", "records": "6,112"},
         {"name": "Tom R.", "os": "macOS 15 · v2.7.1", "status": "update", "last_seen": "3m", "records": "4,930"},
         {"name": "Lena V.", "os": "Windows 10 · v2.7.1", "status": "offline", "last_seen": "2h", "records": "3,140"},
         {"name": "Sam O.", "os": "macOS 15 · v2.6.4", "status": "required", "last_seen": "6m", "records": "1,899"},
@@ -540,7 +541,7 @@ ACTIVITY_FEED: List[Dict[str, Any]] = [
     {
         "id": "act-6",
         "time": "2 h ago",
-        "title": "Extractor updated to 4.5.0",
+        "title": f"Extractor updated to {EXTRACTOR_VERSION}",
         "category": "Decisions",
         "severity": "info",
         "icon": "ℹ️",
@@ -615,8 +616,8 @@ SETTINGS_DATA: Dict[str, Any] = {
         "footnote": "🔒 Identity survives updates — no credentials are stored locally."
     },
     "updates": {
-        "version": "Scout 2.8.0",
-        "desc": "current: extractor 4.5.0, minimum supported 2.7.0",
+        "version": f"Scout {__version__}",
+        "desc": f"current: extractor {EXTRACTOR_VERSION}, minimum supported 2.7.0",
         "status_pill": "Up to date",
         "auto_install": True,
         "auto_install_desc": "verify, backup, migrate, health-check, rollback on failure",
@@ -633,8 +634,8 @@ SETTINGS_DATA: Dict[str, Any] = {
 DEVICE_CLAIM_STATE: Dict[str, Any] = {
     "claimed": True,
     "claim_code": "X X X X - X X X X",
-    "user_email": "prashant@talentops.ai",
-    "user_name": "Prashant",
+    "user_email": "abhishekjadon706@gmail.com",
+    "user_name": "Abhishek Jadon",
     "organization": "TalentOps AI",
     "installation_id": "Installation #483",
     "subtitle": "Connect this installation to your workspace",
@@ -649,7 +650,7 @@ DEVICE_CLAIM_STATE: Dict[str, Any] = {
         "Identity survives updates",
         "Signed releases only",
     ],
-    "footer": "Scout v2.8.0 · Extractor 4.5.0 · Edge intelligence agent",
+    "footer": f"Scout v{__version__} · Extractor {EXTRACTOR_VERSION} · Edge intelligence agent",
 }
 
 

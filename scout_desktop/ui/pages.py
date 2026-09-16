@@ -41,6 +41,7 @@ from .components import (
     COLOR_TEXT_MUTED, COLOR_CANONICAL, COLOR_HYPOTHESIS,
     COLOR_REVIEW, COLOR_REJECTED, COLOR_CYAN_ACCENT, COLOR_PRIMARY
 )
+from scout_desktop.version import __version__, EXTRACTOR_VERSION
 from scout_desktop.extractor.candidate_gate import clean_candidate_url
 
 
@@ -66,6 +67,7 @@ class ScanPage(QWidget):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.is_paused = False
+        self._current_candidate_id: Optional[str] = None
         self._build_ui()
 
     def _build_ui(self):
@@ -435,7 +437,7 @@ class ScanPage(QWidget):
                 border: 1px solid #334155;
             }}
         """)
-        self.btn_open_record.clicked.connect(lambda: self.open_candidate_requested.emit("sarah-chen"))
+        self.btn_open_record.clicked.connect(self._on_open_record_clicked)
         latest_layout.addWidget(self.btn_open_record)
 
         right_col.addWidget(card_latest)
@@ -536,7 +538,39 @@ class ScanPage(QWidget):
         l.addWidget(lbl_n)
         return box
 
-    def update_meters(self, name: str, title: str, company: str, location: str, name_conf: int = 99, title_conf: int = 96, comp_conf: int = 93, loc_conf: int = 71):
+    def _on_open_record_clicked(self):
+        cand_id = getattr(self, "_current_candidate_id", None)
+        if not cand_id and CANDIDATES:
+            cand_id = CANDIDATES[0].get("id")
+        self.open_candidate_requested.emit(cand_id or "sarah-chen")
+
+    def set_latest_candidate(
+        self,
+        cand_id: str,
+        name: str,
+        title: str,
+        company: str,
+        location: str,
+        status: str = "CANONICAL",
+        confidence: int = 95,
+        profile_url: str = ""
+    ):
+        self._current_candidate_id = cand_id
+        self.lbl_cand_name.setText(name)
+        comp_str = f"{title} · {company}" if company else title
+        self.lbl_cand_subtitle.setText(comp_str)
+        self.lbl_cand_loc.setText(f"📍 {location}" if location else "📍 Remote")
+        self.chip_latest.set_state(status.upper())
+        initials = "".join([p[0].upper() for p in name.split()[:2] if p]) or "??"
+        if hasattr(self, "lbl_avatar"):
+            self.lbl_avatar.setText(initials)
+        if hasattr(self, "lbl_conf_val"):
+            self.lbl_conf_val.setText(f"{confidence}%")
+        self.update_meters(name=name, title=title, company=company, location=location, cand_id=cand_id)
+
+    def update_meters(self, name: str, title: str, company: str, location: str, name_conf: int = 99, title_conf: int = 96, comp_conf: int = 93, loc_conf: int = 71, cand_id: Optional[str] = None):
+        if cand_id:
+            self._current_candidate_id = cand_id
         self.meter_name.set_score(name_conf, f"Name: {name[:24]}")
         self.meter_title.set_score(title_conf, f"Title: {title[:28]}")
         self.meter_company.set_score(comp_conf, f"Company: {company[:26]}")
@@ -1106,10 +1140,14 @@ class CandidateRecordPage(QWidget):
         prov_layout.addWidget(lbl_pr_title)
 
         prov = cand.get("provenance", {})
-        for k, v in [("Where seen", prov.get("source", "")),
-                     ("When", prov.get("timestamp", "")),
-                     ("Extractor", prov.get("extractor", "")),
-                     ("Device", prov.get("device", ""))]:
+        extractor_val = prov.get("extractor") or f"{EXTRACTOR_VERSION} (Perceptual + DOM fusion)"
+        source_val = prov.get("source") or f"{cand.get('source', 'Desktop Scout')}"
+        ts_val = prov.get("timestamp") or time.strftime("%Y-%m-%d %H:%M:%S UTC")
+        device_val = prov.get("device") or "Installation #483"
+        for k, v in [("Where seen", source_val),
+                     ("When", ts_val),
+                     ("Extractor", extractor_val),
+                     ("Device", device_val)]:
             row = QHBoxLayout()
             lbl_k = QLabel(k)
             lbl_k.setFixedWidth(65)
@@ -2517,7 +2555,7 @@ class SignInClaimPage(QWidget):
         main_layout.addLayout(trust_box)
 
         # ── 4. Bottom Footnote ───────────────────────────────────────────────
-        lbl_foot = QLabel(DEVICE_CLAIM_STATE.get("footer", "Scout v2.8.0 · Extractor 4.5.0 · Edge intelligence agent"))
+        lbl_foot = QLabel(DEVICE_CLAIM_STATE.get("footer", f"Scout v{__version__} · Extractor {EXTRACTOR_VERSION} · Edge intelligence agent"))
         lbl_foot.setFont(QFont("Segoe UI", 7))
         lbl_foot.setStyleSheet("color: #475569;")
         lbl_foot.setAlignment(Qt.AlignmentFlag.AlignCenter)

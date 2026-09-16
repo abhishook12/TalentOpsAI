@@ -50,6 +50,7 @@ from .pages import (
     ScanPage, CandidatesPage, CandidateRecordPage, ReviewQueuePage,
     CloudSyncPage, PipelinePage, ActivityPage, SettingsPage, SignInClaimPage
 )
+from scout_desktop.version import __version__, EXTRACTOR_VERSION, APP_DISPLAY_NAME
 
 logger = logging.getLogger("scout.main_window")
 
@@ -100,7 +101,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.setWindowTitle("TalentOps Scout v2.8.0")
+        self.setWindowTitle(APP_DISPLAY_NAME)
         
         # Responsive geometry: Constrain within available work area above Windows taskbar
         screen = QApplication.primaryScreen()
@@ -415,10 +416,10 @@ class MainWindow(QMainWindow):
 
     def update_explicit_counters(self, counters: Dict[str, Any]):
         """Called by app.py to update live pipeline counters"""
-        obs = counters.get("observed", counters.get("scanned", 342))
-        useful = counters.get("useful", counters.get("profiles", 128))
-        canonical = counters.get("canonical", counters.get("committed", 62))
-        staged = counters.get("staged", 87)
+        obs = counters.get("observed", counters.get("scanned", 0))
+        useful = counters.get("useful", counters.get("profiles", 0))
+        canonical = counters.get("synced_today", counters.get("canonical", counters.get("committed", 0)))
+        staged = counters.get("staged", 0)
 
         # Update compat proxy counters
         for key, val in counters.items():
@@ -426,13 +427,14 @@ class MainWindow(QMainWindow):
                 getattr(self, f"c_{key}").value = str(val)
 
         # Update local queue badge and card
-        queued_count = counters.get("queued", 14)
-        self.left_rail.update_queue_status(queued_count, 12)
+        queued_count = counters.get("queued", 0)
+        retry_sec = 10 if queued_count > 0 else 0
+        self.left_rail.update_queue_status(queued_count, retry_sec)
         self.bottom_bar.update_metrics(
             time.strftime("%H:%M:%S"),
             uploaded=canonical,
             queued=queued_count,
-            errors="No errors"
+            errors=counters.get("errors", "No errors")
         )
 
     def log_event(self, *args, **kwargs):
@@ -578,6 +580,9 @@ class MainWindow(QMainWindow):
             except (ValueError, TypeError):
                 return default_pct
 
+        cand_id = kwargs.get("id") or kwargs.get("candidate_id") or "sarah-chen"
+        self.page_scan._current_candidate_id = cand_id
+
         fc = kwargs.get("field_confidence") or {}
         name_conf = _to_pct(fc.get("name"), 99)
         title_conf = _to_pct(fc.get("title"), 96)
@@ -593,6 +598,7 @@ class MainWindow(QMainWindow):
                 title_conf=title_conf,
                 comp_conf=comp_conf,
                 loc_conf=loc_conf,
+                cand_id=cand_id,
             )
 
     def _add_candidate_table_row(self, *args, **kwargs):
@@ -613,6 +619,15 @@ class MainWindow(QMainWindow):
         conf = int(raw_conf * 100 if raw_conf <= 1.0 else raw_conf)
         source = f"{data.get('platform', 'Chrome')} · Person profile"
 
+        dt_str = time.strftime("%Y-%m-%d %H:%M:%S UTC")
+        created_ts = data.get("created_at")
+        if created_ts:
+            try:
+                from datetime import datetime, timezone
+                dt_str = datetime.fromtimestamp(created_ts, timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+            except Exception:
+                pass
+
         new_cand = {
             "id": cid,
             "initials": initials,
@@ -625,6 +640,12 @@ class MainWindow(QMainWindow):
             "time_ago": "just now",
             "source": source,
             "profile_url": data.get("profile_url") or data.get("linkedin_url", ""),
+            "provenance": {
+                "source": data.get("source") or f"Desktop Scout · {data.get('platform', 'Browser')}",
+                "timestamp": dt_str,
+                "extractor": f"{EXTRACTOR_VERSION} (Perceptual + DOM fusion)",
+                "device": "Installation #483",
+            },
             "fields": [
                 {"label": "Name", "value": name, "raw": name, "confidence": 98},
                 {"label": "Title", "value": title, "raw": title, "confidence": 95},

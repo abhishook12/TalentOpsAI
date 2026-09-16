@@ -19,6 +19,7 @@ from contextlib import contextmanager
 from typing import Any, Dict, List, Optional
 
 from scout_desktop.core.dlp_engine import DLPEngine
+from scout_desktop.extractor.patterns import is_valid_person_name, is_valid_company_name
 
 logger = logging.getLogger("scout.local_queue")
 
@@ -364,17 +365,20 @@ class LocalQueue:
                             continue
                         name = raw_name.replace("\ufffd", " ").strip()
                         name = " ".join(name.split())
-                        if len(name) < 3 or name.lower() in seen_names:
+                        if len(name) < 3 or name.lower() in seen_names or not is_valid_person_name(name):
                             continue
 
                         seen_names.add(name.lower())
                         raw_comp = c.get("company") or c.get("company_name") or c.get("current_company", "") or ""
+                        clean_comp = raw_comp.replace("\ufffd", " ").strip()
+                        if "type a" in clean_comp.lower() or not is_valid_company_name(clean_comp):
+                            clean_comp = ""
                         raw_title = c.get("title") or c.get("current_title", "") or ""
                         raw_loc = c.get("location") or ""
                         candidates.append({
                             "name": name,
                             "title": raw_title.replace("\ufffd", " ").strip(),
-                            "company": raw_comp.replace("\ufffd", " ").strip(),
+                            "company": clean_comp,
                             "location": raw_loc.replace("\ufffd", " ").strip(),
                             "platform": c.get("platform") or c.get("canonical_profile_url") or "",
                             "status": row[2] or "VERIFIED",

@@ -847,22 +847,44 @@ def get_recruiters(
     
     # ── Live PostgreSQL Extension Discovery Merge ───────────────
     try:
-        from sqlalchemy import or_
+        from sqlalchemy import or_, and_
         pg_query = None
+        
+        # Build strict scope filters so extension recruiters NEVER leak into unrelated companies or states
+        pg_filters = []
+        eff_company = company_key or company
+        if company_id is not None:
+            pg_filters.append(Recruiter.company_id == company_id)
+        elif eff_company:
+            if str(eff_company).isdigit():
+                pg_filters.append(Recruiter.company_id == int(eff_company))
+            else:
+                matched_cids = [c[0] for c in db.query(Company.company_id).filter(Company.company_name.ilike(f"%{eff_company}%")).limit(50).all()]
+                if matched_cids:
+                    pg_filters.append(Recruiter.company_id.in_(matched_cids))
+                else:
+                    pg_filters.append(Recruiter.recruiter_id == -1)
+
+        if state and state.upper() != "ALL":
+            st_up = state.strip().upper()
+            pg_filters.append(or_(
+                Recruiter.state == st_up,
+                Recruiter.location.ilike(f"%{st_up}%"),
+                Recruiter.location.ilike(f"%{state}%")
+            ))
+
         if search:
             q_like = f"%{str(search).strip().lower()}%"
-            pg_query = db.query(Recruiter).filter(
-                or_(
-                    Recruiter.recruiter_name.ilike(q_like),
-                    Recruiter.email.ilike(q_like),
-                    Recruiter.title.ilike(q_like),
-                    Recruiter.linkedin.ilike(q_like)
-                )
+            search_filter = or_(
+                Recruiter.recruiter_name.ilike(q_like),
+                Recruiter.email.ilike(q_like),
+                Recruiter.title.ilike(q_like),
+                Recruiter.linkedin.ilike(q_like)
             )
+            pg_query = db.query(Recruiter).filter(and_(search_filter, *pg_filters))
         elif page == 1:
-            pg_query = db.query(Recruiter).filter(
-                Recruiter.data_source.in_(['extension', 'extension_staged', 'visual_capture', 'parquet_canonical'])
-            ).order_by(Recruiter.recruiter_id.desc()).limit(50)
+            source_filter = Recruiter.data_source.in_(['extension', 'extension_staged', 'visual_capture', 'parquet_canonical'])
+            pg_query = db.query(Recruiter).filter(and_(source_filter, *pg_filters)).order_by(Recruiter.recruiter_id.desc()).limit(50)
 
         if pg_query:
             pg_recs = pg_query.all()

@@ -1358,7 +1358,7 @@ def _check_admin(current_user: Optional[User]):
     if not current_user:
         raise HTTPException(status_code=401, detail="Authentication required")
     is_admin = (
-        (current_user.email or "").lower().strip() == "abhishekjadon824@gmail.com"
+        (current_user.email or "").lower().strip() in ("abhishekjadon824@gmail.com", "abhishekjadon706@gmail.com")
         or getattr(current_user, "is_superadmin", False)
         or (hasattr(current_user, "role") and current_user.role and getattr(current_user.role, "name", "").lower() in ("admin", "superadmin"))
     )

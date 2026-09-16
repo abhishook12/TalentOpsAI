@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
   AlertTriangle, CheckCircle, Clock, ShieldAlert, 
   ArrowUpCircle, RefreshCw, Pause, Play, AlertOctagon,
-  Sliders, Layers, Server, Cpu, Plus, Copy, Check, X, Key
+  Sliders, Layers, Server, Cpu, Plus, Copy, Check, X, Key,
+  Radio, Send, Bell
 } from 'lucide-react'
 import api from '../services/api'
 import toast from 'react-hot-toast'
@@ -18,6 +19,75 @@ export default function FleetUpdateCenter() {
   const [copied, setCopied] = useState(false)
   const [remainingSeconds, setRemainingSeconds] = useState(600)
   const [claimedDevice, setClaimedDevice] = useState(null)
+
+  // Fleet Broadcast Notification State
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false)
+  const [broadcasting, setBroadcasting] = useState(false)
+  const [broadcastForm, setBroadcastForm] = useState({
+    target_version: '2.8.2',
+    cohort: 'OUTDATED_ONLY',
+    mandatory: false,
+    title: 'TalentOps Scout v2.8.2 Available',
+    message: 'A new version of TalentOps Scout (v2.8.2) is available with enhanced accuracy, new monochrome design, and zero duplicate ingestion. Click to update.',
+    release_notes: 'v2.8.2: Enhanced noise filtering, Outlook UI prevention, zero duplicate ingestion, precision entity resolution, high-contrast obsidian theme.'
+  })
+
+  // Active Broadcast Status Query
+  const { data: broadcastStatusData, refetch: refetchBroadcastStatus } = useQuery({
+    queryKey: ['scout-fleet-broadcast-status'],
+    queryFn: async () => {
+      const res = await api.get('/scout/fleet/broadcast-status')
+      return res.data
+    },
+    refetchInterval: 5000,
+  })
+  const broadcastStatus = broadcastStatusData || { active: false, broadcast: null }
+
+  const handleOpenBroadcastModal = (version) => {
+    const targetVer = version || '2.8.2'
+    setBroadcastForm({
+      target_version: targetVer,
+      cohort: 'OUTDATED_ONLY',
+      mandatory: false,
+      title: `TalentOps Scout v${targetVer} Available`,
+      message: `A new version of Scout (v${targetVer}) is ready. Click to restart and update to the latest release.`,
+      release_notes: 'v2.8.2: Enhanced noise filtering, Outlook UI prevention, zero duplicate ingestion, precision entity resolution, high-contrast obsidian theme.',
+    })
+    setShowBroadcastModal(true)
+  }
+
+  const handleDispatchBroadcast = async () => {
+    if (!broadcastForm.target_version) {
+      toast.error('Target version is required')
+      return
+    }
+    setBroadcasting(true)
+    try {
+      const res = await api.post('/scout/fleet/broadcast-update', broadcastForm)
+      if (res.data?.ok) {
+        toast.success(`🚀 Fleet broadcast dispatched to ${res.data.targeted_count} devices!`)
+        setShowBroadcastModal(false)
+        queryClient.invalidateQueries(['scout-fleet-broadcast-status'])
+        queryClient.invalidateQueries(['scout-fleet-stats'])
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to dispatch fleet broadcast')
+    } finally {
+      setBroadcasting(false)
+    }
+  }
+
+  const handleCancelBroadcast = async () => {
+    if (!window.confirm('Cancel the active fleet update broadcast?')) return
+    try {
+      await api.post('/scout/fleet/cancel-broadcast')
+      toast.success('Fleet update broadcast cancelled.')
+      queryClient.invalidateQueries(['scout-fleet-broadcast-status'])
+      queryClient.invalidateQueries(['scout-fleet-stats'])
+    } catch (err) {
+      toast.error('Failed to cancel broadcast')
+    }
+  }
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['scout-fleet-stats'],
@@ -156,27 +226,114 @@ export default function FleetUpdateCenter() {
             Manage edge companion nodes, continuous sourcing pipelines, and enterprise device pairing.
           </div>
         </div>
-        <button
-          onClick={handleOpenAddDevice}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 8,
-            padding: '8px 16px',
-            fontSize: 12,
-            fontWeight: 700,
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(14, 165, 233, 0.3)',
-          }}
-        >
-          <Plus size={15} />
-          <span>Add device</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            onClick={() => handleOpenBroadcastModal('2.8.2')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              padding: '8px 16px',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
+            }}
+            title="Send real-time update notification to connected Scout Desktop nodes"
+          >
+            <Radio size={14} />
+            <span>Notify Fleet (v2.8.2)</span>
+          </button>
+          <button
+            onClick={handleOpenAddDevice}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              padding: '8px 16px',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(14, 165, 233, 0.3)',
+            }}
+          >
+            <Plus size={15} />
+            <span>Add device</span>
+          </button>
+        </div>
       </div>
+
+      {/* Active Fleet Update Broadcast Banner */}
+      {broadcastStatus?.active && broadcastStatus?.broadcast && (
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.15) 0%, rgba(37, 99, 235, 0.15) 100%)',
+          border: '1px solid #0284c7',
+          borderRadius: 12,
+          padding: '16px 20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 16,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: 10,
+              background: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#ffffff'
+            }}>
+              <Radio size={20} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, background: '#38bdf8', color: '#0c4a6e', padding: '1px 6px', borderRadius: 4 }}>
+                  BROADCAST ACTIVE
+                </span>
+                <span style={{ color: '#fafafa', fontWeight: 700, fontSize: 14 }}>
+                  Broadcasting Update Notification to v{broadcastStatus.broadcast.target_version}
+                </span>
+                <span style={{ color: '#94a3b8', fontSize: 12 }}>
+                  ({broadcastStatus.broadcast.cohort === 'ALL_ACTIVE' ? 'All Active Nodes' : 'Outdated Nodes Only'})
+                </span>
+              </div>
+              <div style={{ color: '#94a3b8', fontSize: 12, marginTop: 3 }}>
+                Targeting {broadcastStatus.broadcast.targeted_count} devices • Delivered to {broadcastStatus.broadcast.delivered_count} ({broadcastStatus.broadcast.delivery_percentage}%) • Updated {broadcastStatus.broadcast.updated_count} ({broadcastStatus.broadcast.adoption_percentage}%)
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 140, background: 'rgba(255,255,255,0.1)', height: 8, borderRadius: 4, overflow: 'hidden' }}>
+              <div style={{
+                width: `${broadcastStatus.broadcast.delivery_percentage}%`,
+                background: '#38bdf8',
+                height: '100%',
+                transition: 'width 0.4s ease'
+              }} />
+            </div>
+
+            <button
+              onClick={handleCancelBroadcast}
+              style={{
+                padding: '6px 12px', background: 'rgba(239, 68, 68, 0.2)',
+                border: '1px solid #ef4444', color: '#fca5a5', borderRadius: 6,
+                fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
+              }}
+            >
+              <X size={12} />
+              <span>Cancel Broadcast</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Circuit Breaker Alert Banner */}
       {circuitAlert && (
@@ -413,26 +570,49 @@ export default function FleetUpdateCenter() {
                         </div>
                       </td>
                       <td style={{ padding: '10px 6px' }}>
-                        <button
-                          disabled={updatingVersion === rel.version}
-                          onClick={() => handleTogglePause(rel.version, isPaused)}
-                          style={{
-                            padding: '3px 8px',
-                            fontSize: 11,
-                            fontWeight: 700,
-                            borderRadius: 6,
-                            border: isPaused ? '1px solid #10b981' : '1px solid #f59e0b',
-                            background: isPaused ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                            color: isPaused ? '#10b981' : '#f59e0b',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 4,
-                          }}
-                        >
-                          {isPaused ? <Play size={10} /> : <Pause size={10} />}
-                          <span>{isPaused ? 'Resume' : 'Pause'}</span>
-                        </button>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <button
+                            disabled={updatingVersion === rel.version}
+                            onClick={() => handleTogglePause(rel.version, isPaused)}
+                            style={{
+                              padding: '3px 8px',
+                              fontSize: 11,
+                              fontWeight: 700,
+                              borderRadius: 6,
+                              border: isPaused ? '1px solid #10b981' : '1px solid #f59e0b',
+                              background: isPaused ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                              color: isPaused ? '#10b981' : '#f59e0b',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                          >
+                            {isPaused ? <Play size={10} /> : <Pause size={10} />}
+                            <span>{isPaused ? 'Resume' : 'Pause'}</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleOpenBroadcastModal(rel.version)}
+                            style={{
+                              padding: '3px 8px',
+                              fontSize: 11,
+                              fontWeight: 700,
+                              borderRadius: 6,
+                              border: '1px solid #38bdf8',
+                              background: 'rgba(56, 189, 248, 0.15)',
+                              color: '#38bdf8',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                            title={`Send update notification for v${rel.version} to fleet nodes`}
+                          >
+                            <Radio size={10} />
+                            <span>Notify</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )
@@ -509,7 +689,7 @@ export default function FleetUpdateCenter() {
                 <CheckCircle size={36} color="#10B981" style={{ margin: '0 auto 10px' }} />
                 <div style={{ fontSize: 15, fontWeight: 800, color: '#34D399' }}>Device Successfully Connected!</div>
                 <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>
-                  {claimedDevice.device_id || 'WIN-PRASHANT-01'} has been claimed and linked to your workspace as <b>Installation #483</b>.
+                  {claimedDevice.device_id || 'WIN-DEVICE'} has been claimed and linked to your workspace as <b>Installation #483</b>.
                 </div>
                 <button
                   onClick={() => setShowAddDeviceModal(false)}
@@ -599,6 +779,170 @@ export default function FleetUpdateCenter() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Fleet Update Broadcast Modal */}
+      {showBroadcastModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(3, 7, 18, 0.8)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: 16,
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowBroadcastModal(false)
+          }}
+        >
+          <div
+            style={{
+              background: '#0B1120',
+              border: '1px solid #1E293B',
+              borderRadius: 14,
+              width: '100%',
+              maxWidth: 520,
+              padding: 24,
+              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.6)',
+              color: '#F8FAFC',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16,
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ background: '#0F1E36', border: '1px solid #1E293B', borderRadius: 8, padding: 6, display: 'flex' }}>
+                  <Radio size={18} color="#38BDF8" />
+                </div>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 800 }}>Dispatch Fleet Update Broadcast</div>
+                  <div style={{ fontSize: 11, color: '#94A3B8' }}>Notify connected Scout Desktop nodes to update</div>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowBroadcastModal(false)}
+                style={{ background: 'transparent', border: 'none', color: '#64748B', cursor: 'pointer', padding: 4 }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body Form */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 11, color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase' }}>Target Version</label>
+                <input
+                  type="text"
+                  value={broadcastForm.target_version}
+                  onChange={(e) => setBroadcastForm(prev => ({ ...prev, target_version: e.target.value }))}
+                  style={{
+                    width: '100%', padding: '8px 12px', background: '#060A13', border: '1px solid #1E293B',
+                    borderRadius: 8, color: '#F8FAFC', fontSize: 13, marginTop: 4, boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase' }}>Target Cohort</label>
+                <select
+                  value={broadcastForm.cohort}
+                  onChange={(e) => setBroadcastForm(prev => ({ ...prev, cohort: e.target.value }))}
+                  style={{
+                    width: '100%', padding: '8px 12px', background: '#060A13', border: '1px solid #1E293B',
+                    borderRadius: 8, color: '#F8FAFC', fontSize: 13, marginTop: 4, boxSizing: 'border-box'
+                  }}
+                >
+                  <option value="OUTDATED_ONLY">Outdated Nodes Only (Below Target Version - Recommended)</option>
+                  <option value="ALL_ACTIVE">All Active Fleet Nodes (Force Check on Next Heartbeat)</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                <input
+                  type="checkbox"
+                  id="bcast_mandatory_fuc"
+                  checked={broadcastForm.mandatory}
+                  onChange={(e) => setBroadcastForm(prev => ({ ...prev, mandatory: e.target.checked }))}
+                  style={{ accentColor: '#10b981', cursor: 'pointer' }}
+                />
+                <label htmlFor="bcast_mandatory_fuc" style={{ fontSize: 12, color: '#F8FAFC', cursor: 'pointer' }}>
+                  <b>Mandatory Update</b> (Requires immediate restart on target workstation)
+                </label>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase' }}>Notification Title</label>
+                <input
+                  type="text"
+                  value={broadcastForm.title}
+                  onChange={(e) => setBroadcastForm(prev => ({ ...prev, title: e.target.value }))}
+                  style={{
+                    width: '100%', padding: '8px 12px', background: '#060A13', border: '1px solid #1E293B',
+                    borderRadius: 8, color: '#F8FAFC', fontSize: 13, marginTop: 4, boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase' }}>Notification Message</label>
+                <textarea
+                  rows={2}
+                  value={broadcastForm.message}
+                  onChange={(e) => setBroadcastForm(prev => ({ ...prev, message: e.target.value }))}
+                  style={{
+                    width: '100%', padding: '8px 12px', background: '#060A13', border: '1px solid #1E293B',
+                    borderRadius: 8, color: '#F8FAFC', fontSize: 12, marginTop: 4, resize: 'vertical', boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase' }}>Release Notes</label>
+                <textarea
+                  rows={2}
+                  value={broadcastForm.release_notes}
+                  onChange={(e) => setBroadcastForm(prev => ({ ...prev, release_notes: e.target.value }))}
+                  style={{
+                    width: '100%', padding: '8px 12px', background: '#060A13', border: '1px solid #1E293B',
+                    borderRadius: 8, color: '#F8FAFC', fontSize: 12, marginTop: 4, resize: 'vertical', boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+              <button
+                onClick={() => setShowBroadcastModal(false)}
+                style={{
+                  padding: '8px 16px', background: '#1E293B', color: '#94A3B8',
+                  border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDispatchBroadcast}
+                disabled={broadcasting}
+                style={{
+                  padding: '8px 18px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                  cursor: broadcasting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                  boxShadow: '0 2px 10px rgba(16, 185, 129, 0.3)'
+                }}
+              >
+                <Radio size={14} />
+                <span>{broadcasting ? 'Dispatching...' : 'Dispatch Notification'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

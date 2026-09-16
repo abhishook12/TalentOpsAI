@@ -38,8 +38,7 @@ def record_scout_heartbeat(
     now = datetime.now(timezone.utc)
     
     device = db.query(ExtensionDevice).filter(
-        ExtensionDevice.device_id == device_id,
-        ExtensionDevice.owner_user_id == user_id
+        ExtensionDevice.device_id == device_id
     ).first()
 
     version_str = None
@@ -57,6 +56,7 @@ def record_scout_heartbeat(
         )
         db.add(device)
     else:
+        device.owner_user_id = user_id
         device.last_seen_at = now
         device.is_active = True
         if version_str:

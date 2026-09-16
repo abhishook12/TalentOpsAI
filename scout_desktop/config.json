@@ -5,9 +5,9 @@
   "environment": "PRODUCTION",
   "api_base": "https://talentopsai-1.onrender.com",
   "local_api_base": "http://localhost:8000",
-  "device_id": "",
+  "device_id": "SCOUT-NODE-BETA",
   "scout_id": "",
-  "auth_token": "",
+  "auth_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4IiwiZW1haWwiOiJhYmhpc2hla2phZG9uNzA2QGdtYWlsLmNvbSIsImRldmljZV9pZCI6IlNDT1VULU5PREUtQkVUQSIsImluc3RhbGxhdGlvbl9pZCI6Ikluc3RhbGxhdGlvbiAjNDgzIiwibm9kZV90eXBlIjoiZGVza3RvcF9zY291dCIsInNjb3BlIjoic2NvdXQ6ZWRnZSIsImV4cCI6MTgyMTA5OTU4M30.-pY0tl3r5YbHf9dmd-_wlM7Ky1eGwZj32HYy_eTqaMc",
   "active_interval_sec": 1.0,
   "idle_timeout_sec": 10.0,
   "idle_poll_interval_sec": 1.5,
@@ -26,7 +26,7 @@
   "intelligence_forced_capture_interval": 30,
   "context_memory_expiry_sec": 300,
   "developer_mode": false,
-  "user_email": "prashant@talentops.ai",
-  "user_name": "Prashant",
+  "user_email": "abhishekjadon706@gmail.com",
+  "user_name": "Abhishek Jadon",
   "installation_id": "#483"
 }

@@ -313,6 +313,7 @@ def ingest_extension_batch(
     idempotent_duplicates = 0
     errors = []
     source_sites = set()
+    seen_discovery_ids = set()
 
     for contact in req.contacts:
         try:
@@ -337,14 +338,21 @@ def ingest_extension_batch(
                 idempotency_seed = f"{current_user.id}|{device_id}|{contact.source_url or ''}|{contact.recruiter_name or ''}|{contact.company_name or ''}|{contact.title or ''}|{contact.email or ''}|{contact.linkedin_url or ''}"
                 discovery_id = f"DISC-{hashlib.sha256(idempotency_seed.encode('utf-8')).hexdigest()[:16].upper()}"
 
-            # Check if discovery_id already staged to prevent duplicate submission frames (Idempotent Ingestion)
+            # Check if discovery_id already in this batch or database to prevent duplicate submission frames
+            if discovery_id in seen_discovery_ids:
+                idempotent_duplicates += 1
+                continue
+
             existing_staged = db.query(DiscoveryStaging).filter(
                 DiscoveryStaging.discovery_id == discovery_id
             ).first()
 
             if existing_staged:
                 idempotent_duplicates += 1
+                seen_discovery_ids.add(discovery_id)
                 continue
+
+            seen_discovery_ids.add(discovery_id)
 
             staging_record = DiscoveryStaging(
                 batch_id=batch_id,

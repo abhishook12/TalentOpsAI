@@ -1314,28 +1314,29 @@ class ScoutDesktopApp:
                     }
                 )
 
-                if c.entity_type != "JOB":
-                    if not gate_res.is_valid_candidate:
-                        logger.info("Quality Gate: Rejected observation '%s' (%s) — %s",
-                                    staged_contact.get("recruiter_name"), gate_res.decision, gate_res.reasons)
-                        continue
+                if c.entity_type == "JOB":
+                    # Job postings are requisition context, not human candidates — do not enqueue as recruiters
+                    breakdown["jobs"] += 1
+                    continue
 
-                    # Overwrite with sanitized and normalized values
-                    staged_contact["recruiter_name"] = gate_res.canonical_name
-                    staged_contact["title"] = gate_res.title
-                    staged_contact["company_name"] = gate_res.company
-                    staged_contact["location"] = gate_res.location
-                    staged_contact["platform"] = gate_res.platform
-                    staged_contact["canonical_profile_url"] = gate_res.canonical_profile_url
+                if not gate_res.is_valid_candidate:
+                    logger.info("Quality Gate: Rejected observation '%s' (%s) — %s",
+                                staged_contact.get("recruiter_name"), gate_res.decision, gate_res.reasons)
+                    continue
+
+                # Overwrite with sanitized and normalized values
+                staged_contact["recruiter_name"] = gate_res.canonical_name
+                staged_contact["title"] = gate_res.title
+                staged_contact["company_name"] = gate_res.company
+                staged_contact["location"] = gate_res.location
+                staged_contact["platform"] = gate_res.platform
+                staged_contact["canonical_profile_url"] = gate_res.canonical_profile_url
 
                 qid = self.local_queue.enqueue_cluster(staged_contact)
                 if qid != -1:
                     self.cnt_staged += 1
 
-                if c.entity_type == "JOB":
-                    breakdown["jobs"] += 1
-                else:
-                    breakdown["people"] += 1
+                breakdown["people"] += 1
                 if c.current_company:
                     breakdown["companies"] += 1
                 if c.location:

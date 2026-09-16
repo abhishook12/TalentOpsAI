@@ -225,13 +225,21 @@ class ProfileJudge:
                 re.search(r"\b(?:developer|engineer|recruiter|sourcer|manager|architect|analyst|specialist|lead|consultant|technologies|experience|candidate|resume|profile|hiring|available|rate|ctc|notice)\b", l, re.IGNORECASE)
                 for l in clean_lines
             )
-            # Accept chat stream if contacts exist OR if candidate text/titles/chat window exists
-            if has_contacts or has_candidate_text or wt_lower.endswith(" - chat"):
+            # Only accept chat stream if verifiable contact info or resume markers exist
+            is_resume_doc = any(w in wt_lower for w in ["resume", "cv", "curriculum vitae"]) or url_lower.endswith(".pdf") or "/pdf/" in url_lower
+            if has_contacts or (is_resume_doc and has_candidate_text):
                 return JudgmentResult(
                     category="CHAT_CONVERSATION",
                     is_candidate_profile=True,
                     confidence=0.90,
                     signals_detected=["multi_channel_candidate_data"],
+                )
+            else:
+                return JudgmentResult(
+                    category="CHAT_NOISE",
+                    is_candidate_profile=False,
+                    confidence=0.95,
+                    rejection_reason="Chat stream contains no candidate contact or resume signals",
                 )
 
         combined_context = (window_title + " " + " ".join(clean_lines[:12])).lower()

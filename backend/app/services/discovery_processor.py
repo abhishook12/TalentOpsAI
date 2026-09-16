@@ -727,25 +727,30 @@ class DiscoveryProcessor:
 
         # Case 1: No match in master DB
         if not master_match:
-            is_corroborated_profile = (
-                person.canonical_name
-                and person.canonical_name != "Unknown Professional"
-                and (person.current_company or person.current_title or person.linkedin_url or getattr(person, "canonical_profile_url", None))
-                and person.identity_confidence >= 0.40
+            has_strong_profile = bool(
+                (person.linkedin_url and "linkedin.com/in/" in person.linkedin_url)
+                or (getattr(person, "canonical_profile_url", None) and "linkedin.com/in/" in str(person.canonical_profile_url))
             )
-            if person.identity_confidence >= AUTO_COMMIT_THRESHOLD or is_corroborated_profile:
+            has_contact = bool(
+                (person.primary_email and not person.primary_email.endswith("@noemail.talentops"))
+                or person.primary_phone
+            )
+            has_employment = bool(person.current_title and person.current_company)
+            has_primary_anchor = bool(has_strong_profile or has_contact or has_employment)
+
+            if has_primary_anchor and (person.identity_confidence >= AUTO_COMMIT_THRESHOLD or (has_employment and person.identity_confidence >= 0.65)):
                 return {
                     'person': person,
                     'recruiter': None,
                     'decision': 'NEW',
-                    'reason': f'High-confidence new candidate entity (score {person.identity_confidence:.2f})',
+                    'reason': f'High-confidence new candidate entity with primary anchor (score {person.identity_confidence:.2f})',
                 }
             else:
                 return {
                     'person': person,
                     'recruiter': None,
                     'decision': 'REVIEW',
-                    'reason': f'Low identity confidence ({person.identity_confidence:.2f}) — human verification required',
+                    'reason': f'Insufficient anchors or confidence ({person.identity_confidence:.2f}) — human verification required',
                 }
 
         # Case 2: Master match found
@@ -1209,21 +1214,24 @@ class DiscoveryProcessor:
 
     def _calculate_usefulness(self, record: DiscoveryStaging) -> int:
         score = 0
-        if record.raw_name:
+        name_valid, _, _ = validate_human_name(record.raw_name)
+        if name_valid:
             score += 25
-        if record.raw_title:
+        if record.raw_title and not is_ui_action(record.raw_title):
             score += 20
         if record.raw_company:
-            score += 15
+            comp_valid, _ = validate_company_for_person(record.raw_company, person_name=record.raw_name)
+            if comp_valid:
+                score += 15
         if record.raw_email and not record.raw_email.endswith('@noemail.talentops'):
             score += 10
         if record.raw_phone:
             score += 10
-        if record.raw_linkedin:
+        if record.raw_linkedin and 'linkedin.com/in/' in record.raw_linkedin:
             score += 10
         if record.raw_location:
             score += 5
-        if record.source_url and 'linkedin.com' in record.source_url:
+        if record.source_url and 'linkedin.com/in/' in record.source_url:
             score += 10
         return min(score, 100)
 

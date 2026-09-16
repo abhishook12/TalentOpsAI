@@ -86,6 +86,67 @@ class CandidateGateResult:
         }
 
 
+DISALLOWED_URL_SUBSTRINGS = {
+    "/company/", "/school/", "/showcase/", "/jobs/", "/job/", "/feed/",
+    "/news/", "/pulse/", "/search/", "/mynetwork/", "/messaging/",
+    "/notifications/", "/learning/", "/groups/", "/events/"
+}
+
+
+def is_individual_profile_url(url: Optional[str]) -> bool:
+    """Checks if a URL points to an individual person profile rather than a company, job, or search page."""
+    if not url or not isinstance(url, str):
+        return False
+    u = url.strip().lower()
+    if not u.startswith(("http://", "https://")):
+        return False
+    if any(dis in u for dis in DISALLOWED_URL_SUBSTRINGS):
+        return False
+    if "linkedin.com" in u:
+        return bool(re.search(r"linkedin\.com/in/[\w\-\%]+", u))
+    if "github.com" in u:
+        return bool(re.match(r"^https?://(?:www\.)?github\.com/[a-zA-Z0-9_\-]+/?$", u))
+    if "zoominfo.com" in u:
+        return "/p/" in u or "zi-lite" in u
+    if "apollo.io" in u:
+        return "/people/" in u
+    if "indeed.com" in u:
+        return "/r/" in u or "/resume" in u
+    return True
+
+
+def is_url_slug_compatible_with_name(url: Optional[str], name: Optional[str]) -> bool:
+    """
+    Guards against cross-tab contamination where a candidate seen in chat or feed
+    is erroneously attributed to a background browser tab's profile URL.
+    Returns True if the LinkedIn slug is plausibly compatible with the person's name.
+    """
+    if not url or not name:
+        return True
+    m = re.search(r"linkedin\.com/in/([a-zA-Z0-9_\-%]+)", url.lower())
+    if not m:
+        return True
+    slug = m.group(1).lower()
+    name_tokens = [re.sub(r'[^a-z]', '', tok.lower()) for tok in name.split() if len(tok) >= 2]
+    if not name_tokens:
+        return True
+    first = name_tokens[0]
+    last = name_tokens[-1]
+    # Check if either first name or last name is present in the slug
+    if first in slug or last in slug:
+        return True
+    # Check first initial + last name e.g. "fpocesta" in slug
+    if len(name_tokens) >= 2 and (name_tokens[0][0] + name_tokens[-1]) in slug:
+        return True
+    # Check first name + last initial e.g. "fatjonap" in slug
+    if len(name_tokens) >= 2 and (name_tokens[0] + name_tokens[-1][0]) in slug:
+        return True
+    # If the slug is completely numeric, allow it
+    if slug.isdigit():
+        return True
+    return False
+
+
 def clean_candidate_url(raw_url: Optional[str], name: str = "", company: str = "") -> str:
     """
     Cleans OCR noise and typos from candidate profile URLs, ensures https:// scheme,
@@ -347,17 +408,20 @@ def create_candidate_if_valid(
     if raw_profile_url and isinstance(raw_profile_url, str):
         cleaned_url = clean_candidate_url(raw_profile_url, cleaned_name or "", valid_company or "")
         if "linkedin.com/in/" in cleaned_url:
-            canonical_url = cleaned_url
-            field_conf["profile_url"] = 0.99
-            checklist.append(f"Canonical LinkedIn URL verified: {canonical_url}")
-        elif cleaned_url.startswith("http") and "search/results" not in cleaned_url and "google.com" not in cleaned_url:
+            if is_url_slug_compatible_with_name(cleaned_url, cleaned_name):
+                canonical_url = cleaned_url
+                field_conf["profile_url"] = 0.99
+                checklist.append(f"Canonical LinkedIn URL verified: {canonical_url}")
+            else:
+                reasons.append(f"Cross-tab URL contamination detected: slug does not match '{cleaned_name}'")
+                checklist.append("Contaminated profile URL stripped")
+        elif is_individual_profile_url(cleaned_url):
             canonical_url = cleaned_url
             field_conf["profile_url"] = 0.90
-            checklist.append(f"Source URL verified: {canonical_url}")
-        elif cleaned_url.startswith("http"):
-            canonical_url = cleaned_url
-            field_conf["profile_url"] = 0.75
-            checklist.append(f"Search fallback URL generated: {canonical_url}")
+            checklist.append(f"Source individual profile URL verified: {canonical_url}")
+        else:
+            reasons.append(f"Filtered non-individual profile URL: '{raw_profile_url}'")
+            checklist.append("Non-individual URL rejected")
 
     # Emails & Phones
     email = observation.get("email") or observation.get("primary_email") or observation.get("raw_email")
@@ -388,14 +452,15 @@ def create_candidate_if_valid(
 
     # 8. Minimum Identity Requirement (Rule 6)
     # A candidate cannot become VERIFIED on name alone.
-    # Must have:
-    # (a) Canonical profile URL, OR
-    # (b) (Plausible title AND Valid company), OR
+    # Must have at least one Primary Anchor:
+    # (a) Canonical individual profile URL (linkedin.com/in/, etc.), OR
+    # (b) (Plausible title AND Valid clean company), OR
     # (c) Verified email / phone
-    has_strong_profile = bool(canonical_url and "linkedin.com/in/" in canonical_url)
+    has_strong_profile = bool(canonical_url and ("linkedin.com/in/" in canonical_url or is_individual_profile_url(canonical_url)))
     has_employment = bool(valid_title and valid_company)
     has_verified_contact = bool(valid_email or valid_phone)
     has_partial_employment = bool(valid_title or valid_company)
+    has_primary_anchor = bool(has_strong_profile or has_verified_contact or has_employment)
 
     # 9. Garbage & Confidence Scoring (Rule 12)
     # Platform context bonus: a LinkedIn/ZoomInfo/Apollo window title without a URL is still
@@ -439,7 +504,7 @@ def create_candidate_if_valid(
 
     identity_conf = (
         (0.35 if cleaned_name else 0.0)
-        + (0.35 if has_strong_profile else (0.15 if canonical_url else (0.15 if has_platform_context else 0.0)))
+        + (0.40 if has_strong_profile else (0.15 if canonical_url else (0.15 if has_platform_context else 0.0)))
         + (0.20 if has_employment else (0.10 if has_partial_employment else 0.0))
         + (0.10 if valid_loc else 0.0)
         + (0.20 if has_verified_contact else (0.10 if (is_recruiter_chat and has_employment) else 0.0))
@@ -448,22 +513,22 @@ def create_candidate_if_valid(
 
     # 10. Final Gate Decision (Rule 2, 13, 14)
     # Standard Thresholds:
-    # VERIFIED: score >= 70 AND confidence >= 0.75 AND (has_strong_profile OR has_employment OR has_verified_contact)
-    # VERIFIED (sourcing platform): score >= 70 AND confidence >= 0.60 AND has_platform_context AND has_partial_employment
-    #   → LinkedIn/ZoomInfo/Apollo window is structural platform evidence. Name + partial employment is sufficient.
-    # VERIFIED (recruiter chat): score >= 70 AND confidence >= 0.65 AND is_recruiter_chat AND (has_employment OR has_verified_contact)
+    # VERIFIED: has_primary_anchor AND score >= 70 AND confidence >= 0.75
+    # VERIFIED (sourcing platform): has_primary_anchor AND score >= 70 AND confidence >= 0.60 AND has_platform_context AND has_employment
+    #   → LinkedIn/ZoomInfo/Apollo window: must have full employment (title + valid company) if no URL/contact!
+    # VERIFIED (recruiter chat): has_primary_anchor AND score >= 70 AND confidence >= 0.65 AND is_recruiter_chat AND (has_employment OR has_verified_contact)
     # REVIEW_REQUIRED: score >= 40 AND (has_partial_employment OR canonical_url OR has_platform_context)
     # REJECTED: anything below
     verified_standard = (
         quality_score >= 70
         and identity_conf >= 0.75
-        and (has_strong_profile or has_employment or has_verified_contact)
+        and has_primary_anchor
     )
     verified_platform_context = (
         quality_score >= 70
         and identity_conf >= 0.60
         and has_platform_context
-        and has_partial_employment
+        and has_employment
     )
     verified_chat_context = (
         quality_score >= 70
@@ -471,7 +536,7 @@ def create_candidate_if_valid(
         and is_recruiter_chat
         and (has_employment or has_verified_contact)
     )
-    if verified_standard or verified_platform_context or verified_chat_context:
+    if has_primary_anchor and (verified_standard or verified_platform_context or verified_chat_context):
         decision = "CANDIDATE_VERIFIED"
         status = "VERIFIED"
         is_valid = True
@@ -499,7 +564,7 @@ def create_candidate_if_valid(
         "source_url": source_url,
         "canonical_profile_url": canonical_url,
         "profile_url": canonical_url,
-        "linkedin_url": canonical_url if (canonical_url and "linkedin.com" in canonical_url) else None,
+        "linkedin_url": canonical_url if (canonical_url and "linkedin.com/in/" in canonical_url) else None,
         "email": valid_email,
         "phone": valid_phone,
         "quality_score": quality_score,

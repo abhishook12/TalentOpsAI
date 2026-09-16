@@ -333,10 +333,18 @@ def is_valid_company_name(text: Optional[str]) -> bool:
     if t_lower in chrome_ui_noise:
         return False
 
-    # Reject strings starting or ending with special characters (OCR artifacts like "%iApps", "-5", "System;")
-    if t[0] in "-%#@!~`^&*()[]{}<>|\\;:\"'" or t[-1] in ";:?!~*=<>[{]}":
+    # Reject strings starting or ending with special characters or trailing digits (OCR artifacts like "%iApps", "-5", "System;", "281-")
+    if t[0] in "-–—_%#@!~`^&*()[]{}<>|\\;:\"'/?." or t[-1] in "-–—_%#@!~`^&*()[]{}<>|\\;:\"'/?.,":
+        return False
+    if t[-1].isdigit():
         return False
     if any(c in t for c in [";", ":", "?", "!", "~", "*", "=", "<", ">"]):
+        return False
+    # Reject strings containing phone numbers or area codes (e.g. "281-", "555-1234")
+    if re.search(r"\b\d{3,}[-\s]?\b", t):
+        return False
+    # Reject strings containing individual professional job titles (e.g. "Cindy Davis Consultant")
+    if re.search(r"\b(?:consultant|recruiter|sourcer|coordinator|advisor|specialist|manager|director|officer)\b", t, re.IGNORECASE):
         return False
 
     # Reject standalone department abbreviations or isolated 2-letter tokens
@@ -375,6 +383,22 @@ def is_valid_company_name(text: Optional[str]) -> bool:
         return False
     if DATE_RANGE_PATTERN.search(t):
         return False
+    # Reject currency symbols and compensation / rate patterns (e.g. "$80 - $85 an hour", "€50k", "£40/hr")
+    if any(c in t for c in ["$", "€", "£", "₹", "¥", "%"]):
+        return False
+    if re.search(r"\b(?:hour|an hour|per hour|hourly|salary|annually|per year|w2|c2c|1099|background check|drug test|clearance required)\b", t, re.IGNORECASE):
+        return False
+
+    # Reject phone/contact channel noise (e.g. "CTV- Phone", "CTV-", "Phone", "Mobile", "Call", "Email", "Grnail", "Gmai", "Ynai")
+    if re.search(r"\b(?:phone|mobile|cell|telephone|call|email|e-mail|gmail|grnail|gmai|ynai|yahoo|hotmail|outlook)\b", t, re.IGNORECASE):
+        return False
+    if re.match(r"^(?:ctv|tel|ph|fx|mob)[\s\-_:]", t, re.IGNORECASE) or t.lower() in {"ctv-", "ctv", "phone", "email"}:
+        return False
+
+    # Reject chat status and system phrases (e.g. "History is on", "Active now", "Turn off history")
+    if re.search(r"\b(?:history is on|history is off|active now|offline|online|typing|seen at|last seen|joined the chat)\b", t, re.IGNORECASE):
+        return False
+
     # Reject social proof, connections, and activity lines
     if re.search(
         r"\b(?:followed by|mutual connection|connections|followers|people you may know|"
@@ -498,13 +522,26 @@ def is_valid_person_name(text: Optional[str]) -> bool:
     if all(len(w) <= 2 for w in clean_words):
         return False
 
-    # Every word must be capitalized: First char upper, rest lower or hyphenated (e.g. 'John', 'O'Neill', 'Mary-Jane')
+    # Reject any string containing unicode replacement character or unprintable chars
+    if "\ufffd" in t or "\\ufffd" in t:
+        return False
+
+    # Every word must be a valid human name token: Capital letter followed by lowercase letters
+    # Accepts: John, Mary-Jane, O'Connor, McDonald, de, van
     for w in clean_words:
         if not w[0].isupper():
             return False
         # Reject ALL-CAPS words that look like acronyms or UI labels (e.g. 'LLC', 'INC', 'D365', 'MDG')
         if len(w) > 2 and w.isupper():
             return False
+        # Reject internal uppercase letters that represent OCR glitches (e.g. 'SaO', 'MEkan', 'JaIl', 'LiKe')
+        # Allowed exceptions: McDonald, McCarthy, O'Connor
+        rest = w[1:]
+        if any(c.isupper() for c in rest):
+            # Check if valid prefix (Mc, Mac, O')
+            is_valid_prefix = bool(re.match(r"^(?:Mc[A-Z][a-z]+|Mac[A-Z][a-z]+|O'[A-Z][a-z]+|[A-Z][a-z]+-[A-Z][a-z]+)$", w))
+            if not is_valid_prefix:
+                return False
 
     # Check for non-name title/role/section/system/document words
     lower_words = [w.lower() for w in clean_words]
@@ -524,6 +561,10 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         "post", "posts", "quick", "easy", "prompt", "top", "united", "states",
         "history", "conversation", "conversations", "profile", "profiles",
         "message", "messages", "filter", "filters", "dialog", "session", "menu",
+        # Quantitative / Job posting / Adjectives
+        "minimum", "maximum", "salary", "hourly", "rate", "rates", "contract",
+        "total", "average", "standard", "background", "check", "clearance",
+        "client", "vendor", "partner", "partners", "overview", "description",
         # Web / Browser & Document Noise
         "bookmarks", "all", "description", "spreadsheets", "management", "contract",
         "mid-level", "senior", "junior", "full", "part-time", "temporary", "remote",

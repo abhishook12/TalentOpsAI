@@ -2,9 +2,9 @@
 version.py — Single Source of Truth for TalentOps Scout Desktop Versioning.
 """
 
-__version__ = "2.8.0"
-VERSION_INFO = (2, 8, 0)
-EXTRACTOR_VERSION = "4.5.0"
+__version__ = "2.8.1"
+VERSION_INFO = (2, 8, 1)
+EXTRACTOR_VERSION = "4.5.1"
 RELEASE_CHANNEL = "stable"
-BUILD_DATE = "2026-09-15"
+BUILD_DATE = "2026-09-16"
 APP_DISPLAY_NAME = f"TalentOps Scout v{__version__}"

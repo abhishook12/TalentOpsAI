@@ -280,6 +280,34 @@ def validate_company_for_person(company_name: Optional[str], person_name: Option
     if re.search(r'[A-Z]{2,}-[A-Z0-9]{3,}\s*\(\d+\)', raw):
         return False, f"Company contains identifier noise: '{raw}'"
 
+    # Reject currency symbols and compensation / rate patterns
+    if any(c in raw for c in ["$", "€", "£", "₹", "¥", "%"]):
+        return False, f"Company contains currency/compensation symbol: '{raw}'"
+    if re.search(r"\b(?:hour|an hour|per hour|hourly|salary|annually|per year|w2|c2c|1099|background check|drug test|clearance required)\b", lower):
+        return False, f"Company contains compensation or screening phrase: '{raw}'"
+
+    # Reject phone/contact channel noise (e.g. "CTV- Phone", "Phone", "Email", "Grnail")
+    if re.search(r"\b(?:phone|mobile|cell|telephone|call|email|e-mail|gmail|grnail|gmai|ynai|yahoo|hotmail|outlook)\b", lower):
+        return False, f"Company contains contact channel labels: '{raw}'"
+    if re.match(r"^(?:ctv|tel|ph|fx|mob)[\s\-_:]", raw, re.IGNORECASE) or lower in {"ctv-", "ctv", "phone", "email"}:
+        return False, f"Company starts with communication channel prefix: '{raw}'"
+
+    # Reject trailing special chars, hyphens, or digits (e.g. "281-", "System;")
+    if raw[-1] in "-–—_%#@!~`^&*()[]{}<>|\\;:\"'/?.," or raw[-1].isdigit():
+        return False, f"Company ends with invalid punctuation or digit: '{raw}'"
+    if any(c in raw for c in [";", ":", "?", "!", "~", "*", "=", "<", ">"]):
+        return False, f"Company contains invalid syntax characters: '{raw}'"
+    if re.search(r"\b\d{3,}[-\s]?\b", raw):
+        return False, f"Company contains phone or area code digits: '{raw}'"
+
+    # Reject strings containing individual professional job titles (e.g. "Cindy Davis Consultant")
+    if re.search(r"\b(?:consultant|recruiter|sourcer|coordinator|advisor|specialist|manager|director|officer)\b", lower):
+        return False, f"Company contains person job title words: '{raw}'"
+
+    # Reject chat status and system phrases
+    if re.search(r"\b(?:history is on|history is off|active now|offline|online|typing|seen at|last seen|joined the chat)\b", lower):
+        return False, f"Company is chat status noise: '{raw}'"
+
     return True, None
 
 def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], Optional[str]]:
@@ -291,6 +319,10 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
         return False, None, "Empty name"
 
     name = str(raw_name).strip()
+
+    # Reject corrupt unicode replacement characters
+    if "\ufffd" in name or "\\ufffd" in name:
+        return False, None, f"Name contains corrupt OCR unicode characters ('{name}')"
 
     # Reject colons (key-value or label strings e.g. "Myridius: People", "CTO: Overview")
     if ":" in name:
@@ -311,9 +343,9 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
     name = re.sub(r'\b\d+(?:st|nd|rd|th)\s*([A-Z])', r' \1', name, flags=re.IGNORECASE)
     name = re.sub(r'\((?:he\/him|she\/her|they\/them|she\/they|he\/they|any)\)', '', name, flags=re.IGNORECASE)
     name = re.sub(r'\b(?:MBA|SHRM-CP|SHRM-SCP|PHR|SPHR|PRC|CIR|CMVR|PMP|CPA|MD|JD|PhD|BSc|MSc|BA|BS|MA|MS)\b', '', name, flags=re.IGNORECASE)
-    # Split hyphens / pipes / commas
-    parts = re.split(r'[-–—|,]', name)[0]
-    cleaned = re.sub(r'[^\w\s\'.]', ' ', parts).strip()
+    # Split on title/descriptor separators with spaces (e.g. "John Smith - Recruiter", "Jane Doe | AI")
+    parts = re.split(r'\s+[-–—]\s+|[|,]', name)[0]
+    cleaned = re.sub(r'[^\w\s\'.\-]', ' ', parts).strip()
     cleaned = " ".join(cleaned.split())
 
     # Truncate trailing role title words (e.g. "Klaus Raem Managing..." -> "Klaus Raem")
@@ -354,6 +386,15 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
     if any(w in SYSTEM_NOISE_TOKENS for w in lower_words):
         return False, None, f"Name contains system or application noise ('{cleaned}')"
 
+    # Reject quantitative / job posting adjectives
+    QUANTITATIVE_ADJECTIVES = {
+        'minimum', 'maximum', 'salary', 'hourly', 'rate', 'rates', 'contract',
+        'total', 'average', 'standard', 'background', 'check', 'clearance',
+        'client', 'vendor', 'partner', 'partners', 'overview', 'description',
+    }
+    if any(w in QUANTITATIVE_ADJECTIVES for w in lower_words):
+        return False, None, f"Name contains quantitative or job posting adjective ('{cleaned}')"
+
     # Reject single-letter tokens (e.g. 'M Inbox', 'Ana R Billios 0')
     if any(len(w) < 2 for w in words):
         return False, None, f"Name contains single-letter token ('{cleaned}')"
@@ -361,6 +402,13 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
     # Must be 2 to 4 tokens
     if len(words) < 2 or len(words) > 4:
         return False, None, f"Name must be 2-4 words, got {len(words)} ('{cleaned}')"
+
+    # Reject internal uppercase letters that represent OCR glitches (e.g. 'SaO', 'Kmika Svh')
+    for w in words:
+        if len(w) > 1 and any(c.isupper() for c in w[1:]):
+            is_valid_prefix = bool(re.match(r"^(?:Mc[A-Z][a-z]+|Mac[A-Z][a-z]+|O'[A-Z][a-z]+|[A-Z][a-z]+-[A-Z][a-z]+)$", w))
+            if not is_valid_prefix:
+                return False, None, f"Name contains OCR internal uppercase glitch: '{w}'"
 
     # 0. Reject Company / Organization names
     if is_company_name(cleaned):
@@ -500,6 +548,34 @@ def split_title_and_company(
 
     return title or "Professional", company
 
+def is_url_slug_compatible_with_name(url: Optional[str], name: Optional[str]) -> bool:
+    """
+    Guards against cross-tab contamination where a candidate seen in chat or feed
+    is erroneously attributed to a background browser tab's profile URL.
+    Returns True if the LinkedIn slug is plausibly compatible with the person's name.
+    """
+    if not url or not name:
+        return True
+    m = re.search(r"linkedin\.com/in/([a-zA-Z0-9_\-%]+)", url.lower())
+    if not m:
+        return True
+    slug = m.group(1).lower()
+    name_tokens = [re.sub(r'[^a-z]', '', tok.lower()) for tok in name.split() if len(tok) >= 2]
+    if not name_tokens:
+        return True
+    first = name_tokens[0]
+    last = name_tokens[-1]
+    if first in slug or last in slug:
+        return True
+    if len(name_tokens) >= 2 and (name_tokens[0][0] + name_tokens[-1]) in slug:
+        return True
+    if len(name_tokens) >= 2 and (name_tokens[0] + name_tokens[-1][0]) in slug:
+        return True
+    if slug.isdigit():
+        return True
+    return False
+
+
 def calculate_field_confidences(
     name: Optional[str],
     title: Optional[str],
@@ -532,7 +608,8 @@ def calculate_field_confidences(
         overall = int(name_conf * 0.5)
 
     if linkedin and 'linkedin.com/in/' in linkedin:
-        overall = min(100, overall + 5)
+        if is_url_slug_compatible_with_name(linkedin, name):
+            overall = min(100, overall + 5)
     if email and not email.endswith('@noemail.talentops'):
         overall = min(100, overall + 10)
     if phone:

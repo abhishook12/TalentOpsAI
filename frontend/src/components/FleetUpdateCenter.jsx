@@ -149,7 +149,7 @@ export default function FleetUpdateCenter() {
           <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <span>Scout Fleet Telemetry &amp; Node Operations</span>
             <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: '#0F1E36', color: '#38BDF8', border: '1px solid #1E3A5F', fontWeight: 700 }}>
-              v2.8.0 ARCHITECTURE
+              v2.8.1 ARCHITECTURE
             </span>
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>

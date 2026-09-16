@@ -150,6 +150,9 @@ class EntityExtractor:
             if chat_clusters:
                 logger.info("Extracted %d candidate entities from chat conversation stream", len(chat_clusters))
                 return chat_clusters
+            # CRITICAL: Chat streams must NEVER fall through to single-person profile parsing
+            logger.debug("Chat stream contained no valid candidate submission — skipping frame")
+            return []
 
         # Case B: Multi-Person Grid / Search Results Listing
         card_boundaries = self._find_card_boundaries(clean_lines, window_title, source_url)
@@ -187,20 +190,28 @@ class EntityExtractor:
                     target_name = sans_p
 
         if not target_name:
+            # Check if window is a corporate company/school page (e.g. "Marcus & Millichap: Overview | LinkedIn")
+            is_company_overview = bool(
+                re.search(r":\s*(?:Overview|About|Life|Jobs|Posts|Videos)\b", window_title, re.IGNORECASE)
+                or ("/company/" in url_lower and "/people" not in url_lower and "/about" not in url_lower)
+                or "/school/" in url_lower
+            )
+            if is_company_overview:
+                logger.debug("Skipping company overview page '%s' — not a candidate profile", window_title)
+                return []
+
             if " | LinkedIn" in window_title or " - LinkedIn" in window_title or window_title.endswith("LinkedIn"):
                 m = re.match(r"^(?:\(\d+\+?\)\s*)?(.*?)\s*[|–—\-]\s*LinkedIn", window_title, re.IGNORECASE)
                 if m:
                     raw_extracted = m.group(1).strip()
+                    if ":" in raw_extracted or any(k in raw_extracted.lower() for k in ["overview", "about", "life", "jobs"]):
+                        return []
                     pro_m = re.search(r"\b(she/her|he/him|they/them|she/they|he/they)\b", raw_extracted, re.IGNORECASE)
                     if pro_m:
                         pronouns_found = pro_m.group(1).lower()
                     cand_cleaned = clean_person_name(raw_extracted)
                     if cand_cleaned:
                         target_name = cand_cleaned
-                    else:
-                        sans_pronoun = re.sub(r"\s*[\(\[]?\b(?:she/her|he/him|they/them|she/they|he/they)\b[\)\]]?", "", raw_extracted, flags=re.IGNORECASE).strip()
-                        if is_valid_person_name(sans_pronoun):
-                            target_name = sans_pronoun
 
         # Check ZoomInfo title
         if not target_name and ("zoominfo" in window_title.lower() or "zi-lite" in window_title.lower()):

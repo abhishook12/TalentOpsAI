@@ -1475,7 +1475,7 @@ class ScoutDesktopApp:
 
         self._is_flushing = True
         try:
-            pending = self.local_queue.get_pending_batch(limit=50)
+            pending = self.local_queue.get_pending_batch(limit=10)
             if not pending:
                 stats = self.local_queue.get_queue_stats()
                 synced_cnt = stats.get("synced", 0)
@@ -1485,6 +1485,13 @@ class ScoutDesktopApp:
             queue_ids = [item.pop("_local_queue_id") for item in pending]
             for it in pending:
                 it.pop("_retry_count", None)
+                # Defensively cap URL lengths to prevent backend varchar overflow
+                if it.get("source_url") and len(it["source_url"]) > 500:
+                    it["source_url"] = it["source_url"][:500]
+                if it.get("linkedin_url") and len(it["linkedin_url"]) > 500:
+                    it["linkedin_url"] = it["linkedin_url"][:500]
+                if it.get("canonical_profile_url") and len(it["canonical_profile_url"]) > 500:
+                    it["canonical_profile_url"] = it["canonical_profile_url"][:500]
 
             self.bridge.event_logged.emit(
                 "DB_SYNC_STARTED",

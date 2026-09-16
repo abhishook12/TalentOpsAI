@@ -354,21 +354,37 @@ def ingest_extension_batch(
 
             seen_discovery_ids.add(discovery_id)
 
+            # Truncate strings defensively to match DB schema limits
+            s_name = (contact.recruiter_name or "")[:200] or None
+            s_title = (contact.title or "")[:200] or None
+            s_company = (contact.company_name or "")[:255] or None
+            s_email = (contact.email or "")[:200] or None
+            s_phone = (contact.phone or "")[:50] or None
+            s_linkedin = contact.linkedin_url or (contact.source_url if contact.source_url and "linkedin.com/in/" in contact.source_url else None)
+            if s_linkedin:
+                s_linkedin = s_linkedin[:300]
+            s_location = (contact.location or "")[:255] or None
+            s_source_url = (contact.source_url or "")[:500] or None
+            s_page_title = (contact.source_page_title or "")[:255] or None
+            s_canonical_url = contact.canonical_profile_url or contact.linkedin_url or (contact.source_url if contact.source_url and "linkedin.com/in/" in contact.source_url else None)
+            if s_canonical_url:
+                s_canonical_url = s_canonical_url[:500]
+
             staging_record = DiscoveryStaging(
                 batch_id=batch_id,
                 discovery_id=discovery_id,
                 session_id=str(req.session_stats.get("sessionId")) if req.session_stats else None,
                 device_id=device_id,
                 owner_user_id=current_user.id,
-                raw_name=contact.recruiter_name,
-                raw_title=contact.title,
-                raw_company=contact.company_name,
-                raw_email=contact.email,
-                raw_phone=contact.phone,
-                raw_linkedin=contact.linkedin_url or (contact.source_url if contact.source_url and "linkedin.com/in/" in contact.source_url else None),
-                raw_location=contact.location,
-                source_url=contact.source_url,
-                source_page_title=contact.source_page_title,
+                raw_name=s_name,
+                raw_title=s_title,
+                raw_company=s_company,
+                raw_email=s_email,
+                raw_phone=s_phone,
+                raw_linkedin=s_linkedin,
+                raw_location=s_location,
+                source_url=s_source_url,
+                source_page_title=s_page_title,
                 capture_id=contact.capture_id,
                 extraction_source=contact.source or "visual_dom_fusion",
                 visual_change_score=str(contact.visual_change_score or 0.0),
@@ -405,7 +421,7 @@ def ingest_extension_batch(
                     contact.overview, contact.github, contact.twitter, contact.portfolio
                 ]) else None,
                 page_type=contact.page_type,
-                canonical_profile_url=contact.canonical_profile_url or contact.linkedin_url or (contact.source_url if contact.source_url and "linkedin.com/in/" in contact.source_url else None),
+                canonical_profile_url=s_canonical_url,
                 field_confidence_json=json.dumps(contact.field_confidence) if contact.field_confidence else None,
                 evidence_json=json.dumps(contact.evidence_checklist) if contact.evidence_checklist else None,
             )

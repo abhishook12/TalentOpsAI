@@ -669,19 +669,19 @@ class BackendClient:
                 compressed_data = gzip.compress(raw_data)
                 headers["Content-Encoding"] = "gzip"
                 headers["Content-Length"] = str(len(compressed_data))
-                res = requests.post(target_url, data=compressed_data, headers=headers, timeout=30.0)
+                res = requests.post(target_url, data=compressed_data, headers=headers, timeout=60.0)
                 if res.status_code == 404:
                     target_url = fallback_url
-                    res = requests.post(target_url, data=compressed_data, headers=headers, timeout=30.0)
+                    res = requests.post(target_url, data=compressed_data, headers=headers, timeout=60.0)
                 if res.status_code in [415, 400]:
                     headers.pop("Content-Encoding", None)
                     headers.pop("Content-Length", None)
-                    res = requests.post(target_url, json=payload, headers=headers, timeout=30.0)
+                    res = requests.post(target_url, json=payload, headers=headers, timeout=60.0)
             else:
-                res = requests.post(target_url, json=payload, headers=headers, timeout=30.0)
+                res = requests.post(target_url, json=payload, headers=headers, timeout=60.0)
                 if res.status_code == 404:
                     target_url = fallback_url
-                    res = requests.post(target_url, json=payload, headers=headers, timeout=30.0)
+                    res = requests.post(target_url, json=payload, headers=headers, timeout=60.0)
 
             if res.status_code == 403:
                 res_body = res.text.lower()

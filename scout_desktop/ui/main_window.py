@@ -42,7 +42,7 @@ from .scout_data import (
     mark_all_activities_read, get_candidate_by_id
 )
 from .components import (
-    TopBar, UpdateBanner, LeftRail, BottomStatusBar,
+    TopBar, StatusStrip, UpdateBanner, LeftRail, BottomStatusBar,
     COLOR_BG_BASE, COLOR_SURFACE_CARD, COLOR_SURFACE_BORDER,
     COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_TEXT_MUTED
 )
@@ -144,19 +144,19 @@ class MainWindow(QMainWindow):
                 border: none;
             }}
             QScrollBar:vertical {{
-                background: #070D18;
+                background: #0E0E0E;
                 width: 8px;
                 border: none;
                 border-radius: 4px;
                 margin: 0;
             }}
             QScrollBar::handle:vertical {{
-                background: #1E293B;
+                background: #2A2A2A;
                 min-height: 24px;
                 border-radius: 4px;
             }}
             QScrollBar::handle:vertical:hover {{
-                background: #334155;
+                background: #444748;
             }}
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
                 border: none;
@@ -164,19 +164,19 @@ class MainWindow(QMainWindow):
                 height: 0;
             }}
             QScrollBar:horizontal {{
-                background: #070D18;
+                background: #0E0E0E;
                 height: 8px;
                 border: none;
                 border-radius: 4px;
                 margin: 0;
             }}
             QScrollBar::handle:horizontal {{
-                background: #1E293B;
+                background: #2A2A2A;
                 min-width: 24px;
                 border-radius: 4px;
             }}
             QScrollBar::handle:horizontal:hover {{
-                background: #334155;
+                background: #444748;
             }}
             QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
                 border: none;
@@ -198,7 +198,16 @@ class MainWindow(QMainWindow):
         self.top_bar = TopBar(self)
         root_layout.addWidget(self.top_bar)
 
-        # 2. Update Banner (Dismissible)
+        # 2. Status Strip (Command Line / Telemetry) - matches Stitch design
+        status_strip_container = QWidget()
+        status_strip_container.setStyleSheet(f"background-color: {COLOR_BG_BASE};")
+        ss_layout = QHBoxLayout(status_strip_container)
+        ss_layout.setContentsMargins(16, 8, 16, 4)
+        self.status_strip = StatusStrip(self)
+        ss_layout.addWidget(self.status_strip)
+        root_layout.addWidget(status_strip_container)
+
+        # 3. Update Banner (Dismissible)
         self.update_banner = UpdateBanner(self)
         root_layout.addWidget(self.update_banner)
 
@@ -256,6 +265,7 @@ class MainWindow(QMainWindow):
         self.lbl_hero_title = self.page_scan.lbl_cand_subtitle
         self.lbl_hero_location = self.page_scan.lbl_cand_loc
         self.lbl_hero_pill = self.page_scan.chip_latest.lbl_text
+        self.lbl_cand_avatar = self.page_scan.lbl_avatar
         self.btn_pause_toggle = self.page_scan.btn_pause
 
         # Counter compatibility proxies
@@ -401,7 +411,10 @@ class MainWindow(QMainWindow):
         self.top_bar.lbl_user.setText(disp)
         SYSTEM_STATE["user"]["display"] = disp
         SYSTEM_STATE["user"]["name"] = name
-        self.top_bar.lbl_inst.setText("Installation #483")
+        if hasattr(self.top_bar, "lbl_node"):
+            self.top_bar.lbl_node.setText("NODE: #483")
+        elif hasattr(self.top_bar, "lbl_inst"):
+            self.top_bar.lbl_inst.setText("Installation #483")
 
     def update_environment(self, env: str, api_base: str):
         """Called by app.py to update environment configuration"""
@@ -410,9 +423,13 @@ class MainWindow(QMainWindow):
     def update_window_context(self, app_name: str, title: str, url: str, context_str: str, is_allowed: bool, target_type: str):
         """Called by app.py when active window context switches"""
         status_txt = f"{app_name} · {'authorized source' if is_allowed else 'unauthorized'}"
-        self.page_scan.lbl_obs_app.setText(status_txt)
-        class_txt = f"Page classified as {target_type.replace('_', ' ').capitalize()} · confidence 0.97"
-        self.page_scan.lbl_obs_sub.setText(class_txt)
+        if hasattr(self.page_scan, "lbl_obs_app"):
+            self.page_scan.lbl_obs_app.setText(status_txt)
+        class_txt = f"GATE EVAL: {target_type.upper()}"
+        if hasattr(self.page_scan, "lbl_gate"):
+            self.page_scan.lbl_gate.setText(class_txt)
+        elif hasattr(self.page_scan, "lbl_obs_sub"):
+            self.page_scan.lbl_obs_sub.setText(class_txt)
 
     def update_explicit_counters(self, counters: Dict[str, Any]):
         """Called by app.py to update live pipeline counters"""

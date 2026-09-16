@@ -30,40 +30,45 @@ from scout_desktop.version import __version__, EXTRACTOR_VERSION
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Styling Constants (Obsidian Palette — Exact Reference Alignment)
+# Styling Constants (Stitch Monochrome Command-Center Palette)
 # ─────────────────────────────────────────────────────────────────────────────
 
-COLOR_BG_BASE = "#0B0F19"       # Deep obsidian background (styles.css: --background)
-COLOR_RAIL = "#080C14"          # Sidebar & top/bottom rails (styles.css: --rail)
-COLOR_SURFACE_CARD = "#111624"  # Container card background (styles.css: --card)
-COLOR_SURFACE = "#0E131F"       # Inner surface & inputs (styles.css: --surface)
-COLOR_SURFACE_HOVER = "#182032" # Secondary highlight (styles.css: --secondary)
-COLOR_SURFACE_BORDER = "#1B2234"# Card border (styles.css: --border)
-COLOR_SURFACE_BORDER_LIGHT = "#243048"
+COLOR_BG_BASE = "#0E0E0E"       # Deep background (surface-container-lowest)
+COLOR_RAIL = "#0E0E0E"          # Sidebar & top/bottom rails
+COLOR_SURFACE_CARD = "#1B1B1B"  # Container card background (surface-container-low)
+COLOR_SURFACE = "#131313"       # Main surface / background
+COLOR_SURFACE_MID = "#1F1F1F"   # Container mid (surface-container)
+COLOR_SURFACE_HOVER = "#2A2A2A" # High highlight (surface-container-high)
+COLOR_SURFACE_ACTIVE = "#353535"# Highest active container (surface-container-highest)
+COLOR_SURFACE_BORDER = "#444748"# Outline variant border
+COLOR_SURFACE_BORDER_LIGHT = "#5A5D5E"
 
-COLOR_TEXT_PRIMARY = "#F8FAFC"
-COLOR_TEXT_SECONDARY = "#94A3B8"
-COLOR_TEXT_MUTED = "#64748B"
+COLOR_TEXT_PRIMARY = "#FFFFFF"   # Pure crisp white
+COLOR_TEXT_SECONDARY = "#E2E2E2" # On-surface
+COLOR_TEXT_MUTED = "#8E9192"     # Outline / muted labels
+COLOR_TEXT_TERTIARY = "#C4C7C8"  # On-surface variant
 
-# Semantic Accents
-COLOR_CANONICAL = "#10B981"      # Emerald Accent Green (styles.css: --accent)
-COLOR_CANONICAL_BG = "rgba(16, 185, 129, 0.10)"
-COLOR_CANONICAL_BORDER = "rgba(16, 185, 129, 0.25)"
+COLOR_PRIMARY = "#FFFFFF"        # Primary high-contrast button / badge
+COLOR_ON_PRIMARY = "#0E0E0E"     # Primary text on white button
 
-COLOR_HYPOTHESIS = "#38BDF8"     # Sky Blue Primary (styles.css: --primary)
-COLOR_HYPOTHESIS_BG = "rgba(56, 189, 248, 0.10)"
-COLOR_HYPOTHESIS_BORDER = "rgba(56, 189, 248, 0.25)"
+# Monochromatic Accents with Signal Fidelity
+COLOR_CANONICAL = "#FFFFFF"
+COLOR_CANONICAL_BG = "#2A2A2A"
+COLOR_CANONICAL_BORDER = "#444748"
 
-COLOR_REVIEW = "#F59E0B"         # Amber Signal (styles.css: --signal)
-COLOR_REVIEW_BG = "rgba(245, 158, 11, 0.12)"
-COLOR_REVIEW_BORDER = "rgba(245, 158, 11, 0.25)"
+COLOR_HYPOTHESIS = "#E2E2E2"
+COLOR_HYPOTHESIS_BG = "#2A2A2A"
+COLOR_HYPOTHESIS_BORDER = "#444748"
 
-COLOR_REJECTED = "#EF4444"       # Rose Destructive (styles.css: --destructive)
-COLOR_REJECTED_BG = "rgba(239, 68, 68, 0.12)"
-COLOR_REJECTED_BORDER = "rgba(239, 68, 68, 0.25)"
+COLOR_REVIEW = "#E2E2E2"
+COLOR_REVIEW_BG = "#2A2A2A"
+COLOR_REVIEW_BORDER = "#444748"
 
-COLOR_CYAN_ACCENT = "#38BDF8"
-COLOR_PRIMARY = "#38BDF8"
+COLOR_REJECTED = "#8E9192"
+COLOR_REJECTED_BG = "#1F1F1F"
+COLOR_REJECTED_BORDER = "#444748"
+
+COLOR_CYAN_ACCENT = "#FFFFFF"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -221,16 +226,18 @@ class _ConfidenceBarWidget(QWidget):
         
         # Background track
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor("#162238"))
+        painter.setBrush(QColor("#2A2A2A"))
         painter.drawRoundedRect(0, 0, w, h, r, r)
         
-        # Determine fill color
+        # Determine fill color (Monochrome gradation matching Stitch specification)
         if self.score_pct >= 90:
-            fill_color = QColor(COLOR_CANONICAL)
-        elif self.score_pct >= 70:
-            fill_color = QColor(COLOR_REVIEW)
+            fill_color = QColor("#FFFFFF")
+        elif self.score_pct >= 75:
+            fill_color = QColor("#C6C6C7")
+        elif self.score_pct >= 50:
+            fill_color = QColor("#8E9192")
         else:
-            fill_color = QColor(COLOR_REJECTED)
+            fill_color = QColor("#444748")
             
         fill_w = int((self.score_pct / 100.0) * w)
         if fill_w > 0:
@@ -261,7 +268,7 @@ class Card(QFrame):
             QFrame#ScoutCard {{
                 background-color: {COLOR_SURFACE_CARD};
                 border: 1px solid {COLOR_SURFACE_BORDER};
-                border-radius: 8px;
+                border-radius: 12px;
             }}
             QFrame#ScoutCard QLabel {{
                 background: transparent;
@@ -318,93 +325,111 @@ class PageHead(QWidget):
 # 5. TopBar
 # ─────────────────────────────────────────────────────────────────────────────
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 5. TopBar & StatusStrip
+# ─────────────────────────────────────────────────────────────────────────────
+
 class TopBar(QFrame):
     """
-    Top Bar:
-    - Eye logo (32x32 container in secondary bg)
-    - "TalentOps Scout" + version chip "v2.8.0"
-    - Subtitle "Edge intelligence agent"
-    - Center pill "Active · observing" with pulsing dot
-    - Right side: signed-in user ("Prashant · TalentOps AI"), "Installation #483", and "Sign out" button
+    Top Bar matching Stitch Monochrome Command-Center design:
+    - Minimalist geometric square logo (white square with dark inner core)
+    - Uppercase "TALENTOPS SCOUT" + version chip "v2.8.2"
+    - "IDLE • READY" status indicator with square dot
+    - "NODE: #483" monospace badge
+    - Right side: Latency badge "LATENCY 14MS", operator badge "ALEX J. / LEAD OPERATOR", and Sign out button
     """
     sign_out_clicked = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.setFixedHeight(48)
+        self.setFixedHeight(50)
         self.setStyleSheet(f"""
             QFrame {{
-                background-color: {COLOR_RAIL};
+                background-color: {COLOR_BG_BASE};
                 border-bottom: 1px solid {COLOR_SURFACE_BORDER};
             }}
         """)
         
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(16, 0, 16, 0)
-        layout.setSpacing(12)
+        layout.setContentsMargins(18, 0, 18, 0)
+        layout.setSpacing(14)
         
-        # Left Section: Eye Logo, Title, Version Chip, Subtitle
+        # Left Section: Geometric Logo, Title, Version Chip, Node Badge
         left_layout = QHBoxLayout()
         left_layout.setSpacing(10)
         
         self.eye_logo = _EyeLogoWidget()
         left_layout.addWidget(self.eye_logo)
         
-        title_box = QVBoxLayout()
-        title_box.setSpacing(1)
-        title_box.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-        
-        title_row = QHBoxLayout()
-        title_row.setSpacing(6)
-        
-        self.lbl_title = QLabel("TalentOps Scout")
-        self.lbl_title.setFont(QFont("Segoe UI", 10, QFont.Weight.DemiBold))
-        self.lbl_title.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; border: none; background: transparent;")
-        title_row.addWidget(self.lbl_title)
+        self.lbl_title = QLabel("TALENTOPS SCOUT")
+        self.lbl_title.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
+        self.lbl_title.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; border: none; background: transparent; letter-spacing: 0.5px;")
+        left_layout.addWidget(self.lbl_title)
         
         # Version Chip
         self.lbl_version_chip = QLabel(f"v{__version__}")
-        self.lbl_version_chip.setFont(QFont("Consolas", 8, QFont.Weight.Medium))
+        self.lbl_version_chip.setFont(QFont("Consolas", 8, QFont.Weight.Bold))
         self.lbl_version_chip.setStyleSheet(f"""
-            background-color: {COLOR_SURFACE_HOVER};
-            color: {COLOR_TEXT_SECONDARY};
+            background-color: {COLOR_SURFACE_CARD};
+            color: {COLOR_TEXT_MUTED};
             border: 1px solid {COLOR_SURFACE_BORDER};
             border-radius: 4px;
-            padding: 1px 5px;
+            padding: 1px 6px;
         """)
-        title_row.addWidget(self.lbl_version_chip)
-        title_row.addStretch()
-        title_box.addLayout(title_row)
+        left_layout.addWidget(self.lbl_version_chip)
         
-        # Subtitle
-        self.lbl_subtitle = QLabel("Edge intelligence agent")
-        self.lbl_subtitle.setFont(QFont("Segoe UI", 8, QFont.Weight.Normal))
-        self.lbl_subtitle.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; border: none; background: transparent;")
-        title_box.addWidget(self.lbl_subtitle)
-        
-        left_layout.addLayout(title_box)
+        # Idle / Ready Pill
+        self.center_pill = _ActiveObservingPill()
+        left_layout.addWidget(self.center_pill)
+
+        # Node Badge
+        self.lbl_node = QLabel("NODE: #483")
+        self.lbl_node.setFont(QFont("Consolas", 8, QFont.Weight.Bold))
+        self.lbl_node.setStyleSheet(f"""
+            background-color: {COLOR_SURFACE_CARD};
+            color: {COLOR_TEXT_PRIMARY};
+            border: 1px solid {COLOR_SURFACE_BORDER};
+            border-radius: 4px;
+            padding: 2px 7px;
+        """)
+        left_layout.addWidget(self.lbl_node)
+        self.lbl_inst = self.lbl_node  # Backward compatibility alias for app.py
+
         layout.addLayout(left_layout)
         layout.addStretch()
         
-        # Center Section: Pulsing Active Pill
-        self.center_pill = _ActiveObservingPill()
-        layout.addWidget(self.center_pill, alignment=Qt.AlignmentFlag.AlignCenter)
-        
-        layout.addStretch()
-        
-        # Right Section: Signed-in User, Installation #483, Sign Out Button
+        # Right Section: Latency, Operator Badge, Sign Out Button
         right_layout = QHBoxLayout()
         right_layout.setSpacing(14)
         
-        self.lbl_user = QLabel(SYSTEM_STATE["user"]["display"])
-        self.lbl_user.setFont(QFont("Segoe UI", 8, QFont.Weight.Normal))
-        self.lbl_user.setStyleSheet(f"color: {COLOR_TEXT_SECONDARY}; border: none; background: transparent;")
-        right_layout.addWidget(self.lbl_user)
+        # Latency Badge
+        self.lbl_latency = QLabel("LATENCY 14MS")
+        self.lbl_latency.setFont(QFont("Consolas", 8, QFont.Weight.Bold))
+        self.lbl_latency.setStyleSheet(f"""
+            border: 1px solid {COLOR_SURFACE_BORDER};
+            color: {COLOR_TEXT_MUTED};
+            background-color: {COLOR_SURFACE_CARD};
+            border-radius: 4px;
+            padding: 2px 8px;
+        """)
+        right_layout.addWidget(self.lbl_latency)
         
-        self.lbl_inst = QLabel(SYSTEM_STATE["user"]["installation_id"])
-        self.lbl_inst.setFont(QFont("Segoe UI", 8, QFont.Weight.Normal))
-        self.lbl_inst.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; border: none; background: transparent;")
-        right_layout.addWidget(self.lbl_inst)
+        # Operator user info
+        user_col = QVBoxLayout()
+        user_col.setSpacing(0)
+        user_col.setAlignment(Qt.AlignmentFlag.AlignRight)
+
+        self.lbl_user = QLabel("ALEX J.")
+        self.lbl_user.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
+        self.lbl_user.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; border: none; background: transparent;")
+        user_col.addWidget(self.lbl_user, alignment=Qt.AlignmentFlag.AlignRight)
+
+        self.lbl_role = QLabel("LEAD OPERATOR")
+        self.lbl_role.setFont(QFont("Consolas", 7))
+        self.lbl_role.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; border: none; background: transparent;")
+        user_col.addWidget(self.lbl_role, alignment=Qt.AlignmentFlag.AlignRight)
+
+        right_layout.addLayout(user_col)
         
         self.btn_signout = QPushButton("Sign out")
         self.btn_signout.setFont(QFont("Segoe UI", 8, QFont.Weight.Medium))
@@ -414,12 +439,13 @@ class TopBar(QFrame):
                 background-color: transparent;
                 border: 1px solid {COLOR_SURFACE_BORDER};
                 border-radius: 6px;
-                color: {COLOR_TEXT_SECONDARY};
+                color: {COLOR_TEXT_MUTED};
                 padding: 3px 10px;
             }}
             QPushButton:hover {{
                 background-color: {COLOR_SURFACE_HOVER};
                 color: {COLOR_TEXT_PRIMARY};
+                border-color: {COLOR_SURFACE_BORDER_LIGHT};
             }}
         """)
         self.btn_signout.clicked.connect(self.sign_out_clicked.emit)
@@ -431,61 +457,125 @@ class TopBar(QFrame):
         self.center_pill.set_status(text, is_active)
 
 
-class _EyeLogoWidget(QWidget):
-    """Vector rendered Eye Logo for TalentOps Scout inside a rounded box"""
+class StatusStrip(QFrame):
+    """
+    Monochrome Command-Line Telemetry Status Strip matching Stitch design:
+    STREAM ENGINE: ACTIVE / STORE PROTOCOL: SQLITE_WAL_DURABLE / INGRESS LATENCY: 0.42ms | TX_EPOCH: 1741519092 | US-EAST-1D GATEWAY
+    """
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.setFixedSize(30, 30)
+        self.setFixedHeight(36)
+        self.setStyleSheet(f"""
+            QFrame {{
+                background-color: {COLOR_SURFACE_CARD};
+                border: 1px solid {COLOR_SURFACE_BORDER};
+                border-radius: 8px;
+            }}
+            QLabel {{
+                background: transparent;
+                border: none;
+            }}
+        """)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(14, 0, 14, 0)
+        layout.setSpacing(10)
+
+        # Dot
+        dot = QLabel("■")
+        dot.setFont(QFont("Consolas", 8, QFont.Weight.Bold))
+        dot.setStyleSheet("color: #FFFFFF;")
+        layout.addWidget(dot)
+
+        lbl_engine = QLabel("STREAM ENGINE: ACTIVE")
+        lbl_engine.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
+        lbl_engine.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
+        layout.addWidget(lbl_engine)
+
+        sep1 = QLabel("/")
+        sep1.setStyleSheet(f"color: {COLOR_SURFACE_BORDER}; font-family: 'Consolas';")
+        layout.addWidget(sep1)
+
+        lbl_proto_title = QLabel("STORE PROTOCOL:")
+        lbl_proto_title.setFont(QFont("Segoe UI", 8))
+        lbl_proto_title.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
+        layout.addWidget(lbl_proto_title)
+
+        lbl_proto_val = QLabel("SQLITE_WAL_DURABLE")
+        lbl_proto_val.setFont(QFont("Consolas", 8, QFont.Weight.Bold))
+        lbl_proto_val.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
+        layout.addWidget(lbl_proto_val)
+
+        sep2 = QLabel("/")
+        sep2.setStyleSheet(f"color: {COLOR_SURFACE_BORDER}; font-family: 'Consolas';")
+        layout.addWidget(sep2)
+
+        lbl_lat_title = QLabel("INGRESS LATENCY:")
+        lbl_lat_title.setFont(QFont("Segoe UI", 8))
+        lbl_lat_title.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
+        layout.addWidget(lbl_lat_title)
+
+        lbl_lat_val = QLabel("0.42ms")
+        lbl_lat_val.setFont(QFont("Consolas", 8, QFont.Weight.Bold))
+        lbl_lat_val.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
+        layout.addWidget(lbl_lat_val)
+
+        layout.addStretch()
+
+        lbl_epoch = QLabel("TX_EPOCH: 1741519092")
+        lbl_epoch.setFont(QFont("Consolas", 8))
+        lbl_epoch.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
+        layout.addWidget(lbl_epoch)
+
+        sep3 = QLabel("|")
+        sep3.setStyleSheet(f"color: {COLOR_SURFACE_BORDER};")
+        layout.addWidget(sep3)
+
+        lbl_gw = QLabel("US-EAST-1D GATEWAY")
+        lbl_gw.setFont(QFont("Consolas", 8, QFont.Weight.Bold))
+        lbl_gw.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
+        layout.addWidget(lbl_gw)
+
+
+class _EyeLogoWidget(QWidget):
+    """Monochrome Geometric Logo for TalentOps Scout matching Stitch design"""
+    def __init__(self, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.setFixedSize(22, 22)
 
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         
-        w = self.width()
-        h = self.height()
-        
-        # Rounded background box (bg-secondary ring-1 ring-border)
-        p.setPen(QPen(QColor(COLOR_SURFACE_BORDER), 1))
-        p.setBrush(QColor(COLOR_SURFACE_HOVER))
-        p.drawRoundedRect(0, 0, w - 1, h - 1, 6, 6)
-        
-        # Outer eye curve in primary cyan
-        cx = w / 2.0
-        cy = h / 2.0
-        path = QPainterPath()
-        path.moveTo(6, cy)
-        path.quadTo(cx, cy - 6, w - 6, cy)
-        path.quadTo(cx, cy + 6, 6, cy)
-        
-        pen = QPen(QColor(COLOR_CYAN_ACCENT), 1.5)
-        p.setPen(pen)
-        p.setBrush(Qt.BrushStyle.NoBrush)
-        p.drawPath(path)
-        
-        # Center pupil dot
+        # Outer solid white square
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor(COLOR_CYAN_ACCENT))
-        p.drawEllipse(int(cx - 2.5), int(cy - 2.5), 5, 5)
+        p.setBrush(QColor("#FFFFFF"))
+        p.drawRect(1, 1, 20, 20)
+        
+        # Inner solid dark square core
+        p.setBrush(QColor("#0E0E0E"))
+        p.drawRect(7, 7, 8, 8)
         p.end()
 
 
 class _ActiveObservingPill(QFrame):
-    """Centre status pill 'Active · observing' with a pulsing emerald dot"""
+    """Status pill 'IDLE • READY' with a square primary indicator matching Stitch"""
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.setFixedHeight(26)
+        self.setFixedHeight(24)
         self.is_active = True
-        self.status_text = "Active · observing"
+        self.status_text = "IDLE • READY"
         
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(10, 0, 12, 0)
+        layout.setContentsMargins(8, 0, 10, 0)
         layout.setSpacing(6)
         
-        self.dot = _PulsingDotWidget()
+        self.dot = QLabel("■")
+        self.dot.setFont(QFont("Consolas", 7, QFont.Weight.Bold))
+        self.dot.setStyleSheet("color: #FFFFFF; border: none; background: transparent;")
         layout.addWidget(self.dot)
         
         self.lbl_status = QLabel(self.status_text)
-        self.lbl_status.setFont(QFont("Segoe UI", 8, QFont.Weight.Medium))
+        self.lbl_status.setFont(QFont("Consolas", 8, QFont.Weight.Bold))
         layout.addWidget(self.lbl_status)
         
         self._apply_style()
@@ -494,24 +584,15 @@ class _ActiveObservingPill(QFrame):
         self.status_text = text
         self.is_active = is_active
         self.lbl_status.setText(text)
-        self.dot.set_active(is_active)
         self._apply_style()
 
     def _apply_style(self):
-        if self.is_active:
-            bg = COLOR_SURFACE
-            border = COLOR_SURFACE_BORDER
-            fg = COLOR_CANONICAL
-        else:
-            bg = COLOR_SURFACE
-            border = COLOR_SURFACE_BORDER
-            fg = COLOR_TEXT_MUTED
-            
+        fg = COLOR_TEXT_PRIMARY if self.is_active else COLOR_TEXT_MUTED
         self.setStyleSheet(f"""
             QFrame {{
-                background-color: {bg};
-                border: 1px solid {border};
-                border-radius: 13px;
+                background-color: {COLOR_SURFACE_CARD};
+                border: 1px solid {COLOR_SURFACE_BORDER};
+                border-radius: 4px;
             }}
             QLabel {{
                 color: {fg};
@@ -809,17 +890,18 @@ class _NavButton(QPushButton):
 
     def _apply_style(self):
         if self.is_active:
-            bg = COLOR_SURFACE_HOVER
+            bg = COLOR_SURFACE_ACTIVE
             fg = COLOR_TEXT_PRIMARY
+            border = f"border-left: 3px solid {COLOR_PRIMARY}; border-radius: 4px;"
         else:
             bg = "transparent"
-            fg = COLOR_TEXT_SECONDARY
+            fg = COLOR_TEXT_MUTED
+            border = "border: none; border-radius: 4px;"
             
         self.setStyleSheet(f"""
             QPushButton {{
                 background-color: {bg};
-                border: none;
-                border-radius: 6px;
+                {border}
                 text-align: left;
             }}
             QPushButton:hover {{
@@ -837,7 +919,7 @@ class _LocalQueueWidget(QFrame):
         self.setFixedHeight(76)
         self.setStyleSheet(f"""
             QFrame {{
-                background-color: {COLOR_SURFACE};
+                background-color: {COLOR_SURFACE_CARD};
                 border: 1px solid {COLOR_SURFACE_BORDER};
                 border-radius: 8px;
             }}

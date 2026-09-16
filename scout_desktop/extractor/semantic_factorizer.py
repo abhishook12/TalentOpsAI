@@ -50,9 +50,10 @@ SYSTEM_NOISE_TERMS = {
     "task manager", "file explorer", "recycle bin",
     # External email client windows
     "thunderbird",
-    # Generic Job Board search result footers
+    # Generic Job Board search result footers & UI Noise
     "cookie notice", "privacy policy", "terms of use", "all rights reserved",
-    "404 not found", "page not found",
+    "404 not found", "page not found", "home feed", "chatgpt", "turboscribe",
+    "jobright", "email id table",
 }
 
 

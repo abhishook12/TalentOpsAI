@@ -56,6 +56,16 @@ FREE_EMAIL_DOMAINS = {
     'noemail.talentops',
 }
 
+BOGUS_COMPANY_NAMES = {
+    'home', 'feed', 'jobright', 'chatgpt', 'chat', 'turboscribe', 
+    'email id table', 'ats', 'at', 'gemini', 'guided search partners', 
+    'guided search', "i'm locking", "i''m locking", 'overview', 'employees', 
+    'active window', 'candidate card', 'quick search', 'homepage', 'inbox', 
+    'contacts', 'search', 'notifications', 'network', 'jobs', 'messaging', 
+    'me', 'format text', 'sent items', 'address book', 'ctv- phone',
+    'chelsie walsh', 'kelly moran', 'jeff thomas', 'brenda geisler'
+}
+
 
 class DiscoveryProcessor:
     def __init__(self, db: Session):
@@ -513,6 +523,12 @@ class DiscoveryProcessor:
 
         owner_user_id = cluster[0].owner_user_id if cluster else 1
 
+        # Reject bogus company names from factorizing as employers
+        if current_company and current_company.lower().strip() in BOGUS_COMPANY_NAMES:
+            current_company = None
+        if previous_company and previous_company.lower().strip() in BOGUS_COMPANY_NAMES:
+            previous_company = None
+
         person = ResolvedPerson(
             owner_user_id=owner_user_id,
             canonical_name=canonical_name,
@@ -678,9 +694,12 @@ class DiscoveryProcessor:
                     if existing_pg:
                         return existing_pg, conf
 
+                    if not r_email or r_email.endswith("@noemail.talentops"):
+                        return None, 0.0
+
                     # Find or create company
                     c_id = None
-                    if r_comp:
+                    if r_comp and str(r_comp).strip().lower() not in BOGUS_COMPANY_NAMES:
                         c_obj = self.db.query(Company).filter(Company.company_name.ilike(str(r_comp).strip())).first()
                         if not c_obj:
                             c_obj = Company(company_name=str(r_comp).strip(), canonical_name=str(r_comp).strip(), trust_score=80)
@@ -691,7 +710,7 @@ class DiscoveryProcessor:
                     # Hydrate canonical recruiter into PostgreSQL so it can be enriched
                     hydrated_rec = Recruiter(
                         recruiter_name=r_name,
-                        email=r_email or f"ext_{secrets.token_hex(8)}@noemail.talentops",
+                        email=r_email,
                         linkedin=r_li,
                         phone=r_phone,
                         title=r_title or "Recruiter",
@@ -732,19 +751,29 @@ class DiscoveryProcessor:
                 (person.linkedin_url and "linkedin.com/in/" in person.linkedin_url)
                 or (getattr(person, "canonical_profile_url", None) and "linkedin.com/in/" in str(person.canonical_profile_url))
             )
-            has_contact = bool(
-                (person.primary_email and not person.primary_email.endswith("@noemail.talentops") and is_valid_email(person.primary_email))
-                or person.primary_phone
+            has_verified_email = bool(
+                person.primary_email and not person.primary_email.endswith("@noemail.talentops") and is_valid_email(person.primary_email)
             )
-            has_employment = bool(person.current_title and person.current_company)
+            has_contact = bool(has_verified_email or person.primary_phone)
+            has_clean_company = bool(person.current_company and person.current_company.lower().strip() not in BOGUS_COMPANY_NAMES)
+            has_employment = bool(person.current_title and has_clean_company)
             has_primary_anchor = bool(has_strong_profile or has_contact or has_employment)
 
-            if has_primary_anchor and (person.identity_confidence >= AUTO_COMMIT_THRESHOLD or (has_employment and person.identity_confidence >= 0.65)):
+            # Master recruiters table strictly requires a deliverable email.
+            # Entities without a valid email are held in REVIEW queue for enrichment rather than manufacturing fake placeholders.
+            if has_primary_anchor and has_verified_email and (person.identity_confidence >= AUTO_COMMIT_THRESHOLD or (has_employment and person.identity_confidence >= 0.65)):
                 return {
                     'person': person,
                     'recruiter': None,
                     'decision': 'NEW',
                     'reason': f'High-confidence new candidate entity with primary anchor (score {person.identity_confidence:.2f})',
+                }
+            elif has_primary_anchor and not has_verified_email:
+                return {
+                    'person': person,
+                    'recruiter': None,
+                    'decision': 'REVIEW',
+                    'reason': f'Awaiting verified deliverable email enrichment (confidence {person.identity_confidence:.2f})',
                 }
             else:
                 return {
@@ -932,7 +961,7 @@ class DiscoveryProcessor:
                             self.db.flush()
                             company_id = new_comp.company_id
 
-                if not company_id and person.current_company:
+                if not company_id and person.current_company and person.current_company.strip().lower() not in BOGUS_COMPANY_NAMES:
                     comp = self.db.query(Company).filter(
                         Company.company_name.ilike(person.current_company.strip())
                     ).first()
@@ -953,6 +982,8 @@ class DiscoveryProcessor:
                 # Guard: Never insert an organization/company as a human Recruiter
                 if is_company_name(person.canonical_name):
                     c_name = person.canonical_name.strip()
+                    if c_name.lower() in BOGUS_COMPANY_NAMES:
+                        continue
                     c_match = self.db.query(Company).filter(Company.company_name.ilike(c_name)).first()
                     co_meta = {}
                     if getattr(person, "metadata_json", None):
@@ -976,8 +1007,21 @@ class DiscoveryProcessor:
                         self.db.add(c_match)
                     continue
 
-                # Create master Recruiter
-                fallback_email = person.primary_email or f"ext_{secrets.token_hex(8)}@noemail.talentops"
+                # Guard: Never insert a dummy @noemail recruiter into the master directory
+                if not person.primary_email or person.primary_email.endswith('@noemail.talentops'):
+                    self.db.query(DiscoveryStaging).filter(
+                        DiscoveryStaging.resolved_person_id == person.id
+                    ).update({
+                        "processing_status": "review",
+                        "decision": "REVIEW",
+                        "decision_reason": "No deliverable email found — held in staging buffer for enrichment",
+                        "processed_at": datetime.now(timezone.utc)
+                    }, synchronize_session=False)
+                    stats['review'] += 1
+                    continue
+
+                # Create master Recruiter with verified email
+                fallback_email = person.primary_email
 
                 # Calculate comprehensive title intelligence
                 t_intel = classify_title(person.current_title or "Recruiter")

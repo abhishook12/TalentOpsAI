@@ -845,9 +845,9 @@ def get_recruiters(
         sort_desc=sort_desc
     )
     
-    # ── Live PostgreSQL Extension Discovery Merge ───────────────
+    # ── Live PostgreSQL Extension & Enterprise Company Merge ───────
     try:
-        from sqlalchemy import or_, and_
+        from sqlalchemy import or_, and_, func as sqlfunc
         pg_query = None
         
         # Build strict scope filters so extension recruiters NEVER leak into unrelated companies or states
@@ -873,7 +873,49 @@ def get_recruiters(
                 Recruiter.location.ilike(f"%{state}%")
             ))
 
-        if search:
+        # Check if this company exists in PostgreSQL and DuckDB has 0 records for it
+        if (company_id is not None or (eff_company and str(eff_company).isdigit())) and total_count == 0:
+            pg_count = db.query(sqlfunc.count(Recruiter.recruiter_id)).filter(and_(Recruiter.is_active == True, *pg_filters)).scalar() or 0
+            if pg_count > 0:
+                total_count = pg_count
+                offset_val = (page - 1) * limit
+                pg_query = db.query(Recruiter).filter(and_(Recruiter.is_active == True, *pg_filters)).order_by(Recruiter.recruiter_id.desc()).offset(offset_val).limit(limit)
+                pg_recs = pg_query.all()
+                results = []
+                for r in pg_recs:
+                    meta = {}
+                    if getattr(r, "metadata_json", None) and isinstance(r.metadata_json, str) and r.metadata_json.startswith("{"):
+                        try:
+                            meta = json.loads(r.metadata_json)
+                        except Exception:
+                            pass
+                    rec_dict = {
+                        "recruiter_id": r.recruiter_id,
+                        "recruiter_name": r.recruiter_name,
+                        "email": r.email if not (r.email and r.email.endswith("@noemail.talentops")) else None,
+                        "phone": r.phone,
+                        "linkedin": r.linkedin,
+                        "specialization": r.title or r.specialization or "Recruiter / Talent Lead",
+                        "title": r.title or r.specialization or "Recruiter / Talent Lead",
+                        "company_id": r.company_id,
+                        "company_name": r.company.company_name if r.company else None,
+                        "location": r.location,
+                        "state": r.state or (r.location[-2:].upper() if r.location and len(r.location) >= 2 else "US"),
+                        "skills": meta.get("skills", []),
+                        "experience_history": meta.get("experience_history", []),
+                        "education": meta.get("education"),
+                        "about_summary": meta.get("about_summary"),
+                        "is_open_to_work": bool(meta.get("is_open_to_work", False)),
+                        "is_hiring": bool(meta.get("is_hiring", False)),
+                        "pronouns": meta.get("pronouns"),
+                        "quality_score": 95,
+                        "completeness_score": 90,
+                        "is_active": r.is_active,
+                        "created_at": str(r.created_at) if r.created_at else None,
+                        "data_source": r.data_source or "postgresql_roster",
+                    }
+                    results.append(rec_dict)
+        elif search:
             q_like = f"%{str(search).strip().lower()}%"
             search_filter = or_(
                 Recruiter.recruiter_name.ilike(q_like),
@@ -882,44 +924,83 @@ def get_recruiters(
                 Recruiter.linkedin.ilike(q_like)
             )
             pg_query = db.query(Recruiter).filter(and_(search_filter, *pg_filters))
+            if pg_query:
+                pg_recs = pg_query.all()
+                for r in reversed(pg_recs):
+                    meta = {}
+                    if getattr(r, "metadata_json", None) and isinstance(r.metadata_json, str) and r.metadata_json.startswith("{"):
+                        try:
+                            meta = json.loads(r.metadata_json)
+                        except Exception:
+                            pass
+                    rec_dict = {
+                        "recruiter_id": r.recruiter_id,
+                        "recruiter_name": r.recruiter_name,
+                        "email": r.email if not (r.email and r.email.endswith("@noemail.talentops")) else None,
+                        "phone": r.phone,
+                        "linkedin": r.linkedin,
+                        "specialization": r.title or r.specialization or "Recruiter / Talent Lead",
+                        "title": r.title or r.specialization or "Recruiter / Talent Lead",
+                        "company_id": r.company_id,
+                        "company_name": r.company.company_name if r.company else None,
+                        "location": r.location,
+                        "state": r.state or (r.location[-2:].upper() if r.location and len(r.location) >= 2 else "US"),
+                        "skills": meta.get("skills", []),
+                        "experience_history": meta.get("experience_history", []),
+                        "education": meta.get("education"),
+                        "about_summary": meta.get("about_summary"),
+                        "is_open_to_work": bool(meta.get("is_open_to_work", False)),
+                        "is_hiring": bool(meta.get("is_hiring", False)),
+                        "pronouns": meta.get("pronouns"),
+                        "quality_score": 95,
+                        "completeness_score": 90,
+                        "is_active": r.is_active,
+                        "created_at": str(r.created_at) if r.created_at else None,
+                        "data_source": r.data_source or "extension",
+                    }
+                    if not any(str(x.get("recruiter_id")) == str(r.recruiter_id) for x in results):
+                        results.insert(0, rec_dict)
+                        total_count += 1
         elif page == 1:
             source_filter = Recruiter.data_source.in_(['extension', 'extension_staged', 'visual_capture', 'parquet_canonical'])
             pg_query = db.query(Recruiter).filter(and_(source_filter, *pg_filters)).order_by(Recruiter.recruiter_id.desc()).limit(50)
-
-        if pg_query:
-            pg_recs = pg_query.all()
-            for r in reversed(pg_recs):
-                meta = {}
-                if getattr(r, "metadata_json", None) and isinstance(r.metadata_json, str) and r.metadata_json.startswith("{"):
-                    try:
-                        meta = json.loads(r.metadata_json)
-                    except Exception:
-                        pass
-                rec_dict = {
-                    "recruiter_id": r.recruiter_id,
-                    "recruiter_name": r.recruiter_name,
-                    "email": r.email if not (r.email and r.email.endswith("@noemail.talentops")) else None,
-                    "phone": r.phone,
-                    "linkedin": r.linkedin,
-                    "specialization": r.title or "Recruiter / Talent Lead",
-                    "company_id": r.company_id,
-                    "location": r.location,
-                    "skills": meta.get("skills", []),
-                    "experience_history": meta.get("experience_history", []),
-                    "education": meta.get("education"),
-                    "about_summary": meta.get("about_summary"),
-                    "is_open_to_work": bool(meta.get("is_open_to_work", False)),
-                    "is_hiring": bool(meta.get("is_hiring", False)),
-                    "pronouns": meta.get("pronouns"),
-                    "quality_score": 95,
-                    "completeness_score": 90,
-                    "is_active": r.is_active,
-                    "created_at": r.created_at,
-                    "data_source": "extension",
-                }
-                if not any(str(x.get("recruiter_id")) == str(r.recruiter_id) for x in results):
-                    results.insert(0, rec_dict)
-                    total_count += 1
+            if pg_query:
+                pg_recs = pg_query.all()
+                for r in reversed(pg_recs):
+                    meta = {}
+                    if getattr(r, "metadata_json", None) and isinstance(r.metadata_json, str) and r.metadata_json.startswith("{"):
+                        try:
+                            meta = json.loads(r.metadata_json)
+                        except Exception:
+                            pass
+                    rec_dict = {
+                        "recruiter_id": r.recruiter_id,
+                        "recruiter_name": r.recruiter_name,
+                        "email": r.email if not (r.email and r.email.endswith("@noemail.talentops")) else None,
+                        "phone": r.phone,
+                        "linkedin": r.linkedin,
+                        "specialization": r.title or r.specialization or "Recruiter / Talent Lead",
+                        "title": r.title or r.specialization or "Recruiter / Talent Lead",
+                        "company_id": r.company_id,
+                        "company_name": r.company.company_name if r.company else None,
+                        "location": r.location,
+                        "state": r.state or (r.location[-2:].upper() if r.location and len(r.location) >= 2 else "US"),
+                        "skills": meta.get("skills", []),
+                        "experience_history": meta.get("experience_history", []),
+                        "education": meta.get("education"),
+                        "about_summary": meta.get("about_summary"),
+                        "is_open_to_work": bool(meta.get("is_open_to_work", False)),
+                        "is_hiring": bool(meta.get("is_hiring", False)),
+                        "pronouns": meta.get("pronouns"),
+                        "quality_score": 95,
+                        "completeness_score": 90,
+                        "is_active": r.is_active,
+                        "created_at": str(r.created_at) if r.created_at else None,
+                        "data_source": r.data_source or "extension",
+                    }
+                    if not any(str(x.get("recruiter_id")) == str(r.recruiter_id) for x in results):
+                        results.insert(0, rec_dict)
+                        total_count += 1
     except Exception as e:
         logger.warning("Error merging live PostgreSQL recruiters: %s", e)
 

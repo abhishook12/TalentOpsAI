@@ -22,6 +22,7 @@ from ..models.models import Company, PageVisit, Recruiter, Vendor
 from ..models.extension_models import ExtensionDiscoveryEvent
 from ..utils.logo_domains import select_logo_domain
 from ..utils.state_sql import EFFECTIVE_RECRUITER_STATE_SQL_R, UNKNOWN_STATE_SENTINEL
+from ..utils.normalizer import extract_domain
 
 
 class SimpleCache:
@@ -363,6 +364,8 @@ def company_states(
     company_key: Optional[str] = Query(None, min_length=1),
     db: Session = Depends(get_db),
 ):
+    company_id = company_id if isinstance(company_id, int) else None
+    company_key = company_key if isinstance(company_key, str) else None
     data_version = recruiter_store.data_version
     selected_key = company_key or (str(company_id) if company_id is not None else None)
     cache_key = f"company_states_{data_version}_{selected_key or 'all'}"
@@ -395,6 +398,24 @@ def company_states(
             unknown_count = int(unknown_row[0]) if unknown_row and unknown_row[0] else 0
             if unknown_count > 0:
                 result.append({"state": UNKNOWN_STATE_SENTINEL, "count": unknown_count})
+
+            # Seamless fallback to PostgreSQL when DuckDB Parquet has no records for this company
+            if not result and selected_key:
+                cid = None
+                if selected_key.isdigit():
+                    cid = int(selected_key)
+                elif company_id is not None:
+                    cid = company_id
+                else:
+                    c_row = db.query(Company.company_id).filter(Company.company_name.ilike(selected_key)).first()
+                    if c_row:
+                        cid = c_row[0]
+
+                if cid:
+                    from sqlalchemy import text
+                    pg_rows = db.execute(text("SELECT COALESCE(NULLIF(state, ''), 'US'), count(*) FROM recruiters WHERE company_id = :cid AND is_active = true GROUP BY COALESCE(NULLIF(state, ''), 'US') ORDER BY count(*) DESC"), {"cid": cid}).fetchall()
+                    if pg_rows:
+                        result = [{"state": r[0], "count": int(r[1])} for r in pg_rows]
                 
             analytics_cache.set(cache_key, result, ttl=60)
             return result
@@ -415,6 +436,13 @@ def companies_search(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_request),
 ):
+    # Safely unwrap query params if called programmatically
+    q = q if isinstance(q, str) else None
+    state = state if isinstance(state, str) else None
+    min_recruiters = min_recruiters if isinstance(min_recruiters, int) else 0
+    limit = limit if isinstance(limit, int) else 100
+    skip = skip if isinstance(skip, int) else 0
+
     # Counts and company keys live in the active Parquet dataset. Include its
     # version in the cache key so Directory never mixes old company metadata
     # with the current recruiter file.
@@ -439,6 +467,51 @@ def companies_search(
             pass
 
     active_companies = recruiter_store.company_directory(q, state, matched_keys=matched_keys)
+
+    # Merge matching PostgreSQL companies that have recruiters in PostgreSQL
+    BOGUS_COMPANY_NAMES = {
+        'home', 'feed', 'jobright', 'chatgpt', 'chat', 'turboscribe', 
+        'email id table', 'ats', 'at', 'gemini', 'guided search partners', 
+        'guided search', "i'm locking", "i''m locking", 'overview', 'employees', 
+        'active window', 'candidate card', 'quick search', 'homepage', 'inbox', 
+        'contacts', 'search', 'notifications', 'network', 'jobs', 'messaging', 
+        'me', 'format text', 'sent items', 'address book', 'ctv- phone',
+        'chelsie walsh', 'kelly moran', 'jeff thomas', 'brenda geisler'
+    }
+
+    existing_keys = {str(row['company_key']) for row in active_companies}
+    if matched_keys:
+        try:
+            from sqlalchemy import func as sqlfunc
+            pg_cids = [int(k) for k in matched_keys if k.isdigit()]
+            if pg_cids:
+                pg_query_filter = [Recruiter.company_id.in_(pg_cids), Recruiter.is_active == True]
+                if state and state.upper() != 'ALL':
+                    pg_query_filter.append(or_(
+                        Recruiter.state == state.upper(),
+                        Recruiter.location.ilike(f"%{state.upper()}%"),
+                        Recruiter.location.ilike(f"%{state}%")
+                    ))
+                pg_counts = dict(db.query(Recruiter.company_id, sqlfunc.count(Recruiter.recruiter_id)).filter(*pg_query_filter).group_by(Recruiter.company_id).all())
+                for cid, cnt in pg_counts.items():
+                    if str(cid) not in existing_keys and cnt > 0:
+                        c_obj = db.query(Company).filter(Company.company_id == cid).first()
+                        if c_obj and (c_obj.company_name or '').strip().lower() not in BOGUS_COMPANY_NAMES:
+                            active_companies.insert(0, {
+                                'company_key': str(cid),
+                                'recruiter_count': cnt,
+                                'dominant_domain': c_obj.primary_domain or extract_domain(c_obj.website) or 'talentops.ai'
+                            })
+                            existing_keys.add(str(cid))
+        except Exception as pge:
+            logger.warning("Error merging postgres company search results: %s", pge)
+
+    # Filter out bogus UI companies
+    active_companies = [
+        row for row in active_companies
+        if str(row['company_key']).strip().lower() not in BOGUS_COMPANY_NAMES
+    ]
+
     if min_recruiters > 0:
         active_companies = [row for row in active_companies if row['recruiter_count'] >= min_recruiters]
 
@@ -500,6 +573,9 @@ def companies_search(
 
         # --- Resolve email_pattern: prefer Parquet domain ---
         email_pattern = parquet_domain or (company.email_pattern if company else None)
+
+        if name and name.lower().strip() in BOGUS_COMPANY_NAMES:
+            continue
 
         enriched_results.append({
             "company_key": key,

@@ -47,7 +47,8 @@ UI_ACTIONS = re.compile(
     r"open to work|hiring|verified|contact info|"
     r"export|suggest update|reveal|contact profile|contact details|"
     r"contact management|similar companies|overview|employees|premium features|"
-    r"scheduled emails|web visits|crm integrations|zoominfo lite|zoominfo|homepage|quick search)$",
+    r"scheduled emails|web visits|crm integrations|zoominfo lite|zoominfo|homepage|quick search|"
+    r"home|feed|jobs|messaging|notifications|my network|business|learning|work|sent items|address book)$",
     re.IGNORECASE,
 )
 
@@ -343,6 +344,12 @@ def is_valid_company_name(text: Optional[str]) -> bool:
         "tnnsowceiic", "oracbcontractors", "oraciecontractors", "epnec metrcvolitan",
         "houstadt", "caudting", "javiles", "supertsi", "stcu", "malik", "jain",
         "hdlstadt ca-aating", "hdlstadt", "paladininc",
+        # Bogus UI & navigation noise
+        "home", "feed", "jobright", "chatgpt", "turboscribe", "email id table",
+        "ats", "at", "guided search", "guided search partners", "i'm locking",
+        "homepage", "inbox", "messaging", "notifications", "my network", "jobs",
+        "for business", "learning", "me", "sent items", "address book", "format text",
+        "chelsie walsh", "kelly moran", "jeff thomas", "brenda geisler",
     }
     if t_lower in chrome_ui_noise:
         return False

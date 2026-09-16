@@ -137,6 +137,10 @@ def is_allowed_scout_target(win_info: Optional['WindowInfo'], b_ctx: Optional[Di
         if any(s in title_lower for s in disallowed_title_substrings):
             return False, "UNSUPPORTED_BROWSER (SEARCH_OR_MEDIA)"
 
+        # Reject search engine redirect / interstitial URLs
+        if "google.com/url" in url or "bing.com/ck/" in url:
+            return False, "UNSUPPORTED_BROWSER (SEARCH_REDIRECT)"
+
         # Target 4: LinkedIn Data (Profiles, Recruiter, Talent, Directory)
         if "linkedin" in title_lower or "sales navigator" in title_lower or "linkedin.com" in url:
             disallowed_linkedin_sections = [

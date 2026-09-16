@@ -36,6 +36,7 @@ from .patterns import (
     SCHOOL_KEYWORDS,
     is_noise_text,
     clean_person_name,
+    is_valid_email,
     EMAIL_REGEX,
     PHONE_REGEX,
 )
@@ -1409,9 +1410,10 @@ class EntityExtractor:
         """Parses a discrete candidate message chunk from chat and produces an EntityCluster."""
         chunk_text = "\n".join(chunk_lines)
 
-        # 1. Extract Emails
-        emails = EMAIL_REGEX.findall(chunk_text)
-        primary_email = emails[0].lower() if emails else None
+        # 1. Extract Valid Emails Only (rejects OCR artifacts like .corn, .can, .ccyn)
+        raw_emails = EMAIL_REGEX.findall(chunk_text)
+        emails = [e.lower() for e in raw_emails if is_valid_email(e)]
+        primary_email = emails[0] if emails else None
 
         # 2. Extract Phones
         raw_phones = PHONE_REGEX.findall(chunk_text)
@@ -1442,24 +1444,38 @@ class EntityExtractor:
         if not primary_email and not primary_phone and not linkedin_url:
             return None
 
-        # 4. Extract Candidate Name
-        cand_name = None
+        # Dynamic Chat Partner Extraction from Window Title (e.g. "Saumya Upadhyay - Chat")
+        chat_partner = None
+        if window_title:
+            m_partner = re.match(r"^(?:(?:\(\d+\+?\)\s*)?)([A-Za-z\s]+?)\s*(?:[-–—|]|messaged)\s*Chat", window_title, re.IGNORECASE)
+            if m_partner:
+                chat_partner = clean_person_name(m_partner.group(1).strip())
 
-        # Blacklist of software, channels, headers, and internal team members to never extract as candidates
+        # Blacklist of software, channels, headers, self-user, and internal team members
         CHAT_NOISE_NAMES = {
             "microsoft teams", "google chat", "slack", "new chat", "recent chats",
             "technovion", "greater noida", "active window", "talentops", "scout desktop",
             "messaged you", "quick easy", "inbox", "sent items", "general", "recent",
             "business intelligence", "busmess inteligence", "prashant tiwari", "prashant",
             "gaurav dwivedi", "muskan jain", "tushar pal", "channel notifications",
-            "pinned messages", "chat files", "posts", "activity", "calendar"
+            "pinned messages", "chat files", "posts", "activity", "calendar",
+            "yatendra rawat", "yatendra", "abhishek jadon", "abhishek",
+            "kamini rajput", "kanika singh", "daley ard associates", "daley and associates",
+            "suraj", "arpit", "mohit tiwari", "kritika yadav", "saumya upadhyay",
         }
+        if chat_partner:
+            CHAT_NOISE_NAMES.add(chat_partner.lower())
+
+        # 4. Extract Candidate Name
+        cand_name = None
 
         # Priority 1: Check chunk lines directly for clean candidate name (2-3 words, no numbers)
         for l in chunk_lines:
             cl = clean_person_name(l)
             if cl and is_valid_person_name(cl) and 2 <= len(cl.split()) <= 3:
                 if cl.lower() in CHAT_NOISE_NAMES:
+                    continue
+                if chat_partner and (cl.lower() in chat_partner.lower() or chat_partner.lower() in cl.lower()):
                     continue
                 if not is_plausible_title(cl):
                     cand_name = cl
@@ -1472,10 +1488,9 @@ class EntityExtractor:
                 if "." in local:
                     parts = [p.capitalize() for p in local.split(".") if p.isalpha() and len(p) >= 2]
                     if 2 <= len(parts) <= 3:
-                        cand_name = " ".join(parts)
-                        if cand_name.lower() in CHAT_NOISE_NAMES:
-                            cand_name = None
-                        else:
+                        c_candidate = " ".join(parts)
+                        if c_candidate.lower() not in CHAT_NOISE_NAMES:
+                            cand_name = c_candidate
                             break
 
         # Priority 3: Check LinkedIn slug
@@ -1483,28 +1498,32 @@ class EntityExtractor:
             m_slug = re.search(r"/in/([a-zA-Z0-9_\-\.]+)", linkedin_url)
             if m_slug:
                 raw_slug = m_slug.group(1).split("-")[0].replace(".", "")
-                if raw_slug.lower() == "crystalpettibone":
-                    cand_name = "Crystal Pettibone"
-                elif raw_slug.isalpha() and len(raw_slug) >= 4:
-                    cand_name = raw_slug.capitalize()
+                if raw_slug.isalpha() and len(raw_slug) >= 4:
+                    c_candidate = raw_slug.capitalize()
+                    if c_candidate.lower() not in CHAT_NOISE_NAMES:
+                        cand_name = c_candidate
 
-        # Fallback candidate name if still None
+        # In chat streams: if no genuine human name was identified, DO NOT generate a placeholder!
         if not cand_name:
-            if primary_email:
-                cand_name = primary_email.split("@")[0].capitalize()
-            elif linkedin_url:
-                cand_name = "Talent Candidate"
-            else:
-                return None
+            return None
 
-        if cand_name and cand_name.lower() in CHAT_NOISE_NAMES:
+        if cand_name.lower() in CHAT_NOISE_NAMES:
+            return None
+        if chat_partner and (cand_name.lower() in chat_partner.lower() or chat_partner.lower() in cand_name.lower()):
             return None
 
         # 5. Extract Title & Company
         company = None
         title = None
         for l in chunk_lines:
-            t, c = clean_title_and_company(l)
+            # Clean phone numbers or office/cell tags from title candidate line
+            l_clean = re.sub(r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\b\d{5,}\b|\(office\)|\(cell\)", "", l).strip()
+            # If line starts with someone else's name before the title e.g. "Zane Shimizu 2nd Recruiter"
+            m_prefix = re.match(r"^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\s+(?:(?:\d(?:st|nd|rd)\s+)?)(Recruiter|Technical Recruiter|Sourcer|Account Manager|Senior Recruiter|Talent Acquisition.*)$", l_clean, re.IGNORECASE)
+            if m_prefix:
+                l_clean = m_prefix.group(1).strip()
+
+            t, c = clean_title_and_company(l_clean)
             if t and is_plausible_title(t):
                 title = t
                 if c and is_valid_company_name(c):
@@ -1514,6 +1533,7 @@ class EntityExtractor:
         if not title:
             for l in chunk_lines:
                 cand_t = l.split(" at ")[0].split(" @ ")[0].strip()
+                cand_t = re.sub(r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}", "", cand_t).strip()
                 if is_plausible_title(cand_t):
                     title = cand_t
                     break
@@ -1533,8 +1553,10 @@ class EntityExtractor:
             for e in emails:
                 dom = e.split("@")[-1].lower()
                 if dom not in FREE_DOMAINS and "." in dom:
-                    company = dom.split(".")[0].capitalize()
-                    break
+                    derived_comp = dom.split(".")[0].capitalize()
+                    if len(derived_comp) >= 4 and is_valid_company_name(derived_comp):
+                        company = derived_comp
+                        break
 
         # 6. Candidate Creation Gate Enforcement (Rule 2)
         from scout_desktop.extractor.candidate_gate import create_candidate_if_valid

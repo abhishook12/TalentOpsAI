@@ -29,6 +29,7 @@ from ..utils.normalizer import (
     UI_ACTION_TERMS,
     PLATFORM_NAMES,
     is_company_name,
+    is_valid_email,
 )
 from ..utils.title_normalizer import classify_title
 
@@ -732,7 +733,7 @@ class DiscoveryProcessor:
                 or (getattr(person, "canonical_profile_url", None) and "linkedin.com/in/" in str(person.canonical_profile_url))
             )
             has_contact = bool(
-                (person.primary_email and not person.primary_email.endswith("@noemail.talentops"))
+                (person.primary_email and not person.primary_email.endswith("@noemail.talentops") and is_valid_email(person.primary_email))
                 or person.primary_phone
             )
             has_employment = bool(person.current_title and person.current_company)

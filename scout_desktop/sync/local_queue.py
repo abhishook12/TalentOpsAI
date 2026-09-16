@@ -134,25 +134,29 @@ class LocalQueue:
             norm_priority = "MEDIUM"
 
         with self._get_conn() as conn:
-            # Deduplication: check if identical record was queued recently
+            # Deduplication: check if identical record exists anywhere in queue
             cur = conn.execute("""
                 SELECT 1 FROM queued_observations 
-                WHERE content_hash = ? AND (status = 'PENDING' OR (status = 'SYNCED' AND synced_at >= ?))
-            """, (content_hash, now - 86400))
+                WHERE content_hash = ?
+            """, (content_hash,))
             if cur.fetchone():
-                logger.info("Duplicate observation detected, skipping insertion: %s", content_hash)
+                logger.debug("Duplicate observation detected, skipping insertion: %s", content_hash)
                 return -1
 
-            cur = conn.execute(
-                """
-                INSERT INTO queued_observations (
-                    cluster_json, status, created_at, content_hash, priority, operation
-                ) VALUES (?, 'PENDING', ?, ?, ?, ?)
-                """,
-                (payload_str, now, content_hash, norm_priority, operation),
-            )
-            conn.commit()
-            return cur.lastrowid
+            try:
+                cur = conn.execute(
+                    """
+                    INSERT INTO queued_observations (
+                        cluster_json, status, created_at, content_hash, priority, operation
+                    ) VALUES (?, 'PENDING', ?, ?, ?, ?)
+                    """,
+                    (payload_str, now, content_hash, norm_priority, operation),
+                )
+                conn.commit()
+                return cur.lastrowid
+            except sqlite3.IntegrityError:
+                logger.debug("Duplicate content_hash caught via IntegrityError: %s", content_hash)
+                return -1
 
     def enqueue_packet(
         self,

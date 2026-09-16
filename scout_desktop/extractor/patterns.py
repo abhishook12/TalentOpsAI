@@ -308,6 +308,14 @@ def is_valid_company_name(text: Optional[str]) -> bool:
     if re.match(r"^[iIl1|Hh]{3,}$", t):
         return False
 
+    # Reject unicode replacement character
+    if "\ufffd" in t or "\\ufffd" in t or "\uFFFD" in t:
+        return False
+
+    # Reject email addresses or web paths mistaken as companies
+    if "@" in t or "http://" in t or "https://" in t or "www." in t or "/app/" in t_lower or "/chat/" in t_lower:
+        return False
+
     # ===== Chrome / Browser / System UI Noise Blocklist =====
     # These are UI elements that OCR frequently misreads as company names
     chrome_ui_noise = {
@@ -328,10 +336,23 @@ def is_valid_company_name(text: Optional[str]) -> bool:
         "microsoft teams", "teams", "google chat", "slack", "new chat",
         "recent chats", "business intelligence", "busmess inteligence",
         "pinned messages", "chat files", "posts", "activity", "calendar",
-        "channel notifications", "general", "recent",
+        "channel notifications", "general", "recent", "chat",
+        # Sourcing / OCR noise words and truncated fragments
+        "ctv-", "ctv", "gmai", "ynai", "outbok", "dahyaa", "ryzir", "ryzirk",
+        "azusasolutions", "azusasdutions", "azusasdgtions", "impresiviwalth",
+        "tnnsowceiic", "oracbcontractors", "oraciecontractors", "epnec metrcvolitan",
+        "houstadt", "caudting", "javiles", "supertsi", "stcu", "malik", "jain",
+        "hdlstadt ca-aating", "hdlstadt", "paladininc",
     }
     if t_lower in chrome_ui_noise:
         return False
+
+    # Single-word companies under 4 characters are almost always OCR fragments unless on whitelist
+    comp_tokens = t.split()
+    if len(comp_tokens) == 1 and len(t) < 4:
+        valid_short_corps = {"ibm", "sap", "pwc", "hp", "ey", "bp", "ge", "att", "ups", "aws", "bnp", "dhl", "adp"}
+        if t_lower not in valid_short_corps:
+            return False
 
     # Reject strings starting or ending with special characters or trailing digits (OCR artifacts like "%iApps", "-5", "System;", "281-")
     if t[0] in "-–—_%#@!~`^&*()[]{}<>|\\;:\"'/?." or t[-1] in "-–—_%#@!~`^&*()[]{}<>|\\;:\"'/?.,":
@@ -368,6 +389,12 @@ def is_valid_company_name(text: Optional[str]) -> bool:
     non_alpha = sum(1 for c in t if not c.isalnum() and c not in " &.,'-/")
     if len(t) > 0 and non_alpha / len(t) > 0.3:
         return False
+
+    # Words in company name >= 4 characters must contain at least one vowel
+    for tok in comp_tokens:
+        clean_tok = re.sub(r"[^a-zA-Z]", "", tok)
+        if len(clean_tok) >= 4 and not re.search(r"[aeiouyAEIOUY]", clean_tok):
+            return False
 
     # Civic, government, institutional organizations that may contain geographic names (e.g. City and County of San Francisco, Port of Oakland)
     is_civic_or_org = bool(re.search(
@@ -504,8 +531,22 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         return False
 
     # A person name CANNOT be a company name or contain corporate designators!
-    corp_designators = ["inc", "llc", "corp", "corporation", "gmbh", "technologies", "technology", "solutions", "services", "consulting", "staffing", "workforce", "group", "holdings", "partners", "agency", "labs", "software", "international", "enterprises"]
+    corp_designators = [
+        "inc", "llc", "corp", "corporation", "gmbh", "technologies", "technology",
+        "solutions", "services", "consulting", "staffing", "workforce", "group",
+        "holdings", "partners", "agency", "labs", "software", "international",
+        "enterprises", "associates", "associated", "network", "networks", "systems",
+        "global", "capital", "ventures", "management", "financial"
+    ]
     if is_valid_company_name(t) and any(re.search(rf"\b{re.escape(d)}\b", t, re.IGNORECASE) for d in corp_designators):
+        return False
+
+    # Reject names that end in corporate / agency designations (e.g. "Daley Ard Associates")
+    if any(t.lower().endswith(" " + d) for d in [
+        "associates", "associated", "partners", "partner", "group", "holdings",
+        "solutions", "consulting", "enterprises", "llc", "inc", "corp", "agency",
+        "network", "networks", "systems", "ventures", "capital"
+    ]):
         return False
 
     words = t.split()
@@ -523,7 +564,11 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         return False
 
     # Reject any string containing unicode replacement character or unprintable chars
-    if "\ufffd" in t or "\\ufffd" in t:
+    if "\ufffd" in t or "\\ufffd" in t or "\uFFFD" in t:
+        return False
+
+    # Every name token with length >= 3 must contain at least one vowel (rejects consonant-only OCR noise e.g. 'Svh', 'Trk')
+    if any(len(w) >= 3 and not re.search(r"[aeiouyAEIOUY]", w) for w in clean_words):
         return False
 
     # Every word must be a valid human name token: Capital letter followed by lowercase letters
@@ -558,13 +603,15 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         "microsoft", "teams", "slack", "skype", "webex", "zoom", "technovion",
         "scout", "demand", "lawyers", "lawyer", "legal",
         "prashant", "tiwari", "gaurav", "dwivedi", "muskan", "tushar",
+        "yatendra", "rawat", "abhishek", "jadon",
         "post", "posts", "quick", "easy", "prompt", "top", "united", "states",
         "history", "conversation", "conversations", "profile", "profiles",
         "message", "messages", "filter", "filters", "dialog", "session", "menu",
-        # Quantitative / Job posting / Adjectives
+        # Quantitative / Job posting / Adjectives / Agencies
         "minimum", "maximum", "salary", "hourly", "rate", "rates", "contract",
         "total", "average", "standard", "background", "check", "clearance",
         "client", "vendor", "partner", "partners", "overview", "description",
+        "associates", "associated",
         # Web / Browser & Document Noise
         "bookmarks", "all", "description", "spreadsheets", "management", "contract",
         "mid-level", "senior", "junior", "full", "part-time", "temporary", "remote",
@@ -589,6 +636,62 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         return False
     if "reason:" in t.lower() or "active window" in t.lower() or "overview" in t.lower():
         return False
+    return True
+
+
+VALID_EMAIL_TLDS = {
+    "com", "org", "net", "edu", "gov", "mil", "int",
+    "co", "io", "ai", "in", "us", "uk", "ca", "de", "fr", "au",
+    "dev", "tech", "xyz", "app", "me", "info", "biz", "eu", "ch",
+    "nl", "se", "no", "es", "it", "br", "mx", "jp", "cn", "sg",
+    "nz", "ie", "za", "cloud", "agency", "global", "solutions",
+    "consulting", "careers", "group", "team", "network", "digital",
+    "pro", "online", "site", "live", "world"
+}
+
+DISALLOWED_OCR_EMAIL_TLDS = {
+    "corn", "can", "ccyn", "eom", "carn", "corr", "coin", "comr",
+    "cyn", "con", "corm", "cam", "coom", "vom", "xom"
+}
+
+
+def is_valid_email(email: Optional[str]) -> bool:
+    """
+    Validates whether an email string is structurally sound and has a legitimate TLD.
+    Rejects OCR-garbled emails ending in .corn, .can, .ccyn, .eom, etc.
+    """
+    if not email or not isinstance(email, str):
+        return False
+    e = email.strip().lower()
+    if len(e) < 6 or len(e) > 100:
+        return False
+    if not EMAIL_REGEX.match(e):
+        return False
+    if any(c in e for c in [" ", "\ufffd", "\uFFFD"]):
+        return False
+
+    parts = e.split("@")
+    if len(parts) != 2:
+        return False
+    local, domain = parts
+    if len(local) < 1 or len(domain) < 3:
+        return False
+
+    # Domain must contain at least one dot
+    if "." not in domain:
+        return False
+
+    tld = domain.split(".")[-1].strip().lower()
+    if tld in DISALLOWED_OCR_EMAIL_TLDS:
+        return False
+    if tld not in VALID_EMAIL_TLDS:
+        return False
+
+    # Domain name before TLD must be at least 2 chars
+    domain_name = domain.split(".")[-2]
+    if len(domain_name) < 2:
+        return False
+
     return True
 
 

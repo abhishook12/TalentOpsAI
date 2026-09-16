@@ -27,6 +27,7 @@ from scout_desktop.extractor.patterns import (
     clean_location_text,
     is_valid_location,
     is_plausible_title,
+    is_valid_email,
     EMAIL_REGEX,
     PHONE_REGEX,
 )
@@ -358,6 +359,34 @@ def create_candidate_if_valid(
             audit_checklist=["Human person name validation: FAIL"],
         )
 
+    # Self-Name / Account Owner Exclusion
+    self_names = {"yatendra rawat", "abhishek jadon"}
+    if cleaned_name.lower() in self_names:
+        return CandidateGateResult(
+            decision="REJECTED_OBSERVATION",
+            is_valid_candidate=False,
+            status="REJECTED",
+            platform=platform,
+            reasons=[f"Candidate name matches logged-in user / scout owner: '{cleaned_name}'"],
+            audit_checklist=["Self-name rejection: TRIGGERED"],
+        )
+
+    # Chat Conversation Partner Exclusion (Window Title Sender/Receiver)
+    if window_title and ("- chat" in window_title.lower() or "chat" in window_title.lower()):
+        chat_partner_match = re.match(r"^(?:(?:\(\d+\+?\)\s*)?)([A-Za-z\s]+?)\s*(?:[-–—|]|messaged)\s*Chat", window_title, re.IGNORECASE)
+        if chat_partner_match:
+            partner_raw = chat_partner_match.group(1).strip()
+            partner_clean = clean_person_name(partner_raw)
+            if partner_clean and (cleaned_name.lower() == partner_clean.lower() or cleaned_name.lower() in partner_clean.lower() or partner_clean.lower() in cleaned_name.lower()):
+                return CandidateGateResult(
+                    decision="REJECTED_OBSERVATION",
+                    is_valid_candidate=False,
+                    status="REJECTED",
+                    platform=platform,
+                    reasons=[f"Candidate name matches chat conversation partner '{partner_clean}' from window title"],
+                    audit_checklist=["Chat partner rejection: TRIGGERED"],
+                )
+
     checklist.append(f"Valid candidate name verified: {cleaned_name}")
     field_conf["name"] = 0.95
 
@@ -425,7 +454,7 @@ def create_candidate_if_valid(
 
     # Emails & Phones
     email = observation.get("email") or observation.get("primary_email") or observation.get("raw_email")
-    valid_email = email.strip() if (email and EMAIL_REGEX.search(str(email))) else None
+    valid_email = email.strip() if (email and is_valid_email(str(email))) else None
     if valid_email:
         field_conf["email"] = 0.95
         checklist.append(f"Contact email verified: {valid_email}")
@@ -439,7 +468,7 @@ def create_candidate_if_valid(
             }
             if domain not in free_domains and "." in domain:
                 derived_comp = domain.split(".")[0].capitalize()
-                if is_valid_company_name(derived_comp):
+                if len(derived_comp) >= 4 and is_valid_company_name(derived_comp):
                     valid_company = derived_comp
                     field_conf["company"] = 0.85
                     checklist.append(f"Company inferred from corporate email domain: {valid_company}")
@@ -516,7 +545,7 @@ def create_candidate_if_valid(
     # VERIFIED: has_primary_anchor AND score >= 70 AND confidence >= 0.75
     # VERIFIED (sourcing platform): has_primary_anchor AND score >= 70 AND confidence >= 0.60 AND has_platform_context AND has_employment
     #   → LinkedIn/ZoomInfo/Apollo window: must have full employment (title + valid company) if no URL/contact!
-    # VERIFIED (recruiter chat): has_primary_anchor AND score >= 70 AND confidence >= 0.65 AND is_recruiter_chat AND (has_employment OR has_verified_contact)
+    # VERIFIED (recruiter chat): has_primary_anchor AND score >= 75 AND confidence >= 0.75 AND is_recruiter_chat AND (has_employment OR (has_strong_profile AND has_verified_contact))
     # REVIEW_REQUIRED: score >= 40 AND (has_partial_employment OR canonical_url OR has_platform_context)
     # REJECTED: anything below
     verified_standard = (
@@ -531,10 +560,10 @@ def create_candidate_if_valid(
         and has_employment
     )
     verified_chat_context = (
-        quality_score >= 70
-        and identity_conf >= 0.65
+        quality_score >= 75
+        and identity_conf >= 0.75
         and is_recruiter_chat
-        and (has_employment or has_verified_contact)
+        and (has_employment or (has_strong_profile and has_verified_contact))
     )
     if has_primary_anchor and (verified_standard or verified_platform_context or verified_chat_context):
         decision = "CANDIDATE_VERIFIED"

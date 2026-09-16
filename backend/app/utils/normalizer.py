@@ -217,7 +217,12 @@ COMPANY_NOISE_PATTERNS = {
     'corporate email', 'corporate contact', '7 profiles', 'professional',
     'active window', 'overview', 'people', 'reason', 'candidate card',
     'mailings', 'domain search', 'messaged you', 'quick easy prompt',
-    'experience', 'my network', 'followed by', 'ihhi', 'my',
+    'experience', 'my network', 'followed by', 'ihhi', 'my', 'chat',
+    'ctv-', 'ctv', 'gmai', 'ynai', 'outbok', 'dahyaa', 'ryzir', 'ryzirk',
+    'azusasolutions', 'azusasdutions', 'azusasdgtions', 'impresiviwalth',
+    'tnnsowceiic', 'oracbcontractors', 'oraciecontractors', 'epnec metrcvolitan',
+    'houstadt', 'caudting', 'javiles', 'supertsi', 'stcu', 'malik', 'jain',
+    'hdlstadt ca-aating', 'hdlstadt', 'paladininc',
 }
 
 def validate_company_for_person(company_name: Optional[str], person_name: Optional[str] = None) -> Tuple[bool, Optional[str]]:
@@ -232,11 +237,32 @@ def validate_company_for_person(company_name: Optional[str], person_name: Option
     if not raw:
         return True, None
 
+    # Reject corrupt unicode replacement characters
+    if "\ufffd" in raw or "\\ufffd" in raw or "\uFFFD" in raw:
+        return False, f"Company contains corrupt unicode characters: '{raw}'"
+
+    # Reject email addresses or web paths mistaken as companies
+    if "@" in raw or "/app/" in raw.lower() or "/chat/" in raw.lower():
+        return False, f"Company contains email or path syntax: '{raw}'"
+
     # Strip leading notification count patterns like "(121) ", "(2) ", "(1) "
     raw = re.sub(r'^(?:[\(\[]?\d+\+?[\)\]]?\s*[|•·–—\-:]?\s*)+', '', raw).strip()
     if not raw:
         return False, "Company was solely notification noise"
     lower = raw.lower()
+
+    # Single-word companies under 4 characters are almost always OCR fragments unless on whitelist
+    comp_tokens = raw.split()
+    if len(comp_tokens) == 1 and len(raw) < 4:
+        valid_short_corps = {"ibm", "sap", "pwc", "hp", "ey", "bp", "ge", "att", "ups", "aws", "bnp", "dhl", "adp"}
+        if lower not in valid_short_corps:
+            return False, f"Single-word company too short ({len(raw)} chars): '{raw}'"
+
+    # Reject words >= 4 chars with no vowels
+    for tok in comp_tokens:
+        clean_tok = re.sub(r"[^a-zA-Z]", "", tok)
+        if len(clean_tok) >= 4 and not re.search(r"[aeiouyAEIOUY]", clean_tok):
+            return False, f"Company token contains no vowels (OCR consonant noise): '{tok}'"
 
     # Reject remaining notification count patterns if still embedded
     if re.search(r'\(\d+\+?\)', raw):
@@ -382,18 +408,28 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
         'message', 'messages', 'filter', 'filters', 'dialog', 'session', 'menu',
         'overview', 'people', 'reason', 'active window', 'active', 'window',
         'cto', 'ceo', 'cfo', 'coo', 'vp', 'hr', 'myridius', 'candidate card',
+        'yatendra', 'rawat', 'abhishek', 'jadon',
     }
     if any(w in SYSTEM_NOISE_TOKENS for w in lower_words):
         return False, None, f"Name contains system or application noise ('{cleaned}')"
 
-    # Reject quantitative / job posting adjectives
+    # Reject quantitative / job posting adjectives / agencies
     QUANTITATIVE_ADJECTIVES = {
         'minimum', 'maximum', 'salary', 'hourly', 'rate', 'rates', 'contract',
         'total', 'average', 'standard', 'background', 'check', 'clearance',
         'client', 'vendor', 'partner', 'partners', 'overview', 'description',
+        'associates', 'associated',
     }
     if any(w in QUANTITATIVE_ADJECTIVES for w in lower_words):
         return False, None, f"Name contains quantitative or job posting adjective ('{cleaned}')"
+
+    # Reject names that end in corporate / agency designations (e.g. "Daley Ard Associates")
+    if any(lower.endswith(" " + d) for d in [
+        "associates", "associated", "partners", "partner", "group", "holdings",
+        "solutions", "consulting", "enterprises", "llc", "inc", "corp", "agency",
+        "network", "networks", "systems", "ventures", "capital"
+    ]):
+        return False, None, f"Name ends in corporate or agency designation ('{cleaned}')"
 
     # Reject single-letter tokens (e.g. 'M Inbox', 'Ana R Billios 0')
     if any(len(w) < 2 for w in words):
@@ -402,6 +438,10 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
     # Must be 2 to 4 tokens
     if len(words) < 2 or len(words) > 4:
         return False, None, f"Name must be 2-4 words, got {len(words)} ('{cleaned}')"
+
+    # Every name token with length >= 3 must contain at least one vowel (rejects consonant-only OCR noise e.g. 'Svh', 'Trk')
+    if any(len(w) >= 3 and not re.search(r"[aeiouyAEIOUY]", w) for w in words):
+        return False, None, f"Name word contains no vowels (OCR consonant noise: '{cleaned}')"
 
     # Reject internal uppercase letters that represent OCR glitches (e.g. 'SaO', 'Kmika Svh')
     for w in words:
@@ -1108,3 +1148,59 @@ def generate_completeness_report(entity: Dict[str, Any], page_context: Optional[
         "new_information": [c['field'] for c in extracted_categories],
         "evidence_grounding_status": "PASS",
     }
+
+
+VALID_EMAIL_TLDS = {
+    "com", "org", "net", "edu", "gov", "mil", "int",
+    "co", "io", "ai", "in", "us", "uk", "ca", "de", "fr", "au",
+    "dev", "tech", "xyz", "app", "me", "info", "biz", "eu", "ch",
+    "nl", "se", "no", "es", "it", "br", "mx", "jp", "cn", "sg",
+    "nz", "ie", "za", "cloud", "agency", "global", "solutions",
+    "consulting", "careers", "group", "team", "network", "digital",
+    "pro", "online", "site", "live", "world"
+}
+
+DISALLOWED_OCR_EMAIL_TLDS = {
+    "corn", "can", "ccyn", "eom", "carn", "corr", "coin", "comr",
+    "cyn", "con", "corm", "cam", "coom", "vom", "xom"
+}
+
+
+def is_valid_email(email: Optional[str]) -> bool:
+    """
+    Validates whether an email string is structurally sound and has a legitimate TLD.
+    Rejects OCR-garbled emails ending in .corn, .can, .ccyn, .eom, etc.
+    """
+    if not email or not isinstance(email, str):
+        return False
+    e = email.strip().lower()
+    if len(e) < 6 or len(e) > 100:
+        return False
+    if not re.match(r"\b[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+\b", e):
+        return False
+    if any(c in e for c in [" ", "\ufffd", "\uFFFD"]):
+        return False
+
+    parts = e.split("@")
+    if len(parts) != 2:
+        return False
+    local, domain = parts
+    if len(local) < 1 or len(domain) < 3:
+        return False
+
+    # Domain must contain at least one dot
+    if "." not in domain:
+        return False
+
+    tld = domain.split(".")[-1].strip().lower()
+    if tld in DISALLOWED_OCR_EMAIL_TLDS:
+        return False
+    if tld not in VALID_EMAIL_TLDS:
+        return False
+
+    # Domain name before TLD must be at least 2 chars
+    domain_name = domain.split(".")[-2]
+    if len(domain_name) < 2:
+        return False
+
+    return True

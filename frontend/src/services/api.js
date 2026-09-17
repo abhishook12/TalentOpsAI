@@ -212,7 +212,7 @@ export async function logAction(actionType, details = {}, status = 'success') {
 
 export function getErrorMessage(err, fallback = 'Something went wrong') {
   if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
-    return 'The server took longer than expected to respond (it may be waking up from cold sleep). Please wait a moment and try again.'
+    return 'The server took longer than expected to respond. Please check your connection and try again.'
   }
   if (err?.message === 'Network Error' || err?.code === 'ERR_NETWORK') {
     return `Cannot reach the API at ${API}. Start the backend (uvicorn) or check VITE_API_URL in frontend/.env`

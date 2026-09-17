@@ -4,7 +4,6 @@ import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import ApprovalProgress from '../../components/auth/ApprovalProgress'
 import { useGoogleLogin } from '@react-oauth/google'
 import AuthFrame from './AuthFrame'
-import AppLoadingOverlay from '../../components/AppLoadingOverlay'
 import api from '../../services/api'
 
 export default function Login() {
@@ -19,21 +18,14 @@ export default function Login() {
   const [error, setError] = useState('')
   const [emailTouched, setEmailTouched] = useState(false)
   
-  // Splash Screen State
+  // Login Submission State
   const [isAuthenticating, setIsAuthenticating] = useState(false)
-  const [authProgress, setAuthProgress] = useState(null)
   const [pendingDeviceId, setPendingDeviceId] = useState(null)
-  const [authStatusText, setAuthStatusText] = useState(null)
   
   const { login, googleLogin, checkAuthStatus } = useAuth()
   const navigate = useNavigate()
   const search = useSearch({ from: '/login' })
   const redirect = decodeURIComponent(search.redirect || '/')
-
-  // Silently pre-warm server on page mount
-  React.useEffect(() => {
-    api.get('/ping', { skipCache: true }).catch(() => {})
-  }, [])
 
   const isEmailValid = email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
   const isFormValid = isEmailValid && password.length >= 1
@@ -41,21 +33,9 @@ export default function Login() {
   const performBackgroundInitialization = async (authFunction) => {
     setError('')
     setIsAuthenticating(true)
-    setAuthProgress(null) // Indeterminate start
-    setAuthStatusText(null)
-    
-    // Transparent elapsed counter for cold-start progress
-    let elapsed = 0
-    const ticker = setInterval(() => {
-      elapsed += 1
-      if (elapsed >= 3) {
-        setAuthStatusText(`Connecting to server (waking up from cold sleep: ${elapsed}s)...`)
-      }
-    }, 1000)
     
     try {
       const data = await authFunction()
-      clearInterval(ticker)
       
       if (data && data.status === 'pending_approval') {
         setIsAuthenticating(false)
@@ -63,18 +43,12 @@ export default function Login() {
         return
       }
       
-      setAuthProgress(100)
-      
-      // Brief animation for premium UX before instant navigation
-      await new Promise(res => setTimeout(res, 300))
-      
       navigate({ to: redirect })
       
     } catch (err) {
-      clearInterval(ticker)
       let errorDetail = err?.response?.data?.detail || err?.message || 'Authentication failed. Please check your credentials.'
       if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
-        errorDetail = 'The cloud server is taking longer than usual to wake up. Please click Sign In again in a few moments.'
+        errorDetail = 'Connection timed out. Please try signing in again.'
       }
       if (Array.isArray(errorDetail)) {
           errorDetail = errorDetail.map(e => e.msg).join(', ')
@@ -113,8 +87,6 @@ export default function Login() {
 
   return (
     <>
-      <AppLoadingOverlay isVisible={isAuthenticating} progress={authProgress} statusText={authStatusText} />
-      
       {pendingDeviceId ? (
         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '100%', zIndex: 10 }}>
           <ApprovalProgress 
@@ -131,20 +103,9 @@ export default function Login() {
       <AuthFrame isAuthenticating={isAuthenticating}>
         
         {error && (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3.5 rounded-xl mb-6 text-sm flex flex-col gap-2.5 leading-[1.4]" role="alert">
-            <div className="flex items-start gap-2.5">
-              <i className="ti ti-alert-circle mt-[2px] text-base shrink-0" />
-              <span className="flex-1">{error}</span>
-            </div>
-            {(error.includes('wake up') || error.includes('longer than usual') || error.includes('timeout')) && (
-              <button
-                type="button"
-                onClick={handleSubmit}
-                className="self-start ml-6 px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-md text-xs font-medium border border-red-500/30 transition-colors cursor-pointer flex items-center gap-1.5"
-              >
-                <i className="ti ti-refresh" /> Retry Sign In
-              </button>
-            )}
+          <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3.5 rounded-xl mb-6 text-sm flex items-center gap-2.5 leading-[1.4]" role="alert">
+            <i className="ti ti-alert-circle text-base shrink-0" />
+            <span className="flex-1">{error}</span>
           </div>
         )}
 

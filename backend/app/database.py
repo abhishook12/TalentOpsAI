@@ -62,16 +62,27 @@ def set_sqlite_functions(dbapi_connection, connection_record):
         except AttributeError:
             pass
 
-engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True,
-    pool_recycle=1800 if DATABASE_URL.startswith("postgresql") else 300,
-    pool_size=25,
-    max_overflow=20,
-    pool_timeout=30,
-    pool_use_lifo=True,
-    connect_args=connect_args
-)
+from sqlalchemy.pool import NullPool
+
+if DATABASE_URL.startswith("postgresql"):
+    # Supabase Transaction Pooler (port 6543) already manages connection pooling via PgBouncer.
+    # Using NullPool prevents SQLAlchemy QueuePool limit exhaustion (size 25 overflow 20).
+    engine = create_engine(
+        DATABASE_URL,
+        poolclass=NullPool,
+        connect_args=connect_args
+    )
+else:
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,
+        pool_recycle=300,
+        pool_size=25,
+        max_overflow=20,
+        pool_timeout=30,
+        pool_use_lifo=True,
+        connect_args=connect_args
+    )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()

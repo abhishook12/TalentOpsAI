@@ -165,6 +165,49 @@ const shellStyles = `
     transform: translateY(10px);
     pointer-events: none;
   }
+
+  /* Scoped Auth Input Precision & Dark Theme Contrast */
+  .auth-form-container input[type="email"],
+  .auth-form-container input[type="password"],
+  .auth-form-container input[type="text"] {
+    background-color: #141418 !important;
+    color: #ffffff !important;
+    border: 1px solid #2e2e38 !important;
+    border-radius: 8px !important;
+    padding-left: 42px !important;
+    padding-right: 42px !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    line-height: 44px !important;
+    font-size: 14px !important;
+    transition: border-color 0.2s, box-shadow 0.2s !important;
+  }
+
+  .auth-form-container input[type="email"]::placeholder,
+  .auth-form-container input[type="password"]::placeholder,
+  .auth-form-container input[type="text"]::placeholder {
+    color: #71717a !important;
+  }
+
+  .auth-form-container input[type="email"]:focus,
+  .auth-form-container input[type="password"]:focus,
+  .auth-form-container input[type="text"]:focus {
+    border-color: #ffffff !important;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1) !important;
+  }
+
+  .auth-form-container input[type="checkbox"] {
+    all: revert !important;
+    accent-color: #ffffff !important;
+    width: 16px !important;
+    height: 16px !important;
+    min-height: 16px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+  }
 `
 
 export default function AuthFrame({ children, isAuthenticating }) {

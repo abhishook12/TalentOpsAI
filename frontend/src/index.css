@@ -329,7 +329,7 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     cursor: not-allowed;
   }
 
-  input, select, textarea {
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea {
     background: var(--panel-bg);
     color: var(--text-primary);
     border: 1px solid var(--card-border);
@@ -339,10 +339,10 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     outline: none;
     transition: border-color 0.15s ease, background 0.15s ease;
   }
-  input:focus, select:focus, textarea:focus {
+  input:not([type="checkbox"]):not([type="radio"]):focus, select:focus, textarea:focus {
     border-color: var(--text-primary);
   }
-  input::placeholder, textarea::placeholder { color: var(--text-muted); }
+  input:not([type="checkbox"]):not([type="radio"])::placeholder, textarea::placeholder { color: var(--text-muted); }
 
   table { border-collapse: collapse; width: 100%; }
   th, td { text-align: left; }

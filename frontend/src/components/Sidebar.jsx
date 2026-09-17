@@ -106,7 +106,7 @@ export default function Sidebar() {
     }}>
       <div style={{ padding: '32px 24px', flexShrink: 0 }}>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
+        <NavLink to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28, textDecoration: 'none', color: 'inherit', cursor: 'pointer' }} title="TalentOps Home">
           <img 
             src="/talentops-logo.png" 
             alt="TalentOps" 
@@ -138,7 +138,7 @@ export default function Sidebar() {
               AI SCOUT
             </div>
           </div>
-        </div>
+        </NavLink>
 
         <div style={{ minWidth: 0 }}>
           <div style={{ color: 'var(--text-primary)', fontSize: 13, fontWeight: 600 }}>

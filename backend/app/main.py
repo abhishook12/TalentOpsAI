@@ -27,47 +27,47 @@ from .create_indexes import create_performance_indexes
 from .core.logger import setup_logger
 logger = setup_logger(level=logging.INFO if IS_PRODUCTION else logging.DEBUG)
 
-# Unconditionally ensure core tables exist in PostgreSQL (idempotent CREATE TABLE IF NOT EXISTS)
-try:
-    Base.metadata.create_all(bind=engine)
-    logger.info("Core database tables initialized successfully via Base.metadata.create_all.")
+def _ensure_core_schema(db_engine):
+    """Ensure core database tables and critical columns exist. Run once by the leader worker."""
+    try:
+        Base.metadata.create_all(bind=db_engine)
+        logger.info("Core database tables initialized successfully via Base.metadata.create_all.")
 
-    # Ensure critical release and telemetry columns exist in scout_releases
-    from sqlalchemy import inspect
-    insp = inspect(engine)
-    if insp.has_table("scout_releases"):
-        existing_cols = {col["name"] for col in insp.get_columns("scout_releases")}
-        scout_rel_cols = {
-            "installer_url": "VARCHAR(500)",
-            "published_at": "TIMESTAMP",
-            "release_date": "TIMESTAMP",
-            "approved_at": "TIMESTAMP",
-            "released_at": "TIMESTAMP",
-            "is_current": "BOOLEAN DEFAULT TRUE",
-            "is_public": "BOOLEAN DEFAULT TRUE",
-            "artifact": "VARCHAR(100) DEFAULT 'TalentOpsScoutSetup.exe'",
-            "artifact_url": "VARCHAR(500)",
-        }
-        with engine.begin() as conn:
-            for col, col_type in scout_rel_cols.items():
-                if col not in existing_cols:
-                    conn.execute(text(f"ALTER TABLE scout_releases ADD COLUMN IF NOT EXISTS {col} {col_type}"))
-    logger.info("Scout release column schema verified.")
+        from sqlalchemy import inspect
+        insp = inspect(db_engine)
+        if insp.has_table("scout_releases"):
+            existing_cols = {col["name"] for col in insp.get_columns("scout_releases")}
+            scout_rel_cols = {
+                "installer_url": "VARCHAR(500)",
+                "published_at": "TIMESTAMP",
+                "release_date": "TIMESTAMP",
+                "approved_at": "TIMESTAMP",
+                "released_at": "TIMESTAMP",
+                "is_current": "BOOLEAN DEFAULT TRUE",
+                "is_public": "BOOLEAN DEFAULT TRUE",
+                "artifact": "VARCHAR(100) DEFAULT 'TalentOpsScoutSetup.exe'",
+                "artifact_url": "VARCHAR(500)",
+            }
+            with db_engine.begin() as conn:
+                for col, col_type in scout_rel_cols.items():
+                    if col not in existing_cols:
+                        conn.execute(text(f"ALTER TABLE scout_releases ADD COLUMN IF NOT EXISTS {col} {col_type}"))
+        logger.info("Scout release column schema verified.")
 
-    # Ensure critical fleet broadcast columns exist in scout_installations
-    if insp.has_table("scout_installations"):
-        existing_cols = {col["name"] for col in insp.get_columns("scout_installations")}
-        scout_inst_cols = {
-            "last_broadcast_seen_id": "VARCHAR(64)",
-            "pending_update_version": "VARCHAR(32)",
-        }
-        with engine.begin() as conn:
-            for col, col_type in scout_inst_cols.items():
-                if col not in existing_cols:
-                    conn.execute(text(f"ALTER TABLE scout_installations ADD COLUMN IF NOT EXISTS {col} {col_type}"))
-    logger.info("Scout installation broadcast column schema verified.")
-except Exception as e:
-    logger.warning("Core database table initialization warning: %s", e)
+        if insp.has_table("scout_installations"):
+            existing_cols = {col["name"] for col in insp.get_columns("scout_installations")}
+            scout_inst_cols = {
+                "last_broadcast_seen_id": "VARCHAR(64)",
+                "pending_update_version": "VARCHAR(32)",
+            }
+            with db_engine.begin() as conn:
+                for col, col_type in scout_inst_cols.items():
+                    if col not in existing_cols:
+                        conn.execute(text(f"ALTER TABLE scout_installations ADD COLUMN IF NOT EXISTS {col} {col_type}"))
+        logger.info("Scout installation broadcast column schema verified.")
+    except Exception as e:
+        logger.warning("Core database table initialization warning: %s", e)
+
 
 RUN_STARTUP_MIGRATIONS = os.getenv("RUN_STARTUP_MIGRATIONS", "false").lower() in ("1", "true", "yes")
 
@@ -622,6 +622,9 @@ async def startup_event():
             verification_engine.start()
         if ENABLE_DATA_FILLER_ENGINE:
             data_filler_engine.start()
+        # Run schema checks asynchronously in background so port binds and serves instantly
+        asyncio.create_task(asyncio.to_thread(_ensure_core_schema, engine))
+
 
         # Ensure canonical Scout release (v2.7.0) is seeded in scout_releases table
         try:

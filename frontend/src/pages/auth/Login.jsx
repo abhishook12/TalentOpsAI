@@ -18,11 +18,17 @@ export default function Login() {
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [authProgress, setAuthProgress] = useState(null)
   const [pendingDeviceId, setPendingDeviceId] = useState(null)
+  const [authStatusText, setAuthStatusText] = useState(null)
   
   const { login, googleLogin, checkAuthStatus } = useAuth()
   const navigate = useNavigate()
   const search = useSearch({ from: '/login' })
   const redirect = decodeURIComponent(search.redirect || '/')
+
+  // Background pre-warm: trigger server wake-up as soon as user opens the login page
+  React.useEffect(() => {
+    api.get('/ping', { skipCache: true }).catch(() => {})
+  }, [])
 
   const isEmailValid = email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
   const isFormValid = isEmailValid && password.length >= 1
@@ -31,9 +37,16 @@ export default function Login() {
     setError('')
     setIsAuthenticating(true)
     setAuthProgress(null) // Indeterminate start
+    setAuthStatusText(null)
+    
+    // Friendly status message if the server is cold-starting (>3.5s)
+    const wakeTimer = setTimeout(() => {
+      setAuthStatusText("Connecting to server (waking up from cold sleep, please wait)...")
+    }, 3500)
     
     try {
       const data = await authFunction()
+      clearTimeout(wakeTimer)
       
       if (data && data.status === 'pending_approval') {
         setIsAuthenticating(false)
@@ -49,7 +62,11 @@ export default function Login() {
       navigate({ to: redirect })
       
     } catch (err) {
+      clearTimeout(wakeTimer)
       let errorDetail = err?.response?.data?.detail || err?.message || 'Authentication failed. Please check your credentials.'
+      if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
+        errorDetail = 'The server took longer than expected to respond (it may be waking up from cold sleep). Please wait a moment and try again.'
+      }
       if (Array.isArray(errorDetail)) {
           errorDetail = errorDetail.map(e => e.msg).join(', ')
       } else if (typeof errorDetail === 'object') {
@@ -80,7 +97,7 @@ export default function Login() {
 
   return (
     <>
-      <AppLoadingOverlay isVisible={isAuthenticating} progress={authProgress} />
+      <AppLoadingOverlay isVisible={isAuthenticating} progress={authProgress} statusText={authStatusText} />
       
       {pendingDeviceId ? (
         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '100%', zIndex: 10 }}>

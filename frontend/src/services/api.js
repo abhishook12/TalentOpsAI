@@ -16,8 +16,9 @@ const createClient = (baseURL) => {
       baseURL,
       withCredentials: true,
       headers: { 'Content-Type': 'application/json' },
-      timeout: 30000,
+      timeout: 90000,
     })
+
 
     const responseCache = new Map()
     const CACHE_TTL = 5000 // 5 seconds
@@ -73,6 +74,8 @@ const isRetryableError = (error) => {
   const status = error?.response?.status
   return error?.message === 'Network Error'
     || error?.code === 'ERR_NETWORK'
+    || error?.code === 'ECONNABORTED'
+    || error?.message?.includes('timeout')
     || status === 502
     || status === 503
     || status === 504
@@ -208,6 +211,9 @@ export async function logAction(actionType, details = {}, status = 'success') {
 }
 
 export function getErrorMessage(err, fallback = 'Something went wrong') {
+  if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
+    return 'The server took longer than expected to respond (it may be waking up from cold sleep). Please wait a moment and try again.'
+  }
   if (err?.message === 'Network Error' || err?.code === 'ERR_NETWORK') {
     return `Cannot reach the API at ${API}. Start the backend (uvicorn) or check VITE_API_URL in frontend/.env`
   }

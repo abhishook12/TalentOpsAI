@@ -17,6 +17,20 @@ export default function AICommandCenter({ onSelectCandidate }) {
   const [selectedCandidateForExplanation, setSelectedCandidateForExplanation] = useState(null)
   const [explanationData, setExplanationData] = useState(null)
   const [explainLoading, setExplainLoading] = useState(false)
+  const inputRef = React.useRef(null)
+
+  React.useEffect(() => {
+    const checkFocus = () => {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('focus') === 'ai') {
+        inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        inputRef.current?.focus()
+      }
+    }
+    checkFocus()
+    window.addEventListener('talentops:focus-ai', checkFocus)
+    return () => window.removeEventListener('talentops:focus-ai', checkFocus)
+  }, [])
 
   const SUGGESTED_PROMPTS = [
     'Find senior software engineers in Texas with verified emails',
@@ -139,6 +153,7 @@ export default function AICommandCenter({ onSelectCandidate }) {
       <div style={{ display: 'flex', gap: '8px' }}>
         <div style={{ position: 'relative', flex: 1 }}>
           <input
+            ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { useNavigate, useSearch, Link } from '@tanstack/react-router';
+import AuthFrame from './AuthFrame';
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('');
@@ -12,7 +13,6 @@ export default function ResetPassword() {
   
   const { resetPassword } = useAuth();
   const navigate = useNavigate();
-  // We assume tanstack router will pass search params, e.g. ?token=...
   const search = useSearch({ strict: false });
   const token = search.token || '';
 
@@ -64,180 +64,105 @@ export default function ResetPassword() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'var(--main-bg, #09090b)',
-      padding: '20px'
-    }}>
-      <div style={{
-        width: '100%',
-        maxWidth: '420px',
-        background: 'var(--card-bg, #18181b)',
-        borderRadius: '6px',
-        padding: '40px',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-        border: '1px solid var(--card-border)'
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', margin: '0 0 8px 0' }}>New Password</h1>
-          <p style={{ color: '#a1a1aa', margin: 0, fontSize: '14px' }}>Create a new password for your account</p>
+    <AuthFrame isAuthenticating={false}>
+      <div className="mb-6 text-left">
+        <h1 className="text-2xl font-bold text-white m-0 mb-2 tracking-tight">New Password</h1>
+        <p className="text-sm text-[#a0a0a0] m-0 leading-relaxed">Create a new secure password for your account</p>
+      </div>
+
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-sm mb-4 flex items-center gap-2">
+          <i className="ti ti-alert-circle text-base" />
+          <span>{error}</span>
         </div>
+      )}
 
-        {error && (
-          <div style={{
-            background: 'rgba(239, 68, 68, 0.1)',
-            border: '1px solid rgba(239, 68, 68, 0.2)',
-            color: '#ef4444',
-            padding: '12px 16px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            marginBottom: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            <i className="ti ti-alert-circle" />
-            {error}
-          </div>
-        )}
+      {status && (
+        <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-3 rounded-lg text-sm mb-4 flex items-center gap-2">
+          <i className="ti ti-check text-base" />
+          <span>{status}</span>
+        </div>
+      )}
 
-        {status && (
-          <div style={{
-            background: 'rgba(34, 197, 94, 0.1)',
-            border: '1px solid rgba(34, 197, 94, 0.2)',
-            color: '#22c55e',
-            padding: '12px 16px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            marginBottom: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            <i className="ti ti-check" />
-            {status}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#e4e4e7', marginBottom: '8px' }}>
-              New Password
-            </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Create a strong password"
-                style={{
-                  width: '100%',
-                  padding: '12px 40px 12px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--card-border)',
-                  background: 'var(--bg-surface)',
-                  color: 'var(--text-primary)',
-                  fontSize: '15px',
-                  outline: 'none',
-                  transition: 'border-color 0.2s'
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: 'absolute',
-                  right: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  color: '#a1a1aa',
-                  cursor: 'pointer',
-                  padding: '4px'
-                }}
-              >
-                <i className={`ti ${showPassword ? 'ti-eye-off' : 'ti-eye'}`} />
-              </button>
-            </div>
-            
-            <div style={{ marginTop: '12px', fontSize: '13px', color: '#a1a1aa', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <div style={{ color: password.length >= 8 ? '#22c55e' : '#a1a1aa' }}>
-                <i className={`ti ${password.length >= 8 ? 'ti-check' : 'ti-circle'}`} style={{ marginRight: '6px' }} />
-                At least 8 characters
-              </div>
-              <div style={{ color: /[A-Z]/.test(password) ? '#22c55e' : '#a1a1aa' }}>
-                <i className={`ti ${/[A-Z]/.test(password) ? 'ti-check' : 'ti-circle'}`} style={{ marginRight: '6px' }} />
-                At least 1 uppercase letter
-              </div>
-              <div style={{ color: /[0-9]/.test(password) ? '#22c55e' : '#a1a1aa' }}>
-                <i className={`ti ${/[0-9]/.test(password) ? 'ti-check' : 'ti-circle'}`} style={{ marginRight: '6px' }} />
-                At least 1 number
-              </div>
-              <div style={{ color: /[^A-Za-z0-9]/.test(password) ? '#22c55e' : '#a1a1aa' }}>
-                <i className={`ti ${/[^A-Za-z0-9]/.test(password) ? 'ti-check' : 'ti-circle'}`} style={{ marginRight: '6px' }} />
-                At least 1 special character
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#e4e4e7', marginBottom: '8px' }}>
-              Confirm Password
-            </label>
+      <form onSubmit={handleSubmit} className="w-full flex flex-col gap-4">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[13px] text-[#a0a0a0]" htmlFor="new-password">New Password</label>
+          <div className="relative flex items-center">
             <input
+              id="new-password"
               type={showPassword ? 'text' : 'password'}
               required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm your password"
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                borderRadius: '8px',
-                border: '1px solid var(--card-border)',
-                background: 'var(--bg-surface)',
-                color: 'var(--text-primary)',
-                fontSize: '15px',
-                outline: 'none',
-                transition: 'border-color 0.2s'
-              }}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Create a strong password"
+              className="pr-10"
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3.5 bg-transparent border-none text-[#666] cursor-pointer p-1 flex items-center justify-center text-base transition-colors hover:text-white"
+              aria-label="Toggle password visibility"
+            >
+              <i className={`ti ${showPassword ? 'ti-eye-off' : 'ti-eye'}`} />
+            </button>
           </div>
 
-          <button
-            type="submit"
-            disabled={isSubmitting || strength < 4 || password !== confirmPassword}
-            style={{
-              width: '100%',
-              padding: '12px',
-              borderRadius: '8px',
-              background: (isSubmitting || strength < 4 || password !== confirmPassword) ? 'rgba(212, 212, 216, 0.5)' : '#d4d4d8',
-              color: 'var(--text-primary)',
-              fontSize: '15px',
-              fontWeight: '600',
-              border: 'none',
-              cursor: (isSubmitting || strength < 4 || password !== confirmPassword) ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: '8px',
-              marginTop: '16px',
-              transition: 'background 0.2s'
-            }}
-          >
-            {isSubmitting ? (
-              <><i className="ti ti-loader animate-spin" /> Resetting...</>
-            ) : (
-              'Reset Password'
-            )}
-          </button>
-        </form>
+          <div className="mt-2 text-[12px] flex flex-col gap-1 text-[#888]">
+            <div style={{ color: password.length >= 8 ? '#22c55e' : '#888' }}>
+              <i className={`ti ${password.length >= 8 ? 'ti-check' : 'ti-circle'} mr-1.5`} />
+              At least 8 characters
+            </div>
+            <div style={{ color: /[A-Z]/.test(password) ? '#22c55e' : '#888' }}>
+              <i className={`ti ${/[A-Z]/.test(password) ? 'ti-check' : 'ti-circle'} mr-1.5`} />
+              At least 1 uppercase letter
+            </div>
+            <div style={{ color: /[0-9]/.test(password) ? '#22c55e' : '#888' }}>
+              <i className={`ti ${/[0-9]/.test(password) ? 'ti-check' : 'ti-circle'} mr-1.5`} />
+              At least 1 number
+            </div>
+            <div style={{ color: /[^A-Za-z0-9]/.test(password) ? '#22c55e' : '#888' }}>
+              <i className={`ti ${/[^A-Za-z0-9]/.test(password) ? 'ti-check' : 'ti-circle'} mr-1.5`} />
+              At least 1 special character
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[13px] text-[#a0a0a0]" htmlFor="confirm-password">Confirm Password</label>
+          <input
+            id="confirm-password"
+            type={showPassword ? 'text' : 'password'}
+            required
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Confirm your password"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={isSubmitting || strength < 4 || password !== confirmPassword}
+          className="w-full h-11 border-none rounded-lg bg-white text-zinc-950 text-sm font-semibold cursor-pointer transition-all flex items-center justify-center hover:not-disabled:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm mt-2"
+        >
+          {isSubmitting ? (
+            <div className="flex items-center gap-2 text-zinc-950">
+              <i className="ti ti-loader animate-spin" />
+              <span>Resetting...</span>
+            </div>
+          ) : (
+            <span>Reset Password</span>
+          )}
+        </button>
+      </form>
+
+      <div className="mt-8 flex flex-col items-center gap-4">
+        <div className="flex gap-1.5 text-[13px]">
+          <span className="text-[#888]">Back to</span>
+          <Link to="/login" className="text-white no-underline transition-colors hover:underline font-medium">
+            Sign in
+          </Link>
+        </div>
       </div>
-    </div>
+    </AuthFrame>
   );
 }

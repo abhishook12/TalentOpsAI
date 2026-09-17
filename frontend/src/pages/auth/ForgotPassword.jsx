@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Link } from '@tanstack/react-router';
+import AuthFrame from './AuthFrame';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -27,127 +28,67 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'var(--main-bg, #09090b)',
-      padding: '20px'
-    }}>
-      <div style={{
-        width: '100%',
-        maxWidth: '420px',
-        background: 'var(--card-bg, #18181b)',
-        borderRadius: '6px',
-        padding: '40px',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-        border: '1px solid var(--card-border)'
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', margin: '0 0 8px 0' }}>Reset Password</h1>
-          <p style={{ color: '#a1a1aa', margin: 0, fontSize: '14px' }}>Enter your email to receive a reset link</p>
+    <AuthFrame isAuthenticating={false}>
+      <div className="mb-6 text-left">
+        <h1 className="text-2xl font-bold text-white m-0 mb-2 tracking-tight">Reset Password</h1>
+        <p className="text-sm text-[#a0a0a0] m-0 leading-relaxed">Enter your email to receive a password reset link</p>
+      </div>
+
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-sm mb-4 flex items-center gap-2">
+          <i className="ti ti-alert-circle text-base" />
+          <span>{error}</span>
         </div>
+      )}
 
-        {error && (
-          <div style={{
-            background: 'rgba(239, 68, 68, 0.1)',
-            border: '1px solid rgba(239, 68, 68, 0.2)',
-            color: '#ef4444',
-            padding: '12px 16px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            marginBottom: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            <i className="ti ti-alert-circle" />
-            {error}
-          </div>
-        )}
+      {status && (
+        <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-3 rounded-lg text-sm mb-4 flex items-center gap-2">
+          <i className="ti ti-check text-base" />
+          <span>{status}</span>
+        </div>
+      )}
 
-        {status && (
-          <div style={{
-            background: 'rgba(34, 197, 94, 0.1)',
-            border: '1px solid rgba(34, 197, 94, 0.2)',
-            color: '#22c55e',
-            padding: '12px 16px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            marginBottom: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            <i className="ti ti-check" />
-            {status}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#e4e4e7', marginBottom: '8px' }}>
-              Email address
-            </label>
+      <form onSubmit={handleSubmit} className="w-full flex flex-col gap-4">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[13px] text-[#a0a0a0]" htmlFor="email-input">Email address</label>
+          <div className="relative flex items-center group">
+            <i className="ti ti-mail absolute left-3.5 text-[#666] text-base pointer-events-none group-focus-within:text-white transition-colors" />
             <input
+              id="email-input"
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@company.com"
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                borderRadius: '8px',
-                border: '1px solid var(--card-border)',
-                background: 'var(--bg-surface)',
-                color: 'var(--text-primary)',
-                fontSize: '15px',
-                outline: 'none',
-                transition: 'border-color 0.2s'
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#d4d4d8'}
-              onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+              className="pl-10"
             />
           </div>
+        </div>
 
-          <button
-            type="submit"
-            disabled={isSubmitting || !email}
-            style={{
-              width: '100%',
-              padding: '12px',
-              borderRadius: '8px',
-              background: (isSubmitting || !email) ? 'rgba(212, 212, 216, 0.5)' : '#d4d4d8',
-              color: 'var(--text-primary)',
-              fontSize: '15px',
-              fontWeight: '600',
-              border: 'none',
-              cursor: (isSubmitting || !email) ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: '8px',
-              marginTop: '8px',
-              transition: 'background 0.2s'
-            }}
-          >
-            {isSubmitting ? (
-              <><i className="ti ti-loader animate-spin" /> Sending...</>
-            ) : (
-              'Send Reset Link'
-            )}
-          </button>
-        </form>
+        <button
+          type="submit"
+          disabled={isSubmitting || !email}
+          className="w-full h-11 border-none rounded-lg bg-white text-zinc-950 text-sm font-semibold cursor-pointer transition-all flex items-center justify-center hover:not-disabled:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm mt-2"
+        >
+          {isSubmitting ? (
+            <div className="flex items-center gap-2 text-zinc-950">
+              <i className="ti ti-loader animate-spin" />
+              <span>Sending link...</span>
+            </div>
+          ) : (
+            <span>Send Reset Link</span>
+          )}
+        </button>
+      </form>
 
-        <p style={{ textAlign: 'center', marginTop: '32px', fontSize: '14px', color: '#a1a1aa' }}>
-          Remember your password?{' '}
-          <Link to="/login" style={{ color: '#d4d4d8', textDecoration: 'none', fontWeight: '500' }}>
+      <div className="mt-8 flex flex-col items-center gap-4">
+        <div className="flex gap-1.5 text-[13px]">
+          <span className="text-[#888]">Remember your password?</span>
+          <Link to="/login" className="text-white no-underline transition-colors hover:underline font-medium">
             Sign in
           </Link>
-        </p>
+        </div>
       </div>
-    </div>
+    </AuthFrame>
   );
 }

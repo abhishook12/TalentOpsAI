@@ -169,13 +169,14 @@ const shellStyles = `
   /* Scoped Auth Input Precision & Dark Theme Contrast */
   .auth-form-container input[type="email"],
   .auth-form-container input[type="password"],
-  .auth-form-container input[type="text"] {
+  .auth-form-container input[type="text"],
+  .auth-form-container select {
     background-color: #141418 !important;
     color: #ffffff !important;
     border: 1px solid #2e2e38 !important;
     border-radius: 8px !important;
-    padding-left: 42px !important;
-    padding-right: 42px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
     padding-top: 0 !important;
     padding-bottom: 0 !important;
     height: 44px !important;
@@ -183,6 +184,18 @@ const shellStyles = `
     line-height: 44px !important;
     font-size: 14px !important;
     transition: border-color 0.2s, box-shadow 0.2s !important;
+  }
+
+  /* When an icon is present on the left */
+  .auth-form-container .relative:has(> i:first-child) input,
+  .auth-form-container input.pl-10 {
+    padding-left: 42px !important;
+  }
+
+  /* When an icon/button is present on the right */
+  .auth-form-container .relative:has(> button) input,
+  .auth-form-container input.pr-10 {
+    padding-right: 42px !important;
   }
 
   .auth-form-container input[type="email"]::placeholder,
@@ -193,9 +206,22 @@ const shellStyles = `
 
   .auth-form-container input[type="email"]:focus,
   .auth-form-container input[type="password"]:focus,
-  .auth-form-container input[type="text"]:focus {
+  .auth-form-container input[type="text"]:focus,
+  .auth-form-container select:focus {
     border-color: #ffffff !important;
     box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1) !important;
+  }
+
+  /* Browser Autofill Dark Mode Hardening */
+  .auth-form-container input:-webkit-autofill,
+  .auth-form-container input:-webkit-autofill:hover, 
+  .auth-form-container input:-webkit-autofill:focus,
+  .auth-form-container input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px #141418 inset !important;
+    -webkit-text-fill-color: #ffffff !important;
+    caret-color: #ffffff !important;
+    transition: background-color 5000s ease-in-out 0s !important;
+    border-color: #2e2e38 !important;
   }
 
   .auth-form-container input[type="checkbox"] {

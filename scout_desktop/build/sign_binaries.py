@@ -153,6 +153,106 @@ def create_dev_codesign_certificate(cert_name: str = "TalentOps AI Development")
     return False, "Failed to create dev certificate"
 
 
+def auto_sign_if_unsigned(target_files: list = None) -> dict:
+    """
+    Automatically signs any unsigned binaries using the best available certificate.
+
+    Priority:
+    1. Commercial PFX cert from SIGN_PFX_PATH env var (best — eliminates all warnings)
+    2. Windows Cert Store cert from SIGN_CERT_SUBJECT env var
+    3. Self-signed code-signing certificate (fallback — reduces Chrome "Virus detected"
+       to milder SmartScreen "unrecognized app" warning)
+
+    Returns dict with results per file.
+    """
+    if target_files is None:
+        target_files = [
+            r"c:\TalentOpsAI\scout_desktop\dist\TalentOpsScoutSetup.exe",
+            r"c:\TalentOpsAI\scout_desktop\dist\TalentOpsScout\TalentOpsScout.exe",
+            r"c:\TalentOpsAI\scout_desktop\dist\TalentOpsScout\TalentOpsScoutUpdater.exe",
+        ]
+
+    results = {}
+
+    for filepath in target_files:
+        if not os.path.exists(filepath):
+            results[filepath] = {"status": "SKIPPED", "reason": "File not found"}
+            continue
+
+        # Check if already signed
+        sig_info = verify_authenticode_powershell(filepath)
+        if sig_info.get("is_signed") and sig_info.get("valid"):
+            results[filepath] = {"status": "ALREADY_SIGNED", "signer": sig_info.get("signer", "Unknown")}
+            logger.info("Already signed (valid): %s", os.path.basename(filepath))
+            continue
+
+        # Try signing with available credentials
+        pfx_path = os.getenv("SIGN_PFX_PATH")
+        pfx_password = os.getenv("SIGN_PFX_PASSWORD")
+        cert_subject = os.getenv("SIGN_CERT_SUBJECT")
+        signtool = find_signtool()
+
+        signed = False
+
+        # Priority 1: Commercial PFX via signtool
+        if signtool and pfx_path and os.path.exists(pfx_path):
+            ok, msg = sign_binary_with_signtool(signtool, filepath, pfx_path, pfx_password)
+            if ok:
+                results[filepath] = {"status": "SIGNED_COMMERCIAL", "method": "signtool+PFX"}
+                signed = True
+                logger.info("Signed with commercial PFX: %s", os.path.basename(filepath))
+
+        # Priority 2: Cert Store via signtool
+        if not signed and signtool and cert_subject:
+            ok, msg = sign_binary_with_signtool(signtool, filepath, cert_subject=cert_subject)
+            if ok:
+                results[filepath] = {"status": "SIGNED_STORE", "method": "signtool+CertStore"}
+                signed = True
+                logger.info("Signed with cert store: %s", os.path.basename(filepath))
+
+        # Priority 3: Self-signed certificate via PowerShell
+        if not signed:
+            logger.info("No commercial cert available. Creating self-signed certificate for: %s", os.path.basename(filepath))
+            cert_ok, thumb_or_msg = create_dev_codesign_certificate("TalentOps AI Inc.")
+            if cert_ok:
+                # Sign using PowerShell Set-AuthenticodeSignature
+                ps_sign = (
+                    f'$cert = Get-ChildItem -Path "Cert:\\CurrentUser\\My\\{thumb_or_msg}"; '
+                    f'if ($cert) {{ '
+                    f'$r = Set-AuthenticodeSignature -FilePath "{filepath}" -Certificate $cert '
+                    f'-HashAlgorithm SHA256 -TimestampServer "{TIMESTAMP_URL}"; '
+                    f'Write-Output $r.Status }} '
+                    f'else {{ Write-Output "CERT_NOT_FOUND" }}'
+                )
+                try:
+                    res = subprocess.run(
+                        ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", ps_sign],
+                        capture_output=True, text=True, timeout=60
+                    )
+                    status_out = res.stdout.strip()
+                    if "Valid" in status_out or "UnknownError" in status_out:
+                        # UnknownError = signed but self-signed cert not in trusted root (expected)
+                        results[filepath] = {
+                            "status": "SIGNED_SELF_SIGNED",
+                            "method": "PowerShell+SelfSigned",
+                            "thumbprint": thumb_or_msg,
+                            "note": "Self-signed: reduces Chrome 'Virus detected' to SmartScreen 'unrecognized app'"
+                        }
+                        signed = True
+                        logger.info("Self-signed successfully: %s (thumbprint: %s)", os.path.basename(filepath), thumb_or_msg)
+                    else:
+                        results[filepath] = {"status": "SIGN_FAILED", "error": status_out}
+                except Exception as e:
+                    results[filepath] = {"status": "SIGN_FAILED", "error": str(e)}
+            else:
+                results[filepath] = {"status": "SIGN_FAILED", "error": thumb_or_msg}
+
+        if not signed and filepath not in results:
+            results[filepath] = {"status": "UNSIGNED", "reason": "All signing methods failed"}
+
+    return results
+
+
 def main():
     logger.info("Starting TalentOps Scout Authenticode Code Signing & Verification Suite")
 
@@ -162,25 +262,22 @@ def main():
         r"c:\TalentOpsAI\scout_desktop\dist\TalentOpsScout\TalentOpsScoutUpdater.exe",
     ]
 
-    signtool = find_signtool()
-    if signtool:
-        logger.info("Located Windows SDK signtool.exe at: %s", signtool)
-    else:
-        logger.info("signtool.exe not found in standard paths; checking signatures via PowerShell Authenticode engine.")
+    # Use auto_sign_if_unsigned for intelligent signing
+    results = auto_sign_if_unsigned(target_files)
 
-    pfx_path = os.getenv("SIGN_PFX_PATH")
-    pfx_password = os.getenv("SIGN_PFX_PASSWORD")
-    cert_subject = os.getenv("SIGN_CERT_SUBJECT", "TalentOps AI")
+    for filepath, result in results.items():
+        logger.info("  %s: %s", os.path.basename(filepath), result)
 
+    # Final verification pass
+    logger.info("--- Final Signature Verification ---")
     for tf in target_files:
         if os.path.exists(tf):
             sig_info = verify_authenticode_powershell(tf)
-            logger.info("File: %s -> Status: %s, Signed: %s", os.path.basename(tf), sig_info["status"], sig_info["is_signed"])
-            if signtool and (pfx_path or cert_subject):
-                ok, msg = sign_binary_with_signtool(signtool, tf, pfx_path, pfx_password, cert_subject)
-                logger.info("Sign result: %s (%s)", ok, msg)
-        else:
-            logger.info("File not found on disk (skipping): %s", tf)
+            logger.info("File: %s -> Status: %s, Signed: %s, Signer: %s",
+                        os.path.basename(tf), sig_info["status"], sig_info["is_signed"],
+                        sig_info.get("signer", "N/A"))
+
+    return results
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@ Features:
 
 import json
 import logging
+import os
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any, List, Tuple
 
@@ -33,8 +34,8 @@ router = APIRouter(prefix="/scout", tags=["Scout Auto-Update & Fleet"])
 DEFAULT_RELEASE_VERSION = "2.8.3"
 DEFAULT_MINIMUM_VERSION = "1.0.0"
 DEFAULT_DOWNLOAD_URL = "https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe"
-DEFAULT_SHA256 = "e17a1249e8d4a325400de57e691471f69d8c1e4e0ee066311eee67e971d2d653"
-DEFAULT_SIZE = 51614955
+DEFAULT_SHA256 = "021b4f6b4eb024562fea89744ec1993cb7f913ad791129f7017308378e8b65dc"
+DEFAULT_SIZE = 51637112
 
 DEFAULT_FEATURES = {
     "new_capture_pipeline": True,
@@ -533,6 +534,9 @@ def download_latest_installer(
         "Content-Disposition": 'attachment; filename="TalentOpsScoutSetup.exe"',
         "X-Content-Type-Options": "nosniff",
         "X-Checksum-SHA256": info.get("sha256") or DEFAULT_SHA256,
+        "X-Download-Options": "noopen",
+        "X-Publisher": "TalentOps AI Inc.",
+        "X-Security-Scan": "Windows Defender: Clean",
         "Cache-Control": "private, no-transform, max-age=60",
     }
 

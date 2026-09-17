@@ -249,14 +249,14 @@ export default function Login() {
             </Link>
           </div>
 
-          <button type="button" onClick={handleSubmit} className="w-full h-11 border-none rounded-lg bg-[var(--brand)] text-white text-sm font-medium cursor-pointer transition-all flex items-center justify-center hover:not-disabled:bg-[var(--brand-strong)] disabled:opacity-50 disabled:cursor-not-allowed" disabled={!isFormValid || isAuthenticating}>
+          <button type="button" onClick={handleSubmit} className="w-full h-11 border-none rounded-lg bg-white text-zinc-950 text-sm font-semibold cursor-pointer transition-all flex items-center justify-center hover:not-disabled:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm" disabled={!isFormValid || isAuthenticating}>
             {isAuthenticating ? (
-              <div className="flex items-center gap-2">
-                <i className="ti ti-loader animate-spin" />
-                <span>Signing in...</span>
+              <div className="flex items-center gap-2 text-zinc-950">
+                <i className="ti ti-loader animate-spin text-zinc-950" />
+                <span className="text-zinc-950 font-semibold">Signing in...</span>
               </div>
             ) : (
-              <span>Login to TalentOps</span>
+              <span className="text-zinc-950 font-semibold">Sign In</span>
             )}
           </button>
           

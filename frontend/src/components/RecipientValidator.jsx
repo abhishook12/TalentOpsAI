@@ -254,7 +254,7 @@ export default function RecipientValidator({ onValidated, initialRecipients = []
                             className={`px-3 py-1 text-xs rounded-md border transition-colors ${
                               isAdded 
                                 ? 'bg-[var(--bg-surface)] border-[var(--border)] text-[var(--text-muted)]' 
-                                : 'bg-[var(--brand)]/10 border-[var(--brand)]/30 text-[var(--brand)] hover:bg-[var(--brand)] hover:text-[var(--text-primary)]'
+                                : 'bg-[var(--brand)]/10 border-[var(--brand)]/30 text-[var(--brand)] hover:bg-[var(--brand)] hover:text-[var(--text-inverse)]'
                             }`}
                           >
                             {isAdded ? 'Added' : 'Add'}
@@ -278,7 +278,7 @@ export default function RecipientValidator({ onValidated, initialRecipients = []
                   <button 
                     onClick={handleValidateManual} 
                     disabled={isValidating || !inputText.trim()}
-                    className="bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-[var(--text-primary)] text-xs px-3 py-1.5 rounded-md flex items-center gap-1.5 disabled:opacity-50 transition-colors"
+                    className="bg-[var(--brand)] hover:opacity-90 text-[var(--text-inverse)] text-xs px-3 py-1.5 rounded-md flex items-center gap-1.5 disabled:opacity-50 transition-colors font-semibold"
                   >
                     {isValidating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                     Validate & Add

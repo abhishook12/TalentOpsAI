@@ -115,8 +115,8 @@ export default function DatabaseRecipientsView({ onAddRecipients }) {
           </span>
           <button
             onClick={() => { setPreset('all'); setPage(1); }}
-            className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap text-[11px] font-medium ${
-              preset === 'all' ? 'bg-[var(--brand)] text-white' : 'bg-[var(--bg-page)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border)]'
+            className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap text-[11px] font-semibold ${
+              preset === 'all' ? 'bg-[var(--brand)] text-[var(--text-inverse)]' : 'bg-[var(--bg-page)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border)]'
             }`}
           >
             All Database
@@ -171,7 +171,7 @@ export default function DatabaseRecipientsView({ onAddRecipients }) {
         <button
           onClick={handleAdd}
           disabled={selectedIds.size === 0}
-          className="px-3 py-1.5 bg-[var(--brand)] hover:bg-[var(--brand-hover)] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-medium rounded-md transition-colors"
+          className="px-3 py-1.5 bg-[var(--brand)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-[var(--text-inverse)] text-xs font-semibold rounded-md transition-colors"
         >
           Add {selectedIds.size} Selected
         </button>

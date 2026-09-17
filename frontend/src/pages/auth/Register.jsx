@@ -219,7 +219,7 @@ export default function Register() {
           </label>
         </div>
 
-        <button type="submit" disabled={isSubmitting || !agreeTerms || strength < 4 || password !== confirmPassword} className="w-full h-11 border-none rounded-lg bg-[var(--brand)] text-white text-sm font-medium cursor-pointer transition-all flex items-center justify-center gap-2 mt-4 hover:not-disabled:bg-[var(--brand-strong)] disabled:opacity-50 disabled:cursor-not-allowed">
+        <button type="submit" disabled={isSubmitting || !agreeTerms || strength < 4 || password !== confirmPassword} className="w-full h-11 border-none rounded-lg bg-[var(--brand)] text-[var(--text-inverse)] text-sm font-semibold cursor-pointer transition-all flex items-center justify-center gap-2 mt-4 hover:not-disabled:bg-[var(--brand-strong)] disabled:opacity-50 disabled:cursor-not-allowed">
           {isSubmitting ? (
             <>
               <i className="ti ti-loader animate-spin" /> Creating account...

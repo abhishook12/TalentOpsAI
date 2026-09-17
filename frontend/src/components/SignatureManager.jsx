@@ -17,15 +17,17 @@ export default function SignatureManager({ onSelectSignature, selectedSignatureI
     try {
       setLoading(true);
       const res = await api.get('/campaigns/signatures/list');
-      setSignatures(res.data);
+      const list = Array.isArray(res.data) ? res.data : (Array.isArray(res.data?.items) ? res.data.items : []);
+      setSignatures(list);
       
       // Auto-select default signature if none selected
-      if (!selectedSignatureId && res.data.length > 0) {
-        const defaultSig = res.data.find(s => s.is_default) || res.data[0];
+      if (!selectedSignatureId && list.length > 0) {
+        const defaultSig = list.find(s => s.is_default) || list[0];
         if (onSelectSignature) onSelectSignature(defaultSig.signature_id);
       }
     } catch (e) {
       console.error("Failed to load signatures:", e);
+      setSignatures([]);
     } finally {
       setLoading(false);
     }

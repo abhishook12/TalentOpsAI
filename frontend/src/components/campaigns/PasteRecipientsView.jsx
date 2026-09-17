@@ -325,7 +325,7 @@ export default function PasteRecipientsView({ onAddRecipients }) {
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                      selectedIndex === idx ? 'bg-[var(--brand)] text-white' : 'bg-[var(--bg-page)] text-[var(--text-muted)]'
+                      selectedIndex === idx ? 'bg-[var(--brand)] text-[var(--text-inverse)]' : 'bg-[var(--bg-page)] text-[var(--text-muted)]'
                     }`}>
                       {item.name ? item.name.charAt(0).toUpperCase() : <Mail size={12} />}
                     </div>
@@ -387,7 +387,7 @@ export default function PasteRecipientsView({ onAddRecipients }) {
           <button 
             onClick={handleAdd}
             disabled={stats.valid === 0}
-            className="px-4 py-1.5 bg-[var(--brand)] text-white text-xs font-semibold rounded-md shadow-sm hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer flex items-center gap-1.5"
+            className="px-4 py-1.5 bg-[var(--brand)] text-[var(--text-inverse)] text-xs font-semibold rounded-md shadow-sm hover:opacity-90 disabled:opacity-50 transition-all cursor-pointer flex items-center gap-1.5"
           >
             <Plus size={13} /> Add {stats.valid} Recipients
           </button>

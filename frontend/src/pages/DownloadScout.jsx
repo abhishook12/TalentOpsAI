@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import {
   Download, Laptop, ShieldCheck, Zap, Wifi, CheckCircle2, ArrowRight,
   Database, RefreshCw, Layers, Terminal, Sparkles, AlertCircle, HelpCircle,
   Users, Activity, Server, FileText, Check, Shield, Search, Filter,
   ChevronRight, ArrowUpDown, Cpu, Clock, AlertTriangle, ShieldAlert, Award,
-  ChevronDown, ChevronUp, ExternalLink, Info, UserCheck, Trash2, Key, Link2, Copy
+  ChevronDown, ChevronUp, ExternalLink, Info, UserCheck, Trash2, Key, Link2, Copy,
+  Lock, EyeOff, MessageSquare, Mail, Briefcase, FileCode, Monitor, Globe
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -15,7 +17,168 @@ import ScoutUserProfileDrawer from '../components/ScoutUserProfileDrawer';
 import ScoutNodesPanel from '../components/ScoutNodesPanel';
 import ScoutReleaseGovernance from '../components/ScoutReleaseGovernance';
 
+// 9 Exact Supported Platform Categories Monitored by Desktop Scout (scout_desktop/core/window_tracker.py & browser_tracker.py)
+const SCOUT_PLATFORM_CATEGORIES = [
+  {
+    id: "linkedin",
+    name: "LinkedIn Suite",
+    icon: Laptop,
+    color: "#0a66c2",
+    badge: "Primary Engine",
+    description: "Deep OCR & DOM extraction across LinkedIn candidate cards, projects & network profiles.",
+    targets: [
+      { name: "LinkedIn Profiles", scope: "/in/*", details: "Name, current title, company, skills, location, public contact info" },
+      { name: "LinkedIn Recruiter", scope: "talent.linkedin.com", details: "Project pipeline tags, recruiter notes & candidate cards" },
+      { name: "Sales Navigator", scope: "/sales/*", details: "Lead lists, executive decision-makers, direct emails" },
+      { name: "Company People Directory", scope: "/company/*/people", details: "Org chart team rosters, seniority levels & roles" }
+    ]
+  },
+  {
+    id: "b2b_intel",
+    name: "B2B Intelligence",
+    icon: Sparkles,
+    color: "#0284c7",
+    badge: "Target 7",
+    description: "Direct business phone numbers, verified corporate emails & organizational hierarchy.",
+    targets: [
+      { name: "ZoomInfo Enterprise", scope: "app.zoominfo.com", details: "Direct-dial numbers, corporate emails, management level" },
+      { name: "ZoomInfo Lite", scope: "zi-lite.zoominfo.com", details: "Compact contact lookup & executive verification" },
+      { name: "Apollo.io Search", scope: "app.apollo.io", details: "Verified work emails, mobile dials & tech stack data" },
+      { name: "Apollo People", scope: "apollo.io/people", details: "Recruiter contact lists & verified prospecting leads" }
+    ]
+  },
+  {
+    id: "dev_talent",
+    name: "Developer & Tech",
+    icon: FileCode,
+    color: "#10b981",
+    badge: "Target 5",
+    description: "Engineering profiles, open-source repositories, competition rankings & tech resumes.",
+    targets: [
+      { name: "GitHub Profiles", scope: "github.com/*", details: "Developer bio, top languages, repos, followers & public email" },
+      { name: "Stack Overflow", scope: "stackoverflow.com/users", details: "Reputation score, gold/silver badges, top tag answers" },
+      { name: "Kaggle", scope: "kaggle.com/*", details: "Grandmaster/Master rank, competition notebooks, dataset authoring" },
+      { name: "Dice", scope: "dice.com", details: "Tech contractor CVs, hourly rates & specialized skills" },
+      { name: "Wellfound (AngelList)", scope: "wellfound.com", details: "Startup founding engineers, equity preferences & portfolios" }
+    ]
+  },
+  {
+    id: "ats",
+    name: "Applicant Tracking Systems",
+    icon: Database,
+    color: "#8b5cf6",
+    badge: "Target 6 (ATS)",
+    description: "Automatic synchronization with your existing company applicant tracking systems.",
+    targets: [
+      { name: "Greenhouse", scope: "greenhouse.io", details: "Candidate interview stages, scorecards & active job postings" },
+      { name: "Lever", scope: "lever.co", details: "Opportunity records, candidate contact archives & feedback" },
+      { name: "Ashby", scope: "ashbyhq.com", details: "Modern recruitment pipeline cards & candidate CRM profiles" },
+      { name: "Workday HCM", scope: "myworkday.com", details: "Enterprise job applicants & internal mobility records" },
+      { name: "iCIMS", scope: "icims.com", details: "Corporate sourcing talent pools & compliance tracking" },
+      { name: "SmartRecruiters", scope: "smartrecruiters.com", details: "Candidate dossiers, hiring team reviews & timeline" }
+    ]
+  },
+  {
+    id: "job_boards",
+    name: "Job Portals & Sourcing",
+    icon: Briefcase,
+    color: "#f59e0b",
+    badge: "Target 8",
+    description: "Public job boards, resume search indexes & algorithmic talent matching portals.",
+    targets: [
+      { name: "Indeed Resume", scope: "indeed.com/resume", details: "Public resume search, work history & candidate availability" },
+      { name: "SimplyHired", scope: "simplyhired.com", details: "Regional candidate listings & salary benchmarks" },
+      { name: "Glassdoor", scope: "glassdoor.com", details: "Employer talent reviews & compensation benchmarks" },
+      { name: "ZipRecruiter", scope: "ziprecruiter.com", details: "Resume database search & 1-click candidate profiles" },
+      { name: "Jobright.ai", scope: "jobright.ai", details: "AI candidate recommendations & skill match profiles" }
+    ]
+  },
+  {
+    id: "communication",
+    name: "Collaboration & Inboxes",
+    icon: MessageSquare,
+    color: "#06b6d4",
+    badge: "Target 1 & 2",
+    description: "Detects candidate resume shares and referral conversations in enterprise chat apps.",
+    targets: [
+      { name: "Microsoft Teams", scope: "teams.exe & Web", details: "Candidate referral links, interview coordination & CV shares" },
+      { name: "Slack Enterprise", scope: "slack.exe & Web", details: "Recruiter sourcing channels & peer referral submissions" },
+      { name: "WhatsApp Desktop & Web", scope: "web.whatsapp.com", details: "Direct candidate conversation context & scheduling" },
+      { name: "Telegram Web & Desktop", scope: "telegram.exe & Web", details: "Developer community channels & candidate inquiries" },
+      { name: "Google Chat", scope: "chat.google.com", details: "Internal recruiter room talent shares & candidate links" },
+      { name: "Outlook Desktop & Web", scope: "outlook.exe & Web", details: "Direct email candidate replies, attachments & CV parsing" },
+      { name: "Google Mail (Gmail)", scope: "mail.google.com", details: "Inbound job application emails & candidate messages" }
+    ]
+  },
+  {
+    id: "resumes",
+    name: "PDF Resumes & Portfolios",
+    icon: FileText,
+    color: "#e11d48",
+    badge: "Target 3",
+    description: "Direct local PDF parsing & in-browser CV extraction with offline OCR.",
+    targets: [
+      { name: "Adobe Acrobat Reader", scope: "acroRd32.exe / acrobat.exe", details: "Direct desktop PDF resume parsing via native window hooks" },
+      { name: "Browser PDF Viewers", scope: ".pdf / blob: URLs", details: "Candidate portfolios, downloadable CVs & attached credentials" }
+    ]
+  },
+  {
+    id: "staffing",
+    name: "Staffing & Search Portals",
+    icon: Users,
+    color: "#6366f1",
+    badge: "Target 9",
+    description: "Retained search, executive recruitment & specialized staffing agency talent rosters.",
+    targets: [
+      { name: "Executive Search Portals", scope: "executive-search / staffing", details: "C-level & VP candidate rosters & verified portfolios" },
+      { name: "Staffing Agency Directories", scope: "vacaregroup.com & agencies", details: "Contractor pools & agency recruiter candidate benches" }
+    ]
+  }
+];
+
+// 9 Stacked Pages in Scout Desktop Obsidian Command Center (scout_desktop/ui/main_window.py)
+const COMMAND_CENTER_VIEWS = [
+  { id: 0, name: "Live Scan & Pulse", icon: Activity, desc: "Real-time active window detection, perceptual hash delta gate, live OCR sampling pulse, candidate extraction card, and sampling metrics." },
+  { id: 1, name: "Candidates Catalog", icon: Users, desc: "Searchable local directory of all captured candidate profiles with 1-click status filtering and CSV/JSON export." },
+  { id: 2, name: "Candidate Dossier", icon: FileText, desc: "Granular candidate inspection with verified work history, skills cloud, contact information, and grounding confidence score." },
+  { id: 3, name: "Review Queue", icon: Search, desc: "Human-in-the-loop triage queue to inspect ambiguous or low-confidence captures before synchronizing with the cloud." },
+  { id: 4, name: "Cloud Sync & Buffer", icon: Database, desc: "Local SQLite queue (local_queue.db) guarantees zero data loss during offline periods with automatic exponential retry backoff." },
+  { id: 5, name: "Pipeline Stages", icon: Layers, desc: "Visual recruitment conversion funnel tracking candidates across Sourced, Contacted, Screened, and Offered stages." },
+  { id: 6, name: "Activity & Audit Trail", icon: Clock, desc: "Granular audit log of active window transitions, OCR extraction latency, platform classifications, and cloud telemetry." },
+  { id: 7, name: "Settings & Privacy DLP", icon: Shield, desc: "Configurable sampling rates, developer diagnostics mode, and strict DLP privacy masking to ignore non-candidate windows." },
+  { id: 8, name: "Sign-In & Claim Screen", icon: Key, desc: "Reverse device flow pairing (TOS-XXXX), claim code input, and enterprise trust guarantees with zero passwords stored." },
+];
+
+// Enterprise Trust Pillars from Desktop Scout (scout_desktop/ui/pages.py SignInClaimPage)
+const TRUST_PILLARS = [
+  {
+    title: "No Passwords Stored on Device",
+    icon: Lock,
+    color: "#34d399",
+    desc: "Scout never accesses password managers, authentication sessions, or personal browsing data. Only candidate cards on approved recruiting platforms are processed."
+  },
+  {
+    title: "Offline SQLite Resilience",
+    icon: Database,
+    color: "#60a5fa",
+    desc: "Built-in local SQLite buffer queue (local_queue.db) holds captured candidates safely on your hard drive if internet disconnects, auto-syncing when back online."
+  },
+  {
+    title: "Zero Admin Rights Needed",
+    icon: ShieldCheck,
+    color: "#a78bfa",
+    desc: "Installs cleanly into %LOCALAPPDATA%\\Programs\\TalentOpsScout in under 5 seconds with standard user privileges. No IT administrator prompt required."
+  },
+  {
+    title: "Strict Privacy DLP Gating",
+    icon: EyeOff,
+    color: "#f59e0b",
+    desc: "Personal email, banking, social media, shopping, and entertainment windows are permanently blacklisted and automatically discarded without inspection."
+  }
+];
+
 export default function DownloadScout() {
+  const navigate = useNavigate();
   const { user, isAdmin } = useAuth();
   const [showAddModal, setShowAddModal] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -24,7 +187,7 @@ export default function DownloadScout() {
   const [activeClaim, setActiveClaim] = useState(null);
   const [claimStatus, setClaimStatus] = useState(null);
   const pollIntervalRef = useRef(null);
-  const [adminView, setAdminView] = useState('contributors'); // 'companion' | 'contributors' | 'fleet_nodes' | 'governance'
+  const [adminView, setAdminView] = useState('companion'); // 'companion' | 'contributors' | 'fleet_nodes' | 'governance'
   const currentView = isAdmin ? adminView : 'companion';
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,6 +208,9 @@ export default function DownloadScout() {
   const [generatingCode, setGeneratingCode] = useState(false);
   const [adminCodeCopied, setAdminCodeCopied] = useState(false);
 
+  // Active platform category filter in UI
+  const [activePlatformCategory, setActivePlatformCategory] = useState('ALL');
+
   // Provisionable users query (for admin force-pairing and code generation)
   const { data: provUsersData, refetch: refetchProvUsers } = useQuery({
     queryKey: ['scout-provisionable-users'],
@@ -56,14 +222,15 @@ export default function DownloadScout() {
   });
   const provisionableUsers = provUsersData || [];
 
-  // Dynamic Release Info from Authoritative DB Registry
+  // Dynamic Release Info from Authoritative DB Registry (Defaults match exact v2.8.3 build)
   const [releaseInfo, setReleaseInfo] = useState({
-    version: '',
+    version: '2.8.3',
+    extractor_version: '4.5.2',
     download_url: '/download/scout/windows',
-    size_bytes: 50474851,
-    sha256: '',
+    size_bytes: 51637112,
+    sha256: '021b4f6b4eb024562fea89744ec1993cb7f913ad791129f7017308378e8b65dc',
     channel: 'stable',
-    released_at: '',
+    released_at: '2026-09-16',
   });
 
   useEffect(() => {
@@ -87,7 +254,8 @@ export default function DownloadScout() {
       const res = await api.get('/scout/my-device');
       return res.data;
     },
-    refetchInterval: 5000,
+    refetchInterval: user ? 5000 : false,
+    enabled: !!user,
   });
 
   // Scout Contributors Telemetry Query (Admin Only)
@@ -372,10 +540,14 @@ export default function DownloadScout() {
   const avgQualScore = summary.avg_quality_score ?? summary.average_quality_score ?? 0;
   const latestProdVer = contribData?.latest_production_version || releaseInfo?.version || '';
 
-  const displayVersion = releaseInfo.version ? `v${releaseInfo.version}` : (latestProdVer ? `v${latestProdVer}` : 'Production');
+  const displayVersion = releaseInfo.version ? `v${releaseInfo.version}` : (latestProdVer ? `v${latestProdVer}` : 'v2.8.3');
   const displaySize = releaseInfo.size_bytes
     ? `${(releaseInfo.size_bytes / (1024 * 1024)).toFixed(1)} MB`
-    : '48.1 MB';
+    : '51.6 MB';
+
+  const displayedPlatforms = activePlatformCategory === 'ALL'
+    ? SCOUT_PLATFORM_CATEGORIES
+    : SCOUT_PLATFORM_CATEGORIES.filter(c => c.id === activePlatformCategory);
 
   return (
     <div className="page-container page-enter" style={{ padding: '0 32px 80px', maxWidth: 1400, margin: '0 auto', width: '100%' }}>
@@ -389,15 +561,21 @@ export default function DownloadScout() {
               color: '#34d399', padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700, marginBottom: 8
             }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} />
-              {isAdmin ? 'OFFICIAL DESKTOP ENGINE • FLEET GOVERNANCE' : 'OFFICIAL DESKTOP COMPANION • CONTINUOUS SOURCING'}
+              {!user
+                ? 'OFFICIAL DESKTOP INSTALLER • WIN32 COMPANION'
+                : (isAdmin ? 'OFFICIAL DESKTOP ENGINE • FLEET GOVERNANCE' : 'OFFICIAL DESKTOP COMPANION • CONTINUOUS SOURCING')}
             </div>
             <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px', letterSpacing: '-0.5px' }}>
-              {isAdmin ? 'Desktop Scout & Contributors' : 'My Desktop Scout Companion'}
+              {!user
+                ? 'TalentOps Scout Desktop Setup'
+                : (isAdmin ? 'Desktop Scout & Contributors' : 'My Desktop Scout Companion')}
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: 14, margin: 0, maxWidth: 840, lineHeight: 1.5 }}>
-              {isAdmin
-                ? 'Autonomous continuous recruitment intelligence engine for Windows, active device fleet management, and verified candidate pipeline contribution analytics.'
-                : 'Connect your personal Windows desktop companion to automatically extract, verify, and stage recruiter contacts directly to your TalentOps account.'}
+              {!user
+                ? 'Autonomous continuous recruitment intelligence engine for Windows. Extracts, verifies, and stages candidate profiles across 9 platforms directly to your workspace.'
+                : (isAdmin
+                  ? 'Autonomous continuous recruitment intelligence engine for Windows, active device fleet management, and verified candidate pipeline contribution analytics.'
+                  : 'Connect your personal Windows desktop companion to automatically extract, verify, and stage recruiter contacts directly to your TalentOps account.')}
             </p>
           </div>
 
@@ -461,7 +639,7 @@ export default function DownloadScout() {
 
             <button
               onClick={() => {
-                refetchMyDevice();
+                if (user) refetchMyDevice();
                 if (isAdmin) refetch();
               }}
               disabled={isFetching || loadingMyDevice}
@@ -485,54 +663,94 @@ export default function DownloadScout() {
       {currentView === 'companion' && (
         <div>
           {/* Companion Welcome & Status Banner */}
-          <div style={{
-            background: 'linear-gradient(135deg, rgba(228, 228, 231, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%)',
-            border: '1px solid rgba(228, 228, 231, 0.25)', borderRadius: 14, padding: '24px 28px',
-            marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20
-          }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                <span style={{
-                  background: 'rgba(228, 228, 231, 0.15)', color: '#e4e4e7', border: '1px solid rgba(228, 228, 231, 0.35)',
-                  padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, display: 'inline-flex', alignItems: 'center', gap: 6
-                }}>
-                  <Laptop size={12} />
-                  PERSONAL SCOUT COMPANION
-                </span>
-                <span style={{ fontSize: 12, color: '#a1a1aa' }}>
-                  Account: <b>{user?.email || 'Authenticated User'}</b>
-                </span>
-              </div>
-              <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary, #fafafa)', margin: '0 0 6px 0', letterSpacing: '-0.3px' }}>
-                Welcome, {user?.first_name || user?.name || user?.email?.split('@')[0] || 'Recruiter'}!
-              </h2>
-              <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: 13, margin: 0, maxWidth: 740, lineHeight: 1.5 }}>
-                Your Desktop Scout companion operates silently in the background to autonomously capture candidate discoveries while you browse LinkedIn and recruiting boards, continuously enriching your personal talent pipeline.
-              </p>
-            </div>
-
-            {/* Live Device Status Pill */}
+          {!user ? (
             <div style={{
-              background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 10, padding: '12px 18px',
-              display: 'flex', alignItems: 'center', gap: 14
+              background: 'linear-gradient(135deg, rgba(228, 228, 231, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%)',
+              border: '1px solid rgba(228, 228, 231, 0.25)', borderRadius: 14, padding: '24px 28px',
+              marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20
             }}>
-              <div style={{
-                width: 10, height: 10, borderRadius: '50%',
-                background: myDeviceData?.devices?.some(d => d.is_online) ? '#10b981' : '#71717a',
-                boxShadow: myDeviceData?.devices?.some(d => d.is_online) ? '0 0 10px #10b981' : 'none'
-              }} />
               <div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted, #a1a1aa)', textTransform: 'uppercase' }}>Companion Status</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: myDeviceData?.devices?.some(d => d.is_online) ? '#34d399' : 'var(--text-primary, #fafafa)' }}>
-                  {myDeviceData?.devices?.some(d => d.is_online)
-                    ? 'Active & Streaming'
-                    : (myDeviceData?.devices?.length > 0 ? 'Device Paired (Standby)' : 'Not Connected')}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                  <span style={{
+                    background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.35)',
+                    padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, display: 'inline-flex', alignItems: 'center', gap: 6
+                  }}>
+                    <Laptop size={12} />
+                    OFFICIAL DESKTOP INSTALLER &amp; SETUP
+                  </span>
+                  <span style={{ fontSize: 12, color: '#a1a1aa' }}>
+                    Windows 10/11 64-bit • {displayVersion} Production • {displaySize}
+                  </span>
+                </div>
+                <h2 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary, #fafafa)', margin: '0 0 6px 0', letterSpacing: '-0.3px' }}>
+                  Download TalentOps Scout Desktop Setup
+                </h2>
+                <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: 14, margin: 0, maxWidth: 780, lineHeight: 1.5 }}>
+                  Autonomous recruiter intelligence companion for Windows. Operates silently in the background with local offline OCR (Extractor v4.5.2), local SQLite buffer queuing, and zero cloud passwords to continuously capture and stage talent across 9 platforms.
+                </p>
+              </div>
+
+              <div style={{
+                background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 10, padding: '14px 20px',
+                display: 'flex', alignItems: 'center', gap: 14
+              }}>
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }} />
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted, #a1a1aa)', textTransform: 'uppercase' }}>Current Release</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#34d399' }}>{displayVersion} • Production Stable</div>
                 </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(228, 228, 231, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%)',
+              border: '1px solid rgba(228, 228, 231, 0.25)', borderRadius: 14, padding: '24px 28px',
+              marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                  <span style={{
+                    background: 'rgba(228, 228, 231, 0.15)', color: '#e4e4e7', border: '1px solid rgba(228, 228, 231, 0.35)',
+                    padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, display: 'inline-flex', alignItems: 'center', gap: 6
+                  }}>
+                    <Laptop size={12} />
+                    PERSONAL SCOUT COMPANION
+                  </span>
+                  <span style={{ fontSize: 12, color: '#a1a1aa' }}>
+                    Account: <b>{user?.email || 'Authenticated User'}</b>
+                  </span>
+                </div>
+                <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary, #fafafa)', margin: '0 0 6px 0', letterSpacing: '-0.3px' }}>
+                  Welcome, {user?.first_name || user?.name || user?.email?.split('@')[0] || 'Recruiter'}!
+                </h2>
+                <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: 13, margin: 0, maxWidth: 740, lineHeight: 1.5 }}>
+                  Your Desktop Scout companion operates silently in the background to autonomously capture candidate discoveries while you browse LinkedIn, ZoomInfo, GitHub, ATS, and recruiting boards, continuously enriching your personal talent pipeline.
+                </p>
+              </div>
 
-          {/* 2-Column Action Cards: Download (Left) & Enter Code (Right) */}
+              {/* Live Device Status Pill */}
+              <div style={{
+                background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 10, padding: '12px 18px',
+                display: 'flex', alignItems: 'center', gap: 14
+              }}>
+                <div style={{
+                  width: 10, height: 10, borderRadius: '50%',
+                  background: myDeviceData?.devices?.some(d => d.is_online) ? '#10b981' : '#71717a',
+                  boxShadow: myDeviceData?.devices?.some(d => d.is_online) ? '0 0 10px #10b981' : 'none'
+                }} />
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted, #a1a1aa)', textTransform: 'uppercase' }}>Companion Status</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: myDeviceData?.devices?.some(d => d.is_online) ? '#34d399' : 'var(--text-primary, #fafafa)' }}>
+                    {myDeviceData?.devices?.some(d => d.is_online)
+                      ? 'Active & Streaming'
+                      : (myDeviceData?.devices?.length > 0 ? 'Device Paired (Standby)' : 'Not Connected')}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 2-Column Action Cards: Download (Left) & Enter Code / Sign In (Right) */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 20, marginBottom: 28 }}>
             {/* CARD 1: DOWNLOAD INSTALLER */}
             <div style={{
@@ -554,23 +772,54 @@ export default function DownloadScout() {
                 </div>
 
                 <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
-                  Download and run the official Windows installer. Installs cleanly in 5 seconds into your user profile without needing IT administrator privileges.
+                  Download and run the official Windows installer. Installs cleanly in 5 seconds into your user profile (%LOCALAPPDATA%\Programs\TalentOpsScout) without needing IT administrator privileges.
                 </p>
 
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
                   <span style={{ padding: '3px 8px', borderRadius: 6, background: 'var(--panel-bg, #232326)', border: '1px solid var(--card-border, transparent)', color: 'var(--text-secondary, #a1a1aa)', fontSize: 11, fontWeight: 600 }}>
                     Windows 10/11 64-bit
                   </span>
-                  <span style={{ padding: '3px 8px', borderRadius: 6, background: 'var(--panel-bg, #232326)', border: '1px solid var(--card-border, transparent)', color: 'var(--text-secondary, #a1a1aa)', fontSize: 11, fontWeight: 600 }}>
-                    {displayVersion}
+                  <span style={{ padding: '3px 8px', borderRadius: 6, background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', fontSize: 11, fontWeight: 700 }}>
+                    {displayVersion} Production
                   </span>
                   <span style={{ padding: '3px 8px', borderRadius: 6, background: 'var(--panel-bg, #232326)', border: '1px solid var(--card-border, transparent)', color: 'var(--text-secondary, #a1a1aa)', fontSize: 11, fontWeight: 600 }}>
                     {displaySize}
                   </span>
-                  <span style={{ padding: '3px 8px', borderRadius: 6, background: 'rgba(16, 185, 129, 0.15)', color: '#059669', fontSize: 11, fontWeight: 600 }}>
-                    Offline OCR Built-in
+                  <span style={{ padding: '3px 8px', borderRadius: 6, background: 'var(--panel-bg, #232326)', border: '1px solid var(--card-border, transparent)', color: 'var(--text-secondary, #a1a1aa)', fontSize: 11, fontWeight: 600 }}>
+                    Extractor v4.5.2
+                  </span>
+                  <span style={{ padding: '3px 8px', borderRadius: 6, background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', fontSize: 11, fontWeight: 600 }}>
+                    SQLite Queue Buffer
                   </span>
                 </div>
+
+                {/* SHA-256 Checksum Pill */}
+                {releaseInfo?.sha256 && (
+                  <div style={{
+                    background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)',
+                    borderRadius: 8, padding: '8px 12px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8
+                  }}>
+                    <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted, #71717a)', textTransform: 'uppercase', fontWeight: 700 }}>SHA-256 Verified</div>
+                      <div style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--text-secondary, #a1a1aa)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {releaseInfo.sha256}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(releaseInfo.sha256);
+                        toast.success('SHA-256 copied to clipboard');
+                      }}
+                      style={{
+                        padding: '4px 8px', background: 'var(--card-bg, #232326)', border: '1px solid var(--card-border, #27272a)',
+                        color: 'var(--text-secondary, #e4e4e7)', borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: 'pointer', flexShrink: 0
+                      }}
+                      title="Copy SHA-256 checksum"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -585,7 +834,7 @@ export default function DownloadScout() {
                   }}
                 >
                   <Download size={18} />
-                  <span>{downloading ? 'Starting Download...' : `Download Scout (${displayVersion})`}</span>
+                  <span>{downloading ? 'Starting Download...' : `Download Scout Setup (${displayVersion})`}</span>
                 </button>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -626,316 +875,618 @@ export default function DownloadScout() {
               </div>
             </div>
 
-            {/* CARD 2: ENTER PAIRING CODE (REVERSE DEVICE FLOW) */}
-            <div style={{
-              background: 'var(--card-bg, #121214)',
-              border: '1px solid var(--card-border, rgba(228, 228, 231, 0.35))', borderRadius: 14, padding: '24px 26px',
-              display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-              boxShadow: 'var(--shadow)'
-            }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-                  <div style={{
-                    width: 44, height: 44, borderRadius: 10, background: 'rgba(228, 228, 231, 0.15)',
-                    border: '1px solid var(--card-border, rgba(228, 228, 231, 0.3))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary, #e4e4e7)'
-                  }}>
-                    <Zap size={22} />
+            {/* CARD 2: PAIRING CODE / ACCOUNT LINKING */}
+            {!user ? (
+              <div style={{
+                background: 'var(--card-bg, #121214)',
+                border: '1px solid var(--card-border, rgba(228, 228, 231, 0.35))', borderRadius: 14, padding: '24px 26px',
+                display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                boxShadow: 'var(--shadow)'
+              }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                    <div style={{
+                      width: 44, height: 44, borderRadius: 10, background: 'rgba(228, 228, 231, 0.15)',
+                      border: '1px solid var(--card-border, rgba(228, 228, 231, 0.3))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary, #e4e4e7)'
+                    }}>
+                      <Zap size={22} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary, #e4e4e7)', letterSpacing: 0.5 }}>STEP 2: LINK TO YOUR ACCOUNT</div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary, #fafafa)' }}>Pair Desktop Scout</div>
+                    </div>
                   </div>
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary, #e4e4e7)', letterSpacing: 0.5 }}>STEP 2: LINK TO YOUR ACCOUNT</div>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary, #fafafa)' }}>Pair Desktop Scout</div>
+
+                  <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
+                    When you run <b>TalentOpsScoutSetup.exe</b> and launch Scout, it displays a bold 4-character pairing code on your screen (e.g. <b>TOS-8492</b>). Sign in to your TalentOps account to connect your device:
+                  </p>
+
+                  <div style={{
+                    background: 'var(--panel-bg, #0b0b0c)',
+                    border: '1px dashed var(--card-border, #27272a)',
+                    borderRadius: 10,
+                    padding: '16px',
+                    textAlign: 'center',
+                    marginBottom: 16
+                  }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted, #a1a1aa)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      Desktop Scout displays on screen:
+                    </div>
+                    <code style={{
+                      display: 'inline-block',
+                      padding: '8px 24px',
+                      background: '#09090b',
+                      border: '1px solid #27272a',
+                      borderRadius: 8,
+                      color: '#34d399',
+                      fontSize: 22,
+                      fontWeight: 800,
+                      letterSpacing: 4,
+                      fontFamily: 'monospace'
+                    }}>
+                      TOS-____
+                    </code>
                   </div>
                 </div>
 
-                {/* Personal Dedicated Activation Code (if assigned) */}
-                {myDeviceData?.active_activation_code && (
-                  <div style={{
-                    background: 'rgba(59, 130, 246, 0.1)',
-                    border: '1px solid rgba(59, 130, 246, 0.35)',
-                    borderRadius: 10,
-                    padding: '14px 16px',
-                    marginBottom: 16
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Key size={14} color="#60a5fa" />
-                        <span style={{ fontSize: 11, fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                          Your Dedicated Activation Code
-                        </span>
-                      </div>
-                      <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'rgba(59, 130, 246, 0.25)', color: '#bfdbfe', fontWeight: 600 }}>
-                        {myDeviceData.active_activation_label || 'Permanent'}
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                      <code style={{
-                        flex: 1,
-                        padding: '10px 14px',
-                        background: 'var(--bg-base, #09090b)',
-                        border: '1px dashed rgba(59, 130, 246, 0.6)',
-                        borderRadius: 8,
-                        color: '#60a5fa',
-                        fontSize: 16,
-                        fontWeight: 800,
-                        letterSpacing: 2,
-                        fontFamily: 'monospace',
-                        textAlign: 'center'
-                      }}>
-                        {myDeviceData.active_activation_code}
-                      </code>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(myDeviceData.active_activation_code);
-                          toast.success('Activation code copied to clipboard!');
-                        }}
-                        style={{
-                          padding: '10px 14px',
-                          background: '#2563eb',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: 8,
-                          fontSize: 12,
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 6
-                        }}
-                      >
-                        <Copy size={14} />
-                        <span>Copy</span>
-                      </button>
-                    </div>
-
-                    <p style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 11, lineHeight: 1.4, margin: 0 }}>
-                      💡 <b>Where to enter in Scout:</b> In Desktop Scout, click <b>&quot;Switch Account&quot;</b> at top-right (or <b>Settings → Node Identity</b>), click <i>&quot;Have an admin activation code? Enter it manually&quot;</i>, paste this code, and click <b>Connect Account</b>.
-                    </p>
-                  </div>
-                )}
-
-                <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
-                  {myDeviceData?.active_activation_code
-                    ? 'Alternatively, enter the 4-character code shown on your Desktop Scout app (e.g. TOS-8492) below:'
-                    : 'Launch Desktop Scout on your PC. It displays a 4-character pairing code on your screen (e.g. TOS-8492). Enter that code below to connect your device:'}
-                </p>
-
-                <form onSubmit={handleVerifyPairingCode} style={{ marginBottom: 12 }}>
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                    <input
-                      type="text"
-                      placeholder="TOS-____"
-                      value={pairingCodeInput}
-                      onChange={(e) => {
-                        setPairingCodeInput(e.target.value.toUpperCase());
-                        setPairingError('');
-                      }}
-                      maxLength={10}
-                      style={{
-                        flex: 1, padding: '12px 16px', background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--card-border, rgba(228, 228, 231, 0.4))',
-                        borderRadius: 10, color: 'var(--text-primary, #e4e4e7)', fontSize: 18, fontWeight: 800, letterSpacing: 3,
-                        fontFamily: 'monospace', textTransform: 'uppercase', textAlign: 'center', outline: 'none'
-                      }}
-                    />
-                    <button
-                      type="submit"
-                      disabled={pairingLoading || !pairingCodeInput.trim()}
-                      style={{
-                        padding: '13px 22px', background: 'linear-gradient(135deg, #a1a1aa 0%, #52525b 100%)',
-                        color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700,
-                        cursor: pairingLoading || !pairingCodeInput.trim() ? 'not-allowed' : 'pointer',
-                        display: 'flex', alignItems: 'center', gap: 8, opacity: pairingLoading || !pairingCodeInput.trim() ? 0.6 : 1,
-                        boxShadow: '0 4px 15px rgba(161, 161, 170, 0.35)', whiteSpace: 'nowrap'
-                      }}
-                    >
-                      {pairingLoading ? <RefreshCw size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                      <span>{pairingLoading ? 'Linking...' : 'Connect Device'}</span>
-                    </button>
-                  </div>
-                </form>
-
-                {pairingError && (
-                  <div style={{
-                    background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.35)',
-                    borderRadius: 8, padding: '10px 14px', color: '#f87171', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12
-                  }}>
-                    <AlertCircle size={15} flexShrink={0} />
-                    <span>{pairingError}</span>
-                  </div>
-                )}
-
-                {pairingSuccess && (
-                  <div style={{
-                    background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.35)',
-                    borderRadius: 8, padding: '10px 14px', color: '#34d399', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12
-                  }}>
-                    <CheckCircle2 size={15} flexShrink={0} />
-                    <span>{pairingSuccess}</span>
-                  </div>
-                )}
-              </div>
-
-              <div style={{ fontSize: 11, color: '#71717a', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <ShieldCheck size={14} color="#10b981" />
-                <span>Encrypted end-to-end device token bound strictly to your user profile.</span>
-              </div>
-            </div>
-          </div>
-
-          {/* STEP 3: MY PAIRED COMPANION HARDWARE CARDS */}
-          <div style={{ marginBottom: 32 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div>
-                <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #fafafa)', margin: 0 }}>
-                  My Paired Companions ({myDeviceData?.devices?.length || 0})
-                </h3>
-                <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: 12, margin: '2px 0 0' }}>
-                  Desktop devices bound to your account and reporting continuous recruitment telemetry.
-                </p>
-              </div>
-
-              <button
-                onClick={() => refetchMyDevice()}
-                disabled={loadingMyDevice}
-                style={{
-                  padding: '6px 12px', background: 'var(--panel-bg, #232326)', border: '1px solid var(--card-border, #27272a)',
-                  color: 'var(--text-secondary, #a1a1aa)', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 6
-                }}
-              >
-                <RefreshCw size={12} className={loadingMyDevice ? 'animate-spin' : ''} />
-                <span>Refresh Status</span>
-              </button>
-            </div>
-
-            {myDeviceData?.devices && myDeviceData.devices.length > 0 ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
-                {myDeviceData.devices.map((dev) => (
-                  <div
-                    key={dev.device_id}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <button
+                    onClick={() => navigate({ to: '/login', search: { redirect: '/download-scout' } })}
                     style={{
-                      background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12,
-                      padding: '18px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
+                      width: '100%', padding: '12px 18px', background: 'linear-gradient(135deg, #a1a1aa 0%, #52525b 100%)',
+                      color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      boxShadow: '0 4px 15px rgba(161, 161, 170, 0.35)'
                     }}
                   >
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{
-                            width: 36, height: 36, borderRadius: 8, background: 'var(--panel-bg, #232326)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: dev.is_online ? '#34d399' : 'var(--text-muted, #a1a1aa)'
-                          }}>
-                            <Laptop size={18} />
-                          </div>
-                          <div>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary, #fafafa)' }}>
-                              {dev.name || 'Windows Desktop'}
-                            </div>
-                            <div style={{ fontSize: 11, color: 'var(--text-muted, #71717a)', fontFamily: 'monospace' }}>
-                              {dev.device_id?.substring(0, 16)}...
-                            </div>
-                          </div>
-                        </div>
-
-                        <span style={{
-                          padding: '3px 8px', borderRadius: 12, fontSize: 10, fontWeight: 700,
-                          background: dev.is_online ? 'rgba(16, 185, 129, 0.15)' : 'rgba(100, 116, 139, 0.15)',
-                          color: dev.is_online ? '#34d399' : 'var(--text-muted, #a1a1aa)',
-                          border: `1px solid ${dev.is_online ? 'rgba(16, 185, 129, 0.3)' : 'rgba(100, 116, 139, 0.3)'}`,
-                          display: 'flex', alignItems: 'center', gap: 5
-                        }}>
-                          <span style={{
-                            width: 6, height: 6, borderRadius: '50%',
-                            background: dev.is_online ? '#10b981' : 'var(--text-muted, #71717a)'
-                          }} />
-                          {dev.is_online ? 'ONLINE & STREAMING' : 'STANDBY'}
-                        </span>
-                      </div>
-
-                      <div style={{
-                        background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 8,
-                        padding: '10px 14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16
-                      }}>
-                        <div>
-                          <div style={{ fontSize: 10, color: 'var(--text-muted, #71717a)', textTransform: 'uppercase' }}>Version</div>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary, #e4e4e7)', fontFamily: 'monospace' }}>
-                            v{dev.version || '2.7.3'}
-                          </div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 10, color: 'var(--text-muted, #71717a)', textTransform: 'uppercase' }}>Last Active</div>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary, #fafafa)' }}>
-                            {formatTimeAgo(dev.last_seen_at)}
-                          </div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 10, color: 'var(--text-muted, #71717a)', textTransform: 'uppercase' }}>Candidates Added</div>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: '#34d399' }}>
-                            {dev.total_accepted || 0}
-                          </div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 10, color: 'var(--text-muted, #71717a)', textTransform: 'uppercase' }}>Observations</div>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #a1a1aa)' }}>
-                            {dev.total_submitted || 0}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                      <button
-                        onClick={() => handleDisconnectDevice(dev.device_id)}
-                        disabled={disconnectingId === dev.device_id}
-                        style={{
-                          padding: '6px 12px', background: 'transparent', border: '1px solid rgba(239, 68, 68, 0.3)',
-                          color: '#f87171', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', gap: 5
-                        }}
-                      >
-                        <Trash2 size={12} />
-                        <span>{disconnectingId === dev.device_id ? 'Disconnecting...' : 'Disconnect'}</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                    <UserCheck size={16} />
+                    <span>Sign In to Enter Pairing Code</span>
+                  </button>
+                  <button
+                    onClick={() => navigate({ to: '/register', search: { redirect: '/download-scout' } })}
+                    style={{
+                      width: '100%', padding: '10px 18px', background: 'var(--panel-bg, #18181b)',
+                      color: 'var(--text-secondary, #a1a1aa)', border: '1px solid var(--card-border, #27272a)',
+                      borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
+                    }}
+                  >
+                    <span>Need an account? Create Workspace</span>
+                    <ArrowRight size={13} />
+                  </button>
+                </div>
               </div>
             ) : (
               <div style={{
-                background: 'var(--card-bg, #121214)', border: '1px dashed var(--card-border, #232326)', borderRadius: 14,
-                padding: '36px 24px', textAlign: 'center'
+                background: 'var(--card-bg, #121214)',
+                border: '1px solid var(--card-border, rgba(228, 228, 231, 0.35))', borderRadius: 14, padding: '24px 26px',
+                display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                boxShadow: 'var(--shadow)'
               }}>
-                <div style={{
-                  width: 48, height: 48, borderRadius: 12, background: 'rgba(228, 228, 231, 0.1)',
-                  border: '1px solid var(--card-border, rgba(228, 228, 231, 0.2))', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', color: 'var(--text-primary, #e4e4e7)', margin: '0 auto 14px'
-                }}>
-                  <Laptop size={24} />
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                    <div style={{
+                      width: 44, height: 44, borderRadius: 10, background: 'rgba(228, 228, 231, 0.15)',
+                      border: '1px solid var(--card-border, rgba(228, 228, 231, 0.3))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary, #e4e4e7)'
+                    }}>
+                      <Zap size={22} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary, #e4e4e7)', letterSpacing: 0.5 }}>STEP 2: LINK TO YOUR ACCOUNT</div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary, #fafafa)' }}>Pair Desktop Scout</div>
+                    </div>
+                  </div>
+
+                  {/* Personal Dedicated Activation Code (if assigned) */}
+                  {myDeviceData?.active_activation_code && (
+                    <div style={{
+                      background: 'rgba(59, 130, 246, 0.1)',
+                      border: '1px solid rgba(59, 130, 246, 0.35)',
+                      borderRadius: 10,
+                      padding: '14px 16px',
+                      marginBottom: 16
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Key size={14} color="#60a5fa" />
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            Your Dedicated Activation Code
+                          </span>
+                        </div>
+                        <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'rgba(59, 130, 246, 0.25)', color: '#bfdbfe', fontWeight: 600 }}>
+                          {myDeviceData.active_activation_label || 'Permanent'}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                        <code style={{
+                          flex: 1,
+                          padding: '10px 14px',
+                          background: 'var(--bg-base, #09090b)',
+                          border: '1px dashed rgba(59, 130, 246, 0.6)',
+                          borderRadius: 8,
+                          color: '#60a5fa',
+                          fontSize: 16,
+                          fontWeight: 800,
+                          letterSpacing: 2,
+                          fontFamily: 'monospace',
+                          textAlign: 'center'
+                        }}>
+                          {myDeviceData.active_activation_code}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(myDeviceData.active_activation_code);
+                            toast.success('Activation code copied to clipboard!');
+                          }}
+                          style={{
+                            padding: '10px 14px',
+                            background: '#2563eb',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: 8,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6
+                          }}
+                        >
+                          <Copy size={14} />
+                          <span>Copy</span>
+                        </button>
+                      </div>
+
+                      <p style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 11, lineHeight: 1.4, margin: 0 }}>
+                        💡 <b>Where to enter in Scout:</b> In Desktop Scout, click <b>&quot;Switch Account&quot;</b> at top-right (or <b>Settings → Node Identity</b>), click <i>&quot;Have an admin activation code? Enter it manually&quot;</i>, paste this code, and click <b>Connect Account</b>.
+                      </p>
+                    </div>
+                  )}
+
+                  <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
+                    {myDeviceData?.active_activation_code
+                      ? 'Alternatively, enter the 4-character code shown on your Desktop Scout app (e.g. TOS-8492) below:'
+                      : 'Launch Desktop Scout on your PC. It displays a 4-character pairing code on your screen (e.g. TOS-8492). Enter that code below to connect your device:'}
+                  </p>
+
+                  <form onSubmit={handleVerifyPairingCode} style={{ marginBottom: 12 }}>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        placeholder="TOS-____"
+                        value={pairingCodeInput}
+                        onChange={(e) => {
+                          setPairingCodeInput(e.target.value.toUpperCase());
+                          setPairingError('');
+                        }}
+                        maxLength={10}
+                        style={{
+                          flex: 1, padding: '12px 16px', background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--card-border, rgba(228, 228, 231, 0.4))',
+                          borderRadius: 10, color: 'var(--text-primary, #e4e4e7)', fontSize: 18, fontWeight: 800, letterSpacing: 3,
+                          fontFamily: 'monospace', textTransform: 'uppercase', textAlign: 'center', outline: 'none'
+                        }}
+                      />
+                      <button
+                        type="submit"
+                        disabled={pairingLoading || !pairingCodeInput.trim()}
+                        style={{
+                          padding: '13px 22px', background: 'linear-gradient(135deg, #a1a1aa 0%, #52525b 100%)',
+                          color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                          cursor: pairingLoading || !pairingCodeInput.trim() ? 'not-allowed' : 'pointer',
+                          display: 'flex', alignItems: 'center', gap: 8, opacity: pairingLoading || !pairingCodeInput.trim() ? 0.6 : 1,
+                          boxShadow: '0 4px 15px rgba(161, 161, 170, 0.35)', whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {pairingLoading ? <RefreshCw size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                        <span>{pairingLoading ? 'Linking...' : 'Connect Device'}</span>
+                      </button>
+                    </div>
+                  </form>
+
+                  {pairingError && (
+                    <div style={{
+                      background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.35)',
+                      borderRadius: 8, padding: '10px 14px', color: '#f87171', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12
+                    }}>
+                      <AlertCircle size={15} flexShrink={0} />
+                      <span>{pairingError}</span>
+                    </div>
+                  )}
+
+                  {pairingSuccess && (
+                    <div style={{
+                      background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.35)',
+                      borderRadius: 8, padding: '10px 14px', color: '#34d399', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12
+                    }}>
+                      <CheckCircle2 size={15} flexShrink={0} />
+                      <span>{pairingSuccess}</span>
+                    </div>
+                  )}
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary, #fafafa)', marginBottom: 6 }}>
-                  No Desktop Companion Connected Yet
-                </div>
-                <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: 13, maxWidth: 520, margin: '0 auto 18px', lineHeight: 1.5 }}>
-                  Download the installer above and launch Desktop Scout. Enter the pairing code displayed on your desktop into the box above to link this computer in seconds.
-                </p>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
-                  <button
-                    onClick={handleDownload}
-                    style={{
-                      padding: '8px 16px', background: '#10b981', color: '#fff', border: 'none',
-                      borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6
-                    }}
-                  >
-                    <Download size={14} />
-                    <span>Download Scout {displayVersion}</span>
-                  </button>
+
+                <div style={{ fontSize: 11, color: '#71717a', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <ShieldCheck size={14} color="#10b981" />
+                  <span>Encrypted end-to-end device token bound strictly to your user profile.</span>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Expandable Guides (Setup Guide & Trust Notice) */}
+          {/* STEP 3: MY PAIRED COMPANION HARDWARE CARDS (Rendered if logged in) */}
+          {user && (
+            <div style={{ marginBottom: 32 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div>
+                  <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #fafafa)', margin: 0 }}>
+                    My Paired Companions ({myDeviceData?.devices?.length || 0})
+                  </h3>
+                  <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: 12, margin: '2px 0 0' }}>
+                    Desktop devices bound to your account and reporting continuous recruitment telemetry.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => refetchMyDevice()}
+                  disabled={loadingMyDevice}
+                  style={{
+                    padding: '6px 12px', background: 'var(--panel-bg, #232326)', border: '1px solid var(--card-border, #27272a)',
+                    color: 'var(--text-secondary, #a1a1aa)', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 6
+                  }}
+                >
+                  <RefreshCw size={12} className={loadingMyDevice ? 'animate-spin' : ''} />
+                  <span>Refresh Status</span>
+                </button>
+              </div>
+
+              {myDeviceData?.devices && myDeviceData.devices.length > 0 ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+                  {myDeviceData.devices.map((dev) => (
+                    <div
+                      key={dev.device_id}
+                      style={{
+                        background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12,
+                        padding: '18px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{
+                              width: 36, height: 36, borderRadius: 8, background: 'var(--panel-bg, #232326)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', color: dev.is_online ? '#34d399' : 'var(--text-muted, #a1a1aa)'
+                            }}>
+                              <Laptop size={18} />
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary, #fafafa)' }}>
+                                {dev.name || 'Windows Desktop'}
+                              </div>
+                              <div style={{ fontSize: 11, color: 'var(--text-muted, #71717a)', fontFamily: 'monospace' }}>
+                                {dev.device_id?.substring(0, 16)}...
+                              </div>
+                            </div>
+                          </div>
+
+                          <span style={{
+                            padding: '3px 8px', borderRadius: 12, fontSize: 10, fontWeight: 700,
+                            background: dev.is_online ? 'rgba(16, 185, 129, 0.15)' : 'rgba(100, 116, 139, 0.15)',
+                            color: dev.is_online ? '#34d399' : 'var(--text-muted, #a1a1aa)',
+                            border: `1px solid ${dev.is_online ? 'rgba(16, 185, 129, 0.3)' : 'rgba(100, 116, 139, 0.3)'}`,
+                            display: 'flex', alignItems: 'center', gap: 5
+                          }}>
+                            <span style={{
+                              width: 6, height: 6, borderRadius: '50%',
+                              background: dev.is_online ? '#10b981' : 'var(--text-muted, #71717a)'
+                            }} />
+                            {dev.is_online ? 'ONLINE & STREAMING' : 'STANDBY'}
+                          </span>
+                        </div>
+
+                        <div style={{
+                          background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 8,
+                          padding: '10px 14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16
+                        }}>
+                          <div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted, #71717a)', textTransform: 'uppercase' }}>Version</div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary, #e4e4e7)', fontFamily: 'monospace' }}>
+                              v{dev.version || displayVersion}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted, #71717a)', textTransform: 'uppercase' }}>Last Active</div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary, #fafafa)' }}>
+                              {formatTimeAgo(dev.last_seen_at)}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted, #71717a)', textTransform: 'uppercase' }}>Candidates Added</div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: '#34d399' }}>
+                              {dev.total_accepted || 0}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted, #71717a)', textTransform: 'uppercase' }}>Observations</div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #a1a1aa)' }}>
+                              {dev.total_submitted || 0}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={() => handleDisconnectDevice(dev.device_id)}
+                          disabled={disconnectingId === dev.device_id}
+                          style={{
+                            padding: '6px 12px', background: 'transparent', border: '1px solid rgba(239, 68, 68, 0.3)',
+                            color: '#f87171', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: 5
+                          }}
+                        >
+                          <Trash2 size={12} />
+                          <span>{disconnectingId === dev.device_id ? 'Disconnecting...' : 'Disconnect'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{
+                  background: 'var(--card-bg, #121214)', border: '1px dashed var(--card-border, #232326)', borderRadius: 14,
+                  padding: '36px 24px', textAlign: 'center'
+                }}>
+                  <div style={{
+                    width: 48, height: 48, borderRadius: 12, background: 'rgba(228, 228, 231, 0.1)',
+                    border: '1px solid var(--card-border, rgba(228, 228, 231, 0.2))', display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', color: 'var(--text-primary, #e4e4e7)', margin: '0 auto 14px'
+                  }}>
+                    <Laptop size={24} />
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary, #fafafa)', marginBottom: 6 }}>
+                    No Desktop Companion Connected Yet
+                  </div>
+                  <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: 13, maxWidth: 520, margin: '0 auto 18px', lineHeight: 1.5 }}>
+                    Download the installer above and launch Desktop Scout. Enter the pairing code displayed on your desktop into the box above to link this computer in seconds.
+                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={handleDownload}
+                      style={{
+                        padding: '8px 16px', background: '#10b981', color: '#fff', border: 'none',
+                        borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6
+                      }}
+                    >
+                      <Download size={14} />
+                      <span>Download Scout {displayVersion}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* SUPPORTED SOURCING PLATFORMS & TARGETS (9 ENGINE CATEGORIES)              */}
+          {/* ========================================================================= */}
+          <div style={{ marginBottom: 36 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 16 }}>
+              <div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#34d399', fontSize: 11, fontWeight: 700, letterSpacing: 0.5, marginBottom: 4 }}>
+                  <Globe size={13} />
+                  <span>NATIVE BROWSER &amp; WINDOW MONITORING ALLOWLIST</span>
+                </div>
+                <h3 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary, #fafafa)', margin: '0 0 4px 0' }}>
+                  Supported Sourcing Platforms &amp; Intelligence Targets (9 Categories)
+                </h3>
+                <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: 13, margin: 0, maxWidth: 840, lineHeight: 1.5 }}>
+                  Scout Desktop automatically identifies active recruiting windows across these verified domains, extracts candidate fields via OCR and DOM parsing, and safely ignores all non-work applications.
+                </p>
+              </div>
+
+              {/* Category Filter Pills */}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => setActivePlatformCategory('ALL')}
+                  style={{
+                    padding: '5px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                    background: activePlatformCategory === 'ALL' ? 'var(--text-primary, #e4e4e7)' : 'var(--panel-bg, #0b0b0c)',
+                    color: activePlatformCategory === 'ALL' ? 'var(--bg-base, #09090b)' : 'var(--text-secondary, #a1a1aa)',
+                    border: activePlatformCategory === 'ALL' ? 'none' : '1px solid var(--card-border, #27272a)'
+                  }}
+                >
+                  All Platforms (9)
+                </button>
+                {SCOUT_PLATFORM_CATEGORIES.map(cat => {
+                  const isActive = activePlatformCategory === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => setActivePlatformCategory(cat.id)}
+                      style={{
+                        padding: '5px 11px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                        background: isActive ? cat.color : 'var(--panel-bg, #0b0b0c)',
+                        color: isActive ? '#fff' : 'var(--text-secondary, #a1a1aa)',
+                        border: isActive ? `1px solid ${cat.color}` : '1px solid var(--card-border, #27272a)'
+                      }}
+                    >
+                      {cat.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Platform Categories Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
+              {displayedPlatforms.map(cat => {
+                const CatIcon = cat.icon;
+                return (
+                  <div
+                    key={cat.id}
+                    style={{
+                      background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12,
+                      padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                      boxShadow: 'var(--shadow)'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{
+                            width: 32, height: 32, borderRadius: 8, background: `${cat.color}20`,
+                            border: `1px solid ${cat.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: cat.color
+                          }}>
+                            <CatIcon size={16} />
+                          </div>
+                          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary, #fafafa)' }}>
+                            {cat.name}
+                          </span>
+                        </div>
+                        <span style={{
+                          padding: '2px 8px', borderRadius: 12, fontSize: 10, fontWeight: 700,
+                          background: `${cat.color}15`, color: cat.color, border: `1px solid ${cat.color}35`
+                        }}>
+                          {cat.badge}
+                        </span>
+                      </div>
+
+                      <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: 12, margin: '0 0 14px 0', lineHeight: 1.4 }}>
+                        {cat.description}
+                      </p>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {cat.targets.map((t, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #1f1f23)',
+                              borderRadius: 8, padding: '8px 12px'
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary, #e4e4e7)' }}>
+                                {t.name}
+                              </span>
+                              <code style={{ fontSize: 10, color: cat.color, background: 'rgba(0,0,0,0.3)', padding: '1px 6px', borderRadius: 4 }}>
+                                {t.scope}
+                              </code>
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted, #71717a)', lineHeight: 1.3 }}>
+                              {t.details}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* DESKTOP COMMAND CENTER ARCHITECTURE (9 STACKED PAGES / OBSIDIAN GUI)       */}
+          {/* ========================================================================= */}
+          <div style={{ marginBottom: 36 }}>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#60a5fa', fontSize: 11, fontWeight: 700, letterSpacing: 0.5, marginBottom: 4 }}>
+                <Monitor size={13} />
+                <span>NATIVE OBSIDIAN WORKSPACE &amp; ENGINE ARCHITECTURE</span>
+              </div>
+              <h3 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary, #fafafa)', margin: '0 0 4px 0' }}>
+                Desktop Scout Command Center (7 Left-Rail Views • 9 Stacked Pages)
+              </h3>
+              <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: 13, margin: 0, maxWidth: 840, lineHeight: 1.5 }}>
+                Every download of TalentOps Scout includes the full Obsidian Command Center GUI built natively in PySide6 with 7 operational navigation tabs and 9 interactive workspace views:
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+              {COMMAND_CENTER_VIEWS.map(v => {
+                const VIcon = v.icon;
+                return (
+                  <div
+                    key={v.id}
+                    style={{
+                      background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 10,
+                      padding: '16px 18px', display: 'flex', gap: 12, alignItems: 'flex-start'
+                    }}
+                  >
+                    <div style={{
+                      width: 34, height: 34, borderRadius: 8, background: 'rgba(228, 228, 231, 0.1)',
+                      border: '1px solid var(--card-border, rgba(228, 228, 231, 0.2))', display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', color: 'var(--text-primary, #e4e4e7)', flexShrink: 0
+                    }}>
+                      <VIcon size={16} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary, #fafafa)', marginBottom: 4 }}>
+                        {v.name}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary, #a1a1aa)', lineHeight: 1.45 }}>
+                        {v.desc}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* ENTERPRISE TRUST & SECURITY PILLARS                                       */}
+          {/* ========================================================================= */}
+          <div style={{ marginBottom: 36 }}>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#10b981', fontSize: 11, fontWeight: 700, letterSpacing: 0.5, marginBottom: 4 }}>
+                <ShieldCheck size={13} />
+                <span>ENTERPRISE PRIVACY &amp; SECURITY GUARANTEES</span>
+              </div>
+              <h3 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary, #fafafa)', margin: '0 0 4px 0' }}>
+                Zero Passwords • Local SQLite Buffering • Signed Releases
+              </h3>
+              <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: 13, margin: 0, maxWidth: 840, lineHeight: 1.5 }}>
+                Built with zero-trust local isolation. Designed for enterprise compliance with zero intrusion into private browser data.
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
+              {TRUST_PILLARS.map((p, idx) => {
+                const PIcon = p.icon;
+                return (
+                  <div
+                    key={idx}
+                    style={{
+                      background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 10,
+                      padding: '18px 20px', display: 'flex', flexDirection: 'column'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                      <div style={{
+                        width: 32, height: 32, borderRadius: 8, background: `${p.color}20`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', color: p.color
+                      }}>
+                        <PIcon size={16} />
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary, #fafafa)' }}>
+                        {p.title}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: 12, color: 'var(--text-secondary, #a1a1aa)', margin: 0, lineHeight: 1.5 }}>
+                      {p.desc}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* STEP-BY-STEP SETUP GUIDE & WINDOWS SMARTSCREEN TRUST NOTICE               */}
+          {/* ========================================================================= */}
           <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
             <button
               onClick={() => setShowSetupGuide(!showSetupGuide)}
@@ -971,19 +1522,19 @@ export default function DownloadScout() {
               <div style={{ background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 8, padding: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary, #e4e4e7)', marginBottom: 4 }}>1. Download &amp; Run</div>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary, #a1a1aa)', lineHeight: 1.5 }}>
-                  Run <code>TalentOpsScoutSetup.exe</code>. Installs silently in 5 seconds into your user profile with no administrator prompt needed.
+                  Run <code>TalentOpsScoutSetup.exe</code> (51.6 MB). Installs silently in 5 seconds into your user profile with no administrator prompt needed.
                 </div>
               </div>
               <div style={{ background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 8, padding: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#10b981', marginBottom: 4 }}>2. Note the Pairing Code</div>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary, #a1a1aa)', lineHeight: 1.5 }}>
-                  Scout Desktop launches and displays a bold code (e.g. <code>TOS-8492</code>). Enter that code into the box above.
+                  Scout Desktop launches and displays a bold code (e.g. <code>TOS-8492</code>). Enter that code into the box above to link to your account.
                 </div>
               </div>
               <div style={{ background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 8, padding: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #a1a1aa)', marginBottom: 4 }}>3. Autonomous Ingestion</div>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary, #a1a1aa)', lineHeight: 1.5 }}>
-                  Scout minimizes to your system tray. As you browse candidates on LinkedIn, contacts are extracted and synced automatically.
+                  Scout minimizes to your system tray. As you browse candidates on LinkedIn, ZoomInfo, GitHub, or ATS, contacts are extracted and synced automatically.
                 </div>
               </div>
             </div>

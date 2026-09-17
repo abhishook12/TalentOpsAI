@@ -125,7 +125,9 @@ function AppShell() {
     );
   }
 
-  if (!user && !isAuthPage) {
+  const isPublicDownloadPage = location.pathname === '/download-scout'
+
+  if (!user && !isAuthPage && !isPublicDownloadPage) {
     const redirectUrl = window.location.pathname + window.location.search;
     return <Navigate to="/login" search={{ redirect: redirectUrl }} replace />
   }
@@ -135,7 +137,7 @@ function AppShell() {
   }
 
   const isLockdown = import.meta.env.VITE_DEVELOPMENT_LOCKDOWN === 'true';
-  if (isLockdown && user && !isAdmin && !isAuthPage) {
+  if (isLockdown && user && !isAdmin && !isAuthPage && !isPublicDownloadPage) {
     return (
       <>
         <BombproofErrorBoundary>
@@ -155,6 +157,70 @@ function AppShell() {
         </BombproofErrorBoundary>
       </>
     )
+  }
+
+  if (!user && isPublicDownloadPage) {
+    return (
+      <div className="cc-public-shell" style={{ minHeight: '100vh', backgroundColor: 'var(--main-bg, #09090b)', color: 'var(--text-primary, #fafafa)', display: 'flex', flexDirection: 'column' }}>
+        <header style={{
+          padding: '16px 32px',
+          borderBottom: '1px solid var(--border, rgba(255,255,255,0.08))',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          backgroundColor: 'var(--card-bg, #0b0b0c)',
+          position: 'sticky',
+          top: 0,
+          zIndex: 50
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <img src="/talentops-logo.png" alt="TalentOps" style={{ width: 34, height: 34, borderRadius: 8 }} />
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary, #fafafa)', lineHeight: 1.1 }}>TalentOps</div>
+              <div style={{ fontSize: 10, color: 'var(--text-muted, #a1a1aa)', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>Desktop Scout Official Setup</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <ThemeSwitcher />
+            <button
+              onClick={() => navigate({ to: '/login' })}
+              style={{
+                padding: '8px 16px',
+                background: 'transparent',
+                border: '1px solid var(--border, #27272a)',
+                borderRadius: 8,
+                color: 'var(--text-primary, #e4e4e7)',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => navigate({ to: '/register' })}
+              style={{
+                padding: '8px 16px',
+                background: 'var(--text-primary, #e4e4e7)',
+                border: 'none',
+                borderRadius: 8,
+                color: 'var(--bg-base, #09090b)',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              Create Account
+            </button>
+          </div>
+        </header>
+        <main style={{ flex: 1 }}>
+          <BombproofErrorBoundary componentName="TalentOps Scout Setup Portal">
+            <Outlet />
+          </BombproofErrorBoundary>
+        </main>
+      </div>
+    );
   }
 
   return (

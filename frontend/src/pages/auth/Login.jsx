@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import ApprovalProgress from '../../components/auth/ApprovalProgress'
 import { useGoogleLogin } from '@react-oauth/google'
 import AuthFrame from './AuthFrame'
+import AppLoadingOverlay from '../../components/AppLoadingOverlay'
 import api from '../../services/api'
 
 export default function Login() {
@@ -18,8 +19,9 @@ export default function Login() {
   const [error, setError] = useState('')
   const [emailTouched, setEmailTouched] = useState(false)
   
-  // Login Submission State
+  // Splash Screen & Login State
   const [isAuthenticating, setIsAuthenticating] = useState(false)
+  const [authProgress, setAuthProgress] = useState(null)
   const [pendingDeviceId, setPendingDeviceId] = useState(null)
   
   const { login, googleLogin, checkAuthStatus } = useAuth()
@@ -33,6 +35,7 @@ export default function Login() {
   const performBackgroundInitialization = async (authFunction) => {
     setError('')
     setIsAuthenticating(true)
+    setAuthProgress(null) // Indeterminate start
     
     try {
       const data = await authFunction()
@@ -42,6 +45,11 @@ export default function Login() {
         setPendingDeviceId(data.device_id)
         return
       }
+      
+      setAuthProgress(100)
+      
+      // Brief animation for premium UX before instant navigation
+      await new Promise(res => setTimeout(res, 300))
       
       navigate({ to: redirect })
       
@@ -87,6 +95,8 @@ export default function Login() {
 
   return (
     <>
+      <AppLoadingOverlay isVisible={isAuthenticating} progress={authProgress} />
+      
       {pendingDeviceId ? (
         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '100%', zIndex: 10 }}>
           <ApprovalProgress 

@@ -160,6 +160,12 @@ const shellStyles = `
     }
   }
 
+  .auth-form-container.is-authenticating {
+    opacity: 0;
+    transform: translateY(10px);
+    pointer-events: none;
+  }
+
   /* Scoped Auth Input Precision & Dark Theme Contrast */
   .auth-form-container input[type="email"],
   .auth-form-container input[type="password"],

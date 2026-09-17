@@ -19,9 +19,6 @@ export default function Login() {
   const [error, setError] = useState('')
   const [emailTouched, setEmailTouched] = useState(false)
   
-  // Live Cloud System Status Pill ('checking' | 'online' | 'waking')
-  const [serverStatus, setServerStatus] = useState('checking')
-  
   // Splash Screen State
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [authProgress, setAuthProgress] = useState(null)
@@ -33,24 +30,9 @@ export default function Login() {
   const search = useSearch({ from: '/login' })
   const redirect = decodeURIComponent(search.redirect || '/')
 
-  // Probe server status and pre-warm on page mount
+  // Silently pre-warm server on page mount
   React.useEffect(() => {
-    let active = true
-    const probeServer = async () => {
-      const slowTimer = setTimeout(() => {
-        if (active) setServerStatus('waking')
-      }, 2500)
-      try {
-        await api.get('/ping', { skipCache: true })
-        clearTimeout(slowTimer)
-        if (active) setServerStatus('online')
-      } catch {
-        clearTimeout(slowTimer)
-        if (active) setServerStatus('waking')
-      }
-    }
-    probeServer()
-    return () => { active = false }
+    api.get('/ping', { skipCache: true }).catch(() => {})
   }, [])
 
   const isEmailValid = email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
@@ -166,23 +148,9 @@ export default function Login() {
           </div>
         )}
 
-        <div className="mb-6 text-left flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-white m-0 mb-2 tracking-tight">Welcome Back</h1>
-            <p className="text-sm text-[#a0a0a0] m-0 leading-relaxed">Login to access your TalentOps account</p>
-          </div>
-          <div
-            className="mt-1 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border select-none transition-all duration-300"
-            style={{
-              borderColor: serverStatus === 'online' ? 'rgba(34, 197, 94, 0.25)' : serverStatus === 'waking' ? 'rgba(234, 179, 8, 0.25)' : 'rgba(255, 255, 255, 0.1)',
-              backgroundColor: serverStatus === 'online' ? 'rgba(34, 197, 94, 0.08)' : serverStatus === 'waking' ? 'rgba(234, 179, 8, 0.08)' : 'rgba(255, 255, 255, 0.04)',
-              color: serverStatus === 'online' ? '#4ade80' : serverStatus === 'waking' ? '#facc15' : '#9ca3af'
-            }}
-            title={serverStatus === 'online' ? 'Backend API is live and responsive' : serverStatus === 'waking' ? 'Cloud instance is waking up from idle sleep' : 'Checking cloud connection...'}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${serverStatus === 'online' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' : serverStatus === 'waking' ? 'bg-yellow-400 animate-pulse' : 'bg-gray-400 animate-pulse'}`} />
-            <span>{serverStatus === 'online' ? 'Cloud Online' : serverStatus === 'waking' ? 'Waking Cloud...' : 'Connecting...'}</span>
-          </div>
+        <div className="mb-6 text-left">
+          <h1 className="text-2xl font-bold text-white m-0 mb-2 tracking-tight">Welcome Back</h1>
+          <p className="text-sm text-[#a0a0a0] m-0 leading-relaxed">Login to access your TalentOps account</p>
         </div>
 
         <div className="w-full flex flex-col gap-4" onKeyDown={(e) => { if (e.key === 'Enter' && isFormValid && !isAuthenticating) handleSubmit(e) }}>

@@ -148,9 +148,9 @@ export default function ScoutNodesPanel() {
           style={{
             padding: '8px 16px',
             borderRadius: 8,
-            border: activeTab === 'nodes' ? '1px solid #d4d4d8' : '1px solid var(--border)',
-            background: activeTab === 'nodes' ? 'rgba(212, 212, 216, 0.15)' : 'transparent',
-            color: activeTab === 'nodes' ? '#e4e4e7' : 'var(--text-secondary)',
+            border: activeTab === 'nodes' ? '1px solid var(--text-primary)' : '1px solid var(--border)',
+            background: activeTab === 'nodes' ? 'var(--hover-bg, rgba(212, 212, 216, 0.15))' : 'transparent',
+            color: activeTab === 'nodes' ? 'var(--text-primary)' : 'var(--text-secondary)',
             fontWeight: 700,
             fontSize: 13,
             cursor: 'pointer',
@@ -160,7 +160,7 @@ export default function ScoutNodesPanel() {
           }}
         >
           <span>🛰️ Live Node Streams</span>
-          <span style={{ fontSize: 11, background: '#232326', padding: '1px 6px', borderRadius: 10 }}>{totalNodes}</span>
+          <span style={{ fontSize: 11, background: 'var(--panel-bg, #232326)', color: 'var(--text-primary)', border: '1px solid var(--border)', padding: '1px 6px', borderRadius: 10 }}>{totalNodes}</span>
         </button>
 
         <button
@@ -168,9 +168,9 @@ export default function ScoutNodesPanel() {
           style={{
             padding: '8px 16px',
             borderRadius: 8,
-            border: activeTab === 'operations' ? '1px solid #a1a1aa' : '1px solid var(--border)',
-            background: activeTab === 'operations' ? 'rgba(161, 161, 170, 0.15)' : 'transparent',
-            color: activeTab === 'operations' ? '#d4d4d8' : 'var(--text-secondary)',
+            border: activeTab === 'operations' ? '1px solid var(--text-secondary)' : '1px solid var(--border)',
+            background: activeTab === 'operations' ? 'var(--hover-bg, rgba(161, 161, 170, 0.15))' : 'transparent',
+            color: activeTab === 'operations' ? 'var(--text-primary)' : 'var(--text-secondary)',
             fontWeight: 700,
             fontSize: 13,
             cursor: 'pointer',
@@ -180,7 +180,7 @@ export default function ScoutNodesPanel() {
           }}
         >
           <span>⚡ Operations & Kill Switches</span>
-          <span style={{ fontSize: 10, background: 'rgba(161, 161, 170, 0.2)', color: '#d4d4d8', padding: '1px 6px', borderRadius: 4, fontWeight: 800 }}>SCOUT 2.0</span>
+          <span style={{ fontSize: 10, background: 'var(--hover-bg, rgba(161, 161, 170, 0.2))', color: 'var(--text-primary)', padding: '1px 6px', borderRadius: 4, fontWeight: 800 }}>SCOUT 2.0</span>
         </button>
       </div>
 

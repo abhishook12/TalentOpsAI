@@ -124,49 +124,49 @@ export default function ExtensionHub() {
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28
       }}>
-        <div style={{ background: '#121214', border: '1px solid #232326', borderRadius: 12, padding: '16px 20px' }}>
+        <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '16px 20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#a1a1aa', textTransform: 'uppercase' }}>Verified Recruiters</span>
-            <Users size={16} color="#f4f4f5" />
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #a1a1aa)', textTransform: 'uppercase' }}>Verified Recruiters</span>
+            <Users size={16} color="var(--text-secondary, #f4f4f5)" />
           </div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: '#fafafa' }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary, #fafafa)' }}>
             {summary?.total_recruiters ? summary.total_recruiters.toLocaleString() : '87,419'}
           </div>
           <span style={{ fontSize: 11, color: '#4ade80', fontWeight: 600 }}>● Network verified</span>
         </div>
 
-        <div style={{ background: '#121214', border: '1px solid #232326', borderRadius: 12, padding: '16px 20px' }}>
+        <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '16px 20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#a1a1aa', textTransform: 'uppercase' }}>Enriched Companies</span>
-            <Building size={16} color="#a1a1aa" />
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #a1a1aa)', textTransform: 'uppercase' }}>Enriched Companies</span>
+            <Building size={16} color="var(--text-muted, #a1a1aa)" />
           </div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: '#fafafa' }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary, #fafafa)' }}>
             {summary?.total_companies ? summary.total_companies.toLocaleString() : '12,850'}
           </div>
-          <span style={{ fontSize: 11, color: '#a1a1aa', fontWeight: 600 }}>Direct corporate domains</span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted, #a1a1aa)', fontWeight: 600 }}>Direct corporate domains</span>
         </div>
 
-        <div style={{ background: '#121214', border: '1px solid #232326', borderRadius: 12, padding: '16px 20px' }}>
+        <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '16px 20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#a1a1aa', textTransform: 'uppercase' }}>Active Scout Nodes</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #a1a1aa)', textTransform: 'uppercase' }}>Active Scout Nodes</span>
             <Wifi size={16} color="#4ade80" />
           </div>
           <div style={{ fontSize: 22, fontWeight: 800, color: '#4ade80' }}>
             {summary?.active_scouts ? summary.active_scouts : '16'} Connected
           </div>
-          <span style={{ fontSize: 11, color: '#a1a1aa' }}>Real-time telemetry</span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted, #a1a1aa)' }}>Real-time telemetry</span>
         </div>
 
-        <div style={{ background: '#121214', border: '1px solid #232326', borderRadius: 12, padding: '16px 20px' }}>
+        <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '16px 20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#a1a1aa', textTransform: 'uppercase' }}>Live Database Sync</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #a1a1aa)', textTransform: 'uppercase' }}>Live Database Sync</span>
             <Activity size={16} color="#f59e0b" />
           </div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: '#e4e4e7', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary, #e4e4e7)', display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
             Active Sync
           </div>
-          <span style={{ fontSize: 11, color: '#71717a' }}>Pre-configured & Bound</span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted, #71717a)' }}>Pre-configured & Bound</span>
         </div>
       </div>
 
@@ -194,17 +194,17 @@ export default function ExtensionHub() {
 
         {/* Activation Code Box */}
         <div style={{
-          background: '#121214', border: '1px solid #27272a', borderRadius: 12, padding: '18px 20px',
-          boxShadow: '0 10px 25px rgba(0,0,0,0.4)'
+          background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #27272a)', borderRadius: 12, padding: '18px 20px',
+          boxShadow: 'var(--shadow)'
         }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted, #a1a1aa)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>
             Universal Pre-Activated Key
           </div>
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            background: '#232326', border: '1px solid #27272a', borderRadius: 8, padding: '8px 12px', marginTop: 6
+            background: 'var(--bg-base, #232326)', border: '1px solid var(--card-border, #27272a)', borderRadius: 8, padding: '8px 12px', marginTop: 6
           }}>
-            <span style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 700, color: '#4ade80', letterSpacing: 1 }}>
+            <span style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 700, color: '#10b981', letterSpacing: 1 }}>
               {activeCode}
             </span>
             <button
@@ -215,7 +215,7 @@ export default function ExtensionHub() {
                 setTimeout(() => setCopiedCode(false), 2000);
               }}
               style={{
-                padding: '6px 12px', background: copiedCode ? '#22c55e' : '#a1a1aa', color: '#fff',
+                padding: '6px 12px', background: copiedCode ? '#22c55e' : 'var(--text-primary)', color: 'var(--main-bg)',
                 border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: 5
               }}
@@ -225,12 +225,12 @@ export default function ExtensionHub() {
             </button>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
-            <span style={{ fontSize: 11, color: '#71717a' }}>Auto-activates on load</span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted, #71717a)' }}>Auto-activates on load</span>
             <button
               onClick={handleGenerateCode}
               disabled={generating}
               style={{
-                background: 'none', border: 'none', color: '#a1a1aa', fontSize: 11, fontWeight: 600,
+                background: 'none', border: 'none', color: 'var(--text-secondary, #a1a1aa)', fontSize: 11, fontWeight: 600,
                 cursor: 'pointer', textDecoration: 'underline'
               }}
             >
@@ -242,13 +242,13 @@ export default function ExtensionHub() {
 
       {/* Live Stream: Real-Time Synced Database Additions */}
       <div style={{
-        background: '#121214', border: '1px solid #232326', borderRadius: 16,
+        background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 16,
         padding: '22px 24px', marginBottom: 28
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px #22c55e' }} />
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#fafafa', margin: 0 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary, #fafafa)', margin: 0 }}>
               Live Traceable Discovery Stream
             </h3>
           </div>

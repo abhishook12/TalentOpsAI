@@ -405,7 +405,7 @@ export default function DownloadScout() {
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             {isAdmin && (
               <div style={{
-                display: 'flex', background: '#0b0b0c', border: '1px solid #232326',
+                display: 'flex', background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)',
                 borderRadius: 8, padding: 3, gap: 2, flexWrap: 'wrap'
               }}>
                 <button
@@ -413,8 +413,8 @@ export default function DownloadScout() {
                   style={{
                     padding: '6px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700,
                     border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
-                    background: adminView === 'companion' ? '#232326' : 'transparent',
-                    color: adminView === 'companion' ? '#e4e4e7' : '#a1a1aa',
+                    background: adminView === 'companion' ? 'var(--hover-bg, #232326)' : 'transparent',
+                    color: adminView === 'companion' ? 'var(--text-primary, #e4e4e7)' : 'var(--text-secondary, #a1a1aa)',
                   }}
                 >
                   <Laptop size={13} />
@@ -425,8 +425,8 @@ export default function DownloadScout() {
                   style={{
                     padding: '6px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700,
                     border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
-                    background: adminView === 'contributors' ? '#232326' : 'transparent',
-                    color: adminView === 'contributors' ? '#e4e4e7' : '#a1a1aa',
+                    background: adminView === 'contributors' ? 'var(--hover-bg, #232326)' : 'transparent',
+                    color: adminView === 'contributors' ? 'var(--text-primary, #e4e4e7)' : 'var(--text-secondary, #a1a1aa)',
                   }}
                 >
                   <Users size={13} />
@@ -437,8 +437,8 @@ export default function DownloadScout() {
                   style={{
                     padding: '6px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700,
                     border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
-                    background: adminView === 'fleet_nodes' ? '#232326' : 'transparent',
-                    color: adminView === 'fleet_nodes' ? '#e4e4e7' : '#a1a1aa',
+                    background: adminView === 'fleet_nodes' ? 'var(--hover-bg, #232326)' : 'transparent',
+                    color: adminView === 'fleet_nodes' ? 'var(--text-primary, #e4e4e7)' : 'var(--text-secondary, #a1a1aa)',
                   }}
                 >
                   <Server size={13} />
@@ -449,8 +449,8 @@ export default function DownloadScout() {
                   style={{
                     padding: '6px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700,
                     border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
-                    background: adminView === 'governance' ? '#232326' : 'transparent',
-                    color: adminView === 'governance' ? '#e4e4e7' : '#a1a1aa',
+                    background: adminView === 'governance' ? 'var(--hover-bg, #232326)' : 'transparent',
+                    color: adminView === 'governance' ? 'var(--text-primary, #e4e4e7)' : 'var(--text-secondary, #a1a1aa)',
                   }}
                 >
                   <ShieldCheck size={13} />
@@ -466,8 +466,8 @@ export default function DownloadScout() {
               }}
               disabled={isFetching || loadingMyDevice}
               style={{
-                padding: '8px 14px', background: '#232326', border: '1px solid #27272a',
-                color: '#fafafa', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                padding: '8px 14px', background: 'var(--card-bg, #232326)', border: '1px solid var(--card-border, #27272a)',
+                color: 'var(--text-primary, #fafafa)', borderRadius: 8, fontSize: 12, fontWeight: 600,
                 cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
                 opacity: isFetching || loadingMyDevice ? 0.6 : 1
               }}
@@ -503,17 +503,17 @@ export default function DownloadScout() {
                   Account: <b>{user?.email || 'Authenticated User'}</b>
                 </span>
               </div>
-              <h2 style={{ fontSize: 22, fontWeight: 800, color: '#fafafa', margin: '0 0 6px 0', letterSpacing: '-0.3px' }}>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary, #fafafa)', margin: '0 0 6px 0', letterSpacing: '-0.3px' }}>
                 Welcome, {user?.first_name || user?.name || user?.email?.split('@')[0] || 'Recruiter'}!
               </h2>
-              <p style={{ color: '#a1a1aa', fontSize: 13, margin: 0, maxWidth: 740, lineHeight: 1.5 }}>
+              <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: 13, margin: 0, maxWidth: 740, lineHeight: 1.5 }}>
                 Your Desktop Scout companion operates silently in the background to autonomously capture candidate discoveries while you browse LinkedIn and recruiting boards, continuously enriching your personal talent pipeline.
               </p>
             </div>
 
             {/* Live Device Status Pill */}
             <div style={{
-              background: '#0b0b0c', border: '1px solid #232326', borderRadius: 10, padding: '12px 18px',
+              background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 10, padding: '12px 18px',
               display: 'flex', alignItems: 'center', gap: 14
             }}>
               <div style={{
@@ -522,8 +522,8 @@ export default function DownloadScout() {
                 boxShadow: myDeviceData?.devices?.some(d => d.is_online) ? '0 0 10px #10b981' : 'none'
               }} />
               <div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#a1a1aa', textTransform: 'uppercase' }}>Companion Status</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: myDeviceData?.devices?.some(d => d.is_online) ? '#34d399' : '#fafafa' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted, #a1a1aa)', textTransform: 'uppercase' }}>Companion Status</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: myDeviceData?.devices?.some(d => d.is_online) ? '#34d399' : 'var(--text-primary, #fafafa)' }}>
                   {myDeviceData?.devices?.some(d => d.is_online)
                     ? 'Active & Streaming'
                     : (myDeviceData?.devices?.length > 0 ? 'Device Paired (Standby)' : 'Not Connected')}
@@ -536,8 +536,8 @@ export default function DownloadScout() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 20, marginBottom: 28 }}>
             {/* CARD 1: DOWNLOAD INSTALLER */}
             <div style={{
-              background: '#121214', border: '1px solid #232326', borderRadius: 14, padding: '24px 26px',
-              display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
+              background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 14, padding: '24px 26px',
+              display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: 'var(--shadow)'
             }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
@@ -549,25 +549,25 @@ export default function DownloadScout() {
                   </div>
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: '#10b981', letterSpacing: 0.5 }}>STEP 1: GET DESKTOP COMPANION</div>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: '#fafafa' }}>TalentOps Scout Setup</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary, #fafafa)' }}>TalentOps Scout Setup</div>
                   </div>
                 </div>
 
-                <p style={{ color: '#a1a1aa', fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
+                <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
                   Download and run the official Windows installer. Installs cleanly in 5 seconds into your user profile without needing IT administrator privileges.
                 </p>
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
-                  <span style={{ padding: '3px 8px', borderRadius: 6, background: '#232326', color: '#a1a1aa', fontSize: 11, fontWeight: 600 }}>
+                  <span style={{ padding: '3px 8px', borderRadius: 6, background: 'var(--panel-bg, #232326)', border: '1px solid var(--card-border, transparent)', color: 'var(--text-secondary, #a1a1aa)', fontSize: 11, fontWeight: 600 }}>
                     Windows 10/11 64-bit
                   </span>
-                  <span style={{ padding: '3px 8px', borderRadius: 6, background: '#232326', color: '#a1a1aa', fontSize: 11, fontWeight: 600 }}>
+                  <span style={{ padding: '3px 8px', borderRadius: 6, background: 'var(--panel-bg, #232326)', border: '1px solid var(--card-border, transparent)', color: 'var(--text-secondary, #a1a1aa)', fontSize: 11, fontWeight: 600 }}>
                     {displayVersion}
                   </span>
-                  <span style={{ padding: '3px 8px', borderRadius: 6, background: '#232326', color: '#a1a1aa', fontSize: 11, fontWeight: 600 }}>
+                  <span style={{ padding: '3px 8px', borderRadius: 6, background: 'var(--panel-bg, #232326)', border: '1px solid var(--card-border, transparent)', color: 'var(--text-secondary, #a1a1aa)', fontSize: 11, fontWeight: 600 }}>
                     {displaySize}
                   </span>
-                  <span style={{ padding: '3px 8px', borderRadius: 6, background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', fontSize: 11, fontWeight: 600 }}>
+                  <span style={{ padding: '3px 8px', borderRadius: 6, background: 'rgba(16, 185, 129, 0.15)', color: '#059669', fontSize: 11, fontWeight: 600 }}>
                     Offline OCR Built-in
                   </span>
                 </div>
@@ -593,8 +593,8 @@ export default function DownloadScout() {
                     type="button"
                     onClick={handleDownloadZip}
                     style={{
-                      padding: '8px 10px', background: '#18181b', color: '#e4e4e7',
-                      border: '1px solid #27272a', borderRadius: 8, fontSize: 11, fontWeight: 600,
+                      padding: '8px 10px', background: 'var(--panel-bg, #18181b)', color: 'var(--text-primary, #e4e4e7)',
+                      border: '1px solid var(--card-border, #27272a)', borderRadius: 8, fontSize: 11, fontWeight: 600,
                       cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                       transition: 'all 0.15s ease'
                     }}
@@ -612,8 +612,8 @@ export default function DownloadScout() {
                       toast.success('PowerShell command copied! Run in terminal to install directly.');
                     }}
                     style={{
-                      padding: '8px 10px', background: '#18181b', color: '#a1a1aa',
-                      border: '1px solid #27272a', borderRadius: 8, fontSize: 11, fontWeight: 600,
+                      padding: '8px 10px', background: 'var(--panel-bg, #18181b)', color: 'var(--text-secondary, #a1a1aa)',
+                      border: '1px solid var(--card-border, #27272a)', borderRadius: 8, fontSize: 11, fontWeight: 600,
                       cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                       transition: 'all 0.15s ease'
                     }}
@@ -628,22 +628,22 @@ export default function DownloadScout() {
 
             {/* CARD 2: ENTER PAIRING CODE (REVERSE DEVICE FLOW) */}
             <div style={{
-              background: 'linear-gradient(135deg, rgba(18, 18, 20, 0.95) 0%, rgba(11, 11, 12, 0.95) 100%)',
-              border: '1px solid rgba(228, 228, 231, 0.35)', borderRadius: 14, padding: '24px 26px',
+              background: 'var(--card-bg, #121214)',
+              border: '1px solid var(--card-border, rgba(228, 228, 231, 0.35))', borderRadius: 14, padding: '24px 26px',
               display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-              boxShadow: '0 8px 30px rgba(228, 228, 231, 0.1)'
+              boxShadow: 'var(--shadow)'
             }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
                   <div style={{
                     width: 44, height: 44, borderRadius: 10, background: 'rgba(228, 228, 231, 0.15)',
-                    border: '1px solid rgba(228, 228, 231, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e4e4e7'
+                    border: '1px solid var(--card-border, rgba(228, 228, 231, 0.3))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary, #e4e4e7)'
                   }}>
                     <Zap size={22} />
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#e4e4e7', letterSpacing: 0.5 }}>STEP 2: LINK TO YOUR ACCOUNT</div>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: '#fafafa' }}>Pair Desktop Scout</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary, #e4e4e7)', letterSpacing: 0.5 }}>STEP 2: LINK TO YOUR ACCOUNT</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary, #fafafa)' }}>Pair Desktop Scout</div>
                   </div>
                 </div>
 
@@ -672,7 +672,7 @@ export default function DownloadScout() {
                       <code style={{
                         flex: 1,
                         padding: '10px 14px',
-                        background: '#09090b',
+                        background: 'var(--bg-base, #09090b)',
                         border: '1px dashed rgba(59, 130, 246, 0.6)',
                         borderRadius: 8,
                         color: '#60a5fa',
@@ -709,13 +709,13 @@ export default function DownloadScout() {
                       </button>
                     </div>
 
-                    <p style={{ color: '#94a3b8', fontSize: 11, lineHeight: 1.4, margin: 0 }}>
+                    <p style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 11, lineHeight: 1.4, margin: 0 }}>
                       💡 <b>Where to enter in Scout:</b> In Desktop Scout, click <b>&quot;Switch Account&quot;</b> at top-right (or <b>Settings → Node Identity</b>), click <i>&quot;Have an admin activation code? Enter it manually&quot;</i>, paste this code, and click <b>Connect Account</b>.
                     </p>
                   </div>
                 )}
 
-                <p style={{ color: '#a1a1aa', fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
+                <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
                   {myDeviceData?.active_activation_code
                     ? 'Alternatively, enter the 4-character code shown on your Desktop Scout app (e.g. TOS-8492) below:'
                     : 'Launch Desktop Scout on your PC. It displays a 4-character pairing code on your screen (e.g. TOS-8492). Enter that code below to connect your device:'}
@@ -733,8 +733,8 @@ export default function DownloadScout() {
                       }}
                       maxLength={10}
                       style={{
-                        flex: 1, padding: '12px 16px', background: '#0b0b0c', border: '1px solid rgba(228, 228, 231, 0.4)',
-                        borderRadius: 10, color: '#e4e4e7', fontSize: 18, fontWeight: 800, letterSpacing: 3,
+                        flex: 1, padding: '12px 16px', background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--card-border, rgba(228, 228, 231, 0.4))',
+                        borderRadius: 10, color: 'var(--text-primary, #e4e4e7)', fontSize: 18, fontWeight: 800, letterSpacing: 3,
                         fontFamily: 'monospace', textTransform: 'uppercase', textAlign: 'center', outline: 'none'
                       }}
                     />
@@ -787,10 +787,10 @@ export default function DownloadScout() {
           <div style={{ marginBottom: 32 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div>
-                <h3 style={{ fontSize: 17, fontWeight: 700, color: '#fafafa', margin: 0 }}>
+                <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #fafafa)', margin: 0 }}>
                   My Paired Companions ({myDeviceData?.devices?.length || 0})
                 </h3>
-                <p style={{ color: '#a1a1aa', fontSize: 12, margin: '2px 0 0' }}>
+                <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: 12, margin: '2px 0 0' }}>
                   Desktop devices bound to your account and reporting continuous recruitment telemetry.
                 </p>
               </div>
@@ -799,8 +799,8 @@ export default function DownloadScout() {
                 onClick={() => refetchMyDevice()}
                 disabled={loadingMyDevice}
                 style={{
-                  padding: '6px 12px', background: '#232326', border: '1px solid #27272a',
-                  color: '#a1a1aa', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                  padding: '6px 12px', background: 'var(--panel-bg, #232326)', border: '1px solid var(--card-border, #27272a)',
+                  color: 'var(--text-secondary, #a1a1aa)', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: 6
                 }}
               >
@@ -815,7 +815,7 @@ export default function DownloadScout() {
                   <div
                     key={dev.device_id}
                     style={{
-                      background: '#121214', border: '1px solid #232326', borderRadius: 12,
+                      background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12,
                       padding: '18px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
                     }}
                   >
@@ -823,16 +823,16 @@ export default function DownloadScout() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div style={{
-                            width: 36, height: 36, borderRadius: 8, background: '#232326',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: dev.is_online ? '#34d399' : '#a1a1aa'
+                            width: 36, height: 36, borderRadius: 8, background: 'var(--panel-bg, #232326)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: dev.is_online ? '#34d399' : 'var(--text-muted, #a1a1aa)'
                           }}>
                             <Laptop size={18} />
                           </div>
                           <div>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: '#fafafa' }}>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary, #fafafa)' }}>
                               {dev.name || 'Windows Desktop'}
                             </div>
-                            <div style={{ fontSize: 11, color: '#71717a', fontFamily: 'monospace' }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted, #71717a)', fontFamily: 'monospace' }}>
                               {dev.device_id?.substring(0, 16)}...
                             </div>
                           </div>
@@ -841,43 +841,43 @@ export default function DownloadScout() {
                         <span style={{
                           padding: '3px 8px', borderRadius: 12, fontSize: 10, fontWeight: 700,
                           background: dev.is_online ? 'rgba(16, 185, 129, 0.15)' : 'rgba(100, 116, 139, 0.15)',
-                          color: dev.is_online ? '#34d399' : '#a1a1aa',
+                          color: dev.is_online ? '#34d399' : 'var(--text-muted, #a1a1aa)',
                           border: `1px solid ${dev.is_online ? 'rgba(16, 185, 129, 0.3)' : 'rgba(100, 116, 139, 0.3)'}`,
                           display: 'flex', alignItems: 'center', gap: 5
                         }}>
                           <span style={{
                             width: 6, height: 6, borderRadius: '50%',
-                            background: dev.is_online ? '#10b981' : '#71717a'
+                            background: dev.is_online ? '#10b981' : 'var(--text-muted, #71717a)'
                           }} />
                           {dev.is_online ? 'ONLINE & STREAMING' : 'STANDBY'}
                         </span>
                       </div>
 
                       <div style={{
-                        background: '#0b0b0c', border: '1px solid #232326', borderRadius: 8,
+                        background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 8,
                         padding: '10px 14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16
                       }}>
                         <div>
-                          <div style={{ fontSize: 10, color: '#71717a', textTransform: 'uppercase' }}>Version</div>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: '#e4e4e7', fontFamily: 'monospace' }}>
+                          <div style={{ fontSize: 10, color: 'var(--text-muted, #71717a)', textTransform: 'uppercase' }}>Version</div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary, #e4e4e7)', fontFamily: 'monospace' }}>
                             v{dev.version || '2.7.3'}
                           </div>
                         </div>
                         <div>
-                          <div style={{ fontSize: 10, color: '#71717a', textTransform: 'uppercase' }}>Last Active</div>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: '#fafafa' }}>
+                          <div style={{ fontSize: 10, color: 'var(--text-muted, #71717a)', textTransform: 'uppercase' }}>Last Active</div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary, #fafafa)' }}>
                             {formatTimeAgo(dev.last_seen_at)}
                           </div>
                         </div>
                         <div>
-                          <div style={{ fontSize: 10, color: '#71717a', textTransform: 'uppercase' }}>Candidates Added</div>
+                          <div style={{ fontSize: 10, color: 'var(--text-muted, #71717a)', textTransform: 'uppercase' }}>Candidates Added</div>
                           <div style={{ fontSize: 12, fontWeight: 700, color: '#34d399' }}>
                             {dev.total_accepted || 0}
                           </div>
                         </div>
                         <div>
-                          <div style={{ fontSize: 10, color: '#71717a', textTransform: 'uppercase' }}>Observations</div>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: '#a1a1aa' }}>
+                          <div style={{ fontSize: 10, color: 'var(--text-muted, #71717a)', textTransform: 'uppercase' }}>Observations</div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #a1a1aa)' }}>
                             {dev.total_submitted || 0}
                           </div>
                         </div>
@@ -903,20 +903,20 @@ export default function DownloadScout() {
               </div>
             ) : (
               <div style={{
-                background: '#121214', border: '1px dashed #232326', borderRadius: 14,
+                background: 'var(--card-bg, #121214)', border: '1px dashed var(--card-border, #232326)', borderRadius: 14,
                 padding: '36px 24px', textAlign: 'center'
               }}>
                 <div style={{
                   width: 48, height: 48, borderRadius: 12, background: 'rgba(228, 228, 231, 0.1)',
-                  border: '1px solid rgba(228, 228, 231, 0.2)', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', color: '#e4e4e7', margin: '0 auto 14px'
+                  border: '1px solid var(--card-border, rgba(228, 228, 231, 0.2))', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', color: 'var(--text-primary, #e4e4e7)', margin: '0 auto 14px'
                 }}>
                   <Laptop size={24} />
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#fafafa', marginBottom: 6 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary, #fafafa)', marginBottom: 6 }}>
                   No Desktop Companion Connected Yet
                 </div>
-                <p style={{ color: '#a1a1aa', fontSize: 13, maxWidth: 520, margin: '0 auto 18px', lineHeight: 1.5 }}>
+                <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: 13, maxWidth: 520, margin: '0 auto 18px', lineHeight: 1.5 }}>
                   Download the installer above and launch Desktop Scout. Enter the pairing code displayed on your desktop into the box above to link this computer in seconds.
                 </p>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -940,8 +940,8 @@ export default function DownloadScout() {
             <button
               onClick={() => setShowSetupGuide(!showSetupGuide)}
               style={{
-                padding: '9px 14px', background: '#0b0b0c', color: '#a1a1aa',
-                border: '1px solid #232326', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                padding: '9px 14px', background: 'var(--panel-bg, #0b0b0c)', color: 'var(--text-secondary, #a1a1aa)',
+                border: '1px solid var(--card-border, #232326)', borderRadius: 8, fontSize: 12, fontWeight: 600,
                 cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
               }}
             >
@@ -953,7 +953,7 @@ export default function DownloadScout() {
             <button
               onClick={() => setShowSecurityNotice(!showSecurityNotice)}
               style={{
-                padding: '9px 14px', background: '#0b0b0c', color: '#f59e0b',
+                padding: '9px 14px', background: 'var(--panel-bg, #0b0b0c)', color: '#f59e0b',
                 border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 8, fontSize: 12, fontWeight: 600,
                 cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
               }}
@@ -968,21 +968,21 @@ export default function DownloadScout() {
             <div style={{
               marginBottom: 20, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14
             }}>
-              <div style={{ background: '#0b0b0c', border: '1px solid #232326', borderRadius: 8, padding: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#e4e4e7', marginBottom: 4 }}>1. Download &amp; Run</div>
-                <div style={{ fontSize: 12, color: '#a1a1aa', lineHeight: 1.5 }}>
+              <div style={{ background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 8, padding: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary, #e4e4e7)', marginBottom: 4 }}>1. Download &amp; Run</div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary, #a1a1aa)', lineHeight: 1.5 }}>
                   Run <code>TalentOpsScoutSetup.exe</code>. Installs silently in 5 seconds into your user profile with no administrator prompt needed.
                 </div>
               </div>
-              <div style={{ background: '#0b0b0c', border: '1px solid #232326', borderRadius: 8, padding: 14 }}>
+              <div style={{ background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 8, padding: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#10b981', marginBottom: 4 }}>2. Note the Pairing Code</div>
-                <div style={{ fontSize: 12, color: '#a1a1aa', lineHeight: 1.5 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary, #a1a1aa)', lineHeight: 1.5 }}>
                   Scout Desktop launches and displays a bold code (e.g. <code>TOS-8492</code>). Enter that code into the box above.
                 </div>
               </div>
-              <div style={{ background: '#0b0b0c', border: '1px solid #232326', borderRadius: 8, padding: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#a1a1aa', marginBottom: 4 }}>3. Autonomous Ingestion</div>
-                <div style={{ fontSize: 12, color: '#a1a1aa', lineHeight: 1.5 }}>
+              <div style={{ background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 8, padding: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #a1a1aa)', marginBottom: 4 }}>3. Autonomous Ingestion</div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary, #a1a1aa)', lineHeight: 1.5 }}>
                   Scout minimizes to your system tray. As you browse candidates on LinkedIn, contacts are extracted and synced automatically.
                 </div>
               </div>
@@ -998,8 +998,8 @@ export default function DownloadScout() {
                 <ShieldAlert size={16} />
                 <span>Browser Security &amp; Windows SmartScreen Notice</span>
               </div>
-              <div style={{ fontSize: 12, color: '#a1a1aa', lineHeight: 1.6 }}>
-                <p style={{ margin: '0 0 8px 0', color: '#fafafa', fontWeight: 600 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary, #a1a1aa)', lineHeight: 1.6 }}>
+                <p style={{ margin: '0 0 8px 0', color: 'var(--text-primary, #fafafa)', fontWeight: 600 }}>
                   Why does Chrome show "Virus detected" or Edge/Windows show a warning?
                 </p>
                 <p style={{ margin: '0 0 8px 0' }}>
@@ -1009,13 +1009,13 @@ export default function DownloadScout() {
                 </p>
 
                 <div style={{
-                  background: '#0b0b0c', border: '1px solid #232326', borderRadius: 8, padding: 12, marginBottom: 10
+                  background: 'var(--card-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 8, padding: 12, marginBottom: 10
                 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <AlertTriangle size={13} />
                     Google Chrome — "Virus detected" or "Dangerous file"
                   </div>
-                  <ol style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#d4d4d8' }}>
+                  <ol style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: 'var(--text-secondary, #d4d4d8)' }}>
                     <li>When the download bar shows "Virus detected", click the <b>⋮</b> (three-dot menu) on the download item.</li>
                     <li>Select <b>"Keep dangerous file"</b> from the dropdown.</li>
                     <li>In the confirmation dialog, click <b>"Keep anyway"</b>.</li>
@@ -1024,31 +1024,31 @@ export default function DownloadScout() {
                 </div>
 
                 <div style={{
-                  background: '#0b0b0c', border: '1px solid #232326', borderRadius: 8, padding: 12, marginBottom: 10
+                  background: 'var(--card-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 8, padding: 12, marginBottom: 10
                 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#3b82f6', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <Shield size={13} />
                     Microsoft Edge — "This file isn't commonly downloaded"
                   </div>
-                  <ol style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#d4d4d8' }}>
+                  <ol style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: 'var(--text-secondary, #d4d4d8)' }}>
                     <li>Click the <b>⋯</b> menu on the download bar → select <b>"Keep"</b>.</li>
                     <li>If prompted again, click <b>"Show more"</b> → <b>"Keep anyway"</b>.</li>
                   </ol>
                 </div>
 
                 <div style={{
-                  background: '#0b0b0c', border: '1px solid #232326', borderRadius: 8, padding: 12, marginBottom: 10
+                  background: 'var(--card-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 8, padding: 12, marginBottom: 10
                 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <ShieldCheck size={13} />
                     Windows SmartScreen — "Windows protected your PC"
                   </div>
-                  <ol style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#d4d4d8' }}>
+                  <ol style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: 'var(--text-secondary, #d4d4d8)' }}>
                     <li>Click <b>"More info"</b> (the small link text below the warning).</li>
                     <li>Click <b>"Run anyway"</b>.</li>
                   </ol>
-                  <div style={{ marginTop: 8, fontSize: 11, color: '#71717a', borderTop: '1px dashed #232326', paddingTop: 6 }}>
-                    💡 <b>Terminal shortcut:</b> Run <code style={{ fontSize: 10, color: '#e4e4e7' }}>Unblock-File "$env:USERPROFILE\Downloads\TalentOpsScoutSetup.exe"</code> in PowerShell to remove the download flag immediately.
+                  <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted, #71717a)', borderTop: '1px dashed var(--card-border, #232326)', paddingTop: 6 }}>
+                    💡 <b>Terminal shortcut:</b> Run <code style={{ fontSize: 10, color: 'var(--text-primary, #e4e4e7)' }}>Unblock-File "$env:USERPROFILE\Downloads\TalentOpsScoutSetup.exe"</code> in PowerShell to remove the download flag immediately.
                   </div>
                 </div>
 
@@ -1062,8 +1062,8 @@ export default function DownloadScout() {
                       File Integrity — SHA-256 Checksum
                     </div>
                     <code style={{
-                      fontSize: 10, color: '#a1a1aa', wordBreak: 'break-all', lineHeight: 1.4,
-                      display: 'block', background: '#0b0b0c', padding: 6, borderRadius: 4,
+                      fontSize: 10, color: 'var(--text-secondary, #a1a1aa)', wordBreak: 'break-all', lineHeight: 1.4,
+                      display: 'block', background: 'var(--panel-bg, #0b0b0c)', padding: 6, borderRadius: 4,
                       fontFamily: 'monospace', cursor: 'pointer'
                     }}
                       title="Click to copy"
@@ -1109,7 +1109,7 @@ export default function DownloadScout() {
                 </div>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 15, fontWeight: 800, color: '#fafafa' }}>
+                    <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary, #fafafa)' }}>
                       TalentOps Scout Desktop
                     </span>
                     <span style={{
@@ -1119,9 +1119,9 @@ export default function DownloadScout() {
                     }}>
                       {displayVersion} Production
                     </span>
-                    <span style={{ fontSize: 12, color: '#71717a' }}>• Windows 10/11 64-bit ({displaySize})</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted, #71717a)' }}>• Windows 10/11 64-bit ({displaySize})</span>
                   </div>
-                  <div style={{ fontSize: 12, color: '#a1a1aa', marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary, #a1a1aa)', marginTop: 2 }}>
                     Native Win32 background engine with offline OCR and local SQLite buffer queue. Replaces legacy browser extension.
                   </div>
                 </div>
@@ -1145,10 +1145,10 @@ export default function DownloadScout() {
 
                 {/* Instant Inline Device Pairing Input */}
                 <div style={{
-                  display: 'flex', alignItems: 'center', gap: 6, background: '#020617',
-                  border: '1px solid #27272a', borderRadius: 8, padding: '3px 8px'
+                  display: 'flex', alignItems: 'center', gap: 6, background: 'var(--panel-bg, #020617)',
+                  border: '1px solid var(--card-border, #27272a)', borderRadius: 8, padding: '3px 8px'
                 }}>
-                  <Key size={14} color="#e4e4e7" />
+                  <Key size={14} color="var(--text-secondary, #e4e4e7)" />
                   <input
                     type="text"
                     placeholder="CODE: TOS-XXXX"
@@ -1162,7 +1162,7 @@ export default function DownloadScout() {
                     }}
                     style={{
                       width: 125, background: 'transparent', border: 'none',
-                      color: '#e4e4e7', fontFamily: 'monospace', fontWeight: 800,
+                      color: 'var(--text-primary, #e4e4e7)', fontFamily: 'monospace', fontWeight: 800,
                       fontSize: 12, outline: 'none'
                     }}
                   />
@@ -1170,7 +1170,7 @@ export default function DownloadScout() {
                     onClick={handleVerifyPairingCode}
                     disabled={pairingLoading || !pairingCodeInput.trim()}
                     style={{
-                      padding: '5px 12px', background: '#e4e4e7', color: '#fff',
+                      padding: '5px 12px', background: 'var(--text-primary, #e4e4e7)', color: 'var(--bg-base, #fff)',
                       border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 700,
                       cursor: 'pointer', opacity: (pairingLoading || !pairingCodeInput.trim()) ? 0.6 : 1
                     }}
@@ -1182,8 +1182,8 @@ export default function DownloadScout() {
                 <button
                   onClick={() => setShowAddModal(true)}
                   style={{
-                    padding: '9px 14px', background: '#0b0b0c', color: '#a1a1aa',
-                    border: '1px solid #232326', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                    padding: '9px 14px', background: 'var(--panel-bg, #0b0b0c)', color: 'var(--text-secondary, #a1a1aa)',
+                    border: '1px solid var(--card-border, #232326)', borderRadius: 8, fontSize: 12, fontWeight: 600,
                     cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
                   }}
                 >
@@ -1219,30 +1219,30 @@ export default function DownloadScout() {
 
           {/* Admin Force-Connection & Remote Provisioning Hub */}
           <div style={{
-            background: 'linear-gradient(135deg, rgba(18, 18, 20, 0.95) 0%, rgba(11, 11, 12, 0.95) 100%)',
-            border: '1px solid rgba(228, 228, 231, 0.35)',
+            background: 'var(--card-bg, #121214)',
+            border: '1px solid var(--card-border, rgba(228, 228, 231, 0.35))',
             borderRadius: 14,
             padding: '22px 26px',
             marginBottom: 24,
-            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.3)'
+            boxShadow: 'var(--shadow)'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14, marginBottom: 18 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{
                   width: 40, height: 40, borderRadius: 10,
                   background: 'rgba(228, 228, 231, 0.15)', border: '1px solid rgba(228, 228, 231, 0.35)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e4e4e7'
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary, #e4e4e7)'
                 }}>
                   <Zap size={20} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: '#fafafa', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary, #fafafa)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span>Admin Force-Pair &amp; User Provisioning Hub</span>
-                    <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 12, background: 'rgba(228, 228, 231, 0.2)', color: '#e4e4e7', fontWeight: 700 }}>
+                    <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 12, background: 'rgba(228, 228, 231, 0.2)', color: 'var(--text-primary, #e4e4e7)', fontWeight: 700 }}>
                       ADMIN OVERRIDE
                     </span>
                   </div>
-                  <div style={{ fontSize: 12, color: '#a1a1aa', marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary, #a1a1aa)', marginTop: 2 }}>
                     Pair desktop hardware or generate activation codes on behalf of any team member if they cannot connect themselves.
                   </div>
                 </div>
@@ -1250,7 +1250,7 @@ export default function DownloadScout() {
 
               {/* Target User Selector */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 12, color: '#d4d4d8', fontWeight: 700 }}>Target Team Member:</span>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary, #d4d4d8)', fontWeight: 700 }}>Target Team Member:</span>
                 <select
                   value={targetUserEmail}
                   onChange={(e) => {
@@ -1258,8 +1258,8 @@ export default function DownloadScout() {
                     setAdminGeneratedCode(null);
                   }}
                   style={{
-                    background: '#0b0b0c', border: '1px solid #e4e4e7', borderRadius: 8,
-                    color: targetUserEmail ? '#e4e4e7' : '#a1a1aa', padding: '9px 14px', fontSize: 13,
+                    background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--card-border, #e4e4e7)', borderRadius: 8,
+                    color: targetUserEmail ? 'var(--text-primary, #e4e4e7)' : 'var(--text-muted, #a1a1aa)', padding: '9px 14px', fontSize: 13,
                     fontWeight: 700, outline: 'none', cursor: 'pointer', minWidth: 280
                   }}
                 >
@@ -1276,12 +1276,12 @@ export default function DownloadScout() {
             {/* Two Operational Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16 }}>
               {/* Option A: Force-Pair 4-char Code from Remote Desktop */}
-              <div style={{ background: '#0b0b0c', border: '1px solid #232326', borderRadius: 10, padding: '16px 20px' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#e4e4e7', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ background: 'var(--card-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 10, padding: '16px 20px', boxShadow: 'var(--shadow)' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary, #e4e4e7)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <Key size={15} />
                   <span>Option 1: Force-Pair 4-Char Desktop Code</span>
                 </div>
-                <p style={{ fontSize: 11, color: '#a1a1aa', margin: '0 0 12px 0', lineHeight: 1.5 }}>
+                <p style={{ fontSize: 11, color: 'var(--text-secondary, #a1a1aa)', margin: '0 0 12px 0', lineHeight: 1.5 }}>
                   Enter the 4-char code displayed on the remote PC (e.g. <b>TOS-8492</b>). Links the device directly to <b>{targetUserEmail || 'the selected user'}</b>.
                 </p>
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -1294,8 +1294,8 @@ export default function DownloadScout() {
                       setPairingError('');
                     }}
                     style={{
-                      flex: 1, padding: '9px 14px', background: '#020617', border: '1px solid #27272a',
-                      borderRadius: 8, color: '#e4e4e7', fontFamily: 'monospace', fontWeight: 800,
+                      flex: 1, padding: '9px 14px', background: 'var(--bg-base, #020617)', border: '1px solid var(--card-border, #27272a)',
+                      borderRadius: 8, color: 'var(--text-primary, #e4e4e7)', fontFamily: 'monospace', fontWeight: 800,
                       fontSize: 15, textTransform: 'uppercase', outline: 'none'
                     }}
                   />
@@ -1303,7 +1303,7 @@ export default function DownloadScout() {
                     onClick={handleVerifyPairingCode}
                     disabled={pairingLoading || !pairingCodeInput.trim() || !targetUserEmail}
                     style={{
-                      padding: '9px 18px', background: targetUserEmail ? 'linear-gradient(135deg, #a1a1aa 0%, #52525b 100%)' : '#27272a',
+                      padding: '9px 18px', background: targetUserEmail ? 'linear-gradient(135deg, #a1a1aa 0%, #52525b 100%)' : 'var(--panel-bg, #27272a)',
                       color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700,
                       cursor: (pairingLoading || !pairingCodeInput.trim() || !targetUserEmail) ? 'not-allowed' : 'pointer',
                       display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap'
@@ -1321,12 +1321,12 @@ export default function DownloadScout() {
               </div>
 
               {/* Option B: Generate Dedicated Activation Code */}
-              <div style={{ background: '#0b0b0c', border: '1px solid #232326', borderRadius: 10, padding: '16px 20px' }}>
+              <div style={{ background: 'var(--card-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 10, padding: '16px 20px', boxShadow: 'var(--shadow)' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#10b981', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <Sparkles size={15} />
                   <span>Option 2: Generate Dedicated User Code (Permanent • Never Expires)</span>
                 </div>
-                <p style={{ fontSize: 11, color: '#a1a1aa', margin: '0 0 12px 0', lineHeight: 1.5 }}>
+                <p style={{ fontSize: 11, color: 'var(--text-secondary, #a1a1aa)', margin: '0 0 12px 0', lineHeight: 1.5 }}>
                   Generates an authenticated <code>TOS-XXXX-XXXX</code> code bound to <b>{targetUserEmail || 'the selected user'}</b> for manual desktop entry. Once paired, the device remains paired forever.
                 </p>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1347,7 +1347,7 @@ export default function DownloadScout() {
                   {adminGeneratedCode && (
                     <div style={{
                       flex: 1, minWidth: 200, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      background: '#020617', border: '1px solid #10b981', borderRadius: 8, padding: '7px 12px'
+                      background: 'var(--panel-bg, #020617)', border: '1px solid #10b981', borderRadius: 8, padding: '7px 12px'
                     }}>
                       <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#34d399', fontSize: 15, letterSpacing: 1 }}>
                         {adminGeneratedCode.code}
@@ -1360,7 +1360,7 @@ export default function DownloadScout() {
                           setTimeout(() => setAdminCodeCopied(false), 2000);
                         }}
                         style={{
-                          background: adminCodeCopied ? '#10b981' : '#232326', border: 'none',
+                          background: adminCodeCopied ? '#10b981' : 'var(--card-bg, #232326)', border: 'none',
                           borderRadius: 6, color: '#fff', fontSize: 11, fontWeight: 700, padding: '4px 10px', cursor: 'pointer'
                         }}
                       >
@@ -1393,8 +1393,8 @@ export default function DownloadScout() {
                 onClick={() => refetch()}
                 disabled={isFetching}
                 style={{
-                  padding: '6px 14px', background: '#232326', border: '1px solid #27272a',
-                  color: '#fafafa', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer'
+                  padding: '6px 14px', background: 'var(--card-bg, #232326)', border: '1px solid var(--card-border, #27272a)',
+                  color: 'var(--text-primary, #fafafa)', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer'
                 }}
               >
                 {isFetching ? 'Syncing...' : 'Retry Connection'}
@@ -1452,7 +1452,7 @@ export default function DownloadScout() {
                   key={idx}
                   onClick={card.onClick}
                   style={{
-                    background: '#121214', border: card.clickable ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid #232326',
+                    background: 'var(--card-bg, #121214)', border: card.clickable ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid var(--card-border, #232326)',
                     borderRadius: 12, padding: '16px 18px',
                     display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden',
                     cursor: card.clickable ? 'pointer' : 'default',
@@ -1461,13 +1461,13 @@ export default function DownloadScout() {
                   title={card.clickable ? 'Click to open Device Fleet & Nodes panel' : undefined}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: '#a1a1aa', letterSpacing: 0.5 }}>{card.label}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted, #a1a1aa)', letterSpacing: 0.5 }}>{card.label}</span>
                     <Icon size={16} color={card.color} />
                   </div>
-                  <div style={{ fontSize: 24, fontWeight: 800, color: '#fafafa', lineHeight: 1.1, marginBottom: 4 }}>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary, #fafafa)', lineHeight: 1.1, marginBottom: 4 }}>
                     {card.value.toLocaleString()}
                   </div>
-                  <div style={{ fontSize: 11, color: card.clickable ? '#4ade80' : '#71717a', fontWeight: card.clickable ? 600 : 400 }}>
+                  <div style={{ fontSize: 11, color: card.clickable ? '#4ade80' : 'var(--text-muted, #71717a)', fontWeight: card.clickable ? 600 : 400 }}>
                     {card.sub}
                   </div>
                 </div>
@@ -1487,27 +1487,27 @@ export default function DownloadScout() {
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
                   Pipeline Ingestion Impact
                 </div>
-                <div style={{ fontSize: 13, color: '#a1a1aa' }}>
+                <div style={{ fontSize: 13, color: 'var(--text-secondary, #a1a1aa)' }}>
                   True database modifications produced by desktop fleet
                 </div>
               </div>
 
               <div style={{ display: 'flex', gap: 16 }}>
-                <div style={{ background: '#0b0b0c', border: '1px solid #232326', borderRadius: 8, padding: '8px 14px' }}>
-                  <div style={{ fontSize: 11, color: '#a1a1aa' }}>People Added</div>
+                <div style={{ background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 8, padding: '8px 14px' }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted, #a1a1aa)' }}>People Added</div>
                   <div style={{ fontSize: 16, fontWeight: 800, color: '#34d399' }}>
                     {canonicalCreated.toLocaleString()}
                   </div>
                 </div>
-                <div style={{ background: '#0b0b0c', border: '1px solid #232326', borderRadius: 8, padding: '8px 14px' }}>
-                  <div style={{ fontSize: 11, color: '#a1a1aa' }}>Contacts Enriched</div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: '#e4e4e7' }}>
+                <div style={{ background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 8, padding: '8px 14px' }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted, #a1a1aa)' }}>Contacts Enriched</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary, #e4e4e7)' }}>
                     {canonicalEnriched.toLocaleString()}
                   </div>
                 </div>
-                <div style={{ background: '#0b0b0c', border: '1px solid #232326', borderRadius: 8, padding: '8px 14px' }}>
-                  <div style={{ fontSize: 11, color: '#a1a1aa' }}>Fleet Quality Avg</div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: '#a1a1aa' }}>
+                <div style={{ background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 8, padding: '8px 14px' }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted, #a1a1aa)' }}>Fleet Quality Avg</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-secondary, #a1a1aa)' }}>
                     {avgQualScore} / 100
                   </div>
                 </div>
@@ -1517,13 +1517,13 @@ export default function DownloadScout() {
             {/* Right: Version Distribution Breakdown */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#a1a1aa' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #a1a1aa)' }}>
                   Fleet Version Distribution (Latest: v{latestProdVer})
                 </span>
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {Object.entries(versionDistribution).length === 0 ? (
-                  <span style={{ fontSize: 12, color: '#71717a' }}>No device versions reported</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted, #71717a)' }}>No device versions reported</span>
                 ) : (
                   Object.entries(versionDistribution).map(([ver, count]) => {
                     const isLatest = ver === latestProdVer;
@@ -1545,7 +1545,7 @@ export default function DownloadScout() {
 
           {/* Search, Filter & Sort Controls */}
           <div style={{
-            background: '#121214', border: '1px solid #232326', borderRadius: 12,
+            background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12,
             padding: '14px 18px', marginBottom: 16, display: 'flex', gap: 14,
             alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between'
           }}>
@@ -1558,8 +1558,8 @@ export default function DownloadScout() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{
-                  width: '100%', padding: '8px 12px 8px 34px', background: '#0b0b0c',
-                  border: '1px solid #232326', borderRadius: 8, color: '#fafafa',
+                  width: '100%', padding: '8px 12px 8px 34px', background: 'var(--bg-base, #0b0b0c)',
+                  border: '1px solid var(--card-border, #232326)', borderRadius: 8, color: 'var(--text-primary, #fafafa)',
                   fontSize: 13, outline: 'none'
                 }}
               />
@@ -1567,16 +1567,16 @@ export default function DownloadScout() {
 
             {/* Status Filters */}
             <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#71717a', marginRight: 4 }}>STATUS:</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #71717a)', marginRight: 4 }}>STATUS:</span>
               {['ALL', 'CONTRIBUTING', 'ACTIVE', 'PAIRED', 'REGISTERED', 'REVOKED'].map((st) => (
                 <button
                   key={st}
                   onClick={() => setStatusFilter(st)}
                   style={{
                     padding: '5px 11px', borderRadius: 6, fontSize: 11, fontWeight: 700,
-                    border: statusFilter === st ? '1px solid #e4e4e7' : '1px solid #232326',
-                    background: statusFilter === st ? 'rgba(228, 228, 231, 0.15)' : '#0b0b0c',
-                    color: statusFilter === st ? '#e4e4e7' : '#a1a1aa',
+                    border: statusFilter === st ? '1px solid var(--text-primary, #e4e4e7)' : '1px solid var(--card-border, #232326)',
+                    background: statusFilter === st ? 'var(--hover-bg, rgba(228, 228, 231, 0.15))' : 'var(--panel-bg, #0b0b0c)',
+                    color: statusFilter === st ? 'var(--text-primary, #e4e4e7)' : 'var(--text-secondary, #a1a1aa)',
                     cursor: 'pointer'
                   }}
                 >
@@ -1587,13 +1587,13 @@ export default function DownloadScout() {
 
             {/* Sort Select */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#71717a' }}>SORT:</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #71717a)' }}>SORT:</span>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
                 style={{
-                  padding: '7px 12px', background: '#0b0b0c', border: '1px solid #232326',
-                  color: '#fafafa', borderRadius: 8, fontSize: 12, outline: 'none', cursor: 'pointer'
+                  padding: '7px 12px', background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)',
+                  color: 'var(--text-primary, #fafafa)', borderRadius: 8, fontSize: 12, outline: 'none', cursor: 'pointer'
                 }}
               >
                 <option value="most_active">Most Active</option>
@@ -1606,8 +1606,8 @@ export default function DownloadScout() {
 
           {/* Contributors Table */}
           <div style={{
-            background: '#121214', border: '1px solid #232326', borderRadius: 12,
-            overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
+            background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12,
+            overflow: 'hidden', boxShadow: 'var(--shadow)'
           }}>
             {isLoading ? (
               <div style={{ padding: 60, textAlign: 'center', color: '#a1a1aa' }}>
@@ -1624,15 +1624,15 @@ export default function DownloadScout() {
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
                   <thead>
-                    <tr style={{ background: '#0b0b0c', borderBottom: '1px solid #232326' }}>
-                      <th style={{ padding: '14px 18px', color: '#a1a1aa', fontWeight: 600, fontSize: 11 }}>USER &amp; ACCOUNT</th>
-                      <th style={{ padding: '14px 18px', color: '#a1a1aa', fontWeight: 600, fontSize: 11 }}>LIFECYCLE STATUS</th>
-                      <th style={{ padding: '14px 18px', color: '#a1a1aa', fontWeight: 600, fontSize: 11 }}>DEVICES</th>
-                      <th style={{ padding: '14px 18px', color: '#a1a1aa', fontWeight: 600, fontSize: 11 }}>VERSION</th>
-                      <th style={{ padding: '14px 18px', color: '#a1a1aa', fontWeight: 600, fontSize: 11 }}>LAST SEEN</th>
-                      <th style={{ padding: '14px 18px', color: '#a1a1aa', fontWeight: 600, fontSize: 11 }}>DATA IMPACT</th>
-                      <th style={{ padding: '14px 18px', color: '#a1a1aa', fontWeight: 600, fontSize: 11 }}>QUALITY TIER</th>
-                      <th style={{ padding: '14px 18px', color: '#a1a1aa', fontWeight: 600, fontSize: 11, textAlign: 'right' }}>ACTION</th>
+                    <tr style={{ background: 'var(--panel-bg, #0b0b0c)', borderBottom: '1px solid var(--card-border, #232326)' }}>
+                      <th style={{ padding: '14px 18px', color: 'var(--text-muted, #a1a1aa)', fontWeight: 600, fontSize: 11 }}>USER &amp; ACCOUNT</th>
+                      <th style={{ padding: '14px 18px', color: 'var(--text-muted, #a1a1aa)', fontWeight: 600, fontSize: 11 }}>LIFECYCLE STATUS</th>
+                      <th style={{ padding: '14px 18px', color: 'var(--text-muted, #a1a1aa)', fontWeight: 600, fontSize: 11 }}>DEVICES</th>
+                      <th style={{ padding: '14px 18px', color: 'var(--text-muted, #a1a1aa)', fontWeight: 600, fontSize: 11 }}>VERSION</th>
+                      <th style={{ padding: '14px 18px', color: 'var(--text-muted, #a1a1aa)', fontWeight: 600, fontSize: 11 }}>LAST SEEN</th>
+                      <th style={{ padding: '14px 18px', color: 'var(--text-muted, #a1a1aa)', fontWeight: 600, fontSize: 11 }}>DATA IMPACT</th>
+                      <th style={{ padding: '14px 18px', color: 'var(--text-muted, #a1a1aa)', fontWeight: 600, fontSize: 11 }}>QUALITY TIER</th>
+                      <th style={{ padding: '14px 18px', color: 'var(--text-muted, #a1a1aa)', fontWeight: 600, fontSize: 11, textAlign: 'right' }}>ACTION</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1659,22 +1659,22 @@ export default function DownloadScout() {
                           key={u.user_id}
                           onClick={() => setSelectedUserId(u.user_id)}
                           style={{
-                            borderBottom: '1px solid #232326',
+                            borderBottom: '1px solid var(--card-border, #232326)',
                             cursor: 'pointer',
                             transition: 'background 0.15s ease'
                           }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg, rgba(255,255,255,0.02))'}
                           onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                         >
                           {/* User Info */}
                           <td style={{ padding: '14px 18px' }}>
-                            <div style={{ fontWeight: 700, color: '#fafafa', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ fontWeight: 700, color: 'var(--text-primary, #fafafa)', display: 'flex', alignItems: 'center', gap: 6 }}>
                               <span>{userName}</span>
-                              <span style={{ fontSize: 11, color: '#71717a' }}>#{u.user_id}</span>
+                              <span style={{ fontSize: 11, color: 'var(--text-muted, #71717a)' }}>#{u.user_id}</span>
                             </div>
-                            <div style={{ fontSize: 12, color: '#a1a1aa', marginTop: 2 }}>{u.email}</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-secondary, #a1a1aa)', marginTop: 2 }}>{u.email}</div>
                             {userTenant && (
-                              <div style={{ fontSize: 11, color: '#71717a', marginTop: 2 }}>{userTenant}</div>
+                              <div style={{ fontSize: 11, color: 'var(--text-muted, #71717a)', marginTop: 2 }}>{userTenant}</div>
                             )}
                           </td>
 
@@ -1692,12 +1692,12 @@ export default function DownloadScout() {
 
                           {/* Devices Count */}
                           <td style={{ padding: '14px 18px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#fafafa' }}>
-                              <Laptop size={14} color="#e4e4e7" />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-primary, #fafafa)' }}>
+                              <Laptop size={14} color="var(--text-secondary, #e4e4e7)" />
                               <span style={{ fontWeight: 600 }}>{activeCount}</span>
-                              <span style={{ color: '#71717a' }}>/ {deviceCount}</span>
+                              <span style={{ color: 'var(--text-muted, #71717a)' }}>/ {deviceCount}</span>
                             </div>
-                            <div style={{ fontSize: 11, color: '#71717a', marginTop: 2 }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted, #71717a)', marginTop: 2 }}>
                               {activeCount > 0 ? `${activeCount} active node(s)` : 'No active nodes'}
                             </div>
                           </td>
@@ -1717,17 +1717,17 @@ export default function DownloadScout() {
                                 </span>
                               )}
                             </div>
-                            <div style={{ fontSize: 11, color: '#71717a', marginTop: 2 }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted, #71717a)', marginTop: 2 }}>
                               {u.primary_platform || 'Windows 64-bit'}
                             </div>
                           </td>
 
                           {/* Last Seen */}
                           <td style={{ padding: '14px 18px' }}>
-                            <div style={{ color: '#fafafa', fontWeight: 500 }}>
+                            <div style={{ color: 'var(--text-primary, #fafafa)', fontWeight: 500 }}>
                               {lastSeenDisplay}
                             </div>
-                            <div style={{ fontSize: 11, color: '#71717a', marginTop: 2 }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted, #71717a)', marginTop: 2 }}>
                               Contrib: {lastContribDisplay}
                             </div>
                           </td>
@@ -1743,12 +1743,12 @@ export default function DownloadScout() {
                               </span>
                               <span style={{
                                 padding: '2px 6px', borderRadius: 4, fontSize: 11,
-                                background: 'rgba(228, 228, 231, 0.15)', color: '#e4e4e7', fontWeight: 600
+                                background: 'var(--hover-bg, rgba(228, 228, 231, 0.15))', color: 'var(--text-primary, #e4e4e7)', fontWeight: 600
                               }}>
                                 +{enrichedPeople} enriched
                               </span>
                             </div>
-                            <div style={{ fontSize: 11, color: '#71717a', marginTop: 3 }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted, #71717a)', marginTop: 3 }}>
                               {rawObs.toLocaleString()} observations
                             </div>
                           </td>
@@ -1766,8 +1766,8 @@ export default function DownloadScout() {
                                 setSelectedUserId(u.user_id);
                               }}
                               style={{
-                                padding: '6px 12px', background: '#232326', border: '1px solid #27272a',
-                                color: '#e4e4e7', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                                padding: '6px 12px', background: 'var(--panel-bg, #232326)', border: '1px solid var(--card-border, #27272a)',
+                                color: 'var(--text-primary, #e4e4e7)', borderRadius: 6, fontSize: 11, fontWeight: 700,
                                 cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4
                               }}
                             >

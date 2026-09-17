@@ -678,10 +678,10 @@ export default function AdminTerminal() {
         </div>
         <div>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Operational Command Center</div>
-          <div style={{ fontSize: 11, color: '#e4e4e7', fontFamily: "'DM Mono', monospace" }}>TalentOps · Privileged Access</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: "'DM Mono', monospace" }}>TalentOps · Privileged Access</div>
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
-          {loading && <span style={{ fontSize: 12, color: '#e4e4e7', display: 'flex', alignItems: 'center', gap: 6 }}><i className="ti ti-loader" style={{ animation: 'spin 0.8s linear infinite' }} /> Loading…</span>}
+          {loading && <span style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}><i className="ti ti-loader" style={{ animation: 'spin 0.8s linear infinite' }} /> Loading…</span>}
           <button
             onClick={openReviewPanel}
             title="Open the review queue"
@@ -712,8 +712,8 @@ export default function AdminTerminal() {
         {TABS.map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
             background: 'none', border: 'none', padding: '12px 18px', fontSize: 12.5, fontWeight: 500,
-            color: activeTab === t.id ? '#e4e4e7' : 'var(--text-muted)', cursor: 'pointer',
-            borderBottom: activeTab === t.id ? '2px solid #e4e4e7' : '2px solid transparent',
+            color: activeTab === t.id ? 'var(--text-primary)' : 'var(--text-muted)', cursor: 'pointer',
+            borderBottom: activeTab === t.id ? '2px solid var(--text-primary)' : '2px solid transparent',
             display: 'flex', alignItems: 'center', gap: 7, transition: 'all 0.15s',
           }}
           onMouseEnter={e => { if (activeTab !== t.id) e.currentTarget.style.color = 'var(--text-secondary)' }}

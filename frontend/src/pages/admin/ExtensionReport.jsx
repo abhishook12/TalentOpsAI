@@ -396,21 +396,21 @@ export default function ExtensionReport() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 20,
         }}>
           <div style={{
-            background: '#121214', border: '1px solid #27272a', borderRadius: 16, maxWidth: 520, width: '100%',
+            background: 'var(--panel-bg, #121214)', border: '1px solid var(--card-border, #27272a)', borderRadius: 16, maxWidth: 520, width: '100%',
             padding: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#fafafa' }}>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text-primary, #fafafa)' }}>
                   🚀 3-Step Quick Setup Guide
                 </h2>
-                <p style={{ margin: '4px 0 0', fontSize: 12, color: '#a1a1aa' }}>
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-secondary, #a1a1aa)' }}>
                   Your extension ZIP package is downloading automatically.
                 </p>
               </div>
               <button
                 onClick={() => setShowInstallModal(false)}
-                style={{ background: 'none', border: 'none', color: '#a1a1aa', fontSize: 18, cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: 'var(--text-secondary, #a1a1aa)', fontSize: 18, cursor: 'pointer' }}
               >
                 ✕
               </button>
@@ -419,27 +419,27 @@ export default function ExtensionReport() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, margin: '20px 0' }}>
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                 <div style={{
-                  background: '#a1a1aa', color: '#fff', width: 26, height: 26, borderRadius: '50%',
+                  background: 'var(--text-muted, #a1a1aa)', color: '#fff', width: 26, height: 26, borderRadius: '50%',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flexShrink: 0,
                 }}>
                   1
                 </div>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#fafafa' }}>Unzip the Package</div>
-                  <div style={{ fontSize: 12, color: '#a1a1aa' }}>Right-click <code>talentops-scout-extension.zip</code> and extract/unzip it.</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary, #fafafa)' }}>Unzip the Package</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary, #a1a1aa)' }}>Right-click <code>talentops-scout-extension.zip</code> and extract/unzip it.</div>
                 </div>
               </div>
 
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                 <div style={{
-                  background: '#e4e4e7', color: '#fff', width: 26, height: 26, borderRadius: '50%',
+                  background: 'var(--card-border, #e4e4e7)', color: 'var(--text-primary, #fff)', width: 26, height: 26, borderRadius: '50%',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flexShrink: 0,
                 }}>
                   2
                 </div>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#fafafa' }}>Open Chrome Extensions</div>
-                  <div style={{ fontSize: 12, color: '#a1a1aa' }}>Navigate to <code>chrome://extensions/</code> and enable <b>Developer mode</b> (top right).</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary, #fafafa)' }}>Open Chrome Extensions</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary, #a1a1aa)' }}>Navigate to <code>chrome://extensions/</code> and enable <b>Developer mode</b> (top right).</div>
                 </div>
               </div>
 
@@ -451,19 +451,19 @@ export default function ExtensionReport() {
                   3
                 </div>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#fafafa' }}>Load Unpacked</div>
-                  <div style={{ fontSize: 12, color: '#a1a1aa' }}>Click <b>Load unpacked</b> and select the unzipped folder.</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary, #fafafa)' }}>Load Unpacked</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary, #a1a1aa)' }}>Click <b>Load unpacked</b> and select the unzipped folder.</div>
                 </div>
               </div>
             </div>
 
             {/* Activation Code Copy Box */}
             <div style={{
-              background: '#232326', border: '1px solid #27272a', borderRadius: 10, padding: 14,
+              background: 'var(--bg-base, #232326)', border: '1px solid var(--card-border, #27272a)', borderRadius: 10, padding: 14,
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
               <div>
-                <div style={{ fontSize: 10, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600 }}>
+                <div style={{ fontSize: 10, color: 'var(--text-muted, #a1a1aa)', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600 }}>
                   Your Activation Code
                 </div>
                 <div style={{ fontSize: 14, fontFamily: 'monospace', fontWeight: 700, color: '#4ade80', marginTop: 2 }}>

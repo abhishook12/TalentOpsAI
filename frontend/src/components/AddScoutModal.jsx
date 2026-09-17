@@ -89,16 +89,16 @@ export default function AddScoutModal({ isOpen, onClose, onActivated }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
     }}>
       <div style={{
-        background: '#121214', border: '1px solid #232326', borderRadius: 16,
-        maxWidth: 520, width: '100%', padding: '28px', color: '#fafafa',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)', position: 'relative'
+        background: 'var(--panel-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 16,
+        maxWidth: 520, width: '100%', padding: '28px', color: 'var(--text-primary, #fafafa)',
+        boxShadow: 'var(--shadow-lg, 0 25px 50px -12px rgba(0, 0, 0, 0.7))', position: 'relative'
       }}>
         {/* Close Button */}
         <button
           onClick={onClose}
           style={{
             position: 'absolute', top: 20, right: 20, background: 'transparent',
-            border: 'none', color: '#a1a1aa', cursor: 'pointer'
+            border: 'none', color: 'var(--text-muted, #a1a1aa)', cursor: 'pointer'
           }}
         >
           <X size={20} />
@@ -115,10 +115,10 @@ export default function AddScoutModal({ isOpen, onClose, onActivated }) {
             <Laptop size={24} color="#fff" />
           </div>
           <div>
-            <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: '#fafafa' }}>
+            <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: 'var(--text-primary, #fafafa)' }}>
               Add TalentOps Scout Node
             </h2>
-            <p style={{ fontSize: 12, color: '#a1a1aa', margin: '2px 0 0' }}>
+            <p style={{ fontSize: 12, color: 'var(--text-muted, #a1a1aa)', margin: '2px 0 0' }}>
               Pair this computer to your TalentOps account
             </p>
           </div>
@@ -131,11 +131,11 @@ export default function AddScoutModal({ isOpen, onClose, onActivated }) {
             borderRadius: 10, padding: '12px 14px', marginBottom: 16
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#e4e4e7', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary, #e4e4e7)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 5 }}>
                 <Users size={12} />
                 <span>Admin Provisioning Target</span>
               </span>
-              <span style={{ fontSize: 10, color: '#a1a1aa' }}>
+              <span style={{ fontSize: 10, color: 'var(--text-muted, #a1a1aa)' }}>
                 {targetEmail ? 'Targeted Account' : 'Self (Your Account)'}
               </span>
             </div>
@@ -147,8 +147,8 @@ export default function AddScoutModal({ isOpen, onClose, onActivated }) {
                 generateCode(val);
               }}
               style={{
-                width: '100%', background: '#0b0b0c', border: '1px solid #27272a', borderRadius: 6,
-                color: targetEmail ? '#e4e4e7' : '#fafafa', padding: '6px 10px', fontSize: 12,
+                width: '100%', background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--card-border, #27272a)', borderRadius: 6,
+                color: 'var(--text-primary)', padding: '6px 10px', fontSize: 12,
                 fontWeight: 600, outline: 'none', cursor: 'pointer'
               }}
             >
@@ -164,11 +164,11 @@ export default function AddScoutModal({ isOpen, onClose, onActivated }) {
 
         {/* Activation Code Box */}
         <div style={{
-          background: '#232326', border: '1px solid #27272a', borderRadius: 12,
+          background: 'var(--bg-base, #232326)', border: '1px solid var(--card-border, #27272a)', borderRadius: 12,
           padding: '18px 20px', marginBottom: 20
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #a1a1aa)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
               10-Minute Activation Code
             </span>
             <span style={{
@@ -183,7 +183,7 @@ export default function AddScoutModal({ isOpen, onClose, onActivated }) {
 
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            background: '#0b0b0c', border: '1px solid #27272a', borderRadius: 8,
+            background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #27272a)', borderRadius: 8,
             padding: '10px 14px', marginBottom: 12
           }}>
             <span style={{

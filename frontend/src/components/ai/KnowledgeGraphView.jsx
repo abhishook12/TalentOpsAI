@@ -55,20 +55,20 @@ export default function KnowledgeGraphView() {
   return (
     <div
       style={{
-        backgroundColor: 'var(--bg-card, #121214)',
-        border: '1px solid var(--border-ai, rgba(161, 161, 170, 0.25))',
+        backgroundColor: 'var(--bg-card, var(--card-bg))',
+        border: '1px solid var(--border-ai, var(--card-border))',
         borderRadius: '12px',
         padding: '20px',
         display: 'flex',
         flexDirection: 'column',
         gap: '16px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
+        boxShadow: 'var(--shadow)'
       }}
     >
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '14px', color: '#a1a1aa' }}>✦</span>
+          <span style={{ fontSize: '14px', color: 'var(--text-primary)' }}>✦</span>
           <div>
             <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)' }}>
               Entity Knowledge Graph
@@ -81,8 +81,8 @@ export default function KnowledgeGraphView() {
 
         {/* Legend */}
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '11px' }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#e4e4e7' }}>● Candidate</span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#a1a1aa' }}>● Company</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-primary)' }}>● Candidate</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-secondary)' }}>● Company</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#10b981' }}>● Skill</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#f59e0b' }}>● Location</span>
         </div>
@@ -93,8 +93,8 @@ export default function KnowledgeGraphView() {
         style={{
           position: 'relative',
           height: '320px',
-          backgroundColor: 'var(--bg-base, #0b0b0c)',
-          border: '1px solid var(--border, #232326)',
+          backgroundColor: 'var(--bg-base, var(--bg-primary))',
+          border: '1px solid var(--card-border)',
           borderRadius: '8px',
           overflow: 'hidden',
           display: 'flex',

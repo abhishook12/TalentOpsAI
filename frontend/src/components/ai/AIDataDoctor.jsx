@@ -85,7 +85,7 @@ export default function AIDataDoctor() {
 
   if (loading && !summary) {
     return (
-      <div style={{ backgroundColor: 'var(--bg-card, #121214)', border: '1px solid var(--border, #232326)', borderRadius: '12px', padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+      <div style={{ backgroundColor: 'var(--bg-card, var(--card-bg))', border: '1px solid var(--card-border)', borderRadius: '12px', padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
         <i className="ti ti-loader-2" style={{ animation: 'spin 1s linear infinite', fontSize: '20px', display: 'block', margin: '0 auto 8px' }} />
         AI Data Doctor diagnosing database health...
       </div>
@@ -97,14 +97,14 @@ export default function AIDataDoctor() {
   return (
     <div
       style={{
-        backgroundColor: 'var(--bg-card, #121214)',
-        border: '1px solid var(--border-ai, rgba(161, 161, 170, 0.25))',
+        backgroundColor: 'var(--bg-card, var(--card-bg))',
+        border: '1px solid var(--border-ai, var(--card-border))',
         borderRadius: '12px',
         padding: '20px',
         display: 'flex',
         flexDirection: 'column',
         gap: '16px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
+        boxShadow: 'var(--shadow)'
       }}
     >
       {/* Header */}
@@ -179,7 +179,7 @@ export default function AIDataDoctor() {
 
       {/* Metric Cards Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-        <div style={{ background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--border, #232326)', borderRadius: '8px', padding: '12px' }}>
+        <div style={{ background: 'var(--bg-base, var(--bg-primary))', border: '1px solid var(--card-border)', borderRadius: '8px', padding: '12px' }}>
           <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
             Healthy Records
           </div>
@@ -188,7 +188,7 @@ export default function AIDataDoctor() {
           </div>
         </div>
 
-        <div style={{ background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--border, #232326)', borderRadius: '8px', padding: '12px' }}>
+        <div style={{ background: 'var(--bg-base, var(--bg-primary))', border: '1px solid var(--card-border)', borderRadius: '8px', padding: '12px' }}>
           <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
             Stale / Missing Emails
           </div>
@@ -197,7 +197,7 @@ export default function AIDataDoctor() {
           </div>
         </div>
 
-        <div style={{ background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--border, #232326)', borderRadius: '8px', padding: '12px' }}>
+        <div style={{ background: 'var(--bg-base, var(--bg-primary))', border: '1px solid var(--card-border)', borderRadius: '8px', padding: '12px' }}>
           <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
             Unverified Phones
           </div>
@@ -206,29 +206,29 @@ export default function AIDataDoctor() {
           </div>
         </div>
 
-        <div style={{ background: 'var(--bg-base, #0b0b0c)', border: '1px solid var(--border, #232326)', borderRadius: '8px', padding: '12px' }}>
+        <div style={{ background: 'var(--bg-base, var(--bg-primary))', border: '1px solid var(--card-border)', borderRadius: '8px', padding: '12px' }}>
           <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
             Flagged For Review
           </div>
-          <div style={{ fontSize: '20px', fontWeight: 900, color: '#a1a1aa', marginTop: '4px' }}>
+          <div style={{ fontSize: '20px', fontWeight: 900, color: 'var(--text-primary)', marginTop: '4px' }}>
             {summary?.needs_review?.toLocaleString() || '0'}
           </div>
         </div>
       </div>
 
       {/* Action Bar */}
-      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'flex-end', borderTop: '1px solid var(--border, #232326)', paddingTop: '12px' }}>
+      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'flex-end', borderTop: '1px solid var(--card-border)', paddingTop: '12px' }}>
         <button
           disabled={repairing}
           onClick={() => handlePreviewAction('HARMONIZE_TITLES')}
           style={{
-            background: 'var(--bg-base, #0b0b0c)',
-            border: '1px solid var(--border, #232326)',
+            background: 'var(--bg-base, var(--bg-primary))',
+            border: '1px solid var(--card-border)',
             borderRadius: '6px',
             padding: '8px 14px',
             fontSize: '12px',
             fontWeight: 600,
-            color: 'var(--text-secondary)',
+            color: 'var(--text-primary)',
             cursor: 'pointer'
           }}
         >

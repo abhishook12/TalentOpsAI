@@ -34,6 +34,24 @@
   --ai-font-mono: 'IBM Plex Mono', monospace;
 }
 
+[data-theme='light'] {
+  --ai-bg-canvas: #fafafa;
+  --ai-bg-surface: #ffffff;
+  --ai-bg-surface-raised: #f4f4f5;
+  --ai-bg-surface-elevated: #ffffff;
+  --ai-border-subtle: #e4e4e7;
+  --ai-border-medium: #d4d4d8;
+  --ai-border-focus: #121214;
+  --ai-primary-cyan: #18181b;
+  --ai-accent-violet: #27272a;
+  --ai-accent-indigo: #3f3f46;
+  --ai-accent-gradient: linear-gradient(135deg, #18181b 0%, #3f3f46 50%, #71717a 100%);
+  --ai-accent-subtle-glow: rgba(0, 0, 0, 0.05);
+  --ai-status-observed: #71717a;
+  --ai-status-derived: #71717a;
+  --ai-status-unknown: #a1a1aa;
+}
+
 /* Subtle AI Ambient Glow */
 .ai-glow {
   box-shadow: 0 0 20px -5px var(--ai-accent-subtle-glow);

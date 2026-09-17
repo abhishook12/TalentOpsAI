@@ -101,11 +101,11 @@ export default function AICommandCenter({ onSelectCandidate }) {
   return (
     <div
       style={{
-        backgroundColor: 'var(--bg-card, #121214)',
-        border: '1px solid var(--border-ai, rgba(161, 161, 170, 0.3))',
+        backgroundColor: 'var(--bg-card, var(--card-bg))',
+        border: '1px solid var(--border-ai, var(--card-border))',
         borderRadius: '12px',
         padding: '20px',
-        boxShadow: '0 8px 30px rgba(0, 0, 0, 0.25)',
+        boxShadow: 'var(--shadow)',
         display: 'flex',
         flexDirection: 'column',
         gap: '16px'
@@ -119,11 +119,11 @@ export default function AICommandCenter({ onSelectCandidate }) {
               width: '28px',
               height: '28px',
               borderRadius: '8px',
-              background: 'linear-gradient(135deg, #a1a1aa, #e4e4e7)',
+              background: 'var(--brand)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#fff',
+              color: 'var(--text-inverse)',
               fontSize: '14px',
               fontWeight: 900
             }}
@@ -142,7 +142,7 @@ export default function AICommandCenter({ onSelectCandidate }) {
 
         {response?.model_used && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '10px', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.04)', padding: '3px 8px', borderRadius: '4px', border: '1px solid var(--border, #232326)' }}>
+            <span style={{ fontSize: '10px', color: 'var(--text-secondary)', background: 'var(--brand-bg)', padding: '3px 8px', borderRadius: '4px', border: '1px solid var(--card-border)' }}>
               ⚡ {response.model_used} ({response.latency_ms}ms)
             </span>
           </div>
@@ -162,12 +162,12 @@ export default function AICommandCenter({ onSelectCandidate }) {
             disabled={loading}
             style={{
               width: '100%',
-              backgroundColor: 'var(--bg-base, #0b0b0c)',
-              border: '1px solid var(--border, #232326)',
+              backgroundColor: 'var(--bg-base, var(--bg-primary))',
+              border: '1px solid var(--card-border)',
               borderRadius: '8px',
               padding: '12px 16px',
               fontSize: '13px',
-              color: 'var(--text-primary, #fafafa)',
+              color: 'var(--text-primary)',
               outline: 'none',
               transition: 'border 0.2s ease',
               boxSizing: 'border-box'
@@ -200,11 +200,11 @@ export default function AICommandCenter({ onSelectCandidate }) {
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            background: 'linear-gradient(135deg, #a1a1aa, #e4e4e7)',
+            background: 'var(--brand)',
             border: 'none',
             borderRadius: '8px',
             padding: '0 20px',
-            color: '#ffffff',
+            color: 'var(--text-inverse)',
             fontSize: '13px',
             fontWeight: 700,
             cursor: loading || !query.trim() ? 'not-allowed' : 'pointer',
@@ -238,8 +238,8 @@ export default function AICommandCenter({ onSelectCandidate }) {
                 handleRunCommand(promptText)
               }}
               style={{
-                background: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid var(--border, #232326)',
+                background: 'var(--bg-base, var(--bg-primary))',
+                border: '1px solid var(--card-border)',
                 borderRadius: '6px',
                 padding: '4px 10px',
                 fontSize: '11px',
@@ -248,11 +248,11 @@ export default function AICommandCenter({ onSelectCandidate }) {
                 transition: 'all 0.15s ease'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#a1a1aa'
-                e.currentTarget.style.color = '#e4e4e7'
+                e.currentTarget.style.borderColor = 'var(--text-muted)'
+                e.currentTarget.style.color = 'var(--text-primary)'
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'var(--border, #232326)'
+                e.currentTarget.style.borderColor = 'var(--card-border)'
                 e.currentTarget.style.color = 'var(--text-secondary)'
               }}
             >

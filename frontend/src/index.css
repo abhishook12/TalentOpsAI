@@ -104,6 +104,14 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     
     --muted-grid: rgba(255, 255, 255, 0.04);
     --dark-panel: #161616;
+    --bg-card: #161616;
+    --bg-base: #0B0B0C;
+    --border: #262626;
+    --border-ai: rgba(255, 255, 255, 0.12);
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --skeleton-bg: #222225;
+    --color-surface-variant: #222225;
+    --color-outline-variant: #262626;
     
     --shadow: none;
     --shadow-lg: none;
@@ -199,6 +207,14 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     --success: #10B981;
     --warning: #F59E0B;
     --danger: #EF4444;
+    --bg-card: #161616;
+    --bg-base: #0B0B0C;
+    --border: #262626;
+    --border-ai: rgba(255, 255, 255, 0.12);
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --skeleton-bg: #222225;
+    --color-surface-variant: #222225;
+    --color-outline-variant: #262626;
     --shadow: none;
     --shadow-lg: none;
     --modal-backdrop-bg: rgba(11, 11, 12, 0.8);
@@ -233,6 +249,14 @@ button:active, .btn-premium:active, .auth-button:active, .auth-social:active {
     --success: #059669;
     --warning: #D97706;
     --danger: #DC2626;
+    --bg-card: #FFFFFF;
+    --bg-base: #f4f4f5;
+    --border: #e4e4e7;
+    --border-ai: #e4e4e7;
+    --border-subtle: #f4f4f5;
+    --skeleton-bg: #e4e4e7;
+    --color-surface-variant: #e4e4e7;
+    --color-outline-variant: #e4e4e7;
     --shadow: 0 1px 3px rgba(0,0,0,0.05);
     --shadow-lg: 0 4px 6px -1px rgba(0,0,0,0.08);
     --modal-backdrop-bg: rgba(0, 0, 0, 0.45);

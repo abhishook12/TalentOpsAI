@@ -79,20 +79,20 @@ export default function IntelligenceFeed({ onTriggerAction }) {
   return (
     <div
       style={{
-        backgroundColor: 'var(--bg-card, #121214)',
-        border: '1px solid var(--border, #232326)',
+        backgroundColor: 'var(--bg-card, var(--card-bg))',
+        border: '1px solid var(--card-border)',
         borderRadius: '12px',
         padding: '20px',
         display: 'flex',
         flexDirection: 'column',
         gap: '16px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
+        boxShadow: 'var(--shadow)'
       }}
     >
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '14px', color: '#e4e4e7' }}>⚡</span>
+          <span style={{ fontSize: '14px', color: 'var(--text-primary)' }}>⚡</span>
           <div>
             <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)' }}>
               Proactive Intelligence Feed
@@ -104,7 +104,7 @@ export default function IntelligenceFeed({ onTriggerAction }) {
         </div>
 
         {/* Priority Filter Tabs */}
-        <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-base, #0b0b0c)', padding: '3px', borderRadius: '8px', border: '1px solid var(--border, #232326)' }}>
+        <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-base, var(--bg-primary))', padding: '3px', borderRadius: '8px', border: '1px solid var(--card-border)' }}>
           {[
             { id: 'all', label: 'All' },
             { id: 'critical', label: 'Critical' },
@@ -115,13 +115,13 @@ export default function IntelligenceFeed({ onTriggerAction }) {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               style={{
-                background: activeTab === tab.id ? 'var(--bg-surface, #232326)' : 'transparent',
-                border: 'none',
+                background: activeTab === tab.id ? 'var(--card-bg)' : 'transparent',
+                border: activeTab === tab.id ? '1px solid var(--card-border)' : '1px solid transparent',
                 borderRadius: '5px',
                 padding: '4px 10px',
                 fontSize: '11px',
                 fontWeight: activeTab === tab.id ? 700 : 500,
-                color: activeTab === tab.id ? '#e4e4e7' : 'var(--text-secondary)',
+                color: activeTab === tab.id ? 'var(--text-primary)' : 'var(--text-secondary)',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease'
               }}
@@ -151,8 +151,8 @@ export default function IntelligenceFeed({ onTriggerAction }) {
                 display: 'flex',
                 alignItems: 'flex-start',
                 justifyContent: 'space-between',
-                backgroundColor: 'var(--bg-base, #0b0b0c)',
-                border: '1px solid var(--border, #232326)',
+                backgroundColor: 'var(--bg-base, var(--bg-primary))',
+                border: '1px solid var(--card-border)',
                 borderRadius: '8px',
                 padding: '12px 16px',
                 gap: '12px',
@@ -166,8 +166,8 @@ export default function IntelligenceFeed({ onTriggerAction }) {
                     width: '32px',
                     height: '32px',
                     borderRadius: '8px',
-                    backgroundColor: 'rgba(255,255,255,0.03)',
-                    border: '1px solid var(--border, #232326)',
+                    backgroundColor: 'var(--brand-bg)',
+                    border: '1px solid var(--card-border)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -200,10 +200,10 @@ export default function IntelligenceFeed({ onTriggerAction }) {
                       else toast.success(`Triggered: ${item.action_label}`)
                     }}
                     style={{
-                      background: 'rgba(228, 228, 231, 0.1)',
-                      border: '1px solid rgba(228, 228, 231, 0.3)',
+                      background: 'var(--brand-bg)',
+                      border: '1px solid var(--card-border)',
                       borderRadius: '6px',
-                      color: '#e4e4e7',
+                      color: 'var(--text-primary)',
                       fontSize: '11px',
                       fontWeight: 700,
                       padding: '5px 10px',

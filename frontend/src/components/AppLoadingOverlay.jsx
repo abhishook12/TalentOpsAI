@@ -8,9 +8,9 @@ const overlayStyles = `
     display: flex;
     flex-direction: column;
     align-items: center;
-    background: var(--bg-primary, #ffffff);
-    color: var(--text-primary, #111111);
-    transition: opacity 0.25s var(--ease-out), visibility 0.25s;
+    background: #101014;
+    color: #ffffff;
+    transition: opacity 0.25s cubic-bezier(0.23, 1, 0.32, 1), visibility 0.25s;
     opacity: 0;
     visibility: hidden;
     padding: 40px 24px;
@@ -18,7 +18,7 @@ const overlayStyles = `
   }
 
   [data-theme="dark"] .splash-overlay {
-    background: #111111;
+    background: #101014;
     color: #ffffff;
   }
 
@@ -203,7 +203,7 @@ export default function AppLoadingOverlay({ isVisible, progress = null, statusTe
     }
   }, [isVisible])
 
-  if (!shouldRender) return null
+  if (!isVisible && !shouldRender) return null
 
   const displayStatus = statusText || internalStatus
 

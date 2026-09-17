@@ -105,24 +105,14 @@ export default function ScoutContributors() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* Status Indicators Tiles */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <div style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #232326', background: '#141416' }} />
-            <div style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #232326', background: '#141416', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444' }} />
-            </div>
-            <div style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #232326', background: '#141416' }} />
-            <div style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #232326', background: '#141416' }} />
-          </div>
-
           <button
             onClick={() => refetch()}
             disabled={isFetching}
             style={{
               padding: '6px 14px',
-              background: '#161618',
-              border: '1px solid #28282c',
-              color: '#f5f5f5',
+              background: 'var(--panel-bg, #161618)',
+              border: '1px solid var(--card-border, #28282c)',
+              color: 'var(--text-primary, #f5f5f5)',
               borderRadius: 6,
               fontSize: 12,
               fontWeight: 600,
@@ -131,7 +121,7 @@ export default function ScoutContributors() {
               alignItems: 'center',
               gap: 6,
               opacity: isFetching ? 0.6 : 1,
-              transition: 'border-color 0.15s ease'
+              transition: 'all 0.15s ease'
             }}
           >
             <RefreshCw size={12} className={isFetching ? 'animate-spin' : ''} />
@@ -159,8 +149,8 @@ export default function ScoutContributors() {
           <div
             key={idx}
             style={{
-              background: '#121214',
-              border: '1px solid #232326',
+              background: 'var(--card-bg, #121214)',
+              border: '1px solid var(--card-border, #232326)',
               borderRadius: 8,
               padding: '14px 16px',
               display: 'flex',
@@ -190,8 +180,8 @@ export default function ScoutContributors() {
       }}>
         {/* Left: Contribution to the Database */}
         <div style={{
-          background: '#121214',
-          border: '1px solid #232326',
+          background: 'var(--card-bg, #121214)',
+          border: '1px solid var(--card-border, #232326)',
           borderRadius: 8,
           padding: '16px 20px',
         }}>
@@ -222,8 +212,8 @@ export default function ScoutContributors() {
 
         {/* Right: Client Versions */}
         <div style={{
-          background: '#121214',
-          border: '1px solid #232326',
+          background: 'var(--card-bg, #121214)',
+          border: '1px solid var(--card-border, #232326)',
           borderRadius: 8,
           padding: '16px 20px',
         }}>
@@ -245,9 +235,9 @@ export default function ScoutContributors() {
                         borderRadius: 6,
                         fontSize: 11,
                         fontWeight: 600,
-                        background: '#18181b',
-                        color: isLatest ? '#f5f5f5' : 'var(--text-muted)',
-                        border: '1px solid #27272a'
+                        background: 'var(--panel-bg, #18181b)',
+                        color: isLatest ? 'var(--text-primary, #f5f5f5)' : 'var(--text-muted)',
+                        border: '1px solid var(--card-border, #27272a)'
                       }}
                     >
                       v{ver}: <b>{count}</b> {isLatest ? '✓' : ''}
@@ -262,15 +252,15 @@ export default function ScoutContributors() {
 
       {/* Bottom Container: Search, Filter Pills & Table/Empty State */}
       <div style={{
-        background: '#121214',
-        border: '1px solid #232326',
+        background: 'var(--card-bg, #121214)',
+        border: '1px solid var(--card-border, #232326)',
         borderRadius: 8,
         overflow: 'hidden'
       }}>
         {/* Controls Bar */}
         <div style={{
           padding: '12px 16px',
-          borderBottom: '1px solid #232326',
+          borderBottom: '1px solid var(--card-border, #232326)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -288,10 +278,10 @@ export default function ScoutContributors() {
               style={{
                 width: '100%',
                 padding: '7px 12px 7px 34px',
-                background: '#0b0b0c',
-                border: '1px solid #232326',
+                background: 'var(--bg-base, #0b0b0c)',
+                border: '1px solid var(--card-border, #232326)',
                 borderRadius: 6,
-                color: '#f5f5f5',
+                color: 'var(--text-primary, #f5f5f5)',
                 fontSize: 12,
                 outline: 'none'
               }}
@@ -319,8 +309,8 @@ export default function ScoutContributors() {
                       borderRadius: 6,
                       fontSize: 11,
                       fontWeight: isActive ? 700 : 500,
-                      background: isActive ? '#f5f5f5' : 'transparent',
-                      color: isActive ? '#0b0b0c' : 'var(--text-muted)',
+                      background: isActive ? 'var(--text-primary, #f5f5f5)' : 'transparent',
+                      color: isActive ? 'var(--main-bg, #0b0b0c)' : 'var(--text-muted)',
                       border: 'none',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease'
@@ -336,9 +326,9 @@ export default function ScoutContributors() {
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               style={{
-                background: '#161618',
-                border: '1px solid #28282c',
-                color: '#f5f5f5',
+                background: 'var(--panel-bg, #161618)',
+                border: '1px solid var(--card-border, #28282c)',
+                color: 'var(--text-primary, #f5f5f5)',
                 borderRadius: 6,
                 padding: '5px 10px',
                 fontSize: 11,
@@ -388,7 +378,7 @@ export default function ScoutContributors() {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 12 }}>
               <thead>
-                <tr style={{ background: '#0e0e10', borderBottom: '1px solid #232326' }}>
+                <tr style={{ background: 'var(--bg-base, #0e0e10)', borderBottom: '1px solid var(--card-border, #232326)' }}>
                   <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 600, fontSize: 11 }}>USER &amp; ACCOUNT</th>
                   <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 600, fontSize: 11 }}>STATUS</th>
                   <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 600, fontSize: 11 }}>DEVICES</th>
@@ -415,11 +405,11 @@ export default function ScoutContributors() {
                       key={u.user_id}
                       onClick={() => setSelectedUserId(u.user_id)}
                       style={{
-                        borderBottom: '1px solid #232326',
+                        borderBottom: '1px solid var(--card-border, #232326)',
                         cursor: 'pointer',
                         transition: 'background 0.15s ease'
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--panel-bg, rgba(255,255,255,0.02))'}
                       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                     >
                       <td style={{ padding: '12px 16px' }}>

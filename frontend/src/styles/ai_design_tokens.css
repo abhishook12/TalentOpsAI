@@ -126,6 +126,42 @@
   border-color: rgba(148, 163, 184, 0.28);
 }
 
+/* Light Mode Overrides for Crisp Typography on Light Backgrounds */
+[data-theme='light'] .ai-badge-verified,
+html[data-theme='light'] .ai-badge-verified {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+[data-theme='light'] .ai-badge-observed,
+html[data-theme='light'] .ai-badge-observed {
+  background: rgba(100, 116, 139, 0.1);
+  color: #334155;
+  border-color: rgba(100, 116, 139, 0.25);
+}
+
+[data-theme='light'] .ai-badge-inferred,
+html[data-theme='light'] .ai-badge-inferred {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+[data-theme='light'] .ai-badge-derived,
+html[data-theme='light'] .ai-badge-derived {
+  background: rgba(99, 102, 241, 0.12);
+  color: #4338ca;
+  border-color: rgba(99, 102, 241, 0.28);
+}
+
+[data-theme='light'] .ai-badge-unknown,
+html[data-theme='light'] .ai-badge-unknown {
+  background: rgba(148, 163, 184, 0.15);
+  color: #475569;
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
 /* Subtle Animated Processing Indicator */
 @keyframes ai-pulse-glow {
   0%, 100% {

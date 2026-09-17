@@ -12,34 +12,46 @@ export default function IntelligenceFeed({ onTriggerAction }) {
   const DEFAULT_FEED = [
     {
       id: 'sig_1',
+      icon: '🏢',
       title: 'Cloud Architecture Expansion at Datadog',
+      description: '8 new Senior Infrastructure & Distributed Systems positions posted across Austin & Remote in last 48 hours.',
       summary: '8 new Senior Infrastructure & Distributed Systems positions posted across Austin & Remote in last 48 hours.',
       evidence_type: 'OBSERVED',
+      provenance: 'OBSERVED',
       priority: 'critical',
       confidence: 0.94,
       source: 'Direct Job Postings & ATS Feeds',
+      timestamp: '2h ago',
       created_at: new Date().toISOString(),
       action_label: 'Prospect Top Candidates'
     },
     {
       id: 'sig_2',
+      icon: '🚀',
       title: 'High Career Velocity Transition: Principal Engineer',
+      description: 'Candidate Elena Rostova transitioned from Senior ML Engineer to Director of AI Platform in under 18 months.',
       summary: 'Candidate Elena Rostova transitioned from Senior ML Engineer to Director of AI Platform in under 18 months.',
       evidence_type: 'DERIVED',
+      provenance: 'DERIVED',
       priority: 'important',
       confidence: 0.88,
       source: 'LinkedIn Profile Timeline Analysis',
+      timestamp: '4h ago',
       created_at: new Date().toISOString(),
       action_label: 'View Talent Profile'
     },
     {
       id: 'sig_3',
+      icon: '👔',
       title: 'Executive Leadership Realignment at Stripe',
+      description: 'VP of Global Talent Acquisition appointed with aggressive engineering scale mandate.',
       summary: 'VP of Global Talent Acquisition appointed with aggressive engineering scale mandate.',
       evidence_type: 'VERIFIED',
+      provenance: 'VERIFIED',
       priority: 'useful',
       confidence: 0.97,
       source: 'Corporate Press Release & SEC Filing',
+      timestamp: '6h ago',
       created_at: new Date().toISOString(),
       action_label: 'Track Org Chart'
     }
@@ -174,20 +186,20 @@ export default function IntelligenceFeed({ onTriggerAction }) {
                     flexShrink: 0
                   }}
                 >
-                  {item.icon}
+                  {item.icon || '⚡'}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
                       {item.title}
                     </span>
-                    <EvidenceBadge status={item.provenance} confidence={item.confidence} size="sm" />
+                    <EvidenceBadge status={item.provenance || item.evidence_type || 'OBSERVED'} confidence={item.confidence} size="sm" />
                     <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
-                      {item.timestamp}
+                      {item.timestamp || 'Recent'}
                     </span>
                   </div>
                   <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                    {item.description}
+                    {item.description || item.summary}
                   </div>
                 </div>
               </div>

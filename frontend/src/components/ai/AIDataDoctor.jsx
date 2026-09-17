@@ -256,7 +256,7 @@ export default function AIDataDoctor() {
           disabled={repairing}
           onClick={() => handlePreviewAction('AUTO_MERGE')}
           style={{
-            background: 'linear-gradient(135deg, #10b981, #e4e4e7)',
+            background: 'linear-gradient(135deg, #10b981, #059669)',
             border: 'none',
             borderRadius: '6px',
             padding: '8px 16px',

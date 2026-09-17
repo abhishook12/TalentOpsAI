@@ -194,6 +194,17 @@ export default function DownloadScout() {
     setTimeout(() => setDownloading(false), 2500);
   };
 
+  const handleDownloadZip = () => {
+    const zipUrl = 'https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.zip';
+    const a = document.createElement('a');
+    a.href = zipUrl;
+    a.download = 'TalentOpsScoutSetup.zip';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast.success('Downloading Scout .ZIP archive (Chrome-safe bundle)');
+  };
+
   const handleVerifyPairingCode = async (e, customTargetEmail = null) => {
     if (e) e.preventDefault();
     const cleanCode = pairingCodeInput.trim().toUpperCase();
@@ -562,7 +573,7 @@ export default function DownloadScout() {
                 </div>
               </div>
 
-              <div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <button
                   onClick={handleDownload}
                   disabled={downloading}
@@ -576,6 +587,42 @@ export default function DownloadScout() {
                   <Download size={18} />
                   <span>{downloading ? 'Starting Download...' : `Download Scout (${displayVersion})`}</span>
                 </button>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={handleDownloadZip}
+                    style={{
+                      padding: '8px 10px', background: '#18181b', color: '#e4e4e7',
+                      border: '1px solid #27272a', borderRadius: 8, fontSize: 11, fontWeight: 600,
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                      transition: 'all 0.15s ease'
+                    }}
+                    title="Download as a ZIP archive if Chrome blocks the raw .exe file"
+                  >
+                    <Download size={12} color="#10b981" />
+                    <span>Download .ZIP</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cmd = `iwr -useb https://talentopsai-1.onrender.com/scout/download/windows -OutFile "$env:TEMP\\TalentOpsScoutSetup.exe"; Start-Process "$env:TEMP\\TalentOpsScoutSetup.exe"`;
+                      navigator.clipboard.writeText(cmd);
+                      toast.success('PowerShell command copied! Run in terminal to install directly.');
+                    }}
+                    style={{
+                      padding: '8px 10px', background: '#18181b', color: '#a1a1aa',
+                      border: '1px solid #27272a', borderRadius: 8, fontSize: 11, fontWeight: 600,
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                      transition: 'all 0.15s ease'
+                    }}
+                    title="Copy 1-line PowerShell install command (completely bypasses browser download warnings)"
+                  >
+                    <Terminal size={12} color="#60a5fa" />
+                    <span>PowerShell Install</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1000,6 +1047,9 @@ export default function DownloadScout() {
                     <li>Click <b>"More info"</b> (the small link text below the warning).</li>
                     <li>Click <b>"Run anyway"</b>.</li>
                   </ol>
+                  <div style={{ marginTop: 8, fontSize: 11, color: '#71717a', borderTop: '1px dashed #232326', paddingTop: 6 }}>
+                    💡 <b>Terminal shortcut:</b> Run <code style={{ fontSize: 10, color: '#e4e4e7' }}>Unblock-File "$env:USERPROFILE\Downloads\TalentOpsScoutSetup.exe"</code> in PowerShell to remove the download flag immediately.
+                  </div>
                 </div>
 
                 {releaseInfo?.sha256 && (

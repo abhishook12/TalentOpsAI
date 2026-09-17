@@ -554,6 +554,43 @@ def download_latest_installer(
     return RedirectResponse(url=download_url, status_code=307, headers=headers)
 
 
+@router.get("/download/windows/zip")
+def download_latest_installer_zip(
+    channel: str = Query("stable"),
+    request: Request = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Alternative ZIP archive download endpoint.
+    Bypasses Chrome Safe Browsing heuristics that block raw .exe downloads.
+    """
+    from fastapi.responses import RedirectResponse
+
+    zip_url = "https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.zip"
+
+    try:
+        ip = request.client.host if request and request.client else None
+        ua = request.headers.get("user-agent") if request else None
+        evt = ScoutDownloadEvent(
+            ip_address=ip,
+            user_agent=ua,
+            release_version=DEFAULT_RELEASE_VERSION,
+            download_source="direct_zip_download_url",
+        )
+        db.add(evt)
+        db.commit()
+    except Exception:
+        pass
+
+    headers = {
+        "Content-Disposition": 'attachment; filename="TalentOpsScoutSetup.zip"',
+        "X-Content-Type-Options": "nosniff",
+        "X-Publisher": "TalentOps AI Inc.",
+        "Cache-Control": "private, no-transform, max-age=60",
+    }
+    return RedirectResponse(url=zip_url, status_code=307, headers=headers)
+
+
 
 @router.post("/updates/report")
 def report_update_telemetry(

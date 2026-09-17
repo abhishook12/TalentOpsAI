@@ -23,9 +23,15 @@ export default function ExtensionHub() {
         api.get('/recruiters/extension/live-feed?limit=10').catch(() => ({ data: { feed: [] } })),
       ]);
 
-      setCodes(codesRes.data || []);
-      if (summaryRes.data) setSummary(summaryRes.data);
-      if (feedRes.data?.feed) setLiveFeed(feedRes.data.feed);
+      const rawCodes = codesRes?.data;
+      const parsedCodes = Array.isArray(rawCodes)
+        ? rawCodes
+        : Array.isArray(rawCodes?.codes)
+        ? rawCodes.codes
+        : [];
+      setCodes(parsedCodes);
+      if (summaryRes?.data && typeof summaryRes.data === 'object') setSummary(summaryRes.data);
+      if (Array.isArray(feedRes?.data?.feed)) setLiveFeed(feedRes.data.feed);
     } catch (e) {
       console.error('Error fetching extension hub data', e);
     } finally {
@@ -69,7 +75,7 @@ export default function ExtensionHub() {
     }
   };
 
-  const activeCode = codes.find(c => c.is_active)?.code || 'TALENTOPS-AUTO-SCOUT';
+  const activeCode = (Array.isArray(codes) ? codes.find(c => c && c.is_active)?.code : null) || 'TALENTOPS-AUTO-SCOUT';
 
   return (
     <div className="page-container page-enter" style={{ padding: '0 32px 100px', maxWidth: 1100, margin: '0 auto', width: '100%' }}>
@@ -97,7 +103,7 @@ export default function ExtensionHub() {
           <button
             onClick={() => fetchAllData(true)}
             style={{
-              padding: '9px 14px', background: '#232326', color: '#a1a1aa', border: '1px solid #27272a',
+              padding: '9px 14px', background: 'var(--card-bg)', color: 'var(--text-secondary)', border: '1px solid var(--card-border)',
               borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex',
               alignItems: 'center', gap: 6
             }}
@@ -202,7 +208,7 @@ export default function ExtensionHub() {
           </div>
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            background: 'var(--bg-base, #232326)', border: '1px solid var(--card-border, #27272a)', borderRadius: 8, padding: '8px 12px', marginTop: 6
+            background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 8, padding: '8px 12px', marginTop: 6
           }}>
             <span style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 700, color: '#10b981', letterSpacing: 1 }}>
               {activeCode}
@@ -225,12 +231,12 @@ export default function ExtensionHub() {
             </button>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
-            <span style={{ fontSize: 11, color: 'var(--text-muted, #71717a)' }}>Auto-activates on load</span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Auto-activates on load</span>
             <button
               onClick={handleGenerateCode}
               disabled={generating}
               style={{
-                background: 'none', border: 'none', color: 'var(--text-secondary, #a1a1aa)', fontSize: 11, fontWeight: 600,
+                background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: 11, fontWeight: 600,
                 cursor: 'pointer', textDecoration: 'underline'
               }}
             >
@@ -242,23 +248,23 @@ export default function ExtensionHub() {
 
       {/* Live Stream: Real-Time Synced Database Additions */}
       <div style={{
-        background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 16,
+        background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 16,
         padding: '22px 24px', marginBottom: 28
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px #22c55e' }} />
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary, #fafafa)', margin: 0 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
               Live Traceable Discovery Stream
             </h3>
           </div>
-          <span style={{ fontSize: 12, color: '#a1a1aa' }}>
+          <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
             ⚡ Real-time verified discoveries only • Complete audit provenance
           </span>
         </div>
 
         {liveFeed.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '28px 0', color: '#71717a', fontSize: 13 }}>
+          <div style={{ textAlign: 'center', padding: '28px 0', color: 'var(--text-muted)', fontSize: 13 }}>
             📡 No live captures yet in this browser session. Waiting for screen change or navigation...
           </div>
         ) : (
@@ -272,25 +278,25 @@ export default function ExtensionHub() {
 
               return (
                 <div key={idx} style={{
-                  background: '#131b2e', border: '1px solid #232326', borderRadius: 10, padding: '12px 14px',
+                  background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 10, padding: '12px 14px',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{
                       width: 32, height: 32, borderRadius: 8, background: 'rgba(161, 161, 170, 0.2)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a1a1aa',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)',
                       fontWeight: 700, fontSize: 13
                     }}>
                       {item.recruiter_name ? item.recruiter_name.charAt(0) : 'R'}
                     </div>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#fafafa' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
                         {item.recruiter_name}
                       </div>
-                      <div style={{ fontSize: 11, color: '#a1a1aa' }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
                         {item.company_name || 'Corporate'} • {item.title || 'Recruiter'}
                       </div>
-                      <div style={{ fontSize: 10, color: '#71717a', marginTop: 2, fontFamily: 'monospace' }}>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2, fontFamily: 'monospace' }}>
                         {item.discovery_id || `DISC-R${item.recruiter_id || idx}`} • {item.extraction_source || 'Visual + DOM'}
                       </div>
                     </div>

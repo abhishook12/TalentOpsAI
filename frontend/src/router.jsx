@@ -117,7 +117,13 @@ const settingsRoute = createRoute({
 const extensionHubRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/extension',
-  component: lazyComponent(() => import('./pages/DownloadScout')),
+  component: lazyComponent(() => import('./pages/ExtensionHub')),
+})
+
+const extensionHubAliasRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/extension-hub',
+  component: lazyComponent(() => import('./pages/ExtensionHub')),
 })
 
 const downloadScoutRoute = createRoute({
@@ -313,6 +319,7 @@ const routeTree = rootRoute.addChildren([
   profileRoute,
   settingsRoute,
   extensionHubRoute,
+  extensionHubAliasRoute,
   downloadScoutRoute,
   scoutContributorsRoute,
   mcpRoute,

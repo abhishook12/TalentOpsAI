@@ -188,7 +188,7 @@ export default function AddScoutModal({ isOpen, onClose, onActivated }) {
           }}>
             <span style={{
               fontFamily: 'monospace', fontSize: 20, fontWeight: 800,
-              color: '#4ade80', letterSpacing: 2
+              color: '#10b981', letterSpacing: 2
             }}>
               {loading ? 'GENERATING...' : (codeData?.code || 'TOS-....-....')}
             </span>
@@ -196,8 +196,8 @@ export default function AddScoutModal({ isOpen, onClose, onActivated }) {
               onClick={handleCopyCode}
               disabled={loading || !codeData?.code}
               style={{
-                padding: '6px 14px', background: copied ? '#10b981' : '#d4d4d8',
-                color: '#fff', border: 'none', borderRadius: 6, fontSize: 12,
+                padding: '6px 14px', background: copied ? '#10b981' : 'var(--card-bg, #27272a)',
+                color: copied ? '#ffffff' : 'var(--text-primary, #ffffff)', border: '1px solid var(--card-border, #3f3f46)', borderRadius: 6, fontSize: 12,
                 fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
               }}
             >
@@ -226,8 +226,8 @@ export default function AddScoutModal({ isOpen, onClose, onActivated }) {
               disabled={loading}
               title="Generate New Code"
               style={{
-                padding: '10px 14px', background: '#27272a', color: '#a1a1aa',
-                border: 'none', borderRadius: 8, cursor: 'pointer',
+                padding: '10px 14px', background: 'var(--panel-bg, #27272a)', color: 'var(--text-secondary, #a1a1aa)',
+                border: '1px solid var(--card-border, #27272a)', borderRadius: 8, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}
             >
@@ -238,19 +238,19 @@ export default function AddScoutModal({ isOpen, onClose, onActivated }) {
 
         {/* 3-Step Guide */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#71717a', textTransform: 'uppercase' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #71717a)', textTransform: 'uppercase' }}>
             Setup Instructions
           </div>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 12, color: '#d4d4d8' }}>
-            <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#27272a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, flexShrink: 0 }}>1</div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 12, color: 'var(--text-secondary, #d4d4d8)' }}>
+            <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--panel-bg, #27272a)', border: '1px solid var(--card-border, #3f3f46)', color: 'var(--text-primary, #ffffff)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, flexShrink: 0 }}>1</div>
             <div>Download & install <b>TalentOps Scout Desktop</b> (if not already installed).</div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 12, color: '#d4d4d8' }}>
-            <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#27272a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, flexShrink: 0 }}>2</div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 12, color: 'var(--text-secondary, #d4d4d8)' }}>
+            <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--panel-bg, #27272a)', border: '1px solid var(--card-border, #3f3f46)', color: 'var(--text-primary, #ffffff)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, flexShrink: 0 }}>2</div>
             <div>Launch Scout. Click <b>Connect Account</b> on the first-run prompt.</div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 12, color: '#d4d4d8' }}>
-            <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#27272a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, flexShrink: 0 }}>3</div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 12, color: 'var(--text-secondary, #d4d4d8)' }}>
+            <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--panel-bg, #27272a)', border: '1px solid var(--card-border, #3f3f46)', color: 'var(--text-primary, #ffffff)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, flexShrink: 0 }}>3</div>
             <div>Paste the 10-minute code or click <b>Connect This Computer</b>.</div>
           </div>
         </div>
@@ -260,8 +260,8 @@ export default function AddScoutModal({ isOpen, onClose, onActivated }) {
           <button
             onClick={onClose}
             style={{
-              padding: '8px 18px', background: '#232326', color: '#a1a1aa',
-              border: '1px solid #27272a', borderRadius: 8, fontSize: 12,
+              padding: '8px 18px', background: 'var(--panel-bg, #232326)', color: 'var(--text-primary, #a1a1aa)',
+              border: '1px solid var(--card-border, #27272a)', borderRadius: 8, fontSize: 12,
               fontWeight: 600, cursor: 'pointer'
             }}
           >

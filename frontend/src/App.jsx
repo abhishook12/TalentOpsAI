@@ -54,6 +54,11 @@ const PAGE_NAMES = {
   '/admin/audit-logs': 'Audit Logs',
   '/admin/health': 'System Health',
   '/admin/settings': 'Admin Settings',
+  '/download-scout': 'Desktop Scout & Telemetry Fleet',
+  '/extension': 'Scout Extension Hub',
+  '/extension-hub': 'Scout Extension Hub',
+  '/admin/scout-contributors': 'Scout Contributors',
+  '/admin/staging': 'Staging Pipeline',
 }
 
 function getSessionId() {

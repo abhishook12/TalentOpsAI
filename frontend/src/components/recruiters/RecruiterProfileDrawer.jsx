@@ -31,28 +31,35 @@ function ColleaguesSection({ recruiterId, company, onSelectRecruiter }) {
   }, [recruiterId, isExpanded]);
 
   return (
-    <div className="p-4 rounded-xl bg-[#18181c] border border-[#27272a] space-y-3">
+    <div
+      className="p-4 rounded-xl space-y-3"
+      style={{ background: 'var(--card-bg, #18181c)', border: '1px solid var(--card-border, #27272a)' }}
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Users className="w-4 h-4 text-emerald-400" />
-          <span className="text-xs font-semibold text-[#a1a1aa] uppercase tracking-wider">Company Colleagues</span>
+          <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted, #a1a1aa)' }}>
+            Company Colleagues
+          </span>
         </div>
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="text-xs text-emerald-400 hover:text-emerald-300 font-medium"
+          className="text-xs text-emerald-500 hover:text-emerald-400 font-medium cursor-pointer"
         >
           {isExpanded ? 'Collapse' : 'Explore Peers'}
         </button>
       </div>
 
       {isExpanded && (
-        <div className="space-y-2 pt-2 border-t border-[#27272a]">
+        <div className="space-y-2 pt-2" style={{ borderTop: '1px solid var(--card-border, #27272a)' }}>
           {loading ? (
-            <div className="text-xs text-[#71717a] py-2 flex items-center gap-2">
+            <div className="text-xs py-2 flex items-center gap-2" style={{ color: 'var(--text-muted, #71717a)' }}>
               <RefreshCw className="w-3 h-3 animate-spin text-emerald-400" /> Finding colleagues at {company}...
             </div>
           ) : colleagues.length === 0 ? (
-            <div className="text-xs text-[#71717a] py-1">No other active colleagues found for this firm.</div>
+            <div className="text-xs py-1" style={{ color: 'var(--text-muted, #71717a)' }}>
+              No other active colleagues found for this firm.
+            </div>
           ) : (
             colleagues.map(colleague => (
               <div
@@ -89,13 +96,15 @@ export default function RecruiterProfileDrawer({
   onClose,
   onEnrollCampaign
 }) {
-  const [recruiter, setRecruiter] = useState(initialRecruiter);
+  const [localRecruiter, setLocalRecruiter] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
   const [isFixingEmail, setIsFixingEmail] = useState(false);
 
   React.useEffect(() => {
-    setRecruiter(initialRecruiter);
-  }, [initialRecruiter]);
+    setLocalRecruiter(null);
+  }, [initialRecruiter?.recruiter_id, initialRecruiter?.id]);
+
+  const recruiter = localRecruiter || initialRecruiter;
 
   if (!isOpen || !recruiter) return null;
 
@@ -126,13 +135,13 @@ export default function RecruiterProfileDrawer({
     try {
       const res = await api.post(`/recruiters/${recruiter.recruiter_id}/auto-fix-email`);
       const { repaired_email, method, confidence } = res.data;
-      setRecruiter(prev => ({
-        ...prev,
+      setLocalRecruiter({
+        ...recruiter,
         email: repaired_email,
         email_status: 'verified',
         email_confidence: confidence || 95,
         is_deliverable: true
-      }));
+      });
       toast.success(`Repaired email to ${repaired_email} via ${method.replace(/_/g, ' ')}!`);
     } catch (e) {
       toast.error(e.response?.data?.detail || 'No replacement email could be auto-synthesized');
@@ -187,19 +196,27 @@ export default function RecruiterProfileDrawer({
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="w-screen max-w-md bg-[#131316] border-l border-[#27272a] shadow-2xl pointer-events-auto flex flex-col h-full overflow-hidden"
+            className="w-screen max-w-md shadow-2xl pointer-events-auto flex flex-col h-full overflow-hidden"
+            style={{ background: 'var(--main-bg, #131316)', borderLeft: '1px solid var(--card-border, #27272a)' }}
           >
             {/* Drawer Header */}
-            <div className="p-6 border-b border-[#27272a] bg-[#18181c]/50 relative">
+            <div
+              className="p-6 relative"
+              style={{ borderBottom: '1px solid var(--card-border, #27272a)', background: 'var(--panel-bg, #18181c)' }}
+            >
               <button
                 onClick={onClose}
-                className="absolute top-5 right-5 w-8 h-8 rounded-lg flex items-center justify-center text-[#71717a] hover:text-white hover:bg-[#27272a] transition-colors"
+                className="absolute top-5 right-5 w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer"
+                style={{ color: 'var(--text-muted, #71717a)' }}
               >
                 <X className="w-4 h-4" />
               </button>
 
               <div className="flex items-start gap-4 pr-8">
-                <div className="w-14 h-14 rounded-2xl bg-[#222228] border border-[#33333e] flex items-center justify-center overflow-hidden p-2 flex-shrink-0 shadow-md">
+                <div
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center overflow-hidden p-2 flex-shrink-0 shadow-md"
+                  style={{ background: 'var(--card-bg, #222228)', border: '1px solid var(--card-border, #33333e)' }}
+                >
                   <img
                     src={logo}
                     alt={company}
@@ -216,13 +233,16 @@ export default function RecruiterProfileDrawer({
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${grade.color}`}>
                       {grade.label}
                     </span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#27272a] text-[#a1a1aa] border border-[#3f3f46]">
+                    <span
+                      className="px-2 py-0.5 rounded-full text-[10px] font-medium"
+                      style={{ background: 'var(--card-bg, #27272a)', color: 'var(--text-secondary, #a1a1aa)', border: '1px solid var(--card-border, #3f3f46)' }}
+                    >
                       {seniority}
                     </span>
                   </div>
-                  <h2 className="text-base font-bold text-white tracking-tight truncate m-0">{name}</h2>
-                  <p className="text-xs text-[#a1a1aa] truncate mt-0.5 flex items-center gap-1">
-                    <Building2 className="w-3 h-3 text-[#71717a]" /> {company}
+                  <h2 className="text-base font-bold tracking-tight truncate m-0" style={{ color: 'var(--text-primary, #ffffff)' }}>{name}</h2>
+                  <p className="text-xs truncate mt-0.5 flex items-center gap-1" style={{ color: 'var(--text-secondary, #a1a1aa)' }}>
+                    <Building2 className="w-3 h-3" style={{ color: 'var(--text-muted, #71717a)' }} /> {company}
                   </p>
                 </div>
               </div>
@@ -254,31 +274,39 @@ export default function RecruiterProfileDrawer({
               </div>
 
               {/* Deliverability & MX Shield Card */}
-              <div className="p-4 rounded-xl bg-[#18181c] border border-[#27272a] space-y-3">
+              <div
+                className="p-4 rounded-xl space-y-3"
+                style={{ background: 'var(--card-bg, #18181c)', border: '1px solid var(--card-border, #27272a)' }}
+              >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-[#71717a] uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5" style={{ color: 'var(--text-muted, #71717a)' }}>
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> MailIntel Deliverability
                   </span>
-                  <span className="text-xs font-bold text-emerald-400 font-mono">{confidence}% Safe</span>
+                  <span className="text-xs font-bold text-emerald-500 font-mono">{confidence}% Safe</span>
                 </div>
 
-                <div className="w-full h-1.5 bg-[#27272a] rounded-full overflow-hidden">
+                <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--card-border, #27272a)' }}>
                   <div
                     className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full"
                     style={{ width: `${Math.min(100, confidence)}%` }}
                   />
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] text-[#a1a1aa] pt-1 border-t border-[#27272a]">
-                  <span>Status: <strong className="text-white capitalize">{emailStatus.replace('_', ' ')}</strong></span>
-                  <span>MX Host: <strong className="text-white">Corporate Active</strong></span>
+                <div
+                  className="flex items-center justify-between text-[11px] pt-1"
+                  style={{ color: 'var(--text-secondary, #a1a1aa)', borderTop: '1px solid var(--card-border, #27272a)' }}
+                >
+                  <span>Status: <strong className="capitalize" style={{ color: 'var(--text-primary, #ffffff)' }}>{emailStatus.replace('_', ' ')}</strong></span>
+                  <span>MX Host: <strong style={{ color: 'var(--text-primary, #ffffff)' }}>Corporate Active</strong></span>
                 </div>
               </div>
 
               {/* Contact Channels */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-semibold text-[#a1a1aa] uppercase tracking-wider m-0">Contact Coordinates</h3>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider m-0" style={{ color: 'var(--text-secondary, #a1a1aa)' }}>
+                    Contact Coordinates
+                  </h3>
                   {recruiter.recruiter_id && (
                     <button
                       onClick={handleAutoFixEmail}
@@ -301,95 +329,92 @@ export default function RecruiterProfileDrawer({
                 {/* Email Items */}
                 {allEmails.length > 0 ? (
                   allEmails.map((em, idx) => (
-                    <div key={`email-${idx}`} className="p-3 rounded-xl bg-[#18181c] border border-[#27272a] flex items-center justify-between group hover:border-[#3f3f46] transition-colors">
+                    <div
+                      key={`email-${idx}`}
+                      className="p-3 rounded-xl flex items-center justify-between group transition-colors"
+                      style={{ background: 'var(--card-bg, #18181c)', border: '1px solid var(--card-border, #27272a)' }}
+                    >
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 flex-shrink-0">
                           <Mail className="w-4 h-4" />
                         </div>
                         <div className="min-w-0">
-                          <div className="text-[10px] text-[#71717a]">{idx === 0 ? 'Primary Email' : `Email ${idx + 1}`}</div>
-                          <div className="text-xs font-mono text-white truncate">{em}</div>
+                          <div className="text-[10px]" style={{ color: 'var(--text-muted, #71717a)' }}>{idx === 0 ? 'Primary Email' : `Email ${idx + 1}`}</div>
+                          <div className="text-xs font-mono truncate" style={{ color: 'var(--text-primary, #ffffff)' }}>{em}</div>
                         </div>
                       </div>
                       <button
                         onClick={() => copyToClipboard(em, `Email ${idx + 1}`)}
-                        className="p-1.5 rounded-lg text-[#71717a] hover:text-white hover:bg-[#27272a] transition-colors"
+                        className="p-1.5 rounded-lg transition-colors cursor-pointer"
+                        style={{ color: 'var(--text-muted, #71717a)' }}
                         title="Copy Email"
                       >
                         {copiedField === `Email ${idx + 1}` ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
                     </div>
                   ))
-                ) : (
-                  <div className="p-3 rounded-xl bg-[#18181c] border border-[#27272a] flex items-center justify-between">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 flex-shrink-0">
-                        <Mail className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-[10px] text-[#71717a]">Primary Email</div>
-                        <div className="text-xs font-mono text-[#71717a]">Not Available</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                ) : null}
 
                 {/* Phone Items */}
                 {allPhones.length > 0 ? (
                   allPhones.map((ph, idx) => (
-                    <div key={`phone-${idx}`} className="p-3 rounded-xl bg-[#18181c] border border-[#27272a] flex items-center justify-between group hover:border-[#3f3f46] transition-colors">
+                    <div
+                      key={`phone-${idx}`}
+                      className="p-3 rounded-xl flex items-center justify-between group transition-colors"
+                      style={{ background: 'var(--card-bg, #18181c)', border: '1px solid var(--card-border, #27272a)' }}
+                    >
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 flex-shrink-0">
                           <Phone className="w-4 h-4" />
                         </div>
                         <div className="min-w-0">
-                          <div className="text-[10px] text-[#71717a]">{idx === 0 ? 'Direct Phone' : `Phone ${idx + 1}`}</div>
-                          <div className="text-xs font-mono text-white truncate">{ph}</div>
+                          <div className="text-[10px]" style={{ color: 'var(--text-muted, #71717a)' }}>{idx === 0 ? 'Direct Phone' : `Phone ${idx + 1}`}</div>
+                          <div className="text-xs font-mono truncate" style={{ color: 'var(--text-primary, #ffffff)' }}>{ph}</div>
                         </div>
                       </div>
                       <button
                         onClick={() => copyToClipboard(ph, `Phone ${idx + 1}`)}
-                        className="p-1.5 rounded-lg text-[#71717a] hover:text-white hover:bg-[#27272a] transition-colors"
+                        className="p-1.5 rounded-lg transition-colors cursor-pointer"
+                        style={{ color: 'var(--text-muted, #71717a)' }}
                         title="Copy Phone"
                       >
                         {copiedField === `Phone ${idx + 1}` ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
                     </div>
                   ))
-                ) : (
-                  <div className="p-3 rounded-xl bg-[#18181c] border border-[#27272a] flex items-center justify-between">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 flex-shrink-0">
-                        <Phone className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-[10px] text-[#71717a]">Direct Phone</div>
-                        <div className="text-xs font-mono text-[#71717a]">Not Available</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                ) : null}
 
                 {/* Location Item */}
-                <div className="p-3 rounded-xl bg-[#18181c] border border-[#27272a] flex items-center justify-between">
+                <div
+                  className="p-3 rounded-xl flex items-center justify-between"
+                  style={{ background: 'var(--card-bg, #18181c)', border: '1px solid var(--card-border, #27272a)' }}
+                >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 flex-shrink-0">
                       <MapPin className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <div className="text-[10px] text-[#71717a]">Market / Location</div>
-                      <div className="text-xs text-white truncate">{location}</div>
+                      <div className="text-[10px]" style={{ color: 'var(--text-muted, #71717a)' }}>Market / Location</div>
+                      <div className="text-xs truncate" style={{ color: 'var(--text-primary, #ffffff)' }}>{location}</div>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Role & Specialization */}
-              <div className="p-4 rounded-xl bg-[#18181c] border border-[#27272a] space-y-2">
-                <div className="text-xs font-semibold text-[#a1a1aa] uppercase tracking-wider">Recruiting Domain</div>
-                <div className="text-xs text-white leading-relaxed">{title}</div>
+              <div
+                className="p-4 rounded-xl space-y-2"
+                style={{ background: 'var(--card-bg, #18181c)', border: '1px solid var(--card-border, #27272a)' }}
+              >
+                <div className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary, #a1a1aa)' }}>
+                  Recruiting Domain
+                </div>
+                <div className="text-xs leading-relaxed" style={{ color: 'var(--text-primary, #ffffff)' }}>{title}</div>
                 {recruiter.specialization && (
-                  <div className="pt-2 border-t border-[#27272a] text-[11px] text-[#a1a1aa]">
+                  <div
+                    className="pt-2 text-[11px]"
+                    style={{ borderTop: '1px solid var(--card-border, #27272a)', color: 'var(--text-secondary, #a1a1aa)' }}
+                  >
                     Specialization: <strong className="text-emerald-400">{recruiter.specialization}</strong>
                   </div>
                 )}
@@ -400,10 +425,14 @@ export default function RecruiterProfileDrawer({
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-[#27272a] bg-[#18181c]/50 flex items-center justify-between">
+            <div
+              className="p-4 flex items-center justify-between"
+              style={{ borderTop: '1px solid var(--card-border, #27272a)', background: 'var(--panel-bg, #18181c)' }}
+            >
               <button
                 onClick={() => copyToClipboard(`${name} <${email}> - ${company}`, 'Full Profile')}
-                className="px-3.5 py-2 rounded-xl text-xs font-medium text-[#a1a1aa] hover:text-white bg-[#222228] hover:bg-[#2c2c34] transition-colors flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
+                style={{ background: 'var(--card-bg, #222228)', border: '1px solid var(--card-border, #33333e)', color: 'var(--text-primary, #ffffff)' }}
               >
                 <Copy className="w-3.5 h-3.5" /> Copy Full Contact
               </button>
@@ -411,7 +440,7 @@ export default function RecruiterProfileDrawer({
               {onEnrollCampaign && (
                 <button
                   onClick={() => onEnrollCampaign(recruiter)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors flex items-center gap-1.5 shadow-md"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors flex items-center gap-1.5 shadow-md cursor-pointer"
                 >
                   <Send className="w-3.5 h-3.5" /> Add to Campaign
                 </button>

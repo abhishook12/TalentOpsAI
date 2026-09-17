@@ -224,6 +224,10 @@ export default function AdminTerminal() {
     const safeGet = async (url) => {
       try {
         const res = await api.get(url)
+        if (typeof res.data === 'string' && res.data.trim().startsWith('<')) {
+          log(`✗ Invalid response for ${url}`, 'warn')
+          return null
+        }
         return res.data
       } catch (e) {
         const status = e?.response?.status
@@ -254,10 +258,21 @@ export default function AdminTerminal() {
       safeGet('/admin/state-coverage'),
     ])
 
-    if (s) setStats(s); if (ok) setOpsKpis(ok); if (ts) setTopStates(ts || []); if (ri) setRecentImports(ri || [])
-    if (fa) setFieldAudit(fa); if (tbl) setTableSizes(tbl || []); if (sys) setSysInfo(sys); if (orp) setOrphans(orp); if (dq) setDataQuality(dq)
-    if (dop) setDataOps(dop); if (si) setSearchIntel(si); if (ei) setExportIntel(ei)
-    if (al) setAlerts(al.alerts || []); if (feed) setActivityFeed(feed); if (cov) setStateCoverage(cov)
+    if (s && typeof s === 'object') setStats(s)
+    if (ok && typeof ok === 'object') setOpsKpis(ok)
+    if (ts) setTopStates(Array.isArray(ts) ? ts : (Array.isArray(ts?.top_states) ? ts.top_states : []))
+    if (ri) setRecentImports(Array.isArray(ri) ? ri : (Array.isArray(ri?.recent_imports) ? ri.recent_imports : []))
+    if (fa && typeof fa === 'object') setFieldAudit(fa)
+    if (tbl) setTableSizes(Array.isArray(tbl) ? tbl : (Array.isArray(tbl?.table_sizes) ? tbl.table_sizes : []))
+    if (sys && typeof sys === 'object') setSysInfo(sys)
+    if (orp && typeof orp === 'object') setOrphans(orp)
+    if (dq && typeof dq === 'object') setDataQuality(dq)
+    if (dop && typeof dop === 'object') setDataOps(dop)
+    if (si && typeof si === 'object') setSearchIntel(si)
+    if (ei && typeof ei === 'object') setExportIntel(ei)
+    if (al) setAlerts(Array.isArray(al?.alerts) ? al.alerts : (Array.isArray(al) ? al : []))
+    if (feed && typeof feed === 'object') setActivityFeed(feed)
+    if (cov && typeof cov === 'object') setStateCoverage(cov)
     
     if (sawUnauthorized) {
       let stillValid = false
@@ -768,8 +783,8 @@ export default function AdminTerminal() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
               <Section title="Top States by Recruiter Count" icon="ti-map-2">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {topStates.map((s, i) => {
-                    const max = topStates[0]?.count || 1
+                  {(Array.isArray(topStates) ? topStates : []).map((s, i) => {
+                    const max = (Array.isArray(topStates) && topStates[0]?.count) || 1
                     const w = Math.round(s.count / max * 100)
                     return (
                       <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -778,22 +793,25 @@ export default function AdminTerminal() {
                         <div style={{ flex: 1, height: 6, background: 'var(--bg-hover)', borderRadius: 99, overflow: 'hidden' }}>
                           <div style={{ width: `${w}%`, height: '100%', background: 'linear-gradient(90deg, #d4d4d8, #e4e4e7)', borderRadius: 99, transition: 'width 0.6s ease' }} />
                         </div>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: '#e4e4e7', minWidth: 50, textAlign: 'right', fontFamily: "'DM Mono', monospace" }}>{fmt(s.count)}</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary, #e4e4e7)', minWidth: 50, textAlign: 'right', fontFamily: "'DM Mono', monospace" }}>{fmt(s.count)}</span>
                       </div>
                     )
                   })}
+                  {(!Array.isArray(topStates) || topStates.length === 0) && (
+                    <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>No state data available.</span>
+                  )}
                 </div>
               </Section>
 
               <Section title="Recent Import Activity" icon="ti-calendar">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {recentImports.map((r, i) => (
+                  {(Array.isArray(recentImports) ? recentImports : []).map((r, i) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 8, fontSize: 12 }}>
                       <span style={{ color: 'var(--text-muted)', fontFamily: "'DM Mono', monospace" }}>{r.import_date}</span>
-                      <span style={{ fontWeight: 600, color: '#e4e4e7' }}>+{fmt(r.count)} records</span>
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary, #e4e4e7)' }}>+{fmt(r.count)} records</span>
                     </div>
                   ))}
-                  {recentImports.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>No import history found.</span>}
+                  {(!Array.isArray(recentImports) || recentImports.length === 0) && <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>No import history found.</span>}
                 </div>
               </Section>
             </div>
@@ -803,14 +821,14 @@ export default function AdminTerminal() {
               <Section
                 title="System Alerts"
                 icon="ti-alert-triangle"
-                action={<Badge color={(alerts?.some(a => a.severity === 'critical') ? '#ef4444' : '#e4e4e7')}>{alerts?.some(a => a.severity === 'critical') ? 'CRITICAL' : 'ACTIVE'}</Badge>}
+                action={<Badge color={(Array.isArray(alerts) && alerts.some(a => a.severity === 'critical') ? '#ef4444' : 'var(--text-muted)')}>{Array.isArray(alerts) && alerts.some(a => a.severity === 'critical') ? 'CRITICAL' : 'ACTIVE'}</Badge>}
                 style={{ marginBottom: 0 }}
               >
-                {(!alerts || alerts.length === 0) ? (
+                {(!Array.isArray(alerts) || alerts.length === 0) ? (
                   <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No alerts detected.</div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {alerts.slice(0, 4).map((a, i) => (
+                    {(Array.isArray(alerts) ? alerts : []).slice(0, 4).map((a, i) => (
                       <div key={i} style={{ background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 6, padding: 12, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                         <div style={{ width: 34, height: 34, borderRadius: 10, background: a.severity === 'critical' ? 'rgba(239,68,68,0.18)' : 'rgba(245,158,11,0.16)', border: `1px solid ${a.severity === 'critical' ? 'rgba(239,68,68,0.35)' : 'rgba(245,158,11,0.28)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <i className={`ti ${a.severity === 'critical' ? 'ti-alert-triangle' : 'ti-alert-circle'}`} style={{ color: a.severity === 'critical' ? '#f87171' : '#fbbf24' }} />
@@ -821,7 +839,7 @@ export default function AdminTerminal() {
                           {a.action?.tab && (
                             <button
                               onClick={() => setActiveTab(a.action.tab)}
-                              style={{ marginTop: 10, background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: '#e4e4e7', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                              style={{ marginTop: 10, background: 'var(--bg-hover)', border: '1px solid var(--card-border)', color: 'var(--text-primary, #e4e4e7)', padding: '6px 10px', borderRadius: 8, fontSize: 11.5, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                             >
                               <i className="ti ti-arrow-right" /> {a.action.label || 'Open'}
                             </button>
@@ -838,12 +856,12 @@ export default function AdminTerminal() {
                   <div style={{ display: 'grid', gap: 10 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'center' }}>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Most Searched States</div>
-                      <Badge color="#e4e4e7">Last 24h</Badge>
+                      <Badge color="var(--text-secondary)">Last 24h</Badge>
                     </div>
                     {(searchIntel?.most_searched_states?.length ? searchIntel.most_searched_states : []).slice(0, 5).map((r, i) => (
                       <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid var(--card-border)' }}>
                         <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: "'DM Mono', monospace" }}>{r.key}</span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#e4e4e7', fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary, #e4e4e7)', fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
                       </div>
                     ))}
                     {!(searchIntel?.most_searched_states?.length) && <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No Data Available</div>}
@@ -892,21 +910,21 @@ export default function AdminTerminal() {
                 </div>
 
                 
-            <Section title="Feature Verification Center" icon="ti-checkbox" action={<Badge color="#e4e4e7">Live Tracking</Badge>}>
-              {features.length === 0 ? (
+            <Section title="Feature Verification Center" icon="ti-checkbox" action={<Badge color="var(--text-secondary)">Live Tracking</Badge>}>
+              {(!Array.isArray(features) || features.length === 0) ? (
                 <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No features found. DB might be empty.</div>
               ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                   <thead>
                     <tr style={{ background: 'var(--bg-hover)' }}>
-                      <th style={{ padding: '10px 12px', textAlign: 'left', color: '#e4e4e7', fontSize: 10.5, borderBottom: '1px solid var(--card-border)' }}>Feature Name</th>
-                      <th style={{ padding: '10px 12px', textAlign: 'left', color: '#e4e4e7', fontSize: 10.5, borderBottom: '1px solid var(--card-border)' }}>Status</th>
-                      <th style={{ padding: '10px 12px', textAlign: 'left', color: '#e4e4e7', fontSize: 10.5, borderBottom: '1px solid var(--card-border)' }}>Last Tested</th>
-                      <th style={{ padding: '10px 12px', textAlign: 'left', color: '#e4e4e7', fontSize: 10.5, borderBottom: '1px solid var(--card-border)' }}>Actions</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', color: 'var(--text-muted)', fontSize: 10.5, borderBottom: '1px solid var(--card-border)' }}>Feature Name</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', color: 'var(--text-muted)', fontSize: 10.5, borderBottom: '1px solid var(--card-border)' }}>Status</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', color: 'var(--text-muted)', fontSize: 10.5, borderBottom: '1px solid var(--card-border)' }}>Last Tested</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', color: 'var(--text-muted)', fontSize: 10.5, borderBottom: '1px solid var(--card-border)' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {features.map(f => (
+                    {(Array.isArray(features) ? features : []).map(f => (
                       <tr key={f.id} style={{ borderBottom: '1px solid var(--card-border)' }}>
                         <td style={{ padding: '10px 12px', color: 'var(--text-primary)' }}>{f.name}</td>
                         <td style={{ padding: '10px 12px' }}>
@@ -957,7 +975,7 @@ export default function AdminTerminal() {
                             style={{
                               background: 'var(--bg-hover)',
                               border: '1px solid var(--card-border)',
-                              color: b.disabled ? 'var(--text-muted)' : '#e4e4e7',
+                              color: b.disabled ? 'var(--text-muted)' : 'var(--text-primary, #e4e4e7)',
                               padding: '9px 14px',
                               borderRadius: 10,
                               fontSize: 12.5,
@@ -981,7 +999,7 @@ export default function AdminTerminal() {
                         {(stateCoverage?.states || []).slice(0, 12).map((r, i) => (
                           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'var(--panel-bg)', border: '1px solid var(--card-border)', borderRadius: 10 }}>
                             <span style={{ color: 'var(--text-secondary)', fontFamily: "'DM Mono', monospace" }}>{r.state}</span>
-                            <span style={{ color: '#e4e4e7', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.recruiters)} rec</span>
+                            <span style={{ color: 'var(--text-primary, #e4e4e7)', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.recruiters)} rec</span>
                           </div>
                         ))}
                         {!(stateCoverage?.states?.length) && <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No Data Available</div>}
@@ -990,7 +1008,7 @@ export default function AdminTerminal() {
                   </div>
                 </Section>
 
-                <Section title="Live Recruiter Control Center" icon="ti-table" action={<Badge color="#e4e4e7">Select · Edit · Delete</Badge>}>
+                <Section title="Live Recruiter Control Center" icon="ti-table" action={<Badge color="var(--text-secondary)">Select · Edit · Delete</Badge>}>
                   {liveRecruiterJobId && (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: 'rgba(228, 228, 231,0.08)', border: '1px solid rgba(228, 228, 231,0.18)' }}>
                       <div style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
@@ -1277,7 +1295,7 @@ export default function AdminTerminal() {
                 {(exportIntel?.most_exported_companies || []).slice(0, 15).map((r, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid var(--card-border)', marginBottom: 8 }}>
                     <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.key}</span>
-                    <span style={{ color: '#e4e4e7', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
+                    <span style={{ color: 'var(--text-primary, #e4e4e7)', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(r.count)}</span>
                   </div>
                 ))}
                 {!(exportIntel?.most_exported_companies?.length) && <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No Data Available</div>}
@@ -1308,16 +1326,19 @@ export default function AdminTerminal() {
 
             <Section title="Table Storage Sizes" icon="ti-table">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {tableSizes.map((t, i) => (
+                {(Array.isArray(tableSizes) ? tableSizes : []).map((t, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 14px', background: 'var(--panel-bg)', borderRadius: 8 }}>
-                    <span style={{ fontSize: 12, color: '#e4e4e7', minWidth: 160, fontFamily: "'DM Mono', monospace" }}>{t.table_name}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-primary, #e4e4e7)', minWidth: 160, fontFamily: "'DM Mono', monospace" }}>{t.table_name}</span>
                     <span style={{ fontSize: 12, color: 'var(--text-secondary)', minWidth: 80 }}>{t.total_size}</span>
                     <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{fmt(t.live_rows)} rows</span>
                     <div style={{ flex: 1, height: 4, background: 'var(--card-border)', borderRadius: 99, overflow: 'hidden' }}>
-                      <div style={{ width: `${Math.round(t.size_bytes / (tableSizes[0]?.size_bytes || 1) * 100)}%`, height: '100%', background: 'linear-gradient(90deg, #d4d4d8, #e4e4e7)', borderRadius: 99 }} />
+                      <div style={{ width: `${Math.round(t.size_bytes / ((Array.isArray(tableSizes) && tableSizes[0]?.size_bytes) || 1) * 100)}%`, height: '100%', background: 'linear-gradient(90deg, #d4d4d8, #e4e4e7)', borderRadius: 99 }} />
                     </div>
                   </div>
                 ))}
+                {(!Array.isArray(tableSizes) || tableSizes.length === 0) && (
+                  <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>No table storage data available.</span>
+                )}
               </div>
             </Section>
           </div>

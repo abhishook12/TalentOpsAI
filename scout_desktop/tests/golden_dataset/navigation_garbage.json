@@ -1,0 +1,15 @@
+{
+  "source_url": "https://www.linkedin.com/feed/",
+  "window_title": "Feed | LinkedIn",
+  "platform": "LinkedIn",
+  "ocr_lines": [
+    "Feed",
+    "My Network",
+    "Jobs",
+    "Messaging",
+    "Notifications (12)",
+    "REASON: Overview",
+    "54 Ri Ht..."
+  ],
+  "expected_verdict": "REJECTED"
+}

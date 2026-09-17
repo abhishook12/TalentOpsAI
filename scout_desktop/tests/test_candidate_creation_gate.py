@@ -138,6 +138,44 @@ class TestCandidateCreationGate:
         assert res.decision == "REJECTED_OBSERVATION"
         assert res.status == "REJECTED"
 
+    def test_sourcing_window_without_stable_anchor_requires_review(self):
+        """A title and company inferred from a platform window cannot auto-ingest without a URL or contact."""
+        res = create_candidate_if_valid({
+            "name": "Avery Morgan",
+            "title": "Senior Software Engineer",
+            "company": "Example Systems",
+            "platform": "LinkedIn",
+        })
+        assert res.is_valid_candidate is False
+        assert res.decision == "REVIEW_REQUIRED"
+        assert res.status == "REVIEW_REQUIRED"
+
+    def test_dynamic_owner_name_is_rejected(self):
+        """The active Scout owner's name is excluded without relying on static names."""
+        res = create_candidate_if_valid(
+            {
+                "name": "Taylor Owner",
+                "title": "Engineering Manager",
+                "company": "Example Systems",
+                "linkedin_url": "https://www.linkedin.com/in/taylor-owner",
+            },
+            context={"owner_names": ["Taylor Owner"]},
+        )
+        assert res.is_valid_candidate is False
+        assert res.decision == "REJECTED_OBSERVATION"
+
+    def test_verified_contact_remains_a_valid_identity_anchor(self):
+        """A clean contact method can verify a candidate even when a profile URL is unavailable."""
+        res = create_candidate_if_valid({
+            "name": "Morgan Lee",
+            "title": "Talent Acquisition Partner",
+            "company": "Example Systems",
+            "email": "morgan.lee@example-systems.com",
+            "platform": "LinkedIn",
+        })
+        assert res.is_valid_candidate is True
+        assert res.decision == "CANDIDATE_VERIFIED"
+
     # ─────────────────────────────────────────────────────────────
     # 6. Disallowed Context & Page Gating
     # ─────────────────────────────────────────────────────────────

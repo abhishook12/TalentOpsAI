@@ -89,7 +89,7 @@ export default function ExtensionHub() {
             </h1>
           </div>
           <p style={{ color: 'var(--text-secondary)', fontSize: 14, margin: 0 }}>
-            Passively captures and enriches verified recruiters across the entire network in real-time.
+            Captures sourcing observations in real time. Only stable profile or contact anchors auto-ingest; ambiguous captures are held for review.
           </p>
         </div>
 

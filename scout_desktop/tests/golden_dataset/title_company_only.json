@@ -1,0 +1,15 @@
+{
+  "source_url": "",
+  "window_title": "Candidate Profile Card",
+  "platform": "Active Window",
+  "ocr_lines": [
+    "Marcus Vance",
+    "Principal Architect at Oracle Cloud",
+    "Austin, Texas Area"
+  ],
+  "expected_name": "Marcus Vance",
+  "expected_title": "Principal Architect",
+  "expected_company": "Oracle Cloud",
+  "expected_verdict": "REVIEW_REQUIRED",
+  "expected_reason": "TITLE_COMPANY_ONLY"
+}

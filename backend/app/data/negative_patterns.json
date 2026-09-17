@@ -1,0 +1,42 @@
+[
+  {
+    "pattern": "active window",
+    "type": "company",
+    "reason": "Desktop window tracker artifact"
+  },
+  {
+    "pattern": "candidate card",
+    "type": "company",
+    "reason": "UI component artifact"
+  },
+  {
+    "pattern": "quick search",
+    "type": "company",
+    "reason": "UI search box label"
+  },
+  {
+    "pattern": "guided search",
+    "type": "company",
+    "reason": "LinkedIn UI filter label"
+  },
+  {
+    "pattern": "turboscribe",
+    "type": "company",
+    "reason": "Audio transcription tool artifact"
+  },
+  {
+    "pattern": "chatgpt",
+    "type": "company",
+    "reason": "AI assistant application"
+  },
+  {
+    "pattern": "gemini",
+    "type": "company",
+    "reason": "AI assistant application"
+  },
+  {
+    "pattern": "spamcorp llc",
+    "type": "company",
+    "reason": "Third party spam directory"
+  }
+]

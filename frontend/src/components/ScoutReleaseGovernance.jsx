@@ -103,7 +103,7 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
 
   // Fleet Broadcast Actions
   const handleOpenBroadcastModal = (version) => {
-    const targetVer = version || currentProduction?.version || '2.8.2';
+    const targetVer = version || currentProduction?.version || '2.8.3';
     setBroadcastForm({
       target_version: targetVer,
       cohort: 'OUTDATED_ONLY',

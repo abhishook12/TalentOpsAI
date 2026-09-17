@@ -1,0 +1,23 @@
+{
+  "source_url": "https://app.zoominfo.com/#/apps/profile/contact/482910",
+  "window_title": "David Miller - VP Engineering - Datadog | ZoomInfo",
+  "platform": "ZoomInfo",
+  "ocr_lines": [
+    "David Miller",
+    "VP of Engineering",
+    "Datadog",
+    "Greater Boston, MA",
+    "Email: david.miller@datadog.com",
+    "Direct Phone: (617) 555-0199",
+    "Work Experience",
+    "VP of Engineering at Datadog",
+    "Jan 2021 - Present",
+    "Director of Software Development at Akamai"
+  ],
+  "expected_name": "David Miller",
+  "expected_title": "VP of Engineering",
+  "expected_company": "Datadog",
+  "expected_email": "david.miller@datadog.com",
+  "expected_verdict": "VERIFIED",
+  "expected_reason": "VERIFIED_CONTACT_FOUND"
+}

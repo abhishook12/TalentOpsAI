@@ -168,10 +168,41 @@ class ScoutExtractionEngine:
         # Step 3: Layout & Region Decomposition
         layout: ProfileLayout = LayoutDetector.detect_layout(ocr_lines)
 
+        # Step 3.5: Modular Platform Parser Integration (Pillars 4 & 5)
+        from .parsers import parse_with_modular_parsers, classify_layout_type, get_parser_for_context
+
+        ocr_text = "\n".join(ocr_lines)
+        parser_context = {
+            "source_url": source_url,
+            "window_title": window_title,
+            "platform": platform or p_class.get("platform", ""),
+        }
+        modular_res = parse_with_modular_parsers(ocr_text, parser_context)
+
+        # Enforce Unknown Platform Observation-Only Mode (Pillar 4)
+        if modular_res and modular_res.get("is_observation_only"):
+            telemetry["reason"] = "Observation-Only: Unknown platform layout — candidate creation withheld"
+            telemetry["candidates_extracted"] = 0
+            logger.info("Modular Parser: %s", telemetry["reason"])
+            return [], telemetry
+
+        # Enforce Non-Candidate Layout Contexts (Pillar 4)
+        if modular_res and modular_res.get("page_type") in ("JOB_POSTING", "COMPANY_PAGE", "MESSAGING_THREAD"):
+            telemetry["reason"] = f"Non-candidate layout context: {modular_res.get('page_type')}"
+            telemetry["candidates_extracted"] = 0
+            logger.info("Modular Parser: %s", telemetry["reason"])
+            return [], telemetry
+
         # Step 4: Field-Specific Classification & Validation
         name, name_conf, name_ev = FieldClassifier.extract_name_from_header(
             layout.header_lines, window_title=window_title
         )
+
+        # Fallback/Enrich with Modular Platform Parser if generic header missed name
+        if (not name or name_conf < 0.75) and modular_res and modular_res.get("recruiter_name"):
+            name = modular_res["recruiter_name"]
+            name_conf = 0.90
+            name_ev = "Modular Parser Header Extraction"
 
         # GATING: If candidate name could not be found with confidence, ABORT!
         # Prevents "REASON: Overview", "Active Window", etc. from becoming candidates
@@ -184,18 +215,31 @@ class ScoutExtractionEngine:
         title, title_conf, company, company_conf = FieldClassifier.extract_title_and_company(
             layout.headline_candidates, layout.header_lines, layout.experience_lines
         )
+        if modular_res:
+            if not title and modular_res.get("title"):
+                title = modular_res["title"]
+                title_conf = 0.85
+            if not company and modular_res.get("company_name"):
+                company = modular_res["company_name"]
+                company_conf = 0.85
 
         # Location with corruption detection
         raw_loc_str = layout.location_candidates[0] if layout.location_candidates else None
         loc_resolved: ResolvedLocation = LocationResolver.resolve(raw_loc_str)
         clean_location = loc_resolved.display_name if not loc_resolved.is_corrupted else None
         loc_conf = loc_resolved.confidence
+        if not clean_location and modular_res and modular_res.get("location"):
+            clean_location = modular_res["location"]
+            loc_conf = 0.85
 
         # Canonical Profile URL
         canonical_url, url_conf = FieldClassifier.extract_canonical_profile_url(source_url, platform=p_class["platform"])
         if not canonical_url and p_class.get("canonical_url"):
             canonical_url = p_class["canonical_url"]
             url_conf = p_class["confidence"]
+        if not canonical_url and modular_res and modular_res.get("canonical_profile_url"):
+            canonical_url = modular_res["canonical_profile_url"]
+            url_conf = 0.90
 
         # Step 5: Entity Resolution & Deduplication
         # Build deduplication key: canonical profile URL if available, else name+company
@@ -267,6 +311,12 @@ class ScoutExtractionEngine:
         cluster.current_company = company
         cluster.location = clean_location
         cluster.linkedin_url = canonical_url
+        if modular_res:
+            if modular_res.get("email"):
+                cluster.email = modular_res["email"]
+            if modular_res.get("phone"):
+                cluster.phone = modular_res["phone"]
+
         # Step 8: Centralized Candidate Creation Gate Enforcement (Rule 2)
         from scout_desktop.extractor.candidate_gate import create_candidate_if_valid
 
@@ -277,6 +327,8 @@ class ScoutExtractionEngine:
             "location": clean_location,
             "source_url": source_url,
             "canonical_profile_url": canonical_url,
+            "email": modular_res.get("email") if modular_res else None,
+            "phone": modular_res.get("phone") if modular_res else None,
             "platform": p_class["platform"],
             "page_type": page_type,
             "window_title": window_title,

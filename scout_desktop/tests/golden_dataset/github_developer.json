@@ -1,0 +1,20 @@
+{
+  "source_url": "https://github.com/torvalds",
+  "window_title": "torvalds (Linus Torvalds) \u00b7 GitHub",
+  "platform": "GitHub",
+  "ocr_lines": [
+    "Linus Torvalds",
+    "torvalds",
+    "Linux Kernel Developer",
+    "Linux Foundation",
+    "Portland, OR",
+    "https://github.com/torvalds",
+    "Repositories",
+    "linux - Linux kernel source tree"
+  ],
+  "expected_name": "Linus Torvalds",
+  "expected_title": "Linux Kernel Developer",
+  "expected_company": "Linux Foundation",
+  "expected_verdict": "VERIFIED",
+  "expected_reason": "PROFILE_URL_PRESENT"
+}

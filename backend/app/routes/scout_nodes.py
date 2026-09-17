@@ -1006,13 +1006,16 @@ def ingest_scout_packet(
         source_page_title=ent.get("window_title"),
         capture_id=req.packet_id,
         extraction_source="scout_2_edge_agent",
-        processing_status="pending",
+        processing_status="review" if ent.get("candidate_gate_status") == "REVIEW_REQUIRED" else "pending",
         metadata_json=json.dumps({
             "observations": req.observations,
             "changes": req.changes,
             "signals": req.signals,
             "provenance": req.provenance,
             "decision_journal": req.decision_journal,
+            "candidate_gate_status": ent.get("candidate_gate_status"),
+            "candidate_gate_decision": ent.get("candidate_gate_decision"),
+            "candidate_gate_reasons": ent.get("candidate_gate_reasons"),
         }),
     )
 
@@ -1106,5 +1109,4 @@ def toggle_remote_killswitch(
         "enabled": req.enabled,
         "all_switches": switches,
     }
-
 

@@ -113,6 +113,9 @@ class ExtensionContact(BaseModel):
     canonical_profile_url: Optional[str] = None
     field_confidence: Optional[dict] = None
     evidence_checklist: Optional[list] = None
+    candidate_gate_status: Optional[str] = None
+    candidate_gate_decision: Optional[str] = None
+    candidate_gate_reasons: Optional[list] = None
 
 
 class BatchRequest(BaseModel):
@@ -389,7 +392,7 @@ def ingest_extension_batch(
                 extraction_source=contact.source or "visual_dom_fusion",
                 visual_change_score=str(contact.visual_change_score or 0.0),
                 dom_confidence=contact.confidence or 90,
-                processing_status="pending",
+                processing_status="review" if contact.candidate_gate_status == "REVIEW_REQUIRED" else "pending",
                 identity_confidence=0.0,
                 quality_score=0,
                 
@@ -414,6 +417,9 @@ def ingest_extension_batch(
                         "github": contact.github,
                         "twitter": contact.twitter,
                         "portfolio": contact.portfolio,
+                        "candidate_gate_status": contact.candidate_gate_status,
+                        "candidate_gate_decision": contact.candidate_gate_decision,
+                        "candidate_gate_reasons": contact.candidate_gate_reasons,
                     }.items() if v is not None
                 }) if any([
                     contact.is_open_to_work, contact.is_hiring, contact.is_verified, contact.pronouns,
@@ -1299,4 +1305,3 @@ def download_extension_zip(
             "Access-Control-Expose-Headers": "Content-Disposition",
         },
     )
-

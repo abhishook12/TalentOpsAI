@@ -91,16 +91,70 @@ _SINGLE_INSTANCE_LOCK_FD = None
 def acquire_single_instance_lock() -> bool:
     """
     Ensures only ONE instance of TalentOps Scout Desktop runs at any time.
-    Dual-layer protection:
-    1. Win32 Named Mutex with proper use_last_error check (retained at module scope).
+    Triple-layer protection with proactive stale-lock recovery:
+    1. Active PID verification from scout_running.lock (clears dead/recycled PIDs).
     2. Atomic kernel file lock via msvcrt.locking on %LOCALAPPDATA%\\TalentOpsAI\\Scout\\scout_running.lock.
-    Returns True if lock was acquired; False if an instance is already running.
+    3. Win32 Named Mutex with proper use_last_error check.
+    Returns True if lock was acquired; False if a living Scout instance is already running.
     """
     global _SINGLE_INSTANCE_MUTEX, _SINGLE_INSTANCE_LOCK_FD
     if sys.platform != "win32":
         return True
 
-    # Layer 1: Win32 Named Mutex
+    from .core.paths import get_app_data_dir
+    lock_dir = get_app_data_dir()
+    os.makedirs(lock_dir, exist_ok=True)
+    lock_file = os.path.join(lock_dir, "scout_running.lock")
+
+    import msvcrt
+    import psutil
+
+    # Step 1: Proactive Stale Lock Recovery
+    # If the lockfile exists on disk, verify if the recorded PID is actually an active Scout process
+    if os.path.exists(lock_file):
+        try:
+            with open(lock_file, "r", encoding="utf-8") as f:
+                content = f.read()
+            pid_match = re.search(r"PID=(\d+)", content)
+            if pid_match:
+                holding_pid = int(pid_match.group(1))
+                if holding_pid != os.getpid():
+                    if not psutil.pid_exists(holding_pid):
+                        logger.warning("Stale lock detected: PID %d is dead. Unlinking lockfile.", holding_pid)
+                        try:
+                            os.remove(lock_file)
+                        except Exception:
+                            pass
+                    else:
+                        try:
+                            proc = psutil.Process(holding_pid)
+                            p_name = proc.name().lower()
+                            if p_name not in ("python.exe", "pythonw.exe", "talentopsscout.exe", "scout.exe"):
+                                logger.warning("Stale lock detected: PID %d is '%s' (not Scout). Unlinking lockfile.", holding_pid, p_name)
+                                try:
+                                    os.remove(lock_file)
+                                except Exception:
+                                    pass
+                        except (psutil.NoSuchProcess, psutil.AccessDenied):
+                            pass
+        except Exception as e:
+            logger.debug("Error during stale lock check: %s", e)
+
+    # Step 2: Atomic Kernel File Lock in AppData
+    try:
+        _SINGLE_INSTANCE_LOCK_FD = open(lock_file, "a+")
+        _SINGLE_INSTANCE_LOCK_FD.seek(0)
+        msvcrt.locking(_SINGLE_INSTANCE_LOCK_FD.fileno(), msvcrt.LK_NBLCK, 1)
+        _SINGLE_INSTANCE_LOCK_FD.truncate(0)
+        _SINGLE_INSTANCE_LOCK_FD.write(f"PID={os.getpid()}\nTime={time.time()}\n")
+        _SINGLE_INSTANCE_LOCK_FD.flush()
+    except (IOError, OSError, PermissionError) as fe:
+        logger.warning("Single-Instance FileLock: scout_running.lock is actively held: %s", fe)
+        return False
+    except Exception as ge:
+        logger.debug("File lock exception: %s", ge)
+
+    # Step 3: Win32 Named Mutex
     try:
         import ctypes
         from ctypes import wintypes
@@ -116,29 +170,10 @@ def acquire_single_instance_lock() -> bool:
         _SINGLE_INSTANCE_MUTEX = CreateMutexW(None, True, mutex_name)
         err = ctypes.get_last_error()
         if err == ERROR_ALREADY_EXISTS:
-            logger.warning("Single-Instance Mutex: Another instance is already running (GetLastError=%d).", err)
-            return False
+            logger.warning("Single-Instance Mutex: named mutex already exists (GetLastError=%d).", err)
+            # Since atomic file lock succeeded, this process holds the true kernel lock.
     except Exception as me:
         logger.debug("Named mutex creation exception: %s", me)
-
-    # Layer 2: Atomic Kernel File Lock in AppData
-    try:
-        import msvcrt
-        from .core.paths import get_app_data_dir
-        lock_dir = get_app_data_dir()
-        os.makedirs(lock_dir, exist_ok=True)
-        lock_file = os.path.join(lock_dir, "scout_running.lock")
-        _SINGLE_INSTANCE_LOCK_FD = open(lock_file, "a+")
-        _SINGLE_INSTANCE_LOCK_FD.seek(0)
-        msvcrt.locking(_SINGLE_INSTANCE_LOCK_FD.fileno(), msvcrt.LK_NBLCK, 1)
-        _SINGLE_INSTANCE_LOCK_FD.truncate(0)
-        _SINGLE_INSTANCE_LOCK_FD.write(f"PID={os.getpid()}\nTime={time.time()}\n")
-        _SINGLE_INSTANCE_LOCK_FD.flush()
-    except (IOError, OSError, PermissionError) as fe:
-        logger.warning("Single-Instance FileLock: scout_running.lock is held by another process: %s", fe)
-        return False
-    except Exception as ge:
-        logger.debug("File lock exception: %s", ge)
 
     return True
 
@@ -219,7 +254,17 @@ class ScoutDesktopApp:
         self.current_window: Optional[WindowInfo] = None
         self.current_browser_context: Dict[str, Any] = {}
         self._is_flushing = False
+        self._flush_start_time: Optional[float] = None
         self._is_heartbeating = False
+        self._last_ui_heartbeat = time.time()
+        self._is_shutting_down = False
+        self.subsystems: Dict[str, str] = {
+            "ocr": "HEALTHY",
+            "sampler": "HEALTHY",
+            "sync": "HEALTHY",
+            "ui": "HEALTHY",
+            "queue": "HEALTHY",
+        }
 
         # 12 Explicit Telemetry Counters
         self.cnt_captured = 0
@@ -253,6 +298,7 @@ class ScoutDesktopApp:
         self._connect_signals()
         self._init_timers()
         self._init_cached_candidates()
+        self._init_watchdog()
 
     def _connect_signals(self):
         # Bridge to Level 3 Main Window
@@ -336,6 +382,7 @@ class ScoutDesktopApp:
                 self.main_window._latest_profile_url = latest["profile_url"]
 
             if hasattr(self.main_window, "page_scan"):
+                fc = latest.get("field_confidence") or {}
                 if hasattr(self.main_window.page_scan, "set_latest_candidate"):
                     self.main_window.page_scan.set_latest_candidate(
                         cand_id=latest_id,
@@ -344,20 +391,25 @@ class ScoutDesktopApp:
                         company=display_company,
                         location=display_loc,
                         status=status,
-                        confidence=latest.get("confidence", 95),
-                        profile_url=latest.get("profile_url", "")
+                        confidence=latest.get("confidence", 85),
+                        profile_url=latest.get("profile_url", ""),
+                        field_confidence=fc,
                     )
                 elif hasattr(self.main_window.page_scan, "update_meters"):
                     self.main_window.page_scan._current_candidate_id = latest_id
+                    name_c = int(round(fc.get("name", 0.95) * 100)) if display_name else 0
+                    title_c = int(round(fc.get("title", 0.90 if display_title else 0.0) * 100)) if display_title else 0
+                    comp_c = int(round(fc.get("company", 0.90 if display_company else 0.0) * 100)) if display_company else 0
+                    loc_c = int(round(fc.get("location", 0.85 if display_loc != "—" else 0.0) * 100)) if display_loc != "—" else 0
                     self.main_window.page_scan.update_meters(
                         name=display_name,
                         title=display_title,
                         company=display_company,
                         location=display_loc,
-                        name_conf=99,
-                        title_conf=96 if display_title else 80,
-                        comp_conf=93 if display_company else 80,
-                        loc_conf=75 if display_loc != "—" else 70,
+                        name_conf=name_c,
+                        title_conf=title_c,
+                        comp_conf=comp_c,
+                        loc_conf=loc_c,
                         cand_id=latest_id,
                     )
             if hasattr(self.main_window, "page_candidate_record"):
@@ -471,8 +523,16 @@ class ScoutDesktopApp:
         # Immediate first tick
         QTimer.singleShot(100, self._refresh_ui_status)
 
+        # 6. Cloud Keepalive Timer (pings active backend /ping every 5 mins to prevent Render cold-sleep)
+        self.keepalive_timer = QTimer()
+        self.keepalive_timer.timeout.connect(self._send_cloud_keepalive)
+        self.keepalive_timer.start(300000)
+        # Trigger initial keepalive check after 2 seconds
+        QTimer.singleShot(2000, self._send_cloud_keepalive)
+
     def _refresh_ui_status(self):
         """Polls local queue and sync state to keep Left Rail and Bottom Status Bar live and accurate."""
+        self._last_ui_heartbeat = time.time()
         try:
             q_stats = self.local_queue.get_queue_stats()
             pending = q_stats.get("pending", 0)
@@ -493,6 +553,79 @@ class ScoutDesktopApp:
                     )
         except Exception as e:
             logger.debug("Error in _refresh_ui_status: %s", e)
+
+    def _init_watchdog(self):
+        """Starts independent background watchdog monitoring OCR daemon, sampler thread, sync flush, and UI responsiveness."""
+        self._watchdog_stop_event = threading.Event()
+        self._watchdog_thread = threading.Thread(
+            target=self._run_watchdog_loop,
+            daemon=True,
+            name="ScoutWatchdogThread"
+        )
+        self._watchdog_thread.start()
+        logger.info("🛡️ Scout Watchdog active (monitoring OCR daemon, sampler thread, sync flush, and UI responsiveness)")
+
+    def _run_watchdog_loop(self):
+        """Continuous watchdog monitor for autonomous subsystem health and self-healing."""
+        while not getattr(self, "_watchdog_stop_event", None) or not self._watchdog_stop_event.is_set():
+            time.sleep(5.0)
+            if getattr(self, "_is_shutting_down", False):
+                break
+            try:
+                now = time.time()
+
+                # 1. UI Responsiveness Check
+                ui_lag = now - getattr(self, "_last_ui_heartbeat", now)
+                if ui_lag > 30.0:
+                    logger.warning("Scout Watchdog: UI thread appears stalled (lag: %.1fs)", ui_lag)
+                    self.subsystems["ui"] = "STALLED"
+                else:
+                    self.subsystems["ui"] = "HEALTHY"
+
+                # 2. OCR Engine Daemon Check & Auto-Restart
+                if hasattr(self, "ocr_engine"):
+                    if not self.ocr_engine.is_daemon_alive():
+                        logger.warning("Scout Watchdog: OCR daemon dead. Auto-restarting...")
+                        self.subsystems["ocr"] = "DEGRADED"
+                        try:
+                            self.ocr_engine._init_daemon()
+                            if self.ocr_engine.is_daemon_alive():
+                                self.subsystems["ocr"] = "HEALTHY"
+                                logger.info("Scout Watchdog: OCR daemon successfully auto-restarted.")
+                        except Exception as ocr_e:
+                            logger.error("Scout Watchdog: Failed to restart OCR daemon: %s", ocr_e)
+                    else:
+                        self.subsystems["ocr"] = "HEALTHY"
+
+                # 3. Sampler Thread Liveness Check
+                if hasattr(self, "sampler"):
+                    if hasattr(self.sampler, "is_alive") and not self.sampler.is_alive():
+                        if self.sampler.state not in ("STOPPED", "PAUSED", "RESTING_NON_TARGET"):
+                            logger.warning("Scout Watchdog: Sampler worker thread stopped unexpectedly.")
+                            self.subsystems["sampler"] = "STALLED"
+                    else:
+                        self.subsystems["sampler"] = "HEALTHY"
+
+                # 4. Stuck Sync Flush Check
+                if getattr(self, "_is_flushing", False) and getattr(self, "_flush_start_time", None):
+                    flush_elapsed = now - self._flush_start_time
+                    if flush_elapsed > 40.0:
+                        logger.warning("Scout Watchdog: Sync flush worker stuck for %.1fs. Force-releasing lock.", flush_elapsed)
+                        self._is_flushing = False
+                        self._flush_start_time = None
+                        self.subsystems["sync"] = "RECOVERED"
+                    else:
+                        self.subsystems["sync"] = "FLUSHING"
+                else:
+                    self.subsystems["sync"] = "HEALTHY"
+
+                # 5. Push Subsystem Health to Diagnostics Window
+                if hasattr(self, "diagnostics") and hasattr(self.diagnostics, "update_subsystems"):
+                    sub_copy = dict(self.subsystems)
+                    QTimer.singleShot(0, lambda sc=sub_copy: self.diagnostics.update_subsystems(sc))
+
+            except Exception as w_err:
+                logger.debug("Scout Watchdog check error: %s", w_err)
 
     def _check_and_consume_installation_claim(self) -> bool:
         """
@@ -1360,6 +1493,8 @@ class ScoutDesktopApp:
                         "window_title": page_title,
                         "platform": target_type,
                         "page_type": matching_canon.page_type if matching_canon else "",
+                        "owner_names": [self.backend_client.user_name] if self.backend_client.user_name else [],
+                        "owner_email": self.backend_client.current_user_email,
                     }
                 )
 
@@ -1368,7 +1503,7 @@ class ScoutDesktopApp:
                     breakdown["jobs"] += 1
                     continue
 
-                if not gate_res.is_valid_candidate:
+                if gate_res.decision == "REJECTED_OBSERVATION" or gate_res.decision == "UNRESOLVED_UI_TEXT":
                     logger.info("Quality Gate: Rejected observation '%s' (%s) — %s",
                                 staged_contact.get("recruiter_name"), gate_res.decision, gate_res.reasons)
                     continue
@@ -1380,6 +1515,11 @@ class ScoutDesktopApp:
                 staged_contact["location"] = gate_res.location
                 staged_contact["platform"] = gate_res.platform
                 staged_contact["canonical_profile_url"] = gate_res.canonical_profile_url
+                staged_contact["candidate_gate_status"] = gate_res.status
+                staged_contact["candidate_gate_decision"] = gate_res.decision
+                staged_contact["candidate_gate_reasons"] = gate_res.reasons
+                staged_contact["field_confidence"] = gate_res.field_confidence
+                staged_contact["evidence_checklist"] = gate_res.audit_checklist
 
                 qid = self.local_queue.enqueue_cluster(staged_contact)
                 if qid != -1:
@@ -1420,6 +1560,8 @@ class ScoutDesktopApp:
                         "window_title": page_title,
                         "platform": target_type,
                         "page_type": matching_canon.page_type if matching_canon else "",
+                        "owner_names": [self.backend_client.user_name] if self.backend_client.user_name else [],
+                        "owner_email": self.backend_client.current_user_email,
                     }
                 )
 
@@ -1524,6 +1666,7 @@ class ScoutDesktopApp:
             return
 
         self._is_flushing = True
+        self._flush_start_time = time.time()
         try:
             pending = self.local_queue.get_pending_batch(limit=10)
             if not pending:
@@ -1579,12 +1722,29 @@ class ScoutDesktopApp:
             logger.debug("Async flush worker error: %s", e)
         finally:
             self._is_flushing = False
+            self._flush_start_time = None
             # Fast-drain chaining: if pending items remain and ready, flush next batch immediately
             try:
                 if getattr(self, "local_queue", None) and self.local_queue.get_pending_batch(limit=1):
                     threading.Timer(0.15, self._flush_queue_to_backend).start()
             except Exception:
                 pass
+
+    def _send_cloud_keepalive(self):
+        """Sends lightweight /ping to backend API to prevent Render free-tier cold sleep during workstation hours."""
+        def _worker():
+            try:
+                import urllib.request
+                api_base = getattr(self.backend_client, "active_api_base", "https://talentopsai-1.onrender.com")
+                ping_url = f"{api_base.rstrip('/')}/ping"
+                req = urllib.request.Request(ping_url, headers={"User-Agent": "TalentOpsScoutDesktop/KeepAlive"})
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    pass
+                logger.debug("Cloud keepalive ping sent successfully to %s", ping_url)
+            except Exception as e:
+                logger.debug("Cloud keepalive ping deferred: %s", e)
+
+        threading.Thread(target=_worker, daemon=True, name="ScoutKeepAliveWorker").start()
 
     def _send_heartbeat(self):
         """Dispatches heartbeat network request to background thread to eliminate GUI thread freezes."""
@@ -1806,6 +1966,9 @@ class ScoutDesktopApp:
 
     def shutdown(self):
         logger.info("🛑 Complete shutdown initiated: stopping all TalentOps Scout operations...")
+        self._is_shutting_down = True
+        if hasattr(self, "_watchdog_stop_event"):
+            self._watchdog_stop_event.set()
         try:
             import keyboard
             keyboard.unhook_all_hotkeys()

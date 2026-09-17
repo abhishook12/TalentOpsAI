@@ -1,0 +1,22 @@
+{
+  "source_url": "https://app.apollo.io/#/people/65a123fbc",
+  "window_title": "Elena Rostova - Head of Talent - Stripe | Apollo.io",
+  "platform": "Apollo",
+  "ocr_lines": [
+    "Elena Rostova",
+    "Head of Talent",
+    "Stripe",
+    "San Francisco, CA",
+    "elena.rostova@stripe.com",
+    "+1 415-555-0142",
+    "Work",
+    "Head of Talent at Stripe",
+    "2022 - Present"
+  ],
+  "expected_name": "Elena Rostova",
+  "expected_title": "Head of Talent",
+  "expected_company": "Stripe",
+  "expected_email": "elena.rostova@stripe.com",
+  "expected_verdict": "VERIFIED",
+  "expected_reason": "VERIFIED_CONTACT_FOUND"
+}

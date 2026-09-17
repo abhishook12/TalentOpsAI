@@ -196,7 +196,7 @@ def get_all_scout_users_intelligence(
         lambda: db.query(ScoutRelease).filter(ScoutRelease.status == "ACTIVE").order_by(ScoutRelease.id.desc()).first(),
         None
     )
-    latest_ver = latest_rel.version if latest_rel else "2.7.0"
+    latest_ver = latest_rel.version if latest_rel else "2.8.3"
 
     # Subqueries for aggregation
     events_sq = db.query(

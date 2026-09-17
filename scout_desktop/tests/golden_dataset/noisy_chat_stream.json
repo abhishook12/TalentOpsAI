@@ -1,0 +1,12 @@
+{
+  "source_url": "https://chat.google.com/room/dev-channel",
+  "window_title": "Sarah Connor - Chat - Google Chrome",
+  "platform": "GOOGLE_CHAT",
+  "ocr_lines": [
+    "Sarah Connor",
+    "Hey team, let me know when the build is ready.",
+    "John Doe messaged 2m ago",
+    "Can you review the candidate list?"
+  ],
+  "expected_verdict": "REJECTED"
+}

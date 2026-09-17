@@ -1,0 +1,31 @@
+{
+  "source_url": "https://www.linkedin.com/in/sarahchen-ai/",
+  "window_title": "Sarah Chen | LinkedIn",
+  "platform": "LinkedIn",
+  "ocr_lines": [
+    "Sarah Chen",
+    "Staff Machine Learning Engineer at Anthropic",
+    "San Francisco Bay Area",
+    "Contact info",
+    "About",
+    "Building next-generation alignment and large language models.",
+    "Experience",
+    "Staff Machine Learning Engineer",
+    "Anthropic \u00b7 Full-time",
+    "Jan 2023 - Present \u00b7 2 yrs",
+    "Senior Research Engineer",
+    "Google DeepMind",
+    "Mar 2020 - Dec 2022 \u00b7 2 yrs 10 mos",
+    "Education",
+    "Stanford University",
+    "Ph.D. in Computer Science",
+    "Skills",
+    "PyTorch, Transformers, Reinforcement Learning"
+  ],
+  "expected_name": "Sarah Chen",
+  "expected_title": "Staff Machine Learning Engineer",
+  "expected_company": "Anthropic",
+  "expected_location": "San Francisco Bay Area",
+  "expected_verdict": "VERIFIED",
+  "expected_reason": "PROFILE_URL_PRESENT"
+}

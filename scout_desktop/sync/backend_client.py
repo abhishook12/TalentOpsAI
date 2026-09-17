@@ -23,12 +23,13 @@ from typing import Optional, Dict, Any, List, Tuple
 import requests
 
 try:
-    from ..core.paths import get_config_path
+    from ..core.paths import get_config_path, get_user_state_path
 except Exception:
     try:
-        from core.paths import get_config_path
+        from core.paths import get_config_path, get_user_state_path
     except Exception:
         get_config_path = None
+        get_user_state_path = None
 
 logger = logging.getLogger("scout.backend_client")
 
@@ -192,14 +193,34 @@ class BackendClient:
         return DEFAULT_PRODUCTION_API
 
     def _load_token_from_config(self):
-        """Loads saved auth token and user identity if present."""
-        if os.path.exists(self.config_path):
+        """Loads saved auth token and user identity from isolated user_state.json or config.json."""
+        # 1. Prefer user_state.json in AppData (isolated from repo config)
+        if get_user_state_path:
+            try:
+                state_path = get_user_state_path()
+                if os.path.exists(state_path):
+                    with open(state_path, "r", encoding="utf-8") as f:
+                        sdata = json.load(f)
+                        self.auth_token = sdata.get("auth_token") or self.auth_token
+                        self.user_email = sdata.get("user_email") or self.user_email
+                        GENERIC_DEFAULTS = {"DESKTOP-SCOUT-WIN", "DEVICE-ENTERPRISE-VERIFY-99", "SCOUT-NODE-01"}
+                        if (not self.device_id or self.device_id in GENERIC_DEFAULTS) and sdata.get("device_id"):
+                            self.device_id = sdata["device_id"]
+                        if (not self.scout_id or self.scout_id in GENERIC_DEFAULTS) and sdata.get("scout_id"):
+                            self.scout_id = sdata["scout_id"]
+                        if not self.installation_id and sdata.get("installation_id"):
+                            self.installation_id = sdata["installation_id"]
+            except Exception as e:
+                logger.debug("Failed reading user_state.json: %s", e)
+
+        # 2. Fallback to config.json
+        if not self.auth_token and os.path.exists(self.config_path):
             try:
                 with open(self.config_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     self.auth_token = data.get("auth_token") or None
-                    self.user_email = data.get("user_email") or None
-                    self.user_name = data.get("user_name") or None
+                    self.user_email = data.get("user_email") or self.user_email
+                    self.user_name = data.get("user_name") or self.user_name
             except Exception:
                 pass
 
@@ -235,22 +256,30 @@ class BackendClient:
             self.user_email = user_email
         if user_name:
             self.user_name = user_name
-        try:
-            data = {}
-            if os.path.exists(self.config_path):
-                with open(self.config_path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-            data["auth_token"] = token
-            if scout_id:
-                data["scout_id"] = scout_id
-            if user_email:
-                data["user_email"] = user_email
-            if user_name:
-                data["user_name"] = user_name
-            with open(self.config_path, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2)
-        except Exception as e:
-            logger.debug("Failed to persist credentials: %s", e)
+
+        # 1. Save to isolated user_state.json in AppData
+        if get_user_state_path:
+            try:
+                state_path = get_user_state_path()
+                os.makedirs(os.path.dirname(state_path), exist_ok=True)
+                sdata = {}
+                if os.path.exists(state_path):
+                    try:
+                        with open(state_path, "r", encoding="utf-8") as sf:
+                            sdata = json.load(sf)
+                    except Exception:
+                        sdata = {}
+                sdata["auth_token"] = token
+                sdata["user_email"] = self.user_email
+                sdata["user_name"] = self.user_name
+                sdata["device_id"] = self.device_id
+                sdata["scout_id"] = self.scout_id
+                sdata["installation_id"] = self.installation_id
+                with open(state_path, "w", encoding="utf-8") as sf:
+                    json.dump(sdata, sf, indent=2)
+                logger.info("Persisted user credentials to %s", state_path)
+            except Exception as e:
+                logger.debug("Failed to persist user state: %s", e)
 
     def _save_token_to_config(self, token: str):
         self._save_credentials_to_config(token)

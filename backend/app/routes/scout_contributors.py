@@ -87,7 +87,7 @@ def list_scout_users(
                 "average_quality_score": 100,
             },
             "version_distribution": {},
-            "latest_production_version": "2.7.0",
+            "latest_production_version": "2.8.3",
             "users": [],
         }
 
@@ -133,7 +133,7 @@ def get_contributors_summary(
                 "average_quality_score": 100,
             },
             "version_distribution": {},
-            "latest_production_version": "2.7.0",
+            "latest_production_version": "2.8.3",
         }
 
 

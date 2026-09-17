@@ -98,6 +98,41 @@ export default function StagingPipeline() {
     }
   }
 
+  const handleCorrect = async (stagingId, currentItem) => {
+    const raw_name = prompt('Correct Candidate Name:', currentItem.raw_name || '')
+    if (raw_name === null) return
+    const raw_company = prompt('Correct Company:', currentItem.raw_company || '')
+    if (raw_company === null) return
+    const raw_email = prompt('Correct Email (or leave empty):', currentItem.raw_email || '')
+    if (raw_email === null) return
+
+    try {
+      await api.post(`/staging/review/${stagingId}/correct`, {
+        raw_name: raw_name.trim() || undefined,
+        raw_company: raw_company.trim() || undefined,
+        raw_email: raw_email.trim() || undefined,
+      })
+      await fetchData()
+    } catch (err) {
+      alert('Error saving correction: ' + (err.response?.data?.detail || err.message))
+    }
+  }
+
+  const handleNeverAccept = async (stagingId, pattern, patternType = 'company') => {
+    const userPattern = prompt(`Permanently blacklist pattern for future auto-rejections:`, pattern || '')
+    if (!userPattern) return
+    try {
+      await api.post(`/staging/review/${stagingId}/never-accept-pattern`, {
+        pattern: userPattern.trim(),
+        pattern_type: patternType,
+        reason: 'Reviewer flagged as never accept',
+      })
+      await fetchData()
+    } catch (err) {
+      alert('Error blacklisting pattern: ' + (err.response?.data?.detail || err.message))
+    }
+  }
+
   return (
     <div style={{ padding: '24px 32px', maxWidth: 1400, margin: '0 auto', color: 'var(--text-primary)' }}>
       {/* Header */}
@@ -612,58 +647,98 @@ export default function StagingPipeline() {
                   borderRadius: 12,
                   padding: 20,
                   display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
+                  flexDirection: 'column',
+                  gap: 12,
                 }}
               >
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                    <span style={{ fontWeight: 700, fontSize: 16 }}>{item.raw_name || 'Anonymous Candidate'}</span>
-                    <span style={{ padding: '2px 8px', borderRadius: 4, background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', fontSize: 11, fontWeight: 600 }}>
-                      {item.decision || 'REVIEW'}
-                    </span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                      <span style={{ fontWeight: 700, fontSize: 16 }}>{item.raw_name || 'Anonymous Candidate'}</span>
+                      <span style={{ padding: '2px 8px', borderRadius: 4, background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', fontSize: 11, fontWeight: 700 }}>
+                        {item.decision || 'REVIEW_REQUIRED'}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-secondary)' }}>
+                      <span>Title: <strong>{item.raw_title || '—'}</strong></span>
+                      <span>Company: <strong>{item.raw_company || '—'}</strong></span>
+                      <span>Email: <strong>{item.raw_email || '—'}</strong></span>
+                      <span>LinkedIn: <strong>{item.raw_linkedin ? 'Present' : 'None'}</strong></span>
+                    </div>
                   </div>
-                  <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                    <strong>Reason:</strong> {item.decision_reason || 'Uncertain match threshold'}
-                  </div>
-                  <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-secondary)' }}>
-                    <span>Company: {item.raw_company || '—'}</span>
-                    <span>Email: {item.raw_email || '—'}</span>
-                    <span>LinkedIn: {item.raw_linkedin ? 'Present' : 'None'}</span>
+
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => handleReject(item.staging_id)}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: 6,
+                        border: '1px solid var(--border)',
+                        background: 'var(--bg)',
+                        color: '#ef4444',
+                        cursor: 'pointer',
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Dismiss
+                    </button>
+                    <button
+                      onClick={() => handleCorrect(item.staging_id, item)}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: 6,
+                        border: '1px solid var(--border)',
+                        background: 'var(--card-bg)',
+                        color: 'var(--text-primary)',
+                        cursor: 'pointer',
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      ✎ Correct
+                    </button>
+                    <button
+                      onClick={() => handleNeverAccept(item.staging_id, item.raw_company || item.raw_name)}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: 6,
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                        background: 'rgba(239, 68, 68, 0.08)',
+                        color: '#f87171',
+                        cursor: 'pointer',
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      🚫 Never Accept Pattern
+                    </button>
+                    <button
+                      onClick={() => handleApprove(item.staging_id)}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: 6,
+                        border: 'none',
+                        background: '#10b981',
+                        color: '#fff',
+                        cursor: 'pointer',
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      ✓ Approve
+                    </button>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button
-                    onClick={() => handleReject(item.staging_id)}
-                    style={{
-                      padding: '8px 14px',
-                      borderRadius: 6,
-                      border: '1px solid var(--border)',
-                      background: 'var(--bg)',
-                      color: '#ef4444',
-                      cursor: 'pointer',
-                      fontSize: 12,
-                      fontWeight: 600,
-                    }}
-                  >
-                    Reject
-                  </button>
-                  <button
-                    onClick={() => handleApprove(item.staging_id)}
-                    style={{
-                      padding: '8px 16px',
-                      borderRadius: 6,
-                      border: 'none',
-                      background: '#10b981',
-                      color: '#fff',
-                      cursor: 'pointer',
-                      fontSize: 12,
-                      fontWeight: 600,
-                    }}
-                  >
-                    Approve & Commit
-                  </button>
+                {/* Why Was This Held? Forensic Panel */}
+                <div style={{ background: 'rgba(234, 179, 8, 0.06)', border: '1px solid rgba(234, 179, 8, 0.25)', borderRadius: 8, padding: '10px 14px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#eab308', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>🛡️ WHY WAS THIS HELD?</span>
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>
+                    {item.decision_reason || 'Awaiting stable profile URL, verified email anchor, or manual human corroboration'}
+                  </div>
                 </div>
               </div>
             ))

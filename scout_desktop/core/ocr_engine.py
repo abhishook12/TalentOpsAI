@@ -37,8 +37,31 @@ class OcrEngine:
         self._daemon_lock = threading.Lock()
         self._init_daemon()
 
+    @staticmethod
+    def _timed_readline(proc: subprocess.Popen, timeout_sec: float) -> Optional[str]:
+        """Reads a single line from proc.stdout with a strict timeout to prevent hangs."""
+        import queue
+        q: queue.Queue[Optional[str]] = queue.Queue()
+
+        def _reader():
+            try:
+                if proc.stdout:
+                    line = proc.stdout.readline()
+                    q.put(line)
+                else:
+                    q.put(None)
+            except Exception:
+                q.put(None)
+
+        t = threading.Thread(target=_reader, daemon=True)
+        t.start()
+        try:
+            return q.get(timeout=timeout_sec)
+        except queue.Empty:
+            return None
+
     def _init_daemon(self):
-        """Starts persistent PowerShell OCR worker daemon."""
+        """Starts persistent PowerShell OCR worker daemon with non-blocking timeout."""
         if not os.path.exists(self.helper_path):
             return
 
@@ -75,20 +98,26 @@ class OcrEngine:
                 creationflags=creationflags,
             )
 
-            # Wait for ready signal (up to 3 seconds)
-            ready_line = proc.stdout.readline().strip()
-            if "DAEMON_READY" in ready_line:
+            # Wait for ready signal with strict 2.0s non-blocking timeout
+            ready_line = self._timed_readline(proc, timeout_sec=2.0)
+            if ready_line and "DAEMON_READY" in ready_line:
                 self._daemon_proc = proc
                 logger.info("⚡ Persistent WinRT OCR Daemon initialized successfully (Ready in <25ms)")
             else:
-                logger.warning("OCR daemon init unexpected greeting: %s (will use single-shot fallback)", ready_line)
+                logger.warning("OCR daemon init timed out or unexpected greeting: %s (using single-shot)", ready_line)
                 try:
-                    proc.terminate()
+                    proc.kill()
                 except Exception:
                     pass
+                self._daemon_proc = None
         except Exception as e:
             logger.warning("Failed to start persistent OCR daemon: %s (using single-shot)", e)
             self._daemon_proc = None
+
+    def is_daemon_alive(self) -> bool:
+        """Returns True if the persistent daemon subprocess is currently active."""
+        with self._daemon_lock:
+            return bool(self._daemon_proc and self._daemon_proc.poll() is None)
 
     def close(self):
         """Terminates persistent daemon on application shutdown."""
@@ -101,7 +130,10 @@ class OcrEngine:
                     self._daemon_proc.terminate()
                     self._daemon_proc.wait(timeout=1.0)
                 except Exception:
-                    pass
+                    try:
+                        self._daemon_proc.kill()
+                    except Exception:
+                        pass
                 self._daemon_proc = None
 
     def _file_hash(self, path: str) -> str:
@@ -186,14 +218,23 @@ class OcrEngine:
             self._last_ocr_time = time.time()
             clean_lines = []
 
-            # Fast path: Persistent daemon IPC
+            # Fast path: Persistent daemon IPC with strict timeout
             with self._daemon_lock:
                 if self._daemon_proc and self._daemon_proc.poll() is None:
                     try:
-                        self._daemon_proc.stdin.write(image_path + "\n")
-                        self._daemon_proc.stdin.flush()
-                        response_line = self._daemon_proc.stdout.readline()
-                        clean_lines = self._parse_ocr_json(response_line)
+                        if self._daemon_proc.stdin:
+                            self._daemon_proc.stdin.write(image_path + "\n")
+                            self._daemon_proc.stdin.flush()
+                        response_line = self._timed_readline(self._daemon_proc, timeout_sec=3.0)
+                        if response_line:
+                            clean_lines = self._parse_ocr_json(response_line)
+                        else:
+                            logger.warning("OCR daemon timed out (>3.0s) on %s; resetting daemon", image_path)
+                            try:
+                                self._daemon_proc.kill()
+                            except Exception:
+                                pass
+                            self._daemon_proc = None
                     except Exception as de:
                         logger.debug("Daemon IPC read error: %s (falling back)", de)
                         clean_lines = []

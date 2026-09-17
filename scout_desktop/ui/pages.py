@@ -193,7 +193,7 @@ class ScanPage(QWidget):
         lbl_title.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
         title_box.addWidget(lbl_title)
 
-        lbl_desc = QLabel("Watching authorized sources only. Observations become candidates when gates pass. Zero ambient friction protocol active.")
+        lbl_desc = QLabel("Watching authorized sources only. Auto-ingestion requires a stable profile or verified contact; ambiguous captures go to review.")
         lbl_desc.setFont(QFont("Segoe UI", 8))
         lbl_desc.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
         title_box.addWidget(lbl_desc)
@@ -244,7 +244,7 @@ class ScanPage(QWidget):
 
         obs_r_layout.addStretch()
 
-        self.lbl_gate = QLabel("GATE EVAL: GATE_3_STRUCTURAL")
+        self.lbl_gate = QLabel("IDENTITY GATE v2.8.3: ANCHOR REQUIRED")
         self.lbl_gate.setFont(QFont("Consolas", 7, QFont.Weight.Bold))
         self.lbl_gate.setStyleSheet(f"""
             background-color: {COLOR_SURFACE_CARD};
@@ -661,6 +661,25 @@ class ScanPage(QWidget):
             cand_id = CANDIDATES[0].get("id")
         self.open_candidate_requested.emit(cand_id or "danielle-mason")
 
+def _smart_truncate(prefix: str, text: Optional[str], max_len: int = 34) -> str:
+    """Safely formats meter labels without slicing words in half (e.g. avoiding 'Professio')."""
+    if not text:
+        return f"{prefix}: —"
+    val = text.strip()
+    if not val or val == "—":
+        return f"{prefix}: —"
+    full = f"{prefix}: {val}"
+    if len(full) <= max_len:
+        return full
+    budget = max_len - len(prefix) - 5  # space for prefix + ": " + "..."
+    if budget < 5:
+        budget = 8
+    truncated = val[:budget]
+    if " " in truncated:
+        truncated = truncated.rsplit(" ", 1)[0]
+    return f"{prefix}: {truncated}..."
+
+
     def set_latest_candidate(
         self,
         cand_id: str,
@@ -670,11 +689,12 @@ class ScanPage(QWidget):
         location: str,
         status: str = "CANONICAL",
         confidence: int = 95,
-        profile_url: str = ""
+        profile_url: str = "",
+        field_confidence: Optional[Dict[str, float]] = None,
     ):
         self._current_candidate_id = cand_id
         self.lbl_cand_name.setText(name)
-        comp_str = f"{title} • {company}" if company else title
+        comp_str = f"{title} • {company}" if (title and company) else (title or company or "Professional Profile")
         self.lbl_cand_subtitle.setText(comp_str)
         self.lbl_cand_loc.setText(f"📍 {location}" if location else "📍 Remote")
         self.chip_latest.set_state(status.upper())
@@ -683,15 +703,43 @@ class ScanPage(QWidget):
             self.lbl_avatar.setText(initials)
         if hasattr(self, "lbl_conf_val"):
             self.lbl_conf_val.setText(f"AGGREGATE: {confidence}%")
-        self.update_meters(name=name, title=title, company=company, location=location, cand_id=cand_id)
 
-    def update_meters(self, name: str, title: str, company: str, location: str, name_conf: int = 95, title_conf: int = 90, comp_conf: int = 90, loc_conf: int = 85, cand_id: Optional[str] = None):
+        fc = field_confidence or {}
+        name_c = int(round(fc.get("name", 0.95) * 100)) if name else 0
+        title_c = int(round(fc.get("title", 0.90 if title else 0.0) * 100)) if title else 0
+        comp_c = int(round(fc.get("company", 0.90 if company else 0.0) * 100)) if company else 0
+        loc_c = int(round(fc.get("location", 0.85 if location else 0.0) * 100)) if location else 0
+
+        self.update_meters(
+            name=name,
+            title=title,
+            company=company,
+            location=location,
+            name_conf=name_c,
+            title_conf=title_c,
+            comp_conf=comp_c,
+            loc_conf=loc_c,
+            cand_id=cand_id,
+        )
+
+    def update_meters(
+        self,
+        name: str,
+        title: str,
+        company: str,
+        location: str,
+        name_conf: int = 95,
+        title_conf: int = 90,
+        comp_conf: int = 90,
+        loc_conf: int = 85,
+        cand_id: Optional[str] = None
+    ):
         if cand_id:
             self._current_candidate_id = cand_id
-        self.meter_name.set_score(name_conf, f"Name: {name[:24]}")
-        self.meter_title.set_score(title_conf, f"Title: {title[:28]}")
-        self.meter_company.set_score(comp_conf, f"Company: {company[:26]}")
-        self.meter_loc.set_score(loc_conf, f"Location: {location[:24]}")
+        self.meter_name.set_score(name_conf if name else 0, _smart_truncate("Name", name, 30))
+        self.meter_title.set_score(title_conf if title else 0, _smart_truncate("Title", title, 36))
+        self.meter_company.set_score(comp_conf if company else 0, _smart_truncate("Company", company, 34))
+        self.meter_loc.set_score(loc_conf if location else 0, _smart_truncate("Location", location, 32))
 
     def _create_checklist_item(self, icon: str, text: str, passed: bool) -> QWidget:
         w = QWidget()
@@ -1339,6 +1387,8 @@ class ReviewQueuePage(QWidget):
     """
     item_approved = Signal(str)
     item_dismissed = Signal(str)
+    item_corrected = Signal(str, dict)
+    pattern_blacklisted = Signal(str, str)
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -1363,7 +1413,7 @@ class ReviewQueuePage(QWidget):
 
         head = PageHead(
             "Review queue",
-            "Scout collects observations; it does not manufacture facts. Anything it cannot justify lands here for a person to decide.",
+            "Scout collects observations; it does not manufacture facts. Anything lacking a stable identifier or requiring confirmation lands here.",
             action_widget=self.badge_awaiting
         )
         main_layout.addWidget(head)
@@ -1397,28 +1447,26 @@ class ReviewQueuePage(QWidget):
 
     def _create_review_card(self, item: Dict[str, Any]) -> QWidget:
         card = Card()
-        card.setFixedHeight(68)
-        layout = QHBoxLayout(card)
-        layout.setContentsMargins(14, 10, 14, 10)
-        layout.setSpacing(12)
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(14, 12, 14, 12)
+        layout.setSpacing(8)
+
+        # Top row: icon + title + buttons
+        top_row = QHBoxLayout()
+        top_row.setSpacing(12)
 
         # Severity icon box
         icon_box = QLabel(item["icon"])
         icon_box.setFont(QFont("Segoe UI", 10))
         icon_box.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        icon_box.setFixedSize(32, 32)
-
-        icon_bg = COLOR_SURFACE_HOVER
-        icon_fg = "#FFFFFF"
-        icon_border = COLOR_SURFACE_BORDER
-
+        icon_box.setFixedSize(30, 30)
         icon_box.setStyleSheet(f"""
-            background-color: {icon_bg};
-            color: {icon_fg};
-            border: 1px solid {icon_border};
+            background-color: {COLOR_SURFACE_HOVER};
+            color: #FFFFFF;
+            border: 1px solid {COLOR_SURFACE_BORDER};
             border-radius: 6px;
         """)
-        layout.addWidget(icon_box)
+        top_row.addWidget(icon_box)
 
         # Text details
         text_col = QVBoxLayout()
@@ -1434,59 +1482,112 @@ class ReviewQueuePage(QWidget):
         lbl_desc.setStyleSheet(f"color: {COLOR_TEXT_SECONDARY};")
         text_col.addWidget(lbl_desc)
 
-        layout.addLayout(text_col)
-        layout.addStretch()
+        top_row.addLayout(text_col)
+        top_row.addStretch()
 
         # Action Buttons container
         actions_box = QWidget()
         act_l = QHBoxLayout(actions_box)
         act_l.setContentsMargins(0, 0, 0, 0)
-        act_l.setSpacing(8)
+        act_l.setSpacing(6)
+
+        iid = item["id"]
 
         btn_app = QPushButton("✓ Approve")
-        btn_app.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
+        btn_app.setFont(QFont("Segoe UI", 7, QFont.Weight.Bold))
         btn_app.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         btn_app.setStyleSheet(f"""
             QPushButton {{
-                background-color: rgba(16, 185, 129, 0.10);
+                background-color: rgba(16, 185, 129, 0.12);
                 color: {COLOR_CANONICAL};
                 border: 1px solid rgba(16, 185, 129, 0.35);
-                border-radius: 6px;
-                padding: 4px 12px;
+                border-radius: 4px;
+                padding: 3px 10px;
             }}
             QPushButton:hover {{
-                background-color: rgba(16, 185, 129, 0.15);
+                background-color: rgba(16, 185, 129, 0.20);
             }}
         """)
-        iid = item["id"]
         btn_app.clicked.connect(lambda checked=False, i=iid, c=card, a=actions_box: self._on_approve(i, c, a))
         act_l.addWidget(btn_app)
 
-        btn_dism = QPushButton("✕ Dismiss")
-        btn_dism.setFont(QFont("Segoe UI", 8, QFont.Weight.Medium))
-        btn_dism.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        btn_dism.setStyleSheet(f"""
+        btn_corr = QPushButton("✎ Correct")
+        btn_corr.setFont(QFont("Segoe UI", 7, QFont.Weight.Medium))
+        btn_corr.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        btn_corr.setStyleSheet(f"""
             QPushButton {{
                 background-color: {COLOR_SURFACE};
                 color: {COLOR_TEXT_PRIMARY};
                 border: 1px solid {COLOR_SURFACE_BORDER};
-                border-radius: 6px;
-                padding: 4px 12px;
+                border-radius: 4px;
+                padding: 3px 8px;
             }}
             QPushButton:hover {{
                 background-color: {COLOR_SURFACE_HOVER};
             }}
         """)
+        btn_corr.clicked.connect(lambda checked=False, it=item, c=card, a=actions_box: self._on_correct(it, c, a))
+        act_l.addWidget(btn_corr)
+
+        btn_never = QPushButton("🚫 Never accept")
+        btn_never.setFont(QFont("Segoe UI", 7, QFont.Weight.Medium))
+        btn_never.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        btn_never.setStyleSheet(f"""
+            QPushButton {{
+                background-color: rgba(239, 68, 68, 0.08);
+                color: #f87171;
+                border: 1px solid rgba(239, 68, 68, 0.25);
+                border-radius: 4px;
+                padding: 3px 8px;
+            }}
+            QPushButton:hover {{
+                background-color: rgba(239, 68, 68, 0.15);
+            }}
+        """)
+        btn_never.clicked.connect(lambda checked=False, it=item, c=card, a=actions_box: self._on_never_accept(it, c, a))
+        act_l.addWidget(btn_never)
+
+        btn_dism = QPushButton("✕ Dismiss")
+        btn_dism.setFont(QFont("Segoe UI", 7, QFont.Weight.Medium))
+        btn_dism.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        btn_dism.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {COLOR_SURFACE};
+                color: {COLOR_TEXT_MUTED};
+                border: 1px solid {COLOR_SURFACE_BORDER};
+                border-radius: 4px;
+                padding: 3px 8px;
+            }}
+            QPushButton:hover {{
+                background-color: {COLOR_SURFACE_HOVER};
+                color: {COLOR_TEXT_PRIMARY};
+            }}
+        """)
         btn_dism.clicked.connect(lambda checked=False, i=iid, c=card, a=actions_box: self._on_dismiss(i, c, a))
         act_l.addWidget(btn_dism)
 
-        layout.addWidget(actions_box)
+        top_row.addWidget(actions_box)
+        layout.addLayout(top_row)
+
+        # "Why was this held?" Forensic Reason Panel
+        why_held = item.get("why_held") or f"HELD_REASON: {item.get('description', 'Awaiting verified profile identifier')}"
+        lbl_why = QLabel(f"🛡️ WHY WAS THIS HELD?  {why_held}")
+        lbl_why.setFont(QFont("Consolas", 7))
+        lbl_why.setStyleSheet("""
+            background-color: rgba(234, 179, 8, 0.06);
+            color: #FBBF24;
+            border: 1px solid rgba(234, 179, 8, 0.20);
+            border-radius: 4px;
+            padding: 3px 8px;
+        """)
+        layout.addWidget(lbl_why)
+
         return card
 
     def _on_approve(self, item_id: str, card: QWidget, actions_box: QWidget):
         approve_review_item(item_id)
         actions_box.hide()
-        lbl_done = QLabel("✓ Approved")
+        lbl_done = QLabel("✓ Approved to Directory")
         lbl_done.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
         lbl_done.setStyleSheet(f"color: {COLOR_CANONICAL};")
         card.layout().addWidget(lbl_done)
@@ -1502,6 +1603,29 @@ class ReviewQueuePage(QWidget):
         card.layout().addWidget(lbl_done)
         self.badge_awaiting.setText(f"Awaiting review {SYSTEM_STATE['badges']['review_queue']}")
         self.item_dismissed.emit(item_id)
+
+    def _on_correct(self, item: Dict[str, Any], card: QWidget, actions_box: QWidget):
+        from PySide6.QtWidgets import QInputDialog
+        text, ok = QInputDialog.getText(self, "Correct Fields", f"Correct fields for '{item.get('title')}':", text=item.get("title", ""))
+        if ok and text:
+            actions_box.hide()
+            lbl_done = QLabel(f"✓ Corrected & Approved: {text}")
+            lbl_done.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
+            lbl_done.setStyleSheet(f"color: {COLOR_CANONICAL};")
+            card.layout().addWidget(lbl_done)
+            self.item_corrected.emit(item["id"], {"corrected_name": text})
+
+    def _on_never_accept(self, item: Dict[str, Any], card: QWidget, actions_box: QWidget):
+        from scout_desktop.extractor.negative_patterns import add_negative_pattern
+        pat = item.get("title", "").split("·")[0].strip()
+        add_negative_pattern(pat, pattern_type="name", reason="Flagged 'Never accept' in Desktop Review Queue")
+        dismiss_review_item(item["id"])
+        actions_box.hide()
+        lbl_done = QLabel(f"🚫 Pattern '{pat}' Blacklisted (Auto-rejected in future)")
+        lbl_done.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
+        lbl_done.setStyleSheet("color: #f87171;")
+        card.layout().addWidget(lbl_done)
+        self.pattern_blacklisted.emit(item["id"], pat)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -3144,5 +3268,4 @@ class SignInClaimPage(QWidget):
         # Perform companion signin
         res = perform_account_signin("prashant@talentops.ai", "default_pass")
         self._on_claim_click()
-
 

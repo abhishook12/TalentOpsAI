@@ -24,12 +24,12 @@ export default function FleetUpdateCenter() {
   const [showBroadcastModal, setShowBroadcastModal] = useState(false)
   const [broadcasting, setBroadcasting] = useState(false)
   const [broadcastForm, setBroadcastForm] = useState({
-    target_version: '2.8.2',
+    target_version: '2.8.3',
     cohort: 'OUTDATED_ONLY',
     mandatory: false,
-    title: 'TalentOps Scout v2.8.2 Available',
-    message: 'A new version of TalentOps Scout (v2.8.2) is available with enhanced accuracy, new monochrome design, and zero duplicate ingestion. Click to update.',
-    release_notes: 'v2.8.2: Enhanced noise filtering, Outlook UI prevention, zero duplicate ingestion, precision entity resolution, high-contrast obsidian theme.'
+    title: 'TalentOps Scout v2.8.3 Available',
+    message: 'A new version of TalentOps Scout (v2.8.3) is available with stricter identity anchors and review routing for ambiguous captures. Click to update.',
+    release_notes: 'v2.8.3: Stable profile/contact anchors required for auto-ingestion; ambiguous captures route to review; account-owner self-capture is dynamically blocked.'
   })
 
   // Active Broadcast Status Query
@@ -44,14 +44,14 @@ export default function FleetUpdateCenter() {
   const broadcastStatus = broadcastStatusData || { active: false, broadcast: null }
 
   const handleOpenBroadcastModal = (version) => {
-    const targetVer = version || '2.8.2'
+    const targetVer = version || '2.8.3'
     setBroadcastForm({
       target_version: targetVer,
       cohort: 'OUTDATED_ONLY',
       mandatory: false,
       title: `TalentOps Scout v${targetVer} Available`,
       message: `A new version of Scout (v${targetVer}) is ready. Click to restart and update to the latest release.`,
-      release_notes: 'v2.8.2: Enhanced noise filtering, Outlook UI prevention, zero duplicate ingestion, precision entity resolution, high-contrast obsidian theme.',
+      release_notes: 'v2.8.3: Stable profile/contact anchors required for auto-ingestion; ambiguous captures route to review; account-owner self-capture is dynamically blocked.',
     })
     setShowBroadcastModal(true)
   }
@@ -219,7 +219,7 @@ export default function FleetUpdateCenter() {
           <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <span>Scout Fleet Telemetry &amp; Node Operations</span>
             <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: '#0F1E36', color: '#38BDF8', border: '1px solid #1E3A5F', fontWeight: 700 }}>
-              v2.8.2 ARCHITECTURE
+              v2.8.3 QUALITY GATE
             </span>
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
@@ -228,7 +228,7 @@ export default function FleetUpdateCenter() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
-            onClick={() => handleOpenBroadcastModal('2.8.2')}
+            onClick={() => handleOpenBroadcastModal('2.8.3')}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -246,7 +246,7 @@ export default function FleetUpdateCenter() {
             title="Send real-time update notification to connected Scout Desktop nodes"
           >
             <Radio size={14} />
-            <span>Notify Fleet (v2.8.2)</span>
+            <span>Notify Fleet (v2.8.3)</span>
           </button>
           <button
             onClick={handleOpenAddDevice}

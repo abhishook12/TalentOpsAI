@@ -280,6 +280,10 @@ class VisualSampler:
         self._set_state("STOPPED")
         logger.info("VisualSampler stopped.")
 
+    def is_alive(self) -> bool:
+        """Returns True if the visual sampler background worker thread is alive."""
+        return bool(self._worker_thread and self._worker_thread.is_alive())
+
     def _run_loop(self):
         """
         Core autonomous sampling loop.

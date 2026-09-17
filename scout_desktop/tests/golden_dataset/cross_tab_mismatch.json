@@ -1,0 +1,13 @@
+{
+  "source_url": "https://www.linkedin.com/in/robert-smith-12345/",
+  "window_title": "Jessica Albright | LinkedIn",
+  "platform": "LinkedIn",
+  "ocr_lines": [
+    "Jessica Albright",
+    "Director of Talent Acquisition at Snowflake",
+    "Seattle, Washington"
+  ],
+  "expected_name": "Jessica Albright",
+  "expected_verdict": "REJECTED",
+  "expected_reason": "CROSS_TAB_MISMATCH"
+}

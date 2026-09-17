@@ -279,3 +279,32 @@ class DiagnosticsWindow(QWidget):
             dump = f"Serialization error: {e}"
 
         self.txt_output.setPlainText(dump)
+
+    def update_subsystems(self, subsystems: dict):
+        """Updates developer diagnostics with real-time subsystem watchdog statuses."""
+        ocr_st = subsystems.get("ocr", "HEALTHY")
+        samp_st = subsystems.get("sampler", "HEALTHY")
+        sync_st = subsystems.get("sync", "HEALTHY")
+        ui_st = subsystems.get("ui", "HEALTHY")
+
+        if hasattr(self, "lbl_sub_sampler"):
+            self.lbl_sub_sampler.setText(
+                f"State: {samp_st}\n"
+                f"UI Thread: {ui_st}\n"
+                f"Threshold: 3.5%\n"
+                f"Buffer Cap: 100 MB / 20 items"
+            )
+        if hasattr(self, "lbl_sub_grounding"):
+            self.lbl_sub_grounding.setText(
+                f"OCR Daemon: {ocr_st}\n"
+                f"Min Confidence: 0.30\n"
+                f"Strict Mode: True\n"
+                f"Fabrication Defense: ACTIVE"
+            )
+        if hasattr(self, "lbl_sub_sync"):
+            self.lbl_sub_sync.setText(
+                f"Sync Status: {sync_st}\n"
+                f"SQLite Queue: Operational\n"
+                f"Dead-Letter Queue: Active (max 5)\n"
+                f"Backoff: Exponential (10s-300s)"
+            )

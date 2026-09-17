@@ -65,7 +65,18 @@ class CandidateGateResult:
     reasons: List[str] = field(default_factory=list)
     audit_checklist: List[str] = field(default_factory=list)
     field_confidence: Dict[str, float] = field(default_factory=dict)
+    field_evidence: Dict[str, Any] = field(default_factory=dict)
     sanitized_candidate: Optional[Dict[str, Any]] = None
+
+    @property
+    def reason_code(self) -> str:
+        """Returns decisive reason code (e.g. PROFILE_URL_PRESENT, TITLE_COMPANY_ONLY)."""
+        if self.reasons:
+            first_r = self.reasons[0]
+            if ":" in first_r:
+                return first_r.split(":", 1)[0].strip()
+            return first_r.strip()
+        return self.status
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -83,6 +94,7 @@ class CandidateGateResult:
             "reasons": self.reasons,
             "audit_checklist": self.audit_checklist,
             "field_confidence": self.field_confidence,
+            "field_evidence": self.field_evidence,
             "sanitized_candidate": self.sanitized_candidate,
         }
 
@@ -257,17 +269,31 @@ def normalize_platform(platform: Optional[str], source_url: Optional[str] = None
 def sanitize_location(raw_location: Optional[str]) -> Tuple[Optional[str], bool]:
     """
     Validates and cleans location string.
-    CRITICAL RULE 21: Corrupted OCR (e.g. 'San ntu') becomes None / needs_review.
+    CRITICAL RULE 21: Corrupted OCR (e.g. 'San ntu', 'D,id - sud') becomes None / needs_review.
     Returns (cleaned_location, is_corrupted).
     """
     if not raw_location or not isinstance(raw_location, str):
         return None, False
     loc = raw_location.strip()
-    if "\ufffd" in loc or "?" in loc or "%" in loc:
-        return None, True
+    if not loc:
+        return None, False
+
+    # Immediate markers of OCR corruption
+    is_corrupted = False
+    if (
+        "\ufffd" in loc
+        or "?" in loc
+        or "%" in loc
+        or re.search(r"[a-zA-Z],[a-zA-Z]", loc)
+        or re.search(r"\b[a-zA-Z],\s*", loc)
+        or re.search(r"[-–—]\s*[a-zA-Z]{1,4}\b", loc)
+        or any(c in loc for c in [";", ":", "!", "~", "*", "=", "<", ">"])
+    ):
+        is_corrupted = True
+
     cleaned = clean_location_text(loc)
     if not cleaned or not is_valid_location(cleaned):
-        return None, False
+        return None, (True if is_corrupted or bool(loc and len(loc) > 3) else False)
     return cleaned, False
 
 
@@ -359,8 +385,21 @@ def create_candidate_if_valid(
             audit_checklist=["Human person name validation: FAIL"],
         )
 
-    # Self-Name / Account Owner Exclusion
-    self_names = {"yatendra rawat", "abhishek jadon"}
+    # Self-Name / Account Owner Exclusion. The owning Scout session supplies this
+    # context; static names caused both false positives and missed other accounts.
+    raw_owner_names = ctx.get("owner_names") or []
+    if isinstance(raw_owner_names, str):
+        raw_owner_names = [raw_owner_names]
+    self_names = {
+        normalized.lower()
+        for owner_name in raw_owner_names
+        if (normalized := clean_person_name(str(owner_name)))
+    }
+    owner_email = str(ctx.get("owner_email") or "").strip().lower()
+    if owner_email and "@" in owner_email:
+        email_name = clean_person_name(owner_email.split("@", 1)[0].replace(".", " ").replace("_", " "))
+        if email_name:
+            self_names.add(email_name.lower())
     if cleaned_name.lower() in self_names:
         return CandidateGateResult(
             decision="REJECTED_OBSERVATION",
@@ -400,8 +439,11 @@ def create_candidate_if_valid(
             field_conf["company"] = 0.90
             checklist.append(f"Plausible company verified: {valid_company}")
         else:
+            field_conf["company"] = 0.0
             reasons.append(f"Stripped invalid company noise: '{raw_comp}'")
             checklist.append("Company noise filtered")
+    else:
+        field_conf["company"] = 0.0
 
     # 5. Professional Title Validation (Rule 10, 11)
     raw_title = observation.get("title") or observation.get("raw_title") or observation.get("current_title")
@@ -413,17 +455,23 @@ def create_candidate_if_valid(
             field_conf["title"] = 0.90
             checklist.append(f"Professional title verified: {valid_title}")
         else:
+            field_conf["title"] = 0.0
             reasons.append(f"Discarded implausible title: '{raw_title}'")
+    else:
+        field_conf["title"] = 0.0
 
     # 6. Location Validation (Rule 11, 21)
     raw_loc = observation.get("location") or observation.get("raw_location")
     valid_loc, is_loc_corrupted = sanitize_location(raw_loc)
     if is_loc_corrupted:
+        field_conf["location"] = 0.0
         reasons.append(f"Corrupted location string neutralized: '{raw_loc}'")
         checklist.append("Corrupted location removed: NEEDS_REVIEW")
     elif valid_loc:
         field_conf["location"] = 0.85
         checklist.append(f"Location normalized: {valid_loc}")
+    else:
+        field_conf["location"] = 0.0
 
     # 7. Profile URL & Contact Validation (Rule 6, 7)
     raw_profile_url = (
@@ -442,8 +490,8 @@ def create_candidate_if_valid(
                 field_conf["profile_url"] = 0.99
                 checklist.append(f"Canonical LinkedIn URL verified: {canonical_url}")
             else:
-                reasons.append(f"Cross-tab URL contamination detected: slug does not match '{cleaned_name}'")
-                checklist.append("Contaminated profile URL stripped")
+                reasons.append(f"CROSS_TAB_MISMATCH: LinkedIn profile URL slug '{cleaned_url}' does not match candidate '{cleaned_name}'")
+                checklist.append("CROSS_TAB_MISMATCH: Contaminated profile URL stripped")
         elif is_individual_profile_url(cleaned_url):
             canonical_url = cleaned_url
             field_conf["profile_url"] = 0.90
@@ -479,17 +527,19 @@ def create_candidate_if_valid(
         field_conf["phone"] = 0.90
         checklist.append(f"Contact phone verified: {valid_phone}")
 
-    # 8. Minimum Identity Requirement (Rule 6)
+    # 8. Minimum Identity Requirement & Stable Identifier Anchor (Rule 6, Pillars 2 & 3)
     # A candidate cannot become VERIFIED on name alone.
-    # Must have at least one Primary Anchor:
+    # To be auto-ingested into VERIFIED, must have at least one STABLE IDENTIFIER:
     # (a) Canonical individual profile URL (linkedin.com/in/, etc.), OR
-    # (b) (Plausible title AND Valid clean company), OR
-    # (c) Verified email / phone
+    # (b) Verified deliverable email, OR
+    # (c) Verified phone number.
+    # Title/company-only discoveries are kept in REVIEW_REQUIRED by default.
     has_strong_profile = bool(canonical_url and ("linkedin.com/in/" in canonical_url or is_individual_profile_url(canonical_url)))
     has_employment = bool(valid_title and valid_company)
     has_verified_contact = bool(valid_email or valid_phone)
     has_partial_employment = bool(valid_title or valid_company)
-    has_primary_anchor = bool(has_strong_profile or has_verified_contact or has_employment)
+    has_stable_identifier = bool(has_strong_profile or has_verified_contact)
+    has_primary_anchor = bool(has_stable_identifier or has_employment)
 
     # 9. Garbage & Confidence Scoring (Rule 12)
     # Platform context bonus: a LinkedIn/ZoomInfo/Apollo window title without a URL is still
@@ -512,7 +562,6 @@ def create_candidate_if_valid(
     elif canonical_url:
         quality_score += 20
     elif has_platform_context:
-        # Verified sourcing platform window: name seen on LinkedIn/ZoomInfo/Apollo even without URL
         quality_score += 20
         checklist.append(f"Verified sourcing platform context: {platform} (URL not captured)")
     elif is_recruiter_chat and (has_employment or has_verified_contact):
@@ -540,45 +589,98 @@ def create_candidate_if_valid(
     )
     identity_conf = min(1.0, round(identity_conf, 2))
 
-    # 10. Final Gate Decision (Rule 2, 13, 14)
-    # Standard Thresholds:
-    # VERIFIED: has_primary_anchor AND score >= 70 AND confidence >= 0.75
-    # VERIFIED (sourcing platform): has_primary_anchor AND score >= 70 AND confidence >= 0.60 AND has_platform_context AND has_employment
-    #   → LinkedIn/ZoomInfo/Apollo window: must have full employment (title + valid company) if no URL/contact!
-    # VERIFIED (recruiter chat): has_primary_anchor AND score >= 75 AND confidence >= 0.75 AND is_recruiter_chat AND (has_employment OR (has_strong_profile AND has_verified_contact))
-    # REVIEW_REQUIRED: score >= 40 AND (has_partial_employment OR canonical_url OR has_platform_context)
-    # REJECTED: anything below
+    # 10. Final Gate Decision (Rule 2, 13, 14 & Pillars 2 & 3)
+    # Required for auto-ingestion to VERIFIED:
+    # 1. Must have a STABLE IDENTIFIER: canonical profile URL OR verified email/phone.
+    # 2. Title/company-only discoveries are kept in REVIEW_REQUIRED by default.
+    decisive_reasons = []
+    if has_strong_profile:
+        decisive_reasons.append("PROFILE_URL_PRESENT: Canonical individual profile URL verified")
+    if has_verified_contact:
+        decisive_reasons.append("VERIFIED_CONTACT_FOUND: Verified deliverable email or phone verified")
+    if has_employment:
+        decisive_reasons.append("EMPLOYMENT_CORROBORATED: Professional title and company verified")
+
     verified_standard = (
-        quality_score >= 70
+        has_stable_identifier
+        and quality_score >= 70
         and identity_conf >= 0.75
-        and has_primary_anchor
-    )
-    verified_platform_context = (
-        quality_score >= 70
-        and identity_conf >= 0.60
-        and has_platform_context
-        and has_employment
     )
     verified_chat_context = (
-        quality_score >= 75
+        has_stable_identifier
+        and quality_score >= 75
         and identity_conf >= 0.75
         and is_recruiter_chat
-        and (has_employment or (has_strong_profile and has_verified_contact))
     )
-    if has_primary_anchor and (verified_standard or verified_platform_context or verified_chat_context):
+
+    if verified_standard or verified_chat_context:
         decision = "CANDIDATE_VERIFIED"
         status = "VERIFIED"
         is_valid = True
+        reasons.extend(decisive_reasons)
+    elif has_employment and not has_stable_identifier:
+        decision = "REVIEW_REQUIRED"
+        status = "REVIEW_REQUIRED"
+        is_valid = False
+        reasons.append("TITLE_COMPANY_ONLY: Corroborated title & company found, but held in Review Queue awaiting stable profile URL or verified contact")
+        reasons.append("MISSING_STABLE_ANCHOR: No canonical profile URL, verified email, or verified phone found")
     elif quality_score >= 40 and (has_partial_employment or canonical_url or has_platform_context):
         decision = "REVIEW_REQUIRED"
         status = "REVIEW_REQUIRED"
         is_valid = False
-        reasons.append(f"Hypothesis has partial signals (Score {quality_score}, Conf {identity_conf:.2f}) — routed to Capture Review")
+        reasons.append(f"REVIEW_REQUIRED: Partial signals (Score {quality_score}, Conf {identity_conf:.2f}) — held in Review Queue")
+        if not has_stable_identifier:
+            reasons.append("MISSING_STABLE_ANCHOR: Awaiting human verification of stable identifier")
     else:
         decision = "REJECTED_OBSERVATION"
         status = "REJECTED"
         is_valid = False
-        reasons.append("Insufficient identity evidence (Name without corroborating profile or employment signals)")
+        reasons.append("REJECTED: Insufficient identity evidence (Name without corroborating profile or employment signals)")
+
+    # Build field-level source evidence references
+    field_evidence = {
+        "name": {
+            "value": cleaned_name,
+            "evidence": observation.get("name_evidence") or f"Extracted candidate name from {platform}",
+            "confidence": field_conf.get("name", 0.95),
+        }
+    }
+    if valid_title:
+        field_evidence["title"] = {
+            "value": valid_title,
+            "evidence": observation.get("title_evidence") or f"Title extracted from {platform}",
+            "confidence": field_conf.get("title", 0.90),
+        }
+    if valid_company:
+        field_evidence["company"] = {
+            "value": valid_company,
+            "evidence": observation.get("company_evidence") or f"Company extracted from {platform}",
+            "confidence": field_conf.get("company", 0.90),
+        }
+    if valid_loc:
+        field_evidence["location"] = {
+            "value": valid_loc,
+            "evidence": observation.get("location_evidence") or f"Location normalized from '{raw_loc}'",
+            "confidence": field_conf.get("location", 0.85),
+        }
+    if canonical_url:
+        field_evidence["profile_url"] = {
+            "value": canonical_url,
+            "evidence": observation.get("url_evidence") or f"Canonical individual profile URL: {canonical_url}",
+            "confidence": field_conf.get("profile_url", 0.95),
+        }
+    if valid_email:
+        field_evidence["email"] = {
+            "value": valid_email,
+            "evidence": f"Verified deliverable email address: {valid_email}",
+            "confidence": field_conf.get("email", 0.95),
+        }
+    if valid_phone:
+        field_evidence["phone"] = {
+            "value": valid_phone,
+            "evidence": f"Verified phone number: {valid_phone}",
+            "confidence": field_conf.get("phone", 0.90),
+        }
 
     sanitized = {
         "recruiter_name": cleaned_name,
@@ -602,6 +704,7 @@ def create_candidate_if_valid(
         "decision": decision,
         "evidence_checklist": checklist,
         "field_confidence": field_conf,
+        "field_evidence": field_evidence,
         "reasons": reasons,
     }
 
@@ -620,5 +723,6 @@ def create_candidate_if_valid(
         reasons=reasons,
         audit_checklist=checklist,
         field_confidence=field_conf,
+        field_evidence=field_evidence,
         sanitized_candidate=sanitized,
     )

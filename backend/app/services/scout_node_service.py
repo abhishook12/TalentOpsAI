@@ -169,9 +169,14 @@ def get_all_scout_nodes_telemetry(db: Session) -> Dict[str, Any]:
     
     events_by_device = {row.device_id: row for row in events_sq if row.device_id}
 
-    # 3. Aggregated Staging by Device
+    # 3. Aggregated Staging by Device (including Quality & Decision Rates)
     staging_sq = db.query(
         DiscoveryStaging.device_id,
+        sqlfunc.count(DiscoveryStaging.id).label("total_staged"),
+        sqlfunc.sum(case((DiscoveryStaging.processing_status == "committed", 1), else_=0)).label("accepted_count"),
+        sqlfunc.sum(case((DiscoveryStaging.processing_status == "review", 1), else_=0)).label("review_count"),
+        sqlfunc.sum(case((DiscoveryStaging.processing_status == "rejected", 1), else_=0)).label("rejected_count"),
+        sqlfunc.sum(case((DiscoveryStaging.processing_status.in_(["failed", "error"]), 1), else_=0)).label("error_count"),
         sqlfunc.max(DiscoveryStaging.created_at).label("latest_staging_time")
     ).group_by(DiscoveryStaging.device_id).all()
 
@@ -201,6 +206,18 @@ def get_all_scout_nodes_telemetry(db: Session) -> Dict[str, Any]:
         last_page = ev.last_page_observed if ev else "—"
 
         latest_staging_time = st.latest_staging_time if st else None
+
+        # Per-Device Fleet Quality & Decision Rates (Pillar 8)
+        total_staged = st.total_staged if (st and st.total_staged) else 0
+        accepted_cnt = st.accepted_count if (st and st.accepted_count) else 0
+        review_cnt = st.review_count if (st and st.review_count) else 0
+        rejected_cnt = st.rejected_count if (st and st.rejected_count) else 0
+        error_cnt = st.error_count if (st and st.error_count) else 0
+
+        acceptance_rate = round((accepted_cnt / total_staged) * 100.0, 1) if total_staged > 0 else 100.0
+        review_rate = round((review_cnt / total_staged) * 100.0, 1) if total_staged > 0 else 0.0
+        rejection_rate = round((rejected_cnt / total_staged) * 100.0, 1) if total_staged > 0 else 0.0
+        error_rate = round((error_cnt / total_staged) * 100.0, 1) if total_staged > 0 else 0.0
 
         if not d.is_active:
             node_status = "REVOKED"
@@ -252,6 +269,15 @@ def get_all_scout_nodes_telemetry(db: Session) -> Dict[str, Any]:
             "db_successes": captures_count,
             "db_failures": 0,
             "current_queue": 0,
+            "total_staged": total_staged,
+            "accepted_count": accepted_cnt,
+            "review_count": review_cnt,
+            "rejected_count": rejected_cnt,
+            "error_count": error_cnt,
+            "acceptance_rate": acceptance_rate,
+            "review_rate": review_rate,
+            "rejection_rate": rejection_rate,
+            "error_rate": error_rate,
         })
 
     for u in all_users:

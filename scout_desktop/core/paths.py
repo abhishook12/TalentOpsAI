@@ -97,6 +97,17 @@ def get_state_dir() -> str:
     return state_folder
 
 
+def get_user_state_path() -> str:
+    """Returns absolute path to user pairing credentials and token state in AppData."""
+    p1 = os.path.join(get_app_data_dir(), "user_state.json")
+    p2 = os.path.join(get_state_dir(), "user_state.json")
+    if os.path.exists(p1):
+        return p1
+    if os.path.exists(p2):
+        return p2
+    return p1
+
+
 def get_application_dir() -> str:
     """Returns the directory containing application binaries."""
     if getattr(sys, "frozen", False):

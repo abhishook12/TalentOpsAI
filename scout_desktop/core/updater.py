@@ -391,10 +391,8 @@ class AutoUpdater:
                         subprocess.DETACHED_PROCESS if hasattr(subprocess, "DETACHED_PROCESS") else 0
                     )
                 subprocess.Popen(cmd, creationflags=flags, close_fds=True)
-                try:
-                    sys.exit(0)
-                except SystemExit:
-                    pass
+                logger.info("New Scout instance launched; terminating current instance immediately.")
+                os._exit(0)
                 return True
 
             logger.error("Cannot apply update: file not found (%s)", pkg_path)

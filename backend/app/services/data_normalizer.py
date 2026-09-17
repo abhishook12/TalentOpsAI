@@ -144,6 +144,15 @@ def clean_company(raw_company: Any, email: Optional[str] = None) -> Tuple[Option
     if not company or company.lower() in ["none", "nan", "null", "n/a", "unknown"]:
         return None, domain
 
+    # Reject OCR artifacts and noise phrases
+    comp_lower = company.lower()
+    if any(b in comp_lower for b in ["cotamt", "fim any", "contact info", "mutual connection", "see all"]):
+        return None, domain
+    for tok in company.split():
+        clean_tok = re.sub(r"[^a-zA-Z]", "", tok)
+        if re.search(r"[a-z]+[A-Z]{2,}", clean_tok) or (len(clean_tok) >= 3 and re.search(r"^[a-z]{2,}[A-Z]$", clean_tok)):
+            return None, domain
+
     # Check known company dictionary
     norm_comp = re.sub(r"[^a-z0-9]", "", company.lower())
     for known_key, (canon_name, canon_dom) in KNOWN_COMPANY_MAP.items():
@@ -164,6 +173,12 @@ def clean_state_and_city(raw_state: Any, raw_location: Any) -> Tuple[Optional[st
     state_code = None
     city = None
 
+    # Sanitize and neutralize corrupted location strings
+    if raw_location:
+        loc_check = str(raw_location).strip()
+        if re.search(r"[a-zA-Z],[a-zA-Z]", loc_check) or re.search(r"\b[a-zA-Z],", loc_check) or "d,id" in loc_check.lower() or loc_check.startswith("-") or loc_check.endswith("-"):
+            raw_location = None
+
     # Try state field first
     if raw_state:
         st_str = str(raw_state).strip().upper()
@@ -179,6 +194,8 @@ def clean_state_and_city(raw_state: Any, raw_location: Any) -> Tuple[Optional[st
     # Try parsing location string (e.g. "Austin, TX" or "Chicago, Illinois")
     if raw_location and not state_code:
         loc_str = str(raw_location).strip()
+        if re.search(r"[a-zA-Z],[a-zA-Z]", loc_str) or re.search(r"\b[a-zA-Z],", loc_str) or "d,id" in loc_str.lower():
+            loc_str = ""
         parts = [p.strip() for p in loc_str.split(",") if p.strip()]
         if len(parts) >= 2:
             city_cand = parts[0].title()

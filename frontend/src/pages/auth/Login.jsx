@@ -8,11 +8,19 @@ import AppLoadingOverlay from '../../components/AppLoadingOverlay'
 import api from '../../services/api'
 
 export default function Login() {
-  const [email, setEmail] = useState('')
+  const [rememberMe, setRememberMe] = useState(() => {
+    return localStorage.getItem('talentops_remember_me') === 'true'
+  })
+  const [email, setEmail] = useState(() => {
+    return localStorage.getItem('talentops_remembered_email') || ''
+  })
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [emailTouched, setEmailTouched] = useState(false)
+  
+  // Live Cloud System Status Pill ('checking' | 'online' | 'waking')
+  const [serverStatus, setServerStatus] = useState('checking')
   
   // Splash Screen State
   const [isAuthenticating, setIsAuthenticating] = useState(false)
@@ -25,9 +33,24 @@ export default function Login() {
   const search = useSearch({ from: '/login' })
   const redirect = decodeURIComponent(search.redirect || '/')
 
-  // Background pre-warm: trigger server wake-up as soon as user opens the login page
+  // Probe server status and pre-warm on page mount
   React.useEffect(() => {
-    api.get('/ping', { skipCache: true }).catch(() => {})
+    let active = true
+    const probeServer = async () => {
+      const slowTimer = setTimeout(() => {
+        if (active) setServerStatus('waking')
+      }, 2500)
+      try {
+        await api.get('/ping', { skipCache: true })
+        clearTimeout(slowTimer)
+        if (active) setServerStatus('online')
+      } catch {
+        clearTimeout(slowTimer)
+        if (active) setServerStatus('waking')
+      }
+    }
+    probeServer()
+    return () => { active = false }
   }, [])
 
   const isEmailValid = email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
@@ -39,14 +62,18 @@ export default function Login() {
     setAuthProgress(null) // Indeterminate start
     setAuthStatusText(null)
     
-    // Friendly status message if the server is cold-starting (>3.5s)
-    const wakeTimer = setTimeout(() => {
-      setAuthStatusText("Connecting to server (waking up from cold sleep, please wait)...")
-    }, 3500)
+    // Transparent elapsed counter for cold-start progress
+    let elapsed = 0
+    const ticker = setInterval(() => {
+      elapsed += 1
+      if (elapsed >= 3) {
+        setAuthStatusText(`Connecting to server (waking up from cold sleep: ${elapsed}s)...`)
+      }
+    }, 1000)
     
     try {
       const data = await authFunction()
-      clearTimeout(wakeTimer)
+      clearInterval(ticker)
       
       if (data && data.status === 'pending_approval') {
         setIsAuthenticating(false)
@@ -62,10 +89,10 @@ export default function Login() {
       navigate({ to: redirect })
       
     } catch (err) {
-      clearTimeout(wakeTimer)
+      clearInterval(ticker)
       let errorDetail = err?.response?.data?.detail || err?.message || 'Authentication failed. Please check your credentials.'
       if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
-        errorDetail = 'The server took longer than expected to respond (it may be waking up from cold sleep). Please wait a moment and try again.'
+        errorDetail = 'The cloud server is taking longer than usual to wake up. Please click Sign In again in a few moments.'
       }
       if (Array.isArray(errorDetail)) {
           errorDetail = errorDetail.map(e => e.msg).join(', ')
@@ -80,8 +107,15 @@ export default function Login() {
   }
 
   const handleSubmit = (e) => {
-    e.preventDefault()
-    performBackgroundInitialization(() => login(email, password, true))
+    e?.preventDefault?.()
+    if (rememberMe && email) {
+      localStorage.setItem('talentops_remembered_email', email.trim())
+      localStorage.setItem('talentops_remember_me', 'true')
+    } else {
+      localStorage.removeItem('talentops_remembered_email')
+      localStorage.removeItem('talentops_remember_me')
+    }
+    performBackgroundInitialization(() => login(email, password, rememberMe))
   }
 
   const customGoogleLogin = useGoogleLogin({
@@ -115,15 +149,40 @@ export default function Login() {
       <AuthFrame isAuthenticating={isAuthenticating}>
         
         {error && (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3.5 rounded-xl mb-6 text-sm flex items-start gap-2.5 leading-[1.4]" role="alert">
-            <i className="ti ti-alert-circle mt-[2px]" />
-            <span>{error}</span>
+          <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3.5 rounded-xl mb-6 text-sm flex flex-col gap-2.5 leading-[1.4]" role="alert">
+            <div className="flex items-start gap-2.5">
+              <i className="ti ti-alert-circle mt-[2px] text-base shrink-0" />
+              <span className="flex-1">{error}</span>
+            </div>
+            {(error.includes('wake up') || error.includes('longer than usual') || error.includes('timeout')) && (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                className="self-start ml-6 px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-md text-xs font-medium border border-red-500/30 transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <i className="ti ti-refresh" /> Retry Sign In
+              </button>
+            )}
           </div>
         )}
 
-        <div className="mb-6 text-left">
-          <h1 className="text-2xl font-bold text-white m-0 mb-2 tracking-tight">Welcome Back</h1>
-          <p className="text-sm text-[#a0a0a0] m-0 leading-relaxed">Login to access your TalentOps account</p>
+        <div className="mb-6 text-left flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white m-0 mb-2 tracking-tight">Welcome Back</h1>
+            <p className="text-sm text-[#a0a0a0] m-0 leading-relaxed">Login to access your TalentOps account</p>
+          </div>
+          <div
+            className="mt-1 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border select-none transition-all duration-300"
+            style={{
+              borderColor: serverStatus === 'online' ? 'rgba(34, 197, 94, 0.25)' : serverStatus === 'waking' ? 'rgba(234, 179, 8, 0.25)' : 'rgba(255, 255, 255, 0.1)',
+              backgroundColor: serverStatus === 'online' ? 'rgba(34, 197, 94, 0.08)' : serverStatus === 'waking' ? 'rgba(234, 179, 8, 0.08)' : 'rgba(255, 255, 255, 0.04)',
+              color: serverStatus === 'online' ? '#4ade80' : serverStatus === 'waking' ? '#facc15' : '#9ca3af'
+            }}
+            title={serverStatus === 'online' ? 'Backend API is live and responsive' : serverStatus === 'waking' ? 'Cloud instance is waking up from idle sleep' : 'Checking cloud connection...'}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${serverStatus === 'online' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' : serverStatus === 'waking' ? 'bg-yellow-400 animate-pulse' : 'bg-gray-400 animate-pulse'}`} />
+            <span>{serverStatus === 'online' ? 'Cloud Online' : serverStatus === 'waking' ? 'Waking Cloud...' : 'Connecting...'}</span>
+          </div>
         </div>
 
         <div className="w-full flex flex-col gap-4" onKeyDown={(e) => { if (e.key === 'Enter' && isFormValid && !isAuthenticating) handleSubmit(e) }}>
@@ -179,6 +238,8 @@ export default function Login() {
             <label className="flex items-center gap-2 text-[13px] text-[#a0a0a0] cursor-pointer">
               <input 
                 type="checkbox" 
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
                 className="appearance-none w-4 h-4 cursor-pointer bg-[var(--bg-surface)] border border-[#444] rounded flex-shrink-0 relative transition-all checked:bg-[var(--brand)] checked:border-[var(--brand)] focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_var(--brand-bg)] mt-[2px] after:content-[''] after:absolute after:left-[4px] after:top-[1px] after:w-[5px] after:h-[9px] after:border-solid after:border-white after:border-0 after:border-r-2 after:border-b-2 after:rotate-45 after:opacity-0 checked:after:opacity-100"
               />
               Remember me

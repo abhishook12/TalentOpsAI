@@ -30,7 +30,7 @@ logger = logging.getLogger("talentops.scout_updates")
 router = APIRouter(prefix="/scout", tags=["Scout Auto-Update & Fleet"])
 
 # Production Fallbacks
-DEFAULT_RELEASE_VERSION = "2.8.2"
+DEFAULT_RELEASE_VERSION = "2.8.3"
 DEFAULT_MINIMUM_VERSION = "1.0.0"
 DEFAULT_DOWNLOAD_URL = "https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe"
 DEFAULT_SHA256 = "e17a1249e8d4a325400de57e691471f69d8c1e4e0ee066311eee67e971d2d653"

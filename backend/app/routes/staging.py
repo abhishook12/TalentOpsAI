@@ -34,6 +34,27 @@ class ReviewActionRequest(BaseModel):
     notes: Optional[str] = None
 
 
+class CorrectReviewRequest(BaseModel):
+    raw_name: Optional[str] = None
+    raw_title: Optional[str] = None
+    raw_company: Optional[str] = None
+    raw_email: Optional[str] = None
+    raw_phone: Optional[str] = None
+    raw_linkedin: Optional[str] = None
+    raw_location: Optional[str] = None
+
+
+class MergeReviewRequest(BaseModel):
+    recruiter_id: int
+    notes: Optional[str] = None
+
+
+class NeverAcceptPatternRequest(BaseModel):
+    pattern: str
+    pattern_type: str = "company"  # 'company', 'name', 'title', 'url'
+    reason: Optional[str] = None
+
+
 @router.get("/summary")
 def get_staging_summary(
     db: Session = Depends(get_db),
@@ -319,6 +340,136 @@ def reject_review_item(
     db.commit()
 
     return {"ok": True, "status": "rejected"}
+
+
+@router.post("/review/{staging_id}/correct")
+def correct_review_item(
+    staging_id: int,
+    req: CorrectReviewRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Reviewer corrects field values before committing to the master database.
+    """
+    stg = db.query(DiscoveryStaging).filter(DiscoveryStaging.id == staging_id).first()
+    if not stg:
+        raise HTTPException(status_code=404, detail="Staging record not found")
+
+    if req.raw_name is not None:
+        stg.raw_name = req.raw_name.strip()
+    if req.raw_title is not None:
+        stg.raw_title = req.raw_title.strip()
+    if req.raw_company is not None:
+        stg.raw_company = req.raw_company.strip()
+    if req.raw_email is not None:
+        stg.raw_email = req.raw_email.strip().lower()
+    if req.raw_phone is not None:
+        stg.raw_phone = req.raw_phone.strip()
+    if req.raw_linkedin is not None:
+        stg.raw_linkedin = req.raw_linkedin.strip()
+    if req.raw_location is not None:
+        stg.raw_location = req.raw_location.strip()
+
+    db.flush()
+
+    # Re-run processor on corrected item
+    processor = DiscoveryProcessor(db)
+    person = processor._resolve_cluster([stg])
+    match, conf = processor._match_master_db(person)
+
+    decision_type = 'ENRICH' if match else 'NEW'
+    decision = {
+        'person': person,
+        'recruiter': match,
+        'decision': decision_type,
+        'reason': 'Manually corrected and approved by reviewer',
+    }
+    stats = processor._execute_decisions([decision])
+    stg.processing_status = 'committed'
+    stg.decision = decision_type
+    stg.processed_at = datetime.now(timezone.utc)
+    db.commit()
+
+    return {"ok": True, "decision": decision_type, "stats": stats}
+
+
+@router.post("/review/{staging_id}/merge")
+def merge_review_item(
+    staging_id: int,
+    req: MergeReviewRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Reviewer manually merges a staged record into an existing master recruiter.
+    """
+    stg = db.query(DiscoveryStaging).filter(DiscoveryStaging.id == staging_id).first()
+    if not stg:
+        raise HTTPException(status_code=404, detail="Staging record not found")
+
+    recruiter = db.query(Recruiter).filter(Recruiter.recruiter_id == req.recruiter_id).first()
+    if not recruiter:
+        raise HTTPException(status_code=404, detail=f"Master recruiter {req.recruiter_id} not found")
+
+    # Enrich master recruiter with missing fields
+    if stg.raw_email and (not recruiter.email or recruiter.email.endswith('@noemail.talentops')):
+        recruiter.email = stg.raw_email.strip().lower()
+    if stg.raw_phone and not recruiter.phone:
+        recruiter.phone = stg.raw_phone.strip()
+    if stg.raw_linkedin and not recruiter.linkedin:
+        recruiter.linkedin = stg.raw_linkedin.strip()
+    if stg.raw_location and not recruiter.location:
+        recruiter.location = stg.raw_location.strip()
+    if stg.raw_title and (not recruiter.title or recruiter.title in ("Recruiter", "Professional")):
+        recruiter.title = stg.raw_title.strip()
+
+    db.add(recruiter)
+
+    stg.processing_status = 'committed'
+    stg.decision = 'ENRICH'
+    stg.decision_reason = f'Manually merged into Recruiter #{recruiter.recruiter_id} ({recruiter.recruiter_name})'
+    stg.processed_at = datetime.now(timezone.utc)
+    db.commit()
+
+    return {
+        "ok": True,
+        "decision": "ENRICH",
+        "recruiter_id": recruiter.recruiter_id,
+        "recruiter_name": recruiter.recruiter_name,
+    }
+
+
+@router.post("/review/{staging_id}/never-accept-pattern")
+def never_accept_pattern(
+    staging_id: int,
+    req: NeverAcceptPatternRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+):
+    """
+    Permanently blacklists a pattern (e.g. company, title, or UI artifact).
+    Saves feedback rule and rejects the staging record.
+    """
+    from ..utils.negative_patterns import add_negative_pattern
+    stg = db.query(DiscoveryStaging).filter(DiscoveryStaging.id == staging_id).first()
+    if not stg:
+        raise HTTPException(status_code=404, detail="Staging record not found")
+
+    # Register pattern into negative blacklist
+    added = add_negative_pattern(
+        pattern=req.pattern,
+        pattern_type=req.pattern_type,
+        reason=req.reason or f"Blacklisted by reviewer from staging record #{staging_id}",
+    )
+
+    stg.processing_status = 'rejected'
+    stg.decision = 'IGNORE'
+    stg.decision_reason = f"Pattern '{req.pattern}' permanently blacklisted by reviewer"
+    stg.processed_at = datetime.now(timezone.utc)
+    db.commit()
+
+    return {"ok": True, "blacklisted_pattern": req.pattern, "added": added}
 
 
 @router.post("/process-now")

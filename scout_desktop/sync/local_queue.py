@@ -35,6 +35,7 @@ class LocalQueue:
         self.db_path = db_path if db_path == ":memory:" else os.path.abspath(db_path)
         self._mem_conn = sqlite3.connect(":memory:") if self.db_path == ":memory:" else None
         self._init_db()
+        self.purge_corrupted_records()
         self.recover_all_stalled_and_dlq_items()
 
     @contextmanager
@@ -346,44 +347,52 @@ class LocalQueue:
     def get_recent_candidates(self, limit: int = 30) -> List[Dict[str, Any]]:
         """
         Returns the most recent valid candidate records (synced or pending) for UI initialization.
-        Eliminates duplicate candidate names and orders from newest to oldest.
+        Eliminates duplicate candidate names, passes candidates through strict candidate gate validation,
+        and orders from newest to oldest. Rejects corrupt/invalid candidates.
         """
+        from scout_desktop.extractor.candidate_gate import create_candidate_if_valid
+
         candidates: List[Dict[str, Any]] = []
         seen_names = set()
         with self._get_conn() as conn:
             cur = conn.execute(
                 "SELECT id, cluster_json, status, created_at FROM queued_observations WHERE status IN ('SYNCED', 'PENDING') ORDER BY id DESC LIMIT ?",
-                (limit * 3,)
+                (limit * 4,)
             )
             for row in cur.fetchall():
                 try:
                     data = json.loads(row[1])
                     contacts = data.get("contacts", [data] if any(k in data for k in ("name", "recruiter_name", "canonical_name", "raw_name")) else [])
                     for c in contacts:
-                        raw_name = c.get("name") or c.get("recruiter_name") or c.get("canonical_name") or c.get("raw_name")
-                        if not raw_name or not isinstance(raw_name, str):
+                        gate_res = create_candidate_if_valid(c, context={
+                            "platform": c.get("platform") or data.get("platform"),
+                            "source_url": c.get("source_url") or data.get("source_url"),
+                            "window_title": c.get("source_page_title") or data.get("source_page_title") or data.get("window_title"),
+                        })
+                        # Discard rejected observations
+                        if gate_res.status == "REJECTED":
                             continue
-                        name = raw_name.replace("\ufffd", " ").strip()
-                        name = " ".join(name.split())
-                        if len(name) < 3 or name.lower() in seen_names or not is_valid_person_name(name):
+
+                        name = gate_res.canonical_name
+                        if not name or len(name) < 3 or name.lower() in seen_names:
                             continue
 
                         seen_names.add(name.lower())
-                        raw_comp = c.get("company") or c.get("company_name") or c.get("current_company", "") or ""
-                        clean_comp = raw_comp.replace("\ufffd", " ").strip()
-                        if "type a" in clean_comp.lower() or not is_valid_company_name(clean_comp):
-                            clean_comp = ""
-                        raw_title = c.get("title") or c.get("current_title", "") or ""
-                        raw_loc = c.get("location") or ""
+                        status = gate_res.status or "REVIEW_REQUIRED"
+                        conf_pct = int(round(gate_res.identity_confidence * 100)) if gate_res.identity_confidence else 50
+                        if status == "VERIFIED" and conf_pct < 75:
+                            conf_pct = 85
+
                         candidates.append({
                             "name": name,
-                            "title": raw_title.replace("\ufffd", " ").strip(),
-                            "company": clean_comp,
-                            "location": raw_loc.replace("\ufffd", " ").strip(),
-                            "platform": c.get("platform") or c.get("canonical_profile_url") or "",
-                            "status": row[2] or "VERIFIED",
-                            "confidence": c.get("confidence", 95),
-                            "profile_url": c.get("profile_url") or c.get("canonical_profile_url") or c.get("linkedin_url") or "",
+                            "title": gate_res.title or "",
+                            "company": gate_res.company or "",
+                            "location": gate_res.location or "",
+                            "platform": gate_res.platform or "DESKTOP_CAPTURE",
+                            "status": status,
+                            "confidence": conf_pct,
+                            "profile_url": gate_res.canonical_profile_url or "",
+                            "field_confidence": gate_res.field_confidence,
                             "created_at": row[3],
                         })
                         if len(candidates) >= limit:
@@ -393,3 +402,37 @@ class LocalQueue:
                 except Exception as e:
                     logger.debug("Failed parsing row %s: %s", row[0], e)
         return candidates
+
+    def purge_corrupted_records(self) -> int:
+        """
+        Scans local queue database and purges or marks REJECTED any historical records
+        containing corrupted company names (e.g. 'cotAMt fiM any') or corrupted locations (e.g. 'D,id - sud').
+        Returns count of purged records.
+        """
+        from scout_desktop.extractor.patterns import is_valid_company_name, is_valid_location
+        purged_count = 0
+        with self._get_conn() as conn:
+            cur = conn.execute("SELECT id, cluster_json, status FROM queued_observations")
+            rows = cur.fetchall()
+            for row_id, c_json, status in rows:
+                try:
+                    data = json.loads(c_json)
+                    raw_comp = data.get("company_name") or data.get("raw_company") or data.get("company")
+                    raw_loc = data.get("location") or data.get("raw_location")
+                    is_corrupt = False
+                    if raw_comp and not is_valid_company_name(str(raw_comp)):
+                        is_corrupt = True
+                    if raw_loc and not is_valid_location(str(raw_loc)):
+                        is_corrupt = True
+                    c_json_lower = str(c_json).lower()
+                    if "cotamt" in c_json_lower or "d,id" in c_json_lower:
+                        is_corrupt = True
+
+                    if is_corrupt:
+                        conn.execute("DELETE FROM queued_observations WHERE id = ?", (row_id,))
+                        purged_count += 1
+                except Exception as e:
+                    logger.debug("Error checking row %s during corruption purge: %s", row_id, e)
+        if purged_count > 0:
+            logger.info("Purged %d corrupted records from local SQLite queue", purged_count)
+        return purged_count

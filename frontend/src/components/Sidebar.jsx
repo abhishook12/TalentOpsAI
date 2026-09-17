@@ -60,7 +60,7 @@ export default function Sidebar() {
     { to: '/directory', label: 'Directory', icon: Map, aliases: ['/states', '/companies'] },
     { to: '/analytics', label: 'Analytics', icon: BarChart2 },
     { to: '/search', label: 'AI Search', icon: Search },
-    { to: '/download-scout', label: 'Desktop Scout', icon: Laptop, badge: scoutVersion ? (scoutVersion.startsWith('v') ? scoutVersion : `v${scoutVersion}`) : 'v2.8.2' },
+    { to: '/download-scout', label: 'Desktop Scout', icon: Laptop, badge: scoutVersion ? (scoutVersion.startsWith('v') ? scoutVersion : `v${scoutVersion}`) : 'v2.8.3' },
     { isGroupHeader: true, label: 'Account' },
     { to: '/profile', label: 'Profile', icon: UserCircle },
     { to: '/settings', label: 'Settings', icon: Settings },

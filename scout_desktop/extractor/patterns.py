@@ -22,7 +22,6 @@ LOCATION_REJECT_TERMS = re.compile(
 )
 
 # Comprehensive geographic indicators (US States, Countries, Major Global Tech Metro Hubs)
-# Note: Two-letter state abbreviations are handled via uppercase or comma-syntax to prevent "in", "or", "me" false positives.
 GEO_INDICATORS = re.compile(
     r"\b(?:area|greater|city|county|region|metro|metropolitan|district|remote|"
     r"united states|united kingdom|usa|uk|canada|india|australia|germany|france|"
@@ -37,9 +36,13 @@ GEO_INDICATORS = re.compile(
     r"austin|san francisco|sf bay|los angeles|atlanta|dallas|houston|denver|phoenix|"
     r"philadelphia|san diego|miami|portland|toronto|vancouver|berlin|paris|amsterdam|"
     r"tokyo|sydney|melbourne|bangalore|bengaluru|mumbai|hyderabad|pune|chennai|delhi|"
-    r"noida|gurgaon|raleigh|durham|chapel hill|san jose|salt lake city|dallas-fort worth)\b|"
-    r"(?:,\s*(?:AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)\b)",
+    r"noida|gurgaon|raleigh|durham|chapel hill|san jose|salt lake city|dallas-fort worth)\b",
     re.IGNORECASE,
+)
+
+# Strict uppercase 2-letter US state code requiring preceding city name of >= 2 characters
+US_STATE_POSTAL_REGEX = re.compile(
+    r"^[A-Za-z\s.-]{2,},\s*(?:AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)$"
 )
 
 UI_ACTIONS = re.compile(
@@ -137,7 +140,11 @@ def clean_location_text(text: Optional[str]) -> Optional[str]:
     cleaned = re.sub(r"\b\d+\s*(?:m|min|h|hr|d|w|mo|y)\s*ago\b.*$", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\s+\d+$", "", cleaned)
     cleaned = re.sub(r"[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]+.*$", "", cleaned)
-    cleaned = re.sub(r"^[\s\-_,·•|]+|[\s\-_,·•|]+$", "", cleaned)
+    # Strip trailing hyphen/dash fragments e.g. " - sud", " - ntu"
+    cleaned = re.sub(r"\s*[-–—]\s*[a-zA-Z]{1,4}$", "", cleaned)
+    # Strip single-letter prefix before comma e.g. "D, "
+    cleaned = re.sub(r"^[a-zA-Z],\s*", "", cleaned)
+    cleaned = re.sub(r"^[\s\-_,·•|:]+|[\s\-_,·•|:]+$", "", cleaned)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
     return cleaned if len(cleaned) >= 3 else None
 
@@ -145,13 +152,35 @@ def clean_location_text(text: Optional[str]) -> Optional[str]:
 def is_valid_location(text: Optional[str]) -> bool:
     """
     Strict Semantic Location Validation.
-    Rejects titles, industries, company suffixes, credentials, pronouns, and metrics.
+    Rejects titles, industries, company suffixes, credentials, pronouns, metrics,
+    and corrupted OCR fragments (e.g. 'D,id - sud', 'San ntu').
     Requires genuine geographic indicators or standard city, state/country syntax.
     """
     if not text or not isinstance(text, str):
         return False
     t = text.strip()
     if len(t) < 3 or len(t) > 80:
+        return False
+
+    # Reject OCR artifacts with internal comma without whitespace (e.g. "D,id", "San,Jose")
+    if re.search(r"[a-zA-Z],[a-zA-Z]", t):
+        return False
+
+    # Reject single-letter tokens immediately before a comma (e.g. "D, id", "A, NY")
+    if re.search(r"\b[a-zA-Z],\s*", t):
+        return False
+
+    # Reject dangling hyphens or fragments (e.g. "- sud", "sud -")
+    if re.search(r"[-–—]\s*[a-zA-Z]{1,4}\b", t) or t.startswith("-") or t.endswith("-"):
+        return False
+
+    # Reject strings with non-standard punctuation chaos or replacement chars
+    if any(c in t for c in [";", ":", "?", "!", "~", "*", "=", "<", ">", "%", "\ufffd"]):
+        return False
+
+    # Words in location must be plausible words (not all short fragments)
+    tokens = [tok for tok in re.split(r"[\s,.-]+", t) if tok]
+    if not tokens or all(len(tok) < 3 for tok in tokens):
         return False
 
     # Reject pronouns & metrics
@@ -174,6 +203,10 @@ def is_valid_location(text: Optional[str]) -> bool:
     if LOCATION_REJECT_TERMS.search(t):
         return False
 
+    # Strict US State Postal abbreviation (e.g. "San Francisco, CA", "Boise, ID")
+    if US_STATE_POSTAL_REGEX.match(t):
+        return True
+
     # Must match genuine geographic keyword
     if GEO_INDICATORS.search(t):
         return True
@@ -181,7 +214,7 @@ def is_valid_location(text: Optional[str]) -> bool:
     # Standard "City, State/Country" with 2-letter state code or standard comma separation
     if re.match(r"^[A-Z][a-zA-Z\s.-]+,\s*[A-Z]{2}$", t):
         return True
-    if re.match(r"^[A-Z][a-zA-Z\s.-]+,\s*[A-Z][a-zA-Z\s.-]+,\s*[A-Z][a-zA-Z\s.-]+$", t):
+    if re.match(r"^[A-Z][a-zA-Z\s.-]+,\s*[A-Z][a-zA-Z\s.-]+(?:,\s*[A-Z][a-zA-Z\s.-]+)?$", t):
         return True
 
     return False
@@ -251,7 +284,7 @@ WORKPLACE_TYPES = re.compile(
 
 
 def clean_company_name(comp: Optional[str]) -> Optional[str]:
-    """Cleans employment type, bullets, and UI triggers from company strings."""
+    """Cleans employment type, bullets, contact info, and UI triggers from company strings."""
     if not comp:
         return None
     cleaned = comp.strip()
@@ -259,6 +292,8 @@ def clean_company_name(comp: Optional[str]) -> Optional[str]:
     cleaned = re.sub(r"^(?:[\(\[]?\d+\+?[\)\]]?\s*[|•·–—\-:]?\s*)+", "", cleaned).strip()
     cleaned = re.sub(r"^Current\s*company:\s*", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\. Click to skip.*$", "", cleaned, flags=re.IGNORECASE)
+    # Strip contact info and UI noise triggers
+    cleaned = re.sub(r"\b(?:contact\s*info|contact|connections|followers)\b.*$", "", cleaned, flags=re.IGNORECASE).strip()
     cleaned = re.sub(
         r"\s*[·•|]\s*(?:full-time|contract|part-time|internship|freelance|apprenticeship|seasonal|hybrid|remote|on-site).*",
         "",
@@ -266,6 +301,7 @@ def clean_company_name(comp: Optional[str]) -> Optional[str]:
         flags=re.IGNORECASE,
     ).strip()
     cleaned = re.sub(r"[·•|].*$", "", cleaned).strip()
+    cleaned = re.sub(r"^[\s\-_,·•|:]+|[\s\-_,·•|:]+$", "", cleaned).strip()
     return cleaned if len(cleaned) >= 2 else None
 
 
@@ -305,6 +341,10 @@ def is_valid_company_name(text: Optional[str]) -> bool:
     if t_lower in {"my", "to", "in", "at", "by", "we", "he", "me", "us", "it", "or", "if", "on", "as", "an", "so", "no", "up", "do", "go", "is", "be"}:
         return False
 
+    # Reject common filler words or pronouns as standalone company names
+    if t_lower in {"any", "some", "every", "all", "none", "each", "both", "either", "neither", "other", "another"}:
+        return False
+
     # Reject OCR artifacts with repeated letters or barcode-like patterns e.g. "iHHI", "lIllI", "|||"
     if re.match(r"^[iIl1|Hh]{3,}$", t):
         return False
@@ -315,6 +355,39 @@ def is_valid_company_name(text: Optional[str]) -> bool:
 
     # Reject email addresses or web paths mistaken as companies
     if "@" in t or "http://" in t or "https://" in t or "www." in t or "/app/" in t_lower or "/chat/" in t_lower:
+        return False
+
+    # ===== Strict OCR Corruption & Mixed Casing Glitch Filter =====
+    # Real company names do NOT have lowercase followed by multiple uppercase letters (e.g. "cotAMt")
+    # Real company names do NOT end with a single uppercase letter after lowercase (e.g. "fiM")
+    comp_tokens = t.split()
+    for tok in comp_tokens:
+        clean_tok = re.sub(r"[^a-zA-Z]", "", tok)
+        if not clean_tok:
+            continue
+        # Lowercase followed by 2+ uppercase letters (e.g. "cotAMt", "teSTing")
+        if re.search(r"[a-z]+[A-Z]{2,}", clean_tok):
+            return False
+        # 2+ lowercase letters followed by single uppercase at end (e.g. "fiM", "producT")
+        if len(clean_tok) >= 3 and re.search(r"^[a-z]{2,}[A-Z]$", clean_tok):
+            return False
+        # Interior uppercase alternation chaos (e.g. "cOtAmT")
+        if re.search(r"[a-z][A-Z][a-z][A-Z]", clean_tok):
+            return False
+        # Starts with lowercase then 2+ uppercase (e.g. "cOTamt")
+        if re.search(r"^[a-z][A-Z]{2,}", clean_tok):
+            return False
+
+    # Reject if ALL tokens are short filler words or OCR fragments (e.g. "cotamt fim any")
+    if all(tok.lower() in {"cotamt", "fim", "any", "the", "and", "or", "in", "of", "to", "a", "an", "is", "for"} for tok in comp_tokens):
+        return False
+
+    # Reject OCR misreadings of "Contact info" or LinkedIn UI text
+    if any(phrase in t_lower for phrase in [
+        "cotamt", "fim any", "cotamt fim", "contact info", "cotamt fim any",
+        "contact details", "contact profile", "mutual connections",
+        "see all connections", "people also viewed",
+    ]):
         return False
 
     # ===== Chrome / Browser / System UI Noise Blocklist =====
@@ -330,6 +403,8 @@ def is_valid_company_name(text: Optional[str]) -> bool:
         # LinkedIn UI noise
         "rmt (you)", "(you)", "connect", "message", "follow",
         "linkedin premium", "linkedin recruiter", "try premium",
+        "cotamt", "cotamt fim any", "cotamt fim", "fim any", "fim",
+        "contact info", "contact details", "contact management",
         # System / taskbar noise
         "ultraviewer", "teamviewer", "anydesk", "task manager",
         "file explorer", "command prompt", "powershell", "terminal",
@@ -355,7 +430,6 @@ def is_valid_company_name(text: Optional[str]) -> bool:
         return False
 
     # Single-word companies under 4 characters are almost always OCR fragments unless on whitelist
-    comp_tokens = t.split()
     if len(comp_tokens) == 1 and len(t) < 4:
         valid_short_corps = {"ibm", "sap", "pwc", "hp", "ey", "bp", "ge", "att", "ups", "aws", "bnp", "dhl", "adp"}
         if t_lower not in valid_short_corps:

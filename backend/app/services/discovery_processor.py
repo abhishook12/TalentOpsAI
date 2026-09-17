@@ -63,7 +63,10 @@ BOGUS_COMPANY_NAMES = {
     'active window', 'candidate card', 'quick search', 'homepage', 'inbox', 
     'contacts', 'search', 'notifications', 'network', 'jobs', 'messaging', 
     'me', 'format text', 'sent items', 'address book', 'ctv- phone',
-    'chelsie walsh', 'kelly moran', 'jeff thomas', 'brenda geisler'
+    'chelsie walsh', 'kelly moran', 'jeff thomas', 'brenda geisler',
+    'cotamt', 'cotamt fim any', 'cotamt fim', 'fim any', 'fim',
+    'contact info', 'contact details', 'contact profile', 'mutual connections',
+    'see all connections', 'any'
 }
 
 
@@ -768,6 +771,13 @@ class DiscoveryProcessor:
                     'decision': 'NEW',
                     'reason': f'High-confidence new candidate entity with primary anchor (score {person.identity_confidence:.2f})',
                 }
+            elif has_employment and not has_strong_profile and not has_verified_email:
+                return {
+                    'person': person,
+                    'recruiter': None,
+                    'decision': 'REVIEW',
+                    'reason': f'TITLE_COMPANY_ONLY: Corroborated title & company found, but held in Review Queue awaiting stable profile URL or verified email (confidence {person.identity_confidence:.2f})',
+                }
             elif has_primary_anchor and not has_verified_email:
                 return {
                     'person': person,
@@ -780,7 +790,7 @@ class DiscoveryProcessor:
                     'person': person,
                     'recruiter': None,
                     'decision': 'REVIEW',
-                    'reason': f'Insufficient anchors or confidence ({person.identity_confidence:.2f}) — human verification required',
+                    'reason': f'MISSING_STABLE_ANCHOR: Insufficient anchors or confidence ({person.identity_confidence:.2f}) — human verification required',
                 }
 
         # Case 2: Master match found

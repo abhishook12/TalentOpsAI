@@ -302,7 +302,9 @@ def clean_company_name(comp: Optional[str]) -> Optional[str]:
         flags=re.IGNORECASE,
     ).strip()
     cleaned = re.sub(r"[·•|].*$", "", cleaned).strip()
-    cleaned = re.sub(r"^[\s\-_,·•|:]+|[\s\-_,·•|:]+$", "", cleaned).strip()
+    # Strip trailing punctuation, brackets, and OCR garbage suffixes e.g. "-(/p", "/p", "- sud"
+    cleaned = re.sub(r"\s*[-–—/\\|]+\s*[a-zA-Z0-9]{1,3}$", "", cleaned).strip()
+    cleaned = re.sub(r"^[\s\-_,·•|:;()\[\]{}]+|[\s\-_,·•|:;()\[\]{}]+$", "", cleaned).strip()
     return cleaned if len(cleaned) >= 2 else None
 
 
@@ -315,6 +317,35 @@ def is_valid_company_name(text: Optional[str]) -> bool:
         return False
 
     t_lower = t.lower()
+
+    # 1. Reject disallowed special characters that never belong in corporate entity names
+    disallowed_chars = set(r"{}\|<>+*~`^$%;?")
+    if any(c in disallowed_chars for c in t):
+        return False
+
+    # 2. Reject unbalanced parentheses or brackets (e.g. "IAou-(/p", "Google (US", "Acme]")
+    if t.count("(") != t.count(")") or t.count("[") != t.count("]"):
+        return False
+
+    # 3. Reject consecutive punctuation or punctuation salad (e.g. "-(/p", "--", "..", "-[", "]/")
+    if re.search(r"[-–—/()\[\]#@!~*^<>_+=:;?]{2,}", t):
+        return False
+
+    # 4. Reject invalid forward slash usage (e.g. "-(/p", "/p", "Acme/")
+    if "/" in t:
+        if re.search(r"/[^\w\s]|[^\w\s]/|/\w{1,2}\b|/\s*$|^\s*/", t):
+            return False
+        if not re.search(r"\b[A-Za-z0-9]+\s*/\s*[A-Za-z0-9]+\b", t):
+            return False
+
+    # 5. Reject punctuation glued to letters without proper formatting (e.g. "-(/p", "Acme[p")
+    if re.search(r"[-–—/\\(]\w$", t) or re.search(r"[a-zA-Z][\[/][a-zA-Z]", t) or re.search(r"[\]/][a-zA-Z]", t):
+        return False
+
+    # 6. Punctuation ratio: non-alphanumeric, non-space characters cannot exceed 22% of total length
+    punct_count = sum(1 for c in t if not c.isalnum() and not c.isspace())
+    if len(t) > 0 and (punct_count / len(t)) > 0.22:
+        return False
 
     # Reject window titles, platform URLs, and navigation/inbox patterns
     if " | linkedin" in t_lower or " - linkedin" in t_lower or t_lower.endswith("linkedin") or "linkedin.com" in t_lower:
@@ -366,9 +397,10 @@ def is_valid_company_name(text: Optional[str]) -> bool:
         clean_tok = re.sub(r"[^a-zA-Z]", "", tok)
         if not clean_tok:
             continue
-        # Lowercase followed by 2+ uppercase letters (e.g. "cotAMt", "teSTing")
+        # Lowercase followed by 2+ uppercase letters (e.g. "cotAMt", "teSTing"), exempting AI brandings (e.g. "OpenAI")
         if re.search(r"[a-z]+[A-Z]{2,}", clean_tok):
-            return False
+            if not (clean_tok.endswith("AI") and re.match(r"^[A-Za-z][a-z]+AI$", clean_tok)):
+                return False
         # 2+ lowercase letters followed by single uppercase at end (e.g. "fiM", "producT")
         if len(clean_tok) >= 3 and re.search(r"^[a-z]{2,}[A-Z]$", clean_tok):
             return False
@@ -378,6 +410,10 @@ def is_valid_company_name(text: Optional[str]) -> bool:
         # Starts with lowercase then 2+ uppercase (e.g. "cOTamt")
         if re.search(r"^[a-z][A-Z]{2,}", clean_tok):
             return False
+        # Word starting with 2+ uppercase followed by 2+ lowercase (OCR glyph noise like "IAou", "GBre", "ZXop")
+        if re.match(r"^[A-Z]{2,}[a-z]{2,}$", clean_tok):
+            if clean_tok.lower() not in {"unesco", "unicef", "naacp", "unhcr"}:
+                return False
 
     # Reject if ALL tokens are short filler words or OCR fragments (e.g. "cotamt fim any")
     if all(tok.lower() in {"cotamt", "fim", "any", "the", "and", "or", "in", "of", "to", "a", "an", "is", "for"} for tok in comp_tokens):
@@ -437,7 +473,13 @@ def is_valid_company_name(text: Optional[str]) -> bool:
             return False
 
     # Reject strings starting or ending with special characters or trailing digits (OCR artifacts like "%iApps", "-5", "System;", "281-")
-    if t[0] in "-–—_%#@!~`^&*()[]{}<>|\\;:\"'/?." or t[-1] in "-–—_%#@!~`^&*()[]{}<>|\\;:\"'/?.,":
+    if t[0] in "-–—_%#@!~`^&*()[]{}<>|\\;:\"'/?.,":
+        return False
+    # Allow trailing period if it is a recognized corporate abbreviation suffix (e.g. Inc., Corp., Ltd., Co.)
+    if t.endswith("."):
+        if not re.search(r"\b(inc|corp|ltd|co|llc|plc|pvt|gmbh)\.$", t_lower):
+            return False
+    elif t[-1] in "-–—_%#@!~`^&*()[]{}<>|\\;:\"'/?.,":
         return False
     if t[-1].isdigit():
         return False

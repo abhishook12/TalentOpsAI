@@ -605,16 +605,17 @@ class MainWindow(QMainWindow):
         **kwargs
     ):
         """Called by app.py when candidate is extracted or verified"""
-        cand_name = display_name or name or kwargs.get("recruiter_name", "Sarah Chen")
-        cand_title = display_title or title or kwargs.get("raw_title", "Engineering Lead")
-        cand_company = display_company or company or kwargs.get("raw_company", "Cloud Systems")
-        cand_loc = display_loc or location or kwargs.get("raw_location", "San Francisco, CA")
+        cand_name = display_name or name or kwargs.get("recruiter_name", "")
+        cand_title = display_title or title or kwargs.get("raw_title", "")
+        cand_company = display_company or company or kwargs.get("raw_company", "")
+        cand_loc = display_loc or location or kwargs.get("raw_location", "")
         cand_status = (status or "CANONICAL").upper()
         p_url = profile_url or kwargs.get("linkedin_url", "")
 
-        self.page_scan.lbl_cand_name.setText(cand_name)
-        self.page_scan.lbl_cand_subtitle.setText(f"{cand_title} · {cand_company}")
-        self.page_scan.lbl_cand_loc.setText(f"📍 {cand_loc}")
+        self.page_scan.lbl_cand_name.setText(cand_name or "Unknown Candidate")
+        subtitle_parts = [p for p in (cand_title, cand_company) if p]
+        self.page_scan.lbl_cand_subtitle.setText(" · ".join(subtitle_parts) if subtitle_parts else "Professional Profile")
+        self.page_scan.lbl_cand_loc.setText(f"📍 {cand_loc}" if cand_loc else "📍 Location not specified")
         self.page_scan.chip_latest.set_state(cand_status)
         if p_url:
             self._latest_profile_url = p_url
@@ -634,14 +635,23 @@ class MainWindow(QMainWindow):
             except (ValueError, TypeError):
                 return default_pct
 
-        cand_id = kwargs.get("id") or kwargs.get("candidate_id") or "sarah-chen"
+        cand_id = kwargs.get("id") or kwargs.get("candidate_id") or "cand-active"
         self.page_scan._current_candidate_id = cand_id
 
         fc = kwargs.get("field_confidence") or {}
-        name_conf = _to_pct(fc.get("name"), 99)
-        title_conf = _to_pct(fc.get("title"), 96)
-        comp_conf = _to_pct(fc.get("company"), 93)
-        loc_conf = _to_pct(fc.get("location"), 71)
+        name_conf = _to_pct(fc.get("name"), 95 if cand_name else 0)
+        title_conf = _to_pct(fc.get("title"), 90 if cand_title else 0)
+        comp_conf = _to_pct(fc.get("company"), 90 if cand_company else 0)
+        loc_conf = _to_pct(fc.get("location"), 85 if cand_loc else 0)
+
+        # Hard boundary: if field is missing or invalid, confidence MUST be 0
+        if not cand_company:
+            comp_conf = 0
+        if not cand_loc:
+            loc_conf = 0
+        if not cand_title:
+            title_conf = 0
+
         if hasattr(self.page_scan, "update_meters"):
             self.page_scan.update_meters(
                 name=cand_name,

@@ -926,10 +926,17 @@ class ScanPage(QWidget):
     ):
         if cand_id:
             self._current_candidate_id = cand_id
-        self.meter_name.set_score(name_conf if name else 0, _smart_truncate("Name", name, 30))
-        self.meter_title.set_score(title_conf if title else 0, _smart_truncate("Title", title, 36))
-        self.meter_company.set_score(comp_conf if company else 0, _smart_truncate("Company", company, 34))
-        self.meter_loc.set_score(loc_conf if location else 0, _smart_truncate("Location", location, 32))
+
+        name_label = name if (name and name_conf > 0) else "Not detected"
+        title_label = title if (title and title_conf > 0) else "Not detected"
+        comp_label = company if (company and comp_conf > 0) else "Not detected"
+        loc_label = location if (location and loc_conf > 0) else "Not detected"
+
+        self.meter_name.set_score(name_conf if (name and name_conf > 0) else 0, _smart_truncate("Name", name_label, 30))
+        self.meter_title.set_score(title_conf if (title and title_conf > 0) else 0, _smart_truncate("Title", title_label, 36))
+        self.meter_company.set_score(comp_conf if (company and comp_conf > 0) else 0, _smart_truncate("Company", comp_label, 34))
+        self.meter_loc.set_score(loc_conf if (location and loc_conf > 0) else 0, _smart_truncate("Location", loc_label, 32))
+
 
     def _create_checklist_item(self, icon: str, text: str, passed: bool) -> QWidget:
         w = QWidget()

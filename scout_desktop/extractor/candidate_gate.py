@@ -601,16 +601,22 @@ def create_candidate_if_valid(
     if has_employment:
         decisive_reasons.append("EMPLOYMENT_CORROBORATED: Professional title and company verified")
 
+    # If the observation contained raw company text that had to be stripped as OCR noise/garbage,
+    # do NOT auto-promote to VERIFIED — route to REVIEW_REQUIRED for human inspection.
+    had_corrupted_company = bool(raw_comp and not valid_company)
+
     verified_standard = (
         has_stable_identifier
         and quality_score >= 70
         and identity_conf >= 0.75
+        and not had_corrupted_company
     )
     verified_chat_context = (
         has_stable_identifier
         and quality_score >= 75
         and identity_conf >= 0.75
         and is_recruiter_chat
+        and not had_corrupted_company
     )
 
     if verified_standard or verified_chat_context:
@@ -618,6 +624,12 @@ def create_candidate_if_valid(
         status = "VERIFIED"
         is_valid = True
         reasons.extend(decisive_reasons)
+    elif had_corrupted_company:
+        decision = "REVIEW_REQUIRED"
+        status = "REVIEW_REQUIRED"
+        is_valid = False
+        reasons.append(f"CORRUPTED_COMPANY_NOISE: Raw company '{raw_comp}' was rejected as OCR artifact; held in Review Queue")
+        checklist.append("Company noise detected: Routed to Review Queue")
     elif has_employment and not has_stable_identifier:
         decision = "REVIEW_REQUIRED"
         status = "REVIEW_REQUIRED"

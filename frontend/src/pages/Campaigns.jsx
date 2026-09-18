@@ -12,17 +12,17 @@ import api from '../services/api';
 import { useSessionState } from '../hooks/useSessionState';
 
 import BridgeStatus from '../components/BridgeStatus';
-import RichTextComposer from '../components/RichTextComposer';
 import SignatureManager from '../components/SignatureManager';
 import DragDropRecipientBuilder from '../components/campaigns/DragDropRecipientBuilder';
 import CampaignProgress from '../components/CampaignProgress';
 import CampaignLogs from '../components/CampaignLogs';
 
-import TemplateLibraryModal from '../components/campaigns/TemplateLibraryModal';
-import ConnectionWizard from '../components/ConnectionWizard';
-import PreflightSafetyModal from '../components/campaigns/PreflightSafetyModal';
-import SequenceGeneratorModal from '../components/campaigns/SequenceGeneratorModal';
-import DomainHealthModal from '../components/campaigns/DomainHealthModal';
+const RichTextComposer = React.lazy(() => import('../components/RichTextComposer'));
+const TemplateLibraryModal = React.lazy(() => import('../components/campaigns/TemplateLibraryModal'));
+const ConnectionWizard = React.lazy(() => import('../components/ConnectionWizard'));
+const PreflightSafetyModal = React.lazy(() => import('../components/campaigns/PreflightSafetyModal'));
+const SequenceGeneratorModal = React.lazy(() => import('../components/campaigns/SequenceGeneratorModal'));
+const DomainHealthModal = React.lazy(() => import('../components/campaigns/DomainHealthModal'));
 
 import { setLastEmail, saveTemplate } from '../lib/emailTemplates';
 
@@ -846,26 +846,28 @@ export default function Campaigns() {
         </div>
 
         {/* Modals */}
-        {showTemplateLibrary && (
-          <TemplateLibraryModal isOpen onClose={() => setShowTemplateLibrary(false)} onImport={(t) => { startNewCampaign(t); setShowTemplateLibrary(false); }} />
-        )}
-        {showSequenceGenerator && (
-          <SequenceGeneratorModal
-            isOpen
-            onClose={() => setShowSequenceGenerator(false)}
-            onApplyTouch={(touch) => {
-              startNewCampaign({ subject: touch.subject, body: touch.body });
-              setShowSequenceGenerator(false);
-            }}
-          />
-        )}
-        {showDomainHealth && (
-          <DomainHealthModal
-            isOpen
-            onClose={() => setShowDomainHealth(false)}
-            initialDomain={fromEmail || 'talentops.ai'}
-          />
-        )}
+        <React.Suspense fallback={null}>
+          {showTemplateLibrary && (
+            <TemplateLibraryModal isOpen onClose={() => setShowTemplateLibrary(false)} onImport={(t) => { startNewCampaign(t); setShowTemplateLibrary(false); }} />
+          )}
+          {showSequenceGenerator && (
+            <SequenceGeneratorModal
+              isOpen
+              onClose={() => setShowSequenceGenerator(false)}
+              onApplyTouch={(touch) => {
+                startNewCampaign({ subject: touch.subject, body: touch.body });
+                setShowSequenceGenerator(false);
+              }}
+            />
+          )}
+          {showDomainHealth && (
+            <DomainHealthModal
+              isOpen
+              onClose={() => setShowDomainHealth(false)}
+              initialDomain={fromEmail || 'talentops.ai'}
+            />
+          )}
+        </React.Suspense>
       </div>
     );
   }
@@ -1100,7 +1102,9 @@ export default function Campaigns() {
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 280 }}>
                   <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Message</label>
                   <div style={{ flex: 1, background: 'var(--bg-surface)', border: '1px solid var(--card-border)', borderRadius: 6, overflow: 'hidden', minHeight: 280 }}>
-                    <RichTextComposer content={body} onChange={setBody} placeholder="Write your email here… use {{ variables }} for personalization" />
+                    <React.Suspense fallback={<div style={{ padding: 24, color: 'var(--text-muted)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}><span className="ti ti-loader animate-spin" /> Loading editor engine…</div>}>
+                      <RichTextComposer content={body} onChange={setBody} placeholder="Write your email here… use {{ variables }} for personalization" />
+                    </React.Suspense>
                   </div>
                 </div>
 
@@ -1364,40 +1368,44 @@ export default function Campaigns() {
       `}</style>
 
       {/* ── Modals ── */}
-      {showTemplateLibrary && (
-        <TemplateLibraryModal isOpen onClose={() => setShowTemplateLibrary(false)} onImport={(t) => { handleTemplateImport(t); setShowTemplateLibrary(false); }} />
-      )}
-      {showSequenceGenerator && (
-        <SequenceGeneratorModal
-          isOpen
-          onClose={() => setShowSequenceGenerator(false)}
-          onApplyTouch={(touch) => {
-            setSubject(touch.subject);
-            setBody(touch.body);
-            setShowSequenceGenerator(false);
-          }}
-        />
-      )}
-      {showDomainHealth && (
-        <DomainHealthModal
-          isOpen
-          onClose={() => setShowDomainHealth(false)}
-          initialDomain={fromEmail || 'talentops.ai'}
-        />
-      )}
-      {showConnectionWizard && (
-        <ConnectionWizard onClose={() => setShowConnectionWizard(false)} onSuccess={() => { setShowConnectionWizard(false); fetchAccounts(); }} />
-      )}
-      <PreflightSafetyModal
-        isOpen={showSafetyModal}
-        onClose={() => setShowSafetyModal(false)}
-        campaignId={activeCampaignId}
-        preflightData={safetyPreflightData}
-        subject={subject}
-        body={body}
-        onConfirmLaunch={handleConfirmLaunch}
-        isLaunching={isSending}
-      />
+      <React.Suspense fallback={null}>
+        {showTemplateLibrary && (
+          <TemplateLibraryModal isOpen onClose={() => setShowTemplateLibrary(false)} onImport={(t) => { handleTemplateImport(t); setShowTemplateLibrary(false); }} />
+        )}
+        {showSequenceGenerator && (
+          <SequenceGeneratorModal
+            isOpen
+            onClose={() => setShowSequenceGenerator(false)}
+            onApplyTouch={(touch) => {
+              setSubject(touch.subject);
+              setBody(touch.body);
+              setShowSequenceGenerator(false);
+            }}
+          />
+        )}
+        {showDomainHealth && (
+          <DomainHealthModal
+            isOpen
+            onClose={() => setShowDomainHealth(false)}
+            initialDomain={fromEmail || 'talentops.ai'}
+          />
+        )}
+        {showConnectionWizard && (
+          <ConnectionWizard onClose={() => setShowConnectionWizard(false)} onSuccess={() => { setShowConnectionWizard(false); fetchAccounts(); }} />
+        )}
+        {showSafetyModal && (
+          <PreflightSafetyModal
+            isOpen={showSafetyModal}
+            onClose={() => setShowSafetyModal(false)}
+            campaignId={activeCampaignId}
+            preflightData={safetyPreflightData}
+            subject={subject}
+            body={body}
+            onConfirmLaunch={handleConfirmLaunch}
+            isLaunching={isSending}
+          />
+        )}
+      </React.Suspense>
       </div>
     </CampaignErrorBoundary>
   );

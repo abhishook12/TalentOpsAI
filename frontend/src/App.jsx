@@ -1,5 +1,5 @@
 import { useLocation, useNavigate, Outlet, Navigate } from '@tanstack/react-router'
-import { useEffect, useMemo, useRef, useState, Component } from 'react'
+import { useEffect, useMemo, useRef, useState, Component, lazy, Suspense } from 'react'
 import Sidebar from './components/Sidebar'
 import UpdateCenter from './components/UpdateCenter'
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -9,9 +9,11 @@ import BombproofErrorBoundary from './components/ui/BombproofErrorBoundary'
 import { AnalyticsProvider } from './context/AnalyticsProvider'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
 import { Toaster } from 'react-hot-toast'
-import CommandPalette from './components/CommandPalette'
 import NotificationCenter from './components/NotificationCenter'
-import AISidePanel from './components/ai/AISidePanel'
+
+const CommandPalette = lazy(() => import('./components/CommandPalette'))
+const AISidePanel = lazy(() => import('./components/ai/AISidePanel'))
+const ProcessLoadModal = lazy(() => import('./components/telemetry/ProcessLoadModal'))
 
 // Global settings
 // axios credentials set in main.jsx
@@ -93,6 +95,7 @@ function AppShell() {
   const [aiPanelOpen, setAiPanelOpen] = useState(false)
   const [dbConnected, setDbConnected] = useState(true)
   const [dbRecordCount, setDbRecordCount] = useState('437k+')
+  const [processModalOpen, setProcessModalOpen] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -225,20 +228,60 @@ function AppShell() {
 
   return (
     <>
-      <CommandPalette />
-      <AISidePanel
-        isOpen={aiPanelOpen}
-        onToggle={() => setAiPanelOpen(!aiPanelOpen)}
-        currentContext={{ name: pageName, path: location.pathname }}
-      />
+      <Suspense fallback={null}>
+        <CommandPalette />
+        <AISidePanel
+          isOpen={aiPanelOpen}
+          onToggle={() => setAiPanelOpen(!aiPanelOpen)}
+          currentContext={{ name: pageName, path: location.pathname }}
+        />
+        {processModalOpen && (
+          <ProcessLoadModal
+            isOpen={processModalOpen}
+            onClose={() => setProcessModalOpen(false)}
+            dbRecordCount={dbRecordCount}
+          />
+        )}
+      </Suspense>
       <Toaster position="top-right" toastOptions={{ style: { background: 'var(--main-bg)', color: 'var(--text-primary)', border: '1px solid var(--border)', fontSize: '13px', borderRadius: '8px' } }} />
       <UpdateCenter />
       <div className="cc-shell">
         <Sidebar />
         <div className="cc-main">
           <header className="cc-topbar">
-            <div style={{ color: 'var(--text-secondary)', fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', minWidth: 0 }}>
-              {pageName}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
+              <div style={{ color: 'var(--text-secondary)', fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', minWidth: 0 }}>
+                {pageName}
+              </div>
+              <button
+                onClick={() => setProcessModalOpen(true)}
+                title="View Real-Time System Process Load & Engine Vitals"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '3px 10px',
+                  borderRadius: 999,
+                  background: 'rgba(16, 185, 129, 0.08)',
+                  border: '1px solid rgba(16, 185, 129, 0.22)',
+                  color: '#10b981',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <span style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: '#10b981',
+                  boxShadow: '0 0 6px #10b981'
+                }} />
+                <span>Process Load: {dbRecordCount}</span>
+                <span style={{ opacity: 0.5 }}>•</span>
+                <span style={{ color: 'var(--text-secondary, #a1a1aa)', fontWeight: 500 }}>⚡ Telemetry</span>
+              </button>
             </div>
             <div className="cc-top-actions">
               <div id="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 10 }} />

@@ -262,8 +262,29 @@ export default function ScoutNodesPanel() {
                       <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontFamily: 'var(--mono)' }}>({node.scout_id})</span>
                       <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>• {node.user_email}</span>
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-                      Device: <strong>{node.device_name}</strong> • Heartbeat: <strong style={{ color: node.heartbeat_seconds_ago < 60 ? '#10b981' : '#f59e0b' }}>{node.heartbeat_formatted}</strong>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                      <span>Device: <strong>{node.device_name}</strong></span>
+                      <span>•</span>
+                      <span>Heartbeat: <strong style={{ color: node.heartbeat_seconds_ago < 60 ? '#10b981' : '#f59e0b' }}>{node.heartbeat_formatted}</strong></span>
+                      {node.cpu_percent !== undefined && node.cpu_percent !== null && (
+                        <>
+                          <span>•</span>
+                          <span
+                            style={{
+                              padding: '1px 6px',
+                              borderRadius: 4,
+                              background: node.load_level === 'OPTIMAL' ? 'rgba(16,185,129,0.12)' : (node.load_level === 'ACTIVE' ? 'rgba(56,189,248,0.12)' : 'rgba(245,158,11,0.12)'),
+                              border: `1px solid ${node.load_level === 'OPTIMAL' ? 'rgba(16,185,129,0.3)' : (node.load_level === 'ACTIVE' ? 'rgba(56,189,248,0.3)' : 'rgba(245,158,11,0.3)')}`,
+                              color: node.load_level === 'OPTIMAL' ? '#10b981' : (node.load_level === 'ACTIVE' ? '#38bdf8' : '#f59e0b'),
+                              fontSize: 10,
+                              fontFamily: 'var(--mono)',
+                              fontWeight: 700,
+                            }}
+                          >
+                            CPU: {node.cpu_percent}% • RAM: {node.memory_mb} MB ({node.load_level || 'OPTIMAL'})
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

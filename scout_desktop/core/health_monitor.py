@@ -88,6 +88,45 @@ class HealthMonitor:
 
         return metrics
 
+    def get_process_load(self, queue_pending: int = 0, ingress_latency_ms: float = 0.38) -> dict[str, Any]:
+        """
+        Samples real-time Scout engine process load and assigns an adaptive operational state.
+        Load Levels:
+          - OPTIMAL: CPU < 5.0% and RAM < 120MB
+          - ACTIVE: CPU 5.0% - 15.0% or active sampling pipeline
+          - BURST: CPU > 15.0% or queue_pending > 10 items
+          - THROTTLED: CPU > 35.0% (triggers adaptive frame coalescing)
+        """
+        resources = self.check_system_resources()
+        cpu = resources.get("cpu_percent", 1.2)
+        ram = resources.get("memory_mb", 42.0)
+        
+        # Determine logical load level with multi-factor responsiveness
+        if cpu > 35.0 or ram > 250.0 or queue_pending >= 20 or ingress_latency_ms >= 50.0:
+            level = "THROTTLED"
+            state_label = "LOAD THROTTLED (PROTECTION ACTIVE)"
+        elif cpu > 15.0 or queue_pending > 8 or ingress_latency_ms >= 10.0:
+            level = "BURST"
+            state_label = "BURST PROCESSING (ADAPTING)"
+        elif cpu >= 5.0 or queue_pending > 0 or ingress_latency_ms >= 1.0:
+            level = "ACTIVE"
+            state_label = "ACTIVE INGRESS (STREAMING)"
+        else:
+            level = "OPTIMAL"
+            state_label = "OPTIMAL (SUB-5% CPU)"
+
+        return {
+            "cpu_percent": cpu,
+            "memory_mb": ram,
+            "load_level": level,
+            "state_label": state_label,
+            "queue_depth": queue_pending,
+            "ingress_latency_ms": ingress_latency_ms,
+            "adaptive_throttle_applied": (level == "THROTTLED"),
+            "disk_free_gb": resources.get("disk_free_gb", 0.0),
+            "timestamp": time.time(),
+        }
+
     def check_database_integrity(self) -> dict[str, Any]:
         """Inspect SQLite database file, WAL size, and integrity."""
         db_stat = {

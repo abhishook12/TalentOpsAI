@@ -287,6 +287,103 @@ class ScanPage(QWidget):
         obs_r_layout.addWidget(self.lbl_conf)
 
         head_layout.addWidget(obs_ribbon)
+
+        # Edge Process Load & Telemetry HUD Ribbon
+        self.load_ribbon = QFrame()
+        self.load_ribbon.setStyleSheet(f"""
+            QFrame {{
+                background-color: {COLOR_BG_BASE};
+                border: 1px solid {COLOR_SURFACE_BORDER};
+                border-radius: 6px;
+            }}
+            QLabel {{
+                background: transparent;
+                border: none;
+            }}
+        """)
+        load_r_layout = QHBoxLayout(self.load_ribbon)
+        load_r_layout.setContentsMargins(12, 6, 12, 6)
+        load_r_layout.setSpacing(10)
+
+        self.lbl_load_dot = QLabel("●")
+        self.lbl_load_dot.setFont(QFont("Consolas", 7))
+        self.lbl_load_dot.setStyleSheet("color: #10B981;")
+        load_r_layout.addWidget(self.lbl_load_dot)
+
+        lbl_load_tag = QLabel("EDGE PROCESS LOAD:")
+        lbl_load_tag.setFont(QFont("Consolas", 7, QFont.Weight.Bold))
+        lbl_load_tag.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
+        load_r_layout.addWidget(lbl_load_tag)
+
+        self.lbl_hud_load_pill = QLabel("OPTIMAL")
+        self.lbl_hud_load_pill.setFont(QFont("Consolas", 7, QFont.Weight.Bold))
+        self.lbl_hud_load_pill.setStyleSheet(f"""
+            background-color: rgba(16, 185, 129, 0.15);
+            color: #10B981;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            border-radius: 3px;
+            padding: 1px 6px;
+        """)
+        load_r_layout.addWidget(self.lbl_hud_load_pill)
+
+        self.lbl_hud_cpu = QLabel("CPU: 0.0%")
+        self.lbl_hud_cpu.setFont(QFont("Consolas", 7, QFont.Weight.Bold))
+        self.lbl_hud_cpu.setStyleSheet(f"""
+            background-color: {COLOR_SURFACE_CARD};
+            color: {COLOR_TEXT_PRIMARY};
+            border: 1px solid {COLOR_SURFACE_BORDER};
+            border-radius: 3px;
+            padding: 1px 6px;
+        """)
+        load_r_layout.addWidget(self.lbl_hud_cpu)
+
+        self.lbl_hud_ram = QLabel("RAM: 0.0 MB")
+        self.lbl_hud_ram.setFont(QFont("Consolas", 7, QFont.Weight.Bold))
+        self.lbl_hud_ram.setStyleSheet(f"""
+            background-color: {COLOR_SURFACE_CARD};
+            color: {COLOR_TEXT_PRIMARY};
+            border: 1px solid {COLOR_SURFACE_BORDER};
+            border-radius: 3px;
+            padding: 1px 6px;
+        """)
+        load_r_layout.addWidget(self.lbl_hud_ram)
+
+        load_r_layout.addStretch()
+
+        self.lbl_hud_latency = QLabel("LATENCY: 0.4ms")
+        self.lbl_hud_latency.setFont(QFont("Consolas", 7))
+        self.lbl_hud_latency.setStyleSheet(f"""
+            background-color: {COLOR_SURFACE_CARD};
+            color: {COLOR_TEXT_MUTED};
+            border: 1px solid {COLOR_SURFACE_BORDER};
+            border-radius: 3px;
+            padding: 1px 6px;
+        """)
+        load_r_layout.addWidget(self.lbl_hud_latency)
+
+        self.lbl_hud_queue = QLabel("QUEUE: 0 PENDING")
+        self.lbl_hud_queue.setFont(QFont("Consolas", 7))
+        self.lbl_hud_queue.setStyleSheet(f"""
+            background-color: {COLOR_SURFACE_CARD};
+            color: {COLOR_TEXT_MUTED};
+            border: 1px solid {COLOR_SURFACE_BORDER};
+            border-radius: 3px;
+            padding: 1px 6px;
+        """)
+        load_r_layout.addWidget(self.lbl_hud_queue)
+
+        self.lbl_hud_state = QLabel("ENGINE: STEADY")
+        self.lbl_hud_state.setFont(QFont("Consolas", 7, QFont.Weight.Bold))
+        self.lbl_hud_state.setStyleSheet(f"""
+            background-color: {COLOR_SURFACE_CARD};
+            color: {COLOR_TEXT_SECONDARY};
+            border: 1px solid {COLOR_SURFACE_BORDER};
+            border-radius: 3px;
+            padding: 1px 6px;
+        """)
+        load_r_layout.addWidget(self.lbl_hud_state)
+
+        head_layout.addWidget(self.load_ribbon)
         main_layout.addWidget(head_card)
 
         # ── 2. Two Columns Main Content ─────────────────────────────────────
@@ -696,6 +793,47 @@ class ScanPage(QWidget):
             self.lbl_sync_st.setText("[ ACTIVE ]")
         else:
             self.lbl_sync_st.setText("[ IDLE ]")
+
+    def update_process_load_hud(
+        self,
+        cpu_pct: float = 0.0,
+        mem_mb: float = 0.0,
+        latency_ms: float = 0.0,
+        queue_depth: int = 0,
+        load_level: str = "OPTIMAL",
+        state_label: str = "Optimal Execution"
+    ):
+        """Dynamically renders real-time process load vitals onto the Obsidian Executive HUD."""
+        load_level = (load_level or "OPTIMAL").upper()
+        color_map = {
+            "OPTIMAL": ("#10B981", "rgba(16, 185, 129, 0.15)", "rgba(16, 185, 129, 0.4)"),
+            "ACTIVE": ("#38BDF8", "rgba(56, 189, 248, 0.15)", "rgba(56, 189, 248, 0.4)"),
+            "BURST": ("#F59E0B", "rgba(245, 158, 11, 0.15)", "rgba(245, 158, 11, 0.4)"),
+            "THROTTLED": ("#A855F7", "rgba(168, 85, 247, 0.15)", "rgba(168, 85, 247, 0.4)"),
+        }
+        text_color, bg_color, border_color = color_map.get(load_level, color_map["OPTIMAL"])
+
+        if hasattr(self, "lbl_load_dot"):
+            self.lbl_load_dot.setStyleSheet(f"color: {text_color};")
+        if hasattr(self, "lbl_hud_load_pill"):
+            self.lbl_hud_load_pill.setText(load_level)
+            self.lbl_hud_load_pill.setStyleSheet(f"""
+                background-color: {bg_color};
+                color: {text_color};
+                border: 1px solid {border_color};
+                border-radius: 3px;
+                padding: 1px 6px;
+            """)
+        if hasattr(self, "lbl_hud_cpu"):
+            self.lbl_hud_cpu.setText(f"CPU: {cpu_pct:.1f}%")
+        if hasattr(self, "lbl_hud_ram"):
+            self.lbl_hud_ram.setText(f"RAM: {mem_mb:.1f} MB")
+        if hasattr(self, "lbl_hud_latency"):
+            self.lbl_hud_latency.setText(f"LATENCY: {latency_ms:.1f}ms")
+        if hasattr(self, "lbl_hud_queue"):
+            self.lbl_hud_queue.setText(f"QUEUE: {queue_depth} PENDING")
+        if hasattr(self, "lbl_hud_state"):
+            self.lbl_hud_state.setText(f"ENGINE: {state_label.upper()}")
 
     def _create_monochrome_stat(self, title: str, count: str, sub: str) -> QWidget:
         box = Card()

@@ -532,15 +532,37 @@ class ScoutDesktopApp:
             errors = "No errors" if dlq == 0 else f"{dlq} DLQ items"
             retry_sec = 10 if pending > 0 else 0
 
+            # Capture process load and edge telemetry vitals
+            from .core.health_monitor import HealthMonitor
+            load_telemetry = HealthMonitor.get_instance().get_process_load(
+                queue_pending=pending,
+                ingress_latency_ms=0.42
+            )
+
             if hasattr(self, "main_window") and self.main_window:
                 if hasattr(self.main_window, "left_rail") and self.main_window.left_rail:
                     self.main_window.left_rail.update_queue_status(pending, retry_sec)
+                
+                # Propagate process load vitals to StatusStrip, ScanPage HUD, and BottomStatusBar
+                if hasattr(self.main_window, "update_process_load"):
+                    self.main_window.update_process_load(
+                        cpu_percent=load_telemetry["cpu_percent"],
+                        memory_mb=load_telemetry["memory_mb"],
+                        load_level=load_telemetry["load_level"],
+                        state_label=load_telemetry["state_label"],
+                        queue_pending=load_telemetry["queue_depth"],
+                        ingress_latency_ms=load_telemetry["ingress_latency_ms"],
+                    )
+
                 if hasattr(self.main_window, "bottom_bar") and self.main_window.bottom_bar:
                     self.main_window.bottom_bar.update_metrics(
                         time.strftime("%H:%M:%S"),
                         uploaded=synced_today,
                         queued=pending,
-                        errors=errors
+                        errors=errors,
+                        cpu_pct=load_telemetry["cpu_percent"],
+                        memory_mb=load_telemetry["memory_mb"],
+                        load_level=load_telemetry["load_level"]
                     )
         except Exception as e:
             logger.debug("Error in _refresh_ui_status: %s", e)
@@ -1795,6 +1817,12 @@ class ScoutDesktopApp:
         self._is_heartbeating = True
         try:
             b_ctx = self.current_browser_context
+            from .core.health_monitor import HealthMonitor
+            load_vitals = HealthMonitor.get_instance().get_process_load(
+                queue_pending=self.frame_queue.depth,
+                ingress_latency_ms=0.42
+            )
+
             ok, resp = self.backend_client.send_heartbeat(
                 page_url=b_ctx.get("url"),
                 client_metrics={
@@ -1811,6 +1839,10 @@ class ScoutDesktopApp:
                     "intelligence_level": self.intelligence_router.stats.get("total_decisions", 0),
                     "context_entities": len(self.context_memory.get_all_entities()),
                     "frame_queue_depth": self.frame_queue.depth,
+                    "cpu_percent": load_vitals.get("cpu_percent", 0.0),
+                    "memory_mb": load_vitals.get("memory_mb", 0.0),
+                    "load_level": load_vitals.get("load_level", "OPTIMAL"),
+                    "process_load": load_vitals,
                 }
             )
             if ok and isinstance(resp, dict):

@@ -22,6 +22,9 @@ from ..models.staging_models import DiscoveryStaging
 from ..models.auth_models import User
 from ..models.update_models import ScoutInstallation, ScoutFleetBroadcast
 
+# Thread-safe in-memory cache for live node edge process vitals (CPU %, RAM MB, Load Level)
+_NODE_PROCESS_VITALS: Dict[str, Dict[str, Any]] = {}
+
 
 def record_scout_heartbeat(
     db: Session,
@@ -37,6 +40,21 @@ def record_scout_heartbeat(
     """
     now = datetime.now(timezone.utc)
     
+    # Ingest and cache real-time edge process load vitals
+    if client_metrics and device_id:
+        cpu = client_metrics.get("cpu_percent")
+        mem = client_metrics.get("memory_mb")
+        load_lvl = client_metrics.get("load_level")
+        p_load = client_metrics.get("process_load")
+        if cpu is not None or mem is not None or p_load is not None:
+            _NODE_PROCESS_VITALS[device_id] = {
+                "cpu_percent": round(float(cpu), 1) if cpu is not None else None,
+                "memory_mb": round(float(mem), 1) if mem is not None else None,
+                "load_level": load_lvl or "OPTIMAL",
+                "process_load": p_load,
+                "updated_at": now.isoformat(),
+            }
+
     device = db.query(ExtensionDevice).filter(
         ExtensionDevice.device_id == device_id
     ).first()
@@ -242,6 +260,13 @@ def get_all_scout_nodes_telemetry(db: Session) -> Dict[str, Any]:
         user_name = f"{u.first_name or ''} {u.last_name or ''}".strip() or (u.email.split('@')[0] if u else "Unassigned")
         user_email = u.email if u else "—"
 
+        vitals = _NODE_PROCESS_VITALS.get(d.device_id, {})
+        is_node_online = (heartbeat_sec is not None and heartbeat_sec < 120)
+        node_cpu = vitals.get("cpu_percent") if is_node_online else None
+        node_mem = vitals.get("memory_mb") if is_node_online else None
+        node_load = vitals.get("load_level") if is_node_online else "OFFLINE"
+        node_process_load = vitals.get("process_load") if is_node_online else None
+
         nodes_telemetry.append({
             "scout_id": f"SCOUT-DEV-{d.id:03d}",
             "user_id": u.id if u else d.owner_user_id,
@@ -278,6 +303,10 @@ def get_all_scout_nodes_telemetry(db: Session) -> Dict[str, Any]:
             "review_rate": review_rate,
             "rejection_rate": rejection_rate,
             "error_rate": error_rate,
+            "cpu_percent": node_cpu,
+            "memory_mb": node_mem,
+            "load_level": node_load,
+            "process_load": node_process_load,
         })
 
     for u in all_users:

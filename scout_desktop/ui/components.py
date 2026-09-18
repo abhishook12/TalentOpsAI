@@ -481,50 +481,59 @@ class StatusStrip(QFrame):
         layout.setSpacing(10)
 
         # Dot
-        dot = QLabel("■")
-        dot.setFont(QFont("Consolas", 8, QFont.Weight.Bold))
-        dot.setStyleSheet("color: #FFFFFF;")
-        layout.addWidget(dot)
+        self.dot = QLabel("■")
+        self.dot.setFont(QFont("Consolas", 8, QFont.Weight.Bold))
+        self.dot.setStyleSheet("color: #10B981;")
+        layout.addWidget(self.dot)
 
-        lbl_engine = QLabel("STREAM ENGINE: ACTIVE")
-        lbl_engine.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
-        lbl_engine.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
-        layout.addWidget(lbl_engine)
+        self.lbl_engine = QLabel("STREAM ENGINE: ACTIVE")
+        self.lbl_engine.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
+        self.lbl_engine.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
+        layout.addWidget(self.lbl_engine)
 
         sep1 = QLabel("/")
         sep1.setStyleSheet(f"color: {COLOR_SURFACE_BORDER}; font-family: 'Consolas';")
         layout.addWidget(sep1)
 
-        lbl_proto_title = QLabel("STORE PROTOCOL:")
-        lbl_proto_title.setFont(QFont("Segoe UI", 8))
-        lbl_proto_title.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
-        layout.addWidget(lbl_proto_title)
+        self.lbl_load_title = QLabel("LOAD:")
+        self.lbl_load_title.setFont(QFont("Segoe UI", 8))
+        self.lbl_load_title.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
+        layout.addWidget(self.lbl_load_title)
 
-        lbl_proto_val = QLabel("SQLITE_WAL_DURABLE")
-        lbl_proto_val.setFont(QFont("Consolas", 8, QFont.Weight.Bold))
-        lbl_proto_val.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
-        layout.addWidget(lbl_proto_val)
+        self.lbl_load_val = QLabel("1.2% CPU (OPTIMAL)")
+        self.lbl_load_val.setFont(QFont("Consolas", 8, QFont.Weight.Bold))
+        self.lbl_load_val.setStyleSheet("color: #10B981;")
+        layout.addWidget(self.lbl_load_val)
+
+        sep_load = QLabel("/")
+        sep_load.setStyleSheet(f"color: {COLOR_SURFACE_BORDER}; font-family: 'Consolas';")
+        layout.addWidget(sep_load)
+
+        self.lbl_mem_val = QLabel("RAM: 42MB")
+        self.lbl_mem_val.setFont(QFont("Consolas", 8, QFont.Weight.Bold))
+        self.lbl_mem_val.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
+        layout.addWidget(self.lbl_mem_val)
 
         sep2 = QLabel("/")
         sep2.setStyleSheet(f"color: {COLOR_SURFACE_BORDER}; font-family: 'Consolas';")
         layout.addWidget(sep2)
 
-        lbl_lat_title = QLabel("INGRESS LATENCY:")
+        lbl_lat_title = QLabel("INGRESS:")
         lbl_lat_title.setFont(QFont("Segoe UI", 8))
         lbl_lat_title.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
         layout.addWidget(lbl_lat_title)
 
-        lbl_lat_val = QLabel("0.42ms")
-        lbl_lat_val.setFont(QFont("Consolas", 8, QFont.Weight.Bold))
-        lbl_lat_val.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
-        layout.addWidget(lbl_lat_val)
+        self.lbl_lat_val = QLabel("0.38ms")
+        self.lbl_lat_val.setFont(QFont("Consolas", 8, QFont.Weight.Bold))
+        self.lbl_lat_val.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
+        layout.addWidget(self.lbl_lat_val)
 
         layout.addStretch()
 
-        lbl_epoch = QLabel("TX_EPOCH: 1741519092")
-        lbl_epoch.setFont(QFont("Consolas", 8))
-        lbl_epoch.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
-        layout.addWidget(lbl_epoch)
+        self.lbl_proto_val = QLabel("SQLITE_WAL_DURABLE")
+        self.lbl_proto_val.setFont(QFont("Consolas", 8))
+        self.lbl_proto_val.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
+        layout.addWidget(self.lbl_proto_val)
 
         sep3 = QLabel("|")
         sep3.setStyleSheet(f"color: {COLOR_SURFACE_BORDER};")
@@ -534,6 +543,35 @@ class StatusStrip(QFrame):
         lbl_gw.setFont(QFont("Consolas", 8, QFont.Weight.Bold))
         lbl_gw.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
         layout.addWidget(lbl_gw)
+
+    def update_telemetry(
+        self,
+        engine_state: str = "ACTIVE",
+        proto_val: str = "SQLITE_WAL_DURABLE",
+        latency_ms: float = 0.38,
+        cpu_pct: float = 1.2,
+        memory_mb: float = 42.0,
+        load_level: str = "OPTIMAL",
+    ):
+        """Dynamically updates live process load and ingestion speed telemetry."""
+        self.lbl_engine.setText(f"STREAM ENGINE: {engine_state.upper()}")
+        self.lbl_proto_val.setText(proto_val)
+        self.lbl_lat_val.setText(f"{latency_ms:.2f}ms" if isinstance(latency_ms, (int, float)) else str(latency_ms))
+        self.lbl_load_val.setText(f"{cpu_pct:.1f}% CPU ({load_level})")
+        self.lbl_mem_val.setText(f"RAM: {int(memory_mb)}MB")
+
+        if load_level == "OPTIMAL":
+            self.dot.setStyleSheet("color: #10B981;")
+            self.lbl_load_val.setStyleSheet("color: #10B981; font-family: 'Consolas'; font-weight: bold;")
+        elif load_level == "ACTIVE":
+            self.dot.setStyleSheet("color: #38BDF8;")
+            self.lbl_load_val.setStyleSheet("color: #38BDF8; font-family: 'Consolas'; font-weight: bold;")
+        elif load_level == "BURST":
+            self.dot.setStyleSheet("color: #F59E0B;")
+            self.lbl_load_val.setStyleSheet("color: #F59E0B; font-family: 'Consolas'; font-weight: bold;")
+        else:
+            self.dot.setStyleSheet("color: #A855F7;")
+            self.lbl_load_val.setStyleSheet("color: #A855F7; font-family: 'Consolas'; font-weight: bold;")
 
 
 class _EyeLogoWidget(QWidget):
@@ -990,11 +1028,14 @@ class BottomStatusBar(QFrame):
         self.lbl_uploaded = QLabel(f"{SYSTEM_STATE['status_bar']['records_uploaded']} records uploaded")
         self.lbl_queued = QLabel(f"{SYSTEM_STATE['status_bar']['queued']} queued")
         self.lbl_errors = QLabel(SYSTEM_STATE['status_bar']['errors'])
+        self.lbl_load = QLabel("CPU: 1.2% • RAM: 42MB")
+        self.lbl_load.setStyleSheet("color: #10B981; font-size: 8pt; font-family: 'Consolas';")
         
         layout.addWidget(self.lbl_synced)
         layout.addWidget(self.lbl_uploaded)
         layout.addWidget(self.lbl_queued)
         layout.addWidget(self.lbl_errors)
+        layout.addWidget(self.lbl_load)
         
         layout.addStretch()
         
@@ -1007,13 +1048,44 @@ class BottomStatusBar(QFrame):
         layout.addWidget(self.lbl_scout)
         layout.addWidget(self.lbl_os)
 
-    def update_metrics(self, synced_time: str, uploaded: int, queued: int, errors: str = "No errors"):
+    def update_metrics(
+        self,
+        synced_time: str,
+        uploaded: int,
+        queued: int,
+        errors: str = "No errors",
+        cpu_pct: float = 1.2,
+        memory_mb: float = 42.0,
+        load_level: str = "OPTIMAL"
+    ):
         self.lbl_synced.setText(f"● Synced {synced_time}")
         self.lbl_uploaded.setText(f"{uploaded} records uploaded")
         self.lbl_queued.setText(f"{queued} queued")
         self.lbl_errors.setText(errors)
+        self.lbl_load.setText(f"CPU: {cpu_pct:.1f}% • RAM: {int(memory_mb)}MB")
+        if load_level == "OPTIMAL":
+            self.lbl_load.setStyleSheet("color: #10B981; font-size: 8pt; font-family: 'Consolas';")
+        elif load_level == "ACTIVE":
+            self.lbl_load.setStyleSheet("color: #38BDF8; font-size: 8pt; font-family: 'Consolas';")
+        elif load_level == "BURST":
+            self.lbl_load.setStyleSheet("color: #F59E0B; font-size: 8pt; font-family: 'Consolas';")
+        else:
+            self.lbl_load.setStyleSheet("color: #A855F7; font-size: 8pt; font-family: 'Consolas';")
         self.lbl_extractor.setText(f"Extractor {EXTRACTOR_VERSION}")
         self.lbl_scout.setText(f"Scout {__version__}")
+
+    def update_process_load(self, cpu_pct: float, memory_mb: float, load_level: str = "OPTIMAL"):
+        """Directly updates bottom status bar process load reading."""
+        self.lbl_load.setText(f"CPU: {cpu_pct:.1f}% • RAM: {int(memory_mb)}MB")
+        if load_level == "OPTIMAL":
+            self.lbl_load.setStyleSheet("color: #10B981; font-size: 8pt; font-family: 'Consolas';")
+        elif load_level == "ACTIVE":
+            self.lbl_load.setStyleSheet("color: #38BDF8; font-size: 8pt; font-family: 'Consolas';")
+        elif load_level == "BURST":
+            self.lbl_load.setStyleSheet("color: #F59E0B; font-size: 8pt; font-family: 'Consolas';")
+        else:
+            self.lbl_load.setStyleSheet("color: #A855F7; font-size: 8pt; font-family: 'Consolas';")
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────

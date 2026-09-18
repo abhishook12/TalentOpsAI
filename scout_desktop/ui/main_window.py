@@ -454,6 +454,43 @@ class MainWindow(QMainWindow):
             errors=counters.get("errors", "No errors")
         )
 
+    def update_process_load(
+        self,
+        cpu_percent: float = 0.0,
+        memory_mb: float = 0.0,
+        load_level: str = "OPTIMAL",
+        state_label: str = "Optimal Execution",
+        queue_pending: int = 0,
+        ingress_latency_ms: float = 0.42,
+        engine_state: str = "STEADY",
+        protocol: str = "CANONICAL v2.9"
+    ):
+        """Propagate real-time process load and edge telemetry to UI components."""
+        # 1. Update StatusStrip telemetry
+        if hasattr(self, "status_strip"):
+            self.status_strip.update_telemetry(
+                engine_state=engine_state,
+                proto_val=protocol,
+                latency_ms=ingress_latency_ms,
+                cpu_pct=cpu_percent,
+                memory_mb=memory_mb,
+                load_level=load_level
+            )
+        # 2. Update ScanPage Edge Process Load HUD
+        if hasattr(self, "page_scan") and hasattr(self.page_scan, "update_process_load_hud"):
+            self.page_scan.update_process_load_hud(
+                cpu_pct=cpu_percent,
+                mem_mb=memory_mb,
+                latency_ms=ingress_latency_ms,
+                queue_depth=queue_pending,
+                load_level=load_level,
+                state_label=state_label
+            )
+        # 3. Update BottomStatusBar
+        if hasattr(self, "bottom_bar") and hasattr(self.bottom_bar, "update_process_load"):
+            self.bottom_bar.update_process_load(cpu_percent, memory_mb, load_level)
+
+
     def log_event(self, *args, **kwargs):
         """
         Called by app.py event bridge.

@@ -688,6 +688,10 @@ class BackendClient:
         }
 
         try:
+            try:
+                requests.get(f"{self.active_api_base}/health", timeout=5.0)
+            except Exception as e:
+                logger.warning("Backend Pre-ping failed: %s", e)
             self.last_request_time = time.strftime("%H:%M:%S")
             headers = self._get_headers()
             raw_data = json.dumps(payload).encode("utf-8")

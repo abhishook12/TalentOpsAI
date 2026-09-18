@@ -51,7 +51,8 @@ UI_ACTIONS = re.compile(
     r"export|suggest update|reveal|contact profile|contact details|"
     r"contact management|similar companies|overview|employees|premium features|"
     r"scheduled emails|web visits|crm integrations|zoominfo lite|zoominfo|homepage|quick search|"
-    r"home|feed|jobs|messaging|notifications|my network|business|learning|work|sent items|address book)$",
+    r"home|feed|jobs|messaging|notifications|my network|business|learning|work|sent items|address book|"
+    r"glassdoor|wellfound|dice|hired|lever|apply now|easy apply|save job)$",
     re.IGNORECASE,
 )
 

@@ -101,7 +101,7 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
   }, []);
 
   const currentProduction = (Array.isArray(releases) ? (releases.find(r => r && r.is_current) || releases[0]) : null) || {
-    version: '2.8.3',
+    version: '2.9.0',
     rollout_percentage: 100,
     minimum_version: '1.0.0',
     is_current: true,
@@ -111,7 +111,7 @@ export default function ScoutReleaseGovernance({ onReleaseChanged }) {
 
   // Fleet Broadcast Actions
   const handleOpenBroadcastModal = (version) => {
-    const targetVer = version || currentProduction?.version || '2.8.3';
+    const targetVer = version || currentProduction?.version || '2.9.0';
     setBroadcastForm({
       target_version: targetVer,
       cohort: 'OUTDATED_ONLY',

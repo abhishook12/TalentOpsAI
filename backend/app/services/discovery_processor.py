@@ -480,9 +480,9 @@ class DiscoveryProcessor:
             conf += 0.05
 
         has_platform_signal = any(
-            (r.source_url and any(s in r.source_url.lower() for s in ["linkedin", "zoominfo", "apollo", "indeed", "chat.google", "teams", "simplyhired"]))
-            or (r.source_page_title and any(s in r.source_page_title.lower() for s in ["linkedin", "zoominfo", "apollo", "indeed", "- chat", "teams", "simplyhired"]))
-            or (getattr(r, "extraction_source", None) and any(s in str(r.extraction_source).lower() for s in ["chat", "teams", "linkedin"]))
+            (r.source_url and any(s in r.source_url.lower() for s in ["linkedin", "zoominfo", "apollo", "indeed", "chat.google", "teams", "simplyhired", "glassdoor", "wellfound", "dice", "hired", "lever", "github"]))
+            or (r.source_page_title and any(s in r.source_page_title.lower() for s in ["linkedin", "zoominfo", "apollo", "indeed", "- chat", "teams", "simplyhired", "glassdoor", "wellfound", "dice", "hired", "lever", "github"]))
+            or (getattr(r, "extraction_source", None) and any(s in str(r.extraction_source).lower() for s in ["chat", "teams", "linkedin", "dice", "hired", "wellfound"]))
             for r in cluster
         )
         if not (linkedin_url or canonical_profile_url) and has_platform_signal:

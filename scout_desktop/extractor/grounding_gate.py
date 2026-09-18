@@ -102,7 +102,7 @@ class GroundingGate:
     
     PLATFORM_NAMES = {"linkedin", "indeed", "glassdoor", "github"}
 
-    def __init__(self, min_confidence: float = 0.30, strict_mode: bool = True):
+    def __init__(self, min_confidence: float = 0.20, strict_mode: bool = True):
         self.min_confidence = min_confidence
         self.strict_mode = strict_mode
         self.weighter = SourceQualityWeighter()

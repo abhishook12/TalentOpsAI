@@ -72,7 +72,8 @@ try:
     _logs_dir = get_logs_dir()
     os.makedirs(_logs_dir, exist_ok=True)
     _log_file = os.path.join(_logs_dir, "scout_desktop.log")
-    _file_handler = logging.FileHandler(_log_file, encoding="utf-8", mode="a")
+    import logging.handlers
+    _file_handler = logging.handlers.RotatingFileHandler(_log_file, maxBytes=5*1024*1024, backupCount=3, encoding="utf-8")
 except Exception:
     _file_handler = logging.NullHandler()
 
@@ -126,18 +127,6 @@ def acquire_single_instance_lock() -> bool:
                         try:
                             os.remove(lock_file)
                         except Exception:
-                            pass
-                    else:
-                        try:
-                            proc = psutil.Process(holding_pid)
-                            p_name = proc.name().lower()
-                            if p_name not in ("python.exe", "pythonw.exe", "talentopsscout.exe", "scout.exe"):
-                                logger.warning("Stale lock detected: PID %d is '%s' (not Scout). Unlinking lockfile.", holding_pid, p_name)
-                                try:
-                                    os.remove(lock_file)
-                                except Exception:
-                                    pass
-                        except (psutil.NoSuchProcess, psutil.AccessDenied):
                             pass
         except Exception as e:
             logger.debug("Error during stale lock check: %s", e)
@@ -608,16 +597,9 @@ class ScoutDesktopApp:
                     else:
                         self.subsystems["sampler"] = "HEALTHY"
 
-                # 4. Stuck Sync Flush Check
-                if getattr(self, "_is_flushing", False) and getattr(self, "_flush_start_time", None):
-                    flush_elapsed = now - self._flush_start_time
-                    if flush_elapsed > 40.0:
-                        logger.warning("Scout Watchdog: Sync flush worker stuck for %.1fs. Force-releasing lock.", flush_elapsed)
-                        self._is_flushing = False
-                        self._flush_start_time = None
-                        self.subsystems["sync"] = "RECOVERED"
-                    else:
-                        self.subsystems["sync"] = "FLUSHING"
+                # 4. Stuck Sync Flush Check (Handled via threading.Event internally)
+                if getattr(self, "_is_flushing", False):
+                    self.subsystems["sync"] = "FLUSHING"
                 else:
                     self.subsystems["sync"] = "HEALTHY"
 
@@ -943,6 +925,10 @@ class ScoutDesktopApp:
     def _on_global_hotkey_pressed(self):
         """Callback for Ctrl+Shift+S global hotkey."""
         logger.info("⚡ Global hotkey triggered: Ctrl + Shift + S")
+        try:
+            self.tray.tray.showMessage('Scout', 'Manual capture triggered', QSystemTrayIcon.MessageIcon.Information, 1500)
+        except Exception:
+            pass
         QTimer.singleShot(0, self.force_capture)
 
     def _on_update_ready(self, version: str, installer_path: str, release_notes: Optional[str] = None):
@@ -1268,7 +1254,7 @@ class ScoutDesktopApp:
                 "slack.com", "whatsapp.com", "telegram.org",
                 "outlook.com", "office.com", "office365.com",
                 "zoominfo.com", "zi-lite", "apollo.io",
-                "stackoverflow.com", "kaggle.com", "dice.com", "wellfound.com", "angel.co",
+                "stackoverflow.com", "kaggle.com", "dice.com", "wellfound.com", "angel.co", "hired.com",
                 "greenhouse.io", "lever.co", "ashbyhq.com", "myworkday.com", "workday.com",
                 "icims.com", "smartrecruiters.com",
                 "indeed.com", "simplyhired.com", "glassdoor.com", "ziprecruiter.com", "jobright.ai",
@@ -1278,6 +1264,14 @@ class ScoutDesktopApp:
             if target_type != "RECRUITMENT_AGENCY" and not any(d in url_lower for d in allowed_domains):
                 logger.info("Frame rejected by URL hard-block: %s", page_url[:60])
                 return
+
+            is_chat_or_doc = target_type in ("GOOGLE_CHAT", "TEAMS", "SLACK", "WHATSAPP", "TELEGRAM", "GMAIL", "OUTLOOK", "PDF_RESUME", "JOB_POSTING")
+            if not is_chat_or_doc and target_type != "RECRUITMENT_AGENCY":
+                skip_nav = any(p in url_lower for p in ["/search", "/results", "/feed", "/messaging", "/notifications"])
+                is_profile = any(p in url_lower for p in ["/in/", "/profile/", "/people/", "/contact/", "/u/", "/member/"])
+                if skip_nav or not is_profile:
+                    logger.info(f"Smart scheduling: skipping non-profile URL: {page_url}")
+                    return
 
         # Gate 4: Page title validation — reject Search engine, browser chrome, and non-data pages
         if page_title:
@@ -1609,6 +1603,12 @@ class ScoutDesktopApp:
                         c_gate.audit_checklist,
                         c_gate.field_confidence
                     )
+                    try:
+                        title_str = c_gate.title or "Unknown Title"
+                        comp_str = c_gate.company or "Unknown Company"
+                        self.tray.tray.showMessage('Scout', f'New: {c_gate.canonical_name} — {title_str} at {comp_str}', QSystemTrayIcon.MessageIcon.Information, 3000)
+                    except Exception:
+                        pass
                     verified_emitted += 1
                 else:
                     logger.debug("Omitted unverified capture '%s' from Candidates table (%s)",
@@ -1632,6 +1632,14 @@ class ScoutDesktopApp:
         self._emit_telemetry()
 
     def _on_sampler_state_change(self, state: str):
+        if state == "IDLE_WATCH":
+            if not hasattr(self, "_ocr_prewarm_timer"):
+                self._ocr_prewarm_timer = QTimer()
+                self._ocr_prewarm_timer.timeout.connect(lambda: getattr(self, "ocr_engine", None) and getattr(self.ocr_engine, "is_daemon_alive", lambda: True)())
+            self._ocr_prewarm_timer.start(60000)
+        else:
+            if hasattr(self, "_ocr_prewarm_timer"):
+                self._ocr_prewarm_timer.stop()
         self.bridge.state_updated.emit(state)
 
     def _run_purge_sweep(self):
@@ -1693,10 +1701,30 @@ class ScoutDesktopApp:
                 f"Flushing {len(pending)} records to {self.backend_client.environment_name}"
             )
 
-            success, res = self.backend_client.sync_staged_batch(
-                contacts=pending,
-                session_stats={"source": "TalentOps Scout Desktop"},
-            )
+            sync_event = threading.Event()
+            sync_result = {}
+            sync_success = False
+
+            def _do_sync():
+                nonlocal sync_success, sync_result
+                try:
+                    sync_success, sync_result = self.backend_client.sync_staged_batch(
+                        contacts=pending,
+                        session_stats={"source": "TalentOps Scout Desktop"},
+                    )
+                except Exception:
+                    pass
+                finally:
+                    sync_event.set()
+
+            threading.Thread(target=_do_sync, daemon=True).start()
+
+            if not sync_event.wait(timeout=30.0):
+                logger.warning("Scout Watchdog: Sync flush worker stuck for 30.0s. Canceling.")
+                self.subsystems["sync"] = "RECOVERED"
+                return
+
+            success, res = sync_success, sync_result
 
             if success:
                 self.local_queue.mark_batch_synced(queue_ids)
@@ -2090,21 +2118,27 @@ def main():
                 app.setWindowIcon(app_icon)
                 break
 
-    try:
-        scout = ScoutDesktopApp()
-        scout.start()
-        sys.exit(app.exec())
-    except Exception as e:
-        logger.critical("FATAL: Uncaught exception in Scout main loop: %s", e, exc_info=True)
+    for attempt in range(3):
         try:
-            crash_path = os.path.join(get_logs_dir(), "scout_crash.log")
-            with open(crash_path, "a", encoding="utf-8") as f:
-                import traceback
-                f.write(f"\n--- CRASH AT {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
-                f.write(traceback.format_exc())
-        except Exception:
-            pass
-        sys.exit(1)
+            scout = ScoutDesktopApp()
+            scout.start()
+            sys.exit(app.exec())
+        except Exception as e:
+            logger.critical("FATAL: Uncaught exception in Scout main loop: %s", e, exc_info=True)
+            if attempt < 2:
+                logger.info("Retrying ScoutDesktopApp initialization (attempt %d of 3) in 3 seconds...", attempt + 2)
+                import time
+                time.sleep(3)
+            else:
+                try:
+                    crash_path = os.path.join(get_logs_dir(), "scout_crash.log")
+                    with open(crash_path, "a", encoding="utf-8") as f:
+                        import traceback
+                        f.write(f"\n--- CRASH AT {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
+                        f.write(traceback.format_exc())
+                except Exception:
+                    pass
+                sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -565,7 +565,10 @@ def get_detailed_scout_user_profile(db: Session, user_id: int) -> Dict[str, Any]
     timeline = sorted(timeline_map.values(), key=lambda t: t["date"])
 
     # Source breakdown
-    source_counts = {"LinkedIn": 0, "ZoomInfo": 0, "Apollo": 0, "Google Chat": 0, "Microsoft Teams": 0, "Other": 0}
+    source_counts = {
+        "LinkedIn": 0, "ZoomInfo": 0, "Apollo": 0, "Google Chat": 0, "Microsoft Teams": 0,
+        "Glassdoor": 0, "Wellfound": 0, "Dice": 0, "Hired": 0, "Lever": 0, "GitHub": 0, "Indeed": 0, "Other": 0
+    }
     for e in events:
         url = (e.source_url or "").lower()
         if "linkedin.com" in url:
@@ -574,6 +577,20 @@ def get_detailed_scout_user_profile(db: Session, user_id: int) -> Dict[str, Any]
             source_counts["ZoomInfo"] += 1
         elif "apollo.io" in url:
             source_counts["Apollo"] += 1
+        elif "glassdoor.com" in url:
+            source_counts["Glassdoor"] += 1
+        elif "wellfound.com" in url or "angel.co" in url:
+            source_counts["Wellfound"] += 1
+        elif "dice.com" in url:
+            source_counts["Dice"] += 1
+        elif "hired.com" in url:
+            source_counts["Hired"] += 1
+        elif "lever.co" in url:
+            source_counts["Lever"] += 1
+        elif "github.com" in url:
+            source_counts["GitHub"] += 1
+        elif "indeed.com" in url or "simplyhired.com" in url:
+            source_counts["Indeed"] += 1
         elif "chat.google.com" in url:
             source_counts["Google Chat"] += 1
         elif "teams.microsoft.com" in url or "teams.live.com" in url:

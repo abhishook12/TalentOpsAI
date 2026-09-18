@@ -222,15 +222,15 @@ export default function DownloadScout() {
   });
   const provisionableUsers = provUsersData || [];
 
-  // Dynamic Release Info from Authoritative DB Registry (Defaults match exact v2.8.3 build)
+  // Dynamic Release Info from Authoritative DB Registry (Defaults match exact v2.9.0 build)
   const [releaseInfo, setReleaseInfo] = useState({
-    version: '2.8.3',
-    extractor_version: '4.5.2',
+    version: '2.9.0',
+    extractor_version: '4.6.0',
     download_url: '/download/scout/windows',
     size_bytes: 51637112,
     sha256: '021b4f6b4eb024562fea89744ec1993cb7f913ad791129f7017308378e8b65dc',
     channel: 'stable',
-    released_at: '2026-09-16',
+    released_at: '2026-09-18',
   });
 
   useEffect(() => {
@@ -540,7 +540,7 @@ export default function DownloadScout() {
   const avgQualScore = summary.avg_quality_score ?? summary.average_quality_score ?? 0;
   const latestProdVer = contribData?.latest_production_version || releaseInfo?.version || '';
 
-  const displayVersion = releaseInfo.version ? `v${releaseInfo.version}` : (latestProdVer ? `v${latestProdVer}` : 'v2.8.3');
+  const displayVersion = releaseInfo.version ? `v${releaseInfo.version}` : (latestProdVer ? `v${latestProdVer}` : 'v2.9.0');
   const displaySize = releaseInfo.size_bytes
     ? `${(releaseInfo.size_bytes / (1024 * 1024)).toFixed(1)} MB`
     : '51.6 MB';

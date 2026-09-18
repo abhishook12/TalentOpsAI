@@ -639,11 +639,63 @@ class ScanPage(QWidget):
         daemon_l.addLayout(d_foot)
 
         right_col.addWidget(card_daemon)
+
+        # Sync Queue Status Card
+        card_sync = Card()
+        sync_l = QVBoxLayout(card_sync)
+        sync_l.setContentsMargins(14, 10, 14, 10)
+        sync_l.setSpacing(6)
+
+        s_head = QHBoxLayout()
+        lbl_sh = QLabel("SYNC QUEUE STATUS")
+        lbl_sh.setFont(QFont("Consolas", 7, QFont.Weight.Bold))
+        lbl_sh.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
+        s_head.addWidget(lbl_sh)
+
+        s_head.addStretch()
+
+        self.lbl_sync_st = QLabel("[ IDLE ]")
+        self.lbl_sync_st.setFont(QFont("Consolas", 7, QFont.Weight.Bold))
+        self.lbl_sync_st.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
+        s_head.addWidget(self.lbl_sync_st)
+        sync_l.addLayout(s_head)
+
+        s_body = QHBoxLayout()
+        self.lbl_sync_pending = QLabel("Pending: 0")
+        self.lbl_sync_pending.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
+        self.lbl_sync_pending.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
+        s_body.addWidget(self.lbl_sync_pending)
+        
+        self.lbl_sync_failed = QLabel("Failed: 0")
+        self.lbl_sync_failed.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
+        self.lbl_sync_failed.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
+        s_body.addWidget(self.lbl_sync_failed)
+        s_body.addStretch()
+        sync_l.addLayout(s_body)
+
+        s_foot = QHBoxLayout()
+        self.lbl_sync_time = QLabel("Last Sync: Never")
+        self.lbl_sync_time.setFont(QFont("Consolas", 7))
+        self.lbl_sync_time.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
+        s_foot.addWidget(self.lbl_sync_time)
+        s_foot.addStretch()
+        sync_l.addLayout(s_foot)
+        
+        right_col.addWidget(card_sync)
         cols_layout.addLayout(right_col, stretch=5)
 
         main_layout.addLayout(cols_layout)
         scroll.setWidget(container)
         root_layout.addWidget(scroll)
+
+    def update_sync_status(self, pending: int, failed: int, last_sync: str):
+        self.lbl_sync_pending.setText(f"Pending: {pending}")
+        self.lbl_sync_failed.setText(f"Failed: {failed}")
+        self.lbl_sync_time.setText(f"Last Sync: {last_sync}")
+        if pending > 0 or failed > 0:
+            self.lbl_sync_st.setText("[ ACTIVE ]")
+        else:
+            self.lbl_sync_st.setText("[ IDLE ]")
 
     def _create_monochrome_stat(self, title: str, count: str, sub: str) -> QWidget:
         box = Card()
@@ -819,6 +871,8 @@ class CandidatesPage(QWidget):
         super().__init__(parent)
         self.active_filter = "ALL"
         self.search_term = ""
+        self.current_page = 0
+        self.page_size = 20
         self.cards: List[QWidget] = []
         self._build_ui()
 
@@ -886,6 +940,26 @@ class CandidatesPage(QWidget):
         scroll.setWidget(self.cards_container)
         main_layout.addWidget(scroll)
 
+        # Pagination Controls
+        self.pagination_layout = QHBoxLayout()
+        self.btn_prev = QPushButton("Previous")
+        self.btn_prev.setStyleSheet(f"background-color: {COLOR_SURFACE_CARD}; color: {COLOR_TEXT_PRIMARY}; border: 1px solid {COLOR_SURFACE_BORDER}; border-radius: 4px; padding: 4px 12px;")
+        self.btn_prev.clicked.connect(self._on_prev_page)
+        
+        self.lbl_page = QLabel("Page 1 of 1")
+        self.lbl_page.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
+        
+        self.btn_next = QPushButton("Next")
+        self.btn_next.setStyleSheet(f"background-color: {COLOR_SURFACE_CARD}; color: {COLOR_TEXT_PRIMARY}; border: 1px solid {COLOR_SURFACE_BORDER}; border-radius: 4px; padding: 4px 12px;")
+        self.btn_next.clicked.connect(self._on_next_page)
+
+        self.pagination_layout.addStretch()
+        self.pagination_layout.addWidget(self.btn_prev)
+        self.pagination_layout.addWidget(self.lbl_page)
+        self.pagination_layout.addWidget(self.btn_next)
+        self.pagination_layout.addStretch()
+        main_layout.addLayout(self.pagination_layout)
+
         self._render_candidates()
 
     def _render_candidates(self):
@@ -896,10 +970,9 @@ class CandidatesPage(QWidget):
                 item.widget().deleteLater()
         self.cards.clear()
 
-        row = 0
-        col = 0
+        # Filter candidates
+        filtered_cands = []
         for cand in CANDIDATES:
-            # Filter matches
             if self.active_filter != "ALL" and cand["state"] != self.active_filter:
                 continue
             if self.search_term:
@@ -910,7 +983,19 @@ class CandidatesPage(QWidget):
                          term in cand["location"].lower())
                 if not match:
                     continue
+            filtered_cands.append(cand)
+            
+        total_pages = max(1, (len(filtered_cands) + self.page_size - 1) // self.page_size)
+        if self.current_page >= total_pages:
+            self.current_page = max(0, total_pages - 1)
+            
+        start = self.current_page * self.page_size
+        end = start + self.page_size
+        page_cands = filtered_cands[start:end]
 
+        row = 0
+        col = 0
+        for cand in page_cands:
             card = self._create_candidate_card(cand)
             self.cards_grid.addWidget(card, row, col)
             self.cards.append(card)
@@ -921,6 +1006,10 @@ class CandidatesPage(QWidget):
                 row += 1
 
         self.cards_grid.setRowStretch(row + 1, 1)
+        
+        self.lbl_page.setText(f"Page {self.current_page + 1} of {total_pages}")
+        self.btn_prev.setEnabled(self.current_page > 0)
+        self.btn_next.setEnabled(self.current_page < total_pages - 1)
 
     def _create_candidate_card(self, cand: Dict[str, Any]) -> QWidget:
         card = Card(clickable=True)
@@ -994,11 +1083,22 @@ class CandidatesPage(QWidget):
 
     def _on_search_changed(self, text: str):
         self.search_term = text.strip()
+        self.current_page = 0
         self._render_candidates()
 
     def _on_filter_changed(self, filter_name: str):
         self.active_filter = filter_name
+        self.current_page = 0
         self._update_pill_styles()
+        self._render_candidates()
+
+    def _on_prev_page(self):
+        if self.current_page > 0:
+            self.current_page -= 1
+            self._render_candidates()
+            
+    def _on_next_page(self):
+        self.current_page += 1
         self._render_candidates()
 
     def _update_pill_styles(self):

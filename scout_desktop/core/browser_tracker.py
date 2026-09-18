@@ -39,6 +39,7 @@ KNOWN_PLATFORMS = {
     "indeed.com": "INDEED",
     "simplyhired.com": "SIMPLYHIRED",
     "glassdoor.com": "GLASSDOOR",
+    "hired.com": "HIRED",
     "ziprecruiter.com": "ZIPRECRUITER",
     "greenhouse.io": "ATS_GREENHOUSE",
     "lever.co": "ATS_LEVER",
@@ -169,7 +170,13 @@ class BrowserTracker:
                 return "JOB_POSTING"
             return "JOB_POSTING"
 
-        if platform in ["INDEED", "SIMPLYHIRED", "ZIPRECRUITER", "GLASSDOOR"]:
+        if platform in ["INDEED", "SIMPLYHIRED", "ZIPRECRUITER", "GLASSDOOR", "HIRED"]:
+            if platform == "GLASSDOOR":
+                if any(k in url_lower for k in ["/member/", "/reviews/", "/jobs/"]):
+                    return "PROFILE" if "/member/" in url_lower else "JOB_POSTING"
+            if platform == "HIRED":
+                if any(k in url_lower for k in ["/talent/", "/marketplace/"]):
+                    return "PROFILE"
             if any(k in url_lower for k in ["/viewjob", "/job/", "/rc/clk"]):
                 return "JOB_POSTING"
             if any(k in url_lower for k in ["/jobs", "/search", "/q-"]):
@@ -205,6 +212,10 @@ class BrowserTracker:
 
         # Developer & Talent Communities
         if platform in ["STACKOVERFLOW", "KAGGLE", "DICE", "WELLFOUND"]:
+            if platform == "WELLFOUND" and any(p in url_lower for p in ["/jobs/", "/company/"]):
+                return "JOB_POSTING" if "/jobs/" in url_lower else "COMPANY_PEOPLE"
+            if platform == "DICE" and "/jobs/" in url_lower:
+                return "JOB_POSTING"
             if any(p in url_lower for p in ["/users/", "/profile", "/candidate", "/talent", "/u/"]):
                 return "PROFILE"
             return "TALENT_COMMUNITY"

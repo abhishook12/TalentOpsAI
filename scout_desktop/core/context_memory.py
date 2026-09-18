@@ -490,7 +490,7 @@ class ContextMemory:
             return True  # Stale context → refresh
 
         # Visual change → always process
-        if visual_delta >= 0.035:
+        if visual_delta >= 0.025:
             return True
 
         # Check if any entity has gaps

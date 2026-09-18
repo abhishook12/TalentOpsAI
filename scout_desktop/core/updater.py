@@ -98,6 +98,7 @@ class AutoUpdater:
         self.downloaded_installer_path: Optional[str] = None
         self.pending_version: Optional[str] = None
         self.release_notes: Optional[str] = None
+        self.changelog: Optional[str] = None
         self.is_mandatory: bool = False
         self.minimum_version: str = "1.0.0"
         self.active_features: Dict[str, Any] = {}
@@ -192,6 +193,7 @@ class AutoUpdater:
         min_ver_str = manifest.get("minimum_version", "1.0.0")
         self.minimum_version = min_ver_str
         self.release_notes = manifest.get("release_notes")
+        self.changelog = manifest.get("changelog") or manifest.get("release_notes")
 
         # 1. Update Remote Feature Flags & Config dynamically
         features = manifest.get("features", {})
@@ -219,6 +221,11 @@ class AutoUpdater:
         else:
             self.state_machine.transition(UpdateState.UP_TO_DATE, strict=False)
             logger.debug("Scout is up to date (v%s)", self.current_version)
+
+    def get_changelog(self) -> str:
+        if self.changelog:
+            return self.changelog
+        return "Bug fixes and performance improvements."
 
     def _save_remote_config(self, features: Dict[str, Any], config: Dict[str, Any]):
         """Persists remote features and runtime config without requiring app restart."""

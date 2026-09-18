@@ -212,6 +212,8 @@ def is_allowed_scout_target(win_info: Optional['WindowInfo'], b_ctx: Optional[Di
             return True, "ZIPRECRUITER"
         if "jobright.ai" in url or "jobright" in title_lower:
             return True, "JOBRIGHT"
+        if "hired.com" in url or "hired |" in title_lower:
+            return True, "HIRED"
 
         # Target 9: Staffing, Recruiting & Talent Acquisition Portals & Firm Websites
         if any(kw in url for kw in ("vacaregroup.com", "talent-acquisition", "staffing", "recruitment", "executive-search")):

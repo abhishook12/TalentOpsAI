@@ -185,6 +185,7 @@ class ProfileJudge:
             or "zoominfo" in wt_lower
             or "apollo.io" in url_lower
             or "apollo" in wt_lower
+            or any(d in url_lower for d in ["glassdoor.com", "wellfound.com", "dice.com", "hired.com", "lever.co"])
         )
 
         # 0. CHAT, MESSAGING, EMAIL & RESUME INTELLIGENCE
@@ -453,7 +454,7 @@ class SemanticFactorizer:
             exp_history=exp_history,
         )
 
-        if quality_score < 30 and not (cur_comp or cur_title):
+        if quality_score < 25 and not (cur_comp or cur_title):
             logger.debug("SemanticFactorizer: Factorized candidate below minimum quality threshold (score: %d)", quality_score)
             return None
 

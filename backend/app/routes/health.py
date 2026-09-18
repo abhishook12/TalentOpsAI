@@ -124,19 +124,33 @@ def system_health(db: Session = Depends(get_db)):
     # Check RecruiterStore Parquet
     try:
         from ..services.recruiter_store import recruiter_store
-        recruiter_store._ensure_loaded()
-        comp_count = 0
-        if recruiter_store._conn:
+        
+        import concurrent.futures
+        def _check_store():
+            recruiter_store._ensure_loaded()
+            count = 0
+            if recruiter_store._conn:
+                try:
+                    count = recruiter_store._conn.cursor().execute("SELECT COUNT(*) FROM company_summary").fetchone()[0]
+                except Exception:
+                    pass
+            return count
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_check_store)
             try:
-                comp_count = recruiter_store._conn.cursor().execute("SELECT COUNT(*) FROM company_summary").fetchone()[0]
-            except Exception:
-                pass
-        health_data["components"]["recruiter_store"] = {
-            "status": "healthy" if recruiter_store._record_count > 0 else "empty",
-            "records": recruiter_store._record_count,
-            "companies": comp_count,
-            "error": getattr(recruiter_store, "_last_error", None)
-        }
+                comp_count = future.result(timeout=3.0)
+                health_data["components"]["recruiter_store"] = {
+                    "status": "healthy" if recruiter_store._record_count > 0 else "empty",
+                    "records": recruiter_store._record_count,
+                    "companies": comp_count,
+                    "error": getattr(recruiter_store, "_last_error", None)
+                }
+            except concurrent.futures.TimeoutError:
+                health_data["components"]["recruiter_store"] = {
+                    "status": "deferred",
+                    "message": "Loading in background..."
+                }
     except Exception as e:
         health_data["components"]["recruiter_store"] = {"status": "unhealthy", "error": str(e)}
 

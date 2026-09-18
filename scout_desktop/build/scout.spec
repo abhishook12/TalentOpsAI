@@ -105,7 +105,7 @@ exe_scout = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     console=False,  # Suppresses black console window
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -143,7 +143,7 @@ exe_updater = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     console=False,  # Silent background helper
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -164,7 +164,7 @@ coll = COLLECT(
     a_updater.zipfiles,
     a_updater.datas,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     name='TalentOpsScout',
 )

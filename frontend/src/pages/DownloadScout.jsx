@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -254,29 +254,74 @@ export default function DownloadScout() {
       const res = await api.get('/scout/my-device');
       return res.data;
     },
-    refetchInterval: user ? 5000 : false,
+    refetchInterval: user ? 15000 : false,
     enabled: !!user,
   });
 
-  // Scout Contributors Telemetry Query (Admin Only)
+  // Scout Contributors Telemetry Query (Admin Only) - Cached once and filtered on client
   const { data: contribData, isLoading, isFetching, isError, refetch } = useQuery({
-    queryKey: ['scout-contributors-unified', statusFilter, searchQuery, sortBy],
+    queryKey: ['scout-contributors-unified'],
     queryFn: async () => {
-      const res = await api.get('/scout/users', {
-        params: {
-          status: statusFilter,
-          search: searchQuery || undefined,
-          sort: sortBy,
-        }
-      });
+      const res = await api.get('/scout/users');
       return res.data;
     },
     enabled: !!isAdmin,
+    staleTime: 30000,
     keepPreviousData: true,
   });
 
+  const handleRefreshContributors = useCallback(async () => {
+    try {
+      await api.get('/scout/users', { params: { refresh: true } });
+      refetch();
+    } catch {
+      refetch();
+    }
+  }, [refetch]);
+
   const summary = contribData?.summary || {};
-  const users = contribData?.users || [];
+  const allUsers = useMemo(() => contribData?.users || [], [contribData?.users]);
+
+  // High-Speed Instant Client-Side Search, Filter, and Sort (0ms Keystroke Latency, 0 Server Hits)
+  const users = useMemo(() => {
+    let result = [...allUsers];
+
+    // Status filter
+    if (statusFilter !== 'ALL') {
+      result = result.filter(u => u.status === statusFilter);
+    }
+
+    // Search filter
+    if (searchQuery && searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(u =>
+        (u.name && u.name.toLowerCase().includes(q)) ||
+        (u.email && u.email.toLowerCase().includes(q)) ||
+        (u.role && u.role.toLowerCase().includes(q)) ||
+        (u.scout_id && u.scout_id.toLowerCase().includes(q)) ||
+        (u.hostname && u.hostname.toLowerCase().includes(q))
+      );
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      if (sortBy === 'recent') {
+        const tA = a.last_seen_at ? new Date(a.last_seen_at).getTime() : 0;
+        const tB = b.last_seen_at ? new Date(b.last_seen_at).getTime() : 0;
+        return tB - tA;
+      }
+      if (sortBy === 'discoveries') {
+        return (b.useful_discoveries || 0) - (a.useful_discoveries || 0);
+      }
+      if (sortBy === 'name') {
+        return (a.name || '').localeCompare(b.name || '');
+      }
+      return 0;
+    });
+
+    return result;
+  }, [allUsers, statusFilter, searchQuery, sortBy]);
+
   const versionDistribution = contribData?.version_distribution || {};
   // Cleanup poller on unmount
   useEffect(() => {
@@ -856,7 +901,7 @@ export default function DownloadScout() {
                   <button
                     type="button"
                     onClick={() => {
-                      const cmd = `iwr -useb https://talentopsai-1.onrender.com/scout/download/windows -OutFile "$env:TEMP\\TalentOpsScoutSetup.exe"; Start-Process "$env:TEMP\\TalentOpsScoutSetup.exe"`;
+                      const cmd = `iwr -useb https://talentopsai-1.onrender.com/scout/download/windows -OutFile "$env:TEMP\\TalentOpsScoutSetup.exe"; Unblock-File "$env:TEMP\\TalentOpsScoutSetup.exe"; Start-Process "$env:TEMP\\TalentOpsScoutSetup.exe"`;
                       navigator.clipboard.writeText(cmd);
                       toast.success('PowerShell command copied! Run in terminal to install directly.');
                     }}
@@ -866,11 +911,41 @@ export default function DownloadScout() {
                       cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                       transition: 'all 0.15s ease'
                     }}
-                    title="Copy 1-line PowerShell install command (completely bypasses browser download warnings)"
+                    title="Copy 1-line PowerShell install command (unblocks files and completely bypasses browser download warnings)"
                   >
                     <Terminal size={12} color="#60a5fa" />
                     <span>PowerShell Install</span>
                   </button>
+                </div>
+
+                {/* Windows Defender / Code 225 Troubleshooting */}
+                <div style={{
+                  marginTop: 10, padding: '10px 12px', borderRadius: 8,
+                  background: 'rgba(239, 68, 68, 0.07)', border: '1px solid rgba(239, 68, 68, 0.22)',
+                  fontSize: 11, color: 'var(--text-secondary, #a1a1aa)', lineHeight: 1.4
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <span style={{ color: '#f87171', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span>🛡️ Antivirus or Code 225 Warning?</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const fixCmd = `Unblock-File -Path "$env:LOCALAPPDATA\\Programs\\TalentOpsScout\\*"; Start-Process "$env:LOCALAPPDATA\\Programs\\TalentOpsScout\\TalentOpsScout.exe"`;
+                        navigator.clipboard.writeText(fixCmd);
+                        toast.success('10-second fix command copied! Paste into PowerShell to launch.');
+                      }}
+                      style={{
+                        background: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.4)',
+                        color: '#fca5a5', padding: '2px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 10, fontWeight: 700
+                      }}
+                    >
+                      Copy 10s Fix
+                    </button>
+                  </div>
+                  <span>
+                    Windows Defender flags new screen OCR engines before they build reputation. If blocked, open <b>Windows Security &rarr; Protection history &rarr; Allow on device</b>, or click <b>Copy 10s Fix</b> and paste into PowerShell.
+                  </span>
                 </div>
               </div>
             </div>

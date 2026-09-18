@@ -64,7 +64,7 @@ Root: HKCU; Subkey: "Software\Classes\talentopsscout\shell\open\command"; ValueT
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "TalentOpsScout"; ValueData: """{app}\{#MyAppExeName}"""; Flags: uninsdeletevalue; Tasks: startup
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: shellexec nowait postinstall skipifsilent unchecked
 
 [UninstallDelete]
 ; Clean up app directory but NEVER touch persistent %LOCALAPPDATA%\TalentOpsAI\Scout

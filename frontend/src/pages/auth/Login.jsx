@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import ApprovalProgress from '../../components/auth/ApprovalProgress'
@@ -6,6 +6,22 @@ import { useGoogleLogin } from '@react-oauth/google'
 import AuthFrame from './AuthFrame'
 import AppLoadingOverlay from '../../components/AppLoadingOverlay'
 import api from '../../services/api'
+
+// Cold-start detection: Render free tier spins down after ~15min inactivity
+const isColdStartError = (err) => {
+  const status = err?.response?.status
+  return (
+    err?.code === 'ECONNABORTED' ||
+    err?.message?.includes('timeout') ||
+    err?.message === 'Network Error' ||
+    err?.code === 'ERR_NETWORK' ||
+    status === 502 ||
+    status === 503 ||
+    status === 504
+  )
+}
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms))
 
 export default function Login() {
   const [rememberMe, setRememberMe] = useState(() => {
@@ -22,12 +38,32 @@ export default function Login() {
   // Splash Screen & Login State
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [authProgress, setAuthProgress] = useState(null)
+  const [authStatusText, setAuthStatusText] = useState(null)
   const [pendingDeviceId, setPendingDeviceId] = useState(null)
+  const [serverWarm, setServerWarm] = useState(false)
+  const warmupFiredRef = useRef(false)
   
   const { login, googleLogin, checkAuthStatus } = useAuth()
   const navigate = useNavigate()
   const search = useSearch({ from: '/login' })
   const redirect = decodeURIComponent(search.redirect || '/')
+
+  // ── Warm-up ping: fire a lightweight /ping the instant the login page mounts ──
+  // This wakes the Render backend from cold sleep BEFORE the user clicks Sign In
+  useEffect(() => {
+    if (warmupFiredRef.current) return
+    warmupFiredRef.current = true
+    // Fire-and-forget: don't await, don't block UI
+    fetch(api.defaults?.baseURL
+      ? `${api.defaults.baseURL}/ping`
+      : `${import.meta.env.VITE_API_URL || 'https://talentopsai-1.onrender.com'}/ping`,
+      { method: 'GET', mode: 'cors', cache: 'no-store' }
+    )
+      .then(() => setServerWarm(true))
+      .catch(() => {
+        // Even on failure, mark as "attempted" — the retry in login will handle it
+      })
+  }, [])
 
   const isEmailValid = email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
   const isFormValid = isEmailValid && password.length >= 1
@@ -36,38 +72,64 @@ export default function Login() {
     setError('')
     setIsAuthenticating(true)
     setAuthProgress(null) // Indeterminate start
+    setAuthStatusText(null)
     
-    try {
-      const data = await authFunction()
-      
-      if (data && data.status === 'pending_approval') {
-        setIsAuthenticating(false)
-        setPendingDeviceId(data.device_id)
-        return
+    const MAX_COLD_RETRIES = 2
+    let lastError = null
+
+    for (let attempt = 0; attempt <= MAX_COLD_RETRIES; attempt++) {
+      try {
+        if (attempt > 0) {
+          // Show friendly cold-start messaging instead of error
+          setAuthStatusText(attempt === 1 ? 'Waking up server...' : 'Almost there, server is starting...')
+          setAuthProgress(null) // keep indeterminate
+          await sleep(attempt === 1 ? 2000 : 3000) // brief pause before retry
+        }
+
+        const data = await authFunction()
+        
+        if (data && data.status === 'pending_approval') {
+          setIsAuthenticating(false)
+          setAuthStatusText(null)
+          setPendingDeviceId(data.device_id)
+          return
+        }
+        
+        setAuthProgress(100)
+        setAuthStatusText('Welcome back!')
+        
+        // Brief animation for premium UX before instant navigation
+        await new Promise(res => setTimeout(res, 300))
+        
+        navigate({ to: redirect })
+        return // success — exit loop
+        
+      } catch (err) {
+        lastError = err
+        // If it's a cold-start error and we have retries left, loop again
+        if (isColdStartError(err) && attempt < MAX_COLD_RETRIES) {
+          continue
+        }
+        // Otherwise break and show error
+        break
       }
-      
-      setAuthProgress(100)
-      
-      // Brief animation for premium UX before instant navigation
-      await new Promise(res => setTimeout(res, 300))
-      
-      navigate({ to: redirect })
-      
-    } catch (err) {
-      let errorDetail = err?.response?.data?.detail || err?.message || 'Authentication failed. Please check your credentials.'
-      if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
-        errorDetail = 'Connection timed out. Please try signing in again.'
-      }
-      if (Array.isArray(errorDetail)) {
-          errorDetail = errorDetail.map(e => e.msg).join(', ')
-      } else if (typeof errorDetail === 'object') {
-          errorDetail = JSON.stringify(errorDetail)
-      }
-      
-      setError(errorDetail)
-      setIsAuthenticating(false)
-      setPendingDeviceId(null)
     }
+
+    // All retries exhausted — show error
+    let errorDetail = lastError?.response?.data?.detail || lastError?.message || 'Authentication failed. Please check your credentials.'
+    if (isColdStartError(lastError)) {
+      errorDetail = 'Server is starting up. Please wait a moment and try again.'
+    }
+    if (Array.isArray(errorDetail)) {
+        errorDetail = errorDetail.map(e => e.msg).join(', ')
+    } else if (typeof errorDetail === 'object') {
+        errorDetail = JSON.stringify(errorDetail)
+    }
+    
+    setError(errorDetail)
+    setIsAuthenticating(false)
+    setAuthStatusText(null)
+    setPendingDeviceId(null)
   }
 
   const handleSubmit = (e) => {
@@ -95,7 +157,7 @@ export default function Login() {
 
   return (
     <>
-      <AppLoadingOverlay isVisible={isAuthenticating} progress={authProgress} />
+      <AppLoadingOverlay isVisible={isAuthenticating} progress={authProgress} statusText={authStatusText} />
       
       {pendingDeviceId ? (
         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '100%', zIndex: 10 }}>

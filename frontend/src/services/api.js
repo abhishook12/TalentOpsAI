@@ -3,6 +3,13 @@ import axios from 'axios'
 const RAW_API_URL = import.meta.env.VITE_API_URL || 'https://talentopsai-1.onrender.com'
 export const API = import.meta.env.DEV ? 'http://127.0.0.1:8000' : RAW_API_URL
 
+// ── Immediate Backend Warm-Up ──────────────────────────────────────────────
+// Fire a lightweight /ping the instant this module loads (before React mounts).
+// This gives Render's cold start a head start while the JS bundle parses.
+if (!import.meta.env.DEV) {
+  fetch(`${RAW_API_URL}/ping`, { method: 'GET', mode: 'cors', cache: 'no-store' }).catch(() => {})
+}
+
 const clientCache = new Map()
 let onUnauthorizedCallback = null;
 
@@ -117,8 +124,10 @@ async function trySilentRefresh() {
 }
 
 async function smartRequest(method, url, data, config = {}) {
-  const retryable = config.retryable ?? ['get', 'delete', 'head'].includes(method)
-  const retryDelayMs = config.retryDelayMs ?? 1200
+  // Auth login/google POSTs should also retry on cold-start (502/503/timeout)
+  const isAuthLogin = (method === 'post' && (url === '/auth/login' || url === '/auth/google'))
+  const retryable = config.retryable ?? (['get', 'delete', 'head'].includes(method) || isAuthLogin)
+  const retryDelayMs = config.retryDelayMs ?? (isAuthLogin ? 2500 : 1200)
   const maxAttempts = retryable ? 2 : 1
   const authToken = getStoredToken()
   let lastError = null

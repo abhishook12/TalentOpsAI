@@ -31,11 +31,11 @@ logger = logging.getLogger("talentops.scout_updates")
 router = APIRouter(prefix="/scout", tags=["Scout Auto-Update & Fleet"])
 
 # Production Fallbacks
-DEFAULT_RELEASE_VERSION = "2.8.3"
+DEFAULT_RELEASE_VERSION = "2.9.0"
 DEFAULT_MINIMUM_VERSION = "1.0.0"
 DEFAULT_DOWNLOAD_URL = "https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe"
-DEFAULT_SHA256 = "021b4f6b4eb024562fea89744ec1993cb7f913ad791129f7017308378e8b65dc"
-DEFAULT_SIZE = 51637112
+DEFAULT_SHA256 = "9648e09067ce86925ce720205033cfec713d6a7f6f11a9536ad87966903de345"
+DEFAULT_SIZE = 50374088
 
 DEFAULT_FEATURES = {
     "new_capture_pipeline": True,
@@ -231,9 +231,9 @@ def get_update_manifest(
                     selected_release = fallback_rel
 
             # 3. Staged rollout evaluation (Cohort allocation: 0-99 via stable installation/device hash)
-            elif selected_release.rollout_percentage < 100 and cohort_key:
+            elif (selected_release.rollout_percentage or 100) < 100 and cohort_key:
                 cohort_bucket = abs(hash(cohort_key)) % 100
-                if cohort_bucket >= selected_release.rollout_percentage:
+                if cohort_bucket >= (selected_release.rollout_percentage or 100):
                     logger.debug("Device/Installation %s in bucket %d >= rollout %d%% for v%s. Falling back to earlier release.",
                                  cohort_key, cohort_bucket, selected_release.rollout_percentage, selected_release.version)
                     fallback_rel = (
@@ -1278,6 +1278,21 @@ def list_scout_releases(
         }]
 
 
+_FLEET_STATS_CACHE = None
+_FLEET_STATS_CACHE_TIME = 0.0
+_FLEET_STATS_CACHE_TTL = 15.0
+
+_FLEET_BROADCAST_STATUS_CACHE = None
+_FLEET_BROADCAST_STATUS_CACHE_TIME = 0.0
+_FLEET_BROADCAST_STATUS_CACHE_TTL = 10.0
+
+def invalidate_fleet_caches():
+    global _FLEET_STATS_CACHE, _FLEET_STATS_CACHE_TIME, _FLEET_BROADCAST_STATUS_CACHE, _FLEET_BROADCAST_STATUS_CACHE_TIME
+    _FLEET_STATS_CACHE = None
+    _FLEET_STATS_CACHE_TIME = 0.0
+    _FLEET_BROADCAST_STATUS_CACHE = None
+    _FLEET_BROADCAST_STATUS_CACHE_TIME = 0.0
+
 @router.get("/fleet/stats")
 def get_fleet_update_stats(
     db: Session = Depends(get_db),
@@ -1287,6 +1302,12 @@ def get_fleet_update_stats(
     Returns enterprise analytics on Scout fleet health, version distribution,
     and active release channels.
     """
+    global _FLEET_STATS_CACHE, _FLEET_STATS_CACHE_TIME
+    import time
+    now_ts = time.time()
+    if _FLEET_STATS_CACHE is not None and (now_ts - _FLEET_STATS_CACHE_TIME < _FLEET_STATS_CACHE_TTL):
+        return _FLEET_STATS_CACHE
+
     try:
         now = datetime.now(timezone.utc)
         stale_threshold = now - timedelta(minutes=10)
@@ -1391,7 +1412,7 @@ def get_fleet_update_stats(
                 "failure_rate": r.failure_rate,
             })
 
-        return {
+        res_data = {
             "total_devices": total,
             "node_health": {
                 "healthy": healthy,
@@ -1405,6 +1426,9 @@ def get_fleet_update_stats(
             "releases": rel_list,
             "circuit_breaker_alert": circuit_alert,
         }
+        _FLEET_STATS_CACHE = res_data
+        _FLEET_STATS_CACHE_TIME = now_ts
+        return res_data
     except Exception as e:
         logger.error("Failed to generate fleet update stats: %s", e)
         return {
@@ -1544,6 +1568,7 @@ def broadcast_fleet_update(
     db.add(broadcast)
     db.commit()
     db.refresh(broadcast)
+    invalidate_fleet_caches()
 
     logger.info(
         "Fleet broadcast %s dispatched for v%s targeting %d devices (mandatory=%s)",
@@ -1571,6 +1596,11 @@ def get_fleet_broadcast_status(
     Returns live delivery, acknowledgment, and adoption metrics for the active fleet broadcast.
     """
     _check_admin(current_user)
+    global _FLEET_BROADCAST_STATUS_CACHE, _FLEET_BROADCAST_STATUS_CACHE_TIME
+    import time
+    now_ts = time.time()
+    if _FLEET_BROADCAST_STATUS_CACHE is not None and (now_ts - _FLEET_BROADCAST_STATUS_CACHE_TIME < _FLEET_BROADCAST_STATUS_CACHE_TTL):
+        return _FLEET_BROADCAST_STATUS_CACHE
 
     active = (
         db.query(ScoutFleetBroadcast)
@@ -1580,7 +1610,10 @@ def get_fleet_broadcast_status(
     )
 
     if not active:
-        return {"active": False, "broadcast": None}
+        res = {"active": False, "broadcast": None}
+        _FLEET_BROADCAST_STATUS_CACHE = res
+        _FLEET_BROADCAST_STATUS_CACHE_TIME = now_ts
+        return res
 
     # Count how many installations have successfully updated to target_version
     updated_count = (
@@ -1594,7 +1627,7 @@ def get_fleet_broadcast_status(
     delivery_pct = min(100.0, round(((active.delivered_count or 0) / targeted * 100.0), 1))
     adoption_pct = min(100.0, round((updated_count / targeted * 100.0), 1))
 
-    return {
+    res = {
         "active": True,
         "broadcast": {
             "id": active.id,
@@ -1614,6 +1647,9 @@ def get_fleet_broadcast_status(
             "adoption_percentage": adoption_pct,
         },
     }
+    _FLEET_BROADCAST_STATUS_CACHE = res
+    _FLEET_BROADCAST_STATUS_CACHE_TIME = now_ts
+    return res
 
 
 @router.post("/fleet/cancel-broadcast")
@@ -1631,6 +1667,7 @@ def cancel_fleet_broadcast(
         b.is_active = False
 
     db.commit()
+    invalidate_fleet_caches()
     return {"ok": True, "status": "BROADCAST_CANCELLED", "cancelled_count": len(broadcasts)}
 
 

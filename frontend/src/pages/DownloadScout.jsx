@@ -227,10 +227,10 @@ export default function DownloadScout() {
     version: '2.9.0',
     extractor_version: '4.6.0',
     download_url: '/download/scout/windows',
-    size_bytes: 51637112,
-    sha256: '021b4f6b4eb024562fea89744ec1993cb7f913ad791129f7017308378e8b65dc',
+    size_bytes: 50374088,
+    sha256: '9648e09067ce86925ce720205033cfec713d6a7f6f11a9536ad87966903de345',
     channel: 'stable',
-    released_at: '2026-09-18',
+    released_at: '2026-09-19',
   });
 
   useEffect(() => {

@@ -47,7 +47,7 @@ Name: "startup"; Description: "Launch TalentOps Scout automatically when Windows
 
 [Files]
 ; Distribute all binaries, including TalentOpsScout.exe and TalentOpsScoutUpdater.exe
-Source: "..\dist\TalentOpsScout\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\dist\TalentOpsScout\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*opengl32sw.dll,*Qt6Qml*,*Qt6Quick*,*Qt6Pdf*,*translations*"
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

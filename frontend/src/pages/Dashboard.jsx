@@ -191,7 +191,7 @@ export default function Dashboard() {
         tone: pendingQueue > 0 ? 'warning' : 'neutral',
       },
       {
-        label: 'AI Search Queries',
+        label: 'Search Queries',
         value: typeof visits?.searches_today === 'number' ? <AnimatedNumber value={visits.searches_today} /> : '—',
         sublabel: 'User search traffic (distinct from scraper)',
         icon: 'ti-search',
@@ -243,7 +243,7 @@ export default function Dashboard() {
               <i className="ti ti-refresh" style={isFetchingAny ? { animation: 'spin 0.8s linear infinite', display: 'inline-block' } : {}} /> Refresh Data
             </GhostButton>
             <PrimaryButton onClick={() => navigate({ to: '/search' })}>
-              <i className="ti ti-sparkles" /> Open AI Search
+              <i className="ti ti-sparkles" /> Open Search
             </PrimaryButton>
           </div>
         )}

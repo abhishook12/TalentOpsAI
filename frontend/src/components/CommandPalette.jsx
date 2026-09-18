@@ -13,8 +13,8 @@ export default function CommandPalette() {
   const { isAdmin } = useAuth();
   
   const actions = [
-    { id: 'ai_command', title: '✦ Ask TalentOps AI Anything', icon: Search, type: 'ai', route: '/?focus=ai' },
-    { id: 'ai_doctor', title: '🩺 Run AI Data Doctor (Health & Repair)', icon: Database, type: 'ai', route: '/?focus=doctor' },
+    { id: 'ai_command', title: '✦ Ask TalentOps Anything', icon: Search, type: 'ai', route: '/?focus=ai' },
+    { id: 'ai_doctor', title: '🩺 Run Data Doctor (Health & Repair)', icon: Database, type: 'ai', route: '/?focus=doctor' },
     { id: 'dashboard', title: 'Go to Dashboard', icon: BarChart, route: '/' },
     { id: 'recruiters', title: 'Search Recruiters', icon: Users, route: '/recruiters' },
     { id: 'companies', title: 'Search Companies', icon: Briefcase, route: '/directory' },
@@ -26,7 +26,7 @@ export default function CommandPalette() {
     { id: 'admin_dashboard', title: 'Admin Terminal', icon: Monitor, route: '/admin', adminOnly: true },
     { id: 'admin_users', title: 'User Management', icon: Users, route: '/admin/users', adminOnly: true },
     { id: 'admin_visitors', title: 'Visitor Analytics', icon: Activity, route: '/admin/visitor-analytics', adminOnly: true },
-    { id: 'ai_search', title: 'AI Search & Query Intelligence', icon: Search, route: '/search' },
+    { id: 'ai_search', title: 'Search & Query Intelligence', icon: Search, route: '/search' },
   ];
 
   const visibleActions = actions.filter(action => !action.adminOnly || isAdmin);

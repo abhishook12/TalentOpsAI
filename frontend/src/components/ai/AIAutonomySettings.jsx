@@ -116,7 +116,7 @@ export default function AIAutonomySettings() {
             <EvidenceBadge status="VERIFIED" confidence={1.0} size="sm" />
           </div>
           <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
-            AI Autonomy Policy & Agent Permission Matrix
+            Autonomy Policy & Agent Permission Matrix
           </h2>
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
             Configure machine agency boundaries in accordance with NIST Trustworthy AI and EU AI Act standards.

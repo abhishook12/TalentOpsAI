@@ -44,10 +44,10 @@ export default function AIInsights() {
       <SectionHeader
         eyebrow="Intelligence"
         title="Observations"
-        subtitle="AI-driven analysis of your operational data."
+        subtitle="Automated analysis of your operational data."
         action={
           <Badge tone="success" style={{ background: 'var(--brand-bg)', color: 'var(--text-primary)', borderColor: 'var(--card-border)' }}>
-            <BarChart3 size={12} style={{ marginRight: 4 }} /> AI Active
+            <BarChart3 size={12} style={{ marginRight: 4 }} /> Active
           </Badge>
         }
       />

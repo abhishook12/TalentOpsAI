@@ -14,7 +14,18 @@ Orchestrates:
 
 import os
 import sys
+
+class NullWriter:
+    def write(self, text): pass
+    def flush(self): pass
+
+if sys.stdout is None:
+    sys.stdout = NullWriter()
+if sys.stderr is None:
+    sys.stderr = NullWriter()
+
 import time
+import re
 import json
 import uuid
 import logging
@@ -54,15 +65,6 @@ from .ui.diagnostics_window import DiagnosticsWindow
 from .ui.settings_window import SettingsWindow
 from .ui.activation_window import ActivationWindow
 from .ui.scout_data import CANDIDATES
-
-class NullWriter:
-    def write(self, text): pass
-    def flush(self): pass
-
-if sys.stdout is None:
-    sys.stdout = NullWriter()
-if sys.stderr is None:
-    sys.stderr = NullWriter()
 
 from .core.paths import get_logs_dir
 

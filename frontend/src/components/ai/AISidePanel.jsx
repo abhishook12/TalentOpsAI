@@ -11,7 +11,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      text: 'TalentOps AI Copilot active. Context initialized for current workspace. How can I assist your sourcing operations today?'
+      text: 'TalentOps Copilot active. Context initialized for current workspace. How can I assist your sourcing operations today?'
     }
   ])
   const [input, setInput] = useState('')
@@ -103,7 +103,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
       {!isOpen && (
         <button
           onClick={onToggle}
-          title="Open TalentOps AI Copilot"
+          title="Open TalentOps Copilot"
           style={{
             position: 'fixed',
             right: '20px',
@@ -127,7 +127,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
           onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
         >
           <span style={{ fontSize: '15px' }}>✦</span>
-          <span>AI Copilot</span>
+          <span>Copilot</span>
         </button>
       )}
 

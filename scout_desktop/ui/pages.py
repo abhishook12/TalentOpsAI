@@ -46,6 +46,25 @@ from scout_desktop.version import __version__, EXTRACTOR_VERSION
 from scout_desktop.extractor.candidate_gate import clean_candidate_url
 
 
+def _smart_truncate(prefix: str, text: Optional[str], max_len: int = 34) -> str:
+    """Safely formats meter labels without slicing words in half (e.g. avoiding 'Professio')."""
+    if not text:
+        return f"{prefix}: —"
+    val = text.strip()
+    if not val or val == "—":
+        return f"{prefix}: —"
+    full = f"{prefix}: {val}"
+    if len(full) <= max_len:
+        return full
+    budget = max_len - len(prefix) - 5  # space for prefix + ": " + "..."
+    if budget < 5:
+        budget = 8
+    truncated = val[:budget]
+    if " " in truncated:
+        truncated = truncated.rsplit(" ", 1)[0]
+    return f"{prefix}: {truncated}..."
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # 0. ScanPage (Home, /)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -660,25 +679,6 @@ class ScanPage(QWidget):
         if not cand_id and CANDIDATES:
             cand_id = CANDIDATES[0].get("id")
         self.open_candidate_requested.emit(cand_id or "danielle-mason")
-
-def _smart_truncate(prefix: str, text: Optional[str], max_len: int = 34) -> str:
-    """Safely formats meter labels without slicing words in half (e.g. avoiding 'Professio')."""
-    if not text:
-        return f"{prefix}: —"
-    val = text.strip()
-    if not val or val == "—":
-        return f"{prefix}: —"
-    full = f"{prefix}: {val}"
-    if len(full) <= max_len:
-        return full
-    budget = max_len - len(prefix) - 5  # space for prefix + ": " + "..."
-    if budget < 5:
-        budget = 8
-    truncated = val[:budget]
-    if " " in truncated:
-        truncated = truncated.rsplit(" ", 1)[0]
-    return f"{prefix}: {truncated}..."
-
 
     def set_latest_candidate(
         self,

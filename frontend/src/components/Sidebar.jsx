@@ -59,7 +59,7 @@ export default function Sidebar() {
     { to: '/recruiters', label: 'Recruiters', icon: Users },
     { to: '/directory', label: 'Directory', icon: Map, aliases: ['/states', '/companies'] },
     { to: '/analytics', label: 'Analytics', icon: BarChart2 },
-    { to: '/search', label: 'AI Search', icon: Search },
+    { to: '/search', label: 'Search', icon: Search },
     { to: '/download-scout', label: 'Desktop Scout', icon: Laptop, badge: scoutVersion ? (scoutVersion.startsWith('v') ? scoutVersion : `v${scoutVersion}`) : 'v2.8.3' },
     { isGroupHeader: true, label: 'Account' },
     { to: '/profile', label: 'Profile', icon: UserCircle },
@@ -135,7 +135,7 @@ export default function Sidebar() {
               letterSpacing: '0.22em', 
               color: 'var(--text-muted)' 
             }}>
-              AI SCOUT
+              SCOUT
             </div>
           </div>
         </NavLink>

@@ -67,7 +67,7 @@ export default function SequenceGeneratorModal({ isOpen, onClose, onApplyTouch }
             </div>
             <div>
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                AI Multi-Touch Sequence Generator
+                Multi-Touch Sequence Generator
                 <span className="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
                   3-Touch Cadence
                 </span>

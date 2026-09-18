@@ -132,10 +132,10 @@ export default function AICommandCenter({ onSelectCandidate }) {
           </div>
           <div>
             <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)' }}>
-              AI Command Center
+              Command Center
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-              Ask TalentOps anything in natural language. Powered by Gemini 2.5 & Local Intelligence Engine.
+              Ask TalentOps anything in natural language. Powered by Local Intelligence Engine.
             </div>
           </div>
         </div>

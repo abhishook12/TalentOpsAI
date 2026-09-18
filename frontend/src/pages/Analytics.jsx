@@ -546,7 +546,7 @@ export default function Analytics() {
               ) : (
                 <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
                   <i className="ti ti-category" style={{ fontSize: 24, display: 'block', marginBottom: 8, color: 'var(--text-primary)' }} />
-                  No taxonomy data yet. Run AI Sync to categorize titles.
+                  No taxonomy data yet. Run Taxonomy Sync to categorize titles.
                 </div>
               )}
             </div>
@@ -563,10 +563,10 @@ export default function Analytics() {
               <div style={{ padding: '14px 16px', background: 'var(--card-border)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: 10 }}>
                 <h4 style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-primary)' }}>
                   <i className="ti ti-sparkles" style={{ color: 'var(--text-primary)', marginRight: 4 }} />
-                  AI Taxonomy Sync
+                  Taxonomy Sync
                 </h4>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 10 }}>
-                  Uses Gemini AI to intelligently categorize uncategorized job titles into industry groups (Healthcare, Technology, Finance, etc.).
+                  Intelligently categorizes uncategorized job titles into industry groups (Healthcare, Technology, Finance, etc.).
                 </div>
                 <button
                   onClick={handleTaxonomySync}

@@ -87,7 +87,7 @@ export default function AIDataDoctor() {
     return (
       <div style={{ backgroundColor: 'var(--bg-card, var(--card-bg))', border: '1px solid var(--card-border)', borderRadius: '12px', padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
         <i className="ti ti-loader-2" style={{ animation: 'spin 1s linear infinite', fontSize: '20px', display: 'block', margin: '0 auto 8px' }} />
-        AI Data Doctor diagnosing database health...
+        Data Doctor diagnosing database health...
       </div>
     )
   }
@@ -113,7 +113,7 @@ export default function AIDataDoctor() {
           <span style={{ fontSize: '14px', color: '#10b981' }}>🩺</span>
           <div>
             <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)' }}>
-              AI Data Doctor & Quarantine
+              Data Doctor & Quarantine
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
               Autonomous detection of stale emails, unverified phone numbers, and identity conflicts.

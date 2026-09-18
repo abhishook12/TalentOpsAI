@@ -244,8 +244,8 @@ function AppShell() {
               <div id="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 10 }} />
               <button
                 className="cc-icon-button"
-                title="TalentOps AI Copilot"
-                aria-label="TalentOps AI Copilot"
+                title="TalentOps Copilot"
+                aria-label="TalentOps Copilot"
                 style={{ padding: '8px', color: aiPanelOpen ? '#e4e4e7' : '#a1a1aa' }}
                 onClick={() => setAiPanelOpen(!aiPanelOpen)}
               >
@@ -315,7 +315,7 @@ function AppShell() {
 
               <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'flex-end', fontSize: 12, color: 'var(--text-muted)' }}>
                 <span><strong>Version</strong> {backendVersion || '—'}</span>
-                <span>Copyright {new Date().getFullYear()} TalentOpsAI</span>
+                <span>Copyright {new Date().getFullYear()} TalentOps</span>
               </div>
             </footer>
           </div>

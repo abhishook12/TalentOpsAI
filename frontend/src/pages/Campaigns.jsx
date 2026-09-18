@@ -716,7 +716,7 @@ export default function Campaigns() {
               <Activity size={14} /> Domain Health
             </button>
             <button onClick={() => setShowSequenceGenerator(true)} className="flex items-center gap-2 px-3 py-2 text-sm font-bold border border-[var(--border)] rounded-lg bg-[var(--bg-surface)] text-cyan-400 hover:bg-[var(--bg-hover)] transition-colors">
-              <Zap size={14} /> AI Sequence
+              <Zap size={14} /> Sequence
             </button>
             <button onClick={() => setShowTemplateLibrary(true)} className="flex items-center gap-2 px-3 py-2 text-sm font-bold border border-[var(--border)] rounded-lg bg-[var(--bg-surface)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors">
               <Clock size={14} /> Templates
@@ -908,7 +908,7 @@ export default function Campaigns() {
             <Activity size={13} /> Domain Health
           </button>
           <button onClick={() => setShowSequenceGenerator(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-[var(--border)] rounded-lg text-cyan-400 hover:bg-[var(--bg-hover)] transition-colors">
-            <Zap size={13} /> AI Sequence
+            <Zap size={13} /> Sequence
           </button>
           <button onClick={() => setShowTemplateLibrary(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-[var(--border)] rounded-lg text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors">
             <FileText size={13} /> Templates

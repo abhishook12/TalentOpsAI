@@ -350,7 +350,7 @@ const DatabaseIntelligenceCenter = () => {
           <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-6 backdrop-blur-md shadow-xl space-y-4">
             <div>
               <h3 className="text-lg font-bold text-gray-100 flex items-center gap-2">
-                <span className="text-indigo-400">⚡</span> AI Natural Language Evidence Query
+                <span className="text-indigo-400">⚡</span> Natural Language Evidence Query
               </h3>
               <p className="text-xs text-gray-400 mt-1">
                 Translates recruiting questions into structured SQL queries over multi-source provenance.

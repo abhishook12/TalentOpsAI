@@ -10,7 +10,7 @@ export default function AIActionPreviewModal({
   isOpen,
   onClose,
   onConfirm,
-  actionTitle = 'Execute AI Autonomous Operations',
+  actionTitle = 'Execute Autonomous Operations',
   plannedChanges = [],
   summaryMetrics = { added: 0, updated: 0, merged: 0, flagged: 0 }
 }) {

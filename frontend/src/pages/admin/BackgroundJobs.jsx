@@ -17,7 +17,7 @@ export default function BackgroundJobs() {
       <SectionHeader
         eyebrow="System Operations"
         title="Background Jobs"
-        subtitle="Live queue of asynchronous processing tasks and AI enrichments."
+        subtitle="Live queue of asynchronous processing tasks and automated enrichments."
       />
 
       <ShellCard style={{ padding: 18 }}>

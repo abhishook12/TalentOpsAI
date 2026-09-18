@@ -763,10 +763,10 @@ export default function AISearch() {
               color: 'var(--text-inverse)',
               border: 'none'
             }}
-            title="AI Boolean Query Generator"
+            title="Boolean Query Generator"
           >
             <i className="ti ti-code" />
-            <span style={{ fontSize: 12, fontWeight: 700 }}>AI Boolean Sourcing</span>
+            <span style={{ fontSize: 12, fontWeight: 700 }}>Boolean Sourcing</span>
           </button>
           <button
             onClick={() => {
@@ -1293,7 +1293,7 @@ export default function AISearch() {
                   }}
                 >
                   <span>✦</span>
-                  <span>AI Dossier Workspace</span>
+                  <span>Dossier Workspace</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1316,7 +1316,7 @@ export default function AISearch() {
                   }}
                 >
                   <i className="ti ti-mail" />
-                  <span>AI Outreach</span>
+                  <span>Outreach</span>
                 </button>
               </div>
 
@@ -1702,7 +1702,7 @@ export default function AISearch() {
                   <i className="ti ti-code" style={{ fontSize: 16 }} />
                 </div>
                 <div>
-                  <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>AI Boolean Query Generator</h2>
+                  <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>Boolean Query Generator</h2>
                   <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>Synthesize cross-platform Boolean strings for LinkedIn, Google X-Ray & TalentOps</p>
                 </div>
               </div>

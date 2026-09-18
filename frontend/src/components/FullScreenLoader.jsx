@@ -49,7 +49,7 @@ export default function FullScreenLoader({ error, onRetry, isSlowNetwork }) {
           <span style={{ fontWeight: 900, fontSize: 24, letterSpacing: -1 }}>T</span>
         </div>
         <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em' }}>
-          TalentOps <span style={{ color: '#d4d4d8' }}>AI</span>
+          TalentOps
         </div>
       </div>
 

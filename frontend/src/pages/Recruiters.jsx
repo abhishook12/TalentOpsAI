@@ -315,7 +315,7 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
       <td style={{ padding: '24px 20px', verticalAlign: 'middle' }}>
         <div style={{ width: '100px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {r.quality_score > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }} title="AI Quality Score">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }} title="Quality Score">
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: 700, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 <span>Quality</span>
                 <span>{r.quality_score}%</span>

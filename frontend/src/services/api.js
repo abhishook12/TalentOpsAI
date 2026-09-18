@@ -1,7 +1,9 @@
 import axios from 'axios'
 
 const RAW_API_URL = import.meta.env.VITE_API_URL || 'https://talentopsai-1.onrender.com'
-export const API = import.meta.env.DEV ? 'http://127.0.0.1:8000' : RAW_API_URL
+export const API = import.meta.env.DEV 
+  ? (typeof window !== 'undefined' && window.location?.hostname ? `http://${window.location.hostname}:8000` : 'http://127.0.0.1:8000') 
+  : RAW_API_URL
 
 // ── Immediate Backend Warm-Up ──────────────────────────────────────────────
 // Fire a lightweight /ping the instant this module loads (before React mounts).
@@ -57,24 +59,41 @@ const createClient = (baseURL) => {
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
 const SESSION_TOKEN_KEY = 'session_token'
+const REFRESH_TOKEN_KEY = 'refresh_token'
 
 export const getStoredToken = () => {
   if (typeof window === 'undefined') return null
   return localStorage.getItem(SESSION_TOKEN_KEY) || sessionStorage.getItem(SESSION_TOKEN_KEY)
 }
 
-export const setStoredToken = (token, remember = false) => {
+export const getStoredRefreshToken = () => {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem(REFRESH_TOKEN_KEY) || sessionStorage.getItem(REFRESH_TOKEN_KEY)
+}
+
+export const setStoredToken = (token, remember = true) => {
   if (typeof window === 'undefined') return
-  const storage = remember ? localStorage : sessionStorage
-  localStorage.removeItem(SESSION_TOKEN_KEY)
-  sessionStorage.removeItem(SESSION_TOKEN_KEY)
-  if (token) storage.setItem(SESSION_TOKEN_KEY, token)
+  // Always write to localStorage so browser restart / tab reload never kicks user out
+  if (token) {
+    localStorage.setItem(SESSION_TOKEN_KEY, token)
+    sessionStorage.setItem(SESSION_TOKEN_KEY, token)
+  }
+}
+
+export const setStoredRefreshToken = (token) => {
+  if (typeof window === 'undefined') return
+  if (token) {
+    localStorage.setItem(REFRESH_TOKEN_KEY, token)
+    sessionStorage.setItem(REFRESH_TOKEN_KEY, token)
+  }
 }
 
 export const clearStoredToken = () => {
   if (typeof window === 'undefined') return
   localStorage.removeItem(SESSION_TOKEN_KEY)
   sessionStorage.removeItem(SESSION_TOKEN_KEY)
+  localStorage.removeItem(REFRESH_TOKEN_KEY)
+  sessionStorage.removeItem(REFRESH_TOKEN_KEY)
 }
 
 const isRetryableError = (error) => {
@@ -112,8 +131,18 @@ async function trySilentRefresh() {
 
   isRefreshing = true
   const client = createClient(API)
+  const storedRefreshToken = getStoredRefreshToken()
   try {
-    await client.post('/auth/refresh')
+    const res = await client.post('/auth/refresh', 
+      { refresh_token: storedRefreshToken },
+      { headers: storedRefreshToken ? { Authorization: `Bearer ${storedRefreshToken}` } : {} }
+    )
+    if (res?.data?.token) {
+      setStoredToken(res.data.token, true)
+    }
+    if (res?.data?.refresh_token) {
+      setStoredRefreshToken(res.data.refresh_token)
+    }
     isRefreshing = false
     onRefreshed(null)
   } catch (err) {
@@ -176,11 +205,18 @@ async function smartRequest(method, url, data, config = {}) {
             await trySilentRefresh()
             return await smartRequest(method, url, data, { ...config, _isRetry: true })
           } catch (refreshErr) {
-            if (onUnauthorizedCallback) {
-              onUnauthorizedCallback(error.response.data?.detail);
+            const refreshStatus = refreshErr?.response?.status;
+            // ONLY force logout if the server explicitly rejected the refresh token (401/403)
+            // NEVER logout on network errors, cold starts, or temporary 5xx errors
+            if (refreshStatus === 401 || refreshStatus === 403) {
+              if (onUnauthorizedCallback) {
+                onUnauthorizedCallback(refreshErr?.response?.data?.detail || error.response?.data?.detail);
+              }
+            } else {
+              console.warn('[TalentOps API] Refresh skipped due to server connection state. Keeping session intact.');
             }
           }
-        } else if (isUnauthorized || isDeviceRevoked) {
+        } else if (isDeviceRevoked) {
           if (onUnauthorizedCallback && !url.includes('/auth/login')) {
             onUnauthorizedCallback(error.response.data?.detail);
           }

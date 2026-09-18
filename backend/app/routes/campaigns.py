@@ -258,6 +258,7 @@ async def api_launch_campaign(
         campaign_id = campaign.campaign_id
 
     db.commit()
+    invalidate_campaigns_cache()
 
     # Delegate heavy tasks to background
     background_tasks.add_task(
@@ -1419,6 +1420,13 @@ class CampaignRecruiterStatusUpdate(BaseModel):
     metadata: Optional[dict[str, Any]] = None
 
 
+_CAMPAIGNS_CACHE = {}
+_CAMPAIGNS_CACHE_TTL = 10.0
+
+def invalidate_campaigns_cache():
+    global _CAMPAIGNS_CACHE
+    _CAMPAIGNS_CACHE.clear()
+
 @router.get("")
 @router.get("/")
 def list_campaigns(
@@ -1431,6 +1439,12 @@ def list_campaigns(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_request),
 ):
+    cache_key = f"camp_{current_user.id}_{page}_{limit}_{search or ''}_{status or ''}_{is_test}_{include_archived}"
+    now_ts = time.time()
+    cached = _CAMPAIGNS_CACHE.get(cache_key)
+    if cached and (now_ts - cached[1] < _CAMPAIGNS_CACHE_TTL):
+        return cached[0]
+
     from sqlalchemy import func, case
     
     base_query = db.query(Campaign).filter(Campaign.user_id == current_user.id)
@@ -1488,12 +1502,14 @@ def list_campaigns(
         serialized["is_test"] = c.is_test
         ret.append(serialized)
         
-    return {
+    res_data = {
         "items": ret,
         "total": total_count,
         "page": page,
         "pages": (total_count + limit - 1) // limit if total_count > 0 else 1
     }
+    _CAMPAIGNS_CACHE[cache_key] = (res_data, now_ts)
+    return res_data
 
 
 @router.post("")
@@ -1519,6 +1535,7 @@ def create_campaign(payload: CampaignCreate, db: Session = Depends(get_db), curr
     )
     db.add(campaign)
     db.commit()
+    invalidate_campaigns_cache()
     return serialize_campaign(campaign)
 
 

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import api, { setOnUnauthorizedCallback, setStoredToken, clearStoredToken } from '../services/api';
+import api, { setOnUnauthorizedCallback, setStoredToken, setStoredRefreshToken, clearStoredToken } from '../services/api';
 import { useNavigate } from '@tanstack/react-router';
 
 const AuthContext = createContext();
@@ -42,14 +42,44 @@ export const AuthProvider = ({ children }) => {
                     localStorage.setItem('auth_session', JSON.stringify({ email: 'abhishekjadon824@gmail.com' }));
                 }
             } else {
+                // Backend explicitly said "not authenticated" — clear everything
                 setUser(null);
                 clearStoredToken();
                 localStorage.removeItem('auth_session');
             }
         } catch (error) {
-            setUser(null);
-            clearStoredToken();
-            localStorage.removeItem('auth_session');
+            // ── SESSION PERSISTENCE: Only clear auth on EXPLICIT server rejection ──
+            // If the backend returned 401 (invalid/expired token), clear auth.
+            // If the error is a network failure (server restart, timeout, CORS), 
+            // KEEP the existing session so the user isn't kicked out.
+            const serverStatus = error?.response?.status;
+            const isExplicitRejection = serverStatus === 401;
+            
+            if (isExplicitRejection) {
+                // Server explicitly rejected the token — it's truly invalid
+                setUser(null);
+                clearStoredToken();
+                localStorage.removeItem('auth_session');
+            } else {
+                // Network error, timeout, server restart, 500, etc.
+                // Preserve the existing auth state from localStorage
+                const cachedSession = localStorage.getItem('auth_session');
+                if (cachedSession && !user) {
+                    try {
+                        const parsed = JSON.parse(cachedSession);
+                        if (parsed.email) {
+                            const isAdminEmail = parsed.email.toLowerCase().trim() === 'abhishekjadon824@gmail.com';
+                            setUser({
+                                id: 'cached',
+                                email: parsed.email,
+                                first_name: isAdminEmail ? 'Abhishek' : parsed.email.split('@')[0],
+                                role: isAdminEmail ? 'superadmin' : 'user'
+                            });
+                        }
+                    } catch { /* corrupt cache, ignore */ }
+                }
+                // If user is already set in state, keep it as-is
+            }
         } finally {
             setLoading(false);
         }
@@ -61,13 +91,27 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         setOnUnauthorizedCallback((detail) => {
+            // Only force logout if the server EXPLICITLY rejected the session
+            // Transient errors (network, timeout, server restart) should NOT force logout
             if (detail === 'Session terminated by administrator') {
                 alert('Your session was terminated by an administrator.');
+                setUser(null);
+                clearStoredToken();
+                localStorage.removeItem('auth_session');
+                navigate({ to: '/login' });
+            } else if (
+                detail === 'Token expired' ||
+                detail === 'Invalid token' ||
+                detail === 'Not authenticated' ||
+                detail === 'Session expired or user not found'
+            ) {
+                // Explicit token/session invalidation — clear auth
+                setUser(null);
+                clearStoredToken();
+                localStorage.removeItem('auth_session');
+                navigate({ to: '/login' });
             }
-            setUser(null);
-            clearStoredToken();
-            localStorage.removeItem('auth_session');
-            navigate({ to: '/login' });
+            // For any other detail (network error, undefined, etc.) — DO NOT logout
         });
         
         return () => {
@@ -75,14 +119,17 @@ export const AuthProvider = ({ children }) => {
         };
     }, [navigate]);
 
-    const login = async (email, password, rememberMe = false) => {
+    const login = async (email, password, rememberMe = true) => {
         const response = await api.post('/auth/login', {
             email,
             password,
             remember_me: rememberMe
         });
         if (response.data.token) {
-            setStoredToken(response.data.token, rememberMe);
+            setStoredToken(response.data.token, true);
+        }
+        if (response.data.refresh_token) {
+            setStoredRefreshToken(response.data.refresh_token);
         }
         setUser(response.data.user);
         localStorage.setItem('auth_session', JSON.stringify({ email: response.data.user?.email || null }));
@@ -95,6 +142,9 @@ export const AuthProvider = ({ children }) => {
         });
         if (response.data.token) {
             setStoredToken(response.data.token, true); // Keep them logged in
+        }
+        if (response.data.refresh_token) {
+            setStoredRefreshToken(response.data.refresh_token);
         }
         setUser(response.data.user);
         localStorage.setItem('auth_session', JSON.stringify({ email: response.data.user?.email || null }));

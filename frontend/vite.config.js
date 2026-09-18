@@ -22,7 +22,7 @@ export default defineConfig({
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(commitHash)
   },
   server: {
-    host: '127.0.0.1',
+    host: '0.0.0.0',
     allowedHosts: true
   },
   build: {

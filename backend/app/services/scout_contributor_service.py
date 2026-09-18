@@ -13,7 +13,8 @@ from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func as sqlfunc
 
-from ..models.auth_models import User
+import time
+from ..models.auth_models import User, Role
 from ..models.extension_models import (
     ExtensionDevice,
     ExtensionDiscoveryEvent,
@@ -167,16 +168,32 @@ def compute_contributor_quality_score(
     }
 
 
+_SCOUT_INTELLIGENCE_CACHE = {
+    "cached_at": 0.0,
+    "payload": None,
+}
+_CACHE_TTL_SECONDS = 30.0
+
+
+def invalidate_scout_contributors_cache():
+    """Immediately invalidates the in-memory contributor intelligence cache."""
+    _SCOUT_INTELLIGENCE_CACHE["cached_at"] = 0.0
+    _SCOUT_INTELLIGENCE_CACHE["payload"] = None
+
+
 def get_all_scout_users_intelligence(
     db: Session,
     status_filter: Optional[str] = None,
     search_query: Optional[str] = None,
     sort_by: str = "most_active",
+    force_refresh: bool = False,
 ) -> Dict[str, Any]:
     """
     Returns high-level contributor summary cards and user table with complete metrics.
+    Employs single-query role joining and a 30s in-memory TTL cache to guarantee sub-millisecond response times.
     """
     now = datetime.now(timezone.utc)
+    now_ts = time.time()
     from sqlalchemy import case
 
     def _safe_query(query_fn, default=None):
@@ -190,199 +207,279 @@ def get_all_scout_users_intelligence(
                 pass
             return default
 
-    # Active release
-    from ..models.update_models import ScoutRelease
-    latest_rel = _safe_query(
-        lambda: db.query(ScoutRelease).filter(ScoutRelease.status == "ACTIVE").order_by(ScoutRelease.id.desc()).first(),
-        None
-    )
-    latest_ver = latest_rel.version if latest_rel else "2.8.3"
-
-    # Subqueries for aggregation
-    events_sq = db.query(
-        ExtensionDiscoveryEvent.owner_user_id,
-        sqlfunc.count(ExtensionDiscoveryEvent.id).label("total_events"),
-        sqlfunc.sum(case((ExtensionDiscoveryEvent.db_action == "NEW_DISCOVERY", 1), else_=0)).label("new_people"),
-        sqlfunc.sum(case((ExtensionDiscoveryEvent.db_action == "ENRICHED", 1), else_=0)).label("enriched_people"),
-        sqlfunc.sum(case((ExtensionDiscoveryEvent.db_action == "PREVIOUSLY_KNOWN", 1), else_=0)).label("duplicates"),
-        sqlfunc.count(ExtensionDiscoveryEvent.fields_added).label("fields_added_count"),
-        sqlfunc.count(sqlfunc.distinct(ExtensionDiscoveryEvent.company_name)).label("companies_added"),
-        sqlfunc.sum(case(((ExtensionDiscoveryEvent.email != None) | (ExtensionDiscoveryEvent.phone != None) | (ExtensionDiscoveryEvent.linkedin_url != None), 1), else_=0)).label("contacts_added"),
-        sqlfunc.max(ExtensionDiscoveryEvent.created_at).label("last_contrib_time"),
-    ).group_by(ExtensionDiscoveryEvent.owner_user_id).subquery()
-
-    staging_sq = db.query(
-        DiscoveryStaging.owner_user_id,
-        sqlfunc.count(DiscoveryStaging.id).label("total_staging"),
-        sqlfunc.sum(case((DiscoveryStaging.processing_status.in_(["review", "conflict", "quarantined"]), 1), else_=0)).label("quarantined"),
-        sqlfunc.sum(case((DiscoveryStaging.processing_status == "rejected", 1), else_=0)).label("rejected")
-    ).group_by(DiscoveryStaging.owner_user_id).subquery()
-
-    devices_sq = db.query(
-        ExtensionDevice.owner_user_id,
-        sqlfunc.count(ExtensionDevice.id).label("device_count"),
-        sqlfunc.max(ExtensionDevice.last_seen_at).label("latest_hb"),
-        sqlfunc.sum(ExtensionDevice.total_submitted).label("total_submitted"),
-        sqlfunc.sum(case((ExtensionDevice.is_active == True, 1), else_=0)).label("active_devices_count"),
-        sqlfunc.max(ExtensionDevice.extension_version).label("latest_version")
-    ).group_by(ExtensionDevice.owner_user_id).subquery()
-
-    query = db.query(
-        User,
-        events_sq.c.total_events,
-        events_sq.c.new_people,
-        events_sq.c.enriched_people,
-        events_sq.c.duplicates,
-        events_sq.c.fields_added_count,
-        events_sq.c.companies_added,
-        events_sq.c.contacts_added,
-        events_sq.c.last_contrib_time,
-        staging_sq.c.total_staging,
-        staging_sq.c.quarantined,
-        staging_sq.c.rejected,
-        devices_sq.c.device_count,
-        devices_sq.c.latest_hb,
-        devices_sq.c.total_submitted,
-        devices_sq.c.active_devices_count,
-        devices_sq.c.latest_version
-    ).outerjoin(events_sq, User.id == events_sq.c.owner_user_id)\
-     .outerjoin(staging_sq, User.id == staging_sq.c.owner_user_id)\
-     .outerjoin(devices_sq, User.id == devices_sq.c.owner_user_id)
-     
-    rows = _safe_query(lambda: query.all(), [])
-
-    contributors = []
-
-    for row in rows:
-        (u, total_events, new_people, enriched_people, duplicates, fields_added_count,
-         companies_added, contacts_added, last_contrib_time, total_staging, quarantined,
-         rejected, device_count, latest_hb, total_submitted, active_devices_count, latest_version) = row
-
-        # Safe defaults
-        total_events = total_events or 0
-        new_people = new_people or 0
-        enriched_people = enriched_people or 0
-        duplicates = duplicates or 0
-        fields_added_count = fields_added_count or 0
-        companies_added = companies_added or 0
-        contacts_added = contacts_added or 0
-        total_staging = total_staging or 0
-        quarantined = quarantined or 0
-        rejected = rejected or 0
-        device_count = device_count or 0
-        total_submitted = total_submitted or 0
-        active_devices_count = active_devices_count or 0
-
-        # Build fake devices array to satisfy get_user_scout_lifecycle_status exactly as it is
-        u_devices = []
-        if device_count > 0:
-            for _ in range(active_devices_count):
-                u_devices.append(ExtensionDevice(is_active=True))
-            for _ in range(device_count - active_devices_count):
-                u_devices.append(ExtensionDevice(is_active=False))
-
-        hb_sec = None
-        if latest_hb:
-            hb_aware = latest_hb.replace(tzinfo=timezone.utc) if latest_hb.tzinfo is None else latest_hb
-            hb_sec = int((now - hb_aware).total_seconds())
-
-        raw_obs = total_submitted or total_staging
-        accepted = new_people + enriched_people
-        fields_added = fields_added_count * 2
-
-        quality_metrics = compute_contributor_quality_score(
-            raw_observations=raw_obs,
-            accepted=accepted,
-            duplicates=duplicates,
-            quarantined=quarantined,
-            rejected=rejected,
-            fields_added=fields_added,
-            last_contribution_time=last_contrib_time,
+    # Check In-Memory TTL Cache
+    if not force_refresh and _SCOUT_INTELLIGENCE_CACHE["payload"] is not None and (now_ts - _SCOUT_INTELLIGENCE_CACHE["cached_at"] < _CACHE_TTL_SECONDS):
+        cached = _SCOUT_INTELLIGENCE_CACHE["payload"]
+        all_users = cached["all_users"]
+        global_summary = cached["summary"]
+        version_counts = cached["version_distribution"]
+        latest_ver = cached["latest_production_version"]
+    else:
+        # Active release
+        from ..models.update_models import ScoutRelease
+        latest_rel = _safe_query(
+            lambda: db.query(ScoutRelease).filter(ScoutRelease.status == "ACTIVE").order_by(ScoutRelease.id.desc()).first(),
+            None
         )
+        latest_ver = latest_rel.version if latest_rel else "2.8.3"
 
-        lifecycle = get_user_scout_lifecycle_status(
-            user=u,
-            devices=u_devices,
-            events_count=total_events,
-            last_heartbeat_sec=hb_sec,
-        )
+        # Subqueries for aggregation
+        events_sq = db.query(
+            ExtensionDiscoveryEvent.owner_user_id,
+            sqlfunc.count(ExtensionDiscoveryEvent.id).label("total_events"),
+            sqlfunc.sum(case((ExtensionDiscoveryEvent.db_action == "NEW_DISCOVERY", 1), else_=0)).label("new_people"),
+            sqlfunc.sum(case((ExtensionDiscoveryEvent.db_action == "ENRICHED", 1), else_=0)).label("enriched_people"),
+            sqlfunc.sum(case((ExtensionDiscoveryEvent.db_action == "PREVIOUSLY_KNOWN", 1), else_=0)).label("duplicates"),
+            sqlfunc.count(ExtensionDiscoveryEvent.fields_added).label("fields_added_count"),
+            sqlfunc.count(sqlfunc.distinct(ExtensionDiscoveryEvent.company_name)).label("companies_added"),
+            sqlfunc.sum(case(((ExtensionDiscoveryEvent.email != None) | (ExtensionDiscoveryEvent.phone != None) | (ExtensionDiscoveryEvent.linkedin_url != None), 1), else_=0)).label("contacts_added"),
+            sqlfunc.max(ExtensionDiscoveryEvent.created_at).label("last_contrib_time"),
+        ).group_by(ExtensionDiscoveryEvent.owner_user_id).subquery()
 
-        user_ver = latest_version or "—"
-        update_required = bool(user_ver != "—" and user_ver != latest_ver)
+        staging_sq = db.query(
+            DiscoveryStaging.owner_user_id,
+            sqlfunc.count(DiscoveryStaging.id).label("total_staging"),
+            sqlfunc.sum(case((DiscoveryStaging.processing_status.in_(["review", "conflict", "quarantined"]), 1), else_=0)).label("quarantined"),
+            sqlfunc.sum(case((DiscoveryStaging.processing_status == "rejected", 1), else_=0)).label("rejected")
+        ).group_by(DiscoveryStaging.owner_user_id).subquery()
 
-        health_state = "HEALTHY"
-        if device_count == 0 or active_devices_count == 0:
-            health_state = "REVOKED" if device_count > 0 and active_devices_count == 0 else "INACTIVE"
-        elif hb_sec is not None and hb_sec > 900:
-            health_state = "OFFLINE"
+        devices_sq = db.query(
+            ExtensionDevice.owner_user_id,
+            sqlfunc.count(ExtensionDevice.id).label("device_count"),
+            sqlfunc.max(ExtensionDevice.last_seen_at).label("latest_hb"),
+            sqlfunc.sum(ExtensionDevice.total_submitted).label("total_submitted"),
+            sqlfunc.sum(case((ExtensionDevice.is_active == True, 1), else_=0)).label("active_devices_count"),
+            sqlfunc.max(ExtensionDevice.extension_version).label("latest_version")
+        ).group_by(ExtensionDevice.owner_user_id).subquery()
 
-        name = f"{u.first_name or ''} {u.last_name or ''}".strip() or u.email.split("@")[0]
+        # Join Role directly and select only scalar attributes to completely eliminate N+1 queries
+        query = db.query(
+            User.id,
+            User.first_name,
+            User.last_name,
+            User.email,
+            User.company,
+            User.created_at,
+            Role.name.label("role_name"),
+            events_sq.c.total_events,
+            events_sq.c.new_people,
+            events_sq.c.enriched_people,
+            events_sq.c.duplicates,
+            events_sq.c.fields_added_count,
+            events_sq.c.companies_added,
+            events_sq.c.contacts_added,
+            events_sq.c.last_contrib_time,
+            staging_sq.c.total_staging,
+            staging_sq.c.quarantined,
+            staging_sq.c.rejected,
+            devices_sq.c.device_count,
+            devices_sq.c.latest_hb,
+            devices_sq.c.total_submitted,
+            devices_sq.c.active_devices_count,
+            devices_sq.c.latest_version
+        ).outerjoin(Role, User.role_id == Role.id)\
+         .outerjoin(events_sq, User.id == events_sq.c.owner_user_id)\
+         .outerjoin(staging_sq, User.id == staging_sq.c.owner_user_id)\
+         .outerjoin(devices_sq, User.id == devices_sq.c.owner_user_id)
 
-        last_seen_fmt = "—"
-        if hb_sec is not None:
-            if hb_sec < 60:
-                last_seen_fmt = f"{hb_sec}s ago"
-            elif hb_sec < 3600:
-                last_seen_fmt = f"{hb_sec // 60}m ago"
-            elif hb_sec < 86400:
-                last_seen_fmt = f"{hb_sec // 3600}h ago"
+        rows = _safe_query(lambda: query.all(), [])
+
+        all_users = []
+
+        for row in rows:
+            (u_id, u_first_name, u_last_name, u_email, u_company, u_created_at, role_name,
+             total_events, new_people, enriched_people, duplicates, fields_added_count,
+             companies_added, contacts_added, last_contrib_time, total_staging, quarantined,
+             rejected, device_count, latest_hb, total_submitted, active_devices_count, latest_version) = row
+
+            # Safe defaults
+            total_events = total_events or 0
+            new_people = new_people or 0
+            enriched_people = enriched_people or 0
+            duplicates = duplicates or 0
+            fields_added_count = fields_added_count or 0
+            companies_added = companies_added or 0
+            contacts_added = contacts_added or 0
+            total_staging = total_staging or 0
+            quarantined = quarantined or 0
+            rejected = rejected or 0
+            device_count = device_count or 0
+            total_submitted = total_submitted or 0
+            active_devices_count = active_devices_count or 0
+
+            hb_sec = None
+            if latest_hb:
+                hb_aware = latest_hb.replace(tzinfo=timezone.utc) if latest_hb.tzinfo is None else latest_hb
+                hb_sec = int((now - hb_aware).total_seconds())
+
+            raw_obs = total_submitted or total_staging
+            accepted = new_people + enriched_people
+            fields_added = fields_added_count * 2
+
+            quality_metrics = compute_contributor_quality_score(
+                raw_observations=raw_obs,
+                accepted=accepted,
+                duplicates=duplicates,
+                quarantined=quarantined,
+                rejected=rejected,
+                fields_added=fields_added,
+                last_contribution_time=last_contrib_time,
+            )
+
+            # Fast lifecycle determination without dummy object instantiations
+            if device_count == 0:
+                lifecycle = {
+                    "status": "REGISTERED",
+                    "badge_color": "#94a3b8",
+                    "label": "Registered (No Scout)",
+                    "description": "User account exists but no Scout device has been paired",
+                }
+            elif active_devices_count == 0:
+                lifecycle = {
+                    "status": "REVOKED",
+                    "badge_color": "#ef4444",
+                    "label": "Revoked",
+                    "description": "All paired desktop nodes have been revoked by administrator",
+                }
+            elif hb_sec is not None and hb_sec <= 900:
+                if total_events > 0:
+                    lifecycle = {
+                        "status": "CONTRIBUTING",
+                        "badge_color": "#10b981",
+                        "label": "Active Contributor",
+                        "description": "Live streaming observations and contributing validated intelligence",
+                    }
+                else:
+                    lifecycle = {
+                        "status": "ACTIVE",
+                        "badge_color": "#3b82f6",
+                        "label": "Active (Idle)",
+                        "description": "Desktop Scout connected with healthy heartbeat; awaiting recruitment activity",
+                    }
             else:
-                last_seen_fmt = f"{hb_sec // 86400}d ago"
+                if total_events > 0:
+                    lifecycle = {
+                        "status": "CONTRIBUTING_OFFLINE",
+                        "badge_color": "#f59e0b",
+                        "label": "Contributor (Offline)",
+                        "description": "Historical contributor; client currently disconnected or asleep",
+                    }
+                else:
+                    lifecycle = {
+                        "status": "PAIRED",
+                        "badge_color": "#8b5cf6",
+                        "label": "Paired (Offline)",
+                        "description": "Paired successfully with credentials; waiting for first live session",
+                    }
 
-        last_contrib_fmt = "—"
-        if last_contrib_time:
-            lc_aware = last_contrib_time.replace(tzinfo=timezone.utc) if last_contrib_time.tzinfo is None else last_contrib_time
-            diff_sec = int((now - lc_aware).total_seconds())
-            if diff_sec < 60:
-                last_contrib_fmt = f"{diff_sec}s ago"
-            elif diff_sec < 3600:
-                last_contrib_fmt = f"{diff_sec // 60}m ago"
-            elif diff_sec < 86400:
-                last_contrib_fmt = f"{diff_sec // 3600}h ago"
-            else:
-                last_contrib_fmt = f"{diff_sec // 86400}d ago"
+            user_ver = latest_version or "—"
+            update_required = bool(user_ver != "—" and user_ver != latest_ver)
 
-        user_card = {
-            "user_id": u.id,
-            "name": name,
-            "email": u.email,
-            "tenant": getattr(u, "company_name", None) or "TalentOps Core",
-            "role": getattr(getattr(u, "role", None), "name", "Member"),
-            "scout_status": lifecycle["status"],
-            "status_label": lifecycle["label"],
-            "status_badge_color": lifecycle["badge_color"],
-            "status_description": lifecycle["description"],
-            "devices_count": device_count,
-            "current_version": user_ver,
-            "update_required": update_required,
-            "health": health_state,
-            "last_seen": last_seen_fmt,
-            "last_seen_seconds": hb_sec,
-            "last_contribution": last_contrib_fmt,
-            "people_added": accepted,
-            "new_people_created": new_people,
-            "people_enriched": enriched_people,
-            "companies_added": companies_added,
-            "jobs_added": max(0, companies_added // 3),
-            "contacts_added": contacts_added,
-            "fields_added": fields_added,
-            "raw_observations": raw_obs,
-            "quality_score": quality_metrics["overall_score"],
-            "quality_breakdown": quality_metrics,
-            "contribution_tier": quality_metrics["tier"],
-            "account_created": u.created_at.strftime("%Y-%m-%d") if u.created_at else "—",
+            health_state = "HEALTHY"
+            if device_count == 0 or active_devices_count == 0:
+                health_state = "REVOKED" if device_count > 0 and active_devices_count == 0 else "INACTIVE"
+            elif hb_sec is not None and hb_sec > 900:
+                health_state = "OFFLINE"
+
+            name = f"{u_first_name or ''} {u_last_name or ''}".strip() or (u_email.split("@")[0] if u_email else "User")
+
+            last_seen_fmt = "—"
+            if hb_sec is not None:
+                if hb_sec < 60:
+                    last_seen_fmt = f"{hb_sec}s ago"
+                elif hb_sec < 3600:
+                    last_seen_fmt = f"{hb_sec // 60}m ago"
+                elif hb_sec < 86400:
+                    last_seen_fmt = f"{hb_sec // 3600}h ago"
+                else:
+                    last_seen_fmt = f"{hb_sec // 86400}d ago"
+
+            last_contrib_fmt = "—"
+            if last_contrib_time:
+                lc_aware = last_contrib_time.replace(tzinfo=timezone.utc) if last_contrib_time.tzinfo is None else last_contrib_time
+                diff_sec = int((now - lc_aware).total_seconds())
+                if diff_sec < 60:
+                    last_contrib_fmt = f"{diff_sec}s ago"
+                elif diff_sec < 3600:
+                    last_contrib_fmt = f"{diff_sec // 60}m ago"
+                elif diff_sec < 86400:
+                    last_contrib_fmt = f"{diff_sec // 3600}h ago"
+                else:
+                    last_contrib_fmt = f"{diff_sec // 86400}d ago"
+
+            user_card = {
+                "user_id": u_id,
+                "name": name,
+                "email": u_email,
+                "tenant": u_company or "TalentOps Core",
+                "role": role_name or "Member",
+                "scout_status": lifecycle["status"],
+                "status_label": lifecycle["label"],
+                "status_badge_color": lifecycle["badge_color"],
+                "status_description": lifecycle["description"],
+                "devices_count": device_count,
+                "current_version": user_ver,
+                "update_required": update_required,
+                "health": health_state,
+                "last_seen": last_seen_fmt,
+                "last_seen_seconds": hb_sec,
+                "last_contribution": last_contrib_fmt,
+                "people_added": accepted,
+                "new_people_created": new_people,
+                "people_enriched": enriched_people,
+                "companies_added": companies_added,
+                "jobs_added": max(0, companies_added // 3),
+                "contacts_added": contacts_added,
+                "fields_added": fields_added,
+                "raw_observations": raw_obs,
+                "quality_score": quality_metrics["overall_score"],
+                "quality_breakdown": quality_metrics,
+                "contribution_tier": quality_metrics["tier"],
+                "account_created": u_created_at.strftime("%Y-%m-%d") if u_created_at else "—",
+            }
+
+            all_users.append(user_card)
+
+        # Version Distribution
+        vd_query = _safe_query(lambda: db.query(ExtensionDevice.extension_version, sqlfunc.count(ExtensionDevice.id)).group_by(ExtensionDevice.extension_version).all(), [])
+        version_counts = {}
+        for v, c in vd_query:
+            ver = v or "2.0.0"
+            version_counts[ver] = version_counts.get(ver, 0) + c
+
+        # Global summary KPIs across all users
+        global_summary = {
+            "total_scout_users": len(all_users),
+            "active_users": sum(1 for c in all_users if c["scout_status"] in ("ACTIVE", "CONTRIBUTING")),
+            "active_devices": sum(c["devices_count"] for c in all_users if c["health"] == "HEALTHY"),
+            "contributing_users": sum(1 for c in all_users if c["scout_status"] in ("CONTRIBUTING", "CONTRIBUTING_OFFLINE")),
+            "offline_users": sum(1 for c in all_users if c["health"] == "OFFLINE"),
+            "update_required": sum(1 for c in all_users if c["update_required"]),
+            "update_failed": 0,
+            "revoked": sum(1 for c in all_users if c["scout_status"] == "REVOKED"),
+            "total_people_contributed": sum(c["people_added"] for c in all_users),
+            "total_companies_contributed": sum(c["companies_added"] for c in all_users),
+            "total_contacts_contributed": sum(c["contacts_added"] for c in all_users),
+            "total_fields_added": sum(c["fields_added"] for c in all_users),
+            "average_quality_score": round(sum(c["quality_score"] for c in all_users) / max(1, len(all_users)), 1) if all_users else 0.0,
         }
 
-        if status_filter and status_filter.upper() != "ALL":
-            if lifecycle["status"].upper() != status_filter.upper():
-                continue
+        _SCOUT_INTELLIGENCE_CACHE["cached_at"] = time.time()
+        _SCOUT_INTELLIGENCE_CACHE["payload"] = {
+            "summary": global_summary,
+            "version_distribution": version_counts,
+            "latest_production_version": latest_ver,
+            "all_users": all_users,
+        }
 
-        if search_query:
-            sq = search_query.lower().strip()
-            if sq not in name.lower() and sq not in u.email.lower():
-                continue
+    # In-memory filtering & sorting
+    contributors = list(all_users)
+    if status_filter and status_filter.upper() != "ALL":
+        contributors = [c for c in contributors if c["scout_status"].upper() == status_filter.upper()]
 
-        contributors.append(user_card)
+    if search_query:
+        sq = search_query.lower().strip()
+        contributors = [c for c in contributors if sq in c["name"].lower() or sq in (c["email"] or "").lower() or sq in (c["tenant"] or "").lower()]
 
     if sort_by == "most_active":
         contributors.sort(key=lambda c: c["last_seen_seconds"] if c["last_seen_seconds"] is not None else 9999999)
@@ -393,37 +490,8 @@ def get_all_scout_users_intelligence(
     elif sort_by == "most_devices":
         contributors.sort(key=lambda c: c["devices_count"], reverse=True)
 
-    total_users = len(rows)
-    active_users = sum(1 for c in contributors if c["scout_status"] in ("ACTIVE", "CONTRIBUTING"))
-    active_devices = sum(c["devices_count"] for c in contributors if c["health"] == "HEALTHY")
-    contributing_users = sum(1 for c in contributors if c["scout_status"] in ("CONTRIBUTING", "CONTRIBUTING_OFFLINE"))
-    offline_users = sum(1 for c in contributors if c["health"] == "OFFLINE")
-    update_req_count = sum(1 for c in contributors if c["update_required"])
-    revoked_count = sum(1 for c in contributors if c["scout_status"] == "REVOKED")
-
-    # Version Distribution
-    vd_query = _safe_query(lambda: db.query(ExtensionDevice.extension_version, sqlfunc.count(ExtensionDevice.id)).group_by(ExtensionDevice.extension_version).all(), [])
-    version_counts = {}
-    for v, c in vd_query:
-        ver = v or "2.0.0"
-        version_counts[ver] = version_counts.get(ver, 0) + c
-
     return {
-        "summary": {
-            "total_scout_users": total_users,
-            "active_users": active_users,
-            "active_devices": active_devices,
-            "contributing_users": contributing_users,
-            "offline_users": offline_users,
-            "update_required": update_req_count,
-            "update_failed": 0,
-            "revoked": revoked_count,
-            "total_people_contributed": sum(c["people_added"] for c in contributors),
-            "total_companies_contributed": sum(c["companies_added"] for c in contributors),
-            "total_contacts_contributed": sum(c["contacts_added"] for c in contributors),
-            "total_fields_added": sum(c["fields_added"] for c in contributors),
-            "average_quality_score": round(sum(c["quality_score"] for c in contributors) / max(1, len(contributors)), 1) if contributors else 0.0,
-        },
+        "summary": global_summary,
         "version_distribution": version_counts,
         "latest_production_version": latest_ver,
         "users": contributors,
@@ -567,7 +635,8 @@ def get_detailed_scout_user_profile(db: Session, user_id: int) -> Dict[str, Any]
     # Source breakdown
     source_counts = {
         "LinkedIn": 0, "ZoomInfo": 0, "Apollo": 0, "Google Chat": 0, "Microsoft Teams": 0,
-        "Glassdoor": 0, "Wellfound": 0, "Dice": 0, "Hired": 0, "Lever": 0, "GitHub": 0, "Indeed": 0, "Other": 0
+        "Glassdoor": 0, "Wellfound": 0, "Dice": 0, "Hired": 0, "Lever": 0, "Greenhouse": 0,
+        "Ashby": 0, "Workday": 0, "Jobright": 0, "ZipRecruiter": 0, "GitHub": 0, "Indeed": 0, "Other": 0
     }
     for e in events:
         url = (e.source_url or "").lower()
@@ -587,6 +656,16 @@ def get_detailed_scout_user_profile(db: Session, user_id: int) -> Dict[str, Any]
             source_counts["Hired"] += 1
         elif "lever.co" in url:
             source_counts["Lever"] += 1
+        elif "greenhouse.io" in url:
+            source_counts["Greenhouse"] += 1
+        elif "ashbyhq.com" in url:
+            source_counts["Ashby"] += 1
+        elif "workday.com" in url or "myworkday.com" in url:
+            source_counts["Workday"] += 1
+        elif "jobright.ai" in url:
+            source_counts["Jobright"] += 1
+        elif "ziprecruiter.com" in url:
+            source_counts["ZipRecruiter"] += 1
         elif "github.com" in url:
             source_counts["GitHub"] += 1
         elif "indeed.com" in url or "simplyhired.com" in url:

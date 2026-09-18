@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   Users, RefreshCw, Search, Sparkles, Activity, Zap, Laptop, Clock, UserCheck, ShieldAlert, Award
@@ -15,24 +15,69 @@ export default function ScoutContributors() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
 
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ['scout-contributors', statusFilter, searchQuery, sortBy],
+    queryKey: ['scout-contributors'],
     queryFn: async () => {
       const res = await api.get('/scout/users', {
-        params: {
-          status: statusFilter === 'ALL' ? undefined : statusFilter,
-          search: searchQuery || undefined,
-          sort: sortBy,
-        }
+        timeout: 15000,
+        retryable: false,
       })
       return res.data
     },
+    staleTime: 60000,
+    retry: 1,
     keepPreviousData: true,
   })
 
+  const handleRefresh = async () => {
+    try {
+      await api.get('/scout/users', {
+        params: { refresh: true },
+        timeout: 15000,
+        retryable: false,
+      })
+    } catch {
+      // Ignore fallback
+    }
+    refetch()
+  }
+
   const summary = data?.summary || {}
-  const users = data?.users || []
   const versionDistribution = data?.version_distribution || {}
   const latestProdVer = data?.latest_production_version || ''
+
+  const users = useMemo(() => {
+    let list = [...(data?.users || [])]
+
+    if (statusFilter && statusFilter.toUpperCase() !== 'ALL') {
+      list = list.filter((u) => {
+        const st = (u.lifecycle_status || u.scout_status || '').toUpperCase()
+        return st === statusFilter.toUpperCase()
+      })
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim()
+      list = list.filter((u) => {
+        const name = (u.full_name || u.name || '').toLowerCase()
+        const email = (u.email || '').toLowerCase()
+        const tenant = (u.tenant || u.company || '').toLowerCase()
+        const ver = (u.primary_version || u.current_version || '').toLowerCase()
+        return name.includes(q) || email.includes(q) || tenant.includes(q) || ver.includes(q)
+      })
+    }
+
+    if (sortBy === 'most_active') {
+      list.sort((a, b) => (a.last_seen_seconds ?? 9999999) - (b.last_seen_seconds ?? 9999999))
+    } else if (sortBy === 'most_data') {
+      list.sort((a, b) => ((b.people_added || 0) + (b.fields_added || 0)) - ((a.people_added || 0) + (a.fields_added || 0)))
+    } else if (sortBy === 'highest_quality') {
+      list.sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0))
+    } else if (sortBy === 'most_devices') {
+      list.sort((a, b) => (b.devices_count || 0) - (a.devices_count || 0))
+    }
+
+    return list
+  }, [data?.users, statusFilter, searchQuery, sortBy])
 
   const formatTimeAgo = (isoStr) => {
     if (!isoStr) return 'Never'
@@ -106,7 +151,7 @@ export default function ScoutContributors() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button
-            onClick={() => refetch()}
+            onClick={handleRefresh}
             disabled={isFetching}
             style={{
               padding: '6px 14px',
@@ -138,13 +183,13 @@ export default function ScoutContributors() {
         marginBottom: 16
       }}>
         {[
-          { label: 'SCOUT USERS', value: totalUsersCount, sub: 'Registered accounts' },
-          { label: 'ACTIVE USERS', value: activeUsersCount, sub: 'Seen in last 24h' },
-          { label: 'ACTIVE DEVICES', value: activeDevicesCount, sub: `of ${totalDevicesCount} paired` },
-          { label: 'CONTRIBUTING', value: contributingUsersCount, sub: 'Added or enriched data' },
-          { label: 'OFFLINE', value: offlineUsersCount, sub: 'No signal over 7d' },
-          { label: 'UPDATE REQUIRED', value: updateReqCount, sub: 'Behind current build' },
-          { label: 'REVOKED', value: revokedCount, sub: 'Blocked or quarantined' },
+          { label: 'SCOUT USERS', value: isLoading && !data ? '—' : totalUsersCount, sub: 'Registered accounts' },
+          { label: 'ACTIVE USERS', value: isLoading && !data ? '—' : activeUsersCount, sub: 'Seen in last 24h' },
+          { label: 'ACTIVE DEVICES', value: isLoading && !data ? '—' : activeDevicesCount, sub: `of ${totalDevicesCount} paired` },
+          { label: 'CONTRIBUTING', value: isLoading && !data ? '—' : contributingUsersCount, sub: 'Added or enriched data' },
+          { label: 'OFFLINE', value: isLoading && !data ? '—' : offlineUsersCount, sub: 'No signal over 7d' },
+          { label: 'UPDATE REQUIRED', value: isLoading && !data ? '—' : updateReqCount, sub: 'Behind current build' },
+          { label: 'REVOKED', value: isLoading && !data ? '—' : revokedCount, sub: 'Blocked or quarantined' },
         ].map((card, idx) => (
           <div
             key={idx}
@@ -192,19 +237,19 @@ export default function ScoutContributors() {
             <div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>People added</div>
               <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', marginTop: 2 }}>
-                {canonicalCreated}
+                {isLoading && !data ? '—' : canonicalCreated}
               </div>
             </div>
             <div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Contacts enriched</div>
               <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', marginTop: 2 }}>
-                {canonicalEnriched}
+                {isLoading && !data ? '—' : canonicalEnriched}
               </div>
             </div>
             <div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Average quality</div>
               <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', marginTop: 2 }}>
-                {avgQualScore} / 100
+                {isLoading && !data ? '—' : `${avgQualScore} / 100`}
               </div>
             </div>
           </div>

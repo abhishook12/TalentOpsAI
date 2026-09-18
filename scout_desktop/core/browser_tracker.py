@@ -246,7 +246,7 @@ class BrowserTracker:
         title = window_title.strip()
         # Strip browser suffixes
         title_clean = re.sub(
-            r"\s*[-—|]\s*(?:Google Chrome|Microsoft Edge|Mozilla Firefox|Brave|Opera)\s*$",
+            r"\s*[-—|]\s*(?:[^-—|]+\s*[-—|]\s*)?(?:Google Chrome|Microsoft Edge|Mozilla Firefox|Brave|Opera)\s*$",
             "",
             title,
             flags=re.IGNORECASE,
@@ -282,8 +282,8 @@ class BrowserTracker:
         elif "linkedin" in title_lower:
             platform = "LINKEDIN"
             probable_domain = "linkedin.com"
-            # LinkedIn profile title: 'Name | LinkedIn' or '(14) Name | LinkedIn'
-            m = re.match(r"^(?:\(\d+\)\s*)?([^|•·\n]+?)\s*[|•·]\s*LinkedIn", title_clean, flags=re.IGNORECASE)
+            # LinkedIn profile title: 'Name | LinkedIn' or '(14) Name | LinkedIn' or '(99+) Name | LinkedIn'
+            m = re.match(r"^(?:\(\d+\+?\)\s*)?([^|•·\n]+?)\s*[|•·]\s*LinkedIn", title_clean, flags=re.IGNORECASE)
             if m:
                 cand = m.group(1).strip()
                 if not any(w in cand.lower() for w in ["search", "feed", "notifications", "jobs", "messaging"]):

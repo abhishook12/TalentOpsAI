@@ -36,7 +36,7 @@ logger = logging.getLogger("scout.candidate_gate")
 
 DISALLOWED_PAGE_TYPES = {
     "HOME", "NAVIGATION", "INBOX", "SETTINGS",
-    "JOB_PAGE", "COMPANY_PAGE", "FEED", "LOADING", "UNKNOWN", "UNCLASSIFIED"
+    "JOB_PAGE", "COMPANY_PAGE", "FEED", "LOADING"
 }
 
 # Authoritative platform normalization map
@@ -239,6 +239,18 @@ def normalize_platform(platform: Optional[str], source_url: Optional[str] = None
             return "Glassdoor"
         elif "ziprecruiter.com" in url_low:
             return "ZipRecruiter"
+        elif "greenhouse.io" in url_low:
+            return "Greenhouse"
+        elif "lever.co" in url_low:
+            return "Lever"
+        elif "ashbyhq.com" in url_low:
+            return "Ashby"
+        elif "myworkday.com" in url_low or "workday.com" in url_low:
+            return "Workday"
+        elif "icims.com" in url_low:
+            return "iCIMS"
+        elif "smartrecruiters.com" in url_low:
+            return "SmartRecruiters"
         elif "chat.google.com" in url_low or "teams.microsoft.com" in url_low or "slack.com" in url_low:
             return "Recruiter Chat"
         return "DESKTOP_CAPTURE"
@@ -261,6 +273,18 @@ def normalize_platform(platform: Optional[str], source_url: Optional[str] = None
         return "Glassdoor"
     elif "ziprecruiter" in p_low:
         return "ZipRecruiter"
+    elif "greenhouse" in p_low:
+        return "Greenhouse"
+    elif "lever" in p_low:
+        return "Lever"
+    elif "ashby" in p_low:
+        return "Ashby"
+    elif "workday" in p_low:
+        return "Workday"
+    elif "icims" in p_low:
+        return "iCIMS"
+    elif "smartrecruiters" in p_low:
+        return "SmartRecruiters"
     elif "chat" in p_low or "teams" in p_low or "slack" in p_low:
         return "Recruiter Chat"
     return p_raw
@@ -515,7 +539,11 @@ def create_candidate_if_valid(
                 "live.com", "msn.com", "me.com", "mail.com", "zoho.com"
             }
             if domain not in free_domains and "." in domain:
-                derived_comp = domain.split(".")[0].capitalize()
+                domain_parts = domain.split(".")
+                if len(domain_parts) >= 3:
+                    derived_comp = domain_parts[-2].capitalize()
+                else:
+                    derived_comp = domain_parts[0].capitalize()
                 if len(derived_comp) >= 4 and is_valid_company_name(derived_comp):
                     valid_company = derived_comp
                     field_conf["company"] = 0.85
@@ -556,9 +584,9 @@ def create_candidate_if_valid(
     )
 
     quality_score = 0
-    quality_score += 35  # Valid human name
+    quality_score += 30  # Valid human name
     if has_strong_profile:
-        quality_score += 35
+        quality_score += 30
     elif canonical_url:
         quality_score += 20
     elif has_platform_context:
@@ -582,7 +610,7 @@ def create_candidate_if_valid(
 
     identity_conf = (
         (0.35 if cleaned_name else 0.0)
-        + (0.40 if has_strong_profile else (0.15 if canonical_url else (0.15 if has_platform_context else 0.0)))
+        + (0.35 if has_strong_profile else (0.15 if canonical_url else (0.15 if has_platform_context else 0.0)))
         + (0.20 if has_employment else (0.10 if has_partial_employment else 0.0))
         + (0.10 if valid_loc else 0.0)
         + (0.20 if has_verified_contact else (0.10 if (is_recruiter_chat and has_employment) else 0.0))
@@ -592,7 +620,8 @@ def create_candidate_if_valid(
     # 10. Final Gate Decision (Rule 2, 13, 14 & Pillars 2 & 3)
     # Required for auto-ingestion to VERIFIED:
     # 1. Must have a STABLE IDENTIFIER: canonical profile URL OR verified email/phone.
-    # 2. Title/company-only discoveries are kept in REVIEW_REQUIRED by default.
+    # 2. Must have professional corroboration: title, company, or verified contact.
+    # 3. Title/company-only discoveries are kept in REVIEW_REQUIRED by default.
     decisive_reasons = []
     if has_strong_profile:
         decisive_reasons.append("PROFILE_URL_PRESENT: Canonical individual profile URL verified")
@@ -605,8 +634,12 @@ def create_candidate_if_valid(
     # do NOT auto-promote to VERIFIED — route to REVIEW_REQUIRED for human inspection.
     had_corrupted_company = bool(raw_comp and not valid_company)
 
+    has_professional_signal = bool(has_partial_employment or has_verified_contact)
+
     verified_standard = (
         has_stable_identifier
+        and has_primary_anchor
+        and has_professional_signal
         and quality_score >= 70
         and identity_conf >= 0.75
         and not had_corrupted_company
@@ -628,7 +661,7 @@ def create_candidate_if_valid(
         decision = "REVIEW_REQUIRED"
         status = "REVIEW_REQUIRED"
         is_valid = False
-        reasons.append(f"CORRUPTED_COMPANY_NOISE: Raw company '{raw_comp}' was rejected as OCR artifact; held in Review Queue")
+        reasons.append(f"CORRUPTED_COMPANY_REJECTED: Raw company '{raw_comp}' was rejected as OCR artifact; held in Review Queue")
         checklist.append("Company noise detected: Routed to Review Queue")
     elif has_employment and not has_stable_identifier:
         decision = "REVIEW_REQUIRED"

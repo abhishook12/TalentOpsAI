@@ -105,7 +105,7 @@ def _get_duckdb():
 def _parse_boolean_search(query: str, fields: Optional[List[str]] = None) -> Tuple[str, List[Any]]:
     """Parse boolean search expressions with AND, OR, NOT, parentheses, and quoted strings into DuckDB SQL."""
     if fields is None:
-        fields = ['recruiter_name', 'email', 'specialization', 'normalized_city', 'company_id']
+        fields = ['recruiter_name', 'email', 'specialization', 'normalized_city', 'company_id', 'title', 'notes']
     
     raw_tokens = re.findall(r'(\bAND\b|\bOR\b|\bNOT\b|[()]|\"[^\"]+\"|[^\s()]+)', query.strip())
     if not raw_tokens:
@@ -703,9 +703,11 @@ class RecruiterStore:
                     OR LOWER(COALESCE(CAST(specialization AS VARCHAR), '')) LIKE ?
                     OR LOWER(COALESCE(CAST(normalized_city AS VARCHAR), '')) LIKE ?
                     OR LOWER(COALESCE(CAST(company_id AS VARCHAR), '')) LIKE ?
+                    OR LOWER(COALESCE(CAST(title AS VARCHAR), '')) LIKE ?
+                    OR LOWER(COALESCE(CAST(notes AS VARCHAR), '')) LIKE ?
                 )""")
                 like_pat = f"%{search_lower}%"
-                params.extend([like_pat, like_pat, like_pat, like_pat, like_pat])
+                params.extend([like_pat, like_pat, like_pat, like_pat, like_pat, like_pat, like_pat])
 
         if state:
             where_clauses.append("UPPER(COALESCE(state, '')) = ?")

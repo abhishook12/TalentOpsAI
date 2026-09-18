@@ -360,9 +360,12 @@ def urllib_quote(s: str) -> str:
 # ── TALENTOPS AI OPERATING SYSTEM ROUTE SUITE ────────────────────────────────
 
 class AICommandRequest(BaseModel):
-    query: str
-    mode: Optional[str] = "search"
+    query: Optional[str] = ""
+    trigger_type: Optional[str] = "USER_MESSAGE"
+    mode: Optional[str] = "chat"
     context: Optional[Dict[str, Any]] = None
+    history: Optional[List[Dict[str, Any]]] = None
+    conversation_id: Optional[str] = None
 
 class AIExplainRequest(BaseModel):
     candidate_id: Optional[int] = None
@@ -397,109 +400,21 @@ def ai_command_center(
     db: Session = Depends(get_db)
 ):
     """
-    Enterprise AI Command Center interpreter.
-    Takes natural language commands, parses intent, queries database,
-    and returns structured intent chips, execution stages, and candidate results.
+    Enterprise AI Command Center & Operational Intelligence Assistant.
+    Coordinates multi-turn conversational reasoning, grounded tool queries (DuckDB 437k + PostgreSQL),
+    Scout fleet telemetry, campaign performance, and personalized outreach drafting.
     """
-    prompt = f"""
-You are TalentOps AI Operating System. Interpret the recruiter's command and extract intent.
-Command: "{payload.query}"
-Return JSON ONLY with:
-- "role": extracted job role or null
-- "location": extracted state or city or null
-- "company": extracted company or null
-- "skills": list of extracted skills
-- "action_type": SEARCH | DATA_REPAIR | ANALYZE | OUTREACH | EXPLAIN
-- "summary": 1-sentence analytical response
-"""
-    parsed_data, model_used, latency_ms = AIRouterService.execute_prompt(
-        prompt=prompt,
-        action_type="NATURAL_LANGUAGE_COMMAND",
-        user_id=current_user.id,
+    from ..services.copilot_orchestrator import CopilotOrchestrator
+
+    return CopilotOrchestrator.process_command(
+        query=payload.query,
+        trigger_type=payload.trigger_type or "USER_MESSAGE",
+        history=payload.history,
+        context=payload.context,
+        conversation_id=payload.conversation_id,
+        current_user=current_user,
         db=db
     )
-    
-    role = parsed_data.get("role")
-    location = parsed_data.get("location")
-    company = parsed_data.get("company")
-    skills = parsed_data.get("skills", [])
-    action_type = parsed_data.get("action_type", "SEARCH")
-    summary = parsed_data.get("summary", f"Interpreted query for {role or 'candidates'} across talent intelligence database.")
-
-    query = db.query(Recruiter).filter(Recruiter.is_active == True)
-    if company:
-        query = query.filter(sqlfunc.lower(Recruiter.title).contains(company.lower()) | sqlfunc.lower(Recruiter.notes).contains(company.lower()))
-    if location:
-        query = query.filter(sqlfunc.lower(Recruiter.location).contains(location.lower()) | (Recruiter.state == location.upper()))
-    if role:
-        query = query.filter(sqlfunc.lower(Recruiter.title).contains(role.lower()) | sqlfunc.lower(Recruiter.specialization).contains(role.lower()))
-    
-    candidates = query.limit(10).all()
-    if not candidates and (role or location or company):
-        candidates = db.query(Recruiter).filter(Recruiter.is_active == True).limit(10).all()
-
-    results = [
-        {
-            "id": c.recruiter_id,
-            "name": c.recruiter_name,
-            "title": c.title or "Senior Professional",
-            "company": c.notes if (c.notes and len(c.notes) < 40) else "Enterprise Partner",
-            "location": c.location or c.state or "Remote, US",
-            "email": c.email,
-            "phone": c.phone,
-            "linkedin": c.linkedin,
-            "trust_score": c.trust_score or 95,
-            "confidence": 0.94 if (c.email and "noemail" not in c.email) else 0.81,
-            "uncertainty_status": "VERIFIED" if (c.email and "noemail" not in c.email) else "OBSERVED"
-        }
-        for c in candidates
-    ]
-
-    outreach_draft = None
-    q_low = payload.query.lower()
-    cand_ctx = payload.context.get("candidate") if (payload.context and isinstance(payload.context, dict)) else None
-    
-    if (cand_ctx or "outreach" in q_low or "message" in q_low or "draft" in q_low or "email" in q_low) and ("outreach" in q_low or "message" in q_low or "draft" in q_low or "write" in q_low):
-        cand_name = (cand_ctx.get("recruiter_name") if cand_ctx else None) or (cand_ctx.get("name") if cand_ctx else None) or (results[0]["name"] if results else "Candidate")
-        cand_title = (cand_ctx.get("title") if cand_ctx else None) or (results[0]["title"] if results else "Technology Specialist")
-        cand_comp = (cand_ctx.get("company") if cand_ctx else None) or (cand_ctx.get("company_name") if cand_ctx else None) or (results[0]["company"] if results else "Current Organization")
-        cand_loc = (cand_ctx.get("location") if cand_ctx else None) or (results[0]["location"] if results else "United States")
-        first_name = cand_name.split()[0] if cand_name else "there"
-
-        outreach_draft = (
-            f"Subject: Strategic leadership opportunity at our organization // {cand_comp}\n\n"
-            f"Hi {first_name},\n\n"
-            f"I came across your background as {cand_title} at {cand_comp} and was particularly impressed by your trajectory in {cand_loc}. "
-            f"Given our ongoing engineering scale and focus on high-reliability distributed platforms, your experience looks exceptionally aligned with a critical leadership track we are opening.\n\n"
-            f"I would welcome the opportunity to connect for a 15-minute introductory conversation this week to share our roadmap and learn about your career horizons.\n\n"
-            f"Best regards,\nTalent Acquisition & Executive Search"
-        )
-        action_type = "OUTREACH_DRAFT"
-        summary = f"Generated hyper-personalized executive outreach for {cand_name} ({cand_title} @ {cand_comp})."
-
-    stages = [
-        {"label": "Understanding natural language request...", "status": "done"},
-        {"label": f"Scanning intelligence records ({len(results)} matches)...", "status": "done"},
-        {"label": "Evaluating calibrated uncertainty...", "status": "done"}
-    ]
-
-    return {
-        "query": payload.query,
-        "intent": {
-            "role": role,
-            "location": location,
-            "company": company,
-            "skills": skills,
-            "action_type": action_type,
-            "confidence": parsed_data.get("confidence", 0.92)
-        },
-        "stages": stages,
-        "results": results,
-        "outreach_draft": outreach_draft,
-        "summary": summary,
-        "model_used": model_used,
-        "latency_ms": latency_ms
-    }
 
 
 @router.get("/feed")

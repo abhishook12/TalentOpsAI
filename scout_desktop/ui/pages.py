@@ -895,10 +895,10 @@ class ScanPage(QWidget):
             self.lbl_conf_val.setText(f"AGGREGATE: {confidence}%")
 
         fc = field_confidence or {}
-        name_c = int(round(fc.get("name", 0.95) * 100)) if name else 0
-        title_c = int(round(fc.get("title", 0.90 if title else 0.0) * 100)) if title else 0
-        comp_c = int(round(fc.get("company", 0.90 if company else 0.0) * 100)) if company else 0
-        loc_c = int(round(fc.get("location", 0.85 if location else 0.0) * 100)) if location else 0
+        name_c = int(round(fc.get("name", 0.85 if name else 0.0) * 100)) if name else 0
+        title_c = int(round(fc.get("title", 0.75 if title else 0.0) * 100)) if title else 0
+        comp_c = int(round(fc.get("company", 0.75 if company else 0.0) * 100)) if company else 0
+        loc_c = int(round(fc.get("location", 0.70 if location else 0.0) * 100)) if location else 0
 
         self.update_meters(
             name=name,
@@ -918,10 +918,10 @@ class ScanPage(QWidget):
         title: str,
         company: str,
         location: str,
-        name_conf: int = 95,
-        title_conf: int = 90,
-        comp_conf: int = 90,
-        loc_conf: int = 85,
+        name_conf: int = 0,
+        title_conf: int = 0,
+        comp_conf: int = 0,
+        loc_conf: int = 0,
         cand_id: Optional[str] = None
     ):
         if cand_id:

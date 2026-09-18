@@ -16,7 +16,8 @@ export default function OperationsConsole() {
       const res = await api.get('/scout/operations/stats')
       return res.data
     },
-    refetchInterval: 5000,
+    refetchInterval: 15000,
+    staleTime: 10000,
   })
 
   const killSwitches = data?.kill_switches || {

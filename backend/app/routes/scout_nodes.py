@@ -112,11 +112,13 @@ def post_heartbeat(
         page_url=payload.page_url,
         capture_id=payload.capture_id,
         client_metrics=payload.client_metrics,
+        device=device,
     )
 
 
 @router.get("/nodes")
 def get_scout_nodes(
+    refresh: bool = Query(False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_request),
 ):
@@ -124,7 +126,7 @@ def get_scout_nodes(
     Returns live heartbeat, capture timestamps, and database write telemetry
     for all connected users / scout nodes.
     """
-    return get_all_scout_nodes_telemetry(db)
+    return get_all_scout_nodes_telemetry(db, force=refresh)
 
 
 @router.get("/summary")
@@ -581,6 +583,9 @@ def verify_device_flow_code(
     }
 
 
+_MY_DEVICE_CACHE = {}
+_MY_DEVICE_TTL = 15.0
+
 @router.get("/my-device")
 def get_my_scout_device(
     db: Session = Depends(get_db),
@@ -589,6 +594,12 @@ def get_my_scout_device(
     """
     Returns the personal Scout Desktop status and paired devices for the logged-in user.
     """
+    import time
+    now_ts = time.time()
+    cached = _MY_DEVICE_CACHE.get(current_user.id)
+    if cached and (now_ts - cached[1] < _MY_DEVICE_TTL):
+        return cached[0]
+
     devices = (
         db.query(ExtensionDevice)
         .filter(ExtensionDevice.owner_user_id == current_user.id)
@@ -623,7 +634,7 @@ def get_my_scout_device(
         .first()
     )
 
-    return {
+    res = {
         "has_device": len(devices) > 0,
         "user_email": current_user.email,
         "user_name": f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or current_user.email.split("@")[0],
@@ -631,6 +642,8 @@ def get_my_scout_device(
         "active_activation_code": active_code.code if active_code else None,
         "active_activation_label": active_code.label if active_code else None,
     }
+    _MY_DEVICE_CACHE[current_user.id] = (res, time.time())
+    return res
 
 
 @router.get("/provisionable-users")
@@ -1039,6 +1052,9 @@ def ingest_scout_packet(
     }
 
 
+_FLEET_OPS_CACHE = {}
+_FLEET_OPS_TTL = 15.0
+
 @router.get("/operations/stats")
 def get_fleet_operations_stats(
     db: Session = Depends(get_db),
@@ -1052,6 +1068,12 @@ def get_fleet_operations_stats(
     - Active edge nodes count
     - Remote kill switch states
     """
+    import time
+    now_ts = time.time()
+    cached = _FLEET_OPS_CACHE.get(current_user.id)
+    if cached and (now_ts - cached[1] < _FLEET_OPS_TTL):
+        return cached[0]
+
     from ..models.staging_models import DiscoveryStaging
 
     total_devices = db.query(ExtensionDevice).filter(ExtensionDevice.owner_user_id == current_user.id).count()
@@ -1078,7 +1100,7 @@ def get_fleet_operations_stats(
     if total_staging > 0:
         sync_rate = round((committed_staging / total_staging) * 100, 1)
 
-    return {
+    res = {
         "total_nodes_count": total_devices,
         "active_nodes_count": active_devices,
         "queue_backlog_depth": pending_staging,
@@ -1088,6 +1110,8 @@ def get_fleet_operations_stats(
         "kill_switches": _get_killswitches(),
         "system_status": "OPERATIONAL",
     }
+    _FLEET_OPS_CACHE[current_user.id] = (res, now_ts)
+    return res
 
 
 @router.post("/operations/killswitch")

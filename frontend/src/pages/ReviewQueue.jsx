@@ -38,7 +38,7 @@ export default function ReviewQueue() {
     }
   })
 
-  const recruiters = data?.items || []
+  const recruiters = data?.results || data?.items || []
 
   const handleApprove = useCallback((id, currentData) => {
     // Approve resets needs_review to false

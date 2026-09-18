@@ -879,7 +879,7 @@ def get_recruiters(
             if pg_count > 0:
                 total_count = pg_count
                 offset_val = (page - 1) * limit
-                pg_query = db.query(Recruiter).filter(and_(Recruiter.is_active == True, *pg_filters)).order_by(Recruiter.recruiter_id.desc()).offset(offset_val).limit(limit)
+                pg_query = db.query(Recruiter).options(joinedload(Recruiter.company)).filter(and_(Recruiter.is_active == True, *pg_filters)).order_by(Recruiter.recruiter_id.desc()).offset(offset_val).limit(limit)
                 pg_recs = pg_query.all()
                 results = []
                 for r in pg_recs:
@@ -923,7 +923,7 @@ def get_recruiters(
                 Recruiter.title.ilike(q_like),
                 Recruiter.linkedin.ilike(q_like)
             )
-            pg_query = db.query(Recruiter).filter(and_(search_filter, *pg_filters))
+            pg_query = db.query(Recruiter).options(joinedload(Recruiter.company)).filter(and_(search_filter, *pg_filters))
             if pg_query:
                 pg_recs = pg_query.all()
                 for r in reversed(pg_recs):
@@ -963,7 +963,7 @@ def get_recruiters(
                         total_count += 1
         elif page == 1:
             source_filter = Recruiter.data_source.in_(['extension', 'extension_staged', 'visual_capture', 'parquet_canonical'])
-            pg_query = db.query(Recruiter).filter(and_(source_filter, *pg_filters)).order_by(Recruiter.recruiter_id.desc()).limit(50)
+            pg_query = db.query(Recruiter).options(joinedload(Recruiter.company)).filter(and_(source_filter, *pg_filters)).order_by(Recruiter.recruiter_id.desc()).limit(50)
             if pg_query:
                 pg_recs = pg_query.all()
                 for r in reversed(pg_recs):
@@ -1170,9 +1170,10 @@ def get_recruiters(
         "total_count": total_count,
         "page": page,
         "total_pages": total_pages,
-        "results": formatted_results
+        "results": formatted_results,
+        "items": formatted_results,
     }
-    cache_ttl = 5 if (page == 1 and not search) else 120
+    cache_ttl = 60 if (page == 1 and not search) else 120
     analytics_cache.set(cache_key, ret_data, ttl=cache_ttl)
     return ret_data
 

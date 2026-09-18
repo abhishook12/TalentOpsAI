@@ -14,7 +14,7 @@ LOCATION_REJECT_TERMS = re.compile(
     r"\b(?:engineer|engineering|developer|recruiter|recruiting|talent|manager|"
     r"consultant|analyst|specialist|officer|director|lead|head|vp|president|"
     r"designer|scientist|marketing|sales|architect|intern|assistant|advisor|"
-    r"technician|contract|full-time|part-time|hybrid|corp|corporation|inc|"
+    r"technician|contract|full-time|part-time|corp|corporation|inc|"
     r"llc|ltd|gmbh|technologies|technology|tech|solutions|services|group|holdings|"
     r"university|college|institute|school|academy|polytechnic|alumni|student|"
     r"bachelor|master|doctor|phd|degree)\b",
@@ -29,14 +29,18 @@ GEO_INDICATORS = re.compile(
     r"uae|dubai|mexico|poland|philippines|alabama|alaska|arizona|arkansas|california|"
     r"colorado|connecticut|delaware|florida|georgia|hawaii|idaho|illinois|indiana|"
     r"iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|"
-    r"mississippi|missouri|montana|nebraska|nevada|new hampshire|new jersey|new mexico|"
+    r"mississippi|missouri|montana|nebraska|nv|new hampshire|new jersey|new mexico|"
     r"new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|"
     r"south carolina|south dakota|tennessee|texas|utah|vermont|virginia|washington|"
     r"west virginia|wisconsin|wyoming|england|scotland|wales|london|boston|chicago|seattle|"
     r"austin|san francisco|sf bay|los angeles|atlanta|dallas|houston|denver|phoenix|"
     r"philadelphia|san diego|miami|portland|toronto|vancouver|berlin|paris|amsterdam|"
     r"tokyo|sydney|melbourne|bangalore|bengaluru|mumbai|hyderabad|pune|chennai|delhi|"
-    r"noida|gurgaon|raleigh|durham|chapel hill|san jose|salt lake city|dallas-fort worth)\b",
+    r"noida|gurgaon|raleigh|durham|chapel hill|san jose|salt lake city|dallas-fort worth|"
+    r"ontario|british columbia|quebec|alberta|montreal|montréal|calgary|ottawa|"
+    r"karnataka|tamil nadu|gujarat|kolkata|ahmedabad|kerala|munich|frankfurt|barcelona|"
+    r"lisbon|milan|dublin|zurich|zürich|stockholm|oslo|copenhagen|vienna|brussels|warsaw|"
+    r"manchester|birmingham|leeds|edinburgh|bristol|são paulo|sao paulo|buenos aires|bogotá|bogota)\b",
     re.IGNORECASE,
 )
 
@@ -140,7 +144,8 @@ def clean_location_text(text: Optional[str]) -> Optional[str]:
     cleaned = re.sub(r"\b\d+\s*(?:seconds?|secs?|minutes?|mins?|hours?|hrs?|days?|weeks?|months?|years?)\s*ago\b.*$", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\b\d+\s*(?:m|min|h|hr|d|w|mo|y)\s*ago\b.*$", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\s+\d+$", "", cleaned)
-    cleaned = re.sub(r"[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]+.*$", "", cleaned)
+    # Strip trailing delimiters with metadata, but preserve internal hyphens / en-dashes (e.g. Dallas-Fort Worth, Winston-Salem)
+    cleaned = re.sub(r"(?:[·•\u00B7\u2022\u2219\u25E6|]|\s+[-–—\u2013\u2014]\s+).*$", "", cleaned)
     # Strip trailing hyphen/dash fragments e.g. " - sud", " - ntu"
     cleaned = re.sub(r"\s*[-–—]\s*[a-zA-Z]{1,4}$", "", cleaned)
     # Strip single-letter prefix before comma e.g. "D, "
@@ -171,8 +176,8 @@ def is_valid_location(text: Optional[str]) -> bool:
     if re.search(r"\b[a-zA-Z],\s*", t):
         return False
 
-    # Reject dangling hyphens or fragments (e.g. "- sud", "sud -")
-    if re.search(r"[-–—]\s*[a-zA-Z]{1,4}\b", t) or t.startswith("-") or t.endswith("-"):
+    # Reject dangling hyphens or fragments (e.g. "- sud", "sud -") at ends of string
+    if re.search(r"\s+[-–—]\s*[a-zA-Z]{1,3}$", t) or t.startswith("-") or t.endswith("-"):
         return False
 
     # Reject strings with non-standard punctuation chaos or replacement chars
@@ -212,10 +217,10 @@ def is_valid_location(text: Optional[str]) -> bool:
     if GEO_INDICATORS.search(t):
         return True
 
-    # Standard "City, State/Country" with 2-letter state code or standard comma separation
-    if re.match(r"^[A-Z][a-zA-Z\s.-]+,\s*[A-Z]{2}$", t):
+    # Standard "City, State/Country" with 2-letter state code or standard comma separation (supporting Latin Extended diacritics)
+    if re.match(r"^[A-Z\u00C0-\u024F][a-zA-Z\u00C0-\u024F\s.-]+,\s*[A-Z]{2}$", t):
         return True
-    if re.match(r"^[A-Z][a-zA-Z\s.-]+,\s*[A-Z][a-zA-Z\s.-]+(?:,\s*[A-Z][a-zA-Z\s.-]+)?$", t):
+    if re.match(r"^[A-Z\u00C0-\u024F][a-zA-Z\u00C0-\u024F\s.-]+,\s*[A-Z\u00C0-\u024F][a-zA-Z\u00C0-\u024F\s.-]+(?:,\s*[A-Z\u00C0-\u024F][a-zA-Z\u00C0-\u024F\s.-]+)?$", t):
         return True
 
     return False
@@ -293,8 +298,8 @@ def clean_company_name(comp: Optional[str]) -> Optional[str]:
     cleaned = re.sub(r"^(?:[\(\[]?\d+\+?[\)\]]?\s*[|•·–—\-:]?\s*)+", "", cleaned).strip()
     cleaned = re.sub(r"^Current\s*company:\s*", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\. Click to skip.*$", "", cleaned, flags=re.IGNORECASE)
-    # Strip contact info and UI noise triggers
-    cleaned = re.sub(r"\b(?:contact\s*info|contact|connections|followers)\b.*$", "", cleaned, flags=re.IGNORECASE).strip()
+    # Strip contact info and connection/follower metric counts without stripping brand names containing 'Connections' (e.g. Business Connections Inc)
+    cleaned = re.sub(r"\b(?:contact\s*info|contact\s*details|\d+\+?\s*connections?|mutual\s*connections?|followers?\s*[:\d])\b.*$", "", cleaned, flags=re.IGNORECASE).strip()
     cleaned = re.sub(
         r"\s*[·•|]\s*(?:full-time|contract|part-time|internship|freelance|apprenticeship|seasonal|hybrid|remote|on-site).*",
         "",
@@ -368,7 +373,8 @@ def is_valid_company_name(text: Optional[str]) -> bool:
         return False
 
     # Reject short words that are pronouns, prepositions, or OCR fragments (e.g. "My", "In", "At", "By", "To", "iHHI")
-    if len(t) <= 2:
+    # Exempt globally recognized 2-letter corporations (3M, HP, EY, BP, GE)
+    if len(t) <= 2 and t_lower not in {"3m", "hp", "ey", "bp", "ge"}:
         return False
     if t_lower in {"my", "to", "in", "at", "by", "we", "he", "me", "us", "it", "or", "if", "on", "as", "an", "so", "no", "up", "do", "go", "is", "be"}:
         return False
@@ -468,7 +474,7 @@ def is_valid_company_name(text: Optional[str]) -> bool:
 
     # Single-word companies under 4 characters are almost always OCR fragments unless on whitelist
     if len(comp_tokens) == 1 and len(t) < 4:
-        valid_short_corps = {"ibm", "sap", "pwc", "hp", "ey", "bp", "ge", "att", "ups", "aws", "bnp", "dhl", "adp"}
+        valid_short_corps = {"ibm", "sap", "pwc", "hp", "ey", "bp", "ge", "att", "ups", "aws", "bnp", "dhl", "adp", "3m", "8x8"}
         if t_lower not in valid_short_corps:
             return False
 
@@ -477,19 +483,22 @@ def is_valid_company_name(text: Optional[str]) -> bool:
         return False
     # Allow trailing period if it is a recognized corporate abbreviation suffix (e.g. Inc., Corp., Ltd., Co.)
     if t.endswith("."):
-        if not re.search(r"\b(inc|corp|ltd|co|llc|plc|pvt|gmbh)\.$", t_lower):
+        if not re.search(r"\b(inc|corp|ltd|co|llc|plc|pvt|gmbh|ag|sa|nv|lp|pc|kk|bv|pty)\.$", t_lower):
             return False
     elif t[-1] in "-–—_%#@!~`^&*()[]{}<>|\\;:\"'/?.,":
         return False
+    known_digit_corps = {"level 3", "factor 75", "studio 54", "3m", "8x8", "carbon3d", "360learning", "web3", "s3"}
     if t[-1].isdigit():
-        return False
+        if t_lower not in known_digit_corps and not re.search(r"\b(?:level\s*3|factor\s*75|8x8|3m|360|s3|web3)\b", t_lower):
+            return False
     if any(c in t for c in [";", ":", "?", "!", "~", "*", "=", "<", ">"]):
         return False
     # Reject strings containing phone numbers or area codes (e.g. "281-", "555-1234")
     if re.search(r"\b\d{3,}[-\s]?\b", t):
         return False
-    # Reject strings containing individual professional job titles (e.g. "Cindy Davis Consultant")
-    if re.search(r"\b(?:consultant|recruiter|sourcer|coordinator|advisor|specialist|manager|director|officer)\b", t, re.IGNORECASE):
+    # Reject strings containing individual professional job titles (e.g. "Cindy Davis Consultant") unless corporate designators present
+    has_comp_org_suffix = bool(re.search(r"\b(?:group|partners|associates|consulting|agency|capital|systems|inc|llc|corp|board|holdings|services|solutions|firm|network)\b", t, re.IGNORECASE))
+    if not has_comp_org_suffix and re.search(r"\b(?:consultant|recruiter|sourcer|coordinator|advisor|specialist|manager|director|officer)\b", t, re.IGNORECASE):
         return False
 
     # Reject standalone department abbreviations or isolated 2-letter tokens
@@ -497,8 +506,9 @@ def is_valid_company_name(text: Optional[str]) -> bool:
         return False
 
     # Reject pure numeric or very short alphanumeric strings (like "-5", "IT", "aa")
+    # Exempt valid brands with digits e.g. "8x8", "3M"
     stripped_alpha = re.sub(r"[^a-zA-Z]", "", t)
-    if len(stripped_alpha) < 2:
+    if len(stripped_alpha) < 2 and t_lower not in known_digit_corps:
         return False
 
     # Reject system/desktop identifiers (e.g. "DESKTOP-GMM7KIN (130891427) UltraViewer")
@@ -515,10 +525,13 @@ def is_valid_company_name(text: Optional[str]) -> bool:
         return False
 
     # Words in company name >= 4 characters must contain at least one vowel
+    # Exception: Known consonant-cluster corporate abbreviations (KPMG, HSBC, NYSE, etc.)
+    CONSONANT_CLUSTER_CORPS = {"kpmg", "hsbc", "nyse", "lvmh", "cbre", "csfb", "dtcc", "bnsf", "kpmg", "bbva", "dksh", "cpfl", "cppib", "nflx", "splk", "ftnt", "crwd", "pltr", "twtr", "msft", "goog", "nvda", "tsmc"}
     for tok in comp_tokens:
         clean_tok = re.sub(r"[^a-zA-Z]", "", tok)
         if len(clean_tok) >= 4 and not re.search(r"[aeiouyAEIOUY]", clean_tok):
-            return False
+            if clean_tok.lower() not in CONSONANT_CLUSTER_CORPS:
+                return False
 
     # Civic, government, institutional organizations that may contain geographic names (e.g. City and County of San Francisco, Port of Oakland)
     is_civic_or_org = bool(re.search(
@@ -550,8 +563,8 @@ def is_valid_company_name(text: Optional[str]) -> bool:
     if re.search(r"\b(?:history is on|history is off|active now|offline|online|typing|seen at|last seen|joined the chat)\b", t, re.IGNORECASE):
         return False
 
-    # Reject social proof, connections, and activity lines
-    if re.search(
+    # Reject social proof, connections, and activity lines (unless corporate suffix present like "Business Connections Inc")
+    if not has_comp_org_suffix and re.search(
         r"\b(?:followed by|mutual connection|connections|followers|people you may know|"
         r"talks about|activity|show all|see all|shared by|reposts|profile views|"
         r"connect|message|view full profile|more profiles)\b",
@@ -599,14 +612,18 @@ def is_noise_text(text: Optional[str]) -> bool:
     t = text.strip().lower()
     if len(t) < 2:
         return True
+    # Standalone social proof words or metric patterns (must not match inside valid company names like 'Business Connections Inc')
+    standalone_noise = {"connections", "followers", "activity", "highlights", "interests", "pending", "open to"}
+    if t in standalone_noise or re.search(r"^\d+\+?\s*(?:connections?|followers?)$", t):
+        return True
+
     noise_phrases = [
         "see all", "view full profile", "sign in to view", "join now",
         "accept cookies", "privacy policy", "terms of service", "skip to main content",
         "keyboard shortcuts", "all rights reserved", "contact info",
         "followed by", "mutual connection", "mutual connections",
         "people also viewed", "more profiles for", "show all", "show more",
-        "connections", "followers", "activity", "highlights", "interests",
-        "send message", "more actions", "pending", "open to",
+        "send message", "more actions",
         # Chrome / Browser UI noise
         "ask gemini", "more tools", "new tab", "bookmarks bar",
         "reading list", "side panel", "chrome web store", "customize chrome",
@@ -680,13 +697,18 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         return False
 
     words = t.split()
-    # Filter for alphabetic words (allowing standard hyphens or apostrophes in names e.g. O'Connor, Anne-Marie)
-    clean_words = [re.sub(r"[^a-zA-Z\'-]", "", w) for w in words]
+    # Filter for alphabetic words (allowing standard hyphens, apostrophes, and Latin Extended accented characters)
+    clean_words = [re.sub(r"[^a-zA-Z\u00C0-\u024F\'-]", "", w) for w in words]
     clean_words = [w for w in clean_words if w and any(c.isalpha() for c in w)]
     if len(clean_words) < 2 or len(clean_words) > 4:
         return False
-    if any(len(w) < 2 for w in clean_words):
-        return False
+
+    # Allow single-letter middle initials in 3- or 4-word names (e.g. "John F. Kennedy", "David A. Sinclair")
+    for idx, w in enumerate(clean_words):
+        if len(w) < 2:
+            if len(clean_words) >= 3 and 0 < idx < len(clean_words) - 1 and w.isupper():
+                continue
+            return False
 
     # Reject if all words are 2-letter fragments (e.g. "Ri Ht" -> OCR truncation)
     # Real names must have at least one name component with length >= 3
@@ -698,25 +720,34 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         return False
 
     # Every name token with length >= 3 must contain at least one vowel (rejects consonant-only OCR noise e.g. 'Svh', 'Trk')
-    if any(len(w) >= 3 and not re.search(r"[aeiouyAEIOUY]", w) for w in clean_words):
+    VOWEL_CHECK_REGEX = re.compile(r"[aeiouyAEIOUY\u00C0-\u00C6\u00C8-\u00CF\u00D2-\u00D6\u00D9-\u00DC\u00E0-\u00E6\u00E8-\u00EF\u00F2-\u00F6\u00F9-\u00FC]")
+    if any(len(w) >= 3 and not VOWEL_CHECK_REGEX.search(w) for w in clean_words):
         return False
 
     # Every word must be a valid human name token: Capital letter followed by lowercase letters
-    # Accepts: John, Mary-Jane, O'Connor, McDonald, de, van
-    for w in clean_words:
-        if not w[0].isupper():
+    # Accepts: John, Mary-Jane, O'Connor, McDonald, de, van, da, von
+    # Also supports uniform ALL-CAPS names (common in resumes/ATS: e.g. "JOHN SMITH")
+    NAME_PARTICLES = {"van", "de", "da", "von", "del", "di", "la", "le", "el", "al", "bin", "ibn", "du", "der"}
+    is_uniform_all_caps = all(w.isupper() for w in clean_words)
+
+    for idx, w in enumerate(clean_words):
+        # Allow lowercase particles when not first or last word
+        if w.lower() in NAME_PARTICLES and 0 < idx < len(clean_words) - 1:
+            continue
+        if not is_uniform_all_caps and not w[0].isupper():
             return False
-        # Reject ALL-CAPS words that look like acronyms or UI labels (e.g. 'LLC', 'INC', 'D365', 'MDG')
-        if len(w) > 2 and w.isupper():
+        # Reject ALL-CAPS words mixed into normal-case names that look like acronyms or UI labels (e.g. 'LLC', 'INC', 'D365', 'MDG')
+        if not is_uniform_all_caps and len(w) > 2 and w.isupper():
             return False
         # Reject internal uppercase letters that represent OCR glitches (e.g. 'SaO', 'MEkan', 'JaIl', 'LiKe')
-        # Allowed exceptions: McDonald, McCarthy, O'Connor
-        rest = w[1:]
-        if any(c.isupper() for c in rest):
-            # Check if valid prefix (Mc, Mac, O')
-            is_valid_prefix = bool(re.match(r"^(?:Mc[A-Z][a-z]+|Mac[A-Z][a-z]+|O'[A-Z][a-z]+|[A-Z][a-z]+-[A-Z][a-z]+)$", w))
-            if not is_valid_prefix:
-                return False
+        # Allowed exceptions: McDonald, McCarthy, O'Connor, FitzGerald
+        if not is_uniform_all_caps:
+            rest = w[1:]
+            if any(c.isupper() for c in rest):
+                # Check if valid prefix (Mc, Mac, O', Fitz) or standard hyphenated name
+                is_valid_prefix = bool(re.match(r"^(?:Mc[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+|Mac[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+|O'[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+|Fitz[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+|[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+-[A-Z\u00C0-\u024F][a-z\u00C0-\u024F]+)$", w))
+                if not is_valid_prefix:
+                    return False
 
     # Check for non-name title/role/section/system/document words
     lower_words = [w.lower() for w in clean_words]
@@ -732,8 +763,6 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         "network", "windows", "tab", "chrome", "firefox", "edge", "safari",
         "microsoft", "teams", "slack", "skype", "webex", "zoom", "technovion",
         "scout", "demand", "lawyers", "lawyer", "legal",
-        "prashant", "tiwari", "gaurav", "dwivedi", "muskan", "tushar",
-        "yatendra", "rawat", "abhishek", "jadon",
         "post", "posts", "quick", "easy", "prompt", "top", "united", "states",
         "history", "conversation", "conversations", "profile", "profiles",
         "message", "messages", "filter", "filters", "dialog", "session", "menu",
@@ -853,6 +882,8 @@ def clean_person_name(text: Optional[str]) -> Optional[str]:
     t = re.sub(r"^(?:Dr|Mr|Ms|Mrs|Prof)\.?\s+", "", t, flags=re.IGNORECASE).strip()
     # Strip trailing badges / dots / icons
     t = re.sub(r"[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]+.*$", "", t).strip()
+    # Strip generational / name suffixes e.g. ", Jr.", " Jr.", ", Sr.", " III", " II", " IV"
+    t = re.sub(r"(?:,\s*(?:Jr|Sr|III|IV|II)\.?|\s+(?:Jr|Sr|III|IV|II)\.?)$", "", t, flags=re.IGNORECASE).strip()
     # Strip professional post-nominal credentials appended to names with commas.
     # e.g. "Kate Threewitts, SPHR, SHRM-SCP" → "Kate Threewitts"
     # e.g. "Megan Alford, PRC, CIR, CMVR" → "Megan Alford"

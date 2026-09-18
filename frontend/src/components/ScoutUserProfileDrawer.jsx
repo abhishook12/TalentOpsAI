@@ -449,6 +449,10 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                     else if (src === 'Jobright AI' || src === 'JOBRIGHT') { srcColor = '#8b5cf6'; srcBg = 'rgba(139, 92, 246, 0.15)'; }
                     else if (src === 'Glassdoor' || src === 'GLASSDOOR') { srcColor = '#059669'; srcBg = 'rgba(5, 150, 105, 0.15)'; }
                     else if (src === 'ZipRecruiter' || src === 'ZIPRECRUITER') { srcColor = '#10b981'; srcBg = 'rgba(16, 185, 129, 0.15)'; }
+                    else if (src === 'Greenhouse') { srcColor = '#10b981'; srcBg = 'rgba(16, 185, 129, 0.15)'; }
+                    else if (src === 'Ashby') { srcColor = '#ec4899'; srcBg = 'rgba(236, 72, 153, 0.15)'; }
+                    else if (src === 'Workday') { srcColor = '#f59e0b'; srcBg = 'rgba(245, 158, 11, 0.15)'; }
+                    else if (src === 'Lever') { srcColor = '#6366f1'; srcBg = 'rgba(99, 102, 241, 0.15)'; }
                     else if (src === 'Recruitment Agency' || src === 'RECRUITMENT_AGENCY') { srcColor = '#f97316'; srcBg = 'rgba(249, 115, 22, 0.15)'; }
                     else if (src === 'GitHub') { srcColor = '#a855f7'; srcBg = 'rgba(168, 85, 247, 0.15)'; }
                     return (
@@ -464,7 +468,7 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                             {src}
                           </span>
                           <span style={{ fontSize: 13, color: 'var(--text-secondary, #a1a1aa)' }}>
-                            {src === 'ZoomInfo' ? 'B2B Org & Contact Intelligence' : src === 'LinkedIn' ? 'Candidate Profiles & Recruiter' : src === 'Apollo' ? 'Direct Sourcing & Leads' : 'Collaboration Stream'}
+                            {src === 'ZoomInfo' ? 'B2B Org & Contact Intelligence' : src === 'LinkedIn' ? 'Candidate Profiles & Recruiter' : src === 'Apollo' ? 'Direct Sourcing & Leads' : (src === 'Greenhouse' || src === 'Ashby' || src === 'Workday' || src === 'Lever') ? 'Enterprise ATS Ingestion' : 'Collaboration Stream'}
                           </span>
                         </div>
                         <span style={{ fontSize: 16, fontWeight: 900, color: '#10b981' }}>

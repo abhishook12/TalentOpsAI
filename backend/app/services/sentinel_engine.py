@@ -8,13 +8,13 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
-from app.database import SessionLocal
-from app.models.models import Recruiter, Company, DomainIntelligence, EnrichmentAudit
-from app.models.sentinel_state import SentinelPhase4State
-from app.services.scraper import is_human_name
-from app.services.mailintel_engine import extract_domain
-from app.services.parquet_writer import parquet_writer
-from app.services.recruiter_store import recruiter_store
+from ..database import SessionLocal
+from ..models.models import Recruiter, Company, DomainIntelligence, EnrichmentAudit
+from ..models.sentinel_state import SentinelPhase4State
+from .scraper import is_human_name
+from .mailintel_engine import extract_domain
+from .parquet_writer import parquet_writer
+from .recruiter_store import recruiter_store
 
 logger = logging.getLogger("sentinel")
 

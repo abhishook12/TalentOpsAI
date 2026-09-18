@@ -13,8 +13,8 @@ export default function LiveIngestionPipeline() {
       const res = await api.get('/analytics/scraper-ingestion-summary')
       return res.data
     },
-    refetchInterval: 5000, // High-speed 5s polling for live telemetry
-    staleTime: 3000,
+    refetchInterval: 15000, // Balanced 15s polling for live telemetry
+    staleTime: 10000,
   })
 
   const metrics = data?.metrics_today || {

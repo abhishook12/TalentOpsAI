@@ -88,19 +88,19 @@ export default function Dashboard() {
       setRefreshError(null)
       return res
     },
-    { ...sharedQueryOpts, refetchInterval: 10000 }
+    sharedQueryOpts
   )
 
   const { data: dataQuality, isLoading: dqLoading, error: dqError, isFetching: dqFetching } = useCachedQuery(
     'dashboard-data-quality',
     async () => (await api.get('/analytics/data-quality')).data,
-    { ...sharedQueryOpts, refetchInterval: 10000 }
+    sharedQueryOpts
   )
 
   const { data: ingestionData, isLoading: ingestionLoading, isFetching: ingestionFetching } = useCachedQuery(
     'dashboard-ingestion-summary',
     async () => (await api.get('/analytics/scraper-ingestion-summary')).data,
-    { ...sharedQueryOpts, refetchInterval: 10000 }
+    sharedQueryOpts
   )
 
   const { data: visits, isLoading: visitsLoading, error: visitsError, isFetching: visitsFetching } = useCachedQuery(

@@ -1,7 +1,7 @@
 {
     "status": "running",
     "records_processed": 437933,
-    "last_active": 1787768520.3719761,
+    "last_active": 1789767678.3095515,
     "success_count": 377,
     "current_phase": "active_batch_processing",
     "rate_per_sec": 0,

@@ -49,6 +49,7 @@ def list_scout_users(
     status: Optional[str] = Query("ALL", description="Filter by status: ALL, ACTIVE, CONTRIBUTING, PAIRED, REGISTERED, REVOKED"),
     search: Optional[str] = Query(None, description="Search by name or email"),
     sort: str = Query("most_active", description="Sorting: most_active, most_data, highest_quality, most_devices"),
+    refresh: bool = Query(False, description="Bypass in-memory cache and force fresh database computation"),
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_current_user),
 ):
@@ -63,6 +64,7 @@ def list_scout_users(
             status_filter=status,
             search_query=search,
             sort_by=sort,
+            force_refresh=refresh,
         )
     except Exception as e:
         logger.error("Error in list_scout_users endpoint: %s", e)
@@ -96,6 +98,7 @@ def list_scout_users(
 
 @router.get("/contributors/summary")
 def get_contributors_summary(
+    refresh: bool = Query(False, description="Bypass in-memory cache and force fresh database computation"),
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_current_user),
 ):
@@ -104,7 +107,7 @@ def get_contributors_summary(
     """
     _require_admin(current_user)
     try:
-        data = get_all_scout_users_intelligence(db=db)
+        data = get_all_scout_users_intelligence(db=db, force_refresh=refresh)
         return {
             "summary": data["summary"],
             "version_distribution": data["version_distribution"],

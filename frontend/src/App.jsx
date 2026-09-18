@@ -233,7 +233,7 @@ function AppShell() {
         <AISidePanel
           isOpen={aiPanelOpen}
           onToggle={() => setAiPanelOpen(!aiPanelOpen)}
-          currentContext={{ name: pageName, path: location.pathname }}
+          currentContext={{ name: pageName, path: location.pathname, search: location.search }}
         />
         {processModalOpen && (
           <ProcessLoadModal

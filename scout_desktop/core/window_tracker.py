@@ -82,8 +82,8 @@ def is_allowed_scout_target(win_info: Optional['WindowInfo'], b_ctx: Optional[Di
     if proc in ("acrord32.exe", "acrobat.exe") or (("resume" in title_lower or "cv" in title_lower or "curriculum" in title_lower) and "pdf" in title_lower):
         return True, "PDF_RESUME"
 
-    # Rule 2: Browsers — Sourcing, ATS, Mail & Chat Targets (Chrome, Edge, Brave, Firefox)
-    if proc in ("chrome.exe", "msedge.exe", "brave.exe", "firefox.exe"):
+    # Rule 2: Browsers — Sourcing, ATS, Mail & Chat Targets (Chrome, Edge, Brave, Firefox, Opera, Vivaldi, Arc)
+    if proc in ("chrome.exe", "msedge.exe", "brave.exe", "firefox.exe", "opera.exe", "vivaldi.exe", "arc.exe"):
         b_ctx = b_ctx or {}
         url = (b_ctx.get("url") or "").lower()
 

@@ -9,7 +9,7 @@ import hashlib
 from collections import defaultdict, deque
 
 from ..database import get_db
-from ..models.auth_models import User, Session as DBSession, Role, LoginHistory, PasswordResetToken, EmailVerificationToken
+from ..models.auth_models import User, Session as DBSession, Role, LoginHistory, PasswordResetToken, EmailVerificationToken, TrustedDevice
 from ..services.auth_service import get_password_hash, verify_password, create_access_token, create_refresh_token, get_current_user_from_request, require_role
 from ..services.email_service import send_verification_email, send_password_reset_email
 from pydantic import BaseModel, EmailStr
@@ -451,7 +451,9 @@ def login(request: Request, login_data: UserLogin, response: Response, db: Sessi
 
     # Create Session
     session_token = secrets.token_hex(32)
-    expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=30 if login_data.remember_me else 1)
+    # Session duration: 60 days if remember_me, 30 days minimum default so users are never unexpectedly logged out
+    session_days = 60 if login_data.remember_me else 30
+    expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=session_days)
     
     db_session = DBSession(
         user_id=user.id,
@@ -477,7 +479,7 @@ def login(request: Request, login_data: UserLogin, response: Response, db: Sessi
     
     access_token = create_access_token(
         data={"sub": str(user.id), "session_id": db_session.id},
-        expires_delta=timedelta(days=30) if login_data.remember_me else timedelta(hours=12)
+        expires_delta=timedelta(days=session_days)
     )
     
     response.set_cookie(
@@ -486,7 +488,7 @@ def login(request: Request, login_data: UserLogin, response: Response, db: Sessi
         httponly=True,
         secure=IS_PRODUCTION,
         samesite="none" if IS_PRODUCTION else "lax",
-        max_age=30*24*60*60 if login_data.remember_me else None
+        max_age=session_days*24*60*60
     )
     
     refresh_token = create_refresh_token(user.id)
@@ -496,7 +498,7 @@ def login(request: Request, login_data: UserLogin, response: Response, db: Sessi
         httponly=True,
         secure=IS_PRODUCTION,
         samesite="none" if IS_PRODUCTION else "lax",
-        max_age=30*24*60*60
+        max_age=session_days*24*60*60
     )
     
     # HARD USER LOCK: ONLY abhishekjadon824@gmail.com can EVER have admin/superadmin role returned
@@ -508,6 +510,7 @@ def login(request: Request, login_data: UserLogin, response: Response, db: Sessi
     return {
         "message": "Login successful",
         "token": access_token,
+        "refresh_token": refresh_token,
         "user": {
             "id": user.id,
             "email": user.email,
@@ -668,6 +671,7 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
     return {
         "message": "Google Login successful",
         "token": access_token,
+        "refresh_token": refresh_token,
         "user": {
             "id": user.id,
             "email": user.email,
@@ -755,11 +759,17 @@ def complete_device_approval(request: Request, response: Response, db: Session =
         expires_delta=timedelta(days=30)
     )
     
+    refresh_token = create_refresh_token(user.id)
     response.set_cookie(
-        key="access_token", value=access_token, httponly=True, secure=IS_PRODUCTION, samesite="none" if IS_PRODUCTION else "lax", max_age=30*24*60*60
+        key="refresh_token", value=refresh_token, httponly=True, secure=IS_PRODUCTION, samesite="none" if IS_PRODUCTION else "lax", max_age=30*24*60*60
     )
     
-    return {"message": "Login complete", "user_id": user.id}
+    return {
+        "message": "Login complete",
+        "user_id": user.id,
+        "token": access_token,
+        "refresh_token": refresh_token
+    }
 
 
 @router.get("/me")
@@ -930,30 +940,69 @@ def reset_password(request: Request, req: ResetPasswordRequest, db: Session = De
     db.commit()
     return {"message": "Password has been reset successfully"}
 
+class RefreshTokenPayload(BaseModel):
+    refresh_token: Optional[str] = None
+
 @router.post("/refresh")
-def refresh_token(request: Request, response: Response, db: Session = Depends(get_db)):
-    refresh_token_cookie = request.cookies.get("refresh_token")
-    if not refresh_token_cookie:
+async def refresh_token(request: Request, response: Response, db: Session = Depends(get_db)):
+    # 1. Check JSON body
+    refresh_token_val = None
+    try:
+        body = await request.json()
+        if isinstance(body, dict):
+            refresh_token_val = body.get("refresh_token")
+    except Exception:
+        pass
+    
+    # 2. Check Authorization header
+    if not refresh_token_val:
+        auth_hdr = request.headers.get("Authorization")
+        if auth_hdr and auth_hdr.startswith("Bearer "):
+            refresh_token_val = auth_hdr.split(" ")[1]
+            
+    # 3. Check Cookie
+    if not refresh_token_val:
+        refresh_token_val = request.cookies.get("refresh_token")
+        
+    # 4. Check Query Param
+    if not refresh_token_val:
+        refresh_token_val = request.query_params.get("refresh_token")
+
+    if not refresh_token_val:
         raise HTTPException(status_code=401, detail="Refresh token missing")
         
     from ..services.auth_service import SECRET_KEY, ALGORITHM
     try:
-        payload = jwt.decode(refresh_token_cookie, SECRET_KEY, algorithms=[ALGORITHM])
-        if payload.get("type") != "refresh":
+        token_payload = jwt.decode(refresh_token_val, SECRET_KEY, algorithms=[ALGORITHM])
+        if token_payload.get("type") != "refresh":
             raise HTTPException(status_code=401, detail="Invalid token type")
             
-        user_id = payload.get("sub")
+        user_id = token_payload.get("sub")
         user = db.query(User).filter(User.id == int(user_id)).first()
         if not user or user.status != "Active":
             raise HTTPException(status_code=403, detail="Invalid user")
             
-        # Issue new session and tokens
+        # Issue new session and tokens (30 days persistence)
         session_token = secrets.token_hex(32)
-        expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=1)
+        expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=30)
+        
+        # Link trusted device
+        dev_id = None
+        device_cookie = request.cookies.get("device_id")
+        if device_cookie:
+            dev_hash = _hash_token(device_cookie)
+            td = db.query(TrustedDevice).filter(TrustedDevice.device_id_hash == dev_hash).first()
+            if td:
+                dev_id = td.id
+        if not dev_id:
+            td = db.query(TrustedDevice).filter(TrustedDevice.user_id == user.id, TrustedDevice.status == 'Trusted').order_by(TrustedDevice.id.desc()).first()
+            if td:
+                dev_id = td.id
         
         db_session = DBSession(
             user_id=user.id,
             token_hash=_hash_token(session_token),
+            trusted_device_id=dev_id,
             device=request.headers.get("user-agent"),
             browser=request.headers.get("user-agent"),
             ip_address=_client_ip(request),
@@ -965,8 +1014,9 @@ def refresh_token(request: Request, response: Response, db: Session = Depends(ge
         
         access_token = create_access_token(
             data={"sub": str(user.id), "session_id": db_session.id},
-            expires_delta=timedelta(hours=12)
+            expires_delta=timedelta(days=30)
         )
+        new_refresh = create_refresh_token(user.id)
         
         response.set_cookie(
             key="access_token",
@@ -974,10 +1024,22 @@ def refresh_token(request: Request, response: Response, db: Session = Depends(ge
             httponly=True,
             secure=IS_PRODUCTION,
             samesite="none" if IS_PRODUCTION else "lax",
-            max_age=12*60*60
+            max_age=30*24*60*60
+        )
+        response.set_cookie(
+            key="refresh_token",
+            value=new_refresh,
+            httponly=True,
+            secure=IS_PRODUCTION,
+            samesite="none" if IS_PRODUCTION else "lax",
+            max_age=30*24*60*60
         )
         
-        return {"message": "Token refreshed"}
+        return {
+            "message": "Token refreshed",
+            "token": access_token,
+            "refresh_token": new_refresh
+        }
         
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Refresh token expired")

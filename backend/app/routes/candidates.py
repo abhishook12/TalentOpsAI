@@ -37,6 +37,8 @@ class CandidateUpdate(BaseModel):
     is_duplicate: Optional[bool] = None
     recruiter_id: Optional[int] = None
 
+from .analytics import analytics_cache
+
 @router.get("/")
 def get_candidates(
     skip: int = 0,
@@ -51,6 +53,11 @@ def get_candidates(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_request)
 ):
+    cache_key = f"cand_list_{current_user.id}_{skip}_{limit}_{visa_status or ''}_{location or ''}_{skill or ''}_{availability or ''}_{is_duplicate}_{min_experience}_{max_rate}"
+    cached = analytics_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     query = db.query(Candidate).filter(Candidate.user_id == current_user.id)
     if visa_status:
         query = query.filter(Candidate.visa_status == visa_status)
@@ -66,7 +73,9 @@ def get_candidates(
         query = query.filter(Candidate.experience_years >= min_experience)
     if max_rate is not None:
         query = query.filter(Candidate.rate_per_hour <= max_rate)
-    return query.offset(skip).limit(limit).all()
+    res = query.offset(skip).limit(limit).all()
+    analytics_cache.set(cache_key, res, ttl=30)
+    return res
 
 @router.get("/{candidate_id}")
 def get_candidate(candidate_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):

@@ -168,9 +168,9 @@ def get_live_scraper_ingestion_summary(
         new_dt_q = new_dt_q.filter(ExtensionDiscoveryEvent.owner_user_id == user_id)
 
     latest_stg = stg_dt_q.order_by(desc(DiscoveryStaging.created_at)).first()
-    latest_event = evt_dt_q.order_by(desc(ExtensionDiscoveryEvent.created_at)).first()
-    latest_enrich = enrich_dt_q.order_by(desc(ExtensionDiscoveryEvent.created_at)).first()
-    latest_new = new_dt_q.order_by(desc(ExtensionDiscoveryEvent.created_at)).first()
+    latest_event = recent_events[0] if recent_events else None
+    latest_enrich = next((e for e in recent_events if e.db_action == "ENRICHED"), None)
+    latest_new = next((e for e in recent_events if e.db_action == "NEW_DISCOVERY"), None)
 
     last_obs_dt = latest_stg.created_at if latest_stg else (latest_event.created_at if latest_event else None)
     last_enrich_dt = latest_enrich.created_at if latest_enrich else None

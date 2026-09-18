@@ -24,9 +24,9 @@ from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional, Tuple
 from unicodedata import normalize
 
-from app.services.recruiter_store import recruiter_store, PARQUET_FILE
-from app.services.parquet_writer import parquet_writer
-from app.utils.enricher_state import get_enricher_state, set_enricher_state
+from .recruiter_store import recruiter_store, PARQUET_FILE
+from .parquet_writer import parquet_writer
+from ..utils.enricher_state import get_enricher_state, set_enricher_state
 
 logger = logging.getLogger("enrichment_service")
 

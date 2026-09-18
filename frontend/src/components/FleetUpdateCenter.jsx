@@ -40,6 +40,7 @@ export default function FleetUpdateCenter() {
       return res.data
     },
     refetchInterval: 5000,
+    staleTime: 5000,
   })
   const broadcastStatus = broadcastStatusData || { active: false, broadcast: null }
 

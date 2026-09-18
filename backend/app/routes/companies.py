@@ -36,6 +36,8 @@ from ..models.models import Recruiter
 
 from ..services.recruiter_store import recruiter_store
 
+from .analytics import analytics_cache, DOMAIN_DISPLAY_NAMES
+
 @router.get("")
 @router.get("/")
 def get_companies(
@@ -45,6 +47,12 @@ def get_companies(
     state: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
+    cache_key = f"comp_list_{skip}_{limit}_{state or ''}"
+    cached = analytics_cache.get(cache_key)
+    if cached is not None:
+        response.headers["X-Total-Count"] = str(cached.get("total_count", 0))
+        return cached.get("items", [])
+
     query = db.query(Company).filter(Company.is_active == True)
     
     if state:
@@ -61,7 +69,7 @@ def get_companies(
     company_ids = [r.company_id for r in results]
     counts_map = recruiter_store.company_recruiter_counts_by_ids(company_ids)
     
-    return [
+    items = [
         {
             "company_id": r.company_id,
             "company_name": r.company_name,
@@ -73,6 +81,8 @@ def get_companies(
             "active_recruiters": counts_map.get(r.company_id, 0) # Assuming mostly active
         } for r in results
     ]
+    analytics_cache.set(cache_key, {"total_count": total_count, "items": items}, ttl=60)
+    return items
 
 @router.get("/search")
 def search_companies(

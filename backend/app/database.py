@@ -62,16 +62,30 @@ def set_sqlite_functions(dbapi_connection, connection_record):
         except AttributeError:
             pass
 
-from sqlalchemy.pool import NullPool
+from sqlalchemy.pool import NullPool, QueuePool
+
+USE_NULL_POOL = os.getenv("DB_USE_NULLPOOL", "false").lower() in ("1", "true", "yes")
 
 if DATABASE_URL.startswith("postgresql"):
-    # Supabase Transaction Pooler (port 6543) already manages connection pooling via PgBouncer.
-    # Using NullPool prevents SQLAlchemy QueuePool limit exhaustion (size 25 overflow 20).
-    engine = create_engine(
-        DATABASE_URL,
-        poolclass=NullPool,
-        connect_args=connect_args
-    )
+    if USE_NULL_POOL:
+        engine = create_engine(
+            DATABASE_URL,
+            poolclass=NullPool,
+            connect_args=connect_args
+        )
+    else:
+        # High-performance warm connection pool with pre-ping and fast LIFO reuse
+        # Eliminates 500ms+ TCP/TLS negotiation latency on every database session
+        engine = create_engine(
+            DATABASE_URL,
+            pool_size=int(os.getenv("DB_POOL_SIZE", "10")),
+            max_overflow=int(os.getenv("DB_MAX_OVERFLOW", "15")),
+            pool_recycle=180,
+            pool_timeout=30,
+            pool_pre_ping=True,
+            pool_use_lifo=True,
+            connect_args=connect_args
+        )
 else:
     engine = create_engine(
         DATABASE_URL,
@@ -84,7 +98,7 @@ else:
         connect_args=connect_args
     )
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, expire_on_commit=False)
 Base = declarative_base()
 
 def get_db():

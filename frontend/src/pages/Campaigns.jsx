@@ -256,7 +256,8 @@ export default function Campaigns() {
       return res.data;
     },
     enabled: view === 'list',
-    refetchInterval: view === 'list' ? 5000 : false,
+    refetchInterval: view === 'list' ? 10000 : false,
+    staleTime: 5000,
     refetchOnWindowFocus: true,
     retry: 1,
   });

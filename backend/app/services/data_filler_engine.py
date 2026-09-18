@@ -4,8 +4,8 @@ import logging
 import threading
 from typing import List, Dict, Any
 
-from app.services.recruiter_store import recruiter_store
-from app.services.parquet_writer import parquet_writer
+from .recruiter_store import recruiter_store
+from .parquet_writer import parquet_writer
 
 logger = logging.getLogger(__name__)
 

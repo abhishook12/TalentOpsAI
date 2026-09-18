@@ -25,7 +25,8 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms))
 
 export default function Login() {
   const [rememberMe, setRememberMe] = useState(() => {
-    return localStorage.getItem('talentops_remember_me') === 'true'
+    const val = localStorage.getItem('talentops_remember_me')
+    return val === null ? true : val === 'true'
   })
   const [email, setEmail] = useState(() => {
     return localStorage.getItem('talentops_remembered_email') || ''

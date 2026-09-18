@@ -1075,7 +1075,8 @@ class EntityExtractor:
                     ))
 
     def _is_job_page(self, clean_lines: List[str], window_title: str, source_url: str) -> bool:
-        if "/jobs/" in source_url or "job" in window_title.lower():
+        title_lower = window_title.lower()
+        if "/jobs/" in source_url or any(p in title_lower for p in ['job posting', 'job application', 'job details', 'job search', 'apply for']):
             return True
         full_text = " ".join(clean_lines[:15]).lower()
         if any(trigger in full_text for trigger in ["about the job", "apply on company website", "easy apply", "meet the hiring team", "job description"]):
@@ -1423,7 +1424,7 @@ class EntityExtractor:
             digits = re.sub(r"\D", "", p_clean)
             if 10 <= len(digits) <= 15:
                 if not p_clean.startswith("+"):
-                    if len(digits) == 10:
+                    if len(digits) == 10 and digits[0] in "23456789":
                         phones.append(f"+1{digits}")
                     else:
                         phones.append(f"+{digits}")
@@ -1456,12 +1457,9 @@ class EntityExtractor:
             "microsoft teams", "google chat", "slack", "new chat", "recent chats",
             "technovion", "greater noida", "active window", "talentops", "scout desktop",
             "messaged you", "quick easy", "inbox", "sent items", "general", "recent",
-            "business intelligence", "busmess inteligence", "prashant tiwari", "prashant",
-            "gaurav dwivedi", "muskan jain", "tushar pal", "channel notifications",
+            "business intelligence", "busmess inteligence", "channel notifications",
             "pinned messages", "chat files", "posts", "activity", "calendar",
-            "yatendra rawat", "yatendra", "abhishek jadon", "abhishek",
-            "kamini rajput", "kanika singh", "daley ard associates", "daley and associates",
-            "suraj", "arpit", "mohit tiwari", "kritika yadav", "saumya upadhyay",
+            "daley ard associates", "daley and associates",
         }
         if chat_partner:
             CHAT_NOISE_NAMES.add(chat_partner.lower())

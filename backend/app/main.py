@@ -342,7 +342,7 @@ async def security_headers_middleware(request: Request, call_next):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|.*\.talentops\.ai|talent-ops-ai[\w-]*\.vercel\.app)(:\d+)?$",
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|.*\.talentops\.ai|talent-ops-ai[\w-]*\.vercel\.app)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -467,7 +467,7 @@ def get_version(response: Response):
 
 
 @app.get("/ping")
-def ping():
+async def ping():
     return {"status": "ok"}
 
 
@@ -622,6 +622,21 @@ async def startup_event():
         # Run schema checks asynchronously in background so port binds and serves instantly
         asyncio.create_task(asyncio.to_thread(_ensure_core_schema, engine))
 
+        # Pre-warm analytical and parquet sidecars asynchronously
+        def _warm_caches():
+            try:
+                from .services.recruiter_store import recruiter_store
+                recruiter_store._ensure_loaded()
+            except Exception as e:
+                logger.warning(f"RecruiterStore warmup note: {e}")
+            try:
+                from .olap_sidecar import olap_sidecar
+                olap_sidecar.refresh(1)
+            except Exception as e:
+                logger.warning(f"OLAP sidecar warmup note: {e}")
+
+        asyncio.create_task(asyncio.to_thread(_warm_caches))
+
 
         # Ensure canonical Scout release (v2.7.0) is seeded in scout_releases table
         try:
@@ -668,18 +683,19 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    from .services.sync_layer import sync_manager
-    sync_manager.stop()
-    from .services.quality_engine import quality_engine
-    quality_engine.stop()
-    from .services.sentinel_engine import sentinel_engine
-    sentinel_engine.stop()
-    from .services.email_verification_engine import verification_engine
-    verification_engine.stop()
-    from .services.data_filler_engine import data_filler_engine
-    data_filler_engine.stop()
-    from .services.enrichment_service import enrichment_engine
-    enrichment_engine.stop()
+    for engine_import, engine_var in [
+        (".services.sync_layer", "sync_manager"),
+        (".services.quality_engine", "quality_engine"),
+        (".services.sentinel_engine", "sentinel_engine"),
+        (".services.email_verification_engine", "verification_engine"),
+        (".services.data_filler_engine", "data_filler_engine"),
+        (".services.enrichment_service", "enrichment_engine"),
+    ]:
+        try:
+            mod = __import__(f"backend.app{engine_import}", fromlist=[engine_var])
+            getattr(mod, engine_var).stop()
+        except Exception:
+            pass
     
     # Cleanly release leader advisory lock connection
     bg_conn = getattr(app.state, "bg_task_conn", None)

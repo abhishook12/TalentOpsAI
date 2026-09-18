@@ -25,6 +25,43 @@ from ..models.update_models import ScoutInstallation, ScoutFleetBroadcast
 # Thread-safe in-memory cache for live node edge process vitals (CPU %, RAM MB, Load Level)
 _NODE_PROCESS_VITALS: Dict[str, Dict[str, Any]] = {}
 
+_SCOUT_NODES_CACHE = None
+_SCOUT_NODES_CACHE_TIME = 0.0
+_SCOUT_NODES_CACHE_TTL = 15.0  # 15 seconds TTL
+
+def invalidate_scout_nodes_cache():
+    global _SCOUT_NODES_CACHE, _SCOUT_NODES_CACHE_TIME
+    _SCOUT_NODES_CACHE = None
+    _SCOUT_NODES_CACHE_TIME = 0.0
+
+_ACTIVE_BROADCAST_CACHE = None
+_ACTIVE_BROADCAST_CACHE_TIME = 0.0
+_ACTIVE_BROADCAST_TTL = 30.0
+
+def get_active_broadcast_cached(db: Session):
+    global _ACTIVE_BROADCAST_CACHE, _ACTIVE_BROADCAST_CACHE_TIME
+    import time
+    now_ts = time.time()
+    if _ACTIVE_BROADCAST_CACHE is not None and (now_ts - _ACTIVE_BROADCAST_CACHE_TIME < _ACTIVE_BROADCAST_TTL):
+        return _ACTIVE_BROADCAST_CACHE
+    try:
+        b = (
+            db.query(ScoutFleetBroadcast)
+            .filter(ScoutFleetBroadcast.is_active == True)
+            .order_by(ScoutFleetBroadcast.created_at.desc())
+            .first()
+        )
+        _ACTIVE_BROADCAST_CACHE = b
+        _ACTIVE_BROADCAST_CACHE_TIME = now_ts
+        return b
+    except Exception:
+        return None
+
+def invalidate_active_broadcast_cache():
+    global _ACTIVE_BROADCAST_CACHE, _ACTIVE_BROADCAST_CACHE_TIME
+    _ACTIVE_BROADCAST_CACHE = None
+    _ACTIVE_BROADCAST_CACHE_TIME = 0.0
+
 
 def record_scout_heartbeat(
     db: Session,
@@ -32,7 +69,8 @@ def record_scout_heartbeat(
     device_id: str,
     page_url: str = None,
     capture_id: str = None,
-    client_metrics: dict = None
+    client_metrics: dict = None,
+    device: Optional[ExtensionDevice] = None
 ) -> Dict[str, Any]:
     """
     Records a live heartbeat from an active browser extension or desktop scout node.
@@ -55,9 +93,10 @@ def record_scout_heartbeat(
                 "updated_at": now.isoformat(),
             }
 
-    device = db.query(ExtensionDevice).filter(
-        ExtensionDevice.device_id == device_id
-    ).first()
+    if device is None:
+        device = db.query(ExtensionDevice).filter(
+            ExtensionDevice.device_id == device_id
+        ).first()
 
     version_str = None
     if client_metrics:
@@ -92,12 +131,7 @@ def record_scout_heartbeat(
 
     # Check for active fleet-wide update broadcast
     update_notification = None
-    active_broadcast = (
-        db.query(ScoutFleetBroadcast)
-        .filter(ScoutFleetBroadcast.is_active == True)
-        .order_by(ScoutFleetBroadcast.created_at.desc())
-        .first()
-    )
+    active_broadcast = get_active_broadcast_cached(db)
 
     if active_broadcast:
         target_ver = active_broadcast.target_version
@@ -153,11 +187,17 @@ def record_scout_heartbeat(
     return response
 
 
-def get_all_scout_nodes_telemetry(db: Session) -> Dict[str, Any]:
+def get_all_scout_nodes_telemetry(db: Session, force: bool = False) -> Dict[str, Any]:
     """
     Returns live ingestion and heartbeat telemetry for ALL connected scout nodes (devices)
     and registered users. Every physical device gets its own independent telemetry card.
     """
+    global _SCOUT_NODES_CACHE, _SCOUT_NODES_CACHE_TIME
+    import time
+    now_ts = time.time()
+    if not force and _SCOUT_NODES_CACHE is not None and (now_ts - _SCOUT_NODES_CACHE_TIME < _SCOUT_NODES_CACHE_TTL):
+        return _SCOUT_NODES_CACHE
+
     now = datetime.now(timezone.utc)
     today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
     from sqlalchemy import case
@@ -360,10 +400,13 @@ def get_all_scout_nodes_telemetry(db: Session) -> Dict[str, Any]:
     active_nodes = sum(1 for n in nodes_telemetry if n["connection_status"] == "CONNECTED")
     streaming_nodes = sum(1 for n in nodes_telemetry if n["node_status"] == "LIVE_STREAMING")
 
-    return {
+    res = {
         "total_registered_users": len(all_users),
         "total_scout_nodes": len(device_users),
         "active_connected_nodes": active_nodes,
         "active_nodes_streaming_data": streaming_nodes,
         "nodes": nodes_telemetry,
     }
+    _SCOUT_NODES_CACHE = res
+    _SCOUT_NODES_CACHE_TIME = time.time()
+    return res

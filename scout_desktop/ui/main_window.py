@@ -605,9 +605,9 @@ class MainWindow(QMainWindow):
         **kwargs
     ):
         """Called by app.py when candidate is extracted or verified"""
-        cand_name = display_name or name or kwargs.get("recruiter_name", "")
-        cand_title = display_title or title or kwargs.get("raw_title", "")
-        cand_company = display_company or company or kwargs.get("raw_company", "")
+        cand_name = display_name or name or kwargs.get("canonical_name", "") or kwargs.get("recruiter_name", "") or kwargs.get("raw_name", "")
+        cand_title = display_title or title or kwargs.get("current_title", "") or kwargs.get("raw_title", "")
+        cand_company = display_company or company or kwargs.get("company_name", "") or kwargs.get("current_company", "") or kwargs.get("raw_company", "")
         cand_loc = display_loc or location or kwargs.get("raw_location", "")
         cand_status = (status or "CANONICAL").upper()
         p_url = profile_url or kwargs.get("linkedin_url", "")
@@ -635,7 +635,9 @@ class MainWindow(QMainWindow):
             except (ValueError, TypeError):
                 return default_pct
 
-        cand_id = kwargs.get("id") or kwargs.get("candidate_id") or "cand-active"
+        import hashlib
+        fallback_id = f"cand-{hashlib.md5(cand_name.encode('utf-8')).hexdigest()[:8]}" if cand_name else "cand-active"
+        cand_id = kwargs.get("id") or kwargs.get("candidate_id") or fallback_id
         self.page_scan._current_candidate_id = cand_id
 
         fc = kwargs.get("field_confidence") or {}
@@ -723,7 +725,29 @@ class MainWindow(QMainWindow):
                 {"title": "Confidence threshold", "detail": "Passed quality gate", "passed": True},
             ]
         }
-        CANDIDATES.insert(0, new_cand)
+        # Check for duplicates before inserting
+        dup_index = -1
+        new_prof = new_cand.get("profile_url")
+        new_name = new_cand.get("name")
+        new_comp = new_cand.get("company")
+        
+        for i, c in enumerate(CANDIDATES):
+            c_prof = c.get("profile_url")
+            c_name = c.get("name")
+            c_comp = c.get("company")
+            
+            if new_prof and c_prof and new_prof == c_prof:
+                dup_index = i
+                break
+            if new_name and c_name and new_name == c_name and new_comp and c_comp and new_comp == c_comp:
+                dup_index = i
+                break
+                
+        if dup_index >= 0:
+            CANDIDATES[dup_index].update(new_cand)
+        else:
+            CANDIDATES.insert(0, new_cand)
+            
         self.page_candidates._render_candidates()
 
     def closeEvent(self, event: QCloseEvent):

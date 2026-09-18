@@ -683,19 +683,36 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    for engine_import, engine_var in [
-        (".services.sync_layer", "sync_manager"),
-        (".services.quality_engine", "quality_engine"),
-        (".services.sentinel_engine", "sentinel_engine"),
-        (".services.email_verification_engine", "verification_engine"),
-        (".services.data_filler_engine", "data_filler_engine"),
-        (".services.enrichment_service", "enrichment_engine"),
-    ]:
-        try:
-            mod = __import__(f"backend.app{engine_import}", fromlist=[engine_var])
-            getattr(mod, engine_var).stop()
-        except Exception:
-            pass
+    try:
+        from .services.sync_layer import sync_manager
+        sync_manager.stop()
+    except Exception:
+        pass
+    try:
+        from .services.quality_engine import quality_engine
+        quality_engine.stop()
+    except Exception:
+        pass
+    try:
+        from .services.sentinel_engine import sentinel_engine
+        sentinel_engine.stop()
+    except Exception:
+        pass
+    try:
+        from .services.email_verification_engine import verification_engine
+        verification_engine.stop()
+    except Exception:
+        pass
+    try:
+        from .services.data_filler_engine import data_filler_engine
+        data_filler_engine.stop()
+    except Exception:
+        pass
+    try:
+        from .services.enrichment_service import enrichment_engine
+        enrichment_engine.stop()
+    except Exception:
+        pass
     
     # Cleanly release leader advisory lock connection
     bg_conn = getattr(app.state, "bg_task_conn", None)

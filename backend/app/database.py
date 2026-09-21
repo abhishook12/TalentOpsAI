@@ -64,7 +64,9 @@ def set_sqlite_functions(dbapi_connection, connection_record):
 
 from sqlalchemy.pool import NullPool, QueuePool
 
-USE_NULL_POOL = os.getenv("DB_USE_NULLPOOL", "false").lower() in ("1", "true", "yes")
+# Default to NullPool (true) for Supabase / PostgreSQL PgBouncer transaction pooling (port 6543)
+# Using QueuePool with PgBouncer causes connection pool starvation deadlocks when background tasks run
+USE_NULL_POOL = os.getenv("DB_USE_NULLPOOL", "true").lower() in ("1", "true", "yes")
 
 if DATABASE_URL.startswith("postgresql"):
     if USE_NULL_POOL:

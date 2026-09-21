@@ -1,6 +1,6 @@
 {
   "app_name": "TalentOps Scout Desktop",
-  "version": "2.9.1",
+  "version": "2.9.2",
   "extractor_version": "4.6.1",
   "environment": "PRODUCTION",
   "api_base": "https://talentopsai-1.onrender.com",

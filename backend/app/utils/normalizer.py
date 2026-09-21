@@ -79,14 +79,65 @@ COMPANY_LEGAL_SUFFIXES = frozenset({
 
 # Common Company/Organization Keywords (Never Human Names)
 COMPANY_DOMAIN_TERMS = frozenset({
-    'global', 'services', 'technologies', 'technology', 'solutions', 'systems',
+    'global', 'services', 'technologies', 'technology', 'tech', 'tek', 'solutions', 'systems',
     'consulting', 'consultancy', 'staffing', 'recruiting', 'recruitment', 'resources',
     'workforce', 'personnel', 'search', 'labs', 'laboratories', 'studios', 'interactive',
     'digital', 'media', 'software', 'networks', 'logistics', 'logix', 'infotech',
     'analytics', 'intelligence', 'therapeutics', 'pharma', 'pharmaceuticals', 'health',
     'healthcare', 'financial', 'bank', 'insurance', 'agency', 'foundation', 'institute',
     'academy', 'university', 'college', 'school', 'enterprises', 'holdings', 'group',
-    'ventures', 'capital', 'international', 'worldwide', 'industries', 'management'
+    'ventures', 'capital', 'international', 'worldwide', 'industries', 'management',
+    'inspirations', 'innovations', 'dynamics', 'cloud', 'advisors', 'adviser',
+})
+
+# Comprehensive Section Headers on Profiles, Resumes, and ATS pages
+SECTION_HEADERS = frozenset({
+    "experience", "work experience", "professional experience", "employment history",
+    "education", "academic background", "academics",
+    "skills", "top skills", "technical skills", "core competencies", "skills & endorsements",
+    "about", "summary", "professional summary", "about me", "overview", "bio",
+    "licenses & certifications", "licenses and certifications", "certifications", "licenses",
+    "recommendations", "received recommendations", "given recommendations",
+    "honors & awards", "honors and awards", "awards", "honors",
+    "volunteer experience", "volunteering", "volunteer",
+    "publications", "patents", "projects", "featured projects", "personal projects",
+    "courses", "coursework", "languages", "organizations", "interests",
+    "activity", "featured", "highlights", "posts", "articles", "documents",
+    "contact info", "contact details", "connections", "mutual connections",
+    "people also viewed", "people you may know", "similar profiles",
+})
+
+# Workplace / Employment Types & Arrangements
+WORKPLACE_TYPES_SET = frozenset({
+    "full-time", "full time", "part-time", "part time",
+    "contract", "contractor", "c2c", "w2", "1099",
+    "internship", "intern", "co-op", "coop",
+    "freelance", "freelancer", "self-employed",
+    "seasonal", "temporary", "temp", "permanent",
+    "hybrid", "remote", "on-site", "onsite", "in-office",
+    "apprenticeship", "apprentice", "per diem",
+})
+
+# Common Technical Skills & Proficiencies
+COMMON_TECH_SKILLS = frozenset({
+    "python", "java", "javascript", "typescript", "c++", "c#", "c", "golang", "go",
+    "rust", "ruby", "php", "swift", "kotlin", "scala", "dart", "perl", "r", "matlab",
+    "sql", "mysql", "postgresql", "postgres", "mongodb", "redis", "elasticsearch",
+    "dynamodb", "cassandra", "sqlite", "mariadb", "oracle db", "snowflake", "bigquery",
+    "html", "html5", "css", "css3", "sass", "scss", "tailwind", "tailwindcss",
+    "react", "react.js", "reactjs", "angular", "angularjs", "vue", "vue.js", "vuejs",
+    "next.js", "nextjs", "nuxt", "svelte", "node.js", "nodejs", "express", "express.js",
+    "django", "flask", "fastapi", "spring", "spring boot", "asp.net", ".net", "dotnet",
+    "rails", "ruby on rails", "laravel", "graphql", "rest", "rest api", "grpc",
+    "docker", "kubernetes", "k8s", "helm", "terraform", "ansible", "jenkins",
+    "git", "github", "gitlab", "bitbucket", "ci/cd", "devops", "mlops",
+    "aws", "amazon web services", "azure", "microsoft azure", "gcp", "google cloud platform",
+    "linux", "unix", "bash", "shell", "powershell", "nginx", "apache",
+    "machine learning", "deep learning", "nlp", "computer vision", "llm", "genai",
+    "pytorch", "tensorflow", "keras", "scikit-learn", "pandas", "numpy",
+    "tableau", "power bi", "looker", "excel", "jira", "confluence", "figma",
+    "agile", "scrum", "kanban", "selenium", "cypress", "playwright", "unit testing",
+    "microservices", "kafka", "rabbitmq", "spark", "hadoop", "airflow",
 })
 
 # Well-Known Staffing & Enterprise Organizations
@@ -245,8 +296,8 @@ def validate_company_for_person(company_name: Optional[str], person_name: Option
     if "@" in raw or "/app/" in raw.lower() or "/chat/" in raw.lower():
         return False, f"Company contains email or path syntax: '{raw}'"
 
-    # Strip leading notification count patterns like "(121) ", "(2) ", "(1) "
-    raw = re.sub(r'^(?:[\(\[]?\d+\+?[\)\]]?\s*[|•·–—\-:]?\s*)+', '', raw).strip()
+    # Strip leading notification count patterns like "(121) ", "(2) ", "54 | "
+    raw = re.sub(r'^(?:[\(\[]\d+\+?[\)\]]\s*[|•·–—\-:]?\s*|\d+\s*[|•·–—\-:]\s*)+', '', raw).strip()
     if not raw:
         return False, "Company was solely notification noise"
     lower = raw.lower()
@@ -254,7 +305,7 @@ def validate_company_for_person(company_name: Optional[str], person_name: Option
     # Single-word companies under 4 characters are almost always OCR fragments unless on whitelist
     comp_tokens = raw.split()
     if len(comp_tokens) == 1 and len(raw) < 4:
-        valid_short_corps = {"ibm", "sap", "pwc", "hp", "ey", "bp", "ge", "att", "ups", "aws", "bnp", "dhl", "adp"}
+        valid_short_corps = {"ibm", "sap", "pwc", "hp", "ey", "bp", "ge", "att", "ups", "aws", "bnp", "dhl", "adp", "3m", "8x8"}
         if lower not in valid_short_corps:
             return False, f"Single-word company too short ({len(raw)} chars): '{raw}'"
 
@@ -277,7 +328,7 @@ def validate_company_for_person(company_name: Optional[str], person_name: Option
         return False, f"Company starts with notification digits: '{raw}'"
 
     # Reject short words that are pronouns, prepositions, or OCR fragments (e.g. "My", "iHHI")
-    if len(raw) <= 2:
+    if len(raw) <= 2 and lower not in {"3m", "hp", "ey", "bp", "ge"}:
         return False, f"Company name too short ({len(raw)} chars): '{raw}'"
     if lower in {'my', 'to', 'in', 'at', 'by', 'we', 'he', 'me', 'us', 'it', 'or', 'if', 'on', 'as', 'an', 'so', 'no', 'up', 'do', 'go', 'is', 'be', 'ihhi'}:
         return False, f"Company is a pronoun/OCR fragment: '{raw}'"
@@ -318,21 +369,55 @@ def validate_company_for_person(company_name: Optional[str], person_name: Option
     if re.match(r"^(?:ctv|tel|ph|fx|mob)[\s\-_:]", raw, re.IGNORECASE) or lower in {"ctv-", "ctv", "phone", "email"}:
         return False, f"Company starts with communication channel prefix: '{raw}'"
 
-    # Reject trailing special chars, hyphens, or digits (e.g. "281-", "System;")
-    if raw[-1] in "-–—_%#@!~`^&*()[]{}<>|\\;:\"'/?.," or raw[-1].isdigit():
-        return False, f"Company ends with invalid punctuation or digit: '{raw}'"
+    # Reject trailing special chars, hyphens, or digits (e.g. "281-", "System;"), exempting recognized brands with digits (Level 3, 3M, 8x8)
+    known_digit_corps = {"level 3", "factor 75", "studio 54", "3m", "8x8", "carbon3d", "360learning", "web3", "s3"}
+    if raw[-1].isdigit():
+        if lower not in known_digit_corps and not re.search(r"\b(?:level\s*3|factor\s*75|8x8|3m|360|s3|web3)\b", lower):
+            return False, f"Company ends with invalid trailing digit: '{raw}'"
+    elif raw[-1] in "-–—_%#@!~`^&*()[]{}<>|\\;:\"'/?.,":
+        return False, f"Company ends with invalid punctuation: '{raw}'"
     if any(c in raw for c in [";", ":", "?", "!", "~", "*", "=", "<", ">"]):
         return False, f"Company contains invalid syntax characters: '{raw}'"
     if re.search(r"\b\d{3,}[-\s]?\b", raw):
         return False, f"Company contains phone or area code digits: '{raw}'"
 
-    # Reject strings containing individual professional job titles (e.g. "Cindy Davis Consultant")
-    if re.search(r"\b(?:consultant|recruiter|sourcer|coordinator|advisor|specialist|manager|director|officer)\b", lower):
+    # Reject strings containing individual professional job titles (e.g. "Cindy Davis Consultant") unless corporate designators present
+    has_comp_org_suffix = bool(re.search(r"\b(?:group|partners|associates|consulting|consultancy|advisors?|advisers?|agency|capital|systems|inc|llc|corp|board|holdings|services|solutions|firm|network)\b", raw, re.IGNORECASE))
+    if not has_comp_org_suffix and re.search(r"\b(?:consultant|recruiter|sourcer|coordinator|advisor|specialist|manager|director|officer)\b", lower):
         return False, f"Company contains person job title words: '{raw}'"
 
     # Reject chat status and system phrases
     if re.search(r"\b(?:history is on|history is off|active now|offline|online|typing|seen at|last seen|joined the chat)\b", lower):
         return False, f"Company is chat status noise: '{raw}'"
+
+    # Reject Resume / Profile Section Headers
+    if lower in SECTION_HEADERS:
+        return False, f"Company is a resume/profile section header: '{raw}'"
+
+    # Reject Workplace / Employment Types
+    if lower in WORKPLACE_TYPES_SET:
+        return False, f"Company is a workplace/employment type: '{raw}'"
+
+    # Reject Common Tech Skills as standalone employers
+    if lower in COMMON_TECH_SKILLS and lower not in KNOWN_COMPANIES and lower not in {"sap", "oracle", "salesforce", "microsoft", "google", "aws", "apple", "amazon web services", "figma", "docker", "dropbox", "github", "gitlab", "stripe"}:
+        return False, f"Company is a technical skill: '{raw}'"
+
+    # Reject Department / Industry names
+    if lower in COMPANY_INDUSTRIES:
+        return False, f"Company is an industry descriptor: '{raw}'"
+
+    # Strict Mutual Exclusivity with Human Person Names
+    # If the company string looks like a human person name and lacks corporate suffixes or domain terms, reject!
+    is_person, _, _ = validate_human_name(raw)
+    if is_person:
+        words = lower.split()
+        has_corp = (
+            any(w in COMPANY_DOMAIN_TERMS or w in COMPANY_LEGAL_SUFFIXES for w in words)
+            or lower in KNOWN_COMPANIES
+            or bool(re.search(r"\b(?:inc|llc|ltd|corp|corporation|technologies|technology|tech|tek|solutions|services|group|partners|holdings|labs|ventures|consulting|agency|capital|systems|analytics|logistics|cloud|digital|media|interactive|studios|infotech)\b", lower))
+        )
+        if not has_corp:
+            return False, f"Company name appears to be a human person name without corporate markers: '{raw}'"
 
     return True, None
 
@@ -408,10 +493,18 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
         'message', 'messages', 'filter', 'filters', 'dialog', 'session', 'menu',
         'overview', 'people', 'reason', 'active window', 'active', 'window',
         'cto', 'ceo', 'cfo', 'coo', 'vp', 'hr', 'myridius', 'candidate card',
-        'yatendra', 'rawat', 'abhishek', 'jadon',
     }
     if any(w in SYSTEM_NOISE_TOKENS for w in lower_words):
         return False, None, f"Name contains system or application noise ('{cleaned}')"
+
+    if lower in SECTION_HEADERS:
+        return False, None, f"Name is a resume/profile section header ('{cleaned}')"
+    if lower in WORKPLACE_TYPES_SET:
+        return False, None, f"Name is a workplace/employment type ('{cleaned}')"
+    if lower in COMMON_TECH_SKILLS:
+        return False, None, f"Name is a technical skill ('{cleaned}')"
+    if lower in COMPANY_INDUSTRIES:
+        return False, None, f"Name is a department/industry descriptor ('{cleaned}')"
 
     # Reject quantitative / job posting adjectives / agencies
     QUANTITATIVE_ADJECTIVES = {
@@ -431,9 +524,12 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
     ]):
         return False, None, f"Name ends in corporate or agency designation ('{cleaned}')"
 
-    # Reject single-letter tokens (e.g. 'M Inbox', 'Ana R Billios 0')
-    if any(len(w) < 2 for w in words):
-        return False, None, f"Name contains single-letter token ('{cleaned}')"
+    # Allow single-letter middle initials in 3- or 4-word names (e.g. "David A. Sinclair", "Emily R. Thorne")
+    for idx, w in enumerate(words):
+        if len(w) < 2:
+            if len(words) >= 3 and 0 < idx < len(words) - 1 and w.isupper():
+                continue
+            return False, None, f"Name contains single-letter token ('{cleaned}')"
 
     # Must be 2 to 4 tokens
     if len(words) < 2 or len(words) > 4:

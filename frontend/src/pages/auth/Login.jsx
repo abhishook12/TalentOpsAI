@@ -21,6 +21,7 @@ export default function Login() {
   
   // Login Submission State
   const [isAuthenticating, setIsAuthenticating] = useState(false)
+  const [authElapsed, setAuthElapsed] = useState(0)
   const [pendingDeviceId, setPendingDeviceId] = useState(null)
   const warmupFiredRef = useRef(false)
   
@@ -29,15 +30,36 @@ export default function Login() {
   const search = useSearch({ from: '/login' })
   const redirect = decodeURIComponent(search.redirect || '/')
 
-  // Lightweight warm-up ping in background
+  // Track auth elapsed time for live UX cold-start feedback
+  useEffect(() => {
+    let timer
+    if (isAuthenticating) {
+      setAuthElapsed(0)
+      timer = setInterval(() => {
+        setAuthElapsed(prev => prev + 1)
+      }, 1000)
+    } else {
+      setAuthElapsed(0)
+    }
+    return () => {
+      if (timer) clearInterval(timer)
+    }
+  }, [isAuthenticating])
+
+  const getAuthStatusText = () => {
+    if (authElapsed < 3) return 'Signing in...'
+    if (authElapsed < 7) return 'Verifying credentials...'
+    if (authElapsed < 14) return 'Connecting to server...'
+    return 'Waking up server...'
+  }
+
+  // Lightweight dual warm-up ping in background
   useEffect(() => {
     if (warmupFiredRef.current) return
     warmupFiredRef.current = true
-    fetch(api.defaults?.baseURL
-      ? `${api.defaults.baseURL}/ping`
-      : `${import.meta.env.VITE_API_URL || 'https://talentopsai-1.onrender.com'}/ping`,
-      { method: 'GET', mode: 'cors', cache: 'no-store' }
-    ).catch(() => {})
+    const targetUrl = import.meta.env.VITE_API_URL || 'https://talentopsai-1.onrender.com'
+    fetch(`${targetUrl}/ping`, { method: 'GET', mode: 'cors', cache: 'no-store' }).catch(() => {})
+    fetch('/api/ping', { method: 'GET', cache: 'no-store' }).catch(() => {})
   }, [])
 
   const isEmailValid = email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
@@ -61,7 +83,7 @@ export default function Login() {
     } catch (err) {
       let errorDetail = err?.response?.data?.detail || err?.message || 'Authentication failed. Please check your credentials.'
       if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
-        errorDetail = 'Connection timed out. Please try signing in again.'
+        errorDetail = 'Cloud server is waking up. Please click Sign In again to connect.'
       }
       if (Array.isArray(errorDetail)) {
           errorDetail = errorDetail.map(e => e.msg).join(', ')
@@ -192,12 +214,24 @@ export default function Login() {
             {isAuthenticating ? (
               <div className="flex items-center gap-2 text-zinc-950">
                 <i className="ti ti-loader animate-spin text-zinc-950" />
-                <span className="text-zinc-950 font-semibold">Signing in...</span>
+                <span className="text-zinc-950 font-semibold">{getAuthStatusText()}</span>
               </div>
             ) : (
               <span className="text-zinc-950 font-semibold">Sign In</span>
             )}
           </button>
+
+          {isAuthenticating && authElapsed >= 3 && (
+            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2.5 animate-fadeIn leading-relaxed">
+              <i className="ti ti-loader-2 animate-spin text-sm text-amber-400 shrink-0" />
+              <div className="flex-1">
+                {authElapsed < 12 
+                  ? 'Connecting to secure cloud instance...'
+                  : 'Cloud instance is waking up from standby. Please keep this tab open...'}
+                <span className="ml-1 opacity-75 font-mono text-[11px]">({authElapsed}s)</span>
+              </div>
+            </div>
+          )}
           
           {import.meta.env.DEV && (
           <button type="button" id="atlas-simulate-google" style={{ display: 'none' }} onClick={() => performBackgroundInitialization(() => googleLogin('mock_google_token_atlas_user_' + Date.now()))}>

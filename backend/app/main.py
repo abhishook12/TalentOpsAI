@@ -443,6 +443,9 @@ from .routes import data_intelligence
 app.include_router(data_intelligence.router)
 from .routes import scout_install
 app.include_router(scout_install.router)
+from .routes import scout_learning
+app.include_router(scout_learning.router)
+
 
 
 @app.get("/")

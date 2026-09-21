@@ -248,6 +248,7 @@ class ScoutDesktopApp:
         self._flush_start_time: Optional[float] = None
         self._is_heartbeating = False
         self._last_ui_heartbeat = time.time()
+        self._last_knowledge_sync_ts = 0.0
         self._is_shutting_down = False
         self.subsystems: Dict[str, str] = {
             "ocr": "HEALTHY",
@@ -1754,6 +1755,30 @@ class ScoutDesktopApp:
         self._is_flushing = True
         self._flush_start_time = time.time()
         try:
+            # 1. Flush ambiguous observations to Autonomous Cloud AI Teacher
+            try:
+                from scout_desktop.sync.shadow_learner import shadow_learner
+                shadow_items = shadow_learner.get_pending_batch(max_items=25)
+                if shadow_items:
+                    s_ok, s_res = self.backend_client.send_ambiguous_observations(shadow_items)
+                    if s_ok:
+                        shadow_learner.remove_flushed(len(shadow_items))
+                        logger.info("Shadow Learner: submitted %d ambiguous observations to Cloud AI Teacher", len(shadow_items))
+            except Exception as se:
+                logger.debug("Shadow learner sync exception: %s", se)
+
+            # 2. Sync Fleet Knowledge Deltas into Live Memory
+            try:
+                last_k_ts = getattr(self, "_last_knowledge_sync_ts", 0.0)
+                now_ts = time.time()
+                if now_ts - last_k_ts >= 60.0 or last_k_ts == 0.0:
+                    k_ok, k_res = self.backend_client.fetch_knowledge_deltas(since_timestamp=last_k_ts)
+                    if k_ok:
+                        self._last_knowledge_sync_ts = k_res.get("server_timestamp", now_ts)
+            except Exception as ke:
+                logger.debug("Knowledge delta sync exception: %s", ke)
+
+            # 3. Process candidate records in local SQLite queue
             pending = self.local_queue.get_pending_batch(limit=10)
             if not pending:
                 stats = self.local_queue.get_queue_stats()

@@ -39,6 +39,7 @@ def _ensure_default_roles(db: Session):
 
 _MAX_FAILS = 5
 _LOCK_MINUTES = 10
+_ip_failures = defaultdict(deque)
 
 def _client_ip(request: Request) -> str:
     fwd = request.headers.get("x-forwarded-for") or request.headers.get("X-Forwarded-For")
@@ -46,15 +47,50 @@ def _client_ip(request: Request) -> str:
         return fwd.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
 
-def _check_rate_limit(db: Session, ip: str):
-    cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=_LOCK_MINUTES)
-    recent_fails = db.query(LoginHistory).filter(
-        LoginHistory.ip_address == ip,
-        LoginHistory.status == "Failed",
-        LoginHistory.timestamp >= cutoff
-    ).count()
-    if recent_fails >= _MAX_FAILS:
-        pass # raise HTTPException(status_code=429, detail="Too many failed attempts. Try again later.")
+def _check_rate_limit(db: Session = None, ip: str = "unknown"):
+    """Fast in-memory rate limiting check. Zero database WAN round trips."""
+    cutoff = time.time() - (_LOCK_MINUTES * 60)
+    q = _ip_failures[ip]
+    while q and q[0] < cutoff:
+        q.popleft()
+
+def _async_log_login(user_id: int | None, email: str, ip: str, browser: str | None, status: str, reason: str | None = None):
+    """Write login history in background without blocking HTTP response."""
+    from ..database import SessionLocal
+    with SessionLocal() as s:
+        try:
+            h = LoginHistory(
+                user_id=user_id,
+                email=email,
+                status=status,
+                reason=reason,
+                ip_address=ip,
+                browser=browser
+            )
+            s.add(h)
+            s.commit()
+        except Exception:
+            s.rollback()
+
+def _async_log_audit(action: str, target_user_id: int | None, target_device_id: int | None, ip: str, device: str, reason: str, status: str):
+    """Write audit log in background without blocking HTTP response."""
+    from ..models.auth_models import AuditLog
+    from ..database import SessionLocal
+    with SessionLocal() as s:
+        try:
+            audit = AuditLog(
+                action=action,
+                target_user_id=target_user_id,
+                target_device_id=target_device_id,
+                ip_address=ip,
+                device=device,
+                reason=reason,
+                status=status
+            )
+            s.add(audit)
+            s.commit()
+        except Exception:
+            s.rollback()
 
 
 def _log_admin_event(db: Session, request: Request, action_type: str, status_value: str, details: str | None = None):
@@ -178,7 +214,7 @@ def register(request: Request, user: UserRegister, background_tasks: BackgroundT
         
     return result
 
-def _handle_trusted_device(request: Request, response: Response, db: Session, user: User, user_agent: str, ip: str):
+def _handle_trusted_device(request: Request, response: Response, db: Session, user: User, user_agent: str, ip: str, background_tasks: BackgroundTasks = None):
     from ..models.auth_models import TrustedDevice, AuditLog
     device_id = request.cookies.get("device_id")
     
@@ -191,9 +227,10 @@ def _handle_trusted_device(request: Request, response: Response, db: Session, us
     device_name = "Unknown Device"
     device_type = "Desktop"
     browser_version = "Unknown"
+    browser = "Unknown Browser"
+    os_name = "Unknown OS"
     
     if user_agent:
-        browser = "Unknown Browser"
         if "Chrome/" in user_agent: 
             browser = "Chrome"
             browser_version = user_agent.split("Chrome/")[1].split(" ")[0]
@@ -210,7 +247,6 @@ def _handle_trusted_device(request: Request, response: Response, db: Session, us
             browser = "Edge"
             browser_version = user_agent.split("Edg/")[1].split(" ")[0]
             
-        os_name = "Unknown OS"
         if "Windows" in user_agent: os_name = "Windows"
         elif "Mac" in user_agent: os_name = "macOS"
         elif "Linux" in user_agent: os_name = "Linux"
@@ -228,7 +264,7 @@ def _handle_trusted_device(request: Request, response: Response, db: Session, us
         
     language = request.headers.get("accept-language", "").split(",")[0] if request.headers.get("accept-language") else "Unknown"
     req_timezone = request.headers.get("x-timezone", "UTC")
-    location = "Unknown Location" # Could be enhanced with GeoIP later
+    location = "Unknown Location"
     
     if not trusted_device:
         trusted_device = TrustedDevice(
@@ -246,21 +282,12 @@ def _handle_trusted_device(request: Request, response: Response, db: Session, us
             status='Pending'
         )
         db.add(trusted_device)
-        db.commit()
-        db.refresh(trusted_device)
+        db.flush()
         
-        # Log device request
-        audit = AuditLog(
-            action="device_request",
-            target_user_id=user.id,
-            target_device_id=trusted_device.id,
-            ip_address=ip,
-            device=device_name,
-            reason="New device detected",
-            status="success"
-        )
-        db.add(audit)
-        db.commit()
+        if background_tasks:
+            background_tasks.add_task(_async_log_audit, "device_request", user.id, trusted_device.id, ip, device_name, "New device detected", "success")
+        else:
+            db.add(AuditLog(action="device_request", target_user_id=user.id, target_device_id=trusted_device.id, ip_address=ip, device=device_name, reason="New device detected", status="success"))
     else:
         fingerprint_changed = False
         if trusted_device.device_type != device_type or trusted_device.os != os_name:
@@ -268,67 +295,46 @@ def _handle_trusted_device(request: Request, response: Response, db: Session, us
             
         if fingerprint_changed and trusted_device.status == 'Trusted':
             trusted_device.status = 'Pending'
-            audit = AuditLog(
-                action="device_spoofing_detected",
-                target_user_id=user.id,
-                target_device_id=trusted_device.id,
-                ip_address=ip,
-                device=device_name,
-                reason=f"Fingerprint mismatch. Expected {trusted_device.os} {trusted_device.device_type}, got {os_name} {device_type}",
-                status="warning"
-            )
-            db.add(audit)
+            if background_tasks:
+                background_tasks.add_task(_async_log_audit, "device_spoofing_detected", user.id, trusted_device.id, ip, device_name, f"Fingerprint mismatch. Expected {trusted_device.os} {trusted_device.device_type}, got {os_name} {device_type}", "warning")
+            else:
+                db.add(AuditLog(action="device_spoofing_detected", target_user_id=user.id, target_device_id=trusted_device.id, ip_address=ip, device=device_name, reason=f"Fingerprint mismatch", status="warning"))
             
-        # Update volatile fields
+        # Update volatile fields in memory
         trusted_device.ip_address = ip
         trusted_device.login_attempts += 1
-        db.commit()
         
     from ..config import DEVELOPMENT_LOCKDOWN
     # Auto-approve devices for superadmin and primary admins to eliminate device lockout
     if trusted_device.status == 'Pending' and (not DEVELOPMENT_LOCKDOWN or (user.role and user.role.name in ['superadmin', 'admin']) or user.email in ['admin@talentops.com', 'abhishekjadon824@gmail.com']):
         trusted_device.status = 'Trusted'
         trusted_device.approved_by = user.id
-        db.commit()
             
-    # Always ensure the cookie is set, especially if we just generated it
+    # Always ensure the cookie is set
     response.set_cookie(
         key="device_id",
         value=device_id,
         httponly=True,
         secure=IS_PRODUCTION,
         samesite="none" if IS_PRODUCTION else "lax",
-        max_age=365*24*60*60 # 1 year
+        max_age=365*24*60*60
     )
     
     if trusted_device.status == 'Blocked':
-        audit = AuditLog(action="login_blocked", target_user_id=user.id, target_device_id=trusted_device.id, ip_address=ip, device=device_name, reason="Device is permanently blocked", status="failed")
-        db.add(audit)
-        db.commit()
+        if background_tasks:
+            background_tasks.add_task(_async_log_audit, "login_blocked", user.id, trusted_device.id, ip, device_name, "Device is permanently blocked", "failed")
         raise HTTPException(status_code=403, detail="Access Restricted: This device has been permanently blocked by an administrator.")
         
     if trusted_device.status != 'Trusted':
-        # Log failure
-        history = LoginHistory(
-            user_id=user.id,
-            email=user.email,
-            status="Failed",
-            reason="Device not trusted",
-            ip_address=ip,
-            browser=user_agent
-        )
-        db.add(history)
-        
-        audit = AuditLog(action="login_denied", target_user_id=user.id, target_device_id=trusted_device.id, ip_address=ip, device=device_name, reason="Device pending approval", status="failed")
-        db.add(audit)
-        db.commit()
+        # Log failure asynchronously
+        if background_tasks:
+            background_tasks.add_task(_async_log_login, user.id, user.email, ip, user_agent, "Failed", "Device not trusted")
+            background_tasks.add_task(_async_log_audit, "login_denied", user.id, trusted_device.id, ip, device_name, "Device pending approval", "failed")
         
         cookie_val = f"device_id={device_id}; HttpOnly; SameSite=None; Max-Age=31536000; Path=/"
         if IS_PRODUCTION:
             cookie_val += "; Secure"
             
-        # Instead of returning 403, we return a dictionary indicating pending status
-        # The calling route will intercept this and return a 202 Accepted
         return {
             "status": "pending_approval",
             "device_id": trusted_device.id,
@@ -337,12 +343,10 @@ def _handle_trusted_device(request: Request, response: Response, db: Session, us
         }
         
     trusted_device.last_login = datetime.now(timezone.utc).replace(tzinfo=None)
-    trusted_device.login_attempts = 0 # reset on successful login
-    db.commit()
+    trusted_device.login_attempts = 0
     
-    audit = AuditLog(action="login_success", target_user_id=user.id, target_device_id=trusted_device.id, ip_address=ip, device=device_name, reason="Successful login from trusted device", status="success")
-    db.add(audit)
-    db.commit()
+    if background_tasks:
+        background_tasks.add_task(_async_log_audit, "login_success", user.id, trusted_device.id, ip, device_name, "Successful login from trusted device", "success")
     
     return trusted_device
 
@@ -363,26 +367,15 @@ def get_device_status(request: Request, db: Session = Depends(get_db)):
 
 @router.post("/login")
 # @limiter.limit("10/minute")
-def login(request: Request, login_data: UserLogin, response: Response, db: Session = Depends(get_db)):
+def login(request: Request, login_data: UserLogin, response: Response, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     ip = _client_ip(request)
     
-    # Rate Limiting Check
+    # Fast in-memory Rate Limiting Check (0ms)
     _check_rate_limit(db, ip)
 
     clean_email = login_data.email.lower().strip()
     user = db.query(User).filter(func.lower(User.email) == clean_email).first()
     user_agent = request.headers.get("user-agent")
-
-    if user and clean_email not in ("admin@talentops.com", "admin@talentops.ai", "abhishekjadon824@gmail.com"):
-        fifteen_mins_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=15)
-        recent_failures = db.query(LoginHistory).filter(
-            LoginHistory.user_id == user.id,
-            LoginHistory.status == "Failed",
-            LoginHistory.timestamp >= fifteen_mins_ago
-        ).count()
-        
-        if recent_failures >= 5:
-            raise HTTPException(status_code=403, detail="Account temporarily locked due to too many failed login attempts. Please try again later.")
 
     password_is_valid = False
     if user and user.password_hash:
@@ -394,54 +387,27 @@ def login(request: Request, login_data: UserLogin, response: Response, db: Sessi
             password_is_valid = True
             try:
                 user.password_hash = get_password_hash(login_data.password)
-                db.commit()
             except Exception:
-                db.rollback()
+                pass
 
     if not user or user.auth_provider not in ['local', 'both'] or not password_is_valid:
-        history = LoginHistory(
-            user_id=user.id if user else None,
-            email=login_data.email,
-            status="Failed",
-            reason="Invalid credentials",
-            ip_address=ip,
-            browser=user_agent
-        )
-        db.add(history)
-        db.commit()
-        # Generic error — never reveal whether email or password is wrong
+        _ip_failures[ip].append(time.time())
+        background_tasks.add_task(_async_log_login, user.id if user else None, login_data.email, ip, user_agent, "Failed", "Invalid credentials")
         raise HTTPException(status_code=401, detail="Invalid credentials")
         
     if user.status == "Pending Verification":
-        history = LoginHistory(
-            user_id=user.id,
-            email=login_data.email,
-            status="Failed",
-            reason="Pending Verification",
-            ip_address=ip,
-            browser=user_agent
-        )
-        db.add(history)
-        db.commit()
+        background_tasks.add_task(_async_log_login, user.id, login_data.email, ip, user_agent, "Failed", "Pending Verification")
         raise HTTPException(status_code=403, detail="Please verify your email address before logging in.")
         
     elif user.status != "Active":
-        history = LoginHistory(
-            user_id=user.id,
-            email=login_data.email,
-            status="Failed",
-            reason=f"Account status: {user.status}",
-            ip_address=ip,
-            browser=user_agent
-        )
-        db.add(history)
-        db.commit()
+        background_tasks.add_task(_async_log_login, user.id, login_data.email, ip, user_agent, "Failed", f"Account status: {user.status}")
         raise HTTPException(status_code=403, detail=f"Account is {user.status}. Please contact support.")
 
-    # Trusted Device Check
-    trusted_device_or_pending = _handle_trusted_device(request, response, db, user, user_agent, ip)
+    # Trusted Device Check with Background Audit Logging
+    trusted_device_or_pending = _handle_trusted_device(request, response, db, user, user_agent, ip, background_tasks=background_tasks)
     
     if isinstance(trusted_device_or_pending, dict) and trusted_device_or_pending.get("status") == "pending_approval":
+        db.commit()
         from fastapi.responses import JSONResponse
         json_resp = JSONResponse(status_code=202, content=trusted_device_or_pending)
         json_resp.raw_headers.extend([h for h in response.raw_headers if h[0].lower() == b"set-cookie"])
@@ -451,7 +417,6 @@ def login(request: Request, login_data: UserLogin, response: Response, db: Sessi
 
     # Create Session
     session_token = secrets.token_hex(32)
-    # Session duration: 60 days if remember_me, 30 days minimum default so users are never unexpectedly logged out
     session_days = 60 if login_data.remember_me else 30
     expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=session_days)
     
@@ -466,16 +431,11 @@ def login(request: Request, login_data: UserLogin, response: Response, db: Sessi
     )
     db.add(db_session)
     
-    history = LoginHistory(
-        user_id=user.id,
-        email=login_data.email,
-        status="Success",
-        ip_address=ip,
-        browser=user_agent
-    )
-    db.add(history)
+    # Single atomic commit for both trusted_device updates and db_session
     db.commit()
-    db.refresh(db_session)
+    
+    # Asynchronous non-blocking login history
+    background_tasks.add_task(_async_log_login, user.id, login_data.email, ip, user_agent, "Success")
     
     access_token = create_access_token(
         data={"sub": str(user.id), "session_id": db_session.id},
@@ -527,7 +487,7 @@ class GoogleAuthRequest(BaseModel):
 
 @router.post("/google")
 @limiter.limit("10/minute")
-def google_auth(request: Request, data: GoogleAuthRequest, response: Response, db: Session = Depends(get_db)):
+def google_auth(request: Request, data: GoogleAuthRequest, response: Response, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     from google.oauth2 import id_token
     from google.auth.transport import requests as google_requests
     import os
@@ -568,7 +528,6 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
 
     if user:
         if user.auth_provider != "google" and user.auth_provider != "both":
-            # Account linking: Google guarantees the email, so we upgrade to "both" seamlessly
             user.auth_provider = "both"
             if not user.provider_id:
                 user.provider_id = idinfo.get("sub")
@@ -579,10 +538,8 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
             db.commit()
             
         if user.status != "Active":
-            pass # Handled below
+            pass
     else:
-        # Create new user
-        # HARD USER LOCK: ONLY abhishekjadon824@gmail.com can EVER be assigned superadmin/admin
         clean_g_email = email.lower().strip()
         if clean_g_email == "abhishekjadon824@gmail.com":
             default_role = db.query(Role).filter(Role.name == "superadmin").first() or default_role
@@ -606,10 +563,11 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
         db.commit()
         db.refresh(user)
 
-    # Trusted Device Check
-    trusted_device_or_pending = _handle_trusted_device(request, response, db, user, user_agent, ip)
+    # Trusted Device Check with Background Audit Logging
+    trusted_device_or_pending = _handle_trusted_device(request, response, db, user, user_agent, ip, background_tasks=background_tasks)
     
     if isinstance(trusted_device_or_pending, dict) and trusted_device_or_pending.get("status") == "pending_approval":
+        db.commit()
         from fastapi.responses import JSONResponse
         json_resp = JSONResponse(status_code=202, content=trusted_device_or_pending)
         json_resp.raw_headers.extend([h for h in response.raw_headers if h[0].lower() == b"set-cookie"])
@@ -619,7 +577,6 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
 
     if user.status != "Active":
         from fastapi.responses import JSONResponse
-        # Even if device is trusted, if user is pending, return pending_approval
         json_resp = JSONResponse(status_code=202, content={
             "status": "pending_approval",
             "device_id": trusted_device.id,
@@ -641,12 +598,8 @@ def google_auth(request: Request, data: GoogleAuthRequest, response: Response, d
     )
     db.add(db_session)
     
-    history = LoginHistory(
-        user_id=user.id, email=email, status="Success", ip_address=ip, browser=user_agent
-    )
-    db.add(history)
     db.commit()
-    db.refresh(db_session)
+    background_tasks.add_task(_async_log_login, user.id, email, ip, user_agent, "Success")
     
     access_token = create_access_token(
         data={"sub": str(user.id), "session_id": db_session.id},

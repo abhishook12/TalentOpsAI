@@ -755,3 +755,66 @@ class BackendClient:
             self.last_db_write_result = f"FAILED: {e}"
             logger.warning("Batch sync network error: %s", e)
             return False, {"error": str(e)}
+
+    def send_ambiguous_observations(self, observations: List[Dict[str, Any]]) -> Tuple[bool, Dict[str, Any]]:
+        """
+        Transmits ambiguous or uncorroborated entity observations to the backend
+        Shadow Learning Queue for asynchronous cloud AI teacher adjudication.
+        """
+        if not observations:
+            return True, {"ingested": 0}
+        if not self.ensure_authenticated():
+            return False, {"error": "unauthenticated"}
+
+        url = f"{self.active_api_base}/scout/learning/ingest-ambiguities"
+        payload = {
+            "device_id": self.device_id,
+            "observations": observations,
+            "scout_version": CURRENT_VERSION,
+        }
+        try:
+            res = requests.post(url, json=payload, headers=self._get_headers(), timeout=15.0)
+            if res.status_code == 200:
+                data = res.json()
+                logger.debug("Shadow learning batch ingested by backend: %s", data)
+                return True, data
+            return False, {"error": f"HTTP {res.status_code}"}
+        except Exception as e:
+            logger.debug("Shadow learning ingestion network error: %s", e)
+            return False, {"error": str(e)}
+
+    def fetch_knowledge_deltas(self, since_timestamp: float = 0.0) -> Tuple[bool, Dict[str, Any]]:
+        """
+        Pulls newly discovered/verified entities from the Fleet Cloud Teacher
+        and registers them dynamically in local memory without requiring a restart.
+        """
+        url = f"{self.active_api_base}/scout/fleet/sync-knowledge"
+        params = {"since": since_timestamp, "device_id": self.device_id}
+        try:
+            res = requests.get(url, params=params, headers=self._get_headers(), timeout=10.0)
+            if res.status_code == 200:
+                data = res.json()
+                entities = data.get("entities", [])
+                registered_count = 0
+                try:
+                    from scout_desktop.extractor.patterns import register_learned_entity
+                except Exception:
+                    try:
+                        from extractor.patterns import register_learned_entity
+                    except Exception:
+                        register_learned_entity = None
+
+                if register_learned_entity:
+                    for ent in entities:
+                        etype = ent.get("entity_type")
+                        name = ent.get("canonical_name")
+                        if etype and name:
+                            if register_learned_entity(etype, name):
+                                registered_count += 1
+                logger.info("Fleet Knowledge Sync: updated %d entities into local runtime memory", registered_count)
+                return True, {"synced": registered_count, "server_timestamp": data.get("server_timestamp", time.time()), "entities": entities}
+            return False, {"error": f"HTTP {res.status_code}"}
+        except Exception as e:
+            logger.debug("Knowledge delta sync network error: %s", e)
+            return False, {"error": str(e)}
+

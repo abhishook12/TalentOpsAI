@@ -28,6 +28,7 @@ from scout_desktop.extractor.patterns import (
     is_valid_location,
     is_plausible_title,
     is_valid_email,
+    classify_semantic_entity,
     EMAIL_REGEX,
     PHONE_REGEX,
 )
@@ -389,6 +390,9 @@ def create_candidate_if_valid(
             audit_checklist=["Page type candidate eligible: FAIL"],
         )
 
+    context_lines = observation.get("context_lines") or ctx.get("context_lines") or []
+    line_idx = observation.get("line_index") or ctx.get("line_index")
+
     # 3. Person Name Extraction & Validation (Rule 1, 3, 5, 11)
     raw_name = (
         observation.get("recruiter_name")
@@ -399,13 +403,30 @@ def create_candidate_if_valid(
     ).strip()
 
     cleaned_name = clean_person_name(raw_name)
-    if not cleaned_name or not is_valid_person_name(cleaned_name):
+    name_classification = classify_semantic_entity(cleaned_name)
+    if not cleaned_name or not is_valid_person_name(cleaned_name) or name_classification.get("entity_type") != "PERSON":
+        try:
+            from scout_desktop.sync.shadow_learner import shadow_learner
+            n_conf = name_classification.get("confidence", 0.5) if isinstance(name_classification, dict) else 0.5
+            n_type = name_classification.get("entity_type", "UNKNOWN") if isinstance(name_classification, dict) else "UNKNOWN"
+            shadow_learner.inspect_and_buffer(
+                candidate_text=cleaned_name or raw_name,
+                entity_type=n_type,
+                confidence=n_conf,
+                context_lines=context_lines or [raw_name],
+                source_url=source_url,
+                window_title=window_title,
+                line_idx=line_idx,
+            )
+        except Exception:
+            pass
+
         return CandidateGateResult(
             decision="UNRESOLVED_UI_TEXT",
             is_valid_candidate=False,
             status="REJECTED",
             platform=platform,
-            reasons=[f"Invalid or UI noise person name: '{raw_name}'"],
+            reasons=[f"Invalid, company, or UI noise candidate name: '{raw_name}' (classified as {name_classification.get('entity_type')})"],
             audit_checklist=["Human person name validation: FAIL"],
         )
 
@@ -458,13 +479,32 @@ def create_candidate_if_valid(
     valid_company = None
     if raw_comp and isinstance(raw_comp, str):
         c_clean = clean_company_name(raw_comp)
-        if c_clean and is_valid_company_name(c_clean):
+        comp_classification = classify_semantic_entity(c_clean)
+        c_type = comp_classification.get("entity_type", "UNKNOWN") if isinstance(comp_classification, dict) else "UNKNOWN"
+        c_conf = comp_classification.get("confidence", 0.5) if isinstance(comp_classification, dict) else 0.5
+
+        # Buffer for continuous autonomous learning if ambiguous or unverified
+        try:
+            from scout_desktop.sync.shadow_learner import shadow_learner
+            shadow_learner.inspect_and_buffer(
+                candidate_text=c_clean or raw_comp,
+                entity_type=c_type,
+                confidence=c_conf,
+                context_lines=context_lines or [raw_comp, raw_name],
+                source_url=source_url,
+                window_title=window_title,
+                line_idx=line_idx,
+            )
+        except Exception:
+            pass
+
+        if c_clean and is_valid_company_name(c_clean) and c_type == "COMPANY":
             valid_company = c_clean
             field_conf["company"] = 0.90
             checklist.append(f"Plausible company verified: {valid_company}")
         else:
             field_conf["company"] = 0.0
-            reasons.append(f"Stripped invalid company noise: '{raw_comp}'")
+            reasons.append(f"Stripped invalid company noise or non-company entity: '{raw_comp}' (classified as {c_type})")
             checklist.append("Company noise filtered")
     else:
         field_conf["company"] = 0.0
@@ -524,27 +564,6 @@ def create_candidate_if_valid(
             reasons.append(f"Filtered non-individual profile URL: '{raw_profile_url}'")
             checklist.append("Non-individual URL rejected")
 
-    # If canonical profile URL is still missing but candidate is on a verified sourcing platform
-    is_verified_sourcing_platform = platform in (
-        "LinkedIn", "ZoomInfo", "Apollo", "Indeed", "GitHub",
-        "SimplyHired", "Jobright", "Glassdoor", "ZipRecruiter"
-    )
-    if not canonical_url and cleaned_name and is_verified_sourcing_platform:
-        slug = re.sub(r'[^a-zA-Z0-9]+', '-', cleaned_name.lower()).strip('-')
-        if platform == "LinkedIn":
-            canonical_url = f"https://www.linkedin.com/in/{slug}"
-        elif platform == "GitHub":
-            canonical_url = f"https://github.com/{slug}"
-        elif platform == "ZoomInfo":
-            canonical_url = f"https://www.zoominfo.com/p/{slug}"
-        elif platform == "Apollo":
-            canonical_url = f"https://www.apollo.io/people/{slug}"
-        elif platform == "Indeed":
-            canonical_url = f"https://www.indeed.com/r/{slug}"
-        else:
-            canonical_url = f"https://www.linkedin.com/in/{slug}"
-        field_conf["profile_url"] = 0.95
-        checklist.append(f"Synthesized canonical profile URL on {platform}: {canonical_url}")
 
     # Emails & Phones
     email = observation.get("email") or observation.get("primary_email") or observation.get("raw_email")

@@ -144,4 +144,65 @@ class AIRouterService:
                 "uncertainty_notes": "Domain and profile confirmed; personal phone is unverified."
             }
 
+        elif action_type == "autonomous_entity_adjudication":
+            import re
+            m = re.search(r'TARGET TEXT TO CLASSIFY:\s*"([^"]+)"', prompt)
+            target = m.group(1).strip() if m else "Unknown"
+            t_low = target.lower()
+
+            comp_markers = [
+                "systems", "dynamics", "technologies", "tech", "corp", "inc", "llc", "ltd", "gmbh",
+                "group", "holdings", "solutions", "partners", "ventures", "advisors", "capital",
+                "consulting", "software", "networks", "industries", "laboratories", "pharma", "biotech"
+            ]
+            role_markers = [
+                "engineer", "developer", "director", "manager", "lead", "specialist", "sourcer",
+                "recruiter", "architect", "analyst", "consultant", "officer", "vice president", "vp"
+            ]
+            noise_markers = [
+                "open to work", "connect", "following", "message", "more", "save", "apply", "share"
+            ]
+
+            if any(nm in t_low for nm in noise_markers):
+                return {
+                    "entity_type": "UI_NOISE",
+                    "canonical_name": target,
+                    "confidence": 0.95,
+                    "reasoning": f"Identified UI action marker '{target}' from pattern analysis",
+                    "is_promotable": True
+                }
+            elif any(cm in t_low.split() or t_low.endswith(cm) for cm in comp_markers) or "at " + t_low in prompt.lower() or "company" in prompt.lower():
+                return {
+                    "entity_type": "COMPANY",
+                    "canonical_name": target.title(),
+                    "confidence": 0.94,
+                    "reasoning": f"Identified business entity markers in '{target}' and employment context",
+                    "is_promotable": True
+                }
+            elif any(rm in t_low for rm in role_markers):
+                return {
+                    "entity_type": "JOB_TITLE",
+                    "canonical_name": target.title(),
+                    "confidence": 0.92,
+                    "reasoning": f"Identified occupational role taxonomy in '{target}'",
+                    "is_promotable": True
+                }
+            else:
+                words = target.split()
+                if len(words) in (2, 3) and all(w.isalpha() for w in words):
+                    return {
+                        "entity_type": "PERSON",
+                        "canonical_name": target.title(),
+                        "confidence": 0.91,
+                        "reasoning": f"Multi-token capitalized human name structure for '{target}'",
+                        "is_promotable": False
+                    }
+                return {
+                    "entity_type": "COMPANY",
+                    "canonical_name": target.title(),
+                    "confidence": 0.90,
+                    "reasoning": f"Contextual corporate classification for novel entity '{target}'",
+                    "is_promotable": True
+                }
+
         return {"status": "ok", "confidence": 0.85, "processed_by": "local-fallback"}

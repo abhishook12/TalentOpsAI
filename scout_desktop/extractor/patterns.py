@@ -7,7 +7,7 @@ and school detection.
 """
 
 import re
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Dict, Any, Set
 
 # Rejection keywords for locations (prevents "Power Engineering" distractor bug and educational institute overlap)
 LOCATION_REJECT_TERMS = re.compile(
@@ -102,6 +102,201 @@ TITLE_KEYWORDS = re.compile(
     r"advocate|agent|buyer|trader|underwriter|broker|investor|statistician|economist|researcher|scholar)\b",
     re.IGNORECASE,
 )
+
+# ==============================================================================
+# AUTHORITATIVE SEMANTIC KNOWLEDGE DICTIONARIES & TAXONOMIES
+# ==============================================================================
+
+# Comprehensive Section Headers on Profiles, Resumes, and ATS pages
+SECTION_HEADERS = frozenset({
+    "experience", "work experience", "professional experience", "employment history",
+    "education", "academic background", "academics",
+    "skills", "top skills", "technical skills", "core competencies", "skills & endorsements",
+    "about", "summary", "professional summary", "about me", "overview", "bio",
+    "licenses & certifications", "licenses and certifications", "certifications", "licenses",
+    "recommendations", "received recommendations", "given recommendations",
+    "honors & awards", "honors and awards", "awards", "honors",
+    "volunteer experience", "volunteering", "volunteer",
+    "publications", "patents", "projects", "featured projects", "personal projects",
+    "courses", "coursework", "languages", "organizations", "interests",
+    "activity", "featured", "highlights", "posts", "articles", "documents",
+    "contact info", "contact details", "connections", "mutual connections",
+    "people also viewed", "people you may know", "similar profiles",
+})
+
+# Workplace / Employment Types & Arrangements
+WORKPLACE_TYPES_SET = frozenset({
+    "full-time", "full time", "part-time", "part time",
+    "contract", "contractor", "c2c", "w2", "1099",
+    "internship", "intern", "co-op", "coop",
+    "freelance", "freelancer", "self-employed",
+    "seasonal", "temporary", "temp", "permanent",
+    "hybrid", "remote", "on-site", "onsite", "in-office",
+    "apprenticeship", "apprentice", "per diem",
+})
+
+# Common Technical Skills & Proficiencies (Must NOT be treated as candidate names or standalone employers)
+COMMON_TECH_SKILLS = frozenset({
+    "python", "java", "javascript", "typescript", "c++", "c#", "c", "golang", "go",
+    "rust", "ruby", "php", "swift", "kotlin", "scala", "dart", "perl", "r", "matlab",
+    "sql", "mysql", "postgresql", "postgres", "mongodb", "redis", "elasticsearch",
+    "dynamodb", "cassandra", "sqlite", "mariadb", "oracle db", "snowflake", "bigquery",
+    "html", "html5", "css", "css3", "sass", "scss", "tailwind", "tailwindcss",
+    "react", "react.js", "reactjs", "angular", "angularjs", "vue", "vue.js", "vuejs",
+    "next.js", "nextjs", "nuxt", "svelte", "node.js", "nodejs", "express", "express.js",
+    "django", "flask", "fastapi", "spring", "spring boot", "asp.net", ".net", "dotnet",
+    "rails", "ruby on rails", "laravel", "graphql", "rest", "rest api", "grpc",
+    "docker", "kubernetes", "k8s", "helm", "terraform", "ansible", "jenkins",
+    "git", "github", "gitlab", "bitbucket", "ci/cd", "devops", "mlops",
+    "aws", "amazon web services", "azure", "microsoft azure", "gcp", "google cloud platform",
+    "linux", "unix", "bash", "shell", "powershell", "nginx", "apache",
+    "machine learning", "deep learning", "nlp", "computer vision", "llm", "genai",
+    "pytorch", "tensorflow", "keras", "scikit-learn", "pandas", "numpy",
+    "tableau", "power bi", "looker", "excel", "jira", "confluence", "figma",
+    "agile", "scrum", "kanban", "selenium", "cypress", "playwright", "unit testing",
+    "microservices", "kafka", "rabbitmq", "spark", "hadoop", "airflow",
+})
+
+# Business Departments, Disciplines & Industry Categories (Never Human Names or Commercial Employers)
+DEPARTMENTS_AND_INDUSTRIES = frozenset({
+    "human resources", "hr", "talent acquisition", "people operations", "people & culture",
+    "information technology", "it", "technical support", "tech support",
+    "quality assurance", "qa", "software quality assurance", "quality engineering",
+    "software engineering", "software development", "web development", "mobile development",
+    "data science", "data engineering", "data analytics", "business intelligence",
+    "product management", "project management", "program management",
+    "customer service", "customer support", "customer success", "client services",
+    "sales & marketing", "marketing & advertising", "sales operations",
+    "business development", "account management", "public relations",
+    "finance & accounting", "financial services", "accounting & finance",
+    "legal services", "legal & compliance", "corporate communications",
+    "supply chain", "logistics and supply chain", "facilities services",
+    "management consulting", "staffing & recruiting", "staffing and recruiting",
+    "computer software", "internet", "consumer goods", "retail", "healthcare",
+    "higher education", "hospital & health care", "telecommunications",
+})
+
+# UI Badges, Actions, and Navigation Elements
+UI_BADGES_AND_ACTIONS = frozenset({
+    "open to work", "open to", "actively looking", "seeking opportunities",
+    "hiring", "actively hiring", "we're hiring", "were hiring",
+    "linkedin member", "premium", "verified", "top voice",
+    "save to pdf", "print profile", "view in sales navigator", "save in sales navigator",
+    "save", "saved", "share", "follow", "following", "unfollow",
+    "connect", "connected", "pending", "message", "send message", "inmail",
+    "endorse", "endorsements", "recommend", "show all", "see all",
+    "more", "more actions", "view profile", "view full profile",
+    "apply now", "easy apply", "apply", "save job",
+})
+
+# Corporate Suffixes, Business Markers & Legal Forms
+EXPANDED_CORP_DESIGNATORS = frozenset({
+    "inc", "inc.", "llc", "ltd", "ltd.", "corp", "corp.", "corporation",
+    "co", "co.", "company", "companies", "gmbh", "sa", "plc", "bv", "pvt",
+    "private limited", "group", "holdings", "enterprises", "ventures", "capital",
+    "partners", "associates", "technologies", "technology", "tech", "tek",
+    "solutions", "services", "consulting", "consultancy", "staffing", "recruitment",
+    "recruiting", "resources", "workforce", "personnel", "labs", "laboratories",
+    "studio", "studios", "interactive", "digital", "media", "software", "networks",
+    "network", "systems", "system", "logistics", "logix", "infotech", "analytics",
+    "intelligence", "inspirations", "innovations", "dynamics", "global", "international",
+    "worldwide", "industries", "management", "financial", "advisors", "cloud",
+    "communications", "telecom", "pharma", "pharmaceuticals", "therapeutics",
+    "biotech", "biosciences", "bank", "banking", "investments", "securities",
+    "insurance", "hospital", "healthcare", "health", "foundation", "institute",
+    "academy", "polytechnic", "college", "university", "school",
+})
+
+# Commercial-Only Corporate Designators (Excludes Academic and Educational institutions)
+COMMERCIAL_CORP_DESIGNATORS = frozenset({
+    "inc", "inc.", "llc", "ltd", "ltd.", "corp", "corp.", "corporation",
+    "co", "co.", "company", "companies", "gmbh", "sa", "plc", "bv", "pvt",
+    "private limited", "group", "holdings", "enterprises", "ventures", "capital",
+    "partners", "associates", "technologies", "technology", "tech", "tek",
+    "solutions", "services", "consulting", "consultancy", "staffing", "recruitment",
+    "recruiting", "resources", "workforce", "personnel", "labs", "laboratories",
+    "studio", "studios", "interactive", "digital", "media", "software", "networks",
+    "network", "systems", "system", "logistics", "logix", "infotech", "analytics",
+    "intelligence", "inspirations", "innovations", "dynamics", "global", "international",
+    "worldwide", "industries", "management", "financial", "advisors", "advisers", "cloud",
+    "communications", "telecom", "pharma", "pharmaceuticals", "therapeutics",
+    "biotech", "biosciences", "bank", "banking", "investments", "securities",
+})
+
+# Commercial Corporate Legal Forms and Advisory/Consultancy Markers
+# Entities containing these are strictly commercial businesses and never academic institutions
+COMMERCIAL_LEGAL_AND_BIZ_MARKERS = frozenset({
+    "inc", "inc.", "llc", "ltd", "ltd.", "corp", "corp.", "corporation",
+    "gmbh", "sa", "plc", "bv", "pvt", "private limited", "co", "co.", "company", "companies",
+    "group", "holdings", "enterprises", "ventures", "capital", "partners", "associates",
+    "advisors", "advisers", "consulting", "consultancy", "solutions", "services", "staffing",
+    "recruitment", "recruiting", "studios", "logistics", "firm",
+})
+
+# Prominent Corporate Brands
+KNOWN_STANDALONE_CORPS = frozenset({
+    "google", "microsoft", "apple", "amazon", "meta", "netflix", "salesforce",
+    "oracle", "ibm", "cisco", "intel", "nvidia", "adobe", "sap", "pwc", "deloitte",
+    "ey", "kpmg", "accenture", "uber", "airbnb", "stripe", "spotify", "twitter", "x",
+    "linkedin", "zoominfo", "apollo", "indeed", "glassdoor", "tek inspirations",
+    "kochar tech", "infosys", "wipro", "tcs", "tata consultancy services",
+    "cognizant", "hcl", "tech mahindra", "capgemini", "mindtree", "l&t",
+    "randstad", "robert half", "allegis", "teksystems", "apex systems", "aerotek",
+    "insight global", "collabera", "kforce", "manpower", "adecco", "kelly services",
+    "amazon web services", "aws", "figma", "docker", "dropbox", "github", "gitlab",
+    "atlassian", "snowflake", "mongodb", "datadog", "elastic",
+})
+
+# Thread-safe Dynamic Runtime Knowledge Sets (Synchronized from Fleet AI Teacher without app restart)
+DYNAMIC_CORPS: Set[str] = set()
+DYNAMIC_NOISE: Set[str] = set()
+DYNAMIC_SKILLS: Set[str] = set()
+DYNAMIC_TITLES: Set[str] = set()
+DYNAMIC_PERSONS: Set[str] = set()
+
+
+def register_learned_entity(entity_type: str, name: str) -> bool:
+    """
+    Registers an autonomously learned entity from the Fleet Cloud Teacher
+    into local Desktop Scout runtime memory without requiring an application restart.
+    """
+    if not name or not isinstance(name, str):
+        return False
+    clean = name.strip().lower()
+    if not clean or len(clean) < 2:
+        return False
+    etype = entity_type.strip().upper()
+    if etype == "COMPANY":
+        if clean in SECTION_HEADERS or clean in WORKPLACE_TYPES_SET or clean in UI_BADGES_AND_ACTIONS:
+            return False
+        DYNAMIC_CORPS.add(clean)
+        return True
+    elif etype == "UI_NOISE":
+        DYNAMIC_NOISE.add(clean)
+        return True
+    elif etype == "SKILL":
+        DYNAMIC_SKILLS.add(clean)
+        return True
+    elif etype == "JOB_TITLE":
+        DYNAMIC_TITLES.add(clean)
+        return True
+    elif etype == "PERSON":
+        DYNAMIC_PERSONS.add(clean)
+        return True
+    return False
+
+
+def get_learned_entities_stats() -> Dict[str, int]:
+    """Returns counts of dynamically learned entities currently in runtime memory."""
+    return {
+        "companies": len(DYNAMIC_CORPS),
+        "corps_count": len(DYNAMIC_CORPS),
+        "ui_noise": len(DYNAMIC_NOISE),
+        "skills": len(DYNAMIC_SKILLS),
+        "titles": len(DYNAMIC_TITLES),
+        "persons": len(DYNAMIC_PERSONS),
+        "total": len(DYNAMIC_CORPS) + len(DYNAMIC_NOISE) + len(DYNAMIC_SKILLS) + len(DYNAMIC_TITLES) + len(DYNAMIC_PERSONS),
+    }
 
 
 def is_plausible_school(text: Optional[str]) -> bool:
@@ -296,7 +491,7 @@ def clean_company_name(comp: Optional[str]) -> Optional[str]:
         return None
     cleaned = comp.strip()
     # Strip leading notification numbers or badges e.g. "54 | ", "(54) ", "[12] ", "(1) "
-    cleaned = re.sub(r"^(?:[\(\[]?\d+\+?[\)\]]?\s*[|•·–—\-:]?\s*)+", "", cleaned).strip()
+    cleaned = re.sub(r"^(?:[\(\[]\d+\+?[\)\]]\s*[|•·–—\-:]?\s*|\d+\s*[|•·–—\-:]\s*)+", "", cleaned).strip()
     cleaned = re.sub(r"^Current\s*company:\s*", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\. Click to skip.*$", "", cleaned, flags=re.IGNORECASE)
     # Strip contact info and connection/follower metric counts without stripping brand names containing 'Connections' (e.g. Business Connections Inc)
@@ -498,7 +693,7 @@ def is_valid_company_name(text: Optional[str]) -> bool:
     if re.search(r"\b\d{3,}[-\s]?\b", t):
         return False
     # Reject strings containing individual professional job titles (e.g. "Cindy Davis Consultant") unless corporate designators present
-    has_comp_org_suffix = bool(re.search(r"\b(?:group|partners|associates|consulting|agency|capital|systems|inc|llc|corp|board|holdings|services|solutions|firm|network)\b", t, re.IGNORECASE))
+    has_comp_org_suffix = bool(re.search(r"\b(?:group|partners|associates|consulting|consultancy|advisors?|advisers?|agency|capital|systems|inc|llc|corp|board|holdings|services|solutions|firm|network)\b", t, re.IGNORECASE))
     if not has_comp_org_suffix and re.search(r"\b(?:consultant|recruiter|sourcer|coordinator|advisor|specialist|manager|director|officer)\b", t, re.IGNORECASE):
         return False
 
@@ -576,10 +771,51 @@ def is_valid_company_name(text: Optional[str]) -> bool:
     # Reject lines that look like sentences or have verbs like "looking for", "helping"
     if re.search(r"\b(?:looking for|helping|building|passionate about|specializing in)\b", t, re.IGNORECASE):
         return False
+    # Reject Resume / Profile Section Headers (e.g. "Experience", "About", "Skills", "Education")
+    if t_lower in SECTION_HEADERS:
+        return False
+
+    # Reject Workplace / Employment Types (e.g. "Full-time", "Contract", "Hybrid", "Remote", "On-site")
+    if t_lower in WORKPLACE_TYPES_SET:
+        return False
+
+    # Reject Common Tech Skills as standalone employers (e.g. "Python", "Java", "Kubernetes")
+    # Exception: Recognized corporations that coincide with platform/product brands
+    if t_lower in COMMON_TECH_SKILLS and t_lower not in KNOWN_STANDALONE_CORPS and t_lower not in {"sap", "oracle", "salesforce", "microsoft", "google", "aws", "apple", "amazon web services", "figma", "docker", "dropbox", "github", "gitlab", "stripe"}:
+        return False
+
+    # Reject Department / Industry names (e.g. "Human Resources", "Information Technology")
+    if t_lower in DEPARTMENTS_AND_INDUSTRIES:
+        return False
+
+    # Reject UI Badges and Actions (e.g. "Open to work", "Hiring", "LinkedIn Member")
+    if t_lower in UI_BADGES_AND_ACTIONS:
+        return False
+
+    # Reject Educational degrees and schools (unless civic/hospital context or explicit corporate designator present)
+    if is_plausible_degree(t):
+        return False
+    if not is_civic_or_org and not has_comp_org_suffix and is_plausible_school(t):
+        return False
+
     # Pure job titles are not company names unless they contain explicit corporate/org identifiers
     has_comp_suffix = bool(re.search(r"\b(?:inc|llc|ltd|corp|corporation|technologies|group|partners|holdings|labs|studio|ventures|consulting|agency|capital|systems)\b", t, re.IGNORECASE))
     if not has_comp_suffix and is_plausible_title(t):
         return False
+
+    # Strict Mutual Exclusivity with Human Person Names:
+    # If string is a clean human person name (e.g. "Abhishek Jadon", "Mohit Tiwari", "John Smith")
+    # and possesses NO corporate designators or corporate legal suffixes, and is NOT in KNOWN_STANDALONE_CORPS,
+    # it is a candidate's personal name and MUST NOT be classified as a company!
+    comp_tokens_lower = {re.sub(r"[^a-zA-Z0-9]", "", tok).lower() for tok in comp_tokens if tok}
+    has_any_corp_marker = (
+        t_lower in KNOWN_STANDALONE_CORPS
+        or any(d in comp_tokens_lower for d in EXPANDED_CORP_DESIGNATORS)
+        or bool(re.search(r"\b(?:inc|llc|ltd|corp|corporation|technologies|technology|tech|tek|solutions|services|group|partners|holdings|labs|ventures|consulting|agency|capital|systems|analytics|logistics|cloud|digital|media|interactive|studios|infotech)\b", t, re.IGNORECASE))
+    )
+    if not has_any_corp_marker and is_valid_person_name(t):
+        return False
+
     return True
 
 
@@ -668,32 +904,37 @@ def is_valid_person_name(text: Optional[str]) -> bool:
     if t.endswith(".") or ".." in t:
         return False
 
+    t_lower = t.lower()
+
     # A person name CANNOT be a job title!
     if is_plausible_title(t):
         return False
 
-    # A person name CANNOT be a company name or contain corporate designators!
-    corp_designators = [
-        "inc", "llc", "corp", "corporation", "gmbh", "technologies", "technology",
-        "solutions", "services", "consulting", "staffing", "workforce", "group",
-        "holdings", "partners", "agency", "labs", "software", "international",
-        "enterprises", "associates", "associated", "network", "networks", "systems",
-        "global", "capital", "ventures", "management", "financial", "company", "companies",
-        "college", "university", "institute", "school", "foundation", "queue"
-    ]
-    if is_valid_company_name(t) and any(re.search(rf"\b{re.escape(d)}\b", t, re.IGNORECASE) for d in corp_designators):
+    # A person name CANNOT be a Section Header, Workplace Type, Tech Skill, Department/Industry, or UI Action/Badge!
+    if t_lower in SECTION_HEADERS or t_lower in WORKPLACE_TYPES_SET or t_lower in COMMON_TECH_SKILLS:
+        return False
+    if t_lower in DEPARTMENTS_AND_INDUSTRIES or t_lower in UI_BADGES_AND_ACTIONS:
+        return False
+    if is_plausible_school(t) or is_plausible_degree(t):
+        return False
+    if t_lower in KNOWN_STANDALONE_CORPS:
+        return False
+
+    # A person name CANNOT contain explicit corporate suffixes, business designations or markers!
+    if any(re.search(rf"\b{re.escape(d)}\b", t, re.IGNORECASE) for d in EXPANDED_CORP_DESIGNATORS):
         return False
 
     # Reject names that start with article 'The ' or UI action 'Review '
-    if t.lower().startswith("the ") or t.lower().startswith("review "):
+    if t_lower.startswith("the ") or t_lower.startswith("review "):
         return False
 
     # Reject names that end in corporate / agency designations (e.g. "Daley Ard Associates", "The Davis Companies")
-    if any(t.lower().endswith(" " + d) for d in [
+    if any(t_lower.endswith(" " + d) for d in [
         "associates", "associated", "partners", "partner", "group", "holdings",
         "solutions", "consulting", "enterprises", "llc", "inc", "corp", "agency",
         "network", "networks", "systems", "ventures", "capital", "companies", "company",
-        "college", "university", "queue"
+        "college", "university", "queue", "tech", "tek", "labs", "inspirations",
+        "innovations", "dynamics", "logistics", "cloud", "digital", "media"
     ]):
         return False
 
@@ -791,8 +1032,18 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         # Executive role acronyms & tokens
         "cto", "ceo", "cfo", "coo", "cio", "cmo", "cpo", "cro", "vp", "svp", "evp", "hr",
         "myridius",
+        # Departments, Disciplines & Corporate Nouns
+        "human", "resources", "information", "technology", "acquisition", "operations",
+        "quality", "assurance", "tech", "tek", "inspirations", "innovations", "dynamics",
+        "logistics", "cloud", "digital", "media", "interactive", "studios", "pharma",
+        "biotech", "healthcare", "systems", "solutions", "services", "consultancy",
+        "advisors", "enterprises", "holdings", "ventures", "capital",
     }
     if any(w in blacklisted for w in lower_words):
+        return False
+    if any(w in EXPANDED_CORP_DESIGNATORS for w in lower_words if len(w) > 1):
+        return False
+    if any(w in COMMON_TECH_SKILLS for w in lower_words if len(w) > 1):
         return False
     if "reason:" in t.lower() or "active window" in t.lower() or "overview" in t.lower():
         return False
@@ -874,7 +1125,7 @@ def clean_person_name(text: Optional[str]) -> Optional[str]:
         return None
     t = raw_str
     # Strip leading notification numbers or badges e.g. "54 | ", "(54) ", "[12] "
-    t = re.sub(r"^(?:[\(\[]?\d+\+?[\)\]]?\s*[|•·–—\-:]?\s*)+", "", t).strip()
+    t = re.sub(r"^(?:[\(\[]\d+\+?[\)\]]\s*[|•·–—\-:]?\s*|\d+\s*[|•·–—\-:]\s*)+", "", t).strip()
     # Strip degree suffixes: • 2nd, · 1st, 3rd, etc.
     t = re.sub(r"\s*[·•\u00B7\u2022\u2219\u25E6\u2013\u2014|]+\s*(?:1st|2nd|3rd(?:\+)?).*$", "", t, flags=re.IGNORECASE).strip()
     # Strip pronouns in parens/brackets/free: (she/her), [she/her], (he/him), etc.
@@ -891,5 +1142,117 @@ def clean_person_name(text: Optional[str]) -> Optional[str]:
     # Pattern: comma followed by 2-10 uppercase letters/numbers/hyphens (credential abbreviations)
     t = re.sub(r"(?:,\s*[A-Z][A-Z0-9\-]{1,9})+$", "", t).strip()
     return t if is_valid_person_name(t) else None
+
+
+def classify_semantic_entity(text: Optional[str]) -> Dict[str, Any]:
+    """
+    Authoritative, high-precision semantic entity discriminator.
+    Unambiguously classifies candidate strings into mutually exclusive types:
+      - 'PERSON': Individual human name (e.g., 'Abhishek Jadon', 'Mohit Tiwari', 'John Smith')
+      - 'COMPANY': Corporate entity / employer (e.g., 'Tek Inspirations', 'Kochar Tech', 'Google', 'Acme Corp')
+      - 'JOB_TITLE': Professional role / headline (e.g., 'Senior Software Engineer', 'Recruiting Manager')
+      - 'LOCATION': Geographic location (e.g., 'San Francisco, CA', 'Bengaluru, Karnataka')
+      - 'EDUCATION': School, college, university, or degree (e.g., 'Stanford University', 'B.S. Computer Science')
+      - 'SKILL': Technical/domain skill (e.g., 'Python', 'Java', 'Docker', 'Kubernetes')
+      - 'WORKPLACE_TYPE': Employment/work arrangement (e.g., 'Full-time', 'Contract', 'Hybrid', 'Remote')
+      - 'SECTION_HEADER': Resume/profile section title (e.g., 'Experience', 'About', 'Skills', 'Education')
+      - 'DEPARTMENT_OR_INDUSTRY': Business function or sector (e.g., 'Human Resources', 'Information Technology')
+      - 'UI_NOISE': Action button, badge, metric, or navigation artifact (e.g., 'Open to work', 'Save to PDF', 'Connect')
+      - 'UNKNOWN': Ambiguous or unclassified text
+    """
+    if not text or not isinstance(text, str):
+        return {"entity_type": "UNKNOWN", "confidence": 0.0, "details": "Empty input"}
+
+    t = text.strip()
+    if not t:
+        return {"entity_type": "UNKNOWN", "confidence": 0.0, "details": "Whitespace only"}
+
+    t_lower = t.lower()
+
+    # 1. Section Headers (Universal invariants: 'Overview', 'Experience', 'About', etc.)
+    if t_lower in SECTION_HEADERS:
+        return {"entity_type": "SECTION_HEADER", "confidence": 0.99, "details": "Resume or profile section header"}
+
+    # 2. Workplace / Employment Types (Universal invariants: 'Full-time', 'Contract', etc.)
+    if t_lower in WORKPLACE_TYPES_SET:
+        return {"entity_type": "WORKPLACE_TYPE", "confidence": 0.99, "details": "Employment or workplace arrangement"}
+
+    # 3. Dynamic Runtime Learned Entities (Learned by Fleet AI Teacher without restart)
+    if t_lower in DYNAMIC_CORPS:
+        return {"entity_type": "COMPANY", "confidence": 0.99, "source": "DYNAMIC_CLOUD_LEARNED", "details": "Dynamically learned corporate entity (Fleet AI Teacher)"}
+    if t_lower in DYNAMIC_NOISE:
+        return {"entity_type": "UI_NOISE", "confidence": 0.99, "source": "DYNAMIC_CLOUD_LEARNED", "details": "Dynamically learned UI noise (Fleet AI Teacher)"}
+    if t_lower in DYNAMIC_SKILLS:
+        return {"entity_type": "SKILL", "confidence": 0.99, "source": "DYNAMIC_CLOUD_LEARNED", "details": "Dynamically learned technical skill (Fleet AI Teacher)"}
+    if t_lower in DYNAMIC_TITLES:
+        return {"entity_type": "JOB_TITLE", "confidence": 0.99, "source": "DYNAMIC_CLOUD_LEARNED", "details": "Dynamically learned job title (Fleet AI Teacher)"}
+    if t_lower in DYNAMIC_PERSONS:
+        return {"entity_type": "PERSON", "confidence": 0.99, "source": "DYNAMIC_CLOUD_LEARNED", "details": "Dynamically learned candidate name (Fleet AI Teacher)"}
+
+    # 3. UI Noise / Action Buttons / Social Badges / Metrics / Pronouns
+    if (
+        UI_ACTIONS.match(t)
+        or PRONOUNS.match(t)
+        or METRICS.search(t)
+        or t_lower in UI_BADGES_AND_ACTIONS
+        or is_noise_text(t)
+        or re.match(r"^[·•\s]*\d*(?:st|nd|rd|th)?(?:\s*degree)?$", t, re.IGNORECASE)
+    ):
+        return {"entity_type": "UI_NOISE", "confidence": 0.99, "details": "UI button, badge, action, or social metric"}
+
+    # 4. Prominent Standalone Corporate Brands (AWS, Figma, Google, Microsoft, Docker, etc.)
+    if t_lower in KNOWN_STANDALONE_CORPS and is_valid_company_name(t):
+        return {"entity_type": "COMPANY", "confidence": 0.99, "details": "Prominent standalone corporate brand"}
+
+    # 5. Education: Academic Degrees or Educational Institutions (Evaluated before generic commercial markers,
+    # unless entity contains explicit commercial business markers like 'Cambridge Advisors' or 'Oxford BioMedica Inc')
+    if is_plausible_degree(t):
+        return {"entity_type": "EDUCATION", "confidence": 0.95, "details": "Academic degree or field of study"}
+
+    tokens = [re.sub(r"[^a-zA-Z0-9]", "", tok).lower() for tok in t.split() if tok]
+    has_commercial_biz_marker = (
+        any(tok in COMMERCIAL_LEGAL_AND_BIZ_MARKERS for tok in tokens)
+        or bool(re.search(r"\b(?:inc|llc|ltd|corp|corporation|group|partners|associates|holdings|ventures|consulting|consultancy|advisors|advisers|capital|solutions|services|staffing)\b", t, re.IGNORECASE))
+    )
+    if is_plausible_school(t) and not has_commercial_biz_marker and t_lower not in KNOWN_STANDALONE_CORPS:
+        return {"entity_type": "EDUCATION", "confidence": 0.95, "details": "School, college, or university"}
+
+    # 6. Companies with Explicit Commercial Markers (e.g. 'Cambridge Advisors', 'Tek Inspirations', 'Kochar Tech')
+    has_explicit_commercial_marker = (
+        has_commercial_biz_marker
+        or any(tok in COMMERCIAL_CORP_DESIGNATORS for tok in tokens)
+        or bool(re.search(r"\b(?:inc|llc|ltd|corp|corporation|technologies|technology|tech|tek|solutions|services|group|partners|associates|holdings|labs|ventures|consulting|consultancy|agency|capital|systems|analytics|logistics|cloud|digital|media|interactive|studios|infotech|advisors|advisers)\b", t, re.IGNORECASE))
+    )
+    if has_explicit_commercial_marker and is_valid_company_name(t):
+        return {"entity_type": "COMPANY", "confidence": 0.95, "details": "Corporate entity with verified business marker"}
+
+    # 7. Business Departments and Industries
+    if t_lower in DEPARTMENTS_AND_INDUSTRIES:
+        return {"entity_type": "DEPARTMENT_OR_INDUSTRY", "confidence": 0.95, "details": "Department, business function, or industry sector"}
+
+    # 8. Technical Skills (e.g. 'Python', 'Java', 'Kubernetes', 'React')
+    if t_lower in COMMON_TECH_SKILLS:
+        return {"entity_type": "SKILL", "confidence": 0.95, "details": "Technical skill, tool, or framework"}
+
+    # 9. Geographic Locations
+    if is_valid_location(t):
+        return {"entity_type": "LOCATION", "confidence": 0.95, "details": "Geographic location or postal code"}
+
+    # 10. Professional Job Titles
+    has_comp_suffix = bool(re.search(r"\b(?:inc|llc|ltd|corp|corporation|technologies|group|partners|holdings|labs|studio|ventures|consulting|agency|capital|systems)\b", t, re.IGNORECASE))
+    if not has_comp_suffix and is_plausible_title(t):
+        return {"entity_type": "JOB_TITLE", "confidence": 0.92, "details": "Professional job title"}
+
+    # 11. Company vs Person Arbitration
+    if is_valid_person_name(t):
+        return {"entity_type": "PERSON", "confidence": 0.95, "details": "Verified human person name"}
+
+    if is_valid_company_name(t):
+        return {"entity_type": "COMPANY", "confidence": 0.85, "details": "Plausible company name"}
+
+    if is_valid_skill(t):
+        return {"entity_type": "SKILL", "confidence": 0.70, "details": "Plausible professional skill"}
+
+    return {"entity_type": "UNKNOWN", "confidence": 0.0, "details": "Unclassified text"}
 
 

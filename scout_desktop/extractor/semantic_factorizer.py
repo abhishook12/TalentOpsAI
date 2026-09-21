@@ -28,6 +28,7 @@ from scout_desktop.extractor.patterns import (
     is_plausible_degree,
     is_valid_skill,
     clean_title_and_company,
+    classify_semantic_entity,
     DATE_RANGE_PATTERN,
     is_noise_text,
     UI_ACTIONS,
@@ -617,11 +618,11 @@ class SemanticFactorizer:
             t, c = clean_title_and_company(line)
             if t and not cur_title and is_plausible_title(t):
                 cur_title = t
-            if c and not cur_comp and is_valid_company_name(c):
+            if c and not cur_comp and is_valid_company_name(c) and classify_semantic_entity(c).get("entity_type") == "COMPANY":
                 cur_comp = c
             elif not cur_comp and is_valid_company_name(line) and not is_plausible_title(line):
                 cleaned_c = clean_company_name(line)
-                if cleaned_c:
+                if cleaned_c and classify_semantic_entity(cleaned_c).get("entity_type") == "COMPANY":
                     cur_comp = cleaned_c
 
         # 2. Parse Experience Section for chronological roles

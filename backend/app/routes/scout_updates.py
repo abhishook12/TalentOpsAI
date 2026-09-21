@@ -1292,6 +1292,11 @@ def invalidate_fleet_caches():
     _FLEET_STATS_CACHE_TIME = 0.0
     _FLEET_BROADCAST_STATUS_CACHE = None
     _FLEET_BROADCAST_STATUS_CACHE_TIME = 0.0
+    try:
+        from ..services.scout_node_service import invalidate_active_broadcast_cache
+        invalidate_active_broadcast_cache()
+    except Exception:
+        pass
 
 @router.get("/fleet/stats")
 def get_fleet_update_stats(

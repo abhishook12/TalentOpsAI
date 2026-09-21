@@ -22,6 +22,9 @@ from scout_desktop.extractor.patterns import (
     is_valid_company_name,
     clean_company_name,
     clean_title_and_company,
+    classify_semantic_entity,
+    SECTION_HEADERS,
+    WORKPLACE_TYPES_SET,
 )
 
 
@@ -92,16 +95,16 @@ class FieldClassifier:
 
     @classmethod
     def is_ui_noise(cls, text: Optional[str]) -> bool:
-        """Determines if a string is a known UI button, navigation word, or action."""
+        """Determines if a string is a known UI button, navigation word, section heading, or action."""
         if not text:
             return True
         t_low = text.strip().lower()
-        if t_low in cls.UI_ACTION_WORDS:
+        if t_low in cls.UI_ACTION_WORDS or t_low in SECTION_HEADERS or t_low in WORKPLACE_TYPES_SET:
             return True
         if any(w == t_low for w in ["overview", "connect", "message", "more", "save", "active window"]):
             return True
         # Check if contains phrases like "REASON: Overview"
-        if "reason:" in t_low or "overview" in t_low and len(t_low) < 15:
+        if "reason:" in t_low or ("overview" in t_low and len(t_low) < 15):
             return True
         return False
 

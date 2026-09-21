@@ -10,6 +10,14 @@ export const API = import.meta.env.DEV
 // This gives Render's cold start a head start while the JS bundle parses.
 if (!import.meta.env.DEV) {
   fetch(`${RAW_API_URL}/ping`, { method: 'GET', mode: 'cors', cache: 'no-store' }).catch(() => {})
+  fetch('/api/ping', { method: 'GET', cache: 'no-store' }).catch(() => {})
+}
+
+// Keep backend warm while user has a tab open (Render sleeps after 15m)
+if (typeof window !== 'undefined' && !import.meta.env.DEV) {
+  setInterval(() => {
+    fetch(`${RAW_API_URL}/ping`, { method: 'GET', mode: 'cors', cache: 'no-store' }).catch(() => {})
+  }, 4 * 60 * 1000)
 }
 
 const clientCache = new Map()
@@ -25,7 +33,7 @@ const createClient = (baseURL) => {
       baseURL,
       withCredentials: true,
       headers: { 'Content-Type': 'application/json' },
-      timeout: 25000,
+      timeout: 30000,
     })
 
 
@@ -155,6 +163,7 @@ async function trySilentRefresh() {
 async function smartRequest(method, url, data, config = {}) {
   // Auth login/google POSTs should also retry on cold-start (502/503/timeout)
   const isAuthLogin = (method === 'post' && (url === '/auth/login' || url === '/auth/google'))
+  const isAuthEndpoint = typeof url === 'string' && url.startsWith('/auth/')
   const retryable = config.retryable ?? (['get', 'delete', 'head'].includes(method) || isAuthLogin)
   const retryDelayMs = config.retryDelayMs ?? (isAuthLogin ? 2500 : 1200)
   const maxAttempts = retryable ? 2 : 1
@@ -167,6 +176,11 @@ async function smartRequest(method, url, data, config = {}) {
       const requestConfig = { ...config }
       delete requestConfig.retryable
       delete requestConfig.retryDelayMs
+
+      // Cold start tolerance for all auth routes (60s)
+      if (isAuthEndpoint && !requestConfig.timeout) {
+        requestConfig.timeout = 60000
+      }
 
       requestConfig.headers = {
         ...(requestConfig.headers || {}),

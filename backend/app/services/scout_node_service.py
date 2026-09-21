@@ -13,7 +13,7 @@ Tracks every connected scout browser instance (User A, User B, User C) with:
 
 import json
 from datetime import datetime, timezone, timedelta
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func as sqlfunc
 

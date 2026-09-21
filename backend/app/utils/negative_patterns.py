@@ -1,4 +1,4 @@
-﻿"""
+"""
 utils/negative_patterns.py — Persistent Negative Reviewer Feedback Pattern Registry
 
 Stores user-defined "Never accept this pattern" rules across:

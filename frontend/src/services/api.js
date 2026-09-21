@@ -23,10 +23,15 @@ if (!import.meta.env.DEV) {
 
 // Keep backend warm while user has a tab open (Render sleeps after 15m)
 if (typeof window !== 'undefined' && !import.meta.env.DEV) {
-  setInterval(() => {
+  const warmBackend = () => {
     const pingUrl = API.startsWith('http') ? `${API}/ping` : `${API}/ping`
     fetch(pingUrl, { method: 'GET', cache: 'no-store' }).catch(() => {})
-  }, 4 * 60 * 1000)
+  }
+  setInterval(warmBackend, 2 * 60 * 1000)
+  window.addEventListener('focus', warmBackend)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') warmBackend()
+  })
 }
 
 const clientCache = new Map()

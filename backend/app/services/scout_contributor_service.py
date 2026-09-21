@@ -172,7 +172,7 @@ _SCOUT_INTELLIGENCE_CACHE = {
     "cached_at": 0.0,
     "payload": None,
 }
-_CACHE_TTL_SECONDS = 30.0
+_CACHE_TTL_SECONDS = 300.0
 
 
 def invalidate_scout_contributors_cache():

@@ -14,27 +14,45 @@ export default function ScoutContributors() {
   const [selectedUserId, setSelectedUserId] = useState(null)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
 
-  const { data, isLoading, isFetching, refetch } = useQuery({
+  const { data, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ['scout-contributors'],
     queryFn: async () => {
       const res = await api.get('/scout/users', {
-        timeout: 15000,
-        retryable: false,
+        timeout: 45000,
+        retryable: true,
       })
+      if (res?.data) {
+        try {
+          localStorage.setItem('scout_contributors_cache', JSON.stringify(res.data))
+        } catch { /* ignore quota */ }
+      }
       return res.data
     },
+    initialData: () => {
+      try {
+        const cached = localStorage.getItem('scout_contributors_cache')
+        return cached ? JSON.parse(cached) : undefined
+      } catch {
+        return undefined
+      }
+    },
     staleTime: 60000,
-    retry: 1,
+    retry: 2,
     keepPreviousData: true,
   })
 
   const handleRefresh = async () => {
     try {
-      await api.get('/scout/users', {
+      const res = await api.get('/scout/users', {
         params: { refresh: true },
-        timeout: 15000,
-        retryable: false,
+        timeout: 45000,
+        retryable: true,
       })
+      if (res?.data) {
+        try {
+          localStorage.setItem('scout_contributors_cache', JSON.stringify(res.data))
+        } catch { /* ignore quota */ }
+      }
     } catch {
       // Ignore fallback
     }
@@ -174,6 +192,40 @@ export default function ScoutContributors() {
           </button>
         </div>
       </div>
+      {isError && (
+        <div style={{
+          marginBottom: 16,
+          padding: '12px 18px',
+          background: 'rgba(245, 158, 11, 0.08)',
+          border: '1px solid rgba(245, 158, 11, 0.25)',
+          borderRadius: 8,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          color: '#fbbf24',
+          fontSize: 13,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Clock size={16} />
+            <span>Server is waking up. Displaying cached records while reconnecting.</span>
+          </div>
+          <button
+            onClick={() => refetch()}
+            style={{
+              background: 'transparent',
+              border: '1px solid #fbbf24',
+              color: '#fbbf24',
+              borderRadius: 6,
+              padding: '4px 12px',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            Retry Now
+          </button>
+        </div>
+      )}
 
       {/* 7-Card Top Metric Strip (Neutral Charcoal) */}
       <div style={{

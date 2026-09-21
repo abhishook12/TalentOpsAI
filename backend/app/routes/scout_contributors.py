@@ -25,6 +25,7 @@ from ..services.auth_service import get_current_user_from_request, get_optional_
 from ..services.scout_contributor_service import (
     get_all_scout_users_intelligence,
     get_detailed_scout_user_profile,
+    _SCOUT_INTELLIGENCE_CACHE,
 )
 
 logger = logging.getLogger("talentops.scout_contributors")
@@ -72,6 +73,14 @@ def list_scout_users(
             db.rollback()
         except Exception:
             pass
+        if _SCOUT_INTELLIGENCE_CACHE.get("payload") is not None:
+            cached = _SCOUT_INTELLIGENCE_CACHE["payload"]
+            return {
+                "summary": cached.get("summary", {}),
+                "version_distribution": cached.get("version_distribution", {}),
+                "latest_production_version": cached.get("latest_production_version", "2.9.2"),
+                "users": cached.get("all_users", []),
+            }
         return {
             "summary": {
                 "total_scout_users": 0,
@@ -89,7 +98,7 @@ def list_scout_users(
                 "average_quality_score": 100,
             },
             "version_distribution": {},
-            "latest_production_version": "2.8.3",
+            "latest_production_version": "2.9.2",
             "users": [],
         }
 

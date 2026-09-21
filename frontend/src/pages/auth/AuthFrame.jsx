@@ -1,13 +1,15 @@
 import React from 'react'
 
 const shellStyles = `
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+
   .auth-page {
     min-height: 100dvh;
     display: flex;
     width: 100vw;
-    background: #101014; /* Dark theme */
+    background: #0c0c0f;
     color: #ffffff;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
 
   /* LEFT BRAND PANEL */
@@ -18,8 +20,10 @@ const shellStyles = `
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: radial-gradient(circle at center, var(--brand-bg) 0%, rgba(16, 16, 20, 1) 60%), #101014;
-    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 40%, rgba(255,255,255,0.06) 0%, transparent 55%),
+      linear-gradient(165deg, #121218 0%, #0a0a0c 55%, #0e0e12 100%);
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
     overflow: hidden;
   }
 
@@ -29,27 +33,56 @@ const shellStyles = `
     }
   }
 
+  .auth-brand-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 70% 65% at 50% 45%, black 20%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 70% 65% at 50% 45%, black 20%, transparent 75%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .auth-brand-orb {
+    position: absolute;
+    width: 420px;
+    height: 420px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.07) 0%, transparent 68%);
+    z-index: 0;
+    animation: auth-orb-pulse 8s ease-in-out infinite;
+  }
+
+  @keyframes auth-orb-pulse {
+    0%, 100% { transform: scale(1); opacity: 0.7; }
+    50% { transform: scale(1.08); opacity: 1; }
+  }
+
   /* MOBILE BRANDING (Visible only < 900px) */
   .auth-mobile-brand {
     display: flex;
     flex-direction: column;
     align-items: center;
-    margin-bottom: 32px;
+    margin-bottom: 28px;
+    animation: auth-fade-up 0.55s ease-out both;
   }
   
   .auth-mobile-brand .auth-monogram {
-    font-size: 48px;
-    margin-bottom: 16px;
+    font-size: 44px;
+    margin-bottom: 12px;
   }
   
   .auth-mobile-brand .auth-logo-divider {
-    height: 48px;
-    margin: 0 12px;
+    height: 44px;
+    margin: 0 10px;
   }
   
   .auth-mobile-brand .auth-wordmark {
-    font-size: 16px;
-    letter-spacing: 0.35em;
+    font-size: 14px;
+    letter-spacing: 0.32em;
     margin-bottom: 0;
   }
   
@@ -59,77 +92,86 @@ const shellStyles = `
     }
   }
 
-  /* Ambient purple glow behind logo */
-  .auth-ambient-glow {
-    position: absolute;
-    width: 600px;
-    height: 600px;
-    background: radial-gradient(circle, var(--brand-bg) 0%, transparent 70%);
-    border-radius: 50%;
-    z-index: 0;
-  }
-
   .auth-brand-content {
     position: relative;
     z-index: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
+    animation: auth-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
   .auth-monogram {
     font-family: "Playfair Display", "Times New Roman", Times, serif;
-    font-size: 72px;
+    font-size: 76px;
     font-weight: 700;
     line-height: 1;
     letter-spacing: -0.02em;
     display: flex;
     align-items: center;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
     color: #ffffff;
   }
 
   .auth-logo-divider {
     width: 1px;
     height: 72px;
-    background: #ffffff;
-    opacity: 0.3;
-    margin: 0 16px;
+    background: linear-gradient(180deg, transparent, #ffffff 20%, #ffffff 80%, transparent);
+    opacity: 0.35;
+    margin: 0 18px;
+    transform-origin: center;
+    animation: auth-divider-in 0.9s ease-out 0.15s both;
+  }
+
+  @keyframes auth-divider-in {
+    from { transform: scaleY(0); opacity: 0; }
+    to { transform: scaleY(1); opacity: 0.35; }
   }
 
   .auth-wordmark {
-    font-size: 32px;
+    font-size: 30px;
     font-weight: 600;
-    letter-spacing: 0.35em;
+    letter-spacing: 0.38em;
     text-transform: uppercase;
-    margin-bottom: 32px;
-    margin-right: -0.35em; 
+    margin-bottom: 14px;
+    margin-right: -0.38em;
     color: #ffffff;
   }
 
+  .auth-tagline {
+    font-size: 14px;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    color: rgba(255, 255, 255, 0.45);
+    margin-bottom: 36px;
+    max-width: 280px;
+    text-align: center;
+    line-height: 1.5;
+  }
+
   .auth-sub-brand {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.6);
-    margin-bottom: 8px;
-    margin-right: -0.2em;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 6px;
+    margin-right: -0.22em;
   }
   
   .auth-tiny-divider {
-    font-size: 14px;
-    color: rgba(255, 255, 255, 0.4);
-    margin-bottom: 8px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.28);
+    margin-bottom: 6px;
   }
 
   .auth-credit {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.6);
-    margin-right: -0.2em;
+    color: rgba(255, 255, 255, 0.5);
+    margin-right: -0.22em;
   }
 
   /* RIGHT FORM PANEL */
@@ -140,23 +182,36 @@ const shellStyles = `
     align-items: center;
     justify-content: center;
     padding: 40px 24px;
-    background: #141419;
+    background:
+      radial-gradient(ellipse 90% 70% at 70% 20%, rgba(255,255,255,0.03) 0%, transparent 50%),
+      #121216;
   }
 
   .auth-form-container {
     width: 100%;
     max-width: 400px;
     padding: 40px;
-    border-radius: 6px;
-    border: 1px solid var(--card-border, #333);
-    box-shadow: 0 24px 60px rgba(0,0,0,0.4);
-    background: #1a1a1a;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.04) inset,
+      0 24px 48px rgba(0,0,0,0.35);
+    background: rgba(22, 22, 26, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: auth-fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
+  }
+
+  @keyframes auth-fade-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   @media (max-width: 480px) {
     .auth-form-container {
       padding: 24px;
+      border-radius: 10px;
     }
   }
 
@@ -185,13 +240,11 @@ const shellStyles = `
     transition: border-color 0.2s, box-shadow 0.2s !important;
   }
 
-  /* When an icon is present on the left */
   .auth-form-container .relative:has(> i:first-child) input,
   .auth-form-container input.pl-10 {
     padding-left: 42px !important;
   }
 
-  /* When an icon/button is present on the right */
   .auth-form-container .relative:has(> button) input,
   .auth-form-container input.pr-10 {
     padding-right: 42px !important;
@@ -211,7 +264,6 @@ const shellStyles = `
     box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1) !important;
   }
 
-  /* Browser Autofill Dark Mode Hardening */
   .auth-form-container input:-webkit-autofill,
   .auth-form-container input:-webkit-autofill:hover, 
   .auth-form-container input:-webkit-autofill:focus,
@@ -233,6 +285,16 @@ const shellStyles = `
     padding: 0 !important;
     cursor: pointer !important;
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    .auth-brand-content,
+    .auth-form-container,
+    .auth-mobile-brand,
+    .auth-logo-divider,
+    .auth-brand-orb {
+      animation: none !important;
+    }
+  }
 `
 
 export default function AuthFrame({ children, isAuthenticating }) {
@@ -241,9 +303,9 @@ export default function AuthFrame({ children, isAuthenticating }) {
       <style dangerouslySetInnerHTML={{ __html: shellStyles }} />
       <div className="auth-page">
         
-        {/* Left Brand Panel (Hidden on mobile, visible on desktop) */}
         <div className="auth-brand-panel">
-          <div className="auth-ambient-glow"></div>
+          <div className="auth-brand-grid" aria-hidden="true" />
+          <div className="auth-brand-orb" aria-hidden="true" />
           <div className="auth-brand-content">
             <div className="auth-monogram">
               <span>T</span>
@@ -251,17 +313,12 @@ export default function AuthFrame({ children, isAuthenticating }) {
               <span>O</span>
             </div>
             <div className="auth-wordmark">TALENT OPS</div>
-            
-            <div className="auth-sub-brand">A PRODUCT BY TECHNOVION</div>
-            <div className="auth-tiny-divider">+</div>
+            <p className="auth-tagline">Recruiting intelligence for modern talent teams</p>
             <div className="auth-credit">BUILT BY ABHISHEK</div>
           </div>
         </div>
 
-        {/* Right Form Panel */}
         <div className="auth-form-panel">
-          
-          {/* Mobile Branding */}
           <div className="auth-mobile-brand">
             <div className="auth-monogram">
               <span>T</span><div className="auth-logo-divider"></div><span>O</span>

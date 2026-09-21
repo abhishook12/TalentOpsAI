@@ -6,6 +6,61 @@ import { useGoogleLogin } from '@react-oauth/google'
 import AuthFrame from './AuthFrame'
 import api from '../../services/api'
 
+const ROUTE_LABELS = {
+  '/': 'your workspace',
+  '/analytics': 'Analytics',
+  '/download-scout': 'Scout downloads',
+  '/profile': 'your profile',
+  '/admin': 'Admin',
+  '/mail-intel': 'Mail Intel',
+  '/campaigns': 'Campaigns',
+}
+
+function labelForRedirect(path) {
+  if (!path || path === '/') return null
+  const clean = path.split('?')[0]
+  if (ROUTE_LABELS[clean]) return ROUTE_LABELS[clean]
+  const segment = clean.split('/').filter(Boolean)[0]
+  if (!segment) return 'your workspace'
+  return segment.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function friendlyAuthError(err) {
+  const statusCode = err?.response?.status
+  let detail = err?.response?.data?.detail || err?.message || ''
+
+  if (Array.isArray(detail)) {
+    detail = detail.map((e) => e.msg || e).join(', ')
+  } else if (detail && typeof detail === 'object') {
+    detail = detail.msg || detail.message || JSON.stringify(detail)
+  }
+
+  const text = String(detail || '')
+  const lower = text.toLowerCase()
+
+  if (err?.code === 'ECONNABORTED' || lower.includes('timeout')) {
+    return 'Cloud server is waking up. Please click Sign In again to connect.'
+  }
+  if (statusCode === 429 || lower.includes('too many') || lower.includes('rate limit') || lower.includes('locked')) {
+    if (/try again in \d+ minutes?/i.test(text)) return text
+    return 'Too many failed sign-in attempts. Please wait about 10 minutes and try again.'
+  }
+  if (statusCode === 403 && (lower.includes('blocked') || lower.includes('restricted'))) {
+    return text || 'This device has been blocked. Contact an administrator for help.'
+  }
+  if (statusCode === 403 && lower.includes('verify')) {
+    return text
+  }
+  if (statusCode === 401 || lower.includes('invalid credentials')) {
+    return 'Email or password is incorrect. Check your details and try again.'
+  }
+  if (!err?.response && (lower.includes('network') || lower.includes('failed to fetch'))) {
+    return 'Unable to reach the server. Check your connection and try again.'
+  }
+
+  return text || 'Authentication failed. Please check your credentials.'
+}
+
 export default function Login() {
   const [rememberMe, setRememberMe] = useState(() => {
     const val = localStorage.getItem('talentops_remember_me')
@@ -18,8 +73,9 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [emailTouched, setEmailTouched] = useState(false)
+  const [showTermsModal, setShowTermsModal] = useState(false)
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false)
   
-  // Login Submission State
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [authElapsed, setAuthElapsed] = useState(0)
   const [pendingDeviceId, setPendingDeviceId] = useState(null)
@@ -29,8 +85,8 @@ export default function Login() {
   const navigate = useNavigate()
   const search = useSearch({ from: '/login' })
   const redirect = decodeURIComponent(search.redirect || '/')
+  const redirectLabel = labelForRedirect(redirect)
 
-  // Track auth elapsed time for live UX cold-start feedback
   useEffect(() => {
     let timer
     if (isAuthenticating) {
@@ -53,7 +109,6 @@ export default function Login() {
     return 'Waking up server...'
   }
 
-  // Lightweight warm-up ping in background
   useEffect(() => {
     if (warmupFiredRef.current) return
     warmupFiredRef.current = true
@@ -82,17 +137,7 @@ export default function Login() {
       navigate({ to: redirect })
       
     } catch (err) {
-      let errorDetail = err?.response?.data?.detail || err?.message || 'Authentication failed. Please check your credentials.'
-      if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
-        errorDetail = 'Cloud server is waking up. Please click Sign In again to connect.'
-      }
-      if (Array.isArray(errorDetail)) {
-          errorDetail = errorDetail.map(e => e.msg).join(', ')
-      } else if (typeof errorDetail === 'object') {
-          errorDetail = JSON.stringify(errorDetail)
-      }
-      
-      setError(errorDetail)
+      setError(friendlyAuthError(err))
       setIsAuthenticating(false)
       setPendingDeviceId(null)
     }
@@ -126,7 +171,6 @@ export default function Login() {
             deviceId={pendingDeviceId} 
             onApproved={() => performBackgroundInitialization(async () => {
               const res = await api.post('/auth/complete-device-approval', null)
-              // Populate the auth context before navigating to the dashboard
               await checkAuthStatus(true)
               return res
             })}
@@ -135,6 +179,13 @@ export default function Login() {
       ) : (
       <AuthFrame isAuthenticating={isAuthenticating}>
         
+        {redirectLabel && (
+          <div className="bg-white/5 border border-white/10 text-[#c4c4c8] px-4 py-3 rounded-xl mb-5 text-[13px] flex items-center gap-2.5 leading-[1.4]" role="status">
+            <i className="ti ti-lock-open text-base shrink-0 text-white/60" />
+            <span className="flex-1">Sign in to continue to <span className="text-white font-medium">{redirectLabel}</span></span>
+          </div>
+        )}
+
         {error && (
           <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3.5 rounded-xl mb-6 text-sm flex items-center gap-2.5 leading-[1.4]" role="alert">
             <i className="ti ti-alert-circle text-base shrink-0" />
@@ -143,8 +194,10 @@ export default function Login() {
         )}
 
         <div className="mb-6 text-left">
-          <h1 className="text-2xl font-bold text-white m-0 mb-2 tracking-tight">Welcome Back</h1>
-          <p className="text-sm text-[#a0a0a0] m-0 leading-relaxed">Login to access your TalentOps account</p>
+          <h1 className="text-2xl font-bold text-white m-0 mb-2 tracking-tight">Welcome back</h1>
+          <p className="text-sm text-[#a0a0a0] m-0 leading-relaxed">
+            {redirectLabel ? `Access ${redirectLabel} with your TalentOps account` : 'Sign in to continue to your workspace'}
+          </p>
         </div>
 
         <div className="w-full flex flex-col gap-4" onKeyDown={(e) => { if (e.key === 'Enter' && isFormValid && !isAuthenticating) handleSubmit(e) }}>
@@ -255,14 +308,37 @@ export default function Login() {
           </button>
         </div>
 
-        <div className="mt-8 flex flex-col items-center gap-4">
+        <div className="mt-8 flex flex-col items-center gap-3">
           <div className="flex gap-1.5 text-[13px]">
             <span className="text-[#888]">Don't have an account?</span>
             <Link to="/register" className="text-[var(--brand)] no-underline transition-colors hover:text-[var(--brand-strong)] hover:underline">
               Create an account
             </Link>
           </div>
+          <div className="flex items-center gap-2 text-[11px] text-[#666]">
+            <button type="button" onClick={() => setShowTermsModal(true)} className="bg-transparent border-none p-0 text-[#666] cursor-pointer hover:text-[#a0a0a0] transition-colors">
+              Terms
+            </button>
+            <span aria-hidden="true">·</span>
+            <button type="button" onClick={() => setShowPrivacyModal(true)} className="bg-transparent border-none p-0 text-[#666] cursor-pointer hover:text-[#a0a0a0] transition-colors">
+              Privacy
+            </button>
+          </div>
         </div>
+
+        {(showTermsModal || showPrivacyModal) ? (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'grid', placeItems: 'center', zIndex: 1000, backdropFilter: 'blur(2px)', padding: 20 }}>
+            <div style={{ width: 'min(420px, 100%)', background: '#18181b', padding: 24, borderRadius: 6, border: '1px solid #27272a' }}>
+              <h2 style={{ margin: '0 0 16px', fontSize: 18, color: 'var(--text-primary)' }}>{showTermsModal ? 'Terms of Service' : 'Privacy Policy'}</h2>
+              <p style={{ color: '#a1a1aa', fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
+                {showTermsModal ? 'Terms of Service — Coming Soon' : 'Privacy Policy — Coming Soon'}
+              </p>
+              <button onClick={() => { setShowTermsModal(false); setShowPrivacyModal(false) }} style={{ width: '100%', padding: 10, background: '#d4d4d8', color: '#18181b', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+                Close
+              </button>
+            </div>
+          </div>
+        ) : null}
       </AuthFrame>
       )}
     </>

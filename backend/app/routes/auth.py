@@ -54,6 +54,11 @@ def _check_rate_limit(db: Session = None, ip: str = "unknown"):
     q = _ip_failures[ip]
     while q and q[0] < cutoff:
         q.popleft()
+    if len(q) >= _MAX_FAILS:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Too many failed sign-in attempts. Please try again in {_LOCK_MINUTES} minutes.",
+        )
 
 def _async_log_login(user_id: int | None, email: str, ip: str, browser: str | None, status: str, reason: str | None = None):
     """Write login history in background without blocking HTTP response."""

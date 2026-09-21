@@ -1,18 +1,17 @@
 import axios from 'axios'
 
-const getDefaultApiUrl = () => {
+const resolveApiUrl = () => {
   if (typeof window !== 'undefined' && window.location?.hostname) {
     if (window.location.hostname.includes('vercel.app')) {
       return '/api'
     }
   }
-  return 'https://talentopsai-1.onrender.com'
+  return import.meta.env.VITE_API_URL || 'https://talentopsai-1.onrender.com'
 }
 
-const RAW_API_URL = import.meta.env.VITE_API_URL || getDefaultApiUrl()
 export const API = import.meta.env.DEV 
   ? (typeof window !== 'undefined' && window.location?.hostname ? `http://${window.location.hostname}:8000` : 'http://127.0.0.1:8000') 
-  : RAW_API_URL
+  : resolveApiUrl()
 
 // ── Immediate Backend Warm-Up ──────────────────────────────────────────────
 // Fire a lightweight /ping the instant this module loads (before React mounts).

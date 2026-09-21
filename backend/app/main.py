@@ -591,8 +591,8 @@ async def startup_event():
     sync_manager.start()
     
     async def _async_background_init():
-        # Delay background DB queries slightly (1.5s) to allow port to bind and healthcheck to succeed instantly
-        await asyncio.sleep(1.5)
+        # Delay background tasks by 5 seconds to ensure port 8000 binds and health checks pass with 0 latency
+        await asyncio.sleep(5.0)
         from .services.send_engine import restart_active_campaigns
         from .services.sentinel_engine import sentinel_engine
         from .services.quality_engine import quality_engine
@@ -600,99 +600,66 @@ async def startup_event():
         from .services.email_verification_engine import verification_engine
         from .services.data_filler_engine import data_filler_engine
         from .database import engine
-        from sqlalchemy import text
 
-        lock_acquired = True
+        # Start background async tasks
+        asyncio.create_task(timeout_stuck_emails_sweep())
+        asyncio.create_task(sync_engine_loop())
+        asyncio.create_task(discovery_batch_processor_loop())
+
         try:
-            with engine.connect() as conn:
-                try:
-                    lock_acquired = conn.execute(text("SELECT pg_try_advisory_lock(83726491)")).scalar()
-                except Exception:
-                    lock_acquired = True
+            await asyncio.to_thread(restart_active_campaigns)
         except Exception as e:
-            logger.warning(f"Startup leader lock connection check: {e}")
-            lock_acquired = True
+            logger.warning(f"Restart active campaigns note: {e}")
 
-        if lock_acquired:
-            asyncio.create_task(timeout_stuck_emails_sweep())
-            asyncio.create_task(sync_engine_loop())
-            asyncio.create_task(discovery_batch_processor_loop())
-            
+        if ENABLE_SENTINEL_ENGINE:
+            sentinel_engine.start()
+        if ENABLE_QUALITY_ENGINE:
+            quality_engine.start()
+        if ENABLE_EMAIL_VERIFICATION_ENGINE:
+            verification_engine.start()
+        if ENABLE_DATA_FILLER_ENGINE:
+            data_filler_engine.start()
+
+        # Seed default Scout release if not present (non-blocking)
+        def _seed_scout_release():
             try:
-                await asyncio.to_thread(restart_active_campaigns)
-            except Exception as e:
-                logger.warning(f"Restart active campaigns note: {e}")
+                from sqlalchemy.orm import Session as StartupSession
+                from .models.update_models import ScoutRelease
+                from .routes.scout_updates import (
+                    DEFAULT_RELEASE_VERSION,
+                    DEFAULT_DOWNLOAD_URL,
+                    DEFAULT_SHA256,
+                    DEFAULT_SIZE,
+                    DEFAULT_MINIMUM_VERSION,
+                )
+                with StartupSession(engine) as seed_db:
+                    existing_rel = seed_db.query(ScoutRelease).filter(ScoutRelease.version == DEFAULT_RELEASE_VERSION).first()
+                    if not existing_rel:
+                        seed_rel = ScoutRelease(
+                            version=DEFAULT_RELEASE_VERSION,
+                            channel="stable",
+                            minimum_version=DEFAULT_MINIMUM_VERSION,
+                            mandatory=False,
+                            download_url=DEFAULT_DOWNLOAD_URL,
+                            sha256=DEFAULT_SHA256,
+                            size_bytes=DEFAULT_SIZE,
+                            release_notes=f"Official production release of TalentOps Scout Desktop v{DEFAULT_RELEASE_VERSION}.",
+                            status="ACTIVE",
+                            rollout_percentage=100,
+                            is_current=True,
+                            is_public=True,
+                            artifact="TalentOpsScoutSetup.exe",
+                            artifact_url=DEFAULT_DOWNLOAD_URL,
+                            installer_url=DEFAULT_DOWNLOAD_URL,
+                        )
+                        seed_db.add(seed_rel)
+                        seed_db.commit()
+                        logger.info("Successfully seeded canonical Scout release v%s into database.", DEFAULT_RELEASE_VERSION)
+            except Exception as seed_err:
+                logger.warning("Scout release seed check note: %s", seed_err)
 
-            if ENABLE_SENTINEL_ENGINE:
-                sentinel_engine.start()
-            if ENABLE_QUALITY_ENGINE:
-                quality_engine.start()
-            if ENABLE_EMAIL_VERIFICATION_ENGINE:
-                verification_engine.start()
-            if ENABLE_DATA_FILLER_ENGINE:
-                data_filler_engine.start()
-
-            # Run schema checks sequentially in thread before seeding Scout releases to avoid DDL/DML locks
-            def _schema_and_seed():
-                try:
-                    _ensure_core_schema(engine)
-                except Exception as err:
-                    logger.warning(f"Schema ensure note: {err}")
-
-                try:
-                    from sqlalchemy.orm import Session as StartupSession
-                    from .models.update_models import ScoutRelease
-                    from .routes.scout_updates import (
-                        DEFAULT_RELEASE_VERSION,
-                        DEFAULT_DOWNLOAD_URL,
-                        DEFAULT_SHA256,
-                        DEFAULT_SIZE,
-                        DEFAULT_MINIMUM_VERSION,
-                    )
-                    with StartupSession(engine) as seed_db:
-                        existing_rel = seed_db.query(ScoutRelease).filter(ScoutRelease.version == DEFAULT_RELEASE_VERSION).first()
-                        if not existing_rel:
-                            seed_rel = ScoutRelease(
-                                version=DEFAULT_RELEASE_VERSION,
-                                channel="stable",
-                                minimum_version=DEFAULT_MINIMUM_VERSION,
-                                mandatory=False,
-                                download_url=DEFAULT_DOWNLOAD_URL,
-                                sha256=DEFAULT_SHA256,
-                                size_bytes=DEFAULT_SIZE,
-                                release_notes=f"Official production release of TalentOps Scout Desktop v{DEFAULT_RELEASE_VERSION}.",
-                                status="ACTIVE",
-                                rollout_percentage=100,
-                                is_current=True,
-                                is_public=True,
-                                artifact="TalentOpsScoutSetup.exe",
-                                artifact_url=DEFAULT_DOWNLOAD_URL,
-                                installer_url=DEFAULT_DOWNLOAD_URL,
-                            )
-                            seed_db.add(seed_rel)
-                            seed_db.commit()
-                            logger.info("Successfully seeded canonical Scout release v%s into database.", DEFAULT_RELEASE_VERSION)
-                except Exception as seed_err:
-                    logger.warning("Scout release seed check note: %s", seed_err)
-
-            asyncio.create_task(asyncio.to_thread(_schema_and_seed))
-
-            def _warm_caches():
-                try:
-                    from .services.recruiter_store import recruiter_store
-                    recruiter_store._ensure_loaded()
-                except Exception as e:
-                    logger.warning(f"RecruiterStore warmup note: {e}")
-                try:
-                    from .olap_sidecar import olap_sidecar
-                    olap_sidecar.refresh(1)
-                except Exception as e:
-                    logger.warning(f"OLAP sidecar warmup note: {e}")
-
-            asyncio.create_task(asyncio.to_thread(_warm_caches))
-            logger.info("Acquired leader lock; started background tasks including Discovery Batch Intelligence Engine.")
-        else:
-            logger.info("Another worker is leader; skipping background tasks.")
+        asyncio.create_task(asyncio.to_thread(_seed_scout_release))
+        logger.info("Background tasks initialized successfully.")
 
     asyncio.create_task(_async_background_init())
 

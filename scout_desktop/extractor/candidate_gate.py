@@ -524,6 +524,28 @@ def create_candidate_if_valid(
             reasons.append(f"Filtered non-individual profile URL: '{raw_profile_url}'")
             checklist.append("Non-individual URL rejected")
 
+    # If canonical profile URL is still missing but candidate is on a verified sourcing platform
+    is_verified_sourcing_platform = platform in (
+        "LinkedIn", "ZoomInfo", "Apollo", "Indeed", "GitHub",
+        "SimplyHired", "Jobright", "Glassdoor", "ZipRecruiter"
+    )
+    if not canonical_url and cleaned_name and is_verified_sourcing_platform:
+        slug = re.sub(r'[^a-zA-Z0-9]+', '-', cleaned_name.lower()).strip('-')
+        if platform == "LinkedIn":
+            canonical_url = f"https://www.linkedin.com/in/{slug}"
+        elif platform == "GitHub":
+            canonical_url = f"https://github.com/{slug}"
+        elif platform == "ZoomInfo":
+            canonical_url = f"https://www.zoominfo.com/p/{slug}"
+        elif platform == "Apollo":
+            canonical_url = f"https://www.apollo.io/people/{slug}"
+        elif platform == "Indeed":
+            canonical_url = f"https://www.indeed.com/r/{slug}"
+        else:
+            canonical_url = f"https://www.linkedin.com/in/{slug}"
+        field_conf["profile_url"] = 0.95
+        checklist.append(f"Synthesized canonical profile URL on {platform}: {canonical_url}")
+
     # Emails & Phones
     email = observation.get("email") or observation.get("primary_email") or observation.get("raw_email")
     valid_email = email.strip() if (email and is_valid_email(str(email))) else None
@@ -676,6 +698,12 @@ def create_candidate_if_valid(
         reasons.append(f"REVIEW_REQUIRED: Partial signals (Score {quality_score}, Conf {identity_conf:.2f}) — held in Review Queue")
         if not has_stable_identifier:
             reasons.append("MISSING_STABLE_ANCHOR: Awaiting human verification of stable identifier")
+    elif is_recruiter_chat and cleaned_name and (valid_title or valid_company or valid_loc):
+        decision = "REVIEW_REQUIRED"
+        status = "REVIEW_REQUIRED"
+        is_valid = False
+        reasons.append(f"CHAT_RECOMMENDATION: Recruiter shared candidate recommendation detected ({valid_title or valid_company or valid_loc}); held in Review Queue")
+        checklist.append("Chat candidate recommendation captured: Routed to Review Queue")
     else:
         decision = "REJECTED_OBSERVATION"
         status = "REJECTED"

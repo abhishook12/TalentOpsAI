@@ -636,7 +636,8 @@ def get_detailed_scout_user_profile(db: Session, user_id: int) -> Dict[str, Any]
     source_counts = {
         "LinkedIn": 0, "ZoomInfo": 0, "Apollo": 0, "Google Chat": 0, "Microsoft Teams": 0,
         "Glassdoor": 0, "Wellfound": 0, "Dice": 0, "Hired": 0, "Lever": 0, "Greenhouse": 0,
-        "Ashby": 0, "Workday": 0, "Jobright": 0, "ZipRecruiter": 0, "GitHub": 0, "Indeed": 0, "Other": 0
+        "Ashby": 0, "Workday": 0, "Jobright": 0, "ZipRecruiter": 0, "GitHub": 0, "Indeed": 0,
+        "Slack": 0, "WhatsApp": 0, "Telegram": 0, "Gmail": 0, "Outlook": 0, "Other": 0
     }
     for e in events:
         url = (e.source_url or "").lower()
@@ -674,6 +675,16 @@ def get_detailed_scout_user_profile(db: Session, user_id: int) -> Dict[str, Any]
             source_counts["Google Chat"] += 1
         elif "teams.microsoft.com" in url or "teams.live.com" in url:
             source_counts["Microsoft Teams"] += 1
+        elif "slack.com" in url:
+            source_counts["Slack"] = source_counts.get("Slack", 0) + 1
+        elif "whatsapp.com" in url:
+            source_counts["WhatsApp"] = source_counts.get("WhatsApp", 0) + 1
+        elif "telegram.org" in url:
+            source_counts["Telegram"] = source_counts.get("Telegram", 0) + 1
+        elif "mail.google.com" in url:
+            source_counts["Gmail"] = source_counts.get("Gmail", 0) + 1
+        elif "outlook" in url or "office.com" in url:
+            source_counts["Outlook"] = source_counts.get("Outlook", 0) + 1
         else:
             source_counts["Other"] += 1
 

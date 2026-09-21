@@ -104,6 +104,7 @@ class EntityExtractor:
         source_url: str = "",
         window_title: str = "",
         inferred_candidate: Optional[str] = None,
+        platform: str = "",
     ) -> List[EntityCluster]:
         """
         Extracts open-ended entity clusters from structured text lines.
@@ -117,7 +118,7 @@ class EntityExtractor:
             return []
 
         # 0. Intelligent AI Triage: Judge if frame is a valid candidate profile/job vs system noise
-        judgment = ProfileJudge.judge_frame(clean_lines, window_title, source_url)
+        judgment = ProfileJudge.judge_frame(clean_lines, window_title, source_url, platform=platform)
         if not judgment.is_candidate_profile and judgment.category != "JOB_POSTING":
             logger.info("ProfileJudge: Frame rejected as %s (%s)", judgment.category, judgment.rejection_reason)
             return []
@@ -127,10 +128,12 @@ class EntityExtractor:
             return self._extract_job_page(clean_lines, capture_id, source_url, window_title)
 
         # Case A.5: Chat & Multi-Channel Stream Intelligence (Google Chat, Teams, Slack, WhatsApp, Telegram, Gmail, Outlook, Resumes)
+        plat_upper = (platform or "").upper()
         wt_lower = (window_title or "").lower()
         url_lower = (source_url or "").lower()
         is_chat_stream = (
             judgment.category == "CHAT_CONVERSATION"
+            or plat_upper in ("GOOGLE_CHAT", "TEAMS", "SLACK", "WHATSAPP", "TELEGRAM", "GMAIL", "OUTLOOK", "PDF_RESUME")
             or any(k in url_lower for k in [
                 "chat.google.com", "teams.microsoft.com", "teams.live.com",
                 "app.slack.com", "slack.com", "web.whatsapp.com", "web.telegram.org",

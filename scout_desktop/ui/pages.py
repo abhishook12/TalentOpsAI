@@ -445,11 +445,12 @@ class ScanPage(QWidget):
         pipe_layout.addLayout(pipe_head)
 
         # 4 Funnel Stages with Monochromatic Progress Bars
+        self.funnel_rows = []
         stages = [
-            ("STAGE 01: OBSERVED", "342", "100.0%", 1.00),
-            ("STAGE 02: UNDERSTOOD", "128", "37.4%", 0.374),
-            ("STAGE 03: VALIDATED", "87", "25.4%", 0.254),
-            ("STAGE 04: CANONICAL", "62", "18.1%", 0.181)
+            ("STAGE 01: OBSERVED", "0", "100.0%", 1.00),
+            ("STAGE 02: UNDERSTOOD", "0", "0.0%", 0.0),
+            ("STAGE 03: VALIDATED", "0", "0.0%", 0.0),
+            ("STAGE 04: CANONICAL", "0", "0.0%", 0.0)
         ]
 
         for st_name, st_val, st_pct_str, st_pct_val in stages:
@@ -478,6 +479,14 @@ class ScanPage(QWidget):
             bar = _MiniProgressBarWidget(st_pct_val)
             st_box.addWidget(bar)
             pipe_layout.addLayout(st_box)
+
+            self.funnel_rows.append({
+                "name": st_name,
+                "lbl_sn": lbl_sn,
+                "lbl_val": lbl_sv,
+                "lbl_pct": lbl_sp,
+                "bar": bar,
+            })
 
         # Burndown Velocity Strip
         burn_row = QHBoxLayout()
@@ -856,7 +865,49 @@ class ScanPage(QWidget):
         lbl_s.setFont(QFont("Consolas", 7))
         lbl_s.setStyleSheet(f"color: {COLOR_TEXT_SECONDARY}; border: none; background: transparent;")
         l.addWidget(lbl_s)
+
+        box.lbl_title = lbl_t
+        box.lbl_count = lbl_c
+        box.lbl_sub = lbl_s
         return box
+
+    def update_pipeline_metrics(self, metrics: Dict[str, Any]):
+        """Dynamically updates the 4 stat cards and 4 funnel stages from live metrics."""
+        profiles = metrics.get("profiles", metrics.get("useful", 0))
+        companies = metrics.get("companies", metrics.get("unique_companies", 0))
+        jobs = metrics.get("jobs", metrics.get("job_posts", 0))
+        rejected = metrics.get("rejected", metrics.get("dlq", 0))
+
+        if hasattr(self, "stat_profiles") and hasattr(self.stat_profiles, "lbl_count"):
+            self.stat_profiles.lbl_count.setText(str(profiles))
+        if hasattr(self, "stat_companies") and hasattr(self.stat_companies, "lbl_count"):
+            self.stat_companies.lbl_count.setText(str(companies))
+        if hasattr(self, "stat_jobs") and hasattr(self.stat_jobs, "lbl_count"):
+            self.stat_jobs.lbl_count.setText(str(jobs))
+        if hasattr(self, "stat_rejected") and hasattr(self.stat_rejected, "lbl_count"):
+            self.stat_rejected.lbl_count.setText(str(rejected))
+
+        observed = metrics.get("observed", metrics.get("scanned", max(1, profiles)))
+        understood = metrics.get("understood", profiles)
+        validated = metrics.get("validated", metrics.get("staged", profiles))
+        canonical = metrics.get("canonical", metrics.get("synced_today", 0))
+
+        stage_vals = [
+            ("STAGE 01: OBSERVED", observed),
+            ("STAGE 02: UNDERSTOOD", understood),
+            ("STAGE 03: VALIDATED", validated),
+            ("STAGE 04: CANONICAL", canonical),
+        ]
+
+        base_val = max(1, observed)
+        for i, (name, val) in enumerate(stage_vals):
+            if hasattr(self, "funnel_rows") and i < len(self.funnel_rows):
+                row = self.funnel_rows[i]
+                pct = min(1.0, max(0.0, float(val) / float(base_val))) if base_val > 0 else 0.0
+                row["lbl_val"].setText(str(val))
+                row["lbl_pct"].setText(f"{pct * 100:.1f}%")
+                if hasattr(row["bar"], "set_progress"):
+                    row["bar"].set_progress(pct)
 
     def _create_mini_stat(self, icon: str, count: str, label: str) -> QWidget:
         return self._create_monochrome_stat(label.upper(), count, "")
@@ -1906,8 +1957,12 @@ class _MiniProgressBarWidget(QWidget):
     """Monochrome thin progress bar matching Stitch card design"""
     def __init__(self, pct: float = 0.5, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.pct = max(0.0, min(1.0, pct))
+        self.pct = max(0.0, min(1.0, float(pct)))
         self.setFixedHeight(4)
+
+    def set_progress(self, pct: float):
+        self.pct = max(0.0, min(1.0, float(pct)))
+        self.update()
 
     def paintEvent(self, event):
         p = QPainter(self)

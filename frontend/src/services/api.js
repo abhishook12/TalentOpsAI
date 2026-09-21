@@ -25,7 +25,7 @@ const createClient = (baseURL) => {
       baseURL,
       withCredentials: true,
       headers: { 'Content-Type': 'application/json' },
-      timeout: 90000,
+      timeout: 25000,
     })
 
 

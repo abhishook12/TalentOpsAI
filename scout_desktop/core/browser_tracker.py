@@ -244,9 +244,10 @@ class BrowserTracker:
           'Director of Talent - Cyberdyne Systems | Indeed.com' -> Platform: Indeed
         """
         title = window_title.strip()
-        # Strip browser suffixes
+        # Strip browser suffixes and optional profile indicators (e.g. ' - Profile 1 - Google Chrome', ' - Personal - Microsoft Edge')
+        # Crucial: Do NOT strip semantic keywords like ' - Chat' or candidate names!
         title_clean = re.sub(
-            r"\s*[-—|]\s*(?:[^-—|]+\s*[-—|]\s*)?(?:Google Chrome|Microsoft Edge|Mozilla Firefox|Brave|Opera)\s*$",
+            r"\s*[-—|]\s*(?:(?:Profile\s+\d+|Personal|Work)\s*[-—|]\s*)?(?:Google Chrome|Microsoft Edge|Mozilla Firefox|Brave|Opera)\s*$",
             "",
             title,
             flags=re.IGNORECASE,
@@ -266,18 +267,30 @@ class BrowserTracker:
                 "candidate_name": None,
             }
         elif " - chat" in title_lower or title_lower.endswith(" - chat") or "google chat" in title_lower:
+            cand = None
+            m = re.match(r"^(?:\(\d+\+?\)\s*)?([^|•·\n\-]+?)\s*[-—|]\s*Chat", title_clean, flags=re.IGNORECASE)
+            if m:
+                cand_candidate = m.group(1).strip()
+                if not any(w in cand_candidate.lower() for w in ["google", "mail", "inbox", "search", "notifications"]):
+                    cand = cand_candidate
             return {
                 "platform": "GOOGLE_CHAT",
                 "clean_title": title_clean,
                 "probable_domain": "chat.google.com",
-                "candidate_name": None,
+                "candidate_name": cand,
             }
-        elif "microsoft teams" in title_lower or "teams | microsoft" in title_lower:
+        elif "microsoft teams" in title_lower or "teams | microsoft" in title_lower or title_lower.startswith("chat |"):
+            cand = None
+            m = re.match(r"^Chat\s*[|–—\-]\s*([^|•·\n\-]+?)(?:\s*[|–—\-].*)?$", title_clean, flags=re.IGNORECASE)
+            if m:
+                cand_candidate = m.group(1).strip()
+                if not any(w in cand_candidate.lower() for w in ["microsoft", "teams", "chat", "general"]):
+                    cand = cand_candidate
             return {
                 "platform": "TEAMS",
                 "clean_title": title_clean,
                 "probable_domain": "teams.microsoft.com",
-                "candidate_name": None,
+                "candidate_name": cand,
             }
         elif "linkedin" in title_lower:
             platform = "LINKEDIN"

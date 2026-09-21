@@ -444,6 +444,7 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                     else if (src === 'Apollo') { srcColor = '#eab308'; srcBg = 'rgba(234, 179, 8, 0.15)'; }
                     else if (src === 'Microsoft Teams' || src === 'TEAMS') { srcColor = 'var(--text-muted, #a1a1aa)'; srcBg = 'rgba(161, 161, 170, 0.15)'; }
                     else if (src === 'Google Chat' || src === 'GOOGLE_CHAT') { srcColor = '#10b981'; srcBg = 'rgba(16, 185, 129, 0.15)'; }
+                    else if (src === 'Slack' || src === 'SLACK') { srcColor = '#e01e5a'; srcBg = 'rgba(224, 30, 90, 0.15)'; }
                     else if (src === 'Indeed') { srcColor = '#3b82f6'; srcBg = 'rgba(59, 130, 246, 0.15)'; }
                     else if (src === 'SimplyHired' || src === 'SIMPLYHIRED') { srcColor = '#06b6d4'; srcBg = 'rgba(6, 182, 212, 0.15)'; }
                     else if (src === 'Jobright AI' || src === 'JOBRIGHT') { srcColor = '#8b5cf6'; srcBg = 'rgba(139, 92, 246, 0.15)'; }
@@ -455,6 +456,10 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                     else if (src === 'Lever') { srcColor = '#6366f1'; srcBg = 'rgba(99, 102, 241, 0.15)'; }
                     else if (src === 'Recruitment Agency' || src === 'RECRUITMENT_AGENCY') { srcColor = '#f97316'; srcBg = 'rgba(249, 115, 22, 0.15)'; }
                     else if (src === 'GitHub') { srcColor = '#a855f7'; srcBg = 'rgba(168, 85, 247, 0.15)'; }
+                    else if (src === 'WhatsApp' || src === 'WHATSAPP') { srcColor = '#25d366'; srcBg = 'rgba(37, 211, 102, 0.15)'; }
+                    else if (src === 'Telegram' || src === 'TELEGRAM') { srcColor = '#229ed9'; srcBg = 'rgba(34, 158, 217, 0.15)'; }
+                    else if (src === 'Gmail' || src === 'GMAIL') { srcColor = '#ea4335'; srcBg = 'rgba(234, 67, 53, 0.15)'; }
+                    else if (src === 'Outlook' || src === 'OUTLOOK') { srcColor = '#0078d4'; srcBg = 'rgba(0, 120, 212, 0.15)'; }
                     return (
                       <div key={idx} style={{
                         padding: '14px 18px', background: 'var(--card-bg, #0e1526)', border: '1px solid var(--card-border, #232326)', borderRadius: 10,

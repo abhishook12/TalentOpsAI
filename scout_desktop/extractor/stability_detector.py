@@ -78,8 +78,15 @@ class ScreenStabilityDetector:
             self._last_processed_time = now
             return True, "STABLE_READY", frame_hash
 
-        # Meaningful change threshold (e.g. > 4.5% visual difference)
-        is_changing = delta > 0.045
+        # If force_settle or window switch / immediate capture (delta >= 0.5)
+        if force_settle or delta >= 0.5:
+            self._is_settled = True
+            self._last_processed_hash = frame_hash
+            self._last_processed_time = now
+            return True, "STABLE_READY", frame_hash
+
+        # Meaningful scrolling/animation change threshold: between 6% and 50% visual difference
+        is_changing = 0.06 < delta < 0.5
 
         if is_changing:
             self._last_change_time = now

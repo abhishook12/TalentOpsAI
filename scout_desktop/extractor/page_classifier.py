@@ -270,37 +270,44 @@ class PageClassifier:
                     "reason": "GitHub user profile page",
                 }
 
-        # 5. ATS & Job Boards
-        ats_domains = ["greenhouse.io", "lever.co", "ashbyhq.com", "myworkday.com", "workday.com", "icims.com", "smartrecruiters.com", "indeed.com", "simplyhired.com", "dice.com"]
-        if any(d in url_lower for d in ats_domains) or "ATS_" in plat:
-            if any(k in url_lower for k in ["/candidate", "/application", "/applicant"]):
-                return {
-                    "page_type": PAGE_TYPE_PERSON_PROFILE,
-                    "platform": "ATS",
-                    "is_candidate_eligible": True,
-                    "confidence": 0.88,
-                    "canonical_url": raw_url.split("?")[0] if raw_url else None,
-                    "reason": "ATS applicant view",
-                }
+        # 5. ATS & Sourcing Portals (Jobright, Indeed, SimplyHired, Glassdoor, ZipRecruiter, Lever, Greenhouse, Ashby, Workday, etc.)
+        sourcing_domains = [
+            "greenhouse.io", "lever.co", "ashbyhq.com", "myworkday.com", "workday.com",
+            "icims.com", "smartrecruiters.com", "indeed.com", "simplyhired.com", "dice.com",
+            "jobright.ai", "glassdoor.com", "ziprecruiter.com", "wellfound.com", "angel.co", "hired.com"
+        ]
+        is_sourcing_plat = (
+            any(d in url_lower for d in sourcing_domains)
+            or any(p in plat for p in ("ATS_", "JOBRIGHT", "INDEED", "SIMPLYHIRED", "GLASSDOOR", "ZIPRECRUITER", "WELLFOUND", "HIRED", "RECRUITMENT_AGENCY"))
+            or any(w in title_lower for w in ("jobright", "indeed", "simplyhired", "glassdoor", "ziprecruiter", "wellfound", "hired", "recruitment agency", "staffing", "talent acquisition"))
+        )
+        if is_sourcing_plat:
+            is_applicant = any(k in url_lower for k in ["/candidate", "/application", "/applicant", "/resume", "/profile", "/r/"]) or any(k in title_lower for k in ["candidate", "applicant", "resume", "profile"])
             return {
-                "page_type": PAGE_TYPE_JOB_PAGE,
-                "platform": "ATS",
-                "is_candidate_eligible": False,
+                "page_type": PAGE_TYPE_PERSON_PROFILE if is_applicant else PAGE_TYPE_JOB_PAGE,
+                "platform": plat or "SOURCING_PORTAL",
+                "is_candidate_eligible": True,
                 "confidence": 0.90,
                 "canonical_url": raw_url.split("?")[0] if raw_url else None,
-                "reason": "ATS job posting",
+                "reason": "Sourcing portal applicant or requisition view",
             }
 
-        # 6. Messaging & Chat Tools (Slack, Teams, WhatsApp, Gmail, Outlook)
+        # 6. Messaging & Chat Tools (Slack, Teams, WhatsApp, Gmail, Outlook, Google Chat)
         chat_domains = ["chat.google.com", "teams.microsoft.com", "teams.live.com", "app.slack.com", "slack.com", "web.whatsapp.com", "web.telegram.org", "mail.google.com", "outlook.live.com", "outlook.office.com"]
-        if any(cd in url_lower for cd in chat_domains) or any(w in title_lower for w in ["google chat", "microsoft teams", "slack |", "whatsapp", "telegram", "outlook", "gmail"]):
+        if (
+            any(cd in url_lower for cd in chat_domains)
+            or any(w in title_lower for w in ["google chat", "microsoft teams", "slack |", "whatsapp", "telegram", "outlook", "gmail"])
+            or plat in ("GOOGLE_CHAT", "TEAMS", "SLACK", "WHATSAPP", "TELEGRAM", "GMAIL", "OUTLOOK", "PDF_RESUME")
+            or title_lower.endswith(" - chat")
+            or " - chat" in title_lower
+        ):
             return {
                 "page_type": PAGE_TYPE_MESSAGING,
-                "platform": "MESSAGING",
-                "is_candidate_eligible": False,
+                "platform": plat or "MESSAGING",
+                "is_candidate_eligible": True,
                 "confidence": 0.95,
                 "canonical_url": None,
-                "reason": "Chat / Email messaging application",
+                "reason": "Chat / Email messaging application with candidate stream intelligence",
             }
 
         # Default Catch-all: UNKNOWN

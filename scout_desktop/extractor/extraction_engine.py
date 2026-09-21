@@ -153,13 +153,15 @@ class ScoutExtractionEngine:
             return [], telemetry
 
         # Step 2: Screen Stability Gate (if img provided)
-        if img and not force_process:
+        # If ocr_lines already has text or force_process is True, frame is ready for extraction
+        has_text = len(ocr_lines) >= 2
+        if img and not force_process and not has_text:
             is_ready, state, f_hash = self.stability_detector.update_frame(img, delta, window_title)
             telemetry["stability_state"] = state
             telemetry["is_stable"] = is_ready
             if not is_ready:
                 telemetry["reason"] = f"Frame deferred by ScreenStabilityDetector ({state})"
-                logger.debug(telemetry["reason"])
+                logger.info(telemetry["reason"])
                 return [], telemetry
         else:
             telemetry["is_stable"] = True

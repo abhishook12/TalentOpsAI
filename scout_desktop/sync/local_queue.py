@@ -344,6 +344,75 @@ class LocalQueue:
                 "total": sum(counts.values()),
             }
 
+    def get_pipeline_summary_stats(self) -> Dict[str, Any]:
+        """
+        Computes aggregated pipeline metrics from local queue SQLite store:
+        - total candidate profiles
+        - unique companies
+        - job postings
+        - rejected noise / dlq
+        - stage funnel counts (Observed, Understood, Validated, Canonical)
+        """
+        now = time.time()
+        today_start = now - (now % 86400)
+        with self._get_conn() as conn:
+            cur = conn.execute("SELECT count(*) FROM queued_observations")
+            total_observations = cur.fetchone()[0] or 0
+
+            cur = conn.execute("SELECT count(*) FROM queued_observations WHERE status = 'REJECTED_NOISE'")
+            rejected_count = cur.fetchone()[0] or 0
+
+            cur = conn.execute("SELECT count(*) FROM queued_observations WHERE status = 'SYNCED'")
+            synced_count = cur.fetchone()[0] or 0
+
+            cur = conn.execute("SELECT count(*) FROM queued_observations WHERE status = 'PENDING'")
+            pending_count = cur.fetchone()[0] or 0
+
+            cur = conn.execute("SELECT count(*) FROM queued_observations WHERE status = 'DLQ'")
+            dlq_count = cur.fetchone()[0] or 0
+
+            # Scan recent rows to extract unique candidate names, companies, and jobs
+            cur = conn.execute("SELECT cluster_json FROM queued_observations WHERE status IN ('SYNCED', 'PENDING') LIMIT 500")
+            unique_names = set()
+            unique_companies = set()
+            job_posts = 0
+            for (c_json,) in cur.fetchall():
+                try:
+                    data = json.loads(c_json)
+                    name = data.get("canonical_name") or data.get("recruiter_name") or data.get("name")
+                    if name and len(name.strip()) >= 3:
+                        unique_names.add(name.strip().lower())
+                    comp = data.get("company_name") or data.get("company")
+                    if comp and len(comp.strip()) >= 2:
+                        unique_companies.add(comp.strip().lower())
+                    if data.get("job_title") or "job" in str(data.get("page_type", "")).lower():
+                        job_posts += 1
+                except Exception:
+                    pass
+
+            profiles_count = max(len(unique_names), synced_count + pending_count)
+            companies_count = max(len(unique_companies), 1 if profiles_count > 0 else 0)
+
+            # Stage Funnel counts
+            obs_stage = max(total_observations, profiles_count)
+            understood_stage = max(profiles_count + rejected_count, profiles_count)
+            validated_stage = profiles_count
+            canonical_stage = synced_count
+
+            return {
+                "profiles": profiles_count,
+                "companies": companies_count,
+                "jobs": job_posts,
+                "rejected": rejected_count + dlq_count,
+                "observed": obs_stage,
+                "understood": understood_stage,
+                "validated": validated_stage,
+                "canonical": canonical_stage,
+                "synced_today": synced_count,
+                "queued": pending_count,
+                "dlq": dlq_count,
+            }
+
     def get_recent_candidates(self, limit: int = 30) -> List[Dict[str, Any]]:
         """
         Returns the most recent valid candidate records (synced or pending) for UI initialization.

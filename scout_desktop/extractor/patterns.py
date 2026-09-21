@@ -56,7 +56,8 @@ UI_ACTIONS = re.compile(
     r"contact management|similar companies|overview|employees|premium features|"
     r"scheduled emails|web visits|crm integrations|zoominfo lite|zoominfo|homepage|quick search|"
     r"home|feed|jobs|messaging|notifications|my network|business|learning|work|sent items|address book|"
-    r"glassdoor|wellfound|dice|hired|lever|apply now|easy apply|save job)$",
+    r"glassdoor|wellfound|dice|hired|lever|apply now|easy apply|save job|"
+    r"refer & earn|refer and earn|refer a friend|referral program|referrals)$",
     re.IGNORECASE,
 )
 
@@ -660,7 +661,7 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         return False
 
     # A person name cannot contain digits, colons, or punctuation/math/wildcard symbols
-    if any(c.isdigit() or c in "*@/\\()_~!+=<>[]{}^%$#:;?\"" for c in t):
+    if any(c.isdigit() or c in "*@/\\()_~!+=<>[]{}^%$#:;?\"&" for c in t):
         return False
 
     # Reject truncated strings ending with dots or ellipses e.g. "54 Ri Ht...", "John..."

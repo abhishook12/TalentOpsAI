@@ -150,6 +150,7 @@ class ProfileJudge:
         lines: List[str],
         window_title: str = "",
         source_url: str = "",
+        platform: str = "",
     ) -> JudgmentResult:
         """
         Evaluates lines and metadata to judge the content category.
@@ -163,6 +164,7 @@ class ProfileJudge:
                 rejection_reason="Empty text capture",
             )
 
+        plat_upper = (platform or "").upper()
         wt_lower = (window_title or "").lower()
         url_lower = (source_url or "").lower()
         if any(term in wt_lower for term in ["feed |", "messaging |", "notifications |", "linkedin learning"]):
@@ -176,6 +178,7 @@ class ProfileJudge:
         is_verified_linkedin = (
             any(k in wt_lower for k in ["| linkedin", "- linkedin", "linkedin recruiter", "sales navigator", ": people", "company: people"])
             or "linkedin.com/in/" in url_lower
+            or plat_upper == "LINKEDIN"
         )
 
         is_verified_sourcing_platform = (
@@ -183,18 +186,22 @@ class ProfileJudge:
             or "zoominfo.com" in url_lower
             or "zi-lite" in url_lower
             or "zoominfo" in wt_lower
+            or plat_upper == "ZOOMINFO"
             or "apollo.io" in url_lower
             or "apollo" in wt_lower
+            or plat_upper == "APOLLO"
             or any(d in url_lower for d in ["glassdoor.com", "wellfound.com", "dice.com", "hired.com", "lever.co"])
         )
 
         # 0. CHAT, MESSAGING, EMAIL & RESUME INTELLIGENCE
         is_chat_target = (
-            "chat.google.com" in url_lower
+            plat_upper in ("GOOGLE_CHAT", "TEAMS", "SLACK", "WHATSAPP", "TELEGRAM", "GMAIL", "OUTLOOK", "PDF_RESUME")
+            or "chat.google.com" in url_lower
             or ("/mail/u/" in url_lower and "/chat" in url_lower)
             or "google chat" in wt_lower
             or wt_lower.endswith(" - chat")
             or " - chat" in wt_lower
+            or " - chat " in wt_lower
             or "teams" in wt_lower
             or "teams.microsoft.com" in url_lower
             or "slack" in wt_lower
@@ -227,9 +234,9 @@ class ProfileJudge:
                 re.search(r"\b(?:developer|engineer|recruiter|sourcer|manager|architect|analyst|specialist|lead|consultant|technologies|experience|candidate|resume|profile|hiring|available|rate|ctc|notice)\b", l, re.IGNORECASE)
                 for l in clean_lines
             )
-            # Only accept chat stream if verifiable contact info or resume markers exist
+            # Only accept chat stream if verifiable contact info, candidate signals, or resume markers exist
             is_resume_doc = any(w in wt_lower for w in ["resume", "cv", "curriculum vitae"]) or url_lower.endswith(".pdf") or "/pdf/" in url_lower
-            if has_contacts or (is_resume_doc and has_candidate_text):
+            if has_contacts or has_candidate_text or is_resume_doc:
                 return JudgmentResult(
                     category="CHAT_CONVERSATION",
                     is_candidate_profile=True,

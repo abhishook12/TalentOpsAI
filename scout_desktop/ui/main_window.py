@@ -454,6 +454,10 @@ class MainWindow(QMainWindow):
             errors=counters.get("errors", "No errors")
         )
 
+        # Forward to ScanPage dynamic pipeline metrics
+        if hasattr(self, "page_scan") and hasattr(self.page_scan, "update_pipeline_metrics"):
+            self.page_scan.update_pipeline_metrics(counters)
+
     def update_process_load(
         self,
         cpu_percent: float = 0.0,
@@ -665,6 +669,25 @@ class MainWindow(QMainWindow):
                 comp_conf=comp_conf,
                 loc_conf=loc_conf,
                 cand_id=cand_id,
+            )
+
+        # Also ensure candidate is added or updated in the live Candidates table
+        if cand_name and cand_name not in ("Unknown Candidate", "Professional Profile"):
+            self._add_candidate_table_row(
+                id=cand_id,
+                name=cand_name,
+                title=cand_title,
+                company=cand_company,
+                location=cand_loc,
+                status=cand_status,
+                confidence=kwargs.get("confidence", 95),
+                platform=kwargs.get("platform", "Desktop Scout"),
+                profile_url=p_url,
+                raw_name=cand_name,
+                raw_title=cand_title,
+                raw_company=cand_company,
+                raw_location=cand_loc,
+                created_at=kwargs.get("created_at")
             )
 
     def _add_candidate_table_row(self, *args, **kwargs):

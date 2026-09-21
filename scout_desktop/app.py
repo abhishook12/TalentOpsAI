@@ -405,6 +405,26 @@ class ScoutDesktopApp:
                     )
             if hasattr(self.main_window, "page_candidate_record"):
                 self.main_window.page_candidate_record.set_candidate(latest_id)
+
+            # Initialize pipeline metrics in UI from local queue
+            try:
+                pipe_stats = self.local_queue.get_pipeline_summary_stats()
+                if pipe_stats and hasattr(self.main_window, "update_explicit_counters"):
+                    self.main_window.update_explicit_counters({
+                        "profiles": pipe_stats.get("profiles", 0),
+                        "companies": pipe_stats.get("companies", 0),
+                        "jobs": pipe_stats.get("jobs", 0),
+                        "rejected": pipe_stats.get("rejected", 0),
+                        "observed": pipe_stats.get("observed", 0),
+                        "understood": pipe_stats.get("understood", 0),
+                        "validated": pipe_stats.get("validated", 0),
+                        "canonical": pipe_stats.get("canonical", 0),
+                        "synced_today": pipe_stats.get("synced_today", 0),
+                        "queued": pipe_stats.get("queued", 0),
+                        "errors": "No errors" if pipe_stats.get("dlq", 0) == 0 else f"{pipe_stats.get('dlq')} DLQ items",
+                    })
+            except Exception as pe:
+                logger.debug("Could not initialize pipeline summary metrics: %s", pe)
         except Exception as e:
             logger.warning("Failed to initialize cached candidates in UI: %s", e)
 
@@ -564,6 +584,29 @@ class ScoutDesktopApp:
                         memory_mb=load_telemetry["memory_mb"],
                         load_level=load_telemetry["load_level"]
                     )
+
+            # Retrieve aggregated pipeline metrics from local queue
+            pipe_stats = {}
+            if hasattr(self.local_queue, "get_pipeline_summary_stats"):
+                pipe_stats = self.local_queue.get_pipeline_summary_stats()
+
+            # Merge with runtime counters and emit to UI
+            metrics_payload = {
+                "scanned": max(self.cnt_captured, pipe_stats.get("observed", 0)),
+                "observed": max(self.cnt_observed, pipe_stats.get("observed", 0)),
+                "useful": max(self.cnt_useful, pipe_stats.get("profiles", 0)),
+                "profiles": pipe_stats.get("profiles", max(self.cnt_useful, 0)),
+                "companies": pipe_stats.get("companies", 0),
+                "jobs": pipe_stats.get("jobs", 0),
+                "rejected": pipe_stats.get("rejected", self.cnt_purged),
+                "understood": pipe_stats.get("understood", 0),
+                "validated": pipe_stats.get("validated", 0),
+                "canonical": pipe_stats.get("canonical", synced_today),
+                "synced_today": synced_today,
+                "queued": pending,
+                "errors": errors,
+            }
+            self.bridge.metrics_updated.emit(metrics_payload)
         except Exception as e:
             logger.debug("Error in _refresh_ui_status: %s", e)
 
@@ -1227,6 +1270,8 @@ class ScoutDesktopApp:
             was_allowed = getattr(self, "_last_window_was_allowed", False)
             self._last_window_was_allowed = is_allowed
             if is_allowed:
+                self._last_allowed_window = win
+                self._last_allowed_context = b_ctx
                 self.bridge.event_logged.emit("TARGET_ACTIVE", f"[{target_type}] {win.title[:35]}")
                 self.sampler.trigger_immediate_capture(win, reason="window_changed")
             elif was_allowed:
@@ -1383,14 +1428,16 @@ class ScoutDesktopApp:
         )
 
         clusters = [c.raw_cluster for c in canonical_cands if c.raw_cluster]
-        if not clusters and is_chat_or_doc_window:
-            # Fallback for chat/pdf document streams
+        if not clusters:
+            # Universal resilient fallback: entity_extractor handles multi-candidate cards
+            # (e.g. Company People directories), chat streams, job postings, and single profiles
             clusters = self.entity_extractor.extract_from_lines(
                 lines=lines,
                 capture_id=capture_id,
                 source_url=page_url,
                 window_title=page_title,
                 inferred_candidate=cand_name,
+                platform=target_type,
             )
 
         # 3. Stage & transition capture lifecycle
@@ -1583,7 +1630,8 @@ class ScoutDesktopApp:
                     }
                 )
 
-                if c_gate.is_valid_candidate:
+                is_displayable = c_gate.is_valid_candidate or c_gate.decision == "REVIEW_REQUIRED"
+                if is_displayable:
                     desc = f"👤 {c_gate.canonical_name}"
                     if c_gate.title:
                         desc += f" — {c_gate.title}"
@@ -1608,9 +1656,15 @@ class ScoutDesktopApp:
                     except Exception as e:
                         logger.debug("Live Copilot lookup error: %s", e)
 
-                    card_status = "VERIFIED" if not (copilot_info and copilot_info.get("found")) else "IN DATABASE"
+                    if copilot_info and copilot_info.get("found"):
+                        card_status = "IN DATABASE"
+                    elif c_gate.is_valid_candidate:
+                        card_status = "VERIFIED"
+                    else:
+                        card_status = "REVIEW_REQUIRED"
+
                     card_profile_url = c_gate.canonical_profile_url or c_prof_url
-                    card_confidence = int(c_gate.identity_confidence * 100) if c_gate.identity_confidence > 0 else 95
+                    card_confidence = int(c_gate.identity_confidence * 100) if c_gate.identity_confidence > 0 else (75 if card_status == "REVIEW_REQUIRED" else 95)
 
                     self.bridge.candidate_card_updated.emit(
                         c_gate.canonical_name,
@@ -2010,14 +2064,27 @@ class ScoutDesktopApp:
     def force_capture(self):
         """User / Developer force capture trigger."""
         win = self.current_window or (self.window_tracker.get_active_window() if hasattr(self, "window_tracker") else None)
-        if win:
+        is_allowed = False
+        if win and win.is_valid:
+            is_allowed, _ = is_allowed_scout_target(win, self.current_browser_context)
+
+        # If current window is Scout UI itself, an unauthorized tool, or not allowed, fallback to last allowed target window!
+        if not is_allowed and getattr(self, "_last_allowed_window", None) and self._last_allowed_window.is_valid:
+            win = self._last_allowed_window
+            self.current_browser_context = getattr(self, "_last_allowed_context", self.current_browser_context)
+            is_allowed = True
+            logger.info("⚡ Force Capture using last allowed window: [%s] '%s'", win.process_name, win.title[:40])
+
+        if win and is_allowed:
             self.current_window = win
+            self.sampler.set_target_allowed(True)
+            self.sampler.set_current_window(win)
             w_title = getattr(win, "title", "Active Screen")
             logger.info("⚡ Force Capture initiated for window: %s", w_title)
             self.bridge.event_logged.emit("SCAN_TRIGGERED", f"⚡ Scanning screen: {w_title[:40]}")
             self.sampler.trigger_immediate_capture(win, reason="user_manual_trigger")
         else:
-            logger.warning("Force capture attempted but no active window found.")
+            logger.warning("Force capture attempted but no active allowed target window found.")
             self.bridge.event_logged.emit("SCAN_SKIPPED", "⚠️ No active recruitment or browser window detected to scan.")
 
     def toggle_pause(self):

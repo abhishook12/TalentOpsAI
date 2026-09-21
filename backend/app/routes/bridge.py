@@ -282,7 +282,8 @@ def bridge_oauth_callback(request: Request, code: str = None, state: str = None,
     # 1. Exchange code for tokens
     access_token = "mock_access_token_abc123"
     refresh_token = "mock_refresh_token_xyz890"
-    connected_email = f"user_{user_id}@outlook.com"
+    user_record = db.query(User).filter(User.id == user_id).first()
+    connected_email = user_record.email if user_record else f"user_{user_id}@outlook.com"
     
     if not MOCK_OAUTH:
         msal_redirect = _get_msal_redirect_uri(request)

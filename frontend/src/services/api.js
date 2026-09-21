@@ -1,22 +1,32 @@
 import axios from 'axios'
 
-const RAW_API_URL = import.meta.env.VITE_API_URL || 'https://talentopsai-1.onrender.com'
+const getDefaultApiUrl = () => {
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    if (window.location.hostname.includes('vercel.app')) {
+      return '/api'
+    }
+  }
+  return 'https://talentopsai-1.onrender.com'
+}
+
+const RAW_API_URL = import.meta.env.VITE_API_URL || getDefaultApiUrl()
 export const API = import.meta.env.DEV 
   ? (typeof window !== 'undefined' && window.location?.hostname ? `http://${window.location.hostname}:8000` : 'http://127.0.0.1:8000') 
   : RAW_API_URL
 
 // ── Immediate Backend Warm-Up ──────────────────────────────────────────────
 // Fire a lightweight /ping the instant this module loads (before React mounts).
-// This gives Render's cold start a head start while the JS bundle parses.
+// When on Vercel, uses same-origin /api/ping to avoid CORS preflights and edge rate limits.
 if (!import.meta.env.DEV) {
-  fetch(`${RAW_API_URL}/ping`, { method: 'GET', mode: 'cors', cache: 'no-store' }).catch(() => {})
-  fetch('/api/ping', { method: 'GET', cache: 'no-store' }).catch(() => {})
+  const pingUrl = API.startsWith('http') ? `${API}/ping` : `${API}/ping`
+  fetch(pingUrl, { method: 'GET', cache: 'no-store' }).catch(() => {})
 }
 
 // Keep backend warm while user has a tab open (Render sleeps after 15m)
 if (typeof window !== 'undefined' && !import.meta.env.DEV) {
   setInterval(() => {
-    fetch(`${RAW_API_URL}/ping`, { method: 'GET', mode: 'cors', cache: 'no-store' }).catch(() => {})
+    const pingUrl = API.startsWith('http') ? `${API}/ping` : `${API}/ping`
+    fetch(pingUrl, { method: 'GET', cache: 'no-store' }).catch(() => {})
   }, 4 * 60 * 1000)
 }
 

@@ -53,13 +53,14 @@ export default function Login() {
     return 'Waking up server...'
   }
 
-  // Lightweight dual warm-up ping in background
+  // Lightweight warm-up ping in background
   useEffect(() => {
     if (warmupFiredRef.current) return
     warmupFiredRef.current = true
-    const targetUrl = import.meta.env.VITE_API_URL || 'https://talentopsai-1.onrender.com'
-    fetch(`${targetUrl}/ping`, { method: 'GET', mode: 'cors', cache: 'no-store' }).catch(() => {})
-    fetch('/api/ping', { method: 'GET', cache: 'no-store' }).catch(() => {})
+    const pingTarget = (typeof window !== 'undefined' && window.location?.hostname?.includes('vercel.app'))
+      ? '/api/ping'
+      : (import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/ping` : '/api/ping')
+    fetch(pingTarget, { method: 'GET', cache: 'no-store' }).catch(() => {})
   }, [])
 
   const isEmailValid = email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)

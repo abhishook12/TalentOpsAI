@@ -120,9 +120,9 @@ function AppShell() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--main-bg)', color: 'var(--text-secondary)' }}>
-        <i className="ti ti-loader-2" style={{ fontSize: '2rem', animation: 'spin 1s linear infinite', marginBottom: '1rem' }} />
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.875rem' }}>Loading...</p>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', alignItems: 'center', justifyContent: 'center', backgroundColor: '#09090b', color: '#f4f4f5' }}>
+        <div style={{ width: 36, height: 36, border: '3px solid rgba(255,255,255,0.15)', borderTopColor: '#ffffff', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: '1rem' }} />
+        <p style={{ fontFamily: 'system-ui, -apple-system, sans-serif', fontSize: '0.875rem', color: '#a1a1aa', fontWeight: 500, letterSpacing: '0.01em', margin: 0 }}>Loading workspace...</p>
         <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
       </div>
     );
@@ -278,9 +278,9 @@ function AppShell() {
                   background: '#10b981',
                   boxShadow: '0 0 6px #10b981'
                 }} />
-                <span>Process Load: {dbRecordCount}</span>
+                <span>System Online</span>
                 <span style={{ opacity: 0.5 }}>•</span>
-                <span style={{ color: 'var(--text-secondary, #a1a1aa)', fontWeight: 500 }}>⚡ Telemetry</span>
+                <span style={{ color: 'var(--text-secondary, #a1a1aa)', fontWeight: 500 }}>Telemetry</span>
               </button>
             </div>
             <div className="cc-top-actions">
@@ -292,7 +292,7 @@ function AppShell() {
                 style={{ padding: '8px', color: aiPanelOpen ? '#e4e4e7' : '#a1a1aa' }}
                 onClick={() => setAiPanelOpen(!aiPanelOpen)}
               >
-                <span style={{ fontSize: '18px', fontWeight: 900 }}>✦</span>
+                <i className="ti ti-bot" style={{ fontSize: '20px' }} />
               </button>
               <button className="cc-icon-button" title="Settings" aria-label="Settings" style={{ padding: '8px' }} onClick={() => navigate({ to: '/settings' })}>
                 <i className="ti ti-settings" style={{ fontSize: '20px' }} />
@@ -352,13 +352,12 @@ function AppShell() {
                     display: 'inline-block',
                     boxShadow: dbConnected ? '0 0 6px rgba(74, 222, 128, 0.6)' : 'none'
                   }} />
-                  {dbConnected ? `Live Database Connected (${dbRecordCount} Records)` : 'Database Reconnecting...'}
+                  {dbConnected ? 'Database Connected' : 'Database Reconnecting...'}
                 </span>
               </div>
 
               <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'flex-end', fontSize: 12, color: 'var(--text-muted)' }}>
-                <span><strong>Version</strong> {backendVersion || '—'}</span>
-                <span>Copyright {new Date().getFullYear()} TalentOps</span>
+                <span>© {new Date().getFullYear()} TalentOps</span>
               </div>
             </footer>
           </div>

@@ -7,8 +7,34 @@ const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [user, setUser] = useState(() => {
+        try {
+            const cached = localStorage.getItem('auth_session');
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                if (parsed?.email) {
+                    const isAdmin = parsed.email.toLowerCase().trim() === 'abhishekjadon824@gmail.com';
+                    return {
+                        id: parsed.id || 'cached',
+                        email: parsed.email,
+                        first_name: parsed.first_name || (isAdmin ? 'Abhishek' : parsed.email.split('@')[0]),
+                        role: parsed.role || (isAdmin ? 'superadmin' : 'user')
+                    };
+                }
+            }
+        } catch {}
+        return null;
+    });
+
+    const [loading, setLoading] = useState(() => {
+        const token = localStorage.getItem('session_token') || sessionStorage.getItem('session_token');
+        const hasAuthSession = localStorage.getItem('auth_session');
+        // If neither token nor auth_session exists, not loading (user is null, redirect to /login)
+        if (!token && !hasAuthSession) return false;
+        // If cached session exists, we render immediately from cache and verify in background
+        if (hasAuthSession) return false;
+        return true;
+    });
 
     const navigate = useNavigate();
 
@@ -30,22 +56,30 @@ export const AuthProvider = ({ children }) => {
                 return;
             }
 
-            const response = await api.get('/auth/me');
-            
-            if (response.data.authenticated) {
-                // If it's the legacy response or the new robust response
-                if (response.data.user) {
-                    setUser(response.data.user);
-                    localStorage.setItem('auth_session', JSON.stringify({ email: response.data.user.email || null }));
-                } else if (response.data.role === 'admin' || response.data.role === 'superadmin') {
-                    setUser({ id: 'admin', role: 'superadmin', first_name: 'Abhishek', email: 'abhishekjadon824@gmail.com' });
-                    localStorage.setItem('auth_session', JSON.stringify({ email: 'abhishekjadon824@gmail.com' }));
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+            try {
+                const response = await api.get('/auth/me', { signal: controller.signal });
+                clearTimeout(timeoutId);
+                
+                if (response.data.authenticated) {
+                    if (response.data.user) {
+                        setUser(response.data.user);
+                        localStorage.setItem('auth_session', JSON.stringify({ email: response.data.user.email || null, id: response.data.user.id, role: response.data.user.role, first_name: response.data.user.first_name }));
+                    } else if (response.data.role === 'admin' || response.data.role === 'superadmin') {
+                        setUser({ id: 'admin', role: 'superadmin', first_name: 'Abhishek', email: 'abhishekjadon824@gmail.com' });
+                        localStorage.setItem('auth_session', JSON.stringify({ email: 'abhishekjadon824@gmail.com', role: 'superadmin', first_name: 'Abhishek' }));
+                    }
+                } else {
+                    // Backend explicitly said "not authenticated" — clear everything
+                    setUser(null);
+                    clearStoredToken();
+                    localStorage.removeItem('auth_session');
                 }
-            } else {
-                // Backend explicitly said "not authenticated" — clear everything
-                setUser(null);
-                clearStoredToken();
-                localStorage.removeItem('auth_session');
+            } catch (innerErr) {
+                clearTimeout(timeoutId);
+                throw innerErr;
             }
         } catch (error) {
             // ── SESSION PERSISTENCE: Only clear auth on EXPLICIT server rejection ──
@@ -70,15 +104,14 @@ export const AuthProvider = ({ children }) => {
                         if (parsed.email) {
                             const isAdminEmail = parsed.email.toLowerCase().trim() === 'abhishekjadon824@gmail.com';
                             setUser({
-                                id: 'cached',
+                                id: parsed.id || 'cached',
                                 email: parsed.email,
-                                first_name: isAdminEmail ? 'Abhishek' : parsed.email.split('@')[0],
-                                role: isAdminEmail ? 'superadmin' : 'user'
+                                first_name: parsed.first_name || (isAdminEmail ? 'Abhishek' : parsed.email.split('@')[0]),
+                                role: parsed.role || (isAdminEmail ? 'superadmin' : 'user')
                             });
                         }
                     } catch { /* corrupt cache, ignore */ }
                 }
-                // If user is already set in state, keep it as-is
             }
         } finally {
             setLoading(false);

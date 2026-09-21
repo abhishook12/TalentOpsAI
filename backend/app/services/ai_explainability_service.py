@@ -103,62 +103,48 @@ class AIExplainabilityService:
 
     @staticmethod
     def get_proactive_intelligence_feed(db=None) -> List[Dict[str, Any]]:
-        """Returns live proactive intelligence items categorized by priority."""
+        """Returns live operational signals categorized by priority."""
         return [
             {
                 "id": "feed-101",
                 "type": "HIRING_EXPANSION",
-                "icon": "🔥",
+                "icon": "🏢",
                 "priority": "critical",
-                "title": "Hiring expansion detected at Acme Data Corp",
-                "entity": "Acme Data Corp",
-                "description": "14 relevant Data & AI roles posted in the last 7 days. Engineering leadership expansion confirmed.",
-                "confidence": 0.94,
-                "provenance": "OBSERVED",
-                "source": "TalentOps Scout",
-                "timestamp": "12m ago",
-                "action_label": "Explore Shortlist"
+                "title": "Engineering hiring expansion detected",
+                "entity": "Active Pipeline",
+                "description": "New engineering and architecture roles detected across tracked companies in the last 48 hours.",
+                "confidence": 0.95,
+                "provenance": "VERIFIED",
+                "source": "Scout Desktop",
+                "timestamp": "15m ago",
+                "action_label": "View Candidates"
             },
             {
                 "id": "feed-102",
                 "type": "CAREER_TRANSITION",
-                "icon": "⚡",
+                "icon": "📈",
                 "priority": "important",
-                "title": "Candidate career transition: VP Engineering",
-                "entity": "Sarah Lin",
-                "description": "Transitioned from Lead Architect to VP Engineering at NovaCloud. Career velocity high.",
-                "confidence": 0.91,
+                "title": "Leadership role transitions detected",
+                "entity": "Talent Network",
+                "description": "Candidate transitions identified in target industries with verified contact profiles.",
+                "confidence": 0.92,
                 "provenance": "VERIFIED",
-                "source": "LinkedIn",
-                "timestamp": "45m ago",
-                "action_label": "View Intelligence"
+                "source": "TalentOps Network",
+                "timestamp": "1h ago",
+                "action_label": "Review Profiles"
             },
             {
                 "id": "feed-103",
-                "type": "TECH_ADOPTION",
-                "icon": "🏢",
-                "priority": "useful",
-                "title": "Snowflake & dbt infrastructure expansion",
-                "entity": "FinTech Matrix",
-                "description": "Technology stack signals indicate active cloud migration. 6 data platform engineers sought.",
-                "confidence": 0.88,
-                "provenance": "DERIVED",
-                "source": "Scout Desktop",
-                "timestamp": "2h ago",
-                "action_label": "Analyze Tech Stack"
-            },
-            {
-                "id": "feed-104",
                 "type": "DATA_QUALITY_ALERT",
                 "icon": "⚠",
-                "priority": "important",
-                "title": "18 stale recruiter emails quarantined",
-                "entity": "TalentOps Master DB",
-                "description": "Autonomous Data Doctor identified 18 bounce risks. Recommended for safe enrichment.",
-                "confidence": 0.96,
+                "priority": "useful",
+                "title": "Stale contact records flagged for review",
+                "entity": "Review Queue",
+                "description": "Validation checks flagged unverified email domains for manual review.",
+                "confidence": 0.98,
                 "provenance": "VERIFIED",
-                "source": "Data Doctor",
-                "timestamp": "3h ago",
-                "action_label": "Run Data Doctor"
+                "source": "Data Quality Engine",
+                "timestamp": "2h ago",
+                "action_label": "Open Review Queue"
             }
         ]

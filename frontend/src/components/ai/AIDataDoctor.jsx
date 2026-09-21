@@ -232,7 +232,7 @@ export default function AIDataDoctor() {
             cursor: 'pointer'
           }}
         >
-          Harmonize Job Titles
+          Standardize Titles
         </button>
 
         <button
@@ -249,7 +249,7 @@ export default function AIDataDoctor() {
             cursor: 'pointer'
           }}
         >
-          Quarantine Stale Contacts
+          Flag Inactive Contacts
         </button>
 
         <button
@@ -267,7 +267,7 @@ export default function AIDataDoctor() {
             boxShadow: '0 2px 10px rgba(16, 185, 129, 0.3)'
           }}
         >
-          {repairing ? 'Diagnosing...' : '✦ Fix Safe Issues (Auto-Merge)'}
+          {repairing ? 'Diagnosing...' : 'Fix Safe Issues (Auto-Merge)'}
         </button>
       </div>
 

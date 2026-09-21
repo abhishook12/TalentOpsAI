@@ -13,8 +13,8 @@ export default function CommandPalette() {
   const { isAdmin } = useAuth();
   
   const actions = [
-    { id: 'ai_command', title: '✦ Ask TalentOps Anything', icon: Search, type: 'ai', route: '/?focus=ai' },
-    { id: 'ai_doctor', title: '🩺 Run Data Doctor (Health & Repair)', icon: Database, type: 'ai', route: '/?focus=doctor' },
+    { id: 'search_candidates', title: 'Search Candidates & Recruiters', icon: Search, type: 'action', route: '/search' },
+    { id: 'data_quality', title: 'Data Quality Review', icon: Database, type: 'action', route: '/sentinel' },
     { id: 'dashboard', title: 'Go to Dashboard', icon: BarChart, route: '/' },
     { id: 'recruiters', title: 'Search Recruiters', icon: Users, route: '/recruiters' },
     { id: 'companies', title: 'Search Companies', icon: Briefcase, route: '/directory' },

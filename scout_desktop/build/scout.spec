@@ -75,7 +75,21 @@ hiddenimports = [
     'gzip',
     'cryptography',
     'cryptography.hazmat.primitives.asymmetric.ed25519',
+    'psutil',
+    'json',
+    'logging',
+    'logging.handlers',
+    'ctypes',
+    'ctypes.wintypes',
 ]
+
+try:
+    from PyInstaller.utils.hooks import collect_submodules
+    hiddenimports.extend(collect_submodules('scout_desktop'))
+except Exception as e:
+    print(f"Note: collect_submodules: {e}")
+
+hiddenimports = list(set(hiddenimports))
 
 # ── 1. Main Scout Companion Binary ───────────────────────────────────────────
 a_scout = Analysis(

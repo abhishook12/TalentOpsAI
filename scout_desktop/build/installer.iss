@@ -5,7 +5,7 @@
 ; Persistent user state (%LOCALAPPDATA%\TalentOpsAI\Scout\) is strictly preserved across updates and uninstalls.
 
 #define MyAppName "TalentOps Scout"
-#define MyAppVersion "2.9.0"
+#define MyAppVersion "2.9.2"
 #define MyAppPublisher "TalentOps AI"
 #define MyAppURL "https://talentopsai-1.onrender.com"
 #define MyAppExeName "TalentOpsScout.exe"
@@ -31,18 +31,18 @@ SetupIconFile=..\assets\logo.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription={#MyAppName} Windows Setup
-VersionInfoVersion=2.9.0.0
+VersionInfoVersion=2.9.2.0
 VersionInfoTextVersion={#MyAppVersion}
 VersionInfoCopyright=© 2026 TalentOps AI
 VersionInfoProductName={#MyAppName}
-VersionInfoProductVersion=2.9.0.0
+VersionInfoProductVersion=2.9.2.0
 
 [Languages]
 
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 Name: "startup"; Description: "Launch TalentOps Scout automatically when Windows starts"; GroupDescription: "Startup:"
 
 [Files]
@@ -64,7 +64,7 @@ Root: HKCU; Subkey: "Software\Classes\talentopsscout\shell\open\command"; ValueT
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "TalentOpsScout"; ValueData: """{app}\{#MyAppExeName}"""; Flags: uninsdeletevalue; Tasks: startup
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: shellexec nowait postinstall skipifsilent unchecked
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: shellexec nowait postinstall skipifsilent
 
 [UninstallDelete]
 ; Clean up app directory but NEVER touch persistent %LOCALAPPDATA%\TalentOpsAI\Scout

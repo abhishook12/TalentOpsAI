@@ -179,7 +179,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
           onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
           onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
         >
-          <span style={{ fontSize: '15px', color: '#10b981' }}>✦</span>
+          <i className="ti ti-bot" style={{ fontSize: '15px', color: '#10b981' }} />
           <span>Copilot</span>
         </button>
       )}
@@ -228,7 +228,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
                   fontWeight: 900
                 }}
               >
-                ✦
+                <i className="ti ti-bot" style={{ fontSize: '14px' }} />
               </div>
               <div>
                 <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-primary, #f4f4f5)' }}>
@@ -647,7 +647,7 @@ export default function AISidePanel({ isOpen, onToggle, currentContext }) {
                 {/* ── SOURCE TRANSPARENCY BADGE ── */}
                 {m.source_transparency && (
                   <div style={{ marginTop: '8px', fontSize: '9px', color: '#71717a', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ color: '#10b981' }}>✦</span>
+                    <i className="ti ti-check" style={{ color: '#10b981', fontSize: '11px' }} />
                     <span>Grounded via: {m.source_transparency}</span>
                   </div>
                 )}

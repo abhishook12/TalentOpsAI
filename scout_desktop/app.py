@@ -2254,12 +2254,22 @@ def main():
                 import time
                 time.sleep(3)
             else:
+                crash_path = os.path.join(get_logs_dir(), "scout_crash.log")
                 try:
-                    crash_path = os.path.join(get_logs_dir(), "scout_crash.log")
                     with open(crash_path, "a", encoding="utf-8") as f:
                         import traceback
                         f.write(f"\n--- CRASH AT {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
                         f.write(traceback.format_exc())
+                except Exception:
+                    pass
+                try:
+                    import ctypes
+                    ctypes.windll.user32.MessageBoxW(
+                        0,
+                        f"TalentOps Scout encountered a problem during startup:\n\n{str(e)}\n\nDiagnostic logs saved to:\n{crash_path}",
+                        "TalentOps Scout",
+                        0x10  # MB_ICONERROR
+                    )
                 except Exception:
                     pass
                 sys.exit(1)

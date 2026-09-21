@@ -406,15 +406,19 @@ class MainWindow(QMainWindow):
 
     def update_account_display(self, user_display: str, user_name: str):
         """Called by app.py to update signed-in user label"""
-        name = user_name or (user_display if user_display and not user_display.startswith("User #") else "Prashant")
-        disp = f"{name} · TalentOps AI" if "·" not in name else name
-        self.top_bar.lbl_user.setText(disp)
-        SYSTEM_STATE["user"]["display"] = disp
-        SYSTEM_STATE["user"]["name"] = name
-        if hasattr(self.top_bar, "lbl_node"):
-            self.top_bar.lbl_node.setText("NODE: #483")
-        elif hasattr(self.top_bar, "lbl_inst"):
-            self.top_bar.lbl_inst.setText("Installation #483")
+        try:
+            name = user_name or (user_display if user_display and not user_display.startswith("User #") else "Prashant")
+            disp = f"{name} · TalentOps AI" if "·" not in name else name
+            if hasattr(self.top_bar, "lbl_user"):
+                self.top_bar.lbl_user.setText(disp)
+            SYSTEM_STATE["user"]["display"] = disp
+            SYSTEM_STATE["user"]["name"] = name
+            if hasattr(self.top_bar, "lbl_node"):
+                self.top_bar.lbl_node.setText("NODE: #483")
+            elif hasattr(self.top_bar, "lbl_inst"):
+                self.top_bar.lbl_inst.setText("Installation #483")
+        except Exception as e:
+            logger.debug("Error in update_account_display: %s", e)
 
     def update_environment(self, env: str, api_base: str):
         """Called by app.py to update environment configuration"""

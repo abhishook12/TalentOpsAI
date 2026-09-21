@@ -7,20 +7,7 @@ import { useAuth } from '../context/AuthContext'
 export default function Sidebar() {
   const location = useLocation()
   const { isAdmin, user } = useAuth()
-  const [backendVersion, setBackendVersion] = useState('loading...')
-  const [scoutVersion, setScoutVersion] = useState('')
   const [pendingDevicesCount, setPendingDevicesCount] = useState(0)
-
-  useEffect(() => {
-    api.get('/version').then(res => setBackendVersion(res.data.version)).catch(() => setBackendVersion('unknown'))
-    api.get('/scout/updates/latest')
-      .then(res => {
-        if (res?.data?.version) {
-          setScoutVersion(res.data.version)
-        }
-      })
-      .catch(() => {})
-  }, [])
 
   useEffect(() => {
     if (isAdmin) {
@@ -60,20 +47,20 @@ export default function Sidebar() {
     { to: '/directory', label: 'Directory', icon: Map, aliases: ['/states', '/companies'] },
     { to: '/analytics', label: 'Analytics', icon: BarChart2 },
     { to: '/search', label: 'Search', icon: Search },
-    { to: '/download-scout', label: 'Desktop Scout', icon: Laptop, badge: scoutVersion ? (scoutVersion.startsWith('v') ? scoutVersion : `v${scoutVersion}`) : 'v2.9.2' },
+    { to: '/download-scout', label: 'Desktop Scout', icon: Laptop },
     { isGroupHeader: true, label: 'Account' },
     { to: '/profile', label: 'Profile', icon: UserCircle },
     { to: '/settings', label: 'Settings', icon: Settings },
   ]
 
   const adminNav = [
-    { isGroupHeader: true, label: 'Command Center' },
-    { to: '/admin', label: 'Admin Terminal', icon: LayoutDashboard },
-    { to: '/admin/scout-contributors', label: 'Scout Contributors', icon: Users, badge: 'Live' },
-    { to: '/admin/staging', label: 'Staging Pipeline', icon: Layers, badge: 'New' },
-    { to: '/sentinel', label: 'Data Quality Center', icon: HeartPulse },
+    { isGroupHeader: true, label: 'Administration' },
+    { to: '/admin', label: 'Overview', icon: LayoutDashboard },
+    { to: '/admin/scout-contributors', label: 'Scout Contributors', icon: Users },
+    { to: '/admin/staging', label: 'Staging Pipeline', icon: Layers },
+    { to: '/sentinel', label: 'Data Quality', icon: HeartPulse },
     { to: '/review-queue', label: 'Review Queue', icon: Search },
-    { to: '/mailintel', label: 'MAILINTEL', icon: Mail },
+    { to: '/mailintel', label: 'Mail Intel', icon: Mail },
     { to: '/admin/users', label: 'User Management', icon: UserCog },
     { to: '/admin/visitor-analytics', label: 'Visitor Analytics', icon: Eye },
     { 
@@ -276,20 +263,6 @@ export default function Sidebar() {
           <LogOut size={16} strokeWidth={2} />
           <span>Sign Out</span>
         </button>
-        
-        <div style={{
-          marginTop: 24,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 4,
-          color: 'var(--text-muted)',
-          fontSize: 10,
-          fontFamily: 'var(--mono)',
-          opacity: 0.6
-        }}>
-          <div>UI: {import.meta.env.VITE_APP_VERSION || 'local'}</div>
-          <div>API: {backendVersion}</div>
-        </div>
       </div>
     </aside>
   )

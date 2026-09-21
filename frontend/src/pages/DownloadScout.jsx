@@ -222,15 +222,15 @@ export default function DownloadScout() {
   });
   const provisionableUsers = provUsersData || [];
 
-  // Dynamic Release Info from Authoritative DB Registry (Defaults match exact v2.9.0 build)
+  // Dynamic Release Info from Authoritative DB Registry (Defaults match exact v2.9.2 build)
   const [releaseInfo, setReleaseInfo] = useState({
-    version: '2.9.0',
+    version: '2.9.2',
     extractor_version: '4.6.0',
-    download_url: '/download/scout/windows',
-    size_bytes: 50374088,
-    sha256: '9648e09067ce86925ce720205033cfec713d6a7f6f11a9536ad87966903de345',
+    download_url: 'https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe',
+    size_bytes: 50857262,
+    sha256: '0d1db513f0008516fcd187c2417c13c5dcbac7fe487fddb443e4df11185c06d9',
     channel: 'stable',
-    released_at: '2026-09-19',
+    released_at: '2026-09-22',
   });
 
   useEffect(() => {

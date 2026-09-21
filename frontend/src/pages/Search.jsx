@@ -1243,10 +1243,10 @@ export default function AISearch() {
               >
                 <div>
                   <div style={{ fontSize: 11, fontWeight: 800, color: '#e4e4e7', letterSpacing: '0.04em' }}>
-                    ✦ AI SEMANTIC MATCH: {selected?.trust_score || 94}%
+                    PROFILE MATCH: {selected?.trust_score || 94}%
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
-                    Career Velocity: <span style={{ color: '#10b981', fontWeight: 700 }}>High Acceleration</span>
+                    Career Progression: <span style={{ color: '#10b981', fontWeight: 700 }}>Accelerated</span>
                   </div>
                 </div>
                 <button
@@ -1292,7 +1292,7 @@ export default function AISearch() {
                     gap: 6
                   }}
                 >
-                  <span>✦</span>
+                  <i className="ti ti-user-check" />
                   <span>Dossier Workspace</span>
                 </button>
                 <button

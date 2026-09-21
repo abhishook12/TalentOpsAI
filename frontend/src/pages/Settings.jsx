@@ -146,7 +146,7 @@ export default function Settings() {
     { id: 'security', label: 'Privacy & Security' },
     { id: 'integrations', label: 'API & Integrations' },
     { id: 'extension', label: 'TalentOps Scout Desktop' },
-    { id: 'ai_governance', label: '✦ Autonomy & Governance' },
+    { id: 'ai_governance', label: 'Autonomy & Governance' },
   ];
 
   return (

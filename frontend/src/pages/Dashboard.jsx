@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
-import { toast } from 'react-hot-toast'
+import { useMemo, useState, useCallback, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useAuth } from '../context/AuthContext'
@@ -17,17 +16,8 @@ import {
 } from '../components/CommandCenter'
 import USHeatmap from '../components/USHeatmap'
 import { CompanyIdentity } from '../components/CompanyIdentity'
-import AIInsights from '../components/AIInsights'
-import EnrichmentLiveFeed from '../components/EnrichmentLiveFeed'
-import EnricherControlPanel from '../components/EnricherControlPanel'
-import LiveIngestionPipeline from '../components/LiveIngestionPipeline'
 import { Skeleton, SkeletonRow } from '../components/ui/Skeleton'
 import AnimatedNumber from '../components/ui/AnimatedNumber'
-import AICommandCenter from '../components/ai/AICommandCenter'
-import IntelligenceFeed from '../components/ai/IntelligenceFeed'
-import AIDataDoctor from '../components/ai/AIDataDoctor'
-import KnowledgeGraphView from '../components/ai/KnowledgeGraphView'
-import PersonIntelligenceWorkspace from '../components/ai/PersonIntelligenceWorkspace'
 
 const REFRESH_INTERVAL = 60_000 // 60 seconds
 
@@ -68,7 +58,6 @@ export default function Dashboard() {
   const queryClient = useQueryClient()
   const [lastUpdated, setLastUpdated] = useState(() => new Date())
   const [refreshError, setRefreshError] = useState(null)
-  const [selectedPerson, setSelectedPerson] = useState(null)
   const isManualRefreshing = useRef(false)
 
   const sharedQueryOpts = {
@@ -146,59 +135,38 @@ export default function Dashboard() {
 
   const metrics = useMemo(() => {
     const newPeopleToday = ingestionData?.metrics_today?.new_people_created || 0
-    let totalPeople = 437933
-    if (typeof dashboardData?.recruiters?.total === 'number' && dashboardData.recruiters.total > 0) {
-      totalPeople = dashboardData.recruiters.total
-    } else if (typeof dataQuality?.total_recruiters === 'number' && dataQuality.total_recruiters > 0) {
-      totalPeople = dataQuality.total_recruiters
-    }
-    // Hard Rule: Canonical DB count dynamically and visibly incorporates all newly created candidates
-    if (newPeopleToday > 0 && totalPeople < 437933 + newPeopleToday) {
-      totalPeople = Math.max(totalPeople, 437933 + newPeopleToday)
-    }
+    const enrichedToday = ingestionData?.metrics_today?.existing_people_enriched || 0
+    const needsReview = dataQuality?.needs_review_count || 0
 
-    const pendingQueue = typeof ingestionData?.metrics_today?.staging_records === 'number'
-      ? ingestionData.metrics_today.staging_records
-      : 0
+    let totalPeople = dashboardData?.recruiters?.total || dataQuality?.total_recruiters || 0
+    if (newPeopleToday > 0 && totalPeople > 0) {
+      totalPeople = Math.max(totalPeople, totalPeople + newPeopleToday)
+    }
 
     return [
       {
-        label: 'Master DB: Total People',
+        label: 'Total Talent Profiles',
         value: <AnimatedNumber value={totalPeople} />,
-        sublabel: `Canonical DB count (+${newPeopleToday} new today)`,
+        sublabel: newPeopleToday > 0 ? `+${newPeopleToday} added today` : 'Verified candidate records',
         icon: 'ti-users',
         tone: 'neutral',
       },
       {
-        label: 'Enriched Today (Master)',
-        value: typeof ingestionData?.metrics_today?.existing_people_enriched === 'number' ? `+${ingestionData.metrics_today.existing_people_enriched}` : '+0',
-        sublabel: `+${ingestionData?.metrics_today?.fields_added || 0} fields added today`,
+        label: 'Added & Enriched Today',
+        value: `+${newPeopleToday + enrichedToday}`,
+        sublabel: `${ingestionData?.metrics_today?.fields_added || 0} fields updated today`,
         icon: 'ti-sparkles',
         tone: 'success',
       },
       {
-        label: 'Scraper Ingested Today',
-        value: typeof ingestionData?.metrics_today?.raw_observations_received === 'number' ? <AnimatedNumber value={ingestionData.metrics_today.raw_observations_received} /> : '0',
-        sublabel: `${ingestionData?.metrics_today?.useful_discoveries || 0} validated discoveries`,
-        icon: 'ti-radar',
-        tone: 'neutral',
-      },
-      {
-        label: 'Staging & Batch Queue',
-        value: <AnimatedNumber value={pendingQueue} />,
-        sublabel: pendingQueue === 0 ? 'All batches committed to DB' : `${pendingQueue} pending batch intelligence`,
-        icon: 'ti-layers-linked',
-        tone: pendingQueue > 0 ? 'warning' : 'neutral',
-      },
-      {
-        label: 'Search Queries',
-        value: typeof visits?.searches_today === 'number' ? <AnimatedNumber value={visits.searches_today} /> : '—',
-        sublabel: 'User search traffic (distinct from scraper)',
-        icon: 'ti-search',
-        tone: 'neutral',
+        label: 'Records Needing Review',
+        value: <AnimatedNumber value={needsReview} />,
+        sublabel: needsReview === 0 ? 'Review queue clear' : `${needsReview} records flagged for verification`,
+        icon: 'ti-alert-triangle',
+        tone: needsReview > 0 ? 'warning' : 'neutral',
       },
     ]
-  }, [dataQuality, visits, ingestionData, dashboardData])
+  }, [dataQuality, ingestionData, dashboardData])
 
   const dataHealth = [
     { label: 'Overall Quality Score', value: dataQuality?.quality_score, tone: dataQuality?.quality_score > 70 ? 'success' : (dataQuality?.quality_score > 40 ? 'warning' : 'danger') },
@@ -219,9 +187,8 @@ export default function Dashboard() {
   return (
     <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
       <SectionHeader
-        eyebrow="Operational Overview"
-        title="Command Center Dashboard"
-        subtitle="Recruiter operations and intelligence workspace overview."
+        title="Operations"
+        subtitle="Talent database status, pipeline activity, and data health."
         action={(
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--mono)', marginRight: 4 }}>
@@ -243,7 +210,7 @@ export default function Dashboard() {
               <i className="ti ti-refresh" style={isFetchingAny ? { animation: 'spin 0.8s linear infinite', display: 'inline-block' } : {}} /> Refresh Data
             </GhostButton>
             <PrimaryButton onClick={() => navigate({ to: '/search' })}>
-              <i className="ti ti-sparkles" /> Open Search
+              <i className="ti ti-search" /> Open Search
             </PrimaryButton>
           </div>
         )}
@@ -262,19 +229,6 @@ export default function Dashboard() {
           <div style={{ color: 'var(--danger)', fontSize: 13, fontWeight: 700 }}>{getErrorMessage(isError, 'Failed to load dashboard data')}</div>
         </ShellCard>
       )}
-
-      <AIInsights />
-
-      {/* ── Pillar 1: Enterprise Natural-Language AI Command Center ── */}
-      <div style={{ marginTop: '8px', marginBottom: '8px' }}>
-        <AICommandCenter onSelectCandidate={(cand) => setSelectedPerson(cand)} />
-      </div>
-
-      {/* ── Pillars 4 & 6: Proactive Intelligence Feed & Autonomous Data Doctor ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 12, marginTop: '8px', marginBottom: '8px' }}>
-        <IntelligenceFeed onTriggerAction={(item) => toast.success(`Action: ${item.action_label}`)} />
-        <AIDataDoctor />
-      </div>
 
       {dataQuality?.total_recruiters === 0 ? (
         <div style={{
@@ -303,7 +257,7 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
             {metrics.map((metric) => (
               <MetricCard
                 key={metric.label}
@@ -318,20 +272,9 @@ export default function Dashboard() {
             <USHeatmap />
           </div>
 
-          {/* Dedicated Live Scraper & Enrichment Ingestion Pipeline Panel */}
-          <div style={{ marginTop: '4px', marginBottom: '8px' }}>
-            <LiveIngestionPipeline />
-          </div>
-
-          {/* ── Pillar 10: Interactive Entity Knowledge Graph ── */}
-          <div style={{ marginTop: '8px', marginBottom: '8px' }}>
-            <KnowledgeGraphView />
-          </div>
-
       <div style={{ display: 'grid', gridTemplateColumns: '1.35fr 0.95fr', gap: 12, minHeight: 0 }}>
         <ShellCard style={{ padding: 18, minHeight: 0 }}>
           <SectionHeader
-            eyebrow="Health"
             title="Data Integrity Health"
             subtitle="Quality metrics, platform signals, and operational alerts from the live backend."
             action={<Badge tone={dataQuality?.needs_review_count > 0 ? 'warning' : 'success'}>Overall: {dataQuality?.needs_review_count > 0 ? 'Attention' : 'Excellent'}</Badge>}
@@ -352,9 +295,8 @@ export default function Dashboard() {
 
         <ShellCard style={{ padding: 18, minHeight: 0 }}>
           <SectionHeader
-            eyebrow="Alerts"
             title="System Alerts"
-            subtitle="Operational warnings are surfaced here, but nothing is hardcoded as fake status."
+            subtitle="Active system alerts and data validation notifications."
           />
           <div style={{ display: 'grid', gap: 12 }}>
             {alertItems.map((item) => (
@@ -369,7 +311,6 @@ export default function Dashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr 0.9fr', gap: 12, minHeight: 0 }}>
         <ShellCard style={{ padding: 18, minHeight: 0 }}>
           <SectionHeader
-            eyebrow="Search Logs"
             title="Top Companies"
             subtitle="Companies ranked by recruiter coverage."
           />
@@ -438,7 +379,6 @@ export default function Dashboard() {
 
         <ShellCard style={{ padding: 18, minHeight: 0 }}>
           <SectionHeader
-            eyebrow="Traffic"
             title="Top Pages"
             subtitle="Page visitation distribution."
             action={<Badge tone="neutral">{visitsLoading && !visits ? <Skeleton width="50px" height="12px" /> : `${formatCount(totalPages)} views`}</Badge>}
@@ -470,20 +410,7 @@ export default function Dashboard() {
           )}
         </ShellCard>
       </div>
-      <div style={{ marginTop: 12 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12, marginBottom: 12 }}>
-          <EnricherControlPanel />
-        </div>
-        <EnrichmentLiveFeed />
-      </div>
       </>
-      )}
-
-      {selectedPerson && (
-        <PersonIntelligenceWorkspace
-          person={selectedPerson}
-          onClose={() => setSelectedPerson(null)}
-        />
       )}
 
     </div>

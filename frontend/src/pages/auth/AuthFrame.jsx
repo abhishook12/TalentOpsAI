@@ -161,8 +161,7 @@ const shellStyles = `
   }
 
   .auth-form-container.is-authenticating {
-    opacity: 0;
-    transform: translateY(10px);
+    opacity: 0.95;
     pointer-events: none;
   }
 

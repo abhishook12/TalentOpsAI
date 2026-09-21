@@ -119,24 +119,14 @@ export default function Sidebar() {
               boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3)'
             }} 
           />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <div style={{
-              fontSize: 18,
-              fontWeight: 700,
-              lineHeight: 1.1,
-              letterSpacing: '-0.02em',
-              color: 'var(--text-primary)',
-            }}>
-              TalentOps
-            </div>
-            <div style={{ 
-              fontSize: 9, 
-              fontWeight: 600, 
-              letterSpacing: '0.22em', 
-              color: 'var(--text-muted)' 
-            }}>
-              SCOUT
-            </div>
+          <div style={{
+            fontSize: 18,
+            fontWeight: 700,
+            lineHeight: 1.1,
+            letterSpacing: '-0.02em',
+            color: 'var(--text-primary)',
+          }}>
+            TalentOps
           </div>
         </NavLink>
 

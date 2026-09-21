@@ -1,15 +1,64 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { User, Shield, Key, Mail, Calendar, MapPin, Building, Smartphone, LogOut, Link, Activity, Clock } from 'lucide-react'
-import api, { API as API_BASE_URL } from '../services/api'
+import { User, Shield, Key, Mail, Calendar, MapPin, Building, Smartphone, LogOut, Link, Activity, Clock, Camera, UploadCloud, Trash2, Loader2 } from 'lucide-react'
+import api, { API as API_BASE_URL, getErrorMessage } from '../services/api'
+import toast from 'react-hot-toast'
 import ConnectOutlookModal from '../components/ConnectOutlookModal'
 
 export default function Profile() {
-  const { user, logout } = useAuth()
+  const { user, logout, updateUser } = useAuth()
   const [bridgeStatus, setBridgeStatus] = useState(null)
   const [loadingBridge, setLoadingBridge] = useState(true)
   const [bridgeError, setBridgeError] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const fileInputRef = useRef(null)
+
+  const handleFileSelected = async (file) => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file (.jpg, .png, .webp, etc.)')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image size must be under 10MB')
+      return
+    }
+
+    setUploadingAvatar(true)
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      const res = await api.post('/auth/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      if (res.data?.avatar_url) {
+        if (updateUser) updateUser({ avatar_url: res.data.avatar_url })
+        toast.success('Profile photo updated successfully!')
+      }
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to upload photo'))
+    } finally {
+      setUploadingAvatar(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const handleRemovePhoto = async () => {
+    if (!window.confirm('Remove profile photo and revert to initials?')) return
+    setUploadingAvatar(true)
+    try {
+      await api.delete('/auth/avatar')
+      if (updateUser) updateUser({ avatar_url: null })
+      toast.success('Profile photo removed')
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to remove photo'))
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
 
   const fetchBridgeStatus = async () => {
     setBridgeError(false)
@@ -71,13 +120,156 @@ export default function Profile() {
           textAlign: 'center',
           backdropFilter: 'blur(12px)'
         }}>
-          <div style={{
-            width: 100, height: 100, borderRadius: 50, background: 'linear-gradient(135deg, #d8d8d8, #8c8c8c)',
-            margin: '0 auto 20px', display: 'grid', placeItems: 'center', color: '#111', fontSize: 40, fontWeight: 800,
-            backgroundImage: user.avatar_url ? "url(" + user.avatar_url + ")" : 'none',
-            backgroundSize: 'cover'
-          }}>
-            {!user.avatar_url && user.first_name?.[0]}
+          {/* Avatar Upload Container */}
+          <div style={{ position: 'relative', width: 104, height: 104, margin: '0 auto 16px' }}>
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                if (e.dataTransfer.files?.[0]) handleFileSelected(e.dataTransfer.files[0]);
+              }}
+              style={{
+                width: 104,
+                height: 104,
+                borderRadius: '50%',
+                border: isDragging ? '2px dashed #10b981' : '2px solid var(--card-border, #3f3f46)',
+                margin: '0 auto',
+                display: 'grid',
+                placeItems: 'center',
+                color: '#111',
+                fontSize: 40,
+                fontWeight: 800,
+                background: user.avatar_url ? `url(${user.avatar_url}) center/cover no-repeat` : 'linear-gradient(135deg, #d8d8d8, #8c8c8c)',
+                cursor: 'pointer',
+                position: 'relative',
+                overflow: 'hidden',
+                transition: 'all 0.2s ease',
+                boxShadow: isDragging ? '0 0 16px rgba(16, 185, 129, 0.3)' : '0 4px 16px rgba(0,0,0,0.2)'
+              }}
+              title="Click or drag photo here to upload from PC"
+            >
+              {!user.avatar_url && user.first_name?.[0]}
+
+              {/* Hover / Loading Overlay */}
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'rgba(0, 0, 0, 0.6)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#ffffff',
+                  opacity: uploadingAvatar ? 1 : 0,
+                  transition: 'opacity 0.2s ease',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  gap: 4
+                }}
+                onMouseEnter={(e) => { if (!uploadingAvatar) e.currentTarget.style.opacity = '1'; }}
+                onMouseLeave={(e) => { if (!uploadingAvatar) e.currentTarget.style.opacity = '0'; }}
+              >
+                {uploadingAvatar ? (
+                  <>
+                    <Loader2 size={20} className="animate-spin" />
+                    <span>Uploading...</span>
+                  </>
+                ) : (
+                  <>
+                    <Camera size={20} />
+                    <span>Change</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Camera badge icon */}
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                position: 'absolute',
+                bottom: 2,
+                right: 2,
+                width: 28,
+                height: 28,
+                borderRadius: '50%',
+                background: 'var(--brand, #10b981)',
+                color: '#000',
+                display: 'grid',
+                placeItems: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
+                border: '2px solid #18181b'
+              }}
+              title="Upload photo from PC"
+            >
+              <Camera size={14} strokeWidth={2.5} />
+            </div>
+          </div>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              if (e.target.files?.[0]) handleFileSelected(e.target.files[0]);
+            }}
+          />
+
+          {/* Action Buttons for Avatar */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 20 }}>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              style={{
+                padding: '6px 12px',
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 600,
+                background: 'var(--bg-surface, #1e1e24)',
+                border: '1px solid var(--card-border, #3f3f46)',
+                color: 'var(--text-primary, #f4f4f5)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                transition: 'all 0.15s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg-surface, #1e1e24)'}
+            >
+              <UploadCloud size={14} /> Upload from PC
+            </button>
+            {user.avatar_url && (
+              <button
+                onClick={handleRemovePhoto}
+                disabled={uploadingAvatar}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background: 'rgba(239, 68, 68, 0.08)',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  color: '#ef4444',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  transition: 'all 0.15s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)'}
+                title="Remove custom photo"
+              >
+                <Trash2 size={13} />
+              </button>
+            )}
           </div>
           
           <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>{user.first_name} {user.last_name}</h2>

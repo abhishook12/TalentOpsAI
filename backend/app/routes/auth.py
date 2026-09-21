@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Response, Request, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request, BackgroundTasks, UploadFile, File
 from typing import Optional, List, Dict, Any, Union
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -11,8 +11,9 @@ from collections import defaultdict, deque
 
 from ..database import get_db
 from ..models.auth_models import User, Session as DBSession, Role, LoginHistory, PasswordResetToken, EmailVerificationToken, TrustedDevice
-from ..services.auth_service import get_password_hash, verify_password, create_access_token, create_refresh_token, get_current_user_from_request, require_role
+from ..services.auth_service import get_password_hash, verify_password, create_access_token, create_refresh_token, get_current_user_from_request, require_role, invalidate_user_sessions_cache
 from ..services.email_service import send_verification_email, send_password_reset_email
+from ..services.image_service import process_avatar_bytes, process_avatar_data_uri_or_bytes
 from pydantic import BaseModel, EmailStr
 from ..config import JWT_SECRET, ADMIN_PASSWORD, APP_PASSWORD, IS_PRODUCTION, DEV_AUTO_VERIFY
 from ..models.models import ActionLog
@@ -763,6 +764,87 @@ def get_me(request: Request, db: Session = Depends(get_db)):
             except Exception:
                 pass
         return {"authenticated": False}
+    except Exception:
+        return {"authenticated": False}
+
+
+@router.post("/avatar")
+async def upload_avatar(
+    request: Request,
+    file: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Upload or update avatar for current user.
+    Supports native multipart file upload from PC, or JSON body containing avatar_data / avatar_url.
+    """
+    user = get_current_user_from_request(request, db)
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    data_uri = None
+    if file:
+        try:
+            content = await file.read()
+            if content:
+                data_uri = process_avatar_bytes(content)
+        except ValueError as ve:
+            raise HTTPException(status_code=400, detail=str(ve))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to process image: {e}")
+    
+    if not data_uri:
+        # Check for JSON payload
+        try:
+            body = await request.json()
+            raw = body.get("avatar_data") or body.get("avatar_url")
+            if raw:
+                data_uri = process_avatar_data_uri_or_bytes(raw)
+        except Exception:
+            pass
+
+    if not data_uri:
+        raise HTTPException(status_code=400, detail="No valid image file or image data provided")
+
+    user.avatar_url = data_uri
+    db.commit()
+    db.refresh(user)
+    invalidate_user_sessions_cache(user.id)
+
+    return {
+        "success": True,
+        "avatar_url": user.avatar_url,
+        "message": "Profile photo updated successfully",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "avatar_url": user.avatar_url,
+        }
+    }
+
+
+@router.delete("/avatar")
+def remove_avatar(request: Request, db: Session = Depends(get_db)):
+    """
+    Remove current user's profile photo.
+    """
+    user = get_current_user_from_request(request, db)
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    user.avatar_url = None
+    db.commit()
+    db.refresh(user)
+    invalidate_user_sessions_cache(user.id)
+
+    return {
+        "success": True,
+        "avatar_url": None,
+        "message": "Profile photo removed successfully",
+    }
+
 
 # Add old admin login endpoint to preserve frontend UI until we swap it out
 class LegacyLoginRequest(BaseModel):

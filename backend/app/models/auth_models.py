@@ -58,7 +58,7 @@ class User(Base):
     password_hash = Column(String(255), nullable=True) # Changed for OAuth
     auth_provider = Column(String(50), default='local')
     provider_id = Column(String(255), nullable=True, index=True)
-    avatar_url = Column(String(500), nullable=True)
+    avatar_url = Column(Text, nullable=True)
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
     company = Column(String(255), nullable=True)

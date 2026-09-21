@@ -1,6 +1,7 @@
 import { toast } from 'react-hot-toast'
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import api, { getErrorMessage } from '../../services/api';
+import { UploadCloud, Camera, Trash2, Loader2 } from 'lucide-react';
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -22,10 +23,52 @@ export default function UserManagement() {
   const [userDetailLoading, setUserDetailLoading] = useState(false);
   const [userSessions, setUserSessions] = useState([]);
   const [userHistory, setUserHistory] = useState([]);
+  const [uploadingAvatarId, setUploadingAvatarId] = useState(null);
+  const adminFileInputRef = useRef(null);
   
   // Modals / Overlays
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newUser, setNewUser] = useState({ email: '', first_name: '', last_name: '', role_name: 'user', company: '' });
+
+  const handleAdminAvatarUpload = async (userId, file) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select a valid image file (.jpg, .png, .webp)');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', file);
+    setUploadingAvatarId(userId);
+    try {
+      const res = await api.post(`/users/${userId}/avatar`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      const newAvatar = res.data.avatar_url;
+      setSelectedUserDetail(prev => prev ? { ...prev, avatar_url: newAvatar } : null);
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, avatar_url: newAvatar } : u));
+      toast.success('User photo updated successfully!');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to upload user photo'));
+    } finally {
+      setUploadingAvatarId(null);
+      if (adminFileInputRef.current) adminFileInputRef.current.value = '';
+    }
+  };
+
+  const handleAdminRemoveAvatar = async (userId) => {
+    if (!window.confirm('Remove photo for this user?')) return;
+    setUploadingAvatarId(userId);
+    try {
+      await api.delete(`/users/${userId}/avatar`);
+      setSelectedUserDetail(prev => prev ? { ...prev, avatar_url: null } : null);
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, avatar_url: null } : u));
+      toast.success('User photo removed');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to remove user photo'));
+    } finally {
+      setUploadingAvatarId(null);
+    }
+  };
 
   const loadAnalytics = useCallback(async () => {
     try {
@@ -259,8 +302,28 @@ export default function UserManagement() {
                       <input type="checkbox" checked={selectedUsers.includes(user.id)} onChange={() => toggleSelection(user.id)} />
                     </td>
                     <td style={{ padding: '16px' }}>
-                      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{user.first_name} {user.last_name}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{user.email}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        {user.avatar_url ? (
+                          <img
+                            src={user.avatar_url}
+                            alt="User avatar"
+                            style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--card-border, #27272a)', flexShrink: 0 }}
+                          />
+                        ) : (
+                          <div style={{
+                            width: 34, height: 34, borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #d4d4d8, var(--brand, #10b981))',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontWeight: 700, fontSize: 13, color: '#000', flexShrink: 0
+                          }}>
+                            {user.first_name?.[0] || 'U'}
+                          </div>
+                        )}
+                        <div>
+                          <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{user.first_name} {user.last_name}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{user.email}</div>
+                        </div>
+                      </div>
                     </td>
                     <td style={{ padding: '16px', color: 'var(--text-secondary)' }}>{user.company || '-'}</td>
                     <td style={{ padding: '16px' }} onClick={(e) => e.stopPropagation()}>
@@ -316,9 +379,78 @@ export default function UserManagement() {
             
             <div style={{ padding: 20, overflowY: 'auto', flex: 1 }}>
               <div style={{ textAlign: 'center', marginBottom: 24 }}>
-                <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'linear-gradient(135deg, #d4d4d8, var(--brand))', margin: '0 auto 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 800, color: 'var(--text-primary)' }}>
-                  {selectedUserDetail.first_name[0]}{selectedUserDetail.last_name[0]}
+                <div style={{ position: 'relative', width: 84, height: 84, margin: '0 auto 12px' }}>
+                  {selectedUserDetail.avatar_url ? (
+                    <img
+                      src={selectedUserDetail.avatar_url}
+                      alt="User avatar"
+                      style={{
+                        width: 84, height: 84, borderRadius: '50%', objectFit: 'cover',
+                        border: '2px solid var(--card-border, #3f3f46)', boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                      }}
+                    />
+                  ) : (
+                    <div style={{
+                      width: 84, height: 84, borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #d4d4d8, var(--brand, #10b981))',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 30, fontWeight: 800, color: '#000',
+                      border: '2px solid var(--card-border, #3f3f46)'
+                    }}>
+                      {selectedUserDetail.first_name?.[0]}{selectedUserDetail.last_name?.[0]}
+                    </div>
+                  )}
+
+                  {uploadingAvatarId === selectedUserDetail.id && (
+                    <div style={{
+                      position: 'absolute', inset: 0, borderRadius: '50%',
+                      background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      <Loader2 size={24} className="animate-spin" color="#fff" />
+                    </div>
+                  )}
                 </div>
+
+                {/* Upload from PC & Remove controls for admin */}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 12 }}>
+                  <button
+                    onClick={() => adminFileInputRef.current?.click()}
+                    disabled={uploadingAvatarId === selectedUserDetail.id}
+                    style={{
+                      padding: '5px 12px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                      background: 'var(--bg-surface, #18181b)', border: '1px solid var(--card-border, #3f3f46)',
+                      color: 'var(--text-primary, #f4f4f5)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
+                    }}
+                    title="Upload photo for this user from your PC"
+                  >
+                    <UploadCloud size={13} /> Upload Photo from PC
+                  </button>
+                  {selectedUserDetail.avatar_url && (
+                    <button
+                      onClick={() => handleAdminRemoveAvatar(selectedUserDetail.id)}
+                      disabled={uploadingAvatarId === selectedUserDetail.id}
+                      style={{
+                        padding: '5px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                        background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)',
+                        color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
+                      }}
+                      title="Remove user photo"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  )}
+                </div>
+
+                <input
+                  ref={adminFileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    if (e.target.files?.[0]) handleAdminAvatarUpload(selectedUserDetail.id, e.target.files[0]);
+                  }}
+                />
+
                 <h3 style={{ margin: '0 0 4px', fontSize: 20 }}>{selectedUserDetail.first_name} {selectedUserDetail.last_name}</h3>
                 <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>{selectedUserDetail.email}</div>
               </div>

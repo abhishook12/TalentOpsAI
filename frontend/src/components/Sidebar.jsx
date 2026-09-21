@@ -213,15 +213,32 @@ export default function Sidebar() {
         flexShrink: 0,
       }}>
         {user && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+          <NavLink
+            to="/profile"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              marginBottom: 18,
+              padding: '6px 8px',
+              marginLeft: -8,
+              marginRight: -8,
+              borderRadius: 8,
+              textDecoration: 'none',
+              transition: 'background 0.15s ease',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--panel-bg, rgba(255,255,255,0.04))'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+            title="View & Edit Profile"
+          >
             {user.avatar_url ? (
-              <img src={user.avatar_url} alt="User Avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+              <img src={user.avatar_url} alt="User Avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--card-border, #27272a)' }} />
             ) : (
               <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--card-border)', display: 'grid', placeItems: 'center', color: 'var(--text-primary)', fontWeight: 600, fontSize: 12 }}>
                 {user.first_name?.[0]}
               </div>
             )}
-            <div style={{ minWidth: 0 }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {user.first_name} {user.last_name}
               </div>
@@ -229,7 +246,7 @@ export default function Sidebar() {
                 {user.email}
               </div>
             </div>
-          </div>
+          </NavLink>
         )}
 
         <button

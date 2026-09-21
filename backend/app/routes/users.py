@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Body, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, Request, UploadFile, File
 from sqlalchemy.orm import Session
 from sqlalchemy import text, func
 from typing import List, Optional, Dict, Any
@@ -7,7 +7,8 @@ from datetime import datetime, timedelta, timezone
 
 from ..database import get_db
 from ..models.auth_models import User, Role, Session as DBSession, LoginHistory
-from ..services.auth_service import require_role, get_password_hash, log_audit, get_current_user_from_request
+from ..services.auth_service import require_role, get_password_hash, log_audit, get_current_user_from_request, invalidate_user_sessions_cache
+from ..services.image_service import process_avatar_bytes, process_avatar_data_uri_or_bytes
 
 router = APIRouter()
 
@@ -75,6 +76,7 @@ def get_users(
                 "role_name": u.role.name if u.role else "user",
                 "auth_provider": getattr(u, 'auth_provider', 'local'),
                 "status": u.status,
+                "avatar_url": u.avatar_url,
                 "created_at": u.created_at,
             }
             for u in users
@@ -103,6 +105,7 @@ def get_user(
         "country": u.country,
         "role_name": u.role.name if u.role else "user",
         "status": u.status,
+        "avatar_url": u.avatar_url,
         "created_at": u.created_at,
     }
 
@@ -345,4 +348,85 @@ def bulk_user_action(
     db.commit()
     log_audit(db, admin.id, f"Bulk action {action} on {len(users)} users", new_value=str(value))
     return {"status": "success", "updated": count}
+
+
+@router.post("/{user_id}/avatar")
+async def update_user_avatar(
+    user_id: int,
+    request: Request,
+    file: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_role(["superadmin", "admin"]))
+):
+    """
+    Upload or update avatar photo for a specific user.
+    Admin endpoint allowing direct photo upload from PC or base64 JSON payload.
+    """
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    data_uri = None
+    if file:
+        try:
+            content = await file.read()
+            if content:
+                data_uri = process_avatar_bytes(content)
+        except ValueError as ve:
+            raise HTTPException(status_code=400, detail=str(ve))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to process image: {e}")
+
+    if not data_uri:
+        try:
+            body = await request.json()
+            raw = body.get("avatar_data") or body.get("avatar_url")
+            if raw:
+                data_uri = process_avatar_data_uri_or_bytes(raw)
+        except Exception:
+            pass
+
+    if not data_uri:
+        raise HTTPException(status_code=400, detail="No valid image file or image data provided")
+
+    target_user.avatar_url = data_uri
+    db.commit()
+    db.refresh(target_user)
+    invalidate_user_sessions_cache(target_user.id)
+    log_audit(db, admin.id, f"Updated avatar photo for user {target_user.email} (ID {target_user.id})")
+
+    return {
+        "success": True,
+        "user_id": target_user.id,
+        "avatar_url": target_user.avatar_url,
+        "message": "User profile photo updated successfully"
+    }
+
+
+@router.delete("/{user_id}/avatar")
+def remove_user_avatar(
+    user_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_role(["superadmin", "admin"]))
+):
+    """
+    Remove avatar photo for a specific user.
+    """
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    target_user.avatar_url = None
+    db.commit()
+    db.refresh(target_user)
+    invalidate_user_sessions_cache(target_user.id)
+    log_audit(db, admin.id, f"Removed avatar photo for user {target_user.email} (ID {target_user.id})")
+
+    return {
+        "success": True,
+        "user_id": target_user.id,
+        "avatar_url": None,
+        "message": "User profile photo removed successfully"
+    }
+
 

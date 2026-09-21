@@ -18,7 +18,9 @@ export const AuthProvider = ({ children }) => {
                         id: parsed.id || 'cached',
                         email: parsed.email,
                         first_name: parsed.first_name || (isAdmin ? 'Abhishek' : parsed.email.split('@')[0]),
-                        role: parsed.role || (isAdmin ? 'superadmin' : 'user')
+                        last_name: parsed.last_name || '',
+                        role: parsed.role || (isAdmin ? 'superadmin' : 'user'),
+                        avatar_url: parsed.avatar_url || null
                     };
                 }
             }
@@ -66,7 +68,14 @@ export const AuthProvider = ({ children }) => {
                 if (response.data.authenticated) {
                     if (response.data.user) {
                         setUser(response.data.user);
-                        localStorage.setItem('auth_session', JSON.stringify({ email: response.data.user.email || null, id: response.data.user.id, role: response.data.user.role, first_name: response.data.user.first_name }));
+                        localStorage.setItem('auth_session', JSON.stringify({
+                            email: response.data.user.email || null,
+                            id: response.data.user.id,
+                            role: response.data.user.role,
+                            first_name: response.data.user.first_name,
+                            last_name: response.data.user.last_name,
+                            avatar_url: response.data.user.avatar_url,
+                        }));
                     } else if (response.data.role === 'admin' || response.data.role === 'superadmin') {
                         setUser({ id: 'admin', role: 'superadmin', first_name: 'Abhishek', email: 'abhishekjadon824@gmail.com' });
                         localStorage.setItem('auth_session', JSON.stringify({ email: 'abhishekjadon824@gmail.com', role: 'superadmin', first_name: 'Abhishek' }));
@@ -180,8 +189,27 @@ export const AuthProvider = ({ children }) => {
             setStoredRefreshToken(response.data.refresh_token);
         }
         setUser(response.data.user);
-        localStorage.setItem('auth_session', JSON.stringify({ email: response.data.user?.email || null }));
+        localStorage.setItem('auth_session', JSON.stringify({
+            email: response.data.user?.email || null,
+            id: response.data.user?.id,
+            role: response.data.user?.role,
+            first_name: response.data.user?.first_name,
+            last_name: response.data.user?.last_name,
+            avatar_url: response.data.user?.avatar_url,
+        }));
         return response.data;
+    };
+
+    const updateUser = (updatedFields) => {
+        setUser(prev => {
+            if (!prev) return prev;
+            const next = { ...prev, ...updatedFields };
+            try {
+                const cached = JSON.parse(localStorage.getItem('auth_session') || '{}');
+                localStorage.setItem('auth_session', JSON.stringify({ ...cached, ...updatedFields }));
+            } catch {}
+            return next;
+        });
     };
 
     const register = async (userData) => {
@@ -221,7 +249,7 @@ export const AuthProvider = ({ children }) => {
     const isAdmin = user?.email?.toLowerCase().trim() === 'abhishekjadon824@gmail.com';
 
     return (
-        <AuthContext.Provider value={{ user, isAdmin, loading, login, googleLogin, logout, register, forgotPassword, resetPassword, verifyEmail, checkAuthStatus }}>
+        <AuthContext.Provider value={{ user, isAdmin, loading, login, googleLogin, logout, register, forgotPassword, resetPassword, verifyEmail, checkAuthStatus, updateUser }}>
             {!loading && children}
         </AuthContext.Provider>
     );

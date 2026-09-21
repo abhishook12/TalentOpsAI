@@ -1,20 +1,5 @@
 # ==============================================================================
-# TalentOpsAI - Multi-Stage Production Container
-# Stage 1: Build React/Vite Frontend
-# Stage 2: Production Python FastAPI + DuckDB Runtime
-# ==============================================================================
-
-FROM node:20-alpine AS frontend-builder
-WORKDIR /app/frontend
-
-COPY frontend/package*.json ./
-RUN npm ci --silent
-
-COPY frontend/ ./
-RUN npm run build
-
-# ==============================================================================
-# Stage 2: Production Backend Runtime
+# TalentOpsAI - Production Backend Container
 # ==============================================================================
 FROM python:3.12-slim AS runner
 
@@ -34,11 +19,10 @@ COPY backend/requirements.txt ./backend/
 RUN pip install --no-cache-dir -r ./backend/requirements.txt
 
 COPY backend/ ./backend/
-COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/ping || exit 1
 
 WORKDIR /app/backend

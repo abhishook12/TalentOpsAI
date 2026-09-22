@@ -1,4 +1,4 @@
-﻿"""
+"""
 extractor/parsers/zoominfo_parser.py — ZoomInfo Layout Parser
 """
 
@@ -11,6 +11,7 @@ from scout_desktop.extractor.patterns import (
     is_valid_person_name,
     clean_company_name,
     is_valid_company_name,
+    classify_semantic_entity,
     clean_location_text,
     is_valid_location,
     is_plausible_title,
@@ -86,11 +87,13 @@ class ZoomInfoParser(BasePlatformParser):
             if name and not title and is_plausible_title(line):
                 title = line
                 continue
-            if name and not company:
+            if name and not company and not is_plausible_title(line):
                 co = clean_company_name(line)
                 if co and is_valid_company_name(co) and co.lower() != "zoominfo":
-                    company = co
-                    continue
+                    se = classify_semantic_entity(co)
+                    if se.get("entity_type") == "COMPANY" and se.get("confidence", 0) >= 0.85:
+                        company = co
+                        continue
 
         for line in lines:
             if not email:

@@ -37,6 +37,7 @@ from .patterns import (
     is_noise_text,
     clean_person_name,
     is_valid_email,
+    classify_semantic_entity,
     EMAIL_REGEX,
     PHONE_REGEX,
 )
@@ -447,18 +448,20 @@ class EntityExtractor:
                     continue
                 if extract_connection_degree(line):
                     continue
-                if is_valid_company_name(line):
-                    cluster.add_observation(Observation(
-                        semantic_type="COMPANY",
-                        subject=target_name,
-                        predicate="WORKS_AT",
-                        object_value=line,
-                        confidence=0.85,
-                        evidence=line,
-                        capture_id=capture_id,
-                        source_url=source_url,
-                    ))
-                    break
+                if is_valid_company_name(line) and not is_plausible_title(line):
+                    se = classify_semantic_entity(line)
+                    if se.get("entity_type") == "COMPANY" and se.get("confidence", 0) >= 0.90:
+                        cluster.add_observation(Observation(
+                            semantic_type="COMPANY",
+                            subject=target_name,
+                            predicate="WORKS_AT",
+                            object_value=line,
+                            confidence=0.85,
+                            evidence=line,
+                            capture_id=capture_id,
+                            source_url=source_url,
+                        ))
+                        break
 
         # Primary Personal Location (Strictly from Header Zone with highest priority)
         if not cluster.location:
@@ -1108,8 +1111,10 @@ class EntityExtractor:
                     company_name = c
                 continue
             if job_title and not company_name and len(line) >= 2 and not is_valid_location(line) and not extract_connection_degree(line):
-                if is_valid_company_name(line):
-                    company_name = line
+                if is_valid_company_name(line) and not is_plausible_title(line):
+                    se = classify_semantic_entity(line)
+                    if se.get("entity_type") == "COMPANY" and se.get("confidence", 0) >= 0.90:
+                        company_name = line
                 continue
             if not job_location and is_valid_location(clean_location_text(line)):
                 job_location = clean_location_text(line)
@@ -1312,18 +1317,20 @@ class EntityExtractor:
                     ))
                 continue
 
-            if cluster.current_title and not cluster.current_company and is_valid_company_name(line):
-                cluster.add_observation(Observation(
-                    semantic_type="PERSON",
-                    subject=candidate_name,
-                    predicate="WORKS_AT",
-                    object_value=line,
-                    confidence=0.90,
-                    evidence=line,
-                    capture_id=capture_id,
-                    source_url=source_url,
-                ))
-                continue
+            if cluster.current_title and not cluster.current_company and is_valid_company_name(line) and not is_plausible_title(line) and not is_valid_location(line):
+                se = classify_semantic_entity(line)
+                if se.get("entity_type") == "COMPANY" and se.get("confidence", 0) >= 0.90:
+                    cluster.add_observation(Observation(
+                        semantic_type="PERSON",
+                        subject=candidate_name,
+                        predicate="WORKS_AT",
+                        object_value=line,
+                        confidence=0.90,
+                        evidence=line,
+                        capture_id=capture_id,
+                        source_url=source_url,
+                    ))
+                    continue
 
             if not cluster.location:
                 loc = clean_location_text(line)

@@ -222,13 +222,13 @@ export default function DownloadScout() {
   });
   const provisionableUsers = provUsersData || [];
 
-  // Dynamic Release Info from Authoritative DB Registry (Defaults match exact v2.9.2 build)
+  // Dynamic Release Info from Authoritative DB Registry (Defaults match exact v2.9.3 build)
   const [releaseInfo, setReleaseInfo] = useState({
-    version: '2.9.2',
-    extractor_version: '4.6.0',
+    version: '2.9.3',
+    extractor_version: '4.6.2',
     download_url: 'https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe',
-    size_bytes: 50857262,
-    sha256: '0d1db513f0008516fcd187c2417c13c5dcbac7fe487fddb443e4df11185c06d9',
+    size_bytes: 50084798,
+    sha256: 'f060e23435a40fc369206b25d97e139295fe39da737361cd30d06e52f32f6cc7',
     channel: 'stable',
     released_at: '2026-09-22',
   });
@@ -731,7 +731,7 @@ export default function DownloadScout() {
                   Download TalentOps Scout Desktop Setup
                 </h2>
                 <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: 14, margin: 0, maxWidth: 780, lineHeight: 1.5 }}>
-                  Autonomous recruiter intelligence companion for Windows. Operates silently in the background with local offline OCR (Extractor v4.5.2), local SQLite buffer queuing, and zero cloud passwords to continuously capture and stage talent across 9 platforms.
+                  Autonomous recruiter intelligence companion for Windows. Operates silently in the background with local offline OCR (Extractor v4.6.2), local SQLite buffer queuing, and zero cloud passwords to continuously capture and stage talent across 9 platforms.
                 </p>
               </div>
 

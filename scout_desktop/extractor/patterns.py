@@ -189,6 +189,99 @@ UI_BADGES_AND_ACTIONS = frozenset({
     "apply now", "easy apply", "apply", "save job",
 })
 
+# Past Employer Prefixes and References (e.g. 'Ex-Google', 'Former VP at Meta')
+PAST_EMPLOYER_PREFIXES = re.compile(
+    r"^(?:ex[-–—\s]|former\s+|previously\s+(?:at\s+)?|past\s+|prior\s+(?:to\s+)?|alumnus\s+(?:of\s+)?|alum\s+(?:of\s+)?)",
+    re.IGNORECASE,
+)
+
+# Career Availability & Transition Statuses (e.g. 'Open to opportunities', 'Available for hire')
+CAREER_STATUS_PATTERN = re.compile(
+    r"\b(?:open\s+to\s+(?:work|opportunities|new\s+roles|roles|offers|relocation|contracts?|projects?)|"
+    r"available\s+for\s+(?:hire|work|opportunities|contracts?|freelance|consulting|new\s+challenges)|"
+    r"available\s+immediately|looking\s+for\s+(?:work|opportunities|new\s+roles|jobs?)|"
+    r"actively\s+(?:looking|seeking|interviewing|hiring|recruiting|open)|"
+    r"seeking\s+(?:new\s+)?(?:opportunities|roles|challenges|positions?|employment|full[- ]time)|"
+    r"career\s+break|on\s+(?:a\s+)?break|sabbatical|between\s+jobs|exploring\s+(?:new\s+)?opportunities|"
+    r"ready\s+to\s+work|in\s+transition|transitioning\s+to|freelancer?|self[- ]employed|independent\s+consultant)\b",
+    re.IGNORECASE,
+)
+
+# Taglines, Mission Slogans & Participle Verb Phrases (e.g. 'Helping startups scale', 'Building AI systems')
+SLOGAN_VERB_PATTERN = re.compile(
+    r"\b(?:helping|building|scaling|empowering|driving|transforming|specializing\s+in|"
+    r"solving|dedicated\s+to|creating|connecting|passionate\s+about|focused\s+on|"
+    r"crafting|designing|architecting|accelerating|advancing|championing|"
+    r"striving\s+to|pioneering|delivering|optimizing|enabling|revolutionizing|"
+    r"bringing\s+to|leading\s+teams?|growing|mentoring|elevating|spearheading)\b",
+    re.IGNORECASE,
+)
+
+# UI Action Phrases, Buttons & Platform Actions (e.g. 'Show credential', 'Provide services', 'Send InMail')
+UI_ACTION_PHRASES = re.compile(
+    r"\b(?:show\s+credential|show\s+all\s+\d+|show\s+all|show\s+more|show\s+less|"
+    r"provide\s+services|request\s+services|see\s+services|services\s+provided|"
+    r"save\s+to\s+(?:project|pdf|pipeline)|save\s+profile|add\s+note|add\s+to\s+project|"
+    r"send\s+inmail|send\s+message|open\s+in\s+sales\s+navigator|view\s+in\s+sales\s+navigator|"
+    r"open\s+in\s+recruiter|view\s+in\s+recruiter|share\s+profile|copy\s+link|"
+    r"report\s+profile|message\s+sent|pending\s+invitation|invitation\s+sent|"
+    r"endorse\s+skills?|give\s+recommendation|request\s+recommendation|"
+    r"see\s+more\s+results|load\s+more|view\s+more|click\s+to\s+(?:view|skip|expand))\b",
+    re.IGNORECASE,
+)
+
+# Languages & Language Proficiency Levels
+LANGUAGE_PROFICIENCY_PATTERN = re.compile(
+    r"\b(?:full\s+professional\s+proficiency|native\s+or\s+bilingual\s+proficiency|"
+    r"professional\s+working\s+proficiency|elementary\s+proficiency|limited\s+working\s+proficiency|"
+    r"working\s+proficiency|native\s+proficiency|bilingual\s+proficiency)\b",
+    re.IGNORECASE,
+)
+STANDALONE_LANGUAGES = frozenset({
+    "english", "spanish", "mandarin", "chinese", "hindi", "arabic", "french",
+    "bengali", "portuguese", "russian", "urdu", "indonesian", "german", "japanese",
+    "marathi", "telugu", "turkish", "tamil", "vietnamese", "tagalog", "korean",
+    "italian", "polish", "ukrainian", "dutch", "greek", "czech", "swedish",
+})
+
+# Academic Honors, Professional Certifications & Credential Badges
+CERTIFICATION_AND_HONORS_PATTERN = re.compile(
+    r"\b(?:certified|certification|certifications|licenses?\s*(&|and)\s*certifications?|"
+    r"aws\s+certified|pmp\s+certified|pmp\b|scrum\s+master|dean's\s+list|magna\s+cum\s+laude|"
+    r"summa\s+cum\s+laude|cum\s+laude|honors?\s*(&|and)\s*awards?|test\s+scores?)\b",
+    re.IGNORECASE,
+)
+
+# Technical Domains, Buzzwords, and Stacks (Multi-word skills that should not be classified as corporate employers)
+TECH_DOMAINS_SET = frozenset({
+    "design systems", "ui/ux", "ui / ux", "ui/ux design", "product design",
+    "user experience", "user interface", "frontend", "front-end", "front end",
+    "backend", "back-end", "back end", "fullstack", "full-stack", "full stack",
+    "devops", "cloud computing", "cloud architecture", "infrastructure",
+    "distributed systems", "microservices", "machine learning", "deep learning",
+    "artificial intelligence", "data science", "data analytics", "data engineering",
+    "cybersecurity", "information security", "network security", "product management",
+    "project management", "agile", "scrum", "kanban", "ci/cd", "ci / cd",
+    "continuous integration", "continuous deployment", "test automation",
+    "quality assurance", "software architecture", "system design", "mobile development",
+    "web development", "embedded systems", "firmware", "database administration",
+    "site reliability engineering", "sre", "business intelligence", "generative ai",
+    "large language models", "llms", "computer vision", "natural language processing", "nlp",
+})
+
+
+def is_tech_skill_combination(text: str) -> bool:
+    """Checks whether a string is a combination of technical skills separated by &, ,, /, |, +."""
+    if not text or not isinstance(text, str):
+        return False
+    parts = [re.sub(r"[^a-zA-Z0-9#+.]", "", p).strip().lower() for p in re.split(r"[,/|&+]|\band\b", text) if p.strip()]
+    if len(parts) >= 2:
+        skill_matches = sum(1 for p in parts if p in COMMON_TECH_SKILLS or p in TECH_DOMAINS_SET)
+        if skill_matches >= 1 and (skill_matches / len(parts)) >= 0.5:
+            return True
+    return False
+
+
 # Corporate Suffixes, Business Markers & Legal Forms
 EXPANDED_CORP_DESIGNATORS = frozenset({
     "inc", "inc.", "llc", "ltd", "ltd.", "corp", "corp.", "corporation",
@@ -432,46 +525,60 @@ def extract_connection_degree(text: Optional[str]) -> Optional[str]:
 
 def clean_title_and_company(headline: Optional[str], raw_company: Optional[str] = None) -> Tuple[Optional[str], Optional[str]]:
     """
-    Decomposes headline into clean title and employer when connected by '@', 'at', '|'.
+    Decomposes headline into clean title and employer when connected by '@', 'at'.
+    Does NOT treat pipe '|' as an employer separator (pipe separates skills, past employers, and taglines).
     Example: 'Senior Talent Partner @ Cyberdyne Systems | AI Engineering'
       -> Title: 'Senior Talent Partner', Company: 'Cyberdyne Systems'
     """
     if not headline:
         return None, raw_company
 
-    title = headline.strip()
-    company = raw_company
+    h = headline.strip()
+    # Split headline into pipe/bullet delimited segments
+    segments = [s.strip() for s in re.split(r"\s*[|•·]\s*", h) if s.strip()]
+    if not segments:
+        return None, raw_company
 
-    # Split on ' @ ' or ' at ' (supporting leading '@ ' when headline is wrapped across lines)
-    if re.search(r"(?:^|\s+)@\s+", title):
-        parts = re.split(r"(?:^|\s+)@\s+", title, maxsplit=1)
-        if not parts[0].strip() and len(parts) > 1:
-            comp_part = parts[1].split("|")[0].split("•")[0].strip()
-            if comp_part and not company:
-                company = comp_part
-            title = None
+    best_title = None
+    best_company = raw_company
+
+    for seg in segments:
+        # Check if segment has explicit '@' or 'at'
+        if re.search(r"(?:^|\s+)@\s+", seg):
+            parts = re.split(r"(?:^|\s+)@\s+", seg, maxsplit=1)
+            t_cand = parts[0].strip()
+            c_cand = parts[1].strip() if len(parts) > 1 else ""
+            if not best_title and t_cand and is_plausible_title(t_cand):
+                best_title = t_cand
+            if not best_company and c_cand:
+                cleaned_c = clean_company_name(c_cand)
+                if cleaned_c and is_valid_company_name(cleaned_c):
+                    best_company = cleaned_c
+        elif re.search(r"\s+at\s+", seg, re.IGNORECASE):
+            parts = re.split(r"\s+at\s+", seg, maxsplit=1, flags=re.IGNORECASE)
+            t_cand = parts[0].strip()
+            c_cand = parts[1].strip() if len(parts) > 1 else ""
+            if not best_title and t_cand and is_plausible_title(t_cand):
+                best_title = t_cand
+            if not best_company and c_cand:
+                cleaned_c = clean_company_name(c_cand)
+                if cleaned_c and is_valid_company_name(cleaned_c):
+                    best_company = cleaned_c
         else:
-            title = parts[0].strip()
-            comp_part = parts[1].split("|")[0].split("•")[0].strip()
-            if comp_part and not company:
-                company = comp_part
-    elif re.search(r"\s+at\s+", title, re.IGNORECASE):
-        parts = re.split(r"\s+at\s+", title, maxsplit=1, flags=re.IGNORECASE)
-        title = parts[0].strip()
-        comp_part = parts[1].split("|")[0].split("•")[0].strip()
-        if comp_part and not company:
-            company = comp_part
+            # Segment has NO '@' and NO 'at'
+            if not best_title and is_plausible_title(seg):
+                best_title = seg
 
-    # Clean separators from title
-    if title:
-        title = re.split(r"\s*[|•·]\s*", title)[0].strip()
+    # If best_title is still not found, check the first segment if plausible
+    if not best_title and segments:
+        first_seg = segments[0]
+        if not is_noise_text(first_seg) and not is_valid_location(first_seg):
+            best_title = first_seg
 
-    if company:
-        company = re.sub(r"^Current\s*company:\s*", "", company, flags=re.IGNORECASE)
-        company = re.sub(r"\. Click to skip.*$", "", company, flags=re.IGNORECASE)
-        company = re.sub(r"[·•|].*$", "", company).strip()
+    if best_company:
+        best_company = clean_company_name(best_company)
 
-    return title or None, company or None
+    return best_title or None, best_company or None
 
 
 DATE_RANGE_PATTERN = re.compile(
@@ -506,7 +613,26 @@ def clean_company_name(comp: Optional[str]) -> Optional[str]:
     # Strip trailing punctuation, brackets, and OCR garbage suffixes e.g. "-(/p", "/p", "- sud"
     cleaned = re.sub(r"\s*[-–—/\\|]+\s*[a-zA-Z0-9]{1,3}$", "", cleaned).strip()
     cleaned = re.sub(r"^[\s\-_,·•|:;()\[\]{}]+|[\s\-_,·•|:;()\[\]{}]+$", "", cleaned).strip()
-    return cleaned if len(cleaned) >= 2 else None
+
+    if len(cleaned) < 2:
+        return None
+    # Reject if string is an obvious past employer, career status, UI action, or skill combo
+    if PAST_EMPLOYER_PREFIXES.search(cleaned):
+        return None
+    if CAREER_STATUS_PATTERN.search(cleaned):
+        return None
+    if UI_ACTION_PHRASES.search(cleaned):
+        return None
+    if LANGUAGE_PROFICIENCY_PATTERN.search(cleaned) or cleaned.lower() in STANDALONE_LANGUAGES:
+        return None
+    if CERTIFICATION_AND_HONORS_PATTERN.search(cleaned):
+        return None
+    if cleaned.lower() in TECH_DOMAINS_SET or is_tech_skill_combination(cleaned):
+        return None
+    if SLOGAN_VERB_PATTERN.search(cleaned):
+        return None
+
+    return cleaned
 
 
 def is_valid_company_name(text: Optional[str]) -> bool:
@@ -692,9 +818,19 @@ def is_valid_company_name(text: Optional[str]) -> bool:
     # Reject strings containing phone numbers or area codes (e.g. "281-", "555-1234")
     if re.search(r"\b\d{3,}[-\s]?\b", t):
         return False
-    # Reject strings containing individual professional job titles (e.g. "Cindy Davis Consultant") unless corporate designators present
+    # Reject strings containing individual professional job titles (e.g. "Cindy Davis Consultant", "Senior Software Engineer") unless corporate designators present
     has_comp_org_suffix = bool(re.search(r"\b(?:group|partners|associates|consulting|consultancy|advisors?|advisers?|agency|capital|systems|inc|llc|corp|board|holdings|services|solutions|firm|network)\b", t, re.IGNORECASE))
-    if not has_comp_org_suffix and re.search(r"\b(?:consultant|recruiter|sourcer|coordinator|advisor|specialist|manager|director|officer)\b", t, re.IGNORECASE):
+    if not has_comp_org_suffix and re.search(
+        r"\b(?:consultant|recruiter|sourcer|coordinator|advisor|adviser|specialist|manager|director|"
+        r"officer|engineer|engineering|developer|architect|designer|analyst|scientist|researcher|"
+        r"lead|leader|head\s+of|vp|president|founder|co-founder|chief|ceo|cto|cfo|coo|cro|cmo|"
+        r"principal|fellow|associate|administrator|supervisor|expert|educator|instructor|"
+        r"teacher|professor|trainer|coach|writer|editor|producer|artist|marketer|accountant|"
+        r"auditor|lawyer|attorney|physician|doctor|nurse|practitioner|representative|advocate|"
+        r"agent|buyer|trader|underwriter|broker|intern|internship|trainee|apprentice)\b",
+        t,
+        re.IGNORECASE,
+    ):
         return False
 
     # Reject standalone department abbreviations or isolated 2-letter tokens
@@ -768,9 +904,39 @@ def is_valid_company_name(text: Optional[str]) -> bool:
         re.IGNORECASE,
     ):
         return False
-    # Reject lines that look like sentences or have verbs like "looking for", "helping"
-    if re.search(r"\b(?:looking for|helping|building|passionate about|specializing in)\b", t, re.IGNORECASE):
+
+    # Reject past employer prefixes and references (e.g. "Ex-Google", "Former Meta", "Previously at Apple")
+    if PAST_EMPLOYER_PREFIXES.search(t):
         return False
+
+    # Reject career availability, transition, and status lines (e.g. "Open to opportunities", "Available for hire", "Career break")
+    if CAREER_STATUS_PATTERN.search(t):
+        return False
+
+    # Reject personal mission statements, taglines, and verb/participle phrases (e.g. "Helping startups scale", "Building AI systems")
+    if SLOGAN_VERB_PATTERN.search(t):
+        return False
+
+    # Reject UI action phrases and buttons (e.g. "Show credential", "Provide services", "Send InMail", "Save to project")
+    if UI_ACTION_PHRASES.search(t):
+        return False
+
+    # Reject languages and proficiency levels (e.g. "English", "Full professional proficiency")
+    if LANGUAGE_PROFICIENCY_PATTERN.search(t) or t_lower in STANDALONE_LANGUAGES:
+        return False
+
+    # Reject academic honors, certifications, and licenses (e.g. "Honors & Awards", "AWS Certified", "PMP Certified")
+    if CERTIFICATION_AND_HONORS_PATTERN.search(t):
+        return False
+
+    # Reject tech domains and multi-skill combinations (e.g. "Design Systems", "React & TypeScript", "Distributed Systems")
+    if not has_comp_org_suffix and (t_lower in TECH_DOMAINS_SET or is_tech_skill_combination(t)):
+        return False
+
+    # Reject generic placeholder and non-employer designations
+    if t_lower in {"none", "n/a", "na", "not applicable", "unknown", "confidential", "self", "freelance", "self-employed", "stealth", "stealth startup", "private", "undisclosed", "null"}:
+        return False
+
     # Reject Resume / Profile Section Headers (e.g. "Experience", "About", "Skills", "Education")
     if t_lower in SECTION_HEADERS:
         return False
@@ -1200,14 +1366,32 @@ def classify_semantic_entity(text: Optional[str]) -> Dict[str, Any]:
     ):
         return {"entity_type": "UI_NOISE", "confidence": 0.99, "details": "UI button, badge, action, or social metric"}
 
-    # 4. Prominent Standalone Corporate Brands (AWS, Figma, Google, Microsoft, Docker, etc.)
+    # 4. Past Employer References (e.g. 'Ex-Google', 'Former VP at Meta')
+    if PAST_EMPLOYER_PREFIXES.search(t):
+        return {"entity_type": "UI_NOISE", "confidence": 0.98, "details": "Past employer reference, not a current corporate entity"}
+
+    # 5. Career Availability & Transition Statuses (e.g. 'Open to opportunities', 'Available for hire')
+    if CAREER_STATUS_PATTERN.search(t):
+        return {"entity_type": "UI_NOISE", "confidence": 0.99, "details": "Career availability or transition status"}
+
+    # 6. UI Action Phrases, Buttons & Platform Actions (e.g. 'Show credential', 'Provide services', 'Send InMail')
+    if UI_ACTION_PHRASES.search(t):
+        return {"entity_type": "UI_NOISE", "confidence": 0.99, "details": "UI button, badge, or platform action"}
+
+    # 7. Languages & Language Proficiency Levels (e.g. 'English', 'Full professional proficiency')
+    if LANGUAGE_PROFICIENCY_PATTERN.search(t) or t_lower in STANDALONE_LANGUAGES:
+        return {"entity_type": "UI_NOISE", "confidence": 0.95, "details": "Spoken language or proficiency descriptor"}
+
+    # 8. Prominent Standalone Corporate Brands (AWS, Figma, Google, Microsoft, Docker, etc.)
     if t_lower in KNOWN_STANDALONE_CORPS and is_valid_company_name(t):
         return {"entity_type": "COMPANY", "confidence": 0.99, "details": "Prominent standalone corporate brand"}
 
-    # 5. Education: Academic Degrees or Educational Institutions (Evaluated before generic commercial markers,
-    # unless entity contains explicit commercial business markers like 'Cambridge Advisors' or 'Oxford BioMedica Inc')
+    # 9. Education: Academic Degrees or Educational Institutions
     if is_plausible_degree(t):
         return {"entity_type": "EDUCATION", "confidence": 0.95, "details": "Academic degree or field of study"}
+
+    if CERTIFICATION_AND_HONORS_PATTERN.search(t):
+        return {"entity_type": "EDUCATION", "confidence": 0.95, "details": "Certification, credential, or academic honor"}
 
     tokens = [re.sub(r"[^a-zA-Z0-9]", "", tok).lower() for tok in t.split() if tok]
     has_commercial_biz_marker = (
@@ -1217,7 +1401,11 @@ def classify_semantic_entity(text: Optional[str]) -> Dict[str, Any]:
     if is_plausible_school(t) and not has_commercial_biz_marker and t_lower not in KNOWN_STANDALONE_CORPS:
         return {"entity_type": "EDUCATION", "confidence": 0.95, "details": "School, college, or university"}
 
-    # 6. Companies with Explicit Commercial Markers (e.g. 'Cambridge Advisors', 'Tek Inspirations', 'Kochar Tech')
+    # 10. Taglines, Mission Slogans & Participle Phrases (e.g. 'Helping startups scale', 'Building AI systems')
+    if SLOGAN_VERB_PATTERN.search(t):
+        return {"entity_type": "UI_NOISE", "confidence": 0.95, "details": "Personal tagline, mission statement, or bio snippet"}
+
+    # 11. Companies with Explicit Commercial Markers (e.g. 'Cambridge Advisors', 'Tek Inspirations', 'Kochar Tech')
     has_explicit_commercial_marker = (
         has_commercial_biz_marker
         or any(tok in COMMERCIAL_CORP_DESIGNATORS for tok in tokens)
@@ -1226,24 +1414,24 @@ def classify_semantic_entity(text: Optional[str]) -> Dict[str, Any]:
     if has_explicit_commercial_marker and is_valid_company_name(t):
         return {"entity_type": "COMPANY", "confidence": 0.95, "details": "Corporate entity with verified business marker"}
 
-    # 7. Business Departments and Industries
+    # 12. Business Departments and Industries
     if t_lower in DEPARTMENTS_AND_INDUSTRIES:
         return {"entity_type": "DEPARTMENT_OR_INDUSTRY", "confidence": 0.95, "details": "Department, business function, or industry sector"}
 
-    # 8. Technical Skills (e.g. 'Python', 'Java', 'Kubernetes', 'React')
-    if t_lower in COMMON_TECH_SKILLS:
+    # 13. Technical Skills, Tech Domains & Skill Combinations (e.g. 'Python', 'React & TypeScript', 'Design Systems')
+    if t_lower in COMMON_TECH_SKILLS or t_lower in TECH_DOMAINS_SET or is_tech_skill_combination(t):
         return {"entity_type": "SKILL", "confidence": 0.95, "details": "Technical skill, tool, or framework"}
 
-    # 9. Geographic Locations
+    # 14. Geographic Locations
     if is_valid_location(t):
         return {"entity_type": "LOCATION", "confidence": 0.95, "details": "Geographic location or postal code"}
 
-    # 10. Professional Job Titles
+    # 15. Professional Job Titles
     has_comp_suffix = bool(re.search(r"\b(?:inc|llc|ltd|corp|corporation|technologies|group|partners|holdings|labs|studio|ventures|consulting|agency|capital|systems)\b", t, re.IGNORECASE))
     if not has_comp_suffix and is_plausible_title(t):
         return {"entity_type": "JOB_TITLE", "confidence": 0.92, "details": "Professional job title"}
 
-    # 11. Company vs Person Arbitration
+    # 16. Company vs Person Arbitration
     if is_valid_person_name(t):
         return {"entity_type": "PERSON", "confidence": 0.95, "details": "Verified human person name"}
 

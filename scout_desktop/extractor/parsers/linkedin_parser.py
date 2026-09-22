@@ -1,4 +1,4 @@
-﻿"""
+"""
 extractor/parsers/linkedin_parser.py — LinkedIn Modular Parser (Standard, Recruiter, Sales Nav)
 """
 
@@ -12,6 +12,8 @@ from scout_desktop.extractor.patterns import (
     is_valid_person_name,
     clean_company_name,
     is_valid_company_name,
+    clean_title_and_company,
+    classify_semantic_entity,
     clean_location_text,
     is_valid_location,
     is_plausible_title,
@@ -100,21 +102,26 @@ class LinkedInParser(BasePlatformParser):
         # If name found in OCR lines, inspect subsequent lines for Title and Company
         if name_idx >= 0:
             for line in lines[name_idx + 1 : name_idx + 6]:
-                # Look for headline like "Senior Technical Recruiter at Amazon"
-                if " at " in line or " @ " in line or " | " in line:
-                    parts = re.split(r"\s+(?:at|@|\|)\s+", line, maxsplit=1)
-                    if len(parts) == 2:
-                        t_part, c_part = parts[0].strip(), parts[1].strip()
-                        if not title and is_plausible_title(t_part):
-                            title = t_part
-                        if not company and is_valid_company_name(clean_company_name(c_part)):
-                            company = clean_company_name(c_part)
+                # Parse headline (e.g. "Senior Technical Recruiter at Amazon" or "Staff Product Designer | Figma | Design Systems")
+                t_cand, c_cand = clean_title_and_company(line)
+                if not title and t_cand and is_plausible_title(t_cand):
+                    title = t_cand
+                if not company and c_cand:
+                    c_clean = clean_company_name(c_cand)
+                    if c_clean and is_valid_company_name(c_clean) and classify_semantic_entity(c_clean).get("entity_type") == "COMPANY":
+                        company = c_clean
                 elif not title and is_plausible_title(line):
                     title = line.strip()
                 elif not location:
                     loc_cand = clean_location_text(line)
                     if loc_cand and is_valid_location(loc_cand):
                         location = loc_cand
+                elif title and not company and not is_plausible_title(line) and not is_valid_location(line):
+                    co = clean_company_name(line)
+                    if co and is_valid_company_name(co):
+                        se = classify_semantic_entity(co)
+                        if se.get("entity_type") == "COMPANY" and se.get("confidence", 0) >= 0.90:
+                            company = co
 
         # Regex scan for emails and phones anywhere in profile text
         for line in lines:

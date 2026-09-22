@@ -162,8 +162,10 @@ class FieldClassifier:
                 best_title = t
                 title_conf = 0.95
             if c and is_valid_company_name(c):
-                best_company = c
-                comp_conf = 0.90
+                se = classify_semantic_entity(c)
+                if se.get("entity_type") == "COMPANY":
+                    best_company = c
+                    comp_conf = 0.90
             if best_title and best_company:
                 return best_title, title_conf, best_company, comp_conf
 
@@ -176,9 +178,11 @@ class FieldClassifier:
                     # Next line is often the company
                     if i + 1 < len(experience_lines):
                         nxt = experience_lines[i + 1]
-                        if is_valid_company_name(nxt):
-                            best_company = clean_company_name(nxt)
-                            comp_conf = 0.85
+                        if is_valid_company_name(nxt) and not is_plausible_title(nxt):
+                            cl_nxt = clean_company_name(nxt)
+                            if cl_nxt and classify_semantic_entity(cl_nxt).get("entity_type") == "COMPANY":
+                                best_company = cl_nxt
+                                comp_conf = 0.85
                     break
 
         return best_title, title_conf, best_company, comp_conf

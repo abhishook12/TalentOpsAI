@@ -250,9 +250,9 @@ def get_all_scout_users_intelligence(
             sqlfunc.sum(ExtensionDevice.total_submitted).label("total_submitted"),
             sqlfunc.sum(case((ExtensionDevice.is_active == True, 1), else_=0)).label("active_devices_count"),
             sqlfunc.max(ExtensionDevice.extension_version).label("latest_version")
-        ).group_by(ExtensionDevice.owner_user_id).subquery()
+        ).filter(ExtensionDevice.is_active == True).group_by(ExtensionDevice.owner_user_id).subquery()
 
-        # Join Role directly and select only scalar attributes to completely eliminate N+1 queries
+        # Join devices_sq with an inner join to only select accounts that have paired Scout devices
         query = db.query(
             User.id,
             User.first_name,
@@ -277,10 +277,10 @@ def get_all_scout_users_intelligence(
             devices_sq.c.total_submitted,
             devices_sq.c.active_devices_count,
             devices_sq.c.latest_version
-        ).outerjoin(Role, User.role_id == Role.id)\
+        ).join(devices_sq, User.id == devices_sq.c.owner_user_id)\
+         .outerjoin(Role, User.role_id == Role.id)\
          .outerjoin(events_sq, User.id == events_sq.c.owner_user_id)\
-         .outerjoin(staging_sq, User.id == staging_sq.c.owner_user_id)\
-         .outerjoin(devices_sq, User.id == devices_sq.c.owner_user_id)
+         .outerjoin(staging_sq, User.id == staging_sq.c.owner_user_id)
 
         rows = _safe_query(lambda: query.all(), [])
 
@@ -326,22 +326,11 @@ def get_all_scout_users_intelligence(
                 last_contribution_time=last_contrib_time,
             )
 
-            # Fast lifecycle determination without dummy object instantiations
-            if device_count == 0:
-                lifecycle = {
-                    "status": "REGISTERED",
-                    "badge_color": "#94a3b8",
-                    "label": "Registered (No Scout)",
-                    "description": "User account exists but no Scout device has been paired",
-                }
-            elif active_devices_count == 0:
-                lifecycle = {
-                    "status": "REVOKED",
-                    "badge_color": "#ef4444",
-                    "label": "Revoked",
-                    "description": "All paired desktop nodes have been revoked by administrator",
-                }
-            elif hb_sec is not None and hb_sec <= 900:
+            # Determine fine-grained lifecycle status
+            if device_count == 0 or active_devices_count == 0:
+                continue
+
+            if hb_sec is not None and hb_sec <= 900:
                 if total_events > 0:
                     lifecycle = {
                         "status": "CONTRIBUTING",
@@ -372,13 +361,21 @@ def get_all_scout_users_intelligence(
                         "description": "Paired successfully with credentials; waiting for first live session",
                     }
 
+            ALLOWED_CONTRIBUTOR_STATUSES = {
+                "CONTRIBUTING",
+                "CONTRIBUTING_OFFLINE",
+                "ACTIVE",
+                "PAIRED",
+                "PAIRED_IDLE",
+            }
+            if lifecycle["status"] not in ALLOWED_CONTRIBUTOR_STATUSES:
+                continue
+
             user_ver = latest_version or "—"
             update_required = bool(user_ver != "—" and user_ver != latest_ver)
 
             health_state = "HEALTHY"
-            if device_count == 0 or active_devices_count == 0:
-                health_state = "REVOKED" if device_count > 0 and active_devices_count == 0 else "INACTIVE"
-            elif hb_sec is not None and hb_sec > 900:
+            if hb_sec is not None and hb_sec > 900:
                 health_state = "OFFLINE"
 
             name = f"{u_first_name or ''} {u_last_name or ''}".strip() or (u_email.split("@")[0] if u_email else "User")
@@ -440,23 +437,24 @@ def get_all_scout_users_intelligence(
 
             all_users.append(user_card)
 
-        # Version Distribution
-        vd_query = _safe_query(lambda: db.query(ExtensionDevice.extension_version, sqlfunc.count(ExtensionDevice.id)).group_by(ExtensionDevice.extension_version).all(), [])
+        # Version Distribution (Active Scout devices only)
+        vd_query = _safe_query(lambda: db.query(ExtensionDevice.extension_version, sqlfunc.count(ExtensionDevice.id)).filter(ExtensionDevice.is_active == True).group_by(ExtensionDevice.extension_version).all(), [])
         version_counts = {}
         for v, c in vd_query:
             ver = v or "2.0.0"
             version_counts[ver] = version_counts.get(ver, 0) + c
 
-        # Global summary KPIs across all users
+        # Global summary KPIs across all valid contributor users
         global_summary = {
             "total_scout_users": len(all_users),
             "active_users": sum(1 for c in all_users if c["scout_status"] in ("ACTIVE", "CONTRIBUTING")),
             "active_devices": sum(c["devices_count"] for c in all_users if c["health"] == "HEALTHY"),
             "contributing_users": sum(1 for c in all_users if c["scout_status"] in ("CONTRIBUTING", "CONTRIBUTING_OFFLINE")),
-            "offline_users": sum(1 for c in all_users if c["health"] == "OFFLINE"),
+            "offline_users": sum(1 for c in all_users if c["health"] == "OFFLINE" or c["scout_status"] in ("PAIRED", "CONTRIBUTING_OFFLINE")),
+            "paired_users": sum(1 for c in all_users if c["scout_status"] in ("PAIRED", "PAIRED_IDLE")),
+            "total_devices": sum(c["devices_count"] for c in all_users),
             "update_required": sum(1 for c in all_users if c["update_required"]),
             "update_failed": 0,
-            "revoked": sum(1 for c in all_users if c["scout_status"] == "REVOKED"),
             "total_people_contributed": sum(c["people_added"] for c in all_users),
             "total_companies_contributed": sum(c["companies_added"] for c in all_users),
             "total_contacts_contributed": sum(c["contacts_added"] for c in all_users),
@@ -475,7 +473,17 @@ def get_all_scout_users_intelligence(
     # In-memory filtering & sorting
     contributors = list(all_users)
     if status_filter and status_filter.upper() != "ALL":
-        contributors = [c for c in contributors if c["scout_status"].upper() == status_filter.upper()]
+        sf = status_filter.upper()
+        if sf == "CONTRIBUTING":
+            contributors = [c for c in contributors if c["scout_status"] in ("CONTRIBUTING", "CONTRIBUTING_OFFLINE")]
+        elif sf in ("ACTIVE", "ONLINE"):
+            contributors = [c for c in contributors if c["scout_status"] in ("ACTIVE", "CONTRIBUTING")]
+        elif sf == "OFFLINE":
+            contributors = [c for c in contributors if c["health"] == "OFFLINE" or c["scout_status"] in ("CONTRIBUTING_OFFLINE", "PAIRED")]
+        elif sf == "PAIRED":
+            contributors = [c for c in contributors if c["scout_status"] in ("PAIRED", "PAIRED_IDLE")]
+        else:
+            contributors = [c for c in contributors if c["scout_status"].upper() == sf]
 
     if search_query:
         sq = search_query.lower().strip()
@@ -521,7 +529,10 @@ def get_detailed_scout_user_profile(db: Session, user_id: int) -> Dict[str, Any]
     if not user:
         return None
 
-    devices = _safe_query(lambda: db.query(ExtensionDevice).filter(ExtensionDevice.owner_user_id == user_id).all(), [])
+    devices = _safe_query(lambda: db.query(ExtensionDevice).filter(
+        ExtensionDevice.owner_user_id == user_id,
+        ExtensionDevice.is_active == True
+    ).all(), [])
     installations = _safe_query(lambda: db.query(ScoutInstallation).filter(ScoutInstallation.user_id == user_id).all(), [])
     inst_map = {i.device_id: i for i in installations}
 
@@ -533,9 +544,11 @@ def get_detailed_scout_user_profile(db: Session, user_id: int) -> Dict[str, Any]
         DiscoveryStaging.owner_user_id == user_id
     ).order_by(desc(DiscoveryStaging.created_at)).all(), [])
 
-    # Devices details
+    # Devices details (Only active contributing, online, offline, or paired devices)
     devices_list = []
     for d in devices:
+        if not d.is_active:
+            continue
         inst = inst_map.get(d.device_id)
         hb_sec = None
         if d.last_seen_at:
@@ -543,9 +556,7 @@ def get_detailed_scout_user_profile(db: Session, user_id: int) -> Dict[str, Any]
             hb_sec = int((now - d_aware).total_seconds())
 
         health = "HEALTHY"
-        if not d.is_active:
-            health = "REVOKED"
-        elif hb_sec is not None and hb_sec > 900:
+        if hb_sec is not None and hb_sec > 900:
             health = "OFFLINE"
 
         devices_list.append({

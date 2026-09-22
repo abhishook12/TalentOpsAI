@@ -1465,11 +1465,7 @@ class AckBroadcastRequest(BaseModel):
 def _check_admin(current_user: Optional[User]):
     if not current_user:
         raise HTTPException(status_code=401, detail="Authentication required")
-    is_admin = (
-        (current_user.email or "").lower().strip() in ("abhishekjadon824@gmail.com", "abhishekjadon706@gmail.com")
-        or getattr(current_user, "is_superadmin", False)
-        or (hasattr(current_user, "role") and current_user.role and getattr(current_user.role, "name", "").lower() in ("admin", "superadmin"))
-    )
+    is_admin = (current_user.email or "").lower().strip() == "abhishekjadon824@gmail.com"
     if not is_admin:
         raise HTTPException(status_code=403, detail="Admin authorization required")
 
@@ -1574,6 +1570,21 @@ def broadcast_fleet_update(
     db.commit()
     db.refresh(broadcast)
     invalidate_fleet_caches()
+
+    # Synchronize to global notification center for web users & general notification feed
+    try:
+        from ..models.models import Notification
+        global_notif = Notification(
+            title=broadcast.title,
+            message=broadcast.message,
+            type="update",
+            user_id=None,
+            read=False
+        )
+        db.add(global_notif)
+        db.commit()
+    except Exception as e:
+        logger.warning("Could not sync fleet broadcast to Notification table: %s", e)
 
     logger.info(
         "Fleet broadcast %s dispatched for v%s targeting %d devices (mandatory=%s)",

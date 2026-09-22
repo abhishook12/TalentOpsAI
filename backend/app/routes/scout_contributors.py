@@ -47,7 +47,7 @@ class RemoteDiagnosticsRequest(BaseModel):
 
 @router.get("/users")
 def list_scout_users(
-    status: Optional[str] = Query("ALL", description="Filter by status: ALL, ACTIVE, CONTRIBUTING, PAIRED, REGISTERED, REVOKED"),
+    status: Optional[str] = Query("ALL", description="Filter by status: ALL, CONTRIBUTING, ACTIVE, OFFLINE, PAIRED"),
     search: Optional[str] = Query(None, description="Search by name or email"),
     sort: str = Query("most_active", description="Sorting: most_active, most_data, highest_quality, most_devices"),
     refresh: bool = Query(False, description="Bypass in-memory cache and force fresh database computation"),
@@ -57,6 +57,7 @@ def list_scout_users(
     """
     Returns the comprehensive Scout Users & Contributors list with summary cards,
     lifecycle statuses, device counts, quality scores, and version distribution.
+    Only includes devices/users that are contributing, online, offline, or paired.
     """
     _require_admin(current_user)
     try:
@@ -78,7 +79,7 @@ def list_scout_users(
             return {
                 "summary": cached.get("summary", {}),
                 "version_distribution": cached.get("version_distribution", {}),
-                "latest_production_version": cached.get("latest_production_version", "2.9.2"),
+                "latest_production_version": cached.get("latest_production_version", "2.9.3"),
                 "users": cached.get("all_users", []),
             }
         return {
@@ -88,9 +89,10 @@ def list_scout_users(
                 "active_devices": 0,
                 "contributing_users": 0,
                 "offline_users": 0,
+                "paired_users": 0,
+                "total_devices": 0,
                 "update_required": 0,
                 "update_failed": 0,
-                "revoked": 0,
                 "total_people_contributed": 0,
                 "total_companies_contributed": 0,
                 "total_contacts_contributed": 0,
@@ -98,7 +100,7 @@ def list_scout_users(
                 "average_quality_score": 100,
             },
             "version_distribution": {},
-            "latest_production_version": "2.9.2",
+            "latest_production_version": "2.9.3",
             "users": [],
         }
 

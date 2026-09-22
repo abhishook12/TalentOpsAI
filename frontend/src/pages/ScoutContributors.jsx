@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
-  Users, RefreshCw, Search, Sparkles, Activity, Zap, Laptop, Clock, UserCheck, ShieldAlert, Award
+  Users, RefreshCw, Search, Sparkles, Activity, Zap, Laptop, Clock, UserCheck, ShieldAlert, Award, Plus
 } from 'lucide-react'
 import api from '../services/api'
 import ScoutUserProfileDrawer from '../components/ScoutUserProfileDrawer'
@@ -67,9 +67,23 @@ export default function ScoutContributors() {
     let list = [...(data?.users || [])]
 
     if (statusFilter && statusFilter.toUpperCase() !== 'ALL') {
+      const sf = statusFilter.toUpperCase()
       list = list.filter((u) => {
         const st = (u.lifecycle_status || u.scout_status || '').toUpperCase()
-        return st === statusFilter.toUpperCase()
+        const health = (u.health || '').toUpperCase()
+        if (sf === 'CONTRIBUTING') {
+          return st === 'CONTRIBUTING' || st === 'CONTRIBUTING_OFFLINE'
+        }
+        if (sf === 'ACTIVE' || sf === 'ONLINE') {
+          return st === 'ACTIVE' || st === 'CONTRIBUTING'
+        }
+        if (sf === 'OFFLINE') {
+          return health === 'OFFLINE' || st === 'CONTRIBUTING_OFFLINE' || st === 'PAIRED'
+        }
+        if (sf === 'PAIRED') {
+          return st === 'PAIRED' || st === 'PAIRED_IDLE'
+        }
+        return st === sf
       })
     }
 
@@ -119,19 +133,16 @@ export default function ScoutContributors() {
     const st = (status || '').toUpperCase()
     switch (st) {
       case 'CONTRIBUTING':
-      case 'CONTRIBUTING_OFFLINE':
         return { bg: 'rgba(16, 185, 129, 0.15)', text: '#10b981', border: 'rgba(16, 185, 129, 0.3)', icon: Sparkles }
+      case 'CONTRIBUTING_OFFLINE':
+        return { bg: 'rgba(245, 158, 11, 0.15)', text: '#f59e0b', border: 'rgba(245, 158, 11, 0.3)', icon: Clock }
       case 'ACTIVE':
-        return { bg: 'rgba(255, 255, 255, 0.08)', text: '#f5f5f5', border: 'rgba(255, 255, 255, 0.2)', icon: Activity }
+        return { bg: 'rgba(59, 130, 246, 0.15)', text: '#3b82f6', border: 'rgba(59, 130, 246, 0.3)', icon: Activity }
       case 'PAIRED':
       case 'PAIRED_IDLE':
-        return { bg: 'rgba(212, 212, 216, 0.12)', text: '#d4d4d8', border: 'rgba(212, 212, 216, 0.25)', icon: Zap }
-      case 'INSTALLED':
-        return { bg: 'rgba(161, 161, 170, 0.12)', text: '#a1a1aa', border: 'rgba(161, 161, 170, 0.25)', icon: Laptop }
-      case 'REGISTERED':
-        return { bg: 'rgba(113, 113, 122, 0.12)', text: '#a1a1aa', border: 'rgba(113, 113, 122, 0.25)', icon: UserCheck }
-      case 'REVOKED':
-        return { bg: 'rgba(239, 68, 68, 0.15)', text: '#ef4444', border: 'rgba(239, 68, 68, 0.3)', icon: ShieldAlert }
+        return { bg: 'rgba(139, 92, 246, 0.15)', text: '#a78bfa', border: 'rgba(139, 92, 246, 0.3)', icon: Zap }
+      case 'OFFLINE':
+        return { bg: 'rgba(245, 158, 11, 0.15)', text: '#f59e0b', border: 'rgba(245, 158, 11, 0.3)', icon: Clock }
       default:
         return { bg: 'rgba(255, 255, 255, 0.05)', text: '#a1a1aa', border: 'rgba(255, 255, 255, 0.1)', icon: Clock }
     }
@@ -143,8 +154,8 @@ export default function ScoutContributors() {
   const totalDevicesCount = summary.total_devices || summary.active_devices || 0
   const contributingUsersCount = summary.contributing_users || 0
   const offlineUsersCount = summary.offline_users || 0
+  const pairedUsersCount = summary.paired_users || 0
   const updateReqCount = summary.update_required_count ?? summary.update_required ?? 0
-  const revokedCount = summary.revoked_count ?? summary.revoked ?? 0
   const canonicalCreated = summary.total_canonical_created ?? summary.total_people_contributed ?? 0
   const canonicalEnriched = summary.total_canonical_enriched ?? summary.total_contacts_contributed ?? 0
   const avgQualScore = summary.avg_quality_score ?? summary.average_quality_score ?? 0
@@ -163,7 +174,7 @@ export default function ScoutContributors() {
             Scout users &amp; contributors
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '4px 0 0', lineHeight: 1.4 }}>
-            Every registered Scout account, its paired devices, client version and the records it has contributed.
+            Every active Scout contributor, paired device, and validated recruitment intelligence record.
           </p>
         </div>
 
@@ -179,44 +190,58 @@ export default function ScoutContributors() {
               borderRadius: 6,
               fontSize: 12,
               fontWeight: 600,
+              cursor: isFetching ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6
+            }}
+          >
+            <RefreshCw size={13} className={isFetching ? 'animate-spin' : ''} />
+            Refresh
+          </button>
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            style={{
+              padding: '6px 14px',
+              background: '#ffffff',
+              color: '#000000',
+              border: 'none',
+              borderRadius: 6,
+              fontSize: 12,
+              fontWeight: 700,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
-              opacity: isFetching ? 0.6 : 1,
-              transition: 'all 0.15s ease'
+              gap: 6
             }}
           >
-            <RefreshCw size={12} className={isFetching ? 'animate-spin' : ''} />
-            <span>Refresh</span>
+            <Plus size={13} strokeWidth={3} />
+            Add Scout
           </button>
         </div>
       </div>
       {isError && (
         <div style={{
-          marginBottom: 16,
-          padding: '12px 18px',
-          background: 'rgba(245, 158, 11, 0.08)',
-          border: '1px solid rgba(245, 158, 11, 0.25)',
+          background: 'rgba(239, 68, 68, 0.1)',
+          border: '1px solid rgba(239, 68, 68, 0.25)',
           borderRadius: 8,
+          padding: '12px 16px',
+          marginBottom: 16,
           display: 'flex',
-          alignItems: 'center',
           justifyContent: 'space-between',
-          color: '#fbbf24',
-          fontSize: 13,
+          alignItems: 'center'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Clock size={16} />
-            <span>Server is waking up. Displaying cached records while reconnecting.</span>
+          <div style={{ color: '#ef4444', fontSize: 13 }}>
+            Failed to load Scout contributors. Showing cached or fallback data.
           </div>
           <button
             onClick={() => refetch()}
             style={{
               background: 'transparent',
-              border: '1px solid #fbbf24',
-              color: '#fbbf24',
-              borderRadius: 6,
-              padding: '4px 12px',
+              border: '1px solid #ef4444',
+              color: '#ef4444',
+              borderRadius: 4,
+              padding: '4px 10px',
               fontSize: 12,
               fontWeight: 600,
               cursor: 'pointer'
@@ -235,13 +260,13 @@ export default function ScoutContributors() {
         marginBottom: 16
       }}>
         {[
-          { label: 'SCOUT USERS', value: isLoading && !data ? '—' : totalUsersCount, sub: 'Registered accounts' },
-          { label: 'ACTIVE USERS', value: isLoading && !data ? '—' : activeUsersCount, sub: 'Seen in last 24h' },
-          { label: 'ACTIVE DEVICES', value: isLoading && !data ? '—' : activeDevicesCount, sub: `of ${totalDevicesCount} paired` },
+          { label: 'SCOUT USERS', value: isLoading && !data ? '—' : totalUsersCount, sub: 'Paired Scout accounts' },
           { label: 'CONTRIBUTING', value: isLoading && !data ? '—' : contributingUsersCount, sub: 'Added or enriched data' },
-          { label: 'OFFLINE', value: isLoading && !data ? '—' : offlineUsersCount, sub: 'No signal over 7d' },
+          { label: 'ONLINE', value: isLoading && !data ? '—' : activeUsersCount, sub: 'Heartbeat < 15 min' },
+          { label: 'OFFLINE', value: isLoading && !data ? '—' : offlineUsersCount, sub: 'Client disconnected' },
+          { label: 'PAIRED', value: isLoading && !data ? '—' : pairedUsersCount, sub: 'Paired & ready' },
+          { label: 'ACTIVE DEVICES', value: isLoading && !data ? '—' : activeDevicesCount, sub: `of ${totalDevicesCount} paired` },
           { label: 'UPDATE REQUIRED', value: isLoading && !data ? '—' : updateReqCount, sub: 'Behind current build' },
-          { label: 'REVOKED', value: isLoading && !data ? '—' : revokedCount, sub: 'Blocked or quarantined' },
         ].map((card, idx) => (
           <div
             key={idx}
@@ -391,10 +416,9 @@ export default function ScoutContributors() {
               {[
                 { key: 'ALL', label: 'All' },
                 { key: 'CONTRIBUTING', label: 'Contributing' },
-                { key: 'ACTIVE', label: 'Active' },
+                { key: 'ACTIVE', label: 'Online' },
+                { key: 'OFFLINE', label: 'Offline' },
                 { key: 'PAIRED', label: 'Paired' },
-                { key: 'REGISTERED', label: 'Registered' },
-                { key: 'REVOKED', label: 'Revoked' },
               ].map((pill) => {
                 const isActive = statusFilter === pill.key
                 return (

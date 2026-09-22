@@ -420,6 +420,20 @@ def correct_review_item(
     stg.processed_at = datetime.now(timezone.utc)
     db.commit()
 
+    if stg.owner_user_id:
+        try:
+            cand_name = stg.raw_name or "Staged Candidate"
+            notif = Notification(
+                user_id=stg.owner_user_id,
+                title="Staged Discovery Corrected & Approved",
+                message=f"Discovered record for {cand_name} was corrected and promoted to active candidate directory.",
+                type="success"
+            )
+            db.add(notif)
+            db.commit()
+        except Exception as e:
+            logger.warning("Could not dispatch review correction notification: %s", e)
+
     return {"ok": True, "decision": decision_type, "stats": stats}
 
 
@@ -460,6 +474,20 @@ def merge_review_item(
     stg.decision_reason = f'Manually merged into Recruiter #{recruiter.recruiter_id} ({recruiter.recruiter_name})'
     stg.processed_at = datetime.now(timezone.utc)
     db.commit()
+
+    if stg.owner_user_id:
+        try:
+            cand_name = stg.raw_name or "Staged Candidate"
+            notif = Notification(
+                user_id=stg.owner_user_id,
+                title="Staged Discovery Merged",
+                message=f"Discovered record for {cand_name} was verified and merged into {recruiter.recruiter_name}.",
+                type="info"
+            )
+            db.add(notif)
+            db.commit()
+        except Exception as e:
+            logger.warning("Could not dispatch review merge notification: %s", e)
 
     return {
         "ok": True,

@@ -469,26 +469,33 @@ class NotificationsDialog(QDialog):
         def _fetch():
             items = []
             try:
-                import requests
-                # 1. Fetch from notifications endpoint
-                urls = [
-                    "https://talent-ops-ai.vercel.app/api/notifications/",
-                    "https://talentopsai-1.onrender.com/notifications/"
-                ]
-                headers = {}
-                if self.backend_client and hasattr(self.backend_client, "_get_headers"):
-                    headers = self.backend_client._get_headers()
-                
-                for u in urls:
-                    try:
-                        res = requests.get(u, headers=headers, timeout=6.0)
-                        if res.status_code == 200:
-                            data = res.json()
-                            if isinstance(data, list):
-                                items = data
-                                break
-                    except Exception:
-                        continue
+                if self.backend_client and hasattr(self.backend_client, "fetch_notifications"):
+                    items = self.backend_client.fetch_notifications()
+                if not items:
+                    import requests
+                    urls = []
+                    if self.backend_client and getattr(self.backend_client, "active_api_base", None):
+                        urls.append(f"{self.backend_client.active_api_base.rstrip('/')}/notifications/")
+                    elif self.backend_client and getattr(self.backend_client, "base_url", None):
+                        urls.append(f"{self.backend_client.base_url.rstrip('/')}/notifications/")
+                    urls.extend([
+                        "https://talent-ops-ai.vercel.app/api/notifications/",
+                        "https://talentopsai-1.onrender.com/notifications/"
+                    ])
+                    headers = {}
+                    if self.backend_client and hasattr(self.backend_client, "_get_headers"):
+                        headers = self.backend_client._get_headers()
+                    
+                    for u in urls:
+                        try:
+                            res = requests.get(u, headers=headers, timeout=6.0)
+                            if res.status_code == 200:
+                                data = res.json()
+                                if isinstance(data, list) and data:
+                                    items = data
+                                    break
+                        except Exception:
+                            continue
             except Exception as e:
                 logger.warning(f"Error fetching notifications: {e}")
 

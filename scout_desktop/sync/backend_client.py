@@ -818,3 +818,32 @@ class BackendClient:
             logger.debug("Knowledge delta sync network error: %s", e)
             return False, {"error": str(e)}
 
+    def fetch_notifications(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """
+        Fetches system broadcasts and user notifications from backend.
+        Works in both authenticated and unauthenticated/companion telemetry states.
+        """
+        url = f"{self.active_api_base}/notifications/"
+        try:
+            res = requests.get(url, headers=self._get_headers(), params={"limit": limit}, timeout=6.0)
+            if res.status_code == 200:
+                data = res.json()
+                if isinstance(data, list):
+                    return data
+            logger.debug("Notifications fetch returned status %d", res.status_code)
+        except Exception as e:
+            logger.debug("Notifications fetch network error: %s", e)
+        return []
+
+    def mark_notifications_read(self) -> bool:
+        """
+        Marks notifications as read on the backend.
+        """
+        url = f"{self.active_api_base}/notifications/read"
+        try:
+            res = requests.post(url, headers=self._get_headers(), timeout=6.0)
+            return res.status_code == 200
+        except Exception as e:
+            logger.debug("Mark notifications read network error: %s", e)
+            return False
+

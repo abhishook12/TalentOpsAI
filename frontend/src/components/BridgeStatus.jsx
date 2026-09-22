@@ -26,7 +26,10 @@ export default function BridgeStatus({ onStatusChange, compact = false }) {
 
   useEffect(() => {
     checkHealth();
-    const interval = setInterval(checkHealth, 5000);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      checkHealth();
+    }, 25000);
     return () => clearInterval(interval);
   }, [checkHealth]);
 

@@ -11,7 +11,8 @@ export default function AuditLogs() {
   const { data, isLoading } = useQuery({
     queryKey: ['audit-logs'],
     queryFn: async () => (await api.get('/admin/audit-logs')).data,
-    refetchInterval: 15000,
+    refetchInterval: 30000,
+    refetchIntervalInBackground: false,
   });
 
   const filtered = data?.filter(log => 

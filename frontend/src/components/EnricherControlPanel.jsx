@@ -22,7 +22,10 @@ export default function EnricherControlPanel() {
 
   useEffect(() => {
     fetchStatus()
-    const interval = setInterval(fetchStatus, 3000)
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchStatus()
+    }, 15000)
     return () => clearInterval(interval)
   }, [])
 

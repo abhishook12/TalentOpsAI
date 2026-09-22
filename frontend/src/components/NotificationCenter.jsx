@@ -18,7 +18,10 @@ export default function NotificationCenter() {
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60000);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchNotifications();
+    }, 90000);
     return () => clearInterval(interval);
   }, [fetchNotifications]);
 

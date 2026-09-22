@@ -28,7 +28,10 @@ export default function SentinelDashboard({ setToast }) {
     }
 
     fetchData()
-    const interval = setInterval(fetchData, 5000) // Poll every 5s for live updates
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchData()
+    }, 25000)
     return () => {
       alive = false
       clearInterval(interval)

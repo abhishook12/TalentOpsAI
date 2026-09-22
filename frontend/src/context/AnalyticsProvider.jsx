@@ -139,15 +139,16 @@ export function AnalyticsProvider({ children }) {
       }
     }, 10000);
 
-    // Heartbeat every 30s
+    // Heartbeat every 60s (only when active and tab is visible)
     heartbeatIntervalRef.current = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       sendAnalytics('/analytics/session/heartbeat', {
         status: isIdleRef.current ? 'Idle' : 'Active',
         clicks_since_last: clickCountRef.current,
         current_page: getCurrentPath()
       });
       clickCountRef.current = 0;
-    }, 30000);
+    }, 60000);
 
     // Before Unload
     const handleUnload = () => {

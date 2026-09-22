@@ -42,8 +42,11 @@ export default function ExtensionHub() {
 
   useEffect(() => {
     fetchAllData();
-    // Auto-sync real-time updates every 6 seconds
-    const interval = setInterval(() => fetchAllData(true), 6000);
+    // Auto-sync real-time updates every 25 seconds (pause when hidden)
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchAllData(true);
+    }, 25000);
     return () => clearInterval(interval);
   }, []);
 

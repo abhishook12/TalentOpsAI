@@ -39,8 +39,9 @@ export default function FleetUpdateCenter() {
       const res = await api.get('/scout/fleet/broadcast-status')
       return res.data
     },
-    refetchInterval: 5000,
-    staleTime: 5000,
+    refetchInterval: 25000,
+    refetchIntervalInBackground: false,
+    staleTime: 15000,
   })
   const broadcastStatus = broadcastStatusData || { active: false, broadcast: null }
 
@@ -96,8 +97,9 @@ export default function FleetUpdateCenter() {
       const res = await api.get('/scout/fleet/stats')
       return res.data
     },
-    refetchInterval: 10000,
-    staleTime: 5000,
+    refetchInterval: 30000,
+    refetchIntervalInBackground: false,
+    staleTime: 20000,
   })
 
   // Timer countdown for active claim code

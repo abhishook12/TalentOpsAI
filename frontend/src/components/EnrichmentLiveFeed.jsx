@@ -20,7 +20,10 @@ export default function EnrichmentLiveFeed() {
     };
 
     fetchFeed();
-    const interval = setInterval(fetchFeed, 5000); // Live poll every 5 seconds
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchFeed();
+    }, 20000);
     return () => {
       isMounted = false;
       clearInterval(interval);

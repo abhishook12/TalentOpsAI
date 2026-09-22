@@ -20,8 +20,9 @@ export default function ScoutNodesPanel() {
       const res = await api.get('/scout/nodes')
       return res.data
     },
-    refetchInterval: 6000,
-    staleTime: 4000,
+    refetchInterval: 25000,
+    refetchIntervalInBackground: false,
+    staleTime: 15000,
   })
 
   const nodes = data?.nodes || []

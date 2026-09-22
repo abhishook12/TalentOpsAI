@@ -326,6 +326,8 @@ async def lockdown_middleware(request: Request, call_next):
         
     return response
 
+from .core.etag_middleware import ETagMiddleware
+app.add_middleware(ETagMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 @app.middleware("http")
@@ -346,7 +348,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Total-Count"],
+    expose_headers=["X-Total-Count", "ETag", "Cache-Control"],
 )
 
 from fastapi.responses import JSONResponse

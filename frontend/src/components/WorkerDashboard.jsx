@@ -42,14 +42,20 @@ export default function WorkerDashboard() {
 
   useEffect(() => {
     load();
-    const interval = setInterval(load, 3000);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      load();
+    }, 15000);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
     if (expandedWorker) {
       loadLogs(expandedWorker);
-      const interval = setInterval(() => loadLogs(expandedWorker), 2000);
+      const interval = setInterval(() => {
+        if (typeof document !== 'undefined' && document.hidden) return;
+        loadLogs(expandedWorker);
+      }, 8000);
       return () => clearInterval(interval);
     }
   }, [expandedWorker]);

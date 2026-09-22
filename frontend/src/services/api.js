@@ -18,16 +18,19 @@ export const API = import.meta.env.DEV
 // When on Vercel, uses same-origin /api/ping to avoid CORS preflights and edge rate limits.
 if (!import.meta.env.DEV) {
   const pingUrl = API.startsWith('http') ? `${API}/ping` : `${API}/ping`
-  fetch(pingUrl, { method: 'GET', cache: 'no-store' }).catch(() => {})
+  fetch(pingUrl, { method: 'GET' }).catch(() => {})
 }
 
-// Keep backend warm while user has a tab open (Render sleeps after 15m)
+// Keep backend warm while user has an active tab open (Render free-tier sleeps after 15m of inactivity)
 if (typeof window !== 'undefined' && !import.meta.env.DEV) {
   const warmBackend = () => {
+    // Never ping if tab is hidden/minimized to save bandwidth
+    if (typeof document !== 'undefined' && document.hidden) return
     const pingUrl = API.startsWith('http') ? `${API}/ping` : `${API}/ping`
-    fetch(pingUrl, { method: 'GET', cache: 'no-store' }).catch(() => {})
+    fetch(pingUrl, { method: 'GET' }).catch(() => {})
   }
-  setInterval(warmBackend, 2 * 60 * 1000)
+  // 9 minutes interval keeps Render alive (sleeps at 15m) without wasting egress
+  setInterval(warmBackend, 9 * 60 * 1000)
   window.addEventListener('focus', warmBackend)
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') warmBackend()

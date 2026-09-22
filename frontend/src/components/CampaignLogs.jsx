@@ -19,7 +19,8 @@ export default function CampaignLogs({ campaignId }) {
       return res.data.items || [];
     },
     enabled: !!campaignId,
-    refetchInterval: 5000 // Poll every 5 seconds for real-time live feed
+    refetchInterval: 15000,
+    refetchIntervalInBackground: false,
   });
 
   const logs = useMemo(() => logsData || [], [logsData]);

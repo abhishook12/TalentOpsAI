@@ -9,7 +9,8 @@ export default function BackgroundJobs() {
   const { data, isLoading } = useQuery({
     queryKey: ['background-jobs'],
     queryFn: async () => (await api.get('/admin/jobs')).data,
-    refetchInterval: 5000,
+    refetchInterval: 20000,
+    refetchIntervalInBackground: false,
   });
 
   return (

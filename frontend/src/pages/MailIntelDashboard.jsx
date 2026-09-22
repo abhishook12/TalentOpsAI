@@ -35,7 +35,10 @@ export default function MailIntelDashboard() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 8000);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchData();
+    }, 25000);
     return () => clearInterval(interval);
   }, [fetchData]);
 

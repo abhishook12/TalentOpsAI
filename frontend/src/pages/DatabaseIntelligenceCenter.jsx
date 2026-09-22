@@ -38,7 +38,10 @@ const DatabaseIntelligenceCenter = () => {
     };
 
     fetchStats();
-    const interval = setInterval(fetchStats, 5000); // Poll every 5s for live updates
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchStats();
+    }, 25000);
     return () => clearInterval(interval);
   }, []);
 

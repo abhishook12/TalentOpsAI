@@ -28,7 +28,10 @@ export default function Sidebar() {
         }
       }
       fetchPending()
-      const interval = setInterval(fetchPending, 30000)
+      const interval = setInterval(() => {
+        if (typeof document !== 'undefined' && document.hidden) return;
+        fetchPending()
+      }, 60000)
       return () => clearInterval(interval)
     }
   }, [isAdmin])

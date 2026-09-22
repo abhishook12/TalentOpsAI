@@ -50,7 +50,10 @@ export default function ActivityLog() {
 
   useEffect(() => {
     fetchAll();
-    const interval = setInterval(fetchAll, 5000);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchAll();
+    }, 25000);
     return () => clearInterval(interval);
   }, [fetchAll]);
 

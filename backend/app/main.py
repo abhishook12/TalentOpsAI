@@ -64,7 +64,10 @@ def _ensure_core_schema(db_engine):
                 for col, col_type in scout_inst_cols.items():
                     if col not in existing_cols:
                         conn.execute(text(f"ALTER TABLE scout_installations ADD COLUMN IF NOT EXISTS {col} {col_type}"))
-        logger.info("Scout installation broadcast column schema verified.")
+        if insp.has_table("users"):
+            with db_engine.begin() as conn:
+                conn.execute(text("ALTER TABLE users ALTER COLUMN avatar_url TYPE TEXT;"))
+        logger.info("Users table avatar_url schema verified as TEXT.")
     except Exception as e:
         logger.warning("Core database table initialization warning: %s", e)
 

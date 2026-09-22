@@ -831,7 +831,7 @@ export default function DownloadScout() {
                     {displaySize}
                   </span>
                   <span style={{ padding: '3px 8px', borderRadius: 6, background: 'var(--panel-bg, #232326)', border: '1px solid var(--card-border, transparent)', color: 'var(--text-secondary, #a1a1aa)', fontSize: 11, fontWeight: 600 }}>
-                    Extractor v4.5.2
+                    Extractor {releaseInfo.extractor_version ? `v${releaseInfo.extractor_version}` : 'v4.6.2'}
                   </span>
                   <span style={{ padding: '3px 8px', borderRadius: 6, background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', fontSize: 11, fontWeight: 600 }}>
                     SQLite Queue Buffer

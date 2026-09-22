@@ -2,6 +2,7 @@ import re
 import json
 import logging
 import secrets
+import hashlib
 from datetime import datetime, timezone
 from typing import List, Dict, Optional, Tuple, Any
 from sqlalchemy.orm import Session
@@ -762,14 +763,27 @@ class DiscoveryProcessor:
             has_employment = bool(person.current_title and has_clean_company)
             has_primary_anchor = bool(has_strong_profile or has_contact or has_employment)
 
-            # Master recruiters table strictly requires a deliverable email.
-            # Entities without a valid email are held in REVIEW queue for enrichment rather than manufacturing fake placeholders.
+            # Evaluate candidates for auto-commitment to the main line (Recruiters table)
             if has_primary_anchor and has_verified_email and (person.identity_confidence >= AUTO_COMMIT_THRESHOLD or (has_employment and person.identity_confidence >= 0.65)):
                 return {
                     'person': person,
                     'recruiter': None,
                     'decision': 'NEW',
                     'reason': f'High-confidence new candidate entity with primary anchor (score {person.identity_confidence:.2f})',
+                }
+            elif has_strong_profile and (has_employment or person.identity_confidence >= 0.70):
+                return {
+                    'person': person,
+                    'recruiter': None,
+                    'decision': 'NEW',
+                    'reason': f'Verified profile entity discovered via Scout (score {person.identity_confidence:.2f})',
+                }
+            elif has_employment and person.identity_confidence >= 0.70:
+                return {
+                    'person': person,
+                    'recruiter': None,
+                    'decision': 'NEW',
+                    'reason': f'Corroborated employment entity discovered via Scout (score {person.identity_confidence:.2f})',
                 }
             elif has_employment and not has_strong_profile and not has_verified_email:
                 return {
@@ -779,6 +793,13 @@ class DiscoveryProcessor:
                     'reason': f'TITLE_COMPANY_ONLY: Corroborated title & company found, but held in Review Queue awaiting stable profile URL or verified email (confidence {person.identity_confidence:.2f})',
                 }
             elif has_primary_anchor and not has_verified_email:
+                if person.identity_confidence >= 0.60:
+                    return {
+                        'person': person,
+                        'recruiter': None,
+                        'decision': 'NEW',
+                        'reason': f'Candidate entity discovered via Scout (score {person.identity_confidence:.2f})',
+                    }
                 return {
                     'person': person,
                     'recruiter': None,
@@ -1017,21 +1038,26 @@ class DiscoveryProcessor:
                         self.db.add(c_match)
                     continue
 
-                # Guard: Never insert a dummy @noemail recruiter into the master directory
+                # Generate deliverable email or deterministic synthetic provisional email
                 if not person.primary_email or person.primary_email.endswith('@noemail.talentops'):
-                    self.db.query(DiscoveryStaging).filter(
-                        DiscoveryStaging.resolved_person_id == person.id
-                    ).update({
-                        "processing_status": "review",
-                        "decision": "REVIEW",
-                        "decision_reason": "No deliverable email found — held in staging buffer for enrichment",
-                        "processed_at": datetime.now(timezone.utc)
-                    }, synchronize_session=False)
-                    stats['review'] += 1
-                    continue
+                    raw_slug = re.sub(r'[^a-z0-9]', '.', (person.canonical_name or "candidate").strip().lower())
+                    slug = re.sub(r'\.+', '.', raw_slug).strip('.') or "candidate"
+                    id_seed = f"{person.owner_user_id}_{person.canonical_name}_{person.current_company}_{person.linkedin_url}_{person.id}"
+                    hash_suffix = hashlib.sha256(id_seed.encode('utf-8')).hexdigest()[:8]
+                    fallback_email = f"{slug}_{hash_suffix}@noemail.talentops"
+                    needs_review_val = True
+                    review_reason_val = "Discovered via Scout (awaiting email enrichment)"
+                else:
+                    fallback_email = person.primary_email.strip().lower()
+                    needs_review_val = bool(person.identity_confidence < 0.85)
+                    review_reason_val = "Low confidence identity" if needs_review_val else None
 
-                # Create master Recruiter with verified email
-                fallback_email = person.primary_email
+                # Defensive check: if a recruiter with this email already exists, link instead of colliding
+                existing_rec = self.db.query(Recruiter).filter(Recruiter.email == fallback_email).first()
+                if existing_rec:
+                    person.recruiter_id = existing_rec.recruiter_id
+                    stats['duplicate'] += 1
+                    continue
 
                 # Calculate comprehensive title intelligence
                 t_intel = classify_title(person.current_title or "Recruiter")
@@ -1074,7 +1100,8 @@ class DiscoveryProcessor:
                     location=person.location,
                     data_source="extension",
                     is_active=True,
-                    needs_review=bool(person.identity_confidence < 0.85 or not person.primary_email),
+                    needs_review=needs_review_val,
+                    review_reason=review_reason_val,
                     trust_score=int(person.identity_confidence * 100),
                     metadata_json=json.dumps({k: v for k, v in metadata_dict.items() if v is not None})
                 )
@@ -1085,8 +1112,12 @@ class DiscoveryProcessor:
 
                 # Create Audit Trail
                 first_stg = staging_records[0] if staging_records else None
+                event_disc_id = first_stg.discovery_id if first_stg else None
+                if not event_disc_id or self.db.query(ExtensionDiscoveryEvent).filter(ExtensionDiscoveryEvent.discovery_id == event_disc_id).first():
+                    event_disc_id = f"DISC-{secrets.token_hex(8).upper()}"
+
                 event = ExtensionDiscoveryEvent(
-                    discovery_id=first_stg.discovery_id if first_stg else f"DISC-{secrets.token_hex(4).upper()}",
+                    discovery_id=event_disc_id,
                     capture_id=first_stg.capture_id if first_stg else None,
                     device_id=first_stg.device_id if first_stg else "scout-batch",
                     owner_user_id=person.owner_user_id,
@@ -1108,12 +1139,18 @@ class DiscoveryProcessor:
                 self.db.add(event)
 
             elif decision == 'ENRICH':
+                if not recruiter:
+                    stats['review'] += 1
+                    continue
                 stats['enriched'] += 1
                 fields_enriched = []
 
                 if person.primary_email and (not recruiter.email or recruiter.email.endswith("@noemail.talentops")):
                     recruiter.email = person.primary_email
                     fields_enriched.append("Email")
+                    if recruiter.review_reason == "Discovered via Scout (awaiting email enrichment)":
+                        recruiter.review_reason = None
+                        recruiter.needs_review = False
                 if person.primary_phone and not recruiter.phone:
                     recruiter.phone = person.primary_phone
                     fields_enriched.append("Phone")
@@ -1206,8 +1243,12 @@ class DiscoveryProcessor:
                 person.recruiter_id = recruiter.recruiter_id
 
                 first_stg = staging_records[0] if staging_records else None
+                event_disc_id = first_stg.discovery_id if first_stg else None
+                if not event_disc_id or self.db.query(ExtensionDiscoveryEvent).filter(ExtensionDiscoveryEvent.discovery_id == event_disc_id).first():
+                    event_disc_id = f"DISC-{secrets.token_hex(8).upper()}"
+
                 event = ExtensionDiscoveryEvent(
-                    discovery_id=first_stg.discovery_id if first_stg else f"DISC-{secrets.token_hex(4).upper()}",
+                    discovery_id=event_disc_id,
                     capture_id=first_stg.capture_id if first_stg else None,
                     device_id=first_stg.device_id if first_stg else "scout-batch",
                     owner_user_id=person.owner_user_id,
@@ -1233,8 +1274,12 @@ class DiscoveryProcessor:
                 person.recruiter_id = recruiter.recruiter_id
 
                 first_stg = staging_records[0] if staging_records else None
+                event_disc_id = first_stg.discovery_id if first_stg else None
+                if not event_disc_id or self.db.query(ExtensionDiscoveryEvent).filter(ExtensionDiscoveryEvent.discovery_id == event_disc_id).first():
+                    event_disc_id = f"DISC-{secrets.token_hex(8).upper()}"
+
                 event = ExtensionDiscoveryEvent(
-                    discovery_id=first_stg.discovery_id if first_stg else f"DISC-{secrets.token_hex(4).upper()}",
+                    discovery_id=event_disc_id,
                     capture_id=first_stg.capture_id if first_stg else None,
                     device_id=first_stg.device_id if first_stg else "scout-batch",
                     owner_user_id=person.owner_user_id,

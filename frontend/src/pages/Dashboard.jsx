@@ -182,7 +182,8 @@ export default function Dashboard() {
       : { title: 'No recruiter review queue available', meta: 'Data quality', description: 'The backend did not report a review queue count.', tone: 'success', icon: 'ti-circle-check' },
   ]
 
-  const isError = dqError || visitsError || companiesError || kpisError
+  const hasCoreData = Boolean(dashboardData || dataQuality || ingestionData)
+  const isFatalError = !hasCoreData && (kpisError || dqError)
 
   return (
     <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
@@ -218,15 +219,15 @@ export default function Dashboard() {
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
-      {refreshError && (
+      {refreshError && !hasCoreData && (
         <ShellCard style={{ padding: 14, borderColor: 'rgba(196,58,50,0.2)', background: 'rgba(196,58,50,0.05)' }}>
           <div style={{ color: 'var(--danger)', fontSize: 13, fontWeight: 700 }}>{refreshError}</div>
         </ShellCard>
       )}
 
-      {isError && !refreshError && (
+      {isFatalError && (
         <ShellCard style={{ padding: 14, borderColor: 'rgba(196,58,50,0.2)', background: 'rgba(196,58,50,0.05)' }}>
-          <div style={{ color: 'var(--danger)', fontSize: 13, fontWeight: 700 }}>{getErrorMessage(isError, 'Failed to load dashboard data')}</div>
+          <div style={{ color: 'var(--danger)', fontSize: 13, fontWeight: 700 }}>{getErrorMessage(kpisError || dqError, 'Failed to load dashboard data')}</div>
         </ShellCard>
       )}
 

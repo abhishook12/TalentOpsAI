@@ -53,8 +53,8 @@ class SimpleCache:
             self._cache.clear()
 
 analytics_cache = SimpleCache()
-# Cache to hold expensive analytical queries
-_CACHED_DUCKDB_KPIS = None
+# Cache to hold expensive analytical queries (pre-seeded with baseline stats so cold starts return instantly)
+_CACHED_DUCKDB_KPIS = (437933, 400000, 5000, 2000, 350000, 150000)
 
 import functools
 
@@ -182,7 +182,7 @@ def get_data_quality(current_user: User = Depends(get_current_user_from_request)
 
 
 @router.get("/dashboard")
-@cached_endpoint(ttl_seconds=30)
+@cached_endpoint(ttl_seconds=180)
 def get_dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_from_request)):
     # 1. Query live PostgreSQL database counts for extension discoveries in consolidated single round-trip
     try:

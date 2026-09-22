@@ -674,6 +674,19 @@ async def startup_event():
                 logger.warning("Scout release seed check note: %s", seed_err)
 
         asyncio.create_task(asyncio.to_thread(_seed_scout_release))
+
+        # Warm up recruiter store and OLAP sidecar in background thread (non-blocking)
+        def _warm_olap():
+            try:
+                from .services.recruiter_store import recruiter_store
+                recruiter_store._ensure_loaded()
+                from .olap_sidecar import olap_sidecar
+                olap_sidecar.refresh(0, force=True)
+                logger.info("Background OLAP cache pre-warmed successfully.")
+            except Exception as ex:
+                logger.warning("Background OLAP warm-up note: %s", ex)
+
+        asyncio.create_task(asyncio.to_thread(_warm_olap))
         logger.info("Background tasks initialized successfully.")
 
     asyncio.create_task(_async_background_init())

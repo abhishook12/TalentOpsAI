@@ -891,6 +891,7 @@ class LeftRail(QFrame):
     - Bottom widget: 'Local queue 14 · durable · retrying in 12s'
     """
     nav_changed = Signal(int)
+    update_center_requested = Signal()
 
     NAV_ITEMS = [
         ("Scan", "👁️", 0, None),
@@ -927,6 +928,52 @@ class LeftRail(QFrame):
             layout.addWidget(btn)
             
         layout.addStretch()
+
+        # Prominent 1-Click Update & Download Card in Sidebar
+        self.update_card = QFrame()
+        self.update_card.setStyleSheet(f"""
+            QFrame {{
+                background-color: rgba(37, 99, 235, 0.12);
+                border: 1px solid rgba(59, 130, 246, 0.4);
+                border-radius: 6px;
+            }}
+        """)
+        u_layout = QVBoxLayout(self.update_card)
+        u_layout.setContentsMargins(10, 8, 10, 8)
+        u_layout.setSpacing(6)
+
+        u_head = QHBoxLayout()
+        u_title = QLabel("🚀 SCOUT UPDATE")
+        u_title.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
+        u_title.setStyleSheet("color: #38BDF8; letter-spacing: 0.5px;")
+        u_head.addWidget(u_title)
+        u_head.addStretch()
+        self.lbl_update_badge = QLabel("1-CLICK")
+        self.lbl_update_badge.setFont(QFont("Consolas", 7, QFont.Weight.Bold))
+        self.lbl_update_badge.setStyleSheet("color: #10B981; background: rgba(16, 185, 129, 0.15); border-radius: 3px; padding: 1px 4px;")
+        u_head.addWidget(self.lbl_update_badge)
+        u_layout.addLayout(u_head)
+
+        self.btn_rail_update = QPushButton("⚡ Download & Update")
+        self.btn_rail_update.setFont(QFont("Segoe UI", 9, QFont.Weight.DemiBold))
+        self.btn_rail_update.setFixedHeight(30)
+        self.btn_rail_update.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.btn_rail_update.setStyleSheet(f"""
+            QPushButton {{
+                background-color: #2563EB;
+                color: #FFFFFF;
+                border: 1px solid #3B82F6;
+                border-radius: 4px;
+                font-weight: 600;
+            }}
+            QPushButton:hover {{
+                background-color: #1D4ED8;
+            }}
+        """)
+        self.btn_rail_update.clicked.connect(self.update_center_requested.emit)
+        u_layout.addWidget(self.btn_rail_update)
+
+        layout.addWidget(self.update_card)
         
         # Bottom Local Queue durable card
         self.queue_widget = _LocalQueueWidget()

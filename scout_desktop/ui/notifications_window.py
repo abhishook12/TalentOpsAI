@@ -292,17 +292,51 @@ class UpdateCenterDialog(QDialog):
             self.lbl_status.setText(f"Update Available: v{latest_ver}")
             self.lbl_status.setStyleSheet(f"color: {COLOR_CANONICAL}; font-weight: bold;")
             self.btn_update.setEnabled(True)
-            self.btn_update.setText(f"🚀 Update to v{latest_ver} Now")
+            self.btn_update.setText(f"🚀 Update to v{latest_ver} (1-Click)")
         else:
             self.lbl_status.setText(f"You are up to date (v{__version__})")
             self.lbl_status.setStyleSheet(f"color: {COLOR_CANONICAL};")
-            self.btn_update.setEnabled(False)
-            self.btn_update.setText("Up to Date")
+            self.btn_update.setEnabled(True)
+            self.btn_update.setText(f"⚡ Re-install / Renew v{__version__} (1-Click)")
 
     def _on_download_update_clicked(self):
-        url = self.download_url or "https://talent-ops-ai.vercel.app/download-scout"
-        webbrowser.open(url)
-        self.lbl_status.setText("Opening installer download in browser...")
+        url = self.download_url or "https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe"
+        if not url.endswith(".exe"):
+            url = "https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe"
+
+        self.btn_update.setEnabled(False)
+        self.lbl_status.setText("Downloading 1-Click update installer...")
+        self.btn_update.setText("⏳ Downloading...")
+
+        def _download_and_launch():
+            try:
+                import tempfile
+                import urllib.request
+                import subprocess
+
+                target_dir = tempfile.gettempdir()
+                installer_path = os.path.join(target_dir, "TalentOpsScoutSetup.exe")
+
+                # Download installer directly
+                urllib.request.urlretrieve(url, installer_path)
+                logger.info("Downloaded update installer to %s", installer_path)
+
+                # Launch installer directly on Windows
+                if sys.platform == "win32" and os.path.exists(installer_path):
+                    os.startfile(installer_path)
+                    QTimer.singleShot(0, lambda: self.lbl_status.setText("Installer launched! Follow setup on screen."))
+                    QTimer.singleShot(0, lambda: self.btn_update.setText("🚀 Installer Launched"))
+                    QTimer.singleShot(0, lambda: self.btn_update.setEnabled(True))
+                else:
+                    webbrowser.open(url)
+            except Exception as e:
+                logger.warning("1-Click direct install fallback: %s", e)
+                webbrowser.open(url)
+                QTimer.singleShot(0, lambda: self.lbl_status.setText("Opened download link in browser."))
+                QTimer.singleShot(0, lambda: self.btn_update.setEnabled(True))
+                QTimer.singleShot(0, lambda: self.btn_update.setText("🚀 Retry Download"))
+
+        threading.Thread(target=_download_and_launch, daemon=True, name="ScoutOneClickInstaller").start()
 
 
 class NotificationsDialog(QDialog):

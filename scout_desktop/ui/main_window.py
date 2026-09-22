@@ -299,6 +299,7 @@ class MainWindow(QMainWindow):
     def _connect_signals(self):
         # Navigation from Left Rail
         self.left_rail.nav_changed.connect(self._on_left_rail_nav)
+        self.left_rail.update_center_requested.connect(self.show_update_center)
 
         # Scan Page Signals
         self.page_scan.scan_requested.connect(self.force_capture_requested.emit)

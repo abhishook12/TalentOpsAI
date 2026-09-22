@@ -38,6 +38,11 @@ ENABLE_SENTINEL_ENGINE = os.getenv("ENABLE_SENTINEL_ENGINE", "false").lower() in
 ENABLE_QUALITY_ENGINE = os.getenv("ENABLE_QUALITY_ENGINE", "false").lower() in ("1", "true", "yes", "on")
 ENABLE_EMAIL_VERIFICATION_ENGINE = os.getenv("ENABLE_EMAIL_VERIFICATION_ENGINE", "false").lower() in ("1", "true", "yes", "on")
 ENABLE_DATA_FILLER_ENGINE = os.getenv("ENABLE_DATA_FILLER_ENGINE", "false").lower() in ("1", "true", "yes", "on")
+ENABLE_DISCOVERY_LOOP = os.getenv("ENABLE_DISCOVERY_LOOP", "false").lower() in ("1", "true", "yes", "on")
+ENABLE_SYNC_ENGINE = os.getenv("ENABLE_SYNC_ENGINE", "false").lower() in ("1", "true", "yes", "on")
+ENABLE_TIMEOUT_SWEEP = os.getenv("ENABLE_TIMEOUT_SWEEP", "false").lower() in ("1", "true", "yes", "on")
+ENABLE_SYNC_MANAGER = os.getenv("ENABLE_SYNC_MANAGER", "false").lower() in ("1", "true", "yes", "on")
+
 
 SMTP_HOST = os.getenv("SMTP_HOST", "")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))

@@ -17,6 +17,10 @@ from .config import (
     ENABLE_EMAIL_VERIFICATION_ENGINE,
     ENABLE_QUALITY_ENGINE,
     ENABLE_SENTINEL_ENGINE,
+    ENABLE_DISCOVERY_LOOP,
+    ENABLE_SYNC_ENGINE,
+    ENABLE_TIMEOUT_SWEEP,
+    ENABLE_SYNC_MANAGER,
 )
 from .routes import recruiters, companies, vendors, candidates, submissions, analytics, admin, auth, actions, updates, ai, campaigns, harvester, users, visitor_analytics, notifications, bridge, accounts, extension, staging
 from .database import get_db, engine, Base
@@ -469,9 +473,11 @@ except Exception:
 
 @app.get("/api/v1/version")
 @app.get("/version")
-def get_version(response: Response):
-    response.headers["Cache-Control"] = "public, max-age=60"
-    return {"version": _GIT_HASH}
+async def get_version():
+    return JSONResponse(
+        content={"version": _GIT_HASH},
+        headers={"Cache-Control": "public, max-age=60"}
+    )
 
 
 @app.get("/ping")
@@ -592,8 +598,9 @@ async def discovery_batch_processor_loop():
 
 @app.on_event("startup")
 async def startup_event():
-    from .services.sync_layer import sync_manager
-    sync_manager.start()
+    if ENABLE_SYNC_MANAGER:
+        from .services.sync_layer import sync_manager
+        sync_manager.start()
     
     async def _async_background_init():
         # Delay background tasks by 5 seconds to ensure port 8000 binds and health checks pass with 0 latency
@@ -606,10 +613,13 @@ async def startup_event():
         from .services.data_filler_engine import data_filler_engine
         from .database import engine
 
-        # Start background async tasks
-        asyncio.create_task(timeout_stuck_emails_sweep())
-        asyncio.create_task(sync_engine_loop())
-        asyncio.create_task(discovery_batch_processor_loop())
+        # Start background async tasks only if explicitly enabled
+        if ENABLE_TIMEOUT_SWEEP:
+            asyncio.create_task(timeout_stuck_emails_sweep())
+        if ENABLE_SYNC_ENGINE:
+            asyncio.create_task(sync_engine_loop())
+        if ENABLE_DISCOVERY_LOOP:
+            asyncio.create_task(discovery_batch_processor_loop())
 
         try:
             await asyncio.to_thread(restart_active_campaigns)

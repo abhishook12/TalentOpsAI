@@ -282,6 +282,7 @@ class ScoutDesktopApp:
         # Level 2: EdgeHandleWidget (persistent screen-edge dock handle)
         # Level 3: MainWindow (full companion window with min/max/close)
         self.main_window = MainWindow()
+        self.main_window.set_backend_services(backend_client=self.backend_client, updater=self.updater)
         self.edge_handle = EdgeHandleWidget()
         self.tray = SystemTrayManager()
         self.diagnostics = DiagnosticsWindow()
@@ -1966,9 +1967,13 @@ class ScoutDesktopApp:
         if force_check and hasattr(self, "updater"):
             self.updater.trigger_update_check_async(force_notify=True)
 
-        # Update UI banner
-        if hasattr(self, "main_window") and hasattr(self.main_window, "update_banner"):
-            QTimer.singleShot(0, lambda: self.main_window.update_banner.show_downloading(target_version))
+        # Update UI banner and TopBar indicators
+        if hasattr(self, "main_window"):
+            if hasattr(self.main_window, "update_banner"):
+                QTimer.singleShot(0, lambda: self.main_window.update_banner.show_downloading(target_version))
+            if hasattr(self.main_window, "top_bar"):
+                QTimer.singleShot(0, lambda: self.main_window.top_bar.set_update_available(target_version))
+                QTimer.singleShot(0, lambda: self.main_window.top_bar.set_notification_badge(True))
 
         # Show native OS System Tray balloon notification on UI thread
         try:

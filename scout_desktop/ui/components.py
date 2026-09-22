@@ -339,6 +339,8 @@ class TopBar(QFrame):
     - Right side: Latency badge "LATENCY 14MS", operator badge "ALEX J. / LEAD OPERATOR", and Sign out button
     """
     sign_out_clicked = Signal()
+    update_center_requested = Signal()
+    notifications_requested = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -366,17 +368,28 @@ class TopBar(QFrame):
         self.lbl_title.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; border: none; background: transparent; letter-spacing: 0.5px;")
         left_layout.addWidget(self.lbl_title)
         
-        # Version Chip
-        self.lbl_version_chip = QLabel(f"v{__version__}")
-        self.lbl_version_chip.setFont(QFont("Consolas", 8, QFont.Weight.Bold))
-        self.lbl_version_chip.setStyleSheet(f"""
-            background-color: {COLOR_SURFACE_CARD};
-            color: {COLOR_TEXT_MUTED};
-            border: 1px solid {COLOR_SURFACE_BORDER};
-            border-radius: 4px;
-            padding: 1px 6px;
+        # Interactive Version Chip / Update Pill Button
+        self.btn_version_chip = QPushButton(f"v{__version__}")
+        self.btn_version_chip.setFont(QFont("Consolas", 8, QFont.Weight.Bold))
+        self.btn_version_chip.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.btn_version_chip.setToolTip("Click to view Version Details & Check for Updates")
+        self.btn_version_chip.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {COLOR_SURFACE_CARD};
+                color: {COLOR_TEXT_MUTED};
+                border: 1px solid {COLOR_SURFACE_BORDER};
+                border-radius: 4px;
+                padding: 1px 7px;
+            }}
+            QPushButton:hover {{
+                background-color: #1E293B;
+                color: {COLOR_TEXT_PRIMARY};
+                border-color: {COLOR_SURFACE_BORDER_LIGHT};
+            }}
         """)
-        left_layout.addWidget(self.lbl_version_chip)
+        self.btn_version_chip.clicked.connect(self.update_center_requested.emit)
+        self.lbl_version_chip = self.btn_version_chip  # Backward compatibility alias
+        left_layout.addWidget(self.btn_version_chip)
         
         # Idle / Ready Pill
         self.center_pill = _ActiveObservingPill()
@@ -398,9 +411,32 @@ class TopBar(QFrame):
         layout.addLayout(left_layout)
         layout.addStretch()
         
-        # Right Section: Latency, Operator Badge, Sign Out Button
+        # Right Section: Notification Bell, Latency, Operator Badge, Sign Out Button
         right_layout = QHBoxLayout()
-        right_layout.setSpacing(14)
+        right_layout.setSpacing(12)
+
+        # Notification Bell Button with Unread Badge
+        self.btn_notifications = QPushButton("🔔")
+        self.btn_notifications.setFont(QFont("Segoe UI", 9))
+        self.btn_notifications.setFixedSize(28, 28)
+        self.btn_notifications.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.btn_notifications.setToolTip("Global Notifications & Fleet Broadcasts")
+        self.btn_notifications.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {COLOR_SURFACE_CARD};
+                border: 1px solid {COLOR_SURFACE_BORDER};
+                border-radius: 6px;
+                color: {COLOR_TEXT_SECONDARY};
+                padding: 0px;
+            }}
+            QPushButton:hover {{
+                background-color: #1E293B;
+                color: {COLOR_TEXT_PRIMARY};
+                border-color: #38BDF8;
+            }}
+        """)
+        self.btn_notifications.clicked.connect(self.notifications_requested.emit)
+        right_layout.addWidget(self.btn_notifications)
         
         # Latency Badge
         self.lbl_latency = QLabel("LATENCY 14MS")
@@ -452,6 +488,52 @@ class TopBar(QFrame):
         right_layout.addWidget(self.btn_signout)
         
         layout.addLayout(right_layout)
+
+    def set_update_available(self, version: str):
+        """Highlights version chip when a new release is available."""
+        self.btn_version_chip.setText(f"v{__version__} • 🚀 UPDATE")
+        self.btn_version_chip.setToolTip(f"New version v{version} is available! Click to update.")
+        self.btn_version_chip.setStyleSheet(f"""
+            QPushButton {{
+                background-color: rgba(16, 185, 129, 0.15);
+                color: #10B981;
+                border: 1px solid #10B981;
+                border-radius: 4px;
+                padding: 1px 8px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: rgba(16, 185, 129, 0.25);
+            }}
+        """)
+
+    def set_notification_badge(self, has_unread: bool = True):
+        """Highlights notification bell when unread broadcasts exist."""
+        if has_unread:
+            self.btn_notifications.setText("🔔 •")
+            self.btn_notifications.setToolTip("Unread fleet broadcasts available")
+            self.btn_notifications.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: rgba(245, 158, 11, 0.15);
+                    border: 1px solid #F59E0B;
+                    border-radius: 6px;
+                    color: #F59E0B;
+                }}
+                QPushButton:hover {{
+                    background-color: rgba(245, 158, 11, 0.25);
+                }}
+            """)
+        else:
+            self.btn_notifications.setText("🔔")
+            self.btn_notifications.setToolTip("Global Notifications & Fleet Broadcasts")
+            self.btn_notifications.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {COLOR_SURFACE_CARD};
+                    border: 1px solid {COLOR_SURFACE_BORDER};
+                    border-radius: 6px;
+                    color: {COLOR_TEXT_SECONDARY};
+                }}
+            """)
 
     def set_status(self, text: str, is_active: bool = True):
         self.center_pill.set_status(text, is_active)

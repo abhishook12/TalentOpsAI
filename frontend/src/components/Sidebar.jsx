@@ -50,7 +50,7 @@ export default function Sidebar() {
     { to: '/directory', label: 'Directory', icon: Map, aliases: ['/states', '/companies'] },
     { to: '/analytics', label: 'Analytics', icon: BarChart2 },
     { to: '/search', label: 'Search', icon: Search },
-    { to: '/download-scout', label: 'Desktop Scout', icon: Laptop },
+    { to: '/download-scout', label: 'Desktop Scout', icon: Laptop, badge: 'v2.9.3', badgeVariant: 'version' },
     { isGroupHeader: true, label: 'Account' },
     { to: '/profile', label: 'Profile', icon: UserCircle },
     { to: '/settings', label: 'Settings', icon: Settings },
@@ -196,8 +196,9 @@ export default function Sidebar() {
               <span style={{ flex: 1 }}>{label}</span>
               {item.badge && (
                 <div style={{
-                  background: 'var(--danger)',
-                  color: 'white',
+                  background: item.badgeVariant === 'version' ? 'rgba(56, 189, 248, 0.15)' : 'var(--danger)',
+                  color: item.badgeVariant === 'version' ? '#38bdf8' : 'white',
+                  border: item.badgeVariant === 'version' ? '1px solid rgba(56, 189, 248, 0.3)' : 'none',
                   fontSize: '10px',
                   fontWeight: 600,
                   padding: '2px 6px',

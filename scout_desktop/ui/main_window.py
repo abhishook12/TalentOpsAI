@@ -323,11 +323,48 @@ class MainWindow(QMainWindow):
         # Activity Page Signals
         self.page_activity.feed_updated.connect(self._on_activity_feed_updated)
 
-        # Top Bar Sign Out
+        # Top Bar Sign Out, Update Center & Notifications
         self.top_bar.sign_out_clicked.connect(lambda: self.navigate_to_page(8)) # Claim screen
+        self.top_bar.update_center_requested.connect(self.show_update_center)
+        self.top_bar.notifications_requested.connect(self.show_notifications)
+
+        # Settings Page Check Updates Action
+        self.page_settings.check_updates_requested.connect(self.show_update_center)
 
         # Sign In / Claim Page Start Observing
         self.page_signin.device_claimed_and_started.connect(self._on_device_claimed)
+
+    def set_backend_services(self, backend_client=None, updater=None):
+        """Sets references to backend services for update and notification dialogs."""
+        self.backend_client = backend_client
+        self.updater = updater
+
+    def show_update_center(self):
+        """Opens Version & Update Center Dialog."""
+        try:
+            from .notifications_window import UpdateCenterDialog
+            dlg = UpdateCenterDialog(
+                backend_client=getattr(self, "backend_client", None),
+                updater=getattr(self, "updater", None),
+                parent=self
+            )
+            dlg.exec()
+        except Exception as e:
+            logger.error("Error opening update center dialog: %s", e)
+
+    def show_notifications(self):
+        """Opens Global Notifications & Fleet Broadcasts Dialog."""
+        try:
+            from .notifications_window import NotificationsDialog
+            dlg = NotificationsDialog(
+                backend_client=getattr(self, "backend_client", None),
+                parent=self
+            )
+            dlg.exec()
+            if hasattr(self, "top_bar"):
+                self.top_bar.set_notification_badge(False)
+        except Exception as e:
+            logger.error("Error opening notifications dialog: %s", e)
 
     # ─────────────────────────────────────────────────────────────────────────
     # Navigation Router

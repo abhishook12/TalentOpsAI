@@ -18,7 +18,7 @@ from sqlalchemy import func as sqlfunc
 
 from ..database import get_db
 from ..models.staging_models import DiscoveryStaging, ResolvedPerson
-from ..models.models import Recruiter, Company
+from ..models.models import Recruiter, Company, Notification
 from ..models.extension_models import ExtensionDiscoveryEvent
 from ..models.auth_models import User
 from ..services.auth_service import get_current_user_from_request
@@ -317,6 +317,21 @@ def approve_review_item(
     stg.processed_at = datetime.now(timezone.utc)
     db.commit()
 
+    if stg.owner_user_id:
+        try:
+            cand_name = stg.raw_name or "Staged Candidate"
+            cand_comp = f" at {stg.raw_company}" if stg.raw_company else ""
+            notif = Notification(
+                user_id=stg.owner_user_id,
+                title="Staged Discovery Approved",
+                message=f"Your discovered profile for {cand_name}{cand_comp} has been approved and promoted to the talent pool.",
+                type="success"
+            )
+            db.add(notif)
+            db.commit()
+        except Exception as e:
+            logger.warning("Could not dispatch review approval notification: %s", e)
+
     return {"ok": True, "decision": decision_type, "stats": stats}
 
 
@@ -338,6 +353,20 @@ def reject_review_item(
     stg.decision_reason = 'Manually rejected by administrator'
     stg.processed_at = datetime.now(timezone.utc)
     db.commit()
+
+    if stg.owner_user_id:
+        try:
+            cand_name = stg.raw_name or "Staged Candidate"
+            notif = Notification(
+                user_id=stg.owner_user_id,
+                title="Staged Discovery Review Update",
+                message=f"Discovered record for {cand_name} was reviewed and rejected.",
+                type="info"
+            )
+            db.add(notif)
+            db.commit()
+        except Exception as e:
+            logger.warning("Could not dispatch review rejection notification: %s", e)
 
     return {"ok": True, "status": "rejected"}
 

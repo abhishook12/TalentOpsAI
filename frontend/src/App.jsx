@@ -297,10 +297,7 @@ function AppShell() {
               <button className="cc-icon-button" title="Settings" aria-label="Settings" style={{ padding: '8px' }} onClick={() => navigate({ to: '/settings' })}>
                 <i className="ti ti-settings" style={{ fontSize: '20px' }} />
               </button>
-              <button className="cc-icon-button" title="Notifications" aria-label="Notifications" style={{ position: 'relative', padding: '8px' }} onClick={() => window.dispatchEvent(new Event('toggle-update-center'))}>
-                <i className="ti ti-bell" style={{ fontSize: '20px' }} />
-                <span style={{ position: 'absolute', top: 7, right: 9, width: 8, height: 8, borderRadius: 999, background: 'var(--danger)' }} />
-              </button>
+              <NotificationCenter />
               <button className="cc-icon-button" title="Account" aria-label="Account" onClick={() => navigate({ to: isAdmin ? '/admin' : '/profile' })} style={{ padding: '4px' }}>
                 {user?.avatar_url ? (
                   <img src={user.avatar_url} alt="Profile" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
@@ -363,6 +360,7 @@ function AppShell() {
           </div>
         </div>
       </div>
+      <UpdateCenter />
     </>
   )
 }

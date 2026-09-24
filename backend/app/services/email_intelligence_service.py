@@ -30,7 +30,8 @@ UI_NOISE_NAMES = {
     "sign in", "sign up", "log in", "login", "register", "unknown professional",
     "unknown", "new tab", "ask gemini", "gemini", "profile", "view profile",
     "connect", "message", "linkedin member", "member", "anonymous", "candidate",
-    "n/a", "na", "none", "null", "undefined", "administrator"
+    "n/a", "na", "none", "null", "undefined", "administrator", "docusign",
+    "docusign system", "america's cup", "america cup", "shared document"
 }
 
 # ── High-Frequency Company to Primary Domain Mapping ──────────────────────────
@@ -205,7 +206,7 @@ class EmailIntelligenceService:
         # 1. Reject mailbox folder names, placeholders, and UI actions
         if norm_raw in UI_NOISE_NAMES or any(noise in norm_raw for noise in [
             "sign in", "log in", "unknown professional", "new tab", "ask gemini", "view profile",
-            "sent items", "basic text", "streamline"
+            "sent items", "basic text", "streamline", "docusign", "cup", "shared document"
         ]):
             return None
 

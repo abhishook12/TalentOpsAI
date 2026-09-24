@@ -1,0 +1,22 @@
+name: talentopsai
+services:
+  - name: backend
+    type: web
+    git:
+      repository: github.com/abhishook12/TalentOpsAI
+      branch: main
+    dockerfile:
+      path: Dockerfile
+    regions:
+      - sin
+    instance_type: eco-micro
+    ports:
+      - port: 8000
+        path: /
+    routes:
+      - path: /
+        port: 8000
+    health_checks:
+      - http:
+          port: 8000
+          path: /ping

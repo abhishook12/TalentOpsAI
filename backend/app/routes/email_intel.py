@@ -213,3 +213,59 @@ def get_email_intel_stats(
         "pattern_verified_candidates": pattern_verified_candidates,
         "in_memory_cached_mx_domains": len(email_intelligence._MX_CACHE) if hasattr(email_intelligence, "_MX_CACHE") else 0,
     }
+
+
+# ── Autonomous Sweeper Telemetry & Control Endpoints ─────────────────────────
+
+from ..services.autonomous_profile_sweeper import autonomous_sweeper
+
+@router.get("/sweeper-status")
+def get_sweeper_status(
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """
+    Returns live telemetry, operating window status (18:00 - 04:00 daily),
+    repaired profile count, and real-time activity of the autonomous background sweeper.
+    """
+    return {
+        "success": True,
+        "telemetry": autonomous_sweeper.get_telemetry(),
+    }
+
+
+@router.post("/sweeper-trigger")
+def trigger_sweeper_batch(
+    batch_size: int = Query(100, ge=1, le=500),
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """
+    Triggers an immediate profile-by-profile sweep pass of specified batch size.
+    """
+    res = autonomous_sweeper.sweep_batch(limit=batch_size)
+    return {
+        "success": True,
+        "batch_result": res,
+        "telemetry": autonomous_sweeper.get_telemetry(),
+    }
+
+
+@router.post("/sweeper-toggle-force")
+def toggle_sweeper_force(
+    force: Optional[bool] = Query(None, description="Set force mode explicitly or toggle if omitted"),
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """
+    Toggles or sets the force_active override so the sweeper runs even outside 18:00 - 04:00.
+    """
+    if force is not None:
+        autonomous_sweeper.force_active = force
+    else:
+        autonomous_sweeper.force_active = not autonomous_sweeper.force_active
+        
+    return {
+        "success": True,
+        "force_active": autonomous_sweeper.force_active,
+        "is_window_active": autonomous_sweeper.is_window_active,
+        "message": f"Sweeper force mode set to {autonomous_sweeper.force_active}",
+    }
+

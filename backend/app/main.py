@@ -689,12 +689,26 @@ async def startup_event():
                 logger.warning("Background OLAP warm-up note: %s", ex)
 
         asyncio.create_task(asyncio.to_thread(_warm_olap))
+
+        # Launch Autonomous Profile Sweeper (Operates continuously / 18:00 - 04:00 daily)
+        try:
+            from .services.autonomous_profile_sweeper import autonomous_sweeper
+            autonomous_sweeper.start()
+            logger.info("Autonomous Profile Sweeper started successfully (18:00 - 04:00 daily schedule).")
+        except Exception as sweeper_err:
+            logger.warning("Autonomous Profile Sweeper initialization warning: %s", sweeper_err)
+
         logger.info("Background tasks initialized successfully.")
 
     asyncio.create_task(_async_background_init())
 
 @app.on_event("shutdown")
 async def shutdown_event():
+    try:
+        from .services.autonomous_profile_sweeper import autonomous_sweeper
+        autonomous_sweeper.stop()
+    except Exception:
+        pass
     try:
         from .services.sync_layer import sync_manager
         sync_manager.stop()

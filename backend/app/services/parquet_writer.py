@@ -138,41 +138,46 @@ class ParquetWriter:
                 return 0
 
             start_time = time.time()
-            logger.info("Executing update via Pure Pandas to prevent corruption...")
             tmp_file = f"{PARQUET_FILE}.{os.getpid()}.update.tmp"
             
             try:
-                # Pure Pandas update
-                import pandas as pd
-                df_base = pd.read_parquet(PARQUET_FILE)
+                con = duckdb.connect()
+                target_p = PARQUET_FILE.replace(os.sep, "/")
                 
-                # Create an updates dataframe
+                # Fetch schema column names
+                schema_info = con.execute(f"DESCRIBE SELECT * FROM read_parquet('{target_p}')").fetchall()
+                base_cols = [r[0] for r in schema_info]
+                
                 df_updates = pd.DataFrame(valid_updates)
-                df_updates.set_index('recruiter_id', inplace=True)
+                # Deduplicate by recruiter_id keeping last
+                df_updates = df_updates.drop_duplicates(subset=['recruiter_id'], keep='last')
+                con.register("df_updates", df_updates)
                 
-                # Drop duplicate indices if the parquet file has corrupt duplicate recruiter_ids
-                df_updates = df_updates[~df_updates.index.duplicated(keep='last')]
-                
-                # Ensure string types match
-                for col in df_updates.columns:
-                    if col in df_base.columns and pd.api.types.is_string_dtype(df_base[col]):
-                        df_updates[col] = df_updates[col].astype(str)
-                
-                # Apply updates efficiently
-                df_base.set_index('recruiter_id', inplace=True)
-                df_base.update(df_updates)
-                df_base.reset_index(inplace=True)
-                
-                # Write back with pyarrow
-                df_base.to_parquet(tmp_file, engine='pyarrow', compression='zstd')
+                update_cols = set(df_updates.columns) - {'recruiter_id'}
+                select_parts = []
+                for c in base_cols:
+                    if c == 'recruiter_id':
+                        select_parts.append('b.recruiter_id')
+                    elif c in update_cols:
+                        select_parts.append(f'COALESCE(u.{c}, b.{c}) AS {c}')
+                    else:
+                        select_parts.append(f'b.{c}')
+
+                con.execute(f"""
+                    COPY (
+                        SELECT {", ".join(select_parts)}
+                        FROM read_parquet('{target_p}') b
+                        LEFT JOIN df_updates u ON b.recruiter_id = u.recruiter_id
+                    ) TO '{tmp_file.replace(os.sep, "/")}' (FORMAT PARQUET)
+                """)
+                con.close()
                 
                 # Atomic swap
                 shutil.move(tmp_file, PARQUET_FILE)
-                logger.info(f"Updated {len(valid_updates)} records in Parquet via Pandas in {time.time() - start_time:.2f}s")
-                    
+                logger.info(f"Updated {len(valid_updates)} records in Parquet via DuckDB in {time.time() - start_time:.2f}s")
+                
                 # Reload the read replica
                 recruiter_store.reload()
-                
                 return len(valid_updates)
             except Exception as e:
                 logger.error(f"Failed to update Parquet: {e}")

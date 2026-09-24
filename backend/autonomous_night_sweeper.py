@@ -1,141 +1,102 @@
 #!/usr/bin/env python
-"""Autonomous Background Constitutional Quality & Enrichment Sweeper - TalentOpsAI"""
-import sys, os, time, re
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+"""
+Autonomous Background Constitutional Quality & Enrichment Sweeper - TalentOps AI
 
-from app.services.recruiter_store import _get_duckdb, PARQUET_FILE
-from app.services.parquet_writer import parquet_writer
+Can be run standalone via CLI or runs automatically inside FastAPI lifespan.
+Enforces the 18:00 - 04:00 daily operating window (unless --force is passed).
 
-STATE_MAP = {
-    'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC',
-    'AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'ON', 'PE', 'QC', 'SK', 'UK', 'DE', 'FR', 'IN', 'AU', 'SG', 'IE'
-}
+Usage:
+  python autonomous_night_sweeper.py               # Runs continuously in background
+  python autonomous_night_sweeper.py --once        # Executes a single sweep pass
+  python autonomous_night_sweeper.py --force       # Forces immediate sweeping regardless of current hour
+  python autonomous_night_sweeper.py --batch 200   # Custom batch size
+"""
 
-TITLE_TAXONOMY = {
-    'vp': 'VP of Talent Acquisition', 'vice president': 'VP of Talent Acquisition',
-    'director': 'Director of Talent Acquisition', 'head of talent': 'Head of Talent Acquisition',
-    'head of recruiting': 'Head of Recruiting', 'principal': 'Principal Recruiter',
-    'lead': 'Lead Technical Recruiter', 'senior': 'Senior Technical Recruiter',
-    'sr': 'Senior Technical Recruiter', 'talent acquisition': 'Talent Acquisition Specialist',
-    'technical recruiter': 'Technical Recruiter', 'sourcer': 'Talent Sourcer',
-    'recruiter': 'Recruiter'
-}
+import sys
+import os
+import time
+import argparse
+import logging
 
-def run_sweeper_loop():
-    print(f"[{time.strftime('%X')}] =========================================================")
-    print(f"[{time.strftime('%X')}] AUTONOMOUS BACKGROUND CONSTITUTIONAL SWEEPER ACTIVE")
-    print(f"[{time.strftime('%X')}] Mode: Continuous Offline Local Optimization ($0.00 Cost)")
-    print(f"[{time.strftime('%X')}] Storage: Zero-Egress Parquet Direct Access")
-    print(f"[{time.strftime('%X')}] =========================================================")
+# Ensure backend root is on sys.path
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
+from app.services.autonomous_profile_sweeper import autonomous_sweeper
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%H:%M:%S",
+)
+logger = logging.getLogger("autonomous_night_sweeper")
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="TalentOps AI Autonomous Background Sweeper")
+    parser.add_argument("--once", action="store_true", help="Run a single batch sweep and exit")
+    parser.add_argument("--force", action="store_true", help="Force sweep even if outside 18:00-04:00 window")
+    parser.add_argument("--batch", type=int, default=100, help="Batch size per sweep (default: 100)")
+    parser.add_argument("--delay", type=float, default=1.0, help="Sleep delay between batches in seconds")
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
     
-    duckdb = _get_duckdb()
-    pass_num = 1
+    if args.force:
+        autonomous_sweeper.force_active = True
+    autonomous_sweeper.batch_size = args.batch
+    autonomous_sweeper.batch_delay = args.delay
+
+    print("=" * 80)
+    print("[TALENTOPS AI] AUTONOMOUS BACKGROUND PROFILE SWEEPER")
+    print(f"Schedule: 18:00 to 04:00 Daily (Force Mode: {autonomous_sweeper.force_active})")
+    print(f"Batch Size: {args.batch} records | Delay: {args.delay}s | Single-Pass: {args.once}")
+    print("=" * 80)
+
+    if args.once:
+        print(f"[{time.strftime('%X')}] Running single-pass sweep batch...")
+        res = autonomous_sweeper.sweep_batch(limit=args.batch)
+        print(f"[{time.strftime('%X')}] Sweep Pass Completed!")
+        print(f"Scanned: {res['count']} | Repaired: {res['repaired']} | Duration: {res['duration']}s")
+        print("\nTelemetry Stats:")
+        for k, v in autonomous_sweeper.stats.items():
+            print(f"  - {k}: {v}")
+        return
+
+    # Continuous Mode
+    autonomous_sweeper.running = True
+    pass_count = 1
+    
     try:
-        while True:
-            t0 = time.time()
-            print(f"\n[{time.strftime('%X')}] --- STARTING SWEEP PASS #{pass_num} ---")
-            
-            if not os.path.exists(PARQUET_FILE):
-                print(f"[{time.strftime('%X')}] Parquet file not found. Waiting...")
-                time.sleep(15)
-                continue
-
-            con = duckdb.connect()
-            
-            # -----------------------------------------------------
-            # LOOP 1: Deeper Text Mining for Unknown State Recruiters
-            # -----------------------------------------------------
-            print(f"[{time.strftime('%X')}] Mining text fields for remaining unknown states...")
-            unk_rows = con.execute(f"""
-                SELECT recruiter_id, notes, raw_data, review_reason
-                FROM read_parquet('{PARQUET_FILE.replace(os.sep, '/')}')
-                WHERE is_active = true AND (state IS NULL OR TRIM(state) = '' OR LOWER(state) = 'nan')
-                LIMIT 5000
-            """).fetchall()
-            
-            geo_updates = []
-            for r in unk_rows:
-                rid, notes, raw_data, review_reason = r
-                combined = f"{notes or ''} {raw_data or ''} {review_reason or ''}".upper()
-                st = None
-                for tok in re.findall(r'\b[A-Z]{2}\b', combined):
-                    if tok in STATE_MAP: st = tok; break
-                if st:
-                    geo_updates.append({"recruiter_id": rid, "state": st, "state_source": "deep_text_mining"})
-                    
-            if geo_updates:
-                parquet_writer.update_records(geo_updates)
-                print(f"[{time.strftime('%X')}] Pass #{pass_num} Geo-Victory: Resolved +{len(geo_updates):,} hidden state locations!")
-
-            # -----------------------------------------------------
-            # LOOP 2: Job Title Taxonomy Normalization
-            # -----------------------------------------------------
-            print(f"[{time.strftime('%X')}] Standardizing job title taxonomy...")
-            title_rows = con.execute(f"""
-                SELECT recruiter_id, title
-                FROM read_parquet('{PARQUET_FILE.replace(os.sep, '/')}')
-                WHERE is_active = true AND title IS NOT NULL AND title NOT LIKE '%Talent%' AND title NOT LIKE '%Recruiter%'
-                LIMIT 5000
-            """).fetchall()
-            
-            title_ups = []
-            for r in title_rows:
-                rid, title = r
-                t_raw = title.strip().lower()
-                clean_t = None
-                for k, v in TITLE_TAXONOMY.items():
-                    if re.search(rf'\b{k}\b', t_raw): clean_t = v; break
-                if clean_t and clean_t != title:
-                    title_ups.append({"recruiter_id": rid, "title": clean_t})
-                    
-            if title_ups:
-                parquet_writer.update_records(title_ups)
-                print(f"[{time.strftime('%X')}] Pass #{pass_num} Title-Victory: Aligned +{len(title_ups):,} recruiter titles to enterprise taxonomy.")
-
-            # -----------------------------------------------------
-            # LOOP 3: Completeness Score Dynamic Recalculation
-            # -----------------------------------------------------
-            print(f"[{time.strftime('%X')}] Recalculating dynamic completeness scores...")
-            recalc_rows = con.execute(f"""
-                SELECT recruiter_id, email, phone, company_id, state, title
-                FROM read_parquet('{PARQUET_FILE.replace(os.sep, '/')}')
-                WHERE is_active = true
-                USING SAMPLE 10000 ROWS
-            """).fetchall()
-            
-            score_ups = []
-            for r in recalc_rows:
-                rid, email, phone, comp_id, state, title = r
-                sc = 10
-                if email and '@' in email and 'missing' not in email: sc += 35
-                if phone and len(str(phone)) >= 10: sc += 25
-                if comp_id: sc += 15
-                if state and state in STATE_MAP: sc += 10
-                if title and len(title) > 2: sc += 5
-                score_ups.append({"recruiter_id": rid, "completeness_score": min(sc, 100)})
+        while autonomous_sweeper.running:
+            if autonomous_sweeper.is_window_active:
+                print(f"\n[{time.strftime('%X')}] --- SWEEP CYCLE #{pass_count} ---")
+                res = autonomous_sweeper.sweep_batch(limit=args.batch)
+                print(
+                    f"[{time.strftime('%X')}] Cycle #{pass_count} finished: "
+                    f"{res['count']} scanned, {res['repaired']} repaired in {res['duration']}s"
+                )
+                pass_count += 1
                 
-            if score_ups:
-                parquet_writer.update_records(score_ups)
-                print(f"[{time.strftime('%X')}] Pass #{pass_num} Score-Victory: Rebalanced {len(score_ups)} quality scores.")
-
-            con.close()
-            
-            elapsed = round(time.time() - t0, 2)
-            print(f"[{time.strftime('%X')}] Sweep Pass #{pass_num} finished in {elapsed}s. Resting 15s before next cycle...")
-            pass_num += 1
-            time.sleep(15)
-            
-            # Clear uvicorn cache periodically
-            try:
-                from app.routes.analytics import analytics_cache
-                analytics_cache.clear()
-            except Exception:
-                pass
+                if res["count"] > 0:
+                    time.sleep(args.delay)
+                else:
+                    print(f"[{time.strftime('%X')}] All profiles currently clean! Resting 20 seconds...")
+                    time.sleep(20)
+            else:
+                now_str = time.strftime("%H:%M:%S")
+                print(f"[{now_str}] Outside 18:00 - 04:00 window. Sweeper sleeping until evening (6:00 PM)...")
+                time.sleep(60)
 
     except KeyboardInterrupt:
-        print("\n[STOP] Background Sweeper shut down gracefully.")
-    except Exception as e:
-        print("ERROR IN SWEEPER:", e)
+        print(f"\n[{time.strftime('%X')}] Shutting down Autonomous Sweeper gracefully.")
+        print("\nSession Final Stats:")
+        for k, v in autonomous_sweeper.stats.items():
+            print(f"  - {k}: {v}")
+
 
 if __name__ == "__main__":
-    run_sweeper_loop()
+    main()

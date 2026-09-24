@@ -13,6 +13,7 @@ Functions:
 import re
 import json
 import logging
+import unicodedata
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional, Tuple
 
@@ -23,6 +24,14 @@ from sqlalchemy import func as sqlfunc
 from ..models.models import Company, CompanyEmailPattern
 
 logger = logging.getLogger("talentops.email_intel")
+
+# ── Non-human & UI Noise Blacklist ───────────────────────────────────────────
+UI_NOISE_NAMES = {
+    "sign in", "sign up", "log in", "login", "register", "unknown professional",
+    "unknown", "new tab", "ask gemini", "gemini", "profile", "view profile",
+    "connect", "message", "linkedin member", "member", "anonymous", "candidate",
+    "n/a", "na", "none", "null", "undefined", "administrator"
+}
 
 # ── High-Frequency Company to Primary Domain Mapping ──────────────────────────
 # Top tech, global enterprise, Indian IT/unicorns, and consulting firms
@@ -152,7 +161,7 @@ FREE_EMAIL_DOMAINS = {
     "ymail.com", "mail.com", "gmx.com", "fastmail.com", "inbox.com",
 }
 
-# Legal suffixes to clean from company names when resolving domains
+# Legal and regional suffixes to clean from company names when resolving domains
 COMPANY_LEGAL_SUFFIXES = [
     r"\binc\.?\b", r"\bincorporated\b", r"\bllc\.?\b", r"\bl\.l\.c\.?\b",
     r"\bltd\.?\b", r"\blimited\b", r"\bpvt\.?\s*ltd\.?\b", r"\bprivate\s*limited\b",
@@ -160,6 +169,8 @@ COMPANY_LEGAL_SUFFIXES = [
     r"\bco\.?\b", r"\bcompany\b", r"\btechnologies\b", r"\btechnology\b",
     r"\bsoftware\b", r"\bsolutions\b", r"\bsystems\b", r"\bservices\b",
     r"\bglobal\b", r"\bgroup\b", r"\blabs\b", r"\bholdings\b",
+    r"\bindia\b", r"\bus\b", r"\busa\b", r"\buk\b", r"\bapac\b", r"\bemea\b",
+    r"\beurope\b", r"\basia\b", r"\bcanada\b", r"\baustralia\b",
 ]
 
 # Name prefixes and honorifics
@@ -184,12 +195,23 @@ class EmailIntelligenceService:
         """
         Cleans and tokenizes full names into first, last, and initials.
         Handles prefixes, middle initials, hyphens, and cultural multi-part names.
+        Accented characters are transliterated to ASCII (François -> Francois, Björn -> Bjorn).
         """
         if not full_name or not isinstance(full_name, str):
             return None
 
+        norm_raw = full_name.lower().strip()
+        if norm_raw in UI_NOISE_NAMES or any(noise in norm_raw for noise in [
+            "sign in", "log in", "unknown professional", "new tab", "ask gemini", "view profile"
+        ]):
+            return None
+
+        # Normalize unicode accents / diacritics to ASCII (e.g. François -> Francois, Renée -> Renee, Björn -> Bjorn)
+        decomposed = unicodedata.normalize("NFKD", full_name)
+        ascii_name = "".join(c for c in decomposed if not unicodedata.combining(c))
+
         # Clean noise characters
-        cleaned = re.sub(r"[^\w\s\'-]", " ", full_name).strip()
+        cleaned = re.sub(r"[^\w\s\'-]", " ", ascii_name).strip()
         tokens = [t for t in cleaned.split() if t]
 
         if not tokens:
@@ -244,11 +266,18 @@ class EmailIntelligenceService:
 
         norm_name = company_name.lower().strip()
 
+        # 0. Check if an explicit domain is embedded in the company name (e.g. "Airbnb, Inc. (airbnb.com)")
+        dom_match = re.search(r'\b([a-zA-Z0-9][-a-zA-Z0-9]*\.(?:com|org|net|io|ai|co|in|us|de|uk|ca|tech|app|dev|biz|club))\b', norm_name)
+        if dom_match:
+            found_dom = dom_match.group(1).lower().strip()
+            if found_dom not in FREE_EMAIL_DOMAINS:
+                return found_dom
+
         # 1. Direct dictionary check
         if norm_name in KNOWN_COMPANY_DOMAINS:
             return KNOWN_COMPANY_DOMAINS[norm_name]
 
-        # Strip legal and generic suffixes for dictionary lookup
+        # Strip legal and regional suffixes for dictionary lookup
         stripped = norm_name
         for pattern in COMPANY_LEGAL_SUFFIXES:
             stripped = re.sub(pattern, "", stripped, flags=re.IGNORECASE).strip()
@@ -256,6 +285,11 @@ class EmailIntelligenceService:
         stripped = re.sub(r"\s+", " ", stripped).strip()
         if stripped in KNOWN_COMPANY_DOMAINS:
             return KNOWN_COMPANY_DOMAINS[stripped]
+
+        # Check root/first word if it matches a known enterprise (e.g. "Microsoft India" -> "microsoft.com")
+        words = [w for w in re.split(r"[\s,.-]+", stripped) if w]
+        if words and words[0] in KNOWN_COMPANY_DOMAINS and len(words[0]) >= 4:
+            return KNOWN_COMPANY_DOMAINS[words[0]]
 
         # 2. Database lookup in existing companies table
         if db:
@@ -496,6 +530,19 @@ class EmailIntelligenceService:
                         last_verified_at=datetime.now(timezone.utc)
                     )
                     db.add(new_pat)
+                db.flush()
+
+                # Recalculate match percentages across all patterns for this domain
+                all_pats = db.query(CompanyEmailPattern).filter(
+                    CompanyEmailPattern.domain == domain,
+                    CompanyEmailPattern.active == True
+                ).all()
+                total_verified = sum(p.verified_example_count or 1 for p in all_pats)
+                if total_verified > 0:
+                    for p in all_pats:
+                        p.match_percentage = round(((p.verified_example_count or 1) / total_verified) * 100, 2)
+                        db.add(p)
+
                 db.commit()
                 logger.info("🎯 Learned email pattern for %s: %s (%s)", domain, deduced_pattern, email)
             except Exception as e:
@@ -549,29 +596,35 @@ class EmailIntelligenceService:
         # Candidate lacks email — synthesize and verify
         tokens = cls.clean_name_tokens(full_name)
         if not tokens or not company_name:
+            norm_name = (full_name or "").lower().strip()
+            if norm_name in UI_NOISE_NAMES or any(noise in norm_name for noise in ["sign in", "unknown professional", "new tab", "ask gemini"]):
+                return {"email": None, "status": "INVALID_CANDIDATE_NAME", "confidence": 0.0}
             return {"email": None, "status": "INSUFFICIENT_DATA", "confidence": 0.0}
 
         domain = cls.resolve_company_domain(company_name, db=db)
         if not domain:
             return {"email": None, "status": "DOMAIN_UNRESOLVED", "confidence": 0.0}
 
-        # Check known pattern
+        # Check DB first for empirical learned pattern with verified examples
         known_pattern = None
-        if domain in SEEDED_COMPANY_PATTERNS:
-            known_pattern = SEEDED_COMPANY_PATTERNS[domain]["pattern"]
-
-        # Check DB for learned pattern
-        if not known_pattern and db:
+        if db:
             try:
                 db_pattern = db.query(CompanyEmailPattern).filter(
                     CompanyEmailPattern.domain == domain,
                     CompanyEmailPattern.active == True
-                ).order_by(CompanyEmailPattern.verified_example_count.desc()).first()
+                ).order_by(
+                    CompanyEmailPattern.verified_example_count.desc(),
+                    CompanyEmailPattern.confidence_score.desc()
+                ).first()
 
-                if db_pattern:
+                if db_pattern and (db_pattern.verified_example_count or 0) >= 1:
                     known_pattern = db_pattern.pattern
             except Exception as e:
                 logger.debug("Failed querying DB pattern: %s", e)
+
+        # Fallback to static seed dictionary if no empirical DB pattern exists yet
+        if not known_pattern and domain in SEEDED_COMPANY_PATTERNS:
+            known_pattern = SEEDED_COMPANY_PATTERNS[domain]["pattern"]
 
         # Generate permutations
         permutations = cls.generate_permutations(

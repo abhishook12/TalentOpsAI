@@ -45,6 +45,7 @@ from ..models.models import Recruiter, Company, EnrichmentAudit
 from .recruiter_store import _get_duckdb, PARQUET_FILE, recruiter_store
 from .parquet_writer import parquet_writer
 from .email_intelligence_service import email_intelligence, FREE_EMAIL_DOMAINS
+from .zero_resource_enricher import zero_resource_enricher
 
 logger = logging.getLogger("talentops.sweeper")
 
@@ -214,6 +215,9 @@ class AutonomousProfileSweeper:
             "emails_synthesized": 0,
             "states_resolved": 0,
             "titles_normalized": 0,
+            "profiles_enriched": 0,
+            "ats_systems_detected": 0,
+            "avatars_resolved": 0,
             "scores_recalculated": 0,
             "batches_processed": 0,
             "last_sweep_at": None,
@@ -570,6 +574,51 @@ class AutonomousProfileSweeper:
                 is_modified = True
                 actions.append(f"STANDARDIZED_TITLE: '{current_title}' -> '{clean_t}'")
                 self.stats["titles_normalized"] += 1
+
+        # ─────────────────────────────────────────────────────────────────────
+        # 4.5 PASSIVE ZERO-RESOURCE MULTI-SOURCE ENRICHMENT (AVATAR & TECH-STACK)
+        # ─────────────────────────────────────────────────────────────────────
+        cur_email = updated.get("email")
+        cur_name = updated.get("recruiter_name")
+        cur_logo = updated.get("logo_url")
+        if cur_email and "@" in str(cur_email) and "missing" not in str(cur_email):
+            try:
+                enr = zero_resource_enricher.enrich_profile(
+                    email=str(cur_email),
+                    name=str(cur_name) if cur_name else None,
+                    company_name=company_name,
+                )
+                if enr.get("avatar_url") and (not cur_logo or "ui-avatars" in str(cur_logo) or str(cur_logo) == "None"):
+                    updated["logo_url"] = enr["avatar_url"]
+                    is_modified = True
+                    self.stats["avatars_resolved"] += 1
+
+                if enr.get("ats_system") or enr.get("crm_system") or enr.get("tech_stack"):
+                    existing_meta = {}
+                    if updated.get("metadata_json"):
+                        try:
+                            existing_meta = json.loads(updated["metadata_json"])
+                        except Exception:
+                            existing_meta = {}
+                    meta_changed = False
+                    if enr.get("ats_system") and not existing_meta.get("ats_system"):
+                        existing_meta["ats_system"] = enr["ats_system"]
+                        self.stats["ats_systems_detected"] += 1
+                        meta_changed = True
+                    if enr.get("crm_system") and not existing_meta.get("crm_system"):
+                        existing_meta["crm_system"] = enr["crm_system"]
+                        meta_changed = True
+                    if enr.get("tech_stack") and not existing_meta.get("tech_stack"):
+                        existing_meta["tech_stack"] = enr["tech_stack"]
+                        meta_changed = True
+                    if meta_changed:
+                        existing_meta["avatar_url"] = enr.get("avatar_url")
+                        updated["metadata_json"] = json.dumps(existing_meta)
+                        is_modified = True
+                        self.stats["profiles_enriched"] += 1
+                        actions.append(f"ENRICHED_MULTI_SOURCE: ATS='{enr.get('ats_system')}' | CRM='{enr.get('crm_system')}'")
+            except Exception as e:
+                logger.debug("Passive enrichment exception: %s", e)
 
         # ─────────────────────────────────────────────────────────────────────
         # 5. DYNAMIC COMPLETENESS & QUALITY SCORING

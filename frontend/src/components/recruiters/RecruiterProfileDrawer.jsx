@@ -99,12 +99,50 @@ export default function RecruiterProfileDrawer({
   const [localRecruiter, setLocalRecruiter] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
   const [isFixingEmail, setIsFixingEmail] = useState(false);
+  const [isEnriching, setIsEnriching] = useState(false);
 
   React.useEffect(() => {
     setLocalRecruiter(null);
   }, [initialRecruiter?.recruiter_id, initialRecruiter?.id]);
 
   const recruiter = localRecruiter || initialRecruiter;
+
+  const handleEnrichProfile = async () => {
+    if (!recruiter?.recruiter_id && !recruiter?.email) return;
+    setIsEnriching(true);
+    const toastId = toast.loading('Querying DNS firmographics & hash identity resolver...');
+    try {
+      const res = await api.post('/api/enrichment/enrich-profile', {
+        recruiter_id: recruiter.recruiter_id,
+        email: recruiter.email,
+        name: recruiter.recruiter_name,
+        company_name: recruiter.company_name || recruiter.company,
+      });
+      const enr = res.data.enriched;
+      const updatedMeta = {
+        ...(recruiter.metadata_json ? JSON.parse(typeof recruiter.metadata_json === 'string' ? recruiter.metadata_json : '{}') : {}),
+        ats_system: enr.ats_system,
+        crm_system: enr.crm_system,
+        tech_stack: enr.tech_stack,
+        detected_tools: enr.detected_tools,
+        avatar_url: enr.avatar_url,
+      };
+
+      setLocalRecruiter({
+        ...recruiter,
+        logo_url: enr.avatar_url || recruiter.logo_url,
+        completeness_score: Math.min(100, (recruiter.completeness_score || 70) + (enr.score_boost || 15)),
+        metadata_json: JSON.stringify(updatedMeta),
+      });
+
+      const detectedName = enr.ats_system || enr.crm_system || (enr.tech_stack?.length ? enr.tech_stack[0] : 'Tech Stack');
+      toast.success(`Enriched! Detected ${detectedName} (${enr.latency_ms}ms)`, { id: toastId });
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Failed to enrich profile', { id: toastId });
+    } finally {
+      setIsEnriching(false);
+    }
+  };
 
   if (!isOpen || !recruiter) return null;
 
@@ -128,6 +166,16 @@ export default function RecruiterProfileDrawer({
   const emailStatus = recruiter.email_status || 'verified';
   const confidence = recruiter.email_confidence || (emailStatus === 'verified' ? 95 : 75);
   const completeness = recruiter.completeness_score || 85;
+
+  let meta = {};
+  try {
+    meta = typeof recruiter.metadata_json === 'string' ? JSON.parse(recruiter.metadata_json || '{}') : (recruiter.metadata_json || {});
+  } catch (e) {
+    meta = {};
+  }
+  const detectedTools = meta.detected_tools || [];
+  const atsSystem = meta.ats_system;
+  const crmSystem = meta.crm_system;
 
   const handleAutoFixEmail = async () => {
     if (!recruiter.recruiter_id) return;
@@ -301,29 +349,82 @@ export default function RecruiterProfileDrawer({
                 </div>
               </div>
 
+              {/* Enterprise Tech Stack & ATS Firmographics */}
+              {(detectedTools.length > 0 || atsSystem || crmSystem) && (
+                <div
+                  className="p-4 rounded-xl space-y-2.5"
+                  style={{ background: 'var(--card-bg, #18181c)', border: '1px solid var(--card-border, #27272a)' }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5" style={{ color: 'var(--text-secondary, #a1a1aa)' }}>
+                      <Building2 className="w-3.5 h-3.5 text-blue-400" /> Company Tech Stack (DNS Verified)
+                    </span>
+                    {atsSystem && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                        {atsSystem} ATS
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {detectedTools.map((t, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-0.5 rounded-md text-[11px] font-medium border flex items-center gap-1"
+                        style={{
+                          background: `${t.badge_color || '#3b82f6'}18`,
+                          borderColor: `${t.badge_color || '#3b82f6'}40`,
+                          color: t.badge_color || '#60a5fa'
+                        }}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: t.badge_color || '#60a5fa' }} />
+                        {t.label || t.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Contact Channels */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-semibold uppercase tracking-wider m-0" style={{ color: 'var(--text-secondary, #a1a1aa)' }}>
                     Contact Coordinates
                   </h3>
-                  {recruiter.recruiter_id && (
+                  <div className="flex items-center gap-1.5">
                     <button
-                      onClick={handleAutoFixEmail}
-                      disabled={isFixingEmail}
-                      className="text-[11px] font-semibold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer bg-purple-500/10 hover:bg-purple-500/20 px-2.5 py-1 rounded-lg border border-purple-500/20 transition-colors"
+                      onClick={handleEnrichProfile}
+                      disabled={isEnriching}
+                      className="text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/20 transition-colors"
                     >
-                      {isFixingEmail ? (
+                      {isEnriching ? (
                         <>
-                          <RefreshCw className="w-3 h-3 animate-spin" /> Repairing...
+                          <RefreshCw className="w-3 h-3 animate-spin" /> Enriching...
                         </>
                       ) : (
                         <>
-                          <Wand2 className="w-3 h-3" /> Auto-Repair Email
+                          <Sparkles className="w-3 h-3 text-amber-400" /> Enrich
                         </>
                       )}
                     </button>
-                  )}
+                    {recruiter.recruiter_id && (
+                      <button
+                        onClick={handleAutoFixEmail}
+                        disabled={isFixingEmail}
+                        className="text-[11px] font-semibold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer bg-purple-500/10 hover:bg-purple-500/20 px-2.5 py-1 rounded-lg border border-purple-500/20 transition-colors"
+                      >
+                        {isFixingEmail ? (
+                          <>
+                            <RefreshCw className="w-3 h-3 animate-spin" /> Repairing...
+                          </>
+                        ) : (
+                          <>
+                            <Wand2 className="w-3 h-3" /> Auto-Repair
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Email Items */}

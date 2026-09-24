@@ -415,6 +415,8 @@ from .routes import system
 app.include_router(system.router, prefix="/system", tags=["System Controls"])
 from .routes import mailintel
 app.include_router(mailintel.router, prefix="/mailintel", tags=["MailIntel"])
+from .routes import email_intel
+app.include_router(email_intel.router)
 from .routes import talent_pools
 app.include_router(talent_pools.router)
 from .routes import domain_health

@@ -177,18 +177,19 @@ class BackendClient:
 
     def _resolve_api_base(self) -> str:
         """Resolves target backend from config (defaults to PRODUCTION)."""
-        cfg_env = "PRODUCTION"
-        if os.path.exists(self.config_path):
-            try:
-                with open(self.config_path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    cfg_env = data.get("environment", "PRODUCTION").upper()
-                    if cfg_env == "LOCAL":
-                        return data.get("local_api_base", DEFAULT_LOCAL_API)
-                    elif data.get("api_base"):
-                        return data.get("api_base")
-            except Exception:
-                pass
+        repo_cfg = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.json")
+        for p in [self.config_path, repo_cfg]:
+            if p and os.path.exists(p):
+                try:
+                    with open(p, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        cfg_env = data.get("environment", "PRODUCTION").upper()
+                        if cfg_env == "LOCAL":
+                            return data.get("local_api_base", DEFAULT_LOCAL_API)
+                        elif data.get("api_base") and "environment" in data:
+                            return data.get("api_base")
+                except Exception:
+                    pass
 
         return DEFAULT_PRODUCTION_API
 

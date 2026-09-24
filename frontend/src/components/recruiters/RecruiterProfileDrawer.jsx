@@ -297,7 +297,7 @@ export default function RecruiterProfileDrawer({
                   style={{ color: 'var(--text-secondary, #a1a1aa)', borderTop: '1px solid var(--card-border, #27272a)' }}
                 >
                   <span>Status: <strong className="capitalize" style={{ color: 'var(--text-primary, #ffffff)' }}>{emailStatus.replace('_', ' ')}</strong></span>
-                  <span>MX Host: <strong style={{ color: 'var(--text-primary, #ffffff)' }}>Corporate Active</strong></span>
+                  <span><strong style={{ color: recruiter.email_generated ? '#818cf8' : 'var(--text-primary, #ffffff)' }}>{recruiter.email_generated ? '⚡ AI Inferred' : 'Corporate Active'}</strong></span>
                 </div>
               </div>
 

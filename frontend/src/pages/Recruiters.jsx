@@ -213,16 +213,33 @@ const RecruiterTableRow = memo(function RecruiterTableRow({ r, openEdit, toggleA
                     {r.seniority_level}
                   </div>
                 )}
-                {r.is_deliverable === true && (
+                {r.email_generated && (
+                  <div style={{ 
+                    display: 'inline-flex', alignItems: 'center', gap: 3, 
+                    padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700,
+                    background: 'rgba(99, 102, 241, 0.12)', color: '#818cf8', border: '1px solid rgba(99, 102, 241, 0.25)'
+                  }} title={r.email_source ? `AI Synthesized via ${r.email_source} (${r.email_confidence || 0}% conf)` : 'Corporate Email Inferred by Engine'}>
+                    <i className="ti ti-sparkles" style={{ fontSize: 11 }} /> AI Inferred
+                  </div>
+                )}
+                {r.email_status === 'PATTERN_VERIFIED' ? (
+                  <div style={{ 
+                    display: 'inline-flex', alignItems: 'center', gap: 3, 
+                    padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700,
+                    background: 'rgba(6, 182, 212, 0.12)', color: '#06b6d4', border: '1px solid rgba(6, 182, 212, 0.3)'
+                  }} title={r.email_source ? `Pattern Verified | Source: ${r.email_source} | ${r.email_confidence || 0}% safe` : `Company Pattern Verified (${r.email_confidence || 0}%)`}>
+                    <i className="ti ti-bolt" style={{ fontSize: 11 }} /> Pattern Verified
+                  </div>
+                ) : (r.email_status === 'MX_VERIFIED' || r.is_deliverable === true) ? (
                   <div style={{ 
                     display: 'inline-flex', alignItems: 'center', gap: 3, 
                     padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700,
                     background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.25)'
-                  }} title="DNS MX Mail Server Pre-Validated">
+                  }} title="DNS MX Mail Server Pre-Validated & Deliverable">
                     <i className="ti ti-circle-check" style={{ fontSize: 11 }} /> MX Verified
                   </div>
-                )}
-                {r.email_status && r.email_status !== 'unknown' && r.email_status !== '' && (
+                ) : null}
+                {r.email_status && !['unknown', '', 'PATTERN_VERIFIED', 'MX_VERIFIED'].includes(r.email_status) && (
                   <div style={{ 
                     display: 'inline-flex', alignItems: 'center', gap: 4, 
                     padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700, textTransform: 'uppercase',

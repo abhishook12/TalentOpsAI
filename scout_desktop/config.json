@@ -2,7 +2,7 @@
   "app_name": "TalentOps Scout Desktop",
   "version": "2.9.4",
   "extractor_version": "4.6.3",
-  "environment": "PRODUCTION",
+  "environment": "LOCAL",
   "api_base": "https://talentopsai-1.onrender.com",
   "local_api_base": "http://localhost:8000",
   "device_id": "",

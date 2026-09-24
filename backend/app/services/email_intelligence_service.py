@@ -201,10 +201,21 @@ class EmailIntelligenceService:
             return None
 
         norm_raw = full_name.lower().strip()
+        
+        # 1. Reject mailbox folder names, placeholders, and UI actions
         if norm_raw in UI_NOISE_NAMES or any(noise in norm_raw for noise in [
-            "sign in", "log in", "unknown professional", "new tab", "ask gemini", "view profile"
+            "sign in", "log in", "unknown professional", "new tab", "ask gemini", "view profile",
+            "sent items", "basic text", "streamline"
         ]):
             return None
+
+        # 2. Extract human name from mailing list headers (e.g. '"Madhurendra Kumar" Via C2C Position')
+        if " via " in norm_raw:
+            via_m = re.match(r'^[\'"]?([^\'"]+?)[\'"]?\s+via\s+', full_name, flags=re.IGNORECASE)
+            if via_m:
+                full_name = via_m.group(1).strip()
+            else:
+                full_name = full_name.split(" via ")[0].strip()
 
         # Normalize unicode accents / diacritics to ASCII (e.g. François -> Francois, Renée -> Renee, Björn -> Bjorn)
         decomposed = unicodedata.normalize("NFKD", full_name)
@@ -213,6 +224,27 @@ class EmailIntelligenceService:
         # Clean noise characters
         cleaned = re.sub(r"[^\w\s\'-]", " ", ascii_name).strip()
         tokens = [t for t in cleaned.split() if t]
+
+        if not tokens:
+            return None
+
+        # 3. Reject strings that are actually job titles, department names, or agency names
+        title_keywords = {
+            "specialist", "consultant", "recruiter", "recruiting", "sourcer", "sourcing",
+            "executive", "manager", "director", "vp", "president", "lead", "head",
+            "coordinator", "administrator", "acquisition", "staffing", "consulting",
+            "consultants", "professionals", "services", "solutions", "engineer", "developer",
+            "business", "development", "search", "talent"
+        }
+        title_word_count = sum(1 for t in tokens if t.lower() in title_keywords)
+        if len(tokens) >= 2 and (title_word_count / len(tokens)) >= 0.4:
+            return None
+        if tokens[0].lower() in {"vp", "vice", "director", "manager", "recruiter", "recruiting", "sourcer", "consultant", "specialist", "principal", "chief", "lead", "head"}:
+            return None
+        if tokens[-1].lower() in {"specialist", "consultant", "recruiter", "recruiting", "sourcer", "director", "manager", "officer", "coordinator", "administrator", "development", "acquisition", "staffing", "services", "solutions", "consultants", "professionals"}:
+            return None
+        if len(tokens) == 1 and tokens[0].lower() in title_keywords:
+            return None
 
         if not tokens:
             return None

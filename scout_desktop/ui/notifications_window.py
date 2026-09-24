@@ -273,8 +273,9 @@ class UpdateCenterDialog(QDialog):
 
         latest_ver = manifest.get("latest_version") or manifest.get("version", "2.9.3")
         self.latest_version = latest_ver
-        self.download_url = manifest.get("download_url") or "https://talent-ops-ai.vercel.app/download-scout"
+        self.download_url = manifest.get("download_url") or (manifest.get("package") or {}).get("url") or manifest.get("installer_url") or "https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe"
         self.release_notes = manifest.get("release_notes") or f"Official production release v{latest_ver}."
+        self._manifest_sha256 = manifest.get("sha256") or (manifest.get("package") or {}).get("sha256")
 
         self.lbl_notes.setText(self.release_notes)
 
@@ -308,18 +309,42 @@ class UpdateCenterDialog(QDialog):
         self.lbl_status.setText("Downloading 1-Click update installer...")
         self.btn_update.setText("⏳ Downloading...")
 
+        expected_hash = getattr(self, "_manifest_sha256", None)
+
         def _download_and_launch():
             try:
                 import tempfile
                 import urllib.request
                 import subprocess
+                import hashlib
 
                 target_dir = tempfile.gettempdir()
                 installer_path = os.path.join(target_dir, "TalentOpsScoutSetup.exe")
 
-                # Download installer directly
+                # Download installer
                 urllib.request.urlretrieve(url, installer_path)
                 logger.info("Downloaded update installer to %s", installer_path)
+
+                # Verify SHA-256 integrity if hash is available from manifest
+                if expected_hash:
+                    sha256 = hashlib.sha256()
+                    with open(installer_path, "rb") as f:
+                        for chunk in iter(lambda: f.read(65536), b""):
+                            sha256.update(chunk)
+                    actual_hash = sha256.hexdigest()
+                    if actual_hash.lower() != expected_hash.lower():
+                        logger.error("[SECURITY] 1-Click installer SHA-256 mismatch! Expected %s, got %s", expected_hash[:16], actual_hash[:16])
+                        QTimer.singleShot(0, lambda: self.lbl_status.setText("Download integrity check FAILED. Try again."))
+                        QTimer.singleShot(0, lambda: self.btn_update.setEnabled(True))
+                        QTimer.singleShot(0, lambda: self.btn_update.setText("🚀 Retry Download"))
+                        try:
+                            os.remove(installer_path)
+                        except OSError:
+                            pass
+                        return
+                    logger.info("[OK] 1-Click installer SHA-256 verified (%s)", actual_hash[:16])
+                else:
+                    logger.warning("No SHA-256 hash available for 1-Click installer verification.")
 
                 # Launch installer directly on Windows
                 if sys.platform == "win32" and os.path.exists(installer_path):
@@ -505,7 +530,7 @@ class NotificationsDialog(QDialog):
                     {
                         "id": 1,
                         "title": f"TalentOps Scout v{__version__} Active",
-                        "message": f"Autonomous Edge Sourcing Node active with dual-sync, sub-millisecond OLAP intelligence, and continuous learning.",
+                        "message": f"Desktop Scout active with local OCR capture, offline queue buffering, and cloud pipeline synchronization.",
                         "type": "success",
                         "created_at": time.strftime("%Y-%m-%d %H:%M:%S")
                     },

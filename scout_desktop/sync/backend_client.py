@@ -224,6 +224,26 @@ class BackendClient:
             except Exception:
                 pass
 
+    def _try_local_fallback(self) -> bool:
+        """
+        If cloud API is unavailable (e.g. HTTP 503 Render bandwidth suspension or connection timeout),
+        probes local server at http://localhost:8000/ping.
+        If healthy, seamlessly fails over to keep Desktop Scout active without losing any data.
+        """
+        if self.active_api_base == DEFAULT_LOCAL_API:
+            return False
+        try:
+            r = requests.get(f"{DEFAULT_LOCAL_API}/ping", timeout=1.5)
+            if r.status_code == 200:
+                logger.info("⚡ Cloud backend suspended or unreachable; auto-failing over to local bridge at %s", DEFAULT_LOCAL_API)
+                self.active_api_base = DEFAULT_LOCAL_API
+                self.base_url = DEFAULT_LOCAL_API
+                self.environment_name = "LOCAL FALLBACK"
+                return True
+        except Exception:
+            pass
+        return False
+
     @property
     def current_user_email(self) -> str:
         """Returns the email of the currently bound user, or 'Not Connected'."""
@@ -595,6 +615,9 @@ class BackendClient:
         }
         try:
             res = requests.post(url, json=payload, headers=self._get_headers(), timeout=4.0)
+            if res.status_code in (502, 503) and self._try_local_fallback():
+                url = f"{self.active_api_base}/scout/heartbeat"
+                res = requests.post(url, json=payload, headers=self._get_headers(), timeout=4.0)
             if res.status_code == 401:
                 logger.info("Heartbeat received 401; auto-reactivating device...")
                 self.auth_token = None
@@ -607,6 +630,14 @@ class BackendClient:
                     return True, {"status": "ok"}
             return False, {"error": f"HTTP {res.status_code}"}
         except Exception as e:
+            if self._try_local_fallback():
+                try:
+                    url = f"{self.active_api_base}/scout/heartbeat"
+                    res = requests.post(url, json=payload, headers=self._get_headers(), timeout=4.0)
+                    if res.status_code == 200:
+                        return True, res.json()
+                except Exception:
+                    pass
             logger.debug("Heartbeat ping failed: %s", e)
             return False, {"error": str(e)}
 
@@ -688,10 +719,6 @@ class BackendClient:
         }
 
         try:
-            try:
-                requests.get(f"{self.active_api_base}/health", timeout=5.0)
-            except Exception as e:
-                logger.warning("Backend Pre-ping failed: %s", e)
             self.last_request_time = time.strftime("%H:%M:%S")
             headers = self._get_headers()
             raw_data = json.dumps(payload).encode("utf-8")
@@ -715,6 +742,10 @@ class BackendClient:
                 if res.status_code == 404:
                     target_url = fallback_url
                     res = requests.post(target_url, json=payload, headers=headers, timeout=60.0)
+
+            if res.status_code in (502, 503) and self._try_local_fallback():
+                target_url = f"{self.active_api_base}/scout/ingest/batch"
+                res = requests.post(target_url, json=payload, headers=self._get_headers(), timeout=30.0)
 
             if res.status_code == 403:
                 res_body = res.text.lower()
@@ -751,6 +782,19 @@ class BackendClient:
                 logger.warning("Batch upload returned HTTP %d: %s", res.status_code, res.text[:100])
                 return False, {"error": f"HTTP_{res.status_code}"}
         except Exception as e:
+            if self._try_local_fallback():
+                try:
+                    target_url = f"{self.active_api_base}/scout/ingest/batch"
+                    res = requests.post(target_url, json=payload, headers=self._get_headers(), timeout=30.0)
+                    if res.status_code == 200:
+                        data = res.json()
+                        self.last_response_status = f"{data.get('status', 'SUCCESS')} (HTTP 200)"
+                        self.last_db_write_time = time.strftime("%H:%M:%S")
+                        staged = data.get("staged", 0)
+                        self.last_db_write_result = f"SUCCESS (Staged: {staged})"
+                        return True, data
+                except Exception:
+                    pass
             self.last_response_status = "NETWORK ERROR"
             self.last_db_write_result = f"FAILED: {e}"
             logger.warning("Batch sync network error: %s", e)

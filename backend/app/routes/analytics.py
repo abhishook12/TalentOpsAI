@@ -420,13 +420,16 @@ def company_states(
                 {where_clause} AND (state IS NULL OR state = '')
             """, params).fetchone()
             
-            result = [{"state": row[0], "count": int(row[1])} for row in rows]
+            state_map = {}
+            for row in rows:
+                if row[0]:
+                    state_map[row[0]] = state_map.get(row[0], 0) + int(row[1])
             unknown_count = int(unknown_row[0]) if unknown_row and unknown_row[0] else 0
             if unknown_count > 0:
-                result.append({"state": UNKNOWN_STATE_SENTINEL, "count": unknown_count})
+                state_map[UNKNOWN_STATE_SENTINEL] = state_map.get(UNKNOWN_STATE_SENTINEL, 0) + unknown_count
 
-            # Seamless fallback to PostgreSQL when DuckDB Parquet has no records for this company
-            if not result and selected_key:
+            # Merge live PostgreSQL recruiters for this company
+            if selected_key:
                 cid = None
                 if selected_key.isdigit():
                     cid = int(selected_key)
@@ -439,10 +442,22 @@ def company_states(
 
                 if cid:
                     from sqlalchemy import text
-                    pg_rows = db.execute(text("SELECT COALESCE(NULLIF(state, ''), 'US'), count(*) FROM recruiters WHERE company_id = :cid AND is_active = true GROUP BY COALESCE(NULLIF(state, ''), 'US') ORDER BY count(*) DESC"), {"cid": cid}).fetchall()
-                    if pg_rows:
-                        result = [{"state": r[0], "count": int(r[1])} for r in pg_rows]
-                
+                    pg_rows = db.execute(text("""
+                        SELECT COALESCE(NULLIF(state, ''), 'Unknown') as st, count(*) as cnt 
+                        FROM recruiters 
+                        WHERE company_id = :cid AND is_active = true 
+                        GROUP BY COALESCE(NULLIF(state, ''), 'Unknown') 
+                        ORDER BY count(*) DESC
+                    """), {"cid": cid}).fetchall()
+                    for r in pg_rows:
+                        st = r[0]
+                        cnt = int(r[1])
+                        state_map[st] = state_map.get(st, 0) + cnt
+
+            result = [{"state": st, "count": cnt} for st, cnt in sorted(state_map.items(), key=lambda x: (-x[1], x[0])) if st != UNKNOWN_STATE_SENTINEL]
+            if UNKNOWN_STATE_SENTINEL in state_map and state_map[UNKNOWN_STATE_SENTINEL] > 0:
+                result.append({"state": UNKNOWN_STATE_SENTINEL, "count": state_map[UNKNOWN_STATE_SENTINEL]})
+
             analytics_cache.set(cache_key, result, ttl=60)
             return result
     except Exception as e:
@@ -506,31 +521,39 @@ def companies_search(
     }
 
     existing_keys = {str(row['company_key']) for row in active_companies}
-    if matched_keys:
-        try:
-            from sqlalchemy import func as sqlfunc
+    try:
+        from sqlalchemy import func as sqlfunc
+        pg_query_filter = [Recruiter.company_id != None, Recruiter.is_active == True]
+        if matched_keys:
             pg_cids = [int(k) for k in matched_keys if k.isdigit()]
             if pg_cids:
-                pg_query_filter = [Recruiter.company_id.in_(pg_cids), Recruiter.is_active == True]
-                if state and state.upper() != 'ALL':
-                    pg_query_filter.append(or_(
-                        Recruiter.state == state.upper(),
-                        Recruiter.location.ilike(f"%{state.upper()}%"),
-                        Recruiter.location.ilike(f"%{state}%")
-                    ))
-                pg_counts = dict(db.query(Recruiter.company_id, sqlfunc.count(Recruiter.recruiter_id)).filter(*pg_query_filter).group_by(Recruiter.company_id).all())
-                for cid, cnt in pg_counts.items():
-                    if str(cid) not in existing_keys and cnt > 0:
-                        c_obj = db.query(Company).filter(Company.company_id == cid).first()
-                        if c_obj and (c_obj.company_name or '').strip().lower() not in BOGUS_COMPANY_NAMES:
-                            active_companies.insert(0, {
-                                'company_key': str(cid),
-                                'recruiter_count': cnt,
-                                'dominant_domain': c_obj.primary_domain or extract_domain(c_obj.website) or 'talentops.ai'
-                            })
-                            existing_keys.add(str(cid))
-        except Exception as pge:
-            logger.warning("Error merging postgres company search results: %s", pge)
+                pg_query_filter.append(Recruiter.company_id.in_(pg_cids))
+        if state and state.upper() != 'ALL':
+            st_up = state.strip().upper()
+            pg_query_filter.append(or_(
+                Recruiter.state == st_up,
+                Recruiter.location.ilike(f"%{st_up}%"),
+                Recruiter.location.ilike(f"%{state}%")
+            ))
+        pg_counts = dict(db.query(Recruiter.company_id, sqlfunc.count(Recruiter.recruiter_id)).filter(*pg_query_filter).group_by(Recruiter.company_id).all())
+        for cid, cnt in pg_counts.items():
+            cid_str = str(cid)
+            if cid_str not in existing_keys and cnt > 0:
+                c_obj = db.query(Company).filter(Company.company_id == cid).first()
+                if c_obj and (c_obj.company_name or '').strip().lower() not in BOGUS_COMPANY_NAMES:
+                    active_companies.insert(0, {
+                        'company_key': cid_str,
+                        'recruiter_count': cnt,
+                        'dominant_domain': c_obj.primary_domain or extract_domain(c_obj.website) or 'talentops.ai'
+                    })
+                    existing_keys.add(cid_str)
+            elif cid_str in existing_keys and cnt > 0:
+                for comp_item in active_companies:
+                    if str(comp_item['company_key']) == cid_str:
+                        comp_item['recruiter_count'] += cnt
+                        break
+    except Exception as pge:
+        logger.warning("Error merging postgres company search results: %s", pge)
 
     # Filter out bogus UI companies
     active_companies = [

@@ -187,7 +187,7 @@ class OverlayPanel(QWidget):
         self.status_dot.setStyleSheet("color: #10b981; font-size: 13px;")
         header.addWidget(self.status_dot)
 
-        self.lbl_main_status = QLabel("AUTONOMOUS ACTIVE")
+        self.lbl_main_status = QLabel("SCOUT ACTIVE")
         self.lbl_main_status.setStyleSheet("color: #10b981; font-size: 10px; font-weight: 700;")
         header.addWidget(self.lbl_main_status)
 
@@ -401,7 +401,7 @@ class OverlayPanel(QWidget):
         self.log_layout.setContentsMargins(6, 4, 6, 4)
         self.log_layout.setSpacing(2)
 
-        self.lbl_event_recent = QLabel("⚡ Scout started in autonomous mode")
+        self.lbl_event_recent = QLabel("⚡ Scout started in background mode")
         self.lbl_event_recent.setStyleSheet("color: #94a3b8; font-size: 8px; font-family: monospace;")
         self.log_layout.addWidget(self.lbl_event_recent)
         c_layout.addWidget(self.log_container)
@@ -462,7 +462,7 @@ class OverlayPanel(QWidget):
         state_u = state.upper()
         if any(k in state_u for k in ("ACTIVE", "ACTIVE_SAMPLING", "SCOUT ACTIVE")):
             self.status_dot.setStyleSheet("color: #10b981; font-size: 13px;")
-            self.lbl_main_status.setText("AUTONOMOUS ACTIVE")
+            self.lbl_main_status.setText("SCOUT ACTIVE")
             self.lbl_main_status.setStyleSheet("color: #10b981; font-size: 10px; font-weight: 700;")
             self.lbl_state_badge.setText("ACTIVE SAMPLING")
             self.lbl_state_badge.setStyleSheet("color: #10b981; font-size: 8px; font-weight: 700; background: #064e3b; padding: 1px 5px; border-radius: 3px;")

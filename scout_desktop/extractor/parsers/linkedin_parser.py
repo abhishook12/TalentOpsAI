@@ -13,6 +13,7 @@ from scout_desktop.extractor.patterns import (
     clean_company_name,
     is_valid_company_name,
     clean_title_and_company,
+    clean_job_title,
     classify_semantic_entity,
     clean_location_text,
     is_valid_location,
@@ -111,7 +112,7 @@ class LinkedInParser(BasePlatformParser):
                     if c_clean and is_valid_company_name(c_clean) and classify_semantic_entity(c_clean).get("entity_type") == "COMPANY":
                         company = c_clean
                 elif not title and is_plausible_title(line):
-                    title = line.strip()
+                    title = clean_job_title(line) or line.strip()
                 elif not location:
                     loc_cand = clean_location_text(line)
                     if loc_cand and is_valid_location(loc_cand):

@@ -509,7 +509,7 @@ class MainWindow(QMainWindow):
         queue_pending: int = 0,
         ingress_latency_ms: float = 0.42,
         engine_state: str = "STEADY",
-        protocol: str = "CANONICAL v2.9"
+        protocol: str = "PIPELINE v2.9"
     ):
         """Propagate real-time process load and edge telemetry to UI components."""
         # 1. Update StatusStrip telemetry
@@ -651,9 +651,13 @@ class MainWindow(QMainWindow):
         **kwargs
     ):
         """Called by app.py when candidate is extracted or verified"""
+        import re
+        from scout_desktop.extractor.patterns import clean_job_title, clean_company_name
+        raw_t = display_title or title or kwargs.get("current_title", "") or kwargs.get("raw_title", "")
+        raw_c = display_company or company or kwargs.get("company_name", "") or kwargs.get("current_company", "") or kwargs.get("raw_company", "")
         cand_name = display_name or name or kwargs.get("canonical_name", "") or kwargs.get("recruiter_name", "") or kwargs.get("raw_name", "")
-        cand_title = display_title or title or kwargs.get("current_title", "") or kwargs.get("raw_title", "")
-        cand_company = display_company or company or kwargs.get("company_name", "") or kwargs.get("current_company", "") or kwargs.get("raw_company", "")
+        cand_title = clean_job_title(raw_t) or (re.sub(r"^[\s\-_–—•·*|:;~,#>]+", "", raw_t).strip() if isinstance(raw_t, str) else "")
+        cand_company = clean_company_name(raw_c) or (re.sub(r"^[\s\-_–—•·*|:;~,#>]+", "", raw_c).strip() if isinstance(raw_c, str) else "")
         cand_loc = display_loc or location or kwargs.get("raw_location", "")
         cand_status = (status or "CANONICAL").upper()
         p_url = profile_url or kwargs.get("linkedin_url", "")
@@ -663,6 +667,13 @@ class MainWindow(QMainWindow):
         self.page_scan.lbl_cand_subtitle.setText(" · ".join(subtitle_parts) if subtitle_parts else "Professional Profile")
         self.page_scan.lbl_cand_loc.setText(f"📍 {cand_loc}" if cand_loc else "📍 Location not specified")
         self.page_scan.chip_latest.set_state(cand_status)
+        if hasattr(self.page_scan, "lbl_l_title"):
+            if cand_status == "REVIEW_REQUIRED":
+                self.page_scan.lbl_l_title.setText("CANDIDATE UNDER REVIEW")
+            elif cand_status in ("IN DATABASE", "VERIFIED", "CANONICAL"):
+                self.page_scan.lbl_l_title.setText("LATEST VERIFIED ENTITY")
+            else:
+                self.page_scan.lbl_l_title.setText("LATEST CANDIDATE")
         if p_url:
             self._latest_profile_url = p_url
 
@@ -820,4 +831,4 @@ class MainWindow(QMainWindow):
         event.ignore()
         self.hide()
         self.dock_to_edge_requested.emit()
-        logger.info("MainWindow hidden to system tray / edge dock. Autonomous Scout continues in background.")
+        logger.info("MainWindow hidden to system tray / edge dock. Desktop Scout continues in background.")

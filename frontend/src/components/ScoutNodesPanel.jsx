@@ -375,7 +375,7 @@ export default function ScoutNodesPanel() {
             <div style={{ fontSize: 32, marginBottom: 10 }}>🛰️</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>No Scout Desktop Nodes Connected</div>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', maxWidth: 460, margin: '6px auto 18px' }}>
-              Connect your Windows computer with the new native TalentOps Scout Desktop app to begin autonomous background intelligence.
+              Connect your Windows computer with the native TalentOps Scout Desktop app to begin background candidate capture.
             </p>
             <button
               onClick={() => setShowAddModal(true)}

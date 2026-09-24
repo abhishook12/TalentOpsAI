@@ -23,6 +23,7 @@ from .patterns import (
     clean_location_text,
     extract_connection_degree,
     clean_title_and_company,
+    clean_job_title,
     clean_company_name,
     is_valid_company_name,
     is_valid_person_name,
@@ -209,7 +210,12 @@ class EntityExtractor:
                 m = re.match(r"^(?:\(\d+\+?\)\s*)?(.*?)\s*[|–—\-]\s*LinkedIn", window_title, re.IGNORECASE)
                 if m:
                     raw_extracted = m.group(1).strip()
-                    if ":" in raw_extracted or any(k in raw_extracted.lower() for k in ["overview", "about", "life", "jobs"]):
+                    if ":" in raw_extracted or any(k in raw_extracted.lower() for k in [
+                        "overview", "about", "life", "jobs", "notifications", "feed",
+                        "search", "messaging", "learning", "groups", "events",
+                        "my network", "saved", "posts", "articles", "premium",
+                        "recruiter", "sales navigator", "hiring", "talent",
+                    ]):
                         return []
                     pro_m = re.search(r"\b(she/her|he/him|they/them|she/they|he/they)\b", raw_extracted, re.IGNORECASE)
                     if pro_m:
@@ -362,9 +368,9 @@ class EntityExtractor:
         if not cluster.current_title or not cluster.current_company:
             candidate_pool = header_lines if header_lines else clean_lines
             candidate_range = (
-                range(name_line_idx + 1, min(name_line_idx + 6, len(candidate_pool)))
+                range(name_line_idx + 1, min(name_line_idx + 10, len(candidate_pool)))
                 if name_line_idx >= 0
-                else range(0, min(5, len(candidate_pool)))
+                else range(0, min(8, len(candidate_pool)))
             )
             for idx in candidate_range:
                 if idx >= len(candidate_pool):
@@ -837,6 +843,73 @@ class EntityExtractor:
             if i + 1 < len(exp_lines):
                 l1 = line
                 l2 = exp_lines[i + 1]
+
+                # Format 2.5: Multi-role at single company (LinkedIn layout)
+                # Pattern: Company Name -> Total Tenure (e.g. "4 yrs 2 mos") -> Role Title -> Role Date -> ...
+                # Detect: l1 is a valid company, l2 is a tenure/date line (not a title, not a company)
+                l1_is_company = is_valid_company_name(clean_company_name(l1))
+                l2_is_tenure = bool(re.search(r'\b(?:\d+\s*(?:yrs?|mos?|years?|months?)\b)', l2, re.IGNORECASE)) or DATE_RANGE_PATTERN.search(l2)
+                l2_not_title = not is_plausible_title(l2)
+                if l1_is_company and l2_is_tenure and l2_not_title:
+                    multi_role_company = clean_company_name(l1)
+                    # Scan forward for role titles under this company header
+                    j = i + 2
+                    found_roles = 0
+                    while j < len(exp_lines):
+                        role_line = exp_lines[j]
+                        # Stop at next company header or section boundary
+                        if is_valid_company_name(clean_company_name(role_line)) and not is_plausible_title(role_line):
+                            # Check if next line is also a tenure — that means this is a new company header
+                            if j + 1 < len(exp_lines) and (
+                                bool(re.search(r'\b(?:\d+\s*(?:yrs?|mos?|years?|months?)\b)', exp_lines[j + 1], re.IGNORECASE))
+                                or DATE_RANGE_PATTERN.search(exp_lines[j + 1])
+                            ):
+                                break
+                        if is_noise_text(role_line) or WORKPLACE_TYPES.fullmatch(role_line.strip().lower()):
+                            j += 1
+                            continue
+                        if is_plausible_title(role_line):
+                            role_title = clean_job_title(role_line) or role_line
+                            # Check for date line following this role
+                            role_date_line = exp_lines[j + 1] if j + 1 < len(exp_lines) else ""
+                            r_start, r_end = self.timeline_parser.parse_date_range(role_date_line)
+                            r_tenure = self.timeline_parser.calculate_tenure_months(r_start, r_end) if r_start else None
+                            r_is_present = bool(re.search(r'\bpresent\b', role_date_line, re.IGNORECASE))
+                            role_attrs = {
+                                "title": role_title, "start_date": r_start, "end_date": r_end,
+                                "tenure_months": r_tenure, "date_text": role_date_line or None,
+                            }
+                            if r_is_present or found_roles == 0:
+                                if not cluster.current_company or cluster.current_company.lower() == multi_role_company.lower():
+                                    cluster.add_observation(Observation(
+                                        semantic_type="PERSON", subject=target_name, predicate="WORKS_AT",
+                                        object_value=multi_role_company, confidence=0.95,
+                                        evidence=f"{role_title} | {multi_role_company} | {role_date_line}",
+                                        capture_id=capture_id, source_url=source_url, attributes=role_attrs,
+                                    ))
+                                if not cluster.current_title or r_is_present:
+                                    cluster.add_observation(Observation(
+                                        semantic_type="PERSON", subject=target_name, predicate="HAS_TITLE",
+                                        object_value=role_title, confidence=0.92,
+                                        evidence=f"{role_title} | {multi_role_company}",
+                                        capture_id=capture_id, source_url=source_url,
+                                    ))
+                            found_roles += 1
+                            # Skip date line if it was consumed
+                            if r_start or DATE_RANGE_PATTERN.search(role_date_line):
+                                j += 2
+                            else:
+                                j += 1
+                            continue
+                        # Skip date/location lines within multi-role block
+                        if DATE_RANGE_PATTERN.search(role_line) or is_valid_location(clean_location_text(role_line)):
+                            j += 1
+                            continue
+                        # Non-title, non-skip line — end of multi-role block
+                        break
+                    if found_roles > 0:
+                        i = j
+                        continue
 
                 # Determine which line is Title vs Company using is_plausible_title
                 if is_plausible_title(l1) and not is_plausible_title(l2):
@@ -1542,7 +1615,8 @@ class EntityExtractor:
             for l in chunk_lines:
                 cand_t = l.split(" at ")[0].split(" @ ")[0].strip()
                 cand_t = re.sub(r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}", "", cand_t).strip()
-                if is_plausible_title(cand_t):
+                cand_t = clean_job_title(cand_t)
+                if cand_t and is_plausible_title(cand_t):
                     title = cand_t
                     break
 

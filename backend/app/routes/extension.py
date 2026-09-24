@@ -439,7 +439,7 @@ def ingest_extension_batch(
             errors.append(str(e)[:100])
             logger.warning("Extension staging error: %s", e)
 
-    # Update device stats
+    # Update device stats (or auto-register paired device for this contributor)
     device = db.query(ExtensionDevice).filter(ExtensionDevice.device_id == device_id).first()
     if device:
         device.total_submitted += len(req.contacts)
@@ -447,6 +447,18 @@ def ingest_extension_batch(
         device.last_seen_at = datetime.now(timezone.utc)
         if x_extension_version:
             device.extension_version = x_extension_version
+    elif device_id and device_id != "unknown":
+        device = ExtensionDevice(
+            device_id=device_id,
+            owner_user_id=current_user.id,
+            user_agent=(request.headers.get("user-agent") or "Scout Workstation Node")[:255],
+            extension_version=x_extension_version or "2.9.3",
+            total_submitted=len(req.contacts),
+            total_accepted=staged,
+            is_active=True,
+            last_seen_at=datetime.now(timezone.utc),
+        )
+        db.add(device)
 
     # Log the submission
     log = ExtensionSubmissionLog(

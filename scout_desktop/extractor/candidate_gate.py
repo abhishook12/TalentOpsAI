@@ -22,6 +22,7 @@ from typing import Optional, Dict, Any, List, Tuple
 from scout_desktop.extractor.patterns import (
     clean_person_name,
     is_valid_person_name,
+    clean_job_title,
     clean_company_name,
     is_valid_company_name,
     clean_location_text,
@@ -126,7 +127,15 @@ def is_individual_profile_url(url: Optional[str]) -> bool:
         return "/people/" in u
     if "indeed.com" in u:
         return "/r/" in u or "/resume" in u
-    return True
+    # Glassdoor, Wellfound, Dice profile URLs
+    if "glassdoor.com" in u:
+        return "/member/profile/" in u or "/interview/" in u
+    if "wellfound.com" in u or "angel.co" in u:
+        return "/u/" in u or "/p/" in u
+    if "dice.com" in u:
+        return "/profile/" in u or "/candidate/" in u
+    # Unknown URLs are NOT individual profile URLs — do NOT award profile score
+    return False
 
 
 def is_url_slug_compatible_with_name(url: Optional[str], name: Optional[str]) -> bool:
@@ -455,12 +464,13 @@ def create_candidate_if_valid(
             audit_checklist=["Self-name rejection: TRIGGERED"],
         )
 
-    # Chat Conversation Partner Exclusion (Window Title Sender/Receiver)
+    # Chat Conversation Partner / Channel Exclusion (Window Title Sender/Receiver/Channel)
     if window_title and ("- chat" in window_title.lower() or "chat" in window_title.lower()):
-        chat_partner_match = re.match(r"^(?:(?:\(\d+\+?\)\s*)?)([A-Za-z\s]+?)\s*(?:[-–—|]|messaged)\s*Chat", window_title, re.IGNORECASE)
-        if chat_partner_match:
-            partner_raw = chat_partner_match.group(1).strip()
-            partner_clean = clean_person_name(partner_raw)
+        clean_wt = re.sub(r"\s*[-–—|]\s*(?:Google Chrome|Microsoft Edge|Brave|Firefox|Opera|Vivaldi).*$", "", window_title, flags=re.IGNORECASE).strip()
+        wt_segments = [s.strip() for s in re.split(r"\s*[-–—|]\s*", clean_wt) if s.strip()]
+        for seg in wt_segments:
+            seg_sub = re.sub(r"\b(?:chat|direct message|dm|channel|space|conversation|messaged)\b.*$", "", seg, flags=re.IGNORECASE).strip()
+            partner_clean = clean_person_name(seg_sub)
             if partner_clean and (cleaned_name.lower() == partner_clean.lower() or cleaned_name.lower() in partner_clean.lower() or partner_clean.lower() in cleaned_name.lower()):
                 return CandidateGateResult(
                     decision="REJECTED_OBSERVATION",
@@ -513,8 +523,8 @@ def create_candidate_if_valid(
     raw_title = observation.get("title") or observation.get("raw_title") or observation.get("current_title")
     valid_title = None
     if raw_title and isinstance(raw_title, str):
-        t_clean = raw_title.strip()
-        if is_plausible_title(t_clean):
+        t_clean = clean_job_title(raw_title)
+        if t_clean and is_plausible_title(t_clean):
             valid_title = t_clean
             field_conf["title"] = 0.90
             checklist.append(f"Professional title verified: {valid_title}")

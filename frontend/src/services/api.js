@@ -23,9 +23,13 @@ if (!import.meta.env.DEV) {
 
 // Keep backend warm while user has an active tab open (Render free-tier sleeps after 15m of inactivity)
 if (typeof window !== 'undefined' && !import.meta.env.DEV) {
+  let lastWarmTime = 0
   const warmBackend = () => {
     // Never ping if tab is hidden/minimized to save bandwidth
     if (typeof document !== 'undefined' && document.hidden) return
+    const now = Date.now()
+    if (now - lastWarmTime < 5 * 60 * 1000) return // Throttled: at most once every 5 minutes
+    lastWarmTime = now
     const pingUrl = API.startsWith('http') ? `${API}/ping` : `${API}/ping`
     fetch(pingUrl, { method: 'GET' }).catch(() => {})
   }

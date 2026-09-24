@@ -617,7 +617,7 @@ export default function Settings() {
                     </span>
                   </div>
                   <p style={{ color: 'var(--text-secondary)', fontSize: 13, margin: 0, lineHeight: 1.5, maxWidth: 540 }}>
-                    Official production desktop client. Operates silently in the background, extracts recruiter intelligence via native Windows OCR, and streams verified leads directly to your account.
+                    Official production desktop client. Operates silently in the background, extracts candidate profiles via native Windows OCR, and streams verified records directly to your account.
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>

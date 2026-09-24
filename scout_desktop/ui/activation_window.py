@@ -127,7 +127,7 @@ class ActivationWindow(QDialog):
         lbl_title.setStyleSheet("font-size: 20px; font-weight: 800; color: #F8FAFC;")
         title_col.addWidget(lbl_title)
 
-        lbl_sub = QLabel("Autonomous Sourcing Companion")
+        lbl_sub = QLabel("Desktop Sourcing Companion")
         lbl_sub.setStyleSheet("font-size: 12px; color: #10B981; font-weight: 600;")
         title_col.addWidget(lbl_sub)
         header_layout.addLayout(title_col)

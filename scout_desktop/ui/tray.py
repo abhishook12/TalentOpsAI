@@ -104,7 +104,7 @@ class SystemTrayManager(QObject):
             }
         """)
 
-        self.status_action = menu.addAction(f"● Scout v{CURRENT_VERSION}: Autonomous Active")
+        self.status_action = menu.addAction(f"● Scout v{CURRENT_VERSION}: Active & Sourcing")
         self.status_action.setEnabled(False)
         menu.addSeparator()
 
@@ -150,17 +150,17 @@ class SystemTrayManager(QObject):
     def update_icon_status(self, state: str):
         """
         Updates tray icon color and tooltip based on state:
-        GREEN:  AUTONOMOUS ACTIVE
+        GREEN:  ACTIVE & SOURCING
         YELLOW: IDLE WATCH
         RED:    PAUSED / ERROR
         GRAY:   OFFLINE / DISCONNECTED
         """
         state_upper = state.upper()
         if state_upper in ["ACTIVE", "ACTIVE_SAMPLING"]:
-            color = "#10b981"  # GREEN: AUTONOMOUS ACTIVE
-            tip = f"TalentOps Scout v{CURRENT_VERSION}: AUTONOMOUS ACTIVE"
+            color = "#10b981"  # GREEN: ACTIVE & SOURCING
+            tip = f"TalentOps Scout v{CURRENT_VERSION}: Active & Sourcing"
             if hasattr(self, "status_action"):
-                self.status_action.setText(f"● Scout v{CURRENT_VERSION}: Autonomous Active")
+                self.status_action.setText(f"● Scout v{CURRENT_VERSION}: Active & Sourcing")
         elif state_upper == "IDLE_WATCH":
             color = "#f59e0b"  # YELLOW: IDLE WATCH
             tip = f"TalentOps Scout v{CURRENT_VERSION}: IDLE WATCH"

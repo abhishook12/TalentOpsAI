@@ -1,7 +1,7 @@
 {
   "app_name": "TalentOps Scout Desktop",
-  "version": "2.9.3",
-  "extractor_version": "4.6.2",
+  "version": "2.9.4",
+  "extractor_version": "4.6.3",
   "environment": "PRODUCTION",
   "api_base": "https://talentopsai-1.onrender.com",
   "local_api_base": "http://localhost:8000",
@@ -17,7 +17,7 @@
   "max_buffer_images": 20,
   "max_buffer_mb": 100,
   "auto_purge_interval_sec": 20,
-  "heartbeat_interval_sec": 20,
+  "heartbeat_interval_sec": 60,
   "max_retries": 5,
   "base_backoff_sec": 10,
   "max_backoff_sec": 300,
@@ -28,5 +28,6 @@
   "developer_mode": false,
   "user_email": "",
   "user_name": "",
-  "installation_id": ""
+  "installation_id": "",
+  "update_channel": "stable"
 }

@@ -165,7 +165,7 @@ class SettingsWindow(QWidget):
         lbl_title = QLabel("TALENTOPS SCOUT DESKTOP")
         lbl_title.setStyleSheet("font-size: 13px; font-weight: 800; letter-spacing: 0.5px; color: #f8fafc;")
         title_box.addWidget(lbl_title)
-        lbl_sub = QLabel("Autonomous Intelligence Companion Configuration & Fleet Telemetry")
+        lbl_sub = QLabel("Desktop Scout Configuration & Fleet Telemetry")
         lbl_sub.setStyleSheet("font-size: 10px; color: #94a3b8;")
         title_box.addWidget(lbl_sub)
         header.addLayout(title_box)
@@ -204,7 +204,7 @@ class SettingsWindow(QWidget):
         rb_layout = QVBoxLayout(rates_box)
         rb_layout.setSpacing(10)
 
-        lbl_rates = QLabel("AUTONOMOUS ENGINE TUNING")
+        lbl_rates = QLabel("BACKGROUND ENGINE TUNING")
         lbl_rates.setStyleSheet("font-weight: 700; color: #38bdf8; font-size: 10px;")
         rb_layout.addWidget(lbl_rates)
 
@@ -474,7 +474,7 @@ class SettingsWindow(QWidget):
 
         # Header with status badge
         row_diag_hdr = QHBoxLayout()
-        lbl_diag_title = QLabel("System Health & Autonomous Healing:")
+        lbl_diag_title = QLabel("System Health & Auto-Recovery:")
         lbl_diag_title.setStyleSheet("font-weight: 700; color: #cbd5e1; font-size: 12px;")
         self.lbl_health_badge = QLabel("● HEALTHY")
         self.lbl_health_badge.setStyleSheet("color: #10b981; background-color: rgba(16, 185, 129, 0.15); border-radius: 4px; padding: 2px 8px; font-weight: 700; font-size: 10px;")

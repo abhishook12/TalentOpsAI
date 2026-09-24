@@ -22,6 +22,7 @@ from scout_desktop.extractor.patterns import (
     is_valid_company_name,
     clean_company_name,
     clean_title_and_company,
+    clean_job_title,
     classify_semantic_entity,
     SECTION_HEADERS,
     WORKPLACE_TYPES_SET,
@@ -171,19 +172,65 @@ class FieldClassifier:
 
         # Pass 2: Inspect Experience section for current position
         if experience_lines and (not best_title or not best_company):
-            for i, line in enumerate(experience_lines[:8]):
+            for i, line in enumerate(experience_lines[:12]):
+                if cls.is_ui_noise(line):
+                    continue
+
+                # Check inline Title at Company
+                if not best_title or not best_company:
+                    t_inline, c_inline = clean_title_and_company(line)
+                    if not best_title and t_inline and is_plausible_title(t_inline):
+                        best_title = t_inline
+                        title_conf = 0.90
+                    if not best_company and c_inline and is_valid_company_name(c_inline):
+                        if classify_semantic_entity(c_inline).get("entity_type") == "COMPANY":
+                            best_company = c_inline
+                            comp_conf = 0.88
+                    if best_title and best_company:
+                        break
+
+                # If line is a plausible title
                 if not best_title and is_plausible_title(line):
-                    best_title = line
-                    title_conf = 0.88
-                    # Next line is often the company
-                    if i + 1 < len(experience_lines):
-                        nxt = experience_lines[i + 1]
-                        if is_valid_company_name(nxt) and not is_plausible_title(nxt):
-                            cl_nxt = clean_company_name(nxt)
-                            if cl_nxt and classify_semantic_entity(cl_nxt).get("entity_type") == "COMPANY":
-                                best_company = cl_nxt
-                                comp_conf = 0.85
-                    break
+                    cand_t = clean_job_title(line) or line.strip()
+                    if is_plausible_title(cand_t):
+                        best_title = cand_t
+                        title_conf = 0.88
+                        # Look ahead up to 3 lines for company (skipping dates, workplace types, noise)
+                        if not best_company:
+                            for j in range(i + 1, min(i + 4, len(experience_lines))):
+                                nxt = experience_lines[j]
+                                if cls.is_ui_noise(nxt):
+                                    continue
+                                cl_nxt = clean_company_name(nxt)
+                                if cl_nxt and is_valid_company_name(cl_nxt) and not is_plausible_title(cl_nxt):
+                                    if classify_semantic_entity(cl_nxt).get("entity_type") == "COMPANY":
+                                        best_company = cl_nxt
+                                        comp_conf = 0.85
+                                        break
+                    if best_title and best_company:
+                        break
+
+                # If line is a company name and we need company
+                if not best_company:
+                    cl_line = clean_company_name(line)
+                    if cl_line and is_valid_company_name(cl_line) and not is_plausible_title(cl_line):
+                        if classify_semantic_entity(cl_line).get("entity_type") == "COMPANY":
+                            best_company = cl_line
+                            comp_conf = 0.85
+                            # Look ahead for title if still needed
+                            if not best_title:
+                                for j in range(i + 1, min(i + 4, len(experience_lines))):
+                                    nxt = experience_lines[j]
+                                    if cls.is_ui_noise(nxt):
+                                        continue
+                                    if is_plausible_title(nxt):
+                                        cand_t = clean_job_title(nxt) or nxt.strip()
+                                        if is_plausible_title(cand_t):
+                                            best_title = cand_t
+                                            title_conf = 0.88
+                                            break
+                            if best_title and best_company:
+                                break
 
         return best_title, title_conf, best_company, comp_conf
 

@@ -65,9 +65,19 @@ def get_companies(
     
     results = query.offset(skip).limit(limit).all()
     
-    # Fast targeted recruiter counts from DuckDB for the returned page
+    # Fast targeted recruiter counts from DuckDB and PostgreSQL for the returned page
     company_ids = [r.company_id for r in results]
     counts_map = recruiter_store.company_recruiter_counts_by_ids(company_ids)
+    
+    # Also fetch live PostgreSQL recruiter counts for these companies
+    pg_counts = {}
+    if company_ids:
+        from sqlalchemy import func as sqlfunc
+        for cid, cnt in db.query(Recruiter.company_id, sqlfunc.count(Recruiter.recruiter_id)).filter(
+            Recruiter.company_id.in_(company_ids),
+            Recruiter.is_active == True
+        ).group_by(Recruiter.company_id).all():
+            pg_counts[cid] = cnt
     
     items = [
         {
@@ -77,8 +87,8 @@ def get_companies(
             "industry": r.industry,
             "state": r.state,
             "is_tracked": r.is_tracked or False,
-            "total_recruiters": counts_map.get(r.company_id, 0),
-            "active_recruiters": counts_map.get(r.company_id, 0) # Assuming mostly active
+            "total_recruiters": counts_map.get(r.company_id, 0) + pg_counts.get(r.company_id, 0),
+            "active_recruiters": counts_map.get(r.company_id, 0) + pg_counts.get(r.company_id, 0)
         } for r in results
     ]
     analytics_cache.set(cache_key, {"total_count": total_count, "items": items}, ttl=60)

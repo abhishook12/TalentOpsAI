@@ -57,7 +57,16 @@ UI_ACTIONS = re.compile(
     r"scheduled emails|web visits|crm integrations|zoominfo lite|zoominfo|homepage|quick search|"
     r"home|feed|jobs|messaging|notifications|my network|business|learning|work|sent items|address book|"
     r"glassdoor|wellfound|dice|hired|lever|apply now|easy apply|save job|"
-    r"refer & earn|refer and earn|refer a friend|referral program|referrals)$",
+    r"refer & earn|refer and earn|refer a friend|referral program|referrals|"
+    r"pending|next|previous|close|dismiss|cancel|accept|decline|ignore|"
+    r"skip|retry|undo|redo|edit|delete|remove|add|create|new|open|"
+    r"sign in|sign up|log in|log out|sign out|register|subscribe|"
+    r"report|block|mute|unmute|pin|unpin|archive|"
+    r"show less|show more|see more|see less|see all|show all|load more|"
+    r"copy link|copy|paste|cut|select all|"
+    r"like|love|celebrate|support|insightful|funny|curious|"
+    r"reply|repost|send|forward|"
+    r"endorsements|recommendations|interests|activity|highlights)$",
     re.IGNORECASE,
 )
 
@@ -414,11 +423,35 @@ def is_plausible_degree(text: Optional[str]) -> bool:
     return bool(DEGREE_KEYWORDS.search(t))
 
 
+def clean_job_title(text: Optional[str]) -> Optional[str]:
+    """Cleans punctuation, bullets, connection degrees, list numbers, and formatting noise from job titles."""
+    if not text or not isinstance(text, str):
+        return None
+    cleaned = text.strip()
+    # Strip leading bullet/hyphen/dash/pipe/colon/asterisk/tilde/slash/punctuation
+    cleaned = re.sub(r"^[\s\-_–—•·*|:;~,#>\(\)/]+", "", cleaned).strip()
+    # Strip leading list numbers e.g. '1. ', '1) ', '1- '
+    cleaned = re.sub(r"^\d+[\.\)\-]\s*", "", cleaned).strip()
+    # Strip gender pronouns commonly tagged in headers e.g. '(he/him)', '(she/her)'
+    cleaned = re.sub(r"\s*\((?:he/him|she/her|they/them|ze/zir|any pronouns)\)", "", cleaned, flags=re.IGNORECASE).strip()
+    # Strip connection indicators e.g. '· 1st', '(2nd degree)', '2nd', '3rd+'
+    cleaned = re.sub(r"\s*[\(·•|]?\s*\b\d(?:st|nd|rd|th|\+)\b(?:\s*degree)?\)?.*$", "", cleaned, flags=re.IGNORECASE).strip()
+    # Strip phone numbers, emails or office/cell tags
+    cleaned = re.sub(r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\b\d{5,}\b|\(office\)|\(cell\)", "", cleaned).strip()
+    # Strip trailing punctuation/dashes/pipes/colons/dots/slashes/parentheses
+    cleaned = re.sub(r"[\s\-_–—•·*|:;~,#<\.\(\)/]+$", "", cleaned).strip()
+    # Normalize multiple whitespace
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if len(cleaned) < 3 or not re.search(r"[a-zA-Z]", cleaned):
+        return None
+    return cleaned
+
+
 def is_plausible_title(text: Optional[str]) -> bool:
     """Detects whether a candidate line represents a professional job title."""
     if not text or not isinstance(text, str):
         return False
-    t = text.strip()
+    t = clean_job_title(text) or text.strip()
     if len(t) < 3 or len(t) > 75:
         return False
     return bool(TITLE_KEYWORDS.search(t))
@@ -503,8 +536,13 @@ def is_valid_location(text: Optional[str]) -> bool:
         return True
 
     # Must match genuine geographic keyword
-    if GEO_INDICATORS.search(t):
-        return True
+    geo_m = GEO_INDICATORS.search(t)
+    if geo_m:
+        # If no comma and no regional qualifiers, ensure the matched keyword encompasses the full text
+        # to prevent person names like "Maria de los Angeles Gomez" or "Austin Butler" from false-matching as locations
+        has_geo_qualifier = bool("," in t or re.search(r"\b(?:area|greater|metro|metropolitan|city|county|region|district|remote)\b", t, re.IGNORECASE))
+        if has_geo_qualifier or t.strip().lower() == geo_m.group(0).lower():
+            return True
 
     # Standard "City, State/Country" with 2-letter state code or standard comma separation (supporting Latin Extended diacritics)
     if re.match(r"^[A-Z\u00C0-\u024F][a-zA-Z\u00C0-\u024F\s.-]+,\s*[A-Z]{2}$", t):
@@ -525,19 +563,17 @@ def extract_connection_degree(text: Optional[str]) -> Optional[str]:
 
 def clean_title_and_company(headline: Optional[str], raw_company: Optional[str] = None) -> Tuple[Optional[str], Optional[str]]:
     """
-    Decomposes headline into clean title and employer when connected by '@', 'at'.
-    Does NOT treat pipe '|' as an employer separator (pipe separates skills, past employers, and taglines).
-    Example: 'Senior Talent Partner @ Cyberdyne Systems | AI Engineering'
-      -> Title: 'Senior Talent Partner', Company: 'Cyberdyne Systems'
+    Decomposes headline into clean title and employer.
+    Supports '@', 'at', and multi-segment delimited headlines (e.g. 'Recruiter I · Partners Limited').
     """
     if not headline:
-        return None, raw_company
+        return None, clean_company_name(raw_company) if raw_company else None
 
     h = headline.strip()
-    # Split headline into pipe/bullet delimited segments
-    segments = [s.strip() for s in re.split(r"\s*[|•·]\s*", h) if s.strip()]
+    # Split headline into pipe/bullet/en-dash delimited segments
+    segments = [s.strip() for s in re.split(r"\s*[|•·\u2022\u00B7]\s*", h) if s.strip()]
     if not segments:
-        return None, raw_company
+        return None, clean_company_name(raw_company) if raw_company else None
 
     best_title = None
     best_company = raw_company
@@ -546,7 +582,7 @@ def clean_title_and_company(headline: Optional[str], raw_company: Optional[str] 
         # Check if segment has explicit '@' or 'at'
         if re.search(r"(?:^|\s+)@\s+", seg):
             parts = re.split(r"(?:^|\s+)@\s+", seg, maxsplit=1)
-            t_cand = parts[0].strip()
+            t_cand = clean_job_title(parts[0])
             c_cand = parts[1].strip() if len(parts) > 1 else ""
             if not best_title and t_cand and is_plausible_title(t_cand):
                 best_title = t_cand
@@ -556,7 +592,7 @@ def clean_title_and_company(headline: Optional[str], raw_company: Optional[str] 
                     best_company = cleaned_c
         elif re.search(r"\s+at\s+", seg, re.IGNORECASE):
             parts = re.split(r"\s+at\s+", seg, maxsplit=1, flags=re.IGNORECASE)
-            t_cand = parts[0].strip()
+            t_cand = clean_job_title(parts[0])
             c_cand = parts[1].strip() if len(parts) > 1 else ""
             if not best_title and t_cand and is_plausible_title(t_cand):
                 best_title = t_cand
@@ -566,15 +602,23 @@ def clean_title_and_company(headline: Optional[str], raw_company: Optional[str] 
                     best_company = cleaned_c
         else:
             # Segment has NO '@' and NO 'at'
-            if not best_title and is_plausible_title(seg):
-                best_title = seg
+            t_cand = clean_job_title(seg)
+            if not best_title and t_cand and is_plausible_title(t_cand):
+                best_title = t_cand
+            elif best_title and not best_company:
+                # If title is already found, check if this subsequent segment is a plausible company
+                c_cand = clean_company_name(seg)
+                if c_cand and is_valid_company_name(c_cand) and not is_plausible_title(c_cand) and not is_valid_location(c_cand):
+                    best_company = c_cand
 
     # If best_title is still not found, check the first segment if plausible
     if not best_title and segments:
-        first_seg = segments[0]
-        if not is_noise_text(first_seg) and not is_valid_location(first_seg):
-            best_title = first_seg
+        first_t = clean_job_title(segments[0])
+        if first_t and not is_noise_text(first_t) and not is_valid_location(first_t):
+            best_title = first_t
 
+    if best_title:
+        best_title = clean_job_title(best_title)
     if best_company:
         best_company = clean_company_name(best_company)
 
@@ -597,10 +641,25 @@ def clean_company_name(comp: Optional[str]) -> Optional[str]:
     if not comp:
         return None
     cleaned = comp.strip()
+    # Strip leading bullet/hyphen/dash/pipe/colon/asterisk/tilde/punctuation
+    cleaned = re.sub(r"^[\s\-_–—•·*|:;~,#>]+", "", cleaned).strip()
     # Strip leading notification numbers or badges e.g. "54 | ", "(54) ", "[12] ", "(1) "
     cleaned = re.sub(r"^(?:[\(\[]\d+\+?[\)\]]\s*[|•·–—\-:]?\s*|\d+\s*[|•·–—\-:]\s*)+", "", cleaned).strip()
     cleaned = re.sub(r"^Current\s*company:\s*", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\. Click to skip.*$", "", cleaned, flags=re.IGNORECASE)
+
+    # OCR Artifact & Kerning Degradation Repair for Corporate Names
+    cleaned = re.sub(r"\b[iIlL1]hited\b", "Limited", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b[iIlL1]mited\b", "Limited", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b[uU]n[iIlL1]ted\b", "United", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b[hH]o[lIL1]dings?\b", "Holdings", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b[tT]echno[lIL1]ogies\b", "Technologies", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b[sS]o[lIL1]utions?\b", "Solutions", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b[sS]erv[iIlL1]ces?\b", "Services", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b[iI]nternationa[lIL1]\b", "International", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b[pP]vt\.?\s*[lL1]td\.?\b", "Pvt Ltd", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b[cC]0(?:\.|\b)", "Co.", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\.{2,}", ".", cleaned)
     # Strip contact info and connection/follower metric counts without stripping brand names containing 'Connections' (e.g. Business Connections Inc)
     cleaned = re.sub(r"\b(?:contact\s*info|contact\s*details|\d+\+?\s*connections?|mutual\s*connections?|followers?\s*[:\d])\b.*$", "", cleaned, flags=re.IGNORECASE).strip()
     cleaned = re.sub(
@@ -740,7 +799,9 @@ def is_valid_company_name(text: Optional[str]) -> bool:
             return False
         # Word starting with 2+ uppercase followed by 2+ lowercase (OCR glyph noise like "IAou", "GBre", "ZXop")
         if re.match(r"^[A-Z]{2,}[a-z]{2,}$", clean_tok):
-            if clean_tok.lower() not in {"unesco", "unicef", "naacp", "unhcr"}:
+            # Allow recognized acronym-prefix corporate brands (JPMorgan, ITworld, HRblock, etc.)
+            tok_lower = clean_tok.lower()
+            if tok_lower not in {"unesco", "unicef", "naacp", "unhcr"} and not re.match(r"^(?:JP|IT|HR|RE|US|UK)[A-Z]?[a-z]+$", clean_tok):
                 return False
 
     # Reject if ALL tokens are short filler words or OCR fragments (e.g. "cotamt fim any")
@@ -809,14 +870,17 @@ def is_valid_company_name(text: Optional[str]) -> bool:
             return False
     elif t[-1] in "-–—_%#@!~`^&*()[]{}<>|\\;:\"'/?.,":
         return False
-    known_digit_corps = {"level 3", "factor 75", "studio 54", "3m", "8x8", "carbon3d", "360learning", "web3", "s3"}
+    known_digit_corps = {"level 3", "factor 75", "studio 54", "3m", "8x8", "carbon3d", "360learning", "web3", "s3",
+                          "channel 4", "route 66", "formula 1", "studio 1", "365 media", "724 solutions", "1000heads",
+                          "unit 4", "unit4", "g2", "h2o", "k2", "c3", "v2", "s4", "pi3"}
     if t[-1].isdigit():
-        if t_lower not in known_digit_corps and not re.search(r"\b(?:level\s*3|factor\s*75|8x8|3m|360|s3|web3)\b", t_lower):
+        if t_lower not in known_digit_corps and not re.search(r"\b(?:level|factor|studio|channel|route|formula|unit|phase|stage|version|tier|gen|series|step|lab|group)\s*\d+\b", t_lower):
             return False
     if any(c in t for c in [";", ":", "?", "!", "~", "*", "=", "<", ">"]):
         return False
-    # Reject strings containing phone numbers or area codes (e.g. "281-", "555-1234")
-    if re.search(r"\b\d{3,}[-\s]?\b", t):
+    # Reject strings containing actual phone numbers (7+ digits with separators, e.g. "281-555-1234", "5551234567")
+    # Allow companies with numeric branding (e.g. "724 Solutions", "365 Media", "1000heads")
+    if re.search(r"\b\d{3,}[-.\s]\d{3,}[-.\s]?\d{0,4}\b", t) or re.search(r"\b\d{7,}\b", t):
         return False
     # Reject strings containing individual professional job titles (e.g. "Cindy Davis Consultant", "Senior Software Engineer") unless corporate designators present
     has_comp_org_suffix = bool(re.search(r"\b(?:group|partners|associates|consulting|consultancy|advisors?|advisers?|agency|capital|systems|inc|llc|corp|board|holdings|services|solutions|firm|network)\b", t, re.IGNORECASE))
@@ -1108,7 +1172,10 @@ def is_valid_person_name(text: Optional[str]) -> bool:
     # Filter for alphabetic words (allowing standard hyphens, apostrophes, and Latin Extended accented characters)
     clean_words = [re.sub(r"[^a-zA-Z\u00C0-\u024F\'-]", "", w) for w in words]
     clean_words = [w for w in clean_words if w and any(c.isalpha() for c in w)]
-    if len(clean_words) < 2 or len(clean_words) > 4:
+    NAME_PARTICLES = {"van", "de", "da", "von", "del", "di", "la", "le", "el", "al", "bin", "ibn", "du", "der", "los", "las", "dos", "das"}
+    has_particle = any(w.lower() in NAME_PARTICLES for w in clean_words[1:-1])
+    max_words = 5 if has_particle else 4
+    if len(clean_words) < 2 or len(clean_words) > max_words:
         return False
 
     # Allow single-letter middle initials in 3- or 4-word names (e.g. "John F. Kennedy", "David A. Sinclair")
@@ -1135,7 +1202,6 @@ def is_valid_person_name(text: Optional[str]) -> bool:
     # Every word must be a valid human name token: Capital letter followed by lowercase letters
     # Accepts: John, Mary-Jane, O'Connor, McDonald, de, van, da, von
     # Also supports uniform ALL-CAPS names (common in resumes/ATS: e.g. "JOHN SMITH")
-    NAME_PARTICLES = {"van", "de", "da", "von", "del", "di", "la", "le", "el", "al", "bin", "ibn", "du", "der"}
     is_uniform_all_caps = all(w.isupper() for w in clean_words)
 
     for idx, w in enumerate(clean_words):
@@ -1145,11 +1211,19 @@ def is_valid_person_name(text: Optional[str]) -> bool:
         if not is_uniform_all_caps and not w[0].isupper():
             return False
         # Reject ALL-CAPS words mixed into normal-case names that look like acronyms or UI labels (e.g. 'LLC', 'INC', 'D365', 'MDG')
+        # Exception: Surname in all-caps as last word (common in European / resume formats e.g. "John SMITH")
         if not is_uniform_all_caps and len(w) > 2 and w.isupper():
-            return False
+            is_surname_caps = (
+                idx == len(clean_words) - 1
+                and len(clean_words) >= 2
+                and clean_words[0][0].isupper()
+                and not any(d in w.lower() for d in EXPANDED_CORP_DESIGNATORS)
+            )
+            if not is_surname_caps:
+                return False
         # Reject internal uppercase letters that represent OCR glitches (e.g. 'SaO', 'MEkan', 'JaIl', 'LiKe')
         # Allowed exceptions: McDonald, McCarthy, O'Connor, FitzGerald
-        if not is_uniform_all_caps:
+        if not is_uniform_all_caps and not w.isupper():
             rest = w[1:]
             if any(c.isupper() for c in rest):
                 # Check if valid prefix (Mc, Mac, O', Fitz) or standard hyphenated name
@@ -1223,7 +1297,22 @@ VALID_EMAIL_TLDS = {
     "nl", "se", "no", "es", "it", "br", "mx", "jp", "cn", "sg",
     "nz", "ie", "za", "cloud", "agency", "global", "solutions",
     "consulting", "careers", "group", "team", "network", "digital",
-    "pro", "online", "site", "live", "world"
+    "pro", "online", "site", "live", "world",
+    # Modern gTLDs commonly used by businesses
+    "design", "health", "security", "software", "engineer", "ventures",
+    "systems", "services", "company", "studio", "media", "center",
+    "email", "work", "jobs", "business", "finance", "legal", "marketing",
+    "management", "partners", "expert", "academy", "education", "space",
+    "science", "technology", "capital", "energy", "social", "care",
+    # Country-code extensions
+    "co.uk", "co.in", "co.jp", "co.kr", "co.za", "co.nz", "co.id",
+    "com.au", "com.br", "com.mx", "com.cn", "com.sg", "com.tw",
+    "ac.in", "ac.uk", "ac.jp", "edu.au", "org.uk", "org.in",
+    "ru", "kr", "tw", "id", "ph", "th", "vn", "pk", "bd", "lk",
+    "at", "be", "dk", "fi", "gr", "hu", "pt", "ro", "cz", "pl", "sk",
+    "hr", "bg", "lt", "lv", "ee", "si", "rs", "ua", "il", "ae",
+    "sa", "qa", "kw", "om", "bh", "eg", "ng", "ke", "gh", "tz",
+    "cl", "co.co", "pe", "ar", "uy", "ec",
 }
 
 DISALLOWED_OCR_EMAIL_TLDS = {
@@ -1261,12 +1350,24 @@ def is_valid_email(email: Optional[str]) -> bool:
     tld = domain.split(".")[-1].strip().lower()
     if tld in DISALLOWED_OCR_EMAIL_TLDS:
         return False
-    if tld not in VALID_EMAIL_TLDS:
+    # Support compound TLDs (e.g. co.uk, com.au, ac.in) by checking both single and compound forms
+    domain_parts = domain.split(".")
+    compound_tld = ".".join(domain_parts[-2:]) if len(domain_parts) >= 3 else ""
+    if tld not in VALID_EMAIL_TLDS and compound_tld not in VALID_EMAIL_TLDS:
         return False
 
     # Domain name before TLD must be at least 2 chars
     domain_name = domain.split(".")[-2]
     if len(domain_name) < 2:
+        return False
+
+    # Reject OCR chopped emails on major public webmail providers
+    # e.g. 'a05@gmail.com' (Gmail requires minimum 6 characters in username)
+    if domain in ("gmail.com", "googlemail.com") and len(local) < 6:
+        return False
+    if domain in ("yahoo.com", "ymail.com", "rocketmail.com") and len(local) < 4:
+        return False
+    if domain in ("outlook.com", "hotmail.com", "live.com", "msn.com") and len(local) < 5:
         return False
 
     return True

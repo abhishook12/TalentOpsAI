@@ -28,6 +28,7 @@ from scout_desktop.extractor.patterns import (
     is_plausible_degree,
     is_valid_skill,
     clean_title_and_company,
+    clean_job_title,
     classify_semantic_entity,
     DATE_RANGE_PATTERN,
     is_noise_text,
@@ -641,7 +642,7 @@ class SemanticFactorizer:
                     title_candidate = t_split
                     comp_candidate = c_split
                 elif is_plausible_title(line):
-                    title_candidate = line
+                    title_candidate = clean_job_title(line) or line
                     comp_candidate = None
                     if i + 1 < len(exp_lines) and is_valid_company_name(exp_lines[i + 1]):
                         comp_candidate = exp_lines[i + 1].strip()
@@ -650,7 +651,7 @@ class SemanticFactorizer:
                     comp_candidate = line
                     title_candidate = None
                     if i + 1 < len(exp_lines) and is_plausible_title(exp_lines[i + 1]):
-                        title_candidate = exp_lines[i + 1].strip()
+                        title_candidate = clean_job_title(exp_lines[i + 1].strip()) or exp_lines[i + 1].strip()
                         i += 1
                 else:
                     i += 1
@@ -685,8 +686,17 @@ class SemanticFactorizer:
                 if len(parsed_roles) > 1:
                     prev_title = parsed_roles[1].get("title")
                     prev_comp = parsed_roles[1].get("company")
-                    if prev_comp and cur_comp and prev_comp.lower() == cur_comp.lower():
+                    # If same company and same title, duplicate entry -> clear
+                    if (
+                        prev_comp
+                        and cur_comp
+                        and prev_comp.lower() == cur_comp.lower()
+                        and prev_title
+                        and cur_title
+                        and prev_title.lower() == cur_title.lower()
+                    ):
                         prev_comp = None
+                        prev_title = None
 
         return cur_title, cur_comp, prev_title, prev_comp, exp_history
 
@@ -694,17 +704,15 @@ class SemanticFactorizer:
         """Extracts and validates clean geographic location."""
         # Prefer header location
         for line in header_lines:
-            if is_valid_location(line):
-                cleaned = clean_location_text(line)
-                if cleaned:
-                    return cleaned
+            cleaned = clean_location_text(line)
+            if cleaned and is_valid_location(cleaned):
+                return cleaned
 
-        # Fallback to general scan
-        for line in all_lines[:15]:
-            if is_valid_location(line):
-                cleaned = clean_location_text(line)
-                if cleaned:
-                    return cleaned
+        # Fallback to general scan across first 25 lines
+        for line in all_lines[:25]:
+            cleaned = clean_location_text(line)
+            if cleaned and is_valid_location(cleaned):
+                return cleaned
 
         return None
 

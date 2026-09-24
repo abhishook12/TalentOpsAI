@@ -178,7 +178,12 @@ class AutoUpdater:
                         self.report_status_to_server(self.device_id, "FAILED", "Manifest signature invalid")
                         return None
                 else:
-                    logger.warning("Manifest has no cryptographic signature. Proceeding with caution.")
+                    if getattr(sys, "frozen", False):
+                        logger.error("[SECURITY] REJECTED MANIFEST: No cryptographic signature present (production mode).")
+                        self.report_status_to_server(self.device_id, "FAILED", "Unsigned manifest rejected")
+                        return None
+                    else:
+                        logger.warning("Manifest has no cryptographic signature. Allowing in dev mode only.")
 
                 self._process_manifest(manifest)
                 return manifest
@@ -351,11 +356,23 @@ class AutoUpdater:
                         self.report_status_to_server(self.device_id, "FAILED", "Package signature mismatch", target_version=ver)
                         return False
                     logger.info("[OK] Package digital signature PASSED.")
+                else:
+                    if getattr(sys, "frozen", False):
+                        logger.error("[SECURITY] Package signature missing from manifest — rejecting binary in production mode.")
+                        os.remove(temp_download)
+                        self.state_machine.transition(UpdateState.FAILED, context="Missing package signature", strict=False)
+                        self.report_status_to_server(self.device_id, "FAILED", "Missing package signature", target_version=ver)
+                        return False
+                    else:
+                        logger.warning("Package signature missing from manifest. Allowing in dev mode only.")
 
                 # 5. Cryptographic Check C: Windows Authenticode (if Windows executable)
                 if sys.platform == "win32" and temp_download.endswith(".exe"):
                     auth_res = verify_authenticode_signature(temp_download)
-                    logger.info("Windows Authenticode status: %s", auth_res.get("status"))
+                    auth_valid = auth_res.get("valid", False)
+                    logger.info("Windows Authenticode status: %s (valid=%s)", auth_res.get("status"), auth_valid)
+                    if not auth_valid:
+                        logger.warning("[SECURITY] Authenticode signature is NOT valid: %s", auth_res.get("status_message", "Unknown"))
 
                 if os.path.exists(target_file):
                     os.remove(target_file)

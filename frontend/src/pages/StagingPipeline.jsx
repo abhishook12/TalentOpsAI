@@ -64,7 +64,10 @@ export default function StagingPipeline() {
 
   useEffect(() => {
     fetchData()
-    const interval = setInterval(fetchData, 10000)
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchData();
+    }, 30000)
     return () => clearInterval(interval)
   }, [fetchData])
 

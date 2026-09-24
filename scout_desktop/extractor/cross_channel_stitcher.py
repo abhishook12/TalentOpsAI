@@ -221,6 +221,29 @@ class CrossChannelStitcher:
         if name and company and (name.lower(), company.lower()) in self._name_company_index:
             matched_ids.add(self._name_company_index[(name.lower(), company.lower())])
 
+        # Identity Conflict Guard: Reject candidate nodes whose validated name conflicts with incoming name
+        if name and matched_ids:
+            from scout_desktop.extractor.patterns import clean_person_name
+            clean_in_name = clean_person_name(name) or name.strip()
+            in_toks = set(clean_in_name.lower().split())
+            valid_matched_ids = set()
+            for mid in matched_ids:
+                p = self._profiles.get(mid)
+                if not p:
+                    continue
+                if p.canonical_name:
+                    p_clean = clean_person_name(p.canonical_name) or p.canonical_name.strip()
+                    p_toks = set(p_clean.lower().split())
+                    # If both have names and share no name tokens, they are distinct human beings
+                    if p_toks and in_toks and not (in_toks & p_toks):
+                        logger.warning(
+                            "CrossChannelStitcher blocked false identity merge: '%s' vs '%s'",
+                            clean_in_name, p_clean
+                        )
+                        continue
+                valid_matched_ids.add(mid)
+            matched_ids = valid_matched_ids
+
         now = time.time()
         if matched_ids:
             # Multi-Node Graph Bridge: Fuse multiple matching profiles if bridged by this observation

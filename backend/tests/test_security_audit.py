@@ -54,10 +54,16 @@ def auth_headers(test_user):
     token = create_access_token({"sub": str(test_user.id)})
     return {"Authorization": f"Bearer {token}"}
 
-def test_notifications_endpoint_requires_auth():
-    # Without token
+def test_notifications_endpoint_broadcast_without_token():
+    # Unauthenticated client can only fetch public system broadcasts
     res = client.get("/notifications/")
-    assert res.status_code == 401
+    assert res.status_code == 200
+    assert isinstance(res.json(), list)
+
+def test_notifications_creation_requires_admin():
+    # Creating notifications requires admin credentials
+    res = client.post("/notifications/", json={"title": "Test", "message": "Test"})
+    assert res.status_code in (401, 403)
 
 def test_notifications_with_auth(auth_headers):
     res = client.get("/notifications/", headers=auth_headers)

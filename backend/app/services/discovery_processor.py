@@ -8,7 +8,7 @@ from typing import List, Dict, Optional, Tuple, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sqlfunc
 from ..models.staging_models import DiscoveryStaging, ResolvedPerson
-from ..models.models import Recruiter, Company
+from ..models.models import Recruiter, Company, RecruiterEmail, RecruiterPhone, RecruiterLocation
 from ..models.knowledge_models import KnowledgeEntity, KnowledgeRelationship, KnowledgeSignal, SemanticObservation
 from ..models.extension_models import ExtensionDiscoveryEvent
 from ..utils.normalizer import (
@@ -22,6 +22,7 @@ from ..utils.normalizer import (
     classify_page_type,
     clean_title,
     clean_company,
+    clean_location_text,
     split_title_and_company,
     calculate_field_confidences,
     evaluate_evidence_grounding,
@@ -33,6 +34,7 @@ from ..utils.normalizer import (
     is_valid_email,
 )
 from ..utils.title_normalizer import classify_title
+from ..utils.state_recovery import infer_state_from_sources
 
 logger = logging.getLogger('talentops.discovery_processor')
 
@@ -162,7 +164,8 @@ class DiscoveryProcessor:
                     # Commit directly to Company table (NEVER create a fake recruiter)
                     comp_name = r.raw_name or r.raw_company
                     if comp_name:
-                        comp_name = comp_name.strip()
+                        comp_name = clean_company(comp_name) or comp_name.strip()
+                    if comp_name and comp_name.lower().strip() not in BOGUS_COMPANY_NAMES:
                         existing_comp = self.db.query(Company).filter(
                             Company.company_name.ilike(comp_name)
                         ).first()
@@ -392,11 +395,17 @@ class DiscoveryProcessor:
                 clean_companies.append(c)
 
         # Most reliable values across observations
-        canonical_name = self._normalize_name(most_common([r.raw_name for r in cluster])) or "Unknown Professional"
+        raw_canonical = most_common([r.raw_name for r in cluster])
+        canonical_name = self._normalize_name(raw_canonical) or "Unknown Professional"
+        is_human, clean_human, _ = validate_human_name(canonical_name)
+        if is_human and clean_human:
+            canonical_name = clean_human
+
         primary_email = most_common([self._normalize_email(r.raw_email) for r in cluster])
         primary_phone = most_common([r.raw_phone for r in cluster])
         linkedin_url = most_common([r.raw_linkedin for r in cluster])
-        location = most_common([r.raw_location for r in cluster])
+        raw_loc = most_common([r.raw_location for r in cluster])
+        location = clean_location_text(raw_loc) or raw_loc
 
         # Progressive Profile Attributes
         education = most_common([getattr(r, "education", None) for r in cluster])
@@ -751,6 +760,18 @@ class DiscoveryProcessor:
 
         # Case 1: No match in master DB
         if not master_match:
+            # Hard Gate: Verify candidate is a genuine human name before auto-committing NEW recruiter
+            is_human_candidate, clean_cand_name, human_reason = validate_human_name(person.canonical_name)
+            if not is_human_candidate or person.canonical_name == "Unknown Professional":
+                return {
+                    'person': person,
+                    'recruiter': None,
+                    'decision': 'REVIEW',
+                    'reason': f'INVALID_HUMAN_NAME: {human_reason or "Unknown candidate name"} — held in Review Queue before mainline commitment',
+                }
+            if clean_cand_name and clean_cand_name != person.canonical_name:
+                person.canonical_name = clean_cand_name
+
             has_strong_profile = bool(
                 (person.linkedin_url and "linkedin.com/in/" in person.linkedin_url)
                 or (getattr(person, "canonical_profile_url", None) and "linkedin.com/in/" in str(person.canonical_profile_url))
@@ -966,8 +987,32 @@ class DiscoveryProcessor:
 
             # Execute master database modifications
             if decision == 'NEW':
+                is_human_cand, clean_cand_nm, _ = validate_human_name(person.canonical_name)
+                if not is_human_cand or person.canonical_name == "Unknown Professional":
+                    stats['review'] += 1
+                    continue
+                if clean_cand_nm:
+                    person.canonical_name = clean_cand_nm
+
                 stats['new'] += 1
                 company_id = None
+
+                clean_target_comp = clean_company(person.current_company)
+                if clean_target_comp and clean_target_comp.lower().strip() in BOGUS_COMPANY_NAMES:
+                    clean_target_comp = None
+
+                clean_loc = clean_location_text(person.location) or person.location
+                inferred_st_res = infer_state_from_sources([
+                    ("recruiter_location", clean_loc),
+                    ("notes", person.about_summary),
+                    ("metadata_json", person.metadata_json),
+                ])
+                inferred_st = inferred_st_res["state"] if inferred_st_res else None
+                clean_city = None
+                if clean_loc:
+                    c_parts = [p.strip() for p in clean_loc.split(",") if p.strip()]
+                    if c_parts:
+                        clean_city = c_parts[0].lower()
 
                 # Resolve or create company
                 if person.primary_email and '@' in person.primary_email:
@@ -978,12 +1023,20 @@ class DiscoveryProcessor:
                         ).first()
                         if comp:
                             company_id = comp.company_id
-                        elif person.current_company:
+                            if not comp.state and inferred_st:
+                                comp.state = inferred_st
+                                self.db.add(comp)
+                            if not comp.location and clean_loc:
+                                comp.location = clean_loc
+                                self.db.add(comp)
+                        elif clean_target_comp:
                             new_comp = Company(
-                                company_name=person.current_company.strip(),
-                                canonical_name=person.current_company.strip(),
+                                company_name=clean_target_comp,
+                                canonical_name=clean_target_comp,
                                 primary_domain=email_domain,
                                 website=f"https://{email_domain}",
+                                location=clean_loc,
+                                state=inferred_st,
                                 verification_status="unverified",
                                 trust_score=75,
                                 data_source="extension_staged",
@@ -992,16 +1045,24 @@ class DiscoveryProcessor:
                             self.db.flush()
                             company_id = new_comp.company_id
 
-                if not company_id and person.current_company and person.current_company.strip().lower() not in BOGUS_COMPANY_NAMES:
+                if not company_id and clean_target_comp:
                     comp = self.db.query(Company).filter(
-                        Company.company_name.ilike(person.current_company.strip())
+                        Company.company_name.ilike(clean_target_comp)
                     ).first()
                     if comp:
                         company_id = comp.company_id
+                        if not comp.state and inferred_st:
+                            comp.state = inferred_st
+                            self.db.add(comp)
+                        if not comp.location and clean_loc:
+                            comp.location = clean_loc
+                            self.db.add(comp)
                     else:
                         new_comp = Company(
-                            company_name=person.current_company.strip(),
-                            canonical_name=person.current_company.strip(),
+                            company_name=clean_target_comp,
+                            canonical_name=clean_target_comp,
+                            location=clean_loc,
+                            state=inferred_st,
                             verification_status="unverified",
                             trust_score=70,
                             data_source="extension_staged",
@@ -1012,7 +1073,7 @@ class DiscoveryProcessor:
 
                 # Guard: Never insert an organization/company as a human Recruiter
                 if is_company_name(person.canonical_name):
-                    c_name = person.canonical_name.strip()
+                    c_name = clean_company(person.canonical_name) or person.canonical_name.strip()
                     if c_name.lower() in BOGUS_COMPANY_NAMES:
                         continue
                     c_match = self.db.query(Company).filter(Company.company_name.ilike(c_name)).first()
@@ -1087,9 +1148,11 @@ class DiscoveryProcessor:
                     except Exception:
                         pass
                 
+                clean_loc = clean_location_text(person.location) or person.location
                 new_recruiter = Recruiter(
                     user_id=person.owner_user_id,
                     recruiter_name=person.canonical_name,
+                    normalized_recruiter_name=normalize_text(person.canonical_name),
                     title=t_intel["canonical_title"],
                     specialization=t_intel["specialization_label"],
                     taxonomy_category=t_intel["domain_specialization"],
@@ -1097,7 +1160,9 @@ class DiscoveryProcessor:
                     email=fallback_email,
                     phone=person.primary_phone,
                     linkedin=person.linkedin_url,
-                    location=person.location,
+                    location=clean_loc,
+                    state=inferred_st,
+                    normalized_city=clean_city,
                     data_source="extension",
                     is_active=True,
                     needs_review=needs_review_val,
@@ -1109,6 +1174,44 @@ class DiscoveryProcessor:
                 self.db.flush()
 
                 person.recruiter_id = new_recruiter.recruiter_id
+
+                # Structured sub-tables for mainline relational completeness
+                if fallback_email and not fallback_email.endswith('@noemail.talentops'):
+                    existing_re = self.db.query(RecruiterEmail).filter(RecruiterEmail.email == fallback_email).first()
+                    if not existing_re:
+                        self.db.add(RecruiterEmail(
+                            recruiter_id=new_recruiter.recruiter_id,
+                            email=fallback_email,
+                            email_type="work",
+                            status="verified",
+                            confidence_score=int(person.identity_confidence * 100),
+                            is_primary=True,
+                            source="extension",
+                        ))
+                if person.primary_phone:
+                    self.db.add(RecruiterPhone(
+                        recruiter_id=new_recruiter.recruiter_id,
+                        phone_number=person.primary_phone,
+                        is_primary=True,
+                        belongs_to_person=True,
+                        confidence_score=85,
+                        source="extension",
+                    ))
+                if clean_loc:
+                    self.db.add(RecruiterLocation(
+                        recruiter_id=new_recruiter.recruiter_id,
+                        city=clean_loc,
+                        location_type="person",
+                        is_fallback=False,
+                        confidence_score=85,
+                        source="extension",
+                    ))
+                try:
+                    from ..routes.recruiters import _update_state_metadata
+                    _update_state_metadata(new_recruiter, self.db)
+                except Exception as sme:
+                    logger.debug("State metadata update note: %s", sme)
+                self.db.flush()
 
                 # Create Audit Trail
                 first_stg = staging_records[0] if staging_records else None
@@ -1123,7 +1226,7 @@ class DiscoveryProcessor:
                     owner_user_id=person.owner_user_id,
                     recruiter_id=new_recruiter.recruiter_id,
                     recruiter_name=new_recruiter.recruiter_name,
-                    company_name=person.current_company,
+                    company_name=clean_target_comp or person.current_company,
                     title=new_recruiter.title,
                     email=new_recruiter.email,
                     phone=new_recruiter.phone,
@@ -1151,9 +1254,30 @@ class DiscoveryProcessor:
                     if recruiter.review_reason == "Discovered via Scout (awaiting email enrichment)":
                         recruiter.review_reason = None
                         recruiter.needs_review = False
+                    existing_re = self.db.query(RecruiterEmail).filter(RecruiterEmail.email == person.primary_email).first()
+                    if not existing_re:
+                        self.db.add(RecruiterEmail(
+                            recruiter_id=recruiter.recruiter_id,
+                            email=person.primary_email,
+                            email_type="work",
+                            status="verified",
+                            confidence_score=90,
+                            is_primary=True,
+                            source="extension_enrichment",
+                        ))
                 if person.primary_phone and not recruiter.phone:
                     recruiter.phone = person.primary_phone
                     fields_enriched.append("Phone")
+                    existing_rp = self.db.query(RecruiterPhone).filter(RecruiterPhone.recruiter_id == recruiter.recruiter_id, RecruiterPhone.phone_number == person.primary_phone).first()
+                    if not existing_rp:
+                        self.db.add(RecruiterPhone(
+                            recruiter_id=recruiter.recruiter_id,
+                            phone_number=person.primary_phone,
+                            is_primary=True,
+                            belongs_to_person=True,
+                            confidence_score=85,
+                            source="extension_enrichment",
+                        ))
                 if person.linkedin_url and not recruiter.linkedin:
                     recruiter.linkedin = person.linkedin_url
                     fields_enriched.append("LinkedIn")
@@ -1180,27 +1304,56 @@ class DiscoveryProcessor:
                         except Exception:
                             pass
                 if person.location and not recruiter.location:
-                    recruiter.location = person.location
+                    clean_enrich_loc = clean_location_text(person.location) or person.location
+                    recruiter.location = clean_enrich_loc
                     fields_enriched.append("Location")
+                    existing_rl = self.db.query(RecruiterLocation).filter(RecruiterLocation.recruiter_id == recruiter.recruiter_id).first()
+                    if not existing_rl:
+                        self.db.add(RecruiterLocation(
+                            recruiter_id=recruiter.recruiter_id,
+                            city=clean_enrich_loc,
+                            location_type="person",
+                            is_fallback=False,
+                            confidence_score=85,
+                            source="extension_enrichment",
+                        ))
+                    try:
+                        from ..routes.recruiters import _update_state_metadata
+                        _update_state_metadata(recruiter, self.db)
+                    except Exception:
+                        pass
+
+                if not recruiter.normalized_recruiter_name and recruiter.recruiter_name:
+                    recruiter.normalized_recruiter_name = normalize_text(recruiter.recruiter_name)
 
                 # Handle company change
-                if person.current_company:
+                clean_person_comp = clean_company(person.current_company)
+                if clean_person_comp and clean_person_comp.lower().strip() not in BOGUS_COMPANY_NAMES:
                     m_comp_name = recruiter.company.company_name if recruiter.company else None
-                    if not m_comp_name or normalize_text(person.current_company) != normalize_text(m_comp_name):
+                    if not m_comp_name or normalize_text(clean_person_comp) != normalize_text(m_comp_name):
                         comp = self.db.query(Company).filter(
-                            Company.company_name.ilike(person.current_company.strip())
+                            Company.company_name.ilike(clean_person_comp)
                         ).first()
                         if not comp:
                             comp = Company(
-                                company_name=person.current_company.strip(),
-                                canonical_name=person.current_company.strip(),
+                                company_name=clean_person_comp,
+                                canonical_name=clean_person_comp,
+                                location=recruiter.location,
+                                state=recruiter.state,
                                 trust_score=75,
                                 data_source="extension_enrichment",
                             )
                             self.db.add(comp)
                             self.db.flush()
+                        else:
+                            if not comp.state and recruiter.state:
+                                comp.state = recruiter.state
+                                self.db.add(comp)
+                            if not comp.location and recruiter.location:
+                                comp.location = recruiter.location
+                                self.db.add(comp)
                         recruiter.company_id = comp.company_id
-                        fields_enriched.append(f"Company: {person.current_company}")
+                        fields_enriched.append(f"Company: {clean_person_comp}")
 
                 # Deep Profile Progressive Enrichment
                 meta = json.loads(recruiter.metadata_json) if recruiter.metadata_json else {}

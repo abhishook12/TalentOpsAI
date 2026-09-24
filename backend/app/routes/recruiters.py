@@ -397,6 +397,20 @@ def _update_state_metadata(r, db: Session) -> None:
         r.state_source = state_result["state_source"]
         r.state_confidence = state_result["state_confidence"]
         r.state_reason = state_result["state_reason"]
+
+        # Also infer normalized city if available
+        if r.location and not getattr(r, "normalized_city", None):
+            c_parts = [p.strip() for p in r.location.split(",") if p.strip()]
+            if c_parts:
+                r.normalized_city = c_parts[0].lower()
+
+        # Propagate state to linked company if company lacks state
+        if company and not company.state and r.state:
+            company.state = r.state
+            if not company.location and r.location:
+                company.location = r.location
+            db.add(company)
+
         if state_result.get("evidence"):
             meta = {}
             if r.metadata_json:
@@ -874,7 +888,7 @@ def get_recruiters(
             ))
 
         # Check if this company exists in PostgreSQL and DuckDB has 0 records for it
-        if (company_id is not None or (eff_company and str(eff_company).isdigit())) and total_count == 0:
+        if (company_id is not None or eff_company) and total_count == 0:
             pg_count = db.query(sqlfunc.count(Recruiter.recruiter_id)).filter(and_(Recruiter.is_active == True, *pg_filters)).scalar() or 0
             if pg_count > 0:
                 total_count = pg_count
@@ -962,7 +976,10 @@ def get_recruiters(
                         results.insert(0, rec_dict)
                         total_count += 1
         elif page == 1:
-            source_filter = Recruiter.data_source.in_(['extension', 'extension_staged', 'visual_capture', 'parquet_canonical'])
+            source_filter = or_(
+                Recruiter.data_source.in_(['extension', 'extension_staged', 'visual_capture', 'parquet_canonical', 'manual', 'scout', 'staging_batch_intelligence', 'postgresql_roster']),
+                Recruiter.data_source == None
+            )
             pg_query = db.query(Recruiter).options(joinedload(Recruiter.company)).filter(and_(source_filter, *pg_filters)).order_by(Recruiter.recruiter_id.desc()).limit(50)
             if pg_query:
                 pg_recs = pg_query.all()

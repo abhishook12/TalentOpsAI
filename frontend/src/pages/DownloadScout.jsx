@@ -222,15 +222,15 @@ export default function DownloadScout() {
   });
   const provisionableUsers = provUsersData || [];
 
-  // Dynamic Release Info from Authoritative DB Registry (Defaults match exact v2.9.3 build)
+  // Dynamic Release Info from Authoritative DB Registry (Defaults match exact v2.9.4 build)
   const [releaseInfo, setReleaseInfo] = useState({
-    version: '2.9.3',
-    extractor_version: '4.6.2',
+    version: '2.9.4',
+    extractor_version: '4.6.3',
     download_url: 'https://qpetzpxmuofuepvrqedk.supabase.co/storage/v1/object/public/data-assets/TalentOpsScoutSetup.exe',
     size_bytes: 50084798,
     sha256: 'f060e23435a40fc369206b25d97e139295fe39da737361cd30d06e52f32f6cc7',
     channel: 'stable',
-    released_at: '2026-09-22',
+    released_at: '2026-09-24',
   });
 
   useEffect(() => {
@@ -243,7 +243,7 @@ export default function DownloadScout() {
       .catch(() => {});
   }, []);
 
-  // Personal Scout Companion Query (for logged-in user)
+  // Desktop Scout Companion Query (for logged-in user)
   const {
     data: myDeviceData,
     isLoading: loadingMyDevice,
@@ -585,7 +585,7 @@ export default function DownloadScout() {
   const avgQualScore = summary.avg_quality_score ?? summary.average_quality_score ?? 0;
   const latestProdVer = contribData?.latest_production_version || releaseInfo?.version || '';
 
-  const displayVersion = releaseInfo.version ? `v${releaseInfo.version}` : (latestProdVer ? `v${latestProdVer}` : 'v2.9.0');
+  const displayVersion = releaseInfo.version ? `v${releaseInfo.version}` : (latestProdVer ? `v${latestProdVer}` : 'v2.9.4');
   const displaySize = releaseInfo.size_bytes
     ? `${(releaseInfo.size_bytes / (1024 * 1024)).toFixed(1)} MB`
     : '51.6 MB';
@@ -608,19 +608,19 @@ export default function DownloadScout() {
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} />
               {!user
                 ? 'OFFICIAL DESKTOP INSTALLER • WIN32 COMPANION'
-                : (isAdmin ? 'OFFICIAL DESKTOP ENGINE • FLEET GOVERNANCE' : 'OFFICIAL DESKTOP COMPANION • CONTINUOUS SOURCING')}
+                : (isAdmin ? 'OFFICIAL DESKTOP CLIENT • FLEET GOVERNANCE' : 'DESKTOP SOURCING CLIENT • WORKSPACE PIPELINE')}
             </div>
             <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px', letterSpacing: '-0.5px' }}>
               {!user
                 ? 'TalentOps Scout Desktop Setup'
-                : (isAdmin ? 'Desktop Scout & Contributors' : 'My Desktop Scout Companion')}
+                : (isAdmin ? 'Desktop Scout & Contributors' : 'My Desktop Scout')}
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: 14, margin: 0, maxWidth: 840, lineHeight: 1.5 }}>
               {!user
-                ? 'Autonomous continuous recruitment intelligence engine for Windows. Extracts, verifies, and stages candidate profiles across 9 platforms directly to your workspace.'
+                ? 'Windows desktop client for candidate sourcing. Extracts, verifies, and stages candidate profiles across 9 platforms directly to your workspace.'
                 : (isAdmin
-                  ? 'Autonomous continuous recruitment intelligence engine for Windows, active device fleet management, and verified candidate pipeline contribution analytics.'
-                  : 'Connect your personal Windows desktop companion to automatically extract, verify, and stage recruiter contacts directly to your TalentOps account.')}
+                  ? 'Windows desktop client, active device fleet management, and verified candidate pipeline contribution analytics.'
+                  : 'Connect your Windows desktop client to automatically extract, verify, and stage candidate profiles directly to your TalentOps account.')}
             </p>
           </div>
 
@@ -653,7 +653,7 @@ export default function DownloadScout() {
                   }}
                 >
                   <Users size={13} />
-                  <span>Contributors Intelligence</span>
+                  <span>Contributor Directory</span>
                 </button>
                 <button
                   onClick={() => setAdminView('fleet_nodes')}
@@ -703,7 +703,7 @@ export default function DownloadScout() {
       </header>
 
       {/* ========================================================================= */}
-      {/* PERSONAL SCOUT COMPANION VIEW (For non-admin users + admin companion tab) */}
+      {/* DESKTOP SCOUT COMPANION VIEW (For non-admin users + admin companion tab) */}
       {/* ========================================================================= */}
       {currentView === 'companion' && (
         <div>
@@ -731,7 +731,7 @@ export default function DownloadScout() {
                   Download TalentOps Scout Desktop Setup
                 </h2>
                 <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: 14, margin: 0, maxWidth: 780, lineHeight: 1.5 }}>
-                  Autonomous recruiter intelligence companion for Windows. Operates silently in the background with local offline OCR (Extractor v4.6.2), local SQLite buffer queuing, and zero cloud passwords to continuously capture and stage talent across 9 platforms.
+                  Windows desktop companion for candidate capture. Operates locally in the background using native Windows OCR, an offline SQLite queue, and secure device pairing to stage candidate profiles across 9 platforms directly to your workspace.
                 </p>
               </div>
 
@@ -755,11 +755,11 @@ export default function DownloadScout() {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
                   <span style={{
-                    background: 'rgba(228, 228, 231, 0.15)', color: '#e4e4e7', border: '1px solid rgba(228, 228, 231, 0.35)',
+                    background: 'rgba(16, 185, 129, 0.12)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)',
                     padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, display: 'inline-flex', alignItems: 'center', gap: 6
                   }}>
                     <Laptop size={12} />
-                    PERSONAL SCOUT COMPANION
+                    DESKTOP SCOUT COMPANION
                   </span>
                   <span style={{ fontSize: 12, color: '#a1a1aa' }}>
                     Account: <b>{user?.email || 'Authenticated User'}</b>
@@ -769,7 +769,7 @@ export default function DownloadScout() {
                   Welcome, {user?.first_name || user?.name || user?.email?.split('@')[0] || 'Recruiter'}!
                 </h2>
                 <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: 13, margin: 0, maxWidth: 740, lineHeight: 1.5 }}>
-                  Your Desktop Scout companion operates silently in the background to autonomously capture candidate discoveries while you browse LinkedIn, ZoomInfo, GitHub, ATS, and recruiting boards, continuously enriching your personal talent pipeline.
+                  Your Desktop Scout companion runs quietly in the background to capture candidate profiles and contact details while you browse LinkedIn, ZoomInfo, GitHub, ATS, and job boards, staging verified records directly into your workspace.
                 </p>
               </div>
 
@@ -1068,7 +1068,7 @@ export default function DownloadScout() {
                             Your Dedicated Activation Code
                           </span>
                         </div>
-                        <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'rgba(59, 130, 246, 0.25)', color: '#bfdbfe', fontWeight: 600 }}>
+                        <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'rgba(59, 130, 246, 0.2)', color: '#3b82f6', fontWeight: 700 }}>
                           {myDeviceData.active_activation_label || 'Permanent'}
                         </span>
                       </div>
@@ -1354,7 +1354,7 @@ export default function DownloadScout() {
                   <span>NATIVE BROWSER &amp; WINDOW MONITORING ALLOWLIST</span>
                 </div>
                 <h3 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary, #fafafa)', margin: '0 0 4px 0' }}>
-                  Supported Sourcing Platforms &amp; Intelligence Targets (9 Categories)
+                  Supported Sourcing Platforms (9 Categories)
                 </h3>
                 <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: 13, margin: 0, maxWidth: 840, lineHeight: 1.5 }}>
                   Scout Desktop automatically identifies active recruiting windows across these verified domains, extracts candidate fields via OCR and DOM parsing, and safely ignores all non-work applications.
@@ -1607,9 +1607,9 @@ export default function DownloadScout() {
                 </div>
               </div>
               <div style={{ background: 'var(--panel-bg, #0b0b0c)', border: '1px solid var(--card-border, #232326)', borderRadius: 8, padding: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #a1a1aa)', marginBottom: 4 }}>3. Autonomous Ingestion</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #a1a1aa)', marginBottom: 4 }}>3. Automatic Sourcing</div>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary, #a1a1aa)', lineHeight: 1.5 }}>
-                  Scout minimizes to your system tray. As you browse candidates on LinkedIn, ZoomInfo, GitHub, or ATS, contacts are extracted and synced automatically.
+                  Scout minimizes to your system tray. As you browse candidates on LinkedIn, ZoomInfo, GitHub, or ATS platforms, contacts are extracted and staged automatically.
                 </div>
               </div>
             </div>
@@ -2037,7 +2037,7 @@ export default function DownloadScout() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#e4e4e7' }}>
               <Users size={16} />
               <span>
-                Currently viewing <b>Contributors Intelligence (User Accounts)</b>. To inspect individual physical hardware machines, companion nodes &amp; live streams, switch to <b>Device Fleet &amp; Nodes</b>.
+                Currently viewing <b>Contributor Directory (User Accounts)</b>. To inspect individual physical hardware machines, companion nodes &amp; live streams, switch to <b>Device Fleet &amp; Nodes</b>.
               </span>
             </div>
             <button
@@ -2238,7 +2238,7 @@ export default function DownloadScout() {
             {isLoading ? (
               <div style={{ padding: 60, textAlign: 'center', color: '#a1a1aa' }}>
                 <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 12px' }} />
-                <div>Loading Scout Contributor intelligence...</div>
+                <div>Loading Scout Contributors...</div>
               </div>
             ) : users.length === 0 ? (
               <div style={{ padding: 60, textAlign: 'center', color: '#71717a' }}>

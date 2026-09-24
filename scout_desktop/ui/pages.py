@@ -447,10 +447,10 @@ class ScanPage(QWidget):
         # 4 Funnel Stages with Monochromatic Progress Bars
         self.funnel_rows = []
         stages = [
-            ("STAGE 01: OBSERVED", "0", "100.0%", 1.00),
-            ("STAGE 02: UNDERSTOOD", "0", "0.0%", 0.0),
-            ("STAGE 03: VALIDATED", "0", "0.0%", 0.0),
-            ("STAGE 04: CANONICAL", "0", "0.0%", 0.0)
+            ("STAGE 01: DETECTED", "0", "100.0%", 1.00),
+            ("STAGE 02: EXTRACTED", "0", "0.0%", 0.0),
+            ("STAGE 03: VERIFIED", "0", "0.0%", 0.0),
+            ("STAGE 04: READY TO SYNC", "0", "0.0%", 0.0)
         ]
 
         for st_name, st_val, st_pct_str, st_pct_val in stages:
@@ -488,10 +488,10 @@ class ScanPage(QWidget):
                 "bar": bar,
             })
 
-        # Burndown Velocity Strip
+        # Ingestion Velocity Strip
         burn_row = QHBoxLayout()
         burn_row.setContentsMargins(0, 4, 0, 0)
-        lbl_bv = QLabel("BURNDOWN VELOCITY")
+        lbl_bv = QLabel("PROCESSING RATE")
         lbl_bv.setFont(QFont("Consolas", 7, QFont.Weight.Bold))
         lbl_bv.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
         burn_row.addWidget(lbl_bv)
@@ -510,21 +510,21 @@ class ScanPage(QWidget):
 
         left_col.addWidget(card_pipe)
 
-        # Edge Audit Log Card
+        # Activity Log Card
         card_act = Card()
         act_layout = QVBoxLayout(card_act)
         act_layout.setContentsMargins(16, 12, 16, 12)
         act_layout.setSpacing(8)
 
         act_head = QHBoxLayout()
-        lbl_act_title = QLabel("EDGE AUDIT LOG")
+        lbl_act_title = QLabel("ACTIVITY LOG")
         lbl_act_title.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
         lbl_act_title.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; letter-spacing: 0.5px;")
         act_head.addWidget(lbl_act_title)
 
         act_head.addStretch()
 
-        lbl_act_stream = QLabel("STREAM: LIVE")
+        lbl_act_stream = QLabel("LIVE STREAM")
         lbl_act_stream.setFont(QFont("Consolas", 7, QFont.Weight.Bold))
         lbl_act_stream.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
         act_head.addWidget(lbl_act_stream)
@@ -583,10 +583,10 @@ class ScanPage(QWidget):
         latest_layout.setSpacing(10)
 
         top_latest = QHBoxLayout()
-        lbl_l_title = QLabel("LATEST VERIFIED ENTITY")
-        lbl_l_title.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
-        lbl_l_title.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; letter-spacing: 0.5px;")
-        top_latest.addWidget(lbl_l_title)
+        self.lbl_l_title = QLabel("LATEST VERIFIED ENTITY")
+        self.lbl_l_title.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
+        self.lbl_l_title.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; letter-spacing: 0.5px;")
+        top_latest.addWidget(self.lbl_l_title)
         top_latest.addStretch()
 
         self.chip_latest = StateChip("CANONICAL")
@@ -638,9 +638,9 @@ class ScanPage(QWidget):
         entity_header.addLayout(name_box)
         latest_layout.addLayout(entity_header)
 
-        # Confidence Score Matrix
+        # Extraction Confidence Section
         csm_head = QHBoxLayout()
-        lbl_csm = QLabel("CONFIDENCE SCORE MATRIX")
+        lbl_csm = QLabel("EXTRACTION CONFIDENCE")
         lbl_csm.setFont(QFont("Consolas", 7, QFont.Weight.Bold))
         lbl_csm.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
         csm_head.addWidget(lbl_csm)
@@ -663,8 +663,8 @@ class ScanPage(QWidget):
         latest_layout.addWidget(self.meter_company)
         latest_layout.addWidget(self.meter_loc)
 
-        # Gating Assertions Checklist
-        lbl_chk_title = QLabel("GATING ASSERTIONS")
+        # Profile Verification Checklist
+        lbl_chk_title = QLabel("PROFILE VERIFICATION")
         lbl_chk_title.setFont(QFont("Consolas", 7, QFont.Weight.Bold))
         lbl_chk_title.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; padding-top: 4px;")
         latest_layout.addWidget(lbl_chk_title)
@@ -704,14 +704,14 @@ class ScanPage(QWidget):
         daemon_l.setSpacing(6)
 
         d_head = QHBoxLayout()
-        lbl_dh = QLabel("STORAGE DAEMON STATUS")
+        lbl_dh = QLabel("LOCAL QUEUE & STORAGE")
         lbl_dh.setFont(QFont("Consolas", 7, QFont.Weight.Bold))
         lbl_dh.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
         d_head.addWidget(lbl_dh)
 
         d_head.addStretch()
 
-        lbl_dst = QLabel("[ OK // STEADY ]")
+        lbl_dst = QLabel("[ HEALTHY ]")
         lbl_dst.setFont(QFont("Consolas", 7, QFont.Weight.Bold))
         lbl_dst.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
         d_head.addWidget(lbl_dst)
@@ -723,7 +723,7 @@ class ScanPage(QWidget):
         dot_d.setStyleSheet("color: #FFFFFF;")
         d_body.addWidget(dot_d)
 
-        lbl_db_info = QLabel("0 DURABLE • All 131 records uploaded • No errors")
+        lbl_db_info = QLabel("Queue: 0 pending • All records uploaded • No errors")
         lbl_db_info.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
         lbl_db_info.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
         d_body.addWidget(lbl_db_info)
@@ -731,14 +731,14 @@ class ScanPage(QWidget):
         daemon_l.addLayout(d_body)
 
         d_foot = QHBoxLayout()
-        lbl_df_l = QLabel("Disk commit latency: 0.8ms")
+        lbl_df_l = QLabel("Local write latency: 0.8ms")
         lbl_df_l.setFont(QFont("Consolas", 7))
         lbl_df_l.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
         d_foot.addWidget(lbl_df_l)
 
         d_foot.addStretch()
 
-        lbl_df_r = QLabel("HASH: d2f89...b14")
+        lbl_df_r = QLabel("Buffer: Synced")
         lbl_df_r.setFont(QFont("Consolas", 7))
         lbl_df_r.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
         d_foot.addWidget(lbl_df_r)
@@ -893,10 +893,10 @@ class ScanPage(QWidget):
         canonical = metrics.get("canonical", metrics.get("synced_today", 0))
 
         stage_vals = [
-            ("STAGE 01: OBSERVED", observed),
-            ("STAGE 02: UNDERSTOOD", understood),
-            ("STAGE 03: VALIDATED", validated),
-            ("STAGE 04: CANONICAL", canonical),
+            ("STAGE 01: DETECTED", observed),
+            ("STAGE 02: EXTRACTED", understood),
+            ("STAGE 03: VERIFIED", validated),
+            ("STAGE 04: READY TO SYNC", canonical),
         ]
 
         base_val = max(1, observed)
@@ -933,12 +933,28 @@ class ScanPage(QWidget):
         profile_url: str = "",
         field_confidence: Optional[Dict[str, float]] = None,
     ):
+        from scout_desktop.extractor.patterns import clean_job_title, clean_company_name, clean_location_text
         self._current_candidate_id = cand_id
-        self.lbl_cand_name.setText(name)
-        comp_str = f"{title} • {company}" if (title and company) else (title or company or "Professional Profile")
+        self.lbl_cand_name.setText(name or "Unknown Candidate")
+        c_title = clean_job_title(title) or (title.strip() if isinstance(title, str) else "")
+        c_comp = clean_company_name(company) or (company.strip() if isinstance(company, str) else "")
+        c_loc = clean_location_text(location) or (location.strip() if isinstance(location, str) else "")
+
+        comp_parts = [p for p in (c_title, c_comp) if p]
+        comp_str = " · ".join(comp_parts) if comp_parts else "Professional Profile"
         self.lbl_cand_subtitle.setText(comp_str)
-        self.lbl_cand_loc.setText(f"📍 {location}" if location else "📍 Remote")
-        self.chip_latest.set_state(status.upper())
+        self.lbl_cand_loc.setText(f"📍 {c_loc}" if c_loc else "📍 Location not specified")
+        
+        st_clean = (status or "CANONICAL").upper()
+        self.chip_latest.set_state(st_clean)
+        if hasattr(self, "lbl_l_title"):
+            if st_clean == "REVIEW_REQUIRED":
+                self.lbl_l_title.setText("CANDIDATE UNDER REVIEW")
+            elif st_clean in ("IN DATABASE", "VERIFIED", "CANONICAL"):
+                self.lbl_l_title.setText("LATEST VERIFIED ENTITY")
+            else:
+                self.lbl_l_title.setText("LATEST CANDIDATE")
+
         initials = "".join([p[0].upper() for p in name.split()[:2] if p]) or "??"
         if hasattr(self, "lbl_avatar"):
             self.lbl_avatar.setText(initials)
@@ -947,15 +963,15 @@ class ScanPage(QWidget):
 
         fc = field_confidence or {}
         name_c = int(round(fc.get("name", 0.85 if name else 0.0) * 100)) if name else 0
-        title_c = int(round(fc.get("title", 0.75 if title else 0.0) * 100)) if title else 0
-        comp_c = int(round(fc.get("company", 0.75 if company else 0.0) * 100)) if company else 0
-        loc_c = int(round(fc.get("location", 0.70 if location else 0.0) * 100)) if location else 0
+        title_c = int(round(fc.get("title", 0.75 if c_title else 0.0) * 100)) if c_title else 0
+        comp_c = int(round(fc.get("company", 0.75 if c_comp else 0.0) * 100)) if c_comp else 0
+        loc_c = int(round(fc.get("location", 0.70 if c_loc else 0.0) * 100)) if c_loc else 0
 
         self.update_meters(
             name=name,
-            title=title,
-            company=company,
-            location=location,
+            title=c_title,
+            company=c_comp,
+            location=c_loc,
             name_conf=name_c,
             title_conf=title_c,
             comp_conf=comp_c,
@@ -975,18 +991,29 @@ class ScanPage(QWidget):
         loc_conf: int = 0,
         cand_id: Optional[str] = None
     ):
+        from scout_desktop.extractor.patterns import clean_job_title, clean_company_name, clean_location_text
         if cand_id:
             self._current_candidate_id = cand_id
 
+        c_title = clean_job_title(title) or (title.strip() if isinstance(title, str) else "")
+        c_comp = clean_company_name(company) or (company.strip() if isinstance(company, str) else "")
+        c_loc = clean_location_text(location) or (location.strip() if isinstance(location, str) else "")
+
         name_label = name if (name and name_conf > 0) else "Not detected"
-        title_label = title if (title and title_conf > 0) else "Not detected"
-        comp_label = company if (company and comp_conf > 0) else "Not detected"
-        loc_label = location if (location and loc_conf > 0) else "Not detected"
+        title_label = c_title if (c_title and title_conf > 0) else "Not detected"
+        comp_label = c_comp if (c_comp and comp_conf > 0) else "Not detected"
+        loc_label = c_loc if (c_loc and loc_conf > 0) else "Not detected"
 
         self.meter_name.set_score(name_conf if (name and name_conf > 0) else 0, _smart_truncate("Name", name_label, 30))
-        self.meter_title.set_score(title_conf if (title and title_conf > 0) else 0, _smart_truncate("Title", title_label, 36))
-        self.meter_company.set_score(comp_conf if (company and comp_conf > 0) else 0, _smart_truncate("Company", comp_label, 34))
-        self.meter_loc.set_score(loc_conf if (location and loc_conf > 0) else 0, _smart_truncate("Location", loc_label, 32))
+        self.meter_title.set_score(title_conf if (c_title and title_conf > 0) else 0, _smart_truncate("Title", title_label, 36))
+        self.meter_company.set_score(comp_conf if (c_comp and comp_conf > 0) else 0, _smart_truncate("Company", comp_label, 34))
+        self.meter_loc.set_score(loc_conf if (c_loc and loc_conf > 0) else 0, _smart_truncate("Location", loc_label, 32))
+
+        # Dynamically compute aggregate confidence across 4 fields
+        if hasattr(self, "lbl_conf_val"):
+            active_confs = [name_conf, title_conf, comp_conf, loc_conf]
+            agg = round(sum(active_confs) / 4) if any(active_confs) else 0
+            self.lbl_conf_val.setText(f"AGGREGATE: {agg}%")
 
 
     def _create_checklist_item(self, icon: str, text: str, passed: bool) -> QWidget:
@@ -2025,7 +2052,7 @@ class CloudSyncPage(QWidget):
         lbl_module.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; letter-spacing: 1px;")
         tag_row.addWidget(lbl_module)
 
-        lbl_auto = QLabel("AUTONOMOUS")
+        lbl_auto = QLabel("BACKGROUND PIPELINE")
         lbl_auto.setFont(QFont("Consolas", 7, QFont.Weight.Bold))
         lbl_auto.setStyleSheet(f"""
             background-color: {COLOR_SURFACE_HOVER};

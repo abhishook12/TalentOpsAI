@@ -369,16 +369,20 @@ def validate_company_for_person(company_name: Optional[str], person_name: Option
     if re.match(r"^(?:ctv|tel|ph|fx|mob)[\s\-_:]", raw, re.IGNORECASE) or lower in {"ctv-", "ctv", "phone", "email"}:
         return False, f"Company starts with communication channel prefix: '{raw}'"
 
-    # Reject trailing special chars, hyphens, or digits (e.g. "281-", "System;"), exempting recognized brands with digits (Level 3, 3M, 8x8)
-    known_digit_corps = {"level 3", "factor 75", "studio 54", "3m", "8x8", "carbon3d", "360learning", "web3", "s3"}
+    # Reject trailing special chars, hyphens, or digits, exempting recognized brands with digits
+    known_digit_corps = {"level 3", "factor 75", "studio 54", "3m", "8x8", "carbon3d", "360learning", "web3", "s3",
+                          "channel 4", "route 66", "formula 1", "studio 1", "365 media", "724 solutions", "1000heads",
+                          "unit 4", "unit4", "g2", "h2o", "k2", "c3", "v2", "s4", "pi3"}
     if raw[-1].isdigit():
-        if lower not in known_digit_corps and not re.search(r"\b(?:level\s*3|factor\s*75|8x8|3m|360|s3|web3)\b", lower):
+        if lower not in known_digit_corps and not re.search(r"\b(?:level|factor|studio|channel|route|formula|unit|phase|stage|version|tier|gen|series|step|lab|group)\s*\d+\b", lower):
             return False, f"Company ends with invalid trailing digit: '{raw}'"
     elif raw[-1] in "-–—_%#@!~`^&*()[]{}<>|\\;:\"'/?.,":
         return False, f"Company ends with invalid punctuation: '{raw}'"
     if any(c in raw for c in [";", ":", "?", "!", "~", "*", "=", "<", ">"]):
         return False, f"Company contains invalid syntax characters: '{raw}'"
-    if re.search(r"\b\d{3,}[-\s]?\b", raw):
+    # Reject strings containing actual phone numbers (7+ digits with separators, e.g. "281-555-1234", "5551234567")
+    # Allow companies with numeric branding (e.g. "724 Solutions", "365 Media", "1000heads")
+    if re.search(r"\b\d{3,}[-.\s]\d{3,}[-.\s]?\d{0,4}\b", raw) or re.search(r"\b\d{7,}\b", raw):
         return False, f"Company contains phone or area code digits: '{raw}'"
 
     # Reject strings containing individual professional job titles (e.g. "Cindy Davis Consultant") unless corporate designators present
@@ -531,17 +535,23 @@ def validate_human_name(raw_name: Optional[str]) -> Tuple[bool, Optional[str], O
                 continue
             return False, None, f"Name contains single-letter token ('{cleaned}')"
 
-    # Must be 2 to 4 tokens
-    if len(words) < 2 or len(words) > 4:
-        return False, None, f"Name must be 2-4 words, got {len(words)} ('{cleaned}')"
+    # Must be 2 to 4 tokens (up to 5 if containing cultural particles)
+    NAME_PARTICLES = {"van", "de", "da", "von", "del", "di", "la", "le", "el", "al", "bin", "ibn", "du", "der", "los", "las", "dos", "das"}
+    has_particle = any(w.lower() in NAME_PARTICLES for w in words[1:-1])
+    max_words = 5 if has_particle else 4
+    if len(words) < 2 or len(words) > max_words:
+        return False, None, f"Name must be 2-{max_words} words, got {len(words)} ('{cleaned}')"
 
     # Every name token with length >= 3 must contain at least one vowel (rejects consonant-only OCR noise e.g. 'Svh', 'Trk')
     if any(len(w) >= 3 and not re.search(r"[aeiouyAEIOUY]", w) for w in words):
         return False, None, f"Name word contains no vowels (OCR consonant noise: '{cleaned}')"
 
     # Reject internal uppercase letters that represent OCR glitches (e.g. 'SaO', 'Kmika Svh')
-    for w in words:
+    for idx, w in enumerate(words):
         if len(w) > 1 and any(c.isupper() for c in w[1:]):
+            # Allow surname in all-caps as last word (e.g. "John SMITH")
+            if idx == len(words) - 1 and len(words) >= 2 and words[0][0].isupper() and w.isupper():
+                continue
             is_valid_prefix = bool(re.match(r"^(?:Mc[A-Z][a-z]+|Mac[A-Z][a-z]+|O'[A-Z][a-z]+|[A-Z][a-z]+-[A-Z][a-z]+)$", w))
             if not is_valid_prefix:
                 return False, None, f"Name contains OCR internal uppercase glitch: '{w}'"
@@ -615,29 +625,48 @@ def classify_page_type(url: Optional[str], title: Optional[str]) -> str:
     return 'GENERIC_WEB'
 
 def clean_title(raw_title: Optional[str]) -> Optional[str]:
-    """Cleans a raw job title, rejecting UI action terms."""
-    if not raw_title:
+    """Cleans a raw job title, rejecting UI action terms, bullets, punctuation, pronouns, and list numbers."""
+    if not raw_title or not isinstance(raw_title, str):
         return None
     title = str(raw_title).strip()
     if is_ui_action(title) or title.lower() in {'professional lead', 'contact', 'candidate lead'}:
         return None
-    title = re.sub(r'[·•]\s*\d+(?:st|nd|rd|th)?', '', title)
-    title = re.sub(r'\s+', ' ', title).strip()
-    return title if title and not is_ui_action(title) else None
+
+    # Strip leading bullet/hyphen/dash/pipe/colon/asterisk/tilde/slash/punctuation
+    title = re.sub(r"^[\s\-_–—•·*|:;~,#>\(\)/]+", "", title).strip()
+    # Strip leading list numbers e.g. '1. ', '1) ', '1- '
+    title = re.sub(r"^\d+[\.\)\-]\s*", "", title).strip()
+    # Strip gender pronouns commonly tagged in headers e.g. '(he/him)', '(she/her)'
+    title = re.sub(r"\s*\((?:he/him|she/her|they/them|ze/zir|any pronouns)\)", "", title, flags=re.IGNORECASE).strip()
+    # Strip connection indicators e.g. '· 1st', '(2nd degree)', '2nd', '3rd+'
+    title = re.sub(r"\s*[\(·•|]?\s*\b\d(?:st|nd|rd|th|\+)\b(?:\s*degree)?\)?.*$", "", title, flags=re.IGNORECASE).strip()
+    # Strip phone numbers, emails or office/cell tags
+    title = re.sub(r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\b\d{5,}\b|\(office\)|\(cell\)", "", title).strip()
+    # Strip trailing punctuation/dashes/pipes/colons/dots/slashes/parentheses
+    title = re.sub(r"[\s\-_–—•·*|:;~,#<\.\(\)/]+$", "", title).strip()
+    # Normalize multiple whitespace
+    title = re.sub(r"\s+", " ", title).strip()
+
+    if len(title) < 3 or not re.search(r"[a-zA-Z]", title):
+        return None
+    return title if not is_ui_action(title) else None
 
 def clean_company(raw_company: Optional[str], page_context: Optional[str] = None) -> Optional[str]:
-    """Cleans a raw company name, rejecting platform names, emojis, sentences, and applying valid company page context."""
+    """Cleans a raw company name, rejecting platform names, emojis, sentences, and applying OCR corporate repairs."""
     comp = None
     if raw_company and not is_platform_name(raw_company):
         comp = str(raw_company).strip()
-        comp = re.sub(r'^\(\d+\)\s*', '', comp).strip()
-        comp = re.sub(r'\s*\|\s*(?:LinkedIn|Indeed|Glassdoor|ZipRecruiter|SimplyHired).*$', '', comp, flags=re.IGNORECASE).strip()
+        # Strip leading notification numbers or badges e.g. "54 | ", "(54) ", "[12] ", "(1) "
+        comp = re.sub(r"^(?:[\(\[]\d+\+?[\)\]]\s*[|•·–—\-:]?\s*|\d+\s*[|•·–—\-:]\s*)+", "", comp).strip()
+        comp = re.sub(r"^Current\s*company:\s*", "", comp, flags=re.IGNORECASE)
+        comp = re.sub(r"\. Click to skip.*$", "", comp, flags=re.IGNORECASE)
+        comp = re.sub(r"\s*\|\s*(?:LinkedIn|Indeed|Glassdoor|ZipRecruiter|SimplyHired).*$", "", comp, flags=re.IGNORECASE).strip()
     elif page_context:
         raw_ctx = str(page_context).strip()
-        raw_ctx = re.sub(r'\s*\|\s*(?:LinkedIn|Indeed|Glassdoor|ZipRecruiter|SimplyHired).*$', '', raw_ctx, flags=re.IGNORECASE).strip()
+        raw_ctx = re.sub(r"\s*\|\s*(?:LinkedIn|Indeed|Glassdoor|ZipRecruiter|SimplyHired).*$", "", raw_ctx, flags=re.IGNORECASE).strip()
         parts = re.split(r'[:|•\-–—]', raw_ctx)
         candidate = parts[0].strip()
-        candidate = re.sub(r'\s+(?:Careers|Jobs|People|Recruiting|Hiring|Overview|Job Search)$', '', candidate, flags=re.IGNORECASE).strip()
+        candidate = re.sub(r"\s+(?:Careers|Jobs|People|Recruiting|Hiring|Overview|Job Search)$", "", candidate, flags=re.IGNORECASE).strip()
         
         # Ensure candidate is not a platform name, nor a human person's name (e.g. "Kelsei Martinez | LinkedIn")
         is_human, _, _ = validate_human_name(candidate)
@@ -647,13 +676,62 @@ def clean_company(raw_company: Optional[str], page_context: Optional[str] = None
     if not comp or is_platform_name(comp):
         return None
 
+    # Strip leading bullet/hyphen/dash/pipe/colon/asterisk/tilde/punctuation
+    comp = re.sub(r"^[\s\-_–—•·*|:;~,#>]+", "", comp).strip()
+
+    # OCR Artifact & Kerning Degradation Repair for Corporate Names
+    comp = re.sub(r"\b[iIlL1]hited\b", "Limited", comp, flags=re.IGNORECASE)
+    comp = re.sub(r"\b[iIlL1]mited\b", "Limited", comp, flags=re.IGNORECASE)
+    comp = re.sub(r"\b[uU]n[iIlL1]ted\b", "United", comp, flags=re.IGNORECASE)
+    comp = re.sub(r"\b[hH]o[lIL1]dings?\b", "Holdings", comp, flags=re.IGNORECASE)
+    comp = re.sub(r"\b[tT]echno[lIL1]ogies\b", "Technologies", comp, flags=re.IGNORECASE)
+    comp = re.sub(r"\b[sS]o[lIL1]utions?\b", "Solutions", comp, flags=re.IGNORECASE)
+    comp = re.sub(r"\b[sS]erv[iIlL1]ces?\b", "Services", comp, flags=re.IGNORECASE)
+    comp = re.sub(r"\b[iI]nternationa[lIL1]\b", "International", comp, flags=re.IGNORECASE)
+    comp = re.sub(r"\b[pP]vt\.?\s*[lL1]td\.?\b", "Pvt Ltd", comp, flags=re.IGNORECASE)
+    comp = re.sub(r"\b[cC]0(?:\.|\b)", "Co.", comp, flags=re.IGNORECASE)
+    comp = re.sub(r"\.{2,}", ".", comp)
+
+    # Strip contact info and connection/follower metric counts
+    comp = re.sub(r"\b(?:contact\s*info|contact\s*details|\d+\+?\s*connections?|mutual\s*connections?|followers?\s*[:\d])\b.*$", "", comp, flags=re.IGNORECASE).strip()
+    comp = re.sub(
+        r"\s*[·•|]\s*(?:full-time|contract|part-time|internship|freelance|apprenticeship|seasonal|hybrid|remote|on-site).*",
+        "",
+        comp,
+        flags=re.IGNORECASE,
+    ).strip()
+    comp = re.sub(r"[·•|].*$", "", comp).strip()
+    # Strip trailing punctuation, brackets, and OCR garbage suffixes e.g. "-(/p", "/p", "- sud"
+    comp = re.sub(r"\s*[-–—/\\|]+\s*[a-zA-Z0-9]{1,3}$", "", comp).strip()
+    comp = re.sub(r"^[\s\-_,·•|:;()\[\]{}]+|[\s\-_,·•|:;()\[\]{}]+$", "", comp).strip()
+
     # Reject if company string contains emojis, alert words, or is a sentence
     if re.search(r'[🚨⚠️❗❓❌✅]', comp) or re.search(r'\b(?:greater risk|watch for|signs of|illness|warning|alert|sponsored|weather|news)\b', comp, flags=re.IGNORECASE):
         return None
     if len(comp.split()) > 6 or comp.count('.') >= 2 or comp.endswith('.'):
         return None
 
+    # Validate against company noise validator
+    is_valid, _ = validate_company_for_person(comp)
+    if not is_valid:
+        return None
+
     return comp
+
+def clean_location_text(text: Optional[str]) -> Optional[str]:
+    """Cleans punctuation, bullets, timestamps, and contact info triggers from location strings."""
+    if not text:
+        return None
+    cleaned = re.sub(r"\bcontact\s*info\b", "", text, flags=re.IGNORECASE)
+    # Strip relative timestamps e.g. "4 minutes ago 0", "2 hours ago", "3d ago"
+    cleaned = re.sub(r"\b\d+\s*(?:seconds?|secs?|minutes?|mins?|hours?|hrs?|days?|weeks?|months?|years?)\s*ago\b.*$", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b\d+\s*(?:m|min|h|hr|d|w|mo|y)\s*ago\b.*$", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s+\d+$", "", cleaned)
+    # Strip trailing delimiters with metadata
+    cleaned = re.sub(r"^[a-zA-Z],\s*", "", cleaned)
+    cleaned = re.sub(r"^[\s\-_,·•|:]+|[\s\-_,·•|:]+$", "", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned if len(cleaned) >= 3 else None
 
 def split_title_and_company(
     raw_title: Optional[str],

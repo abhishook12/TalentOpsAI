@@ -20,7 +20,10 @@ export default function SystemHealth() {
 
   useEffect(() => {
     fetchHealth();
-    const interval = setInterval(fetchHealth, 10000);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchHealth();
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 

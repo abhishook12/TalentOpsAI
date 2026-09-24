@@ -918,7 +918,7 @@ class ScoutDesktopApp:
 
         # Step 1: STARTING
         self.main_window.update_status_state("STARTING")
-        self.bridge.event_logged.emit("SYSTEM_STARTING", "Initializing autonomous subsystems...")
+        self.bridge.event_logged.emit("SYSTEM_STARTING", "Initializing desktop subsystems...")
         QApplication.processEvents()
 
         # Step 2: CONNECTING
@@ -963,7 +963,7 @@ class ScoutDesktopApp:
             self.main_window.update_status_state("ACTIVE")
             self.edge_handle.set_status_state("ACTIVE")
             self.tray.update_icon_status("ACTIVE")
-            self.bridge.event_logged.emit("SCOUT_ACTIVE", "Autonomous visual watch loop running")
+            self.bridge.event_logged.emit("SCOUT_ACTIVE", "Visual watch loop running")
             self.sampler.trigger_immediate_capture(self.current_window, reason="startup_initial")
         else:
             self.main_window.update_status_state("RESTING (NON-TARGET)")
@@ -1542,12 +1542,17 @@ class ScoutDesktopApp:
                         if not staged_contact.get("title") and stitched.current_title:
                             staged_contact["title"] = stitched.current_title
 
-                    if not staged_contact.get("email") and stitched.primary_email:
-                        staged_contact["email"] = stitched.primary_email
-                    if not staged_contact.get("phone") and stitched.primary_phone:
-                        staged_contact["phone"] = stitched.primary_phone
-                    if not staged_contact.get("linkedin_url") and stitched.linkedin_url:
-                        staged_contact["linkedin_url"] = stitched.linkedin_url
+                    # Only backfill email/phone if candidate name is compatible with stitched profile
+                    cand_n = (staged_contact.get("recruiter_name") or "").strip().lower()
+                    stitch_n = (stitched.canonical_name or "").strip().lower()
+                    names_compatible = (not cand_n or not stitch_n or cand_n in stitch_n or stitch_n in cand_n)
+                    if names_compatible:
+                        if not staged_contact.get("email") and stitched.primary_email:
+                            staged_contact["email"] = stitched.primary_email
+                        if not staged_contact.get("phone") and stitched.primary_phone:
+                            staged_contact["phone"] = stitched.primary_phone
+                        if not staged_contact.get("linkedin_url") and stitched.linkedin_url:
+                            staged_contact["linkedin_url"] = stitched.linkedin_url
                 except Exception as stitch_err:
                     logger.debug("CrossChannelStitcher error: %s", stitch_err)
 
@@ -1658,8 +1663,23 @@ class ScoutDesktopApp:
                     except Exception as e:
                         logger.debug("Live Copilot lookup error: %s", e)
 
+                    from scout_desktop.extractor.patterns import clean_job_title, clean_company_name, clean_location_text
+                    emit_title = clean_job_title(c_gate.title) or ""
+                    emit_company = clean_company_name(c_gate.company) or ""
+                    emit_location = clean_location_text(c_gate.location) or ""
+
                     if copilot_info and copilot_info.get("found"):
                         card_status = "IN DATABASE"
+                        db_t = clean_job_title(copilot_info.get("title"))
+                        db_c = clean_company_name(copilot_info.get("company"))
+                        db_l = clean_location_text(copilot_info.get("location"))
+                        # In chat streams, prefer verified database title & company over chat snippet text
+                        if db_t and (not emit_title or target_type in ("GOOGLE_CHAT", "TEAMS", "SLACK", "WHATSAPP", "TELEGRAM", "RECRUITER_CHAT", "CHAT")):
+                            emit_title = db_t
+                        if db_c and (not emit_company or target_type in ("GOOGLE_CHAT", "TEAMS", "SLACK", "WHATSAPP", "TELEGRAM", "RECRUITER_CHAT", "CHAT")):
+                            emit_company = db_c
+                        if db_l and not emit_location:
+                            emit_location = db_l
                     elif c_gate.is_valid_candidate:
                         card_status = "VERIFIED"
                     else:
@@ -1670,9 +1690,9 @@ class ScoutDesktopApp:
 
                     self.bridge.candidate_card_updated.emit(
                         c_gate.canonical_name,
-                        c_gate.title or "",
-                        c_gate.company or "",
-                        c_gate.location or "",
+                        emit_title,
+                        emit_company,
+                        emit_location,
                         card_status,
                         desc,
                         copilot_info,

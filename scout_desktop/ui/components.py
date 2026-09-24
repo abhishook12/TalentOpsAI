@@ -568,7 +568,7 @@ class StatusStrip(QFrame):
         self.dot.setStyleSheet("color: #10B981;")
         layout.addWidget(self.dot)
 
-        self.lbl_engine = QLabel("STREAM ENGINE: ACTIVE")
+        self.lbl_engine = QLabel("CAPTURE ENGINE: ACTIVE")
         self.lbl_engine.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
         self.lbl_engine.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
         layout.addWidget(self.lbl_engine)
@@ -612,7 +612,7 @@ class StatusStrip(QFrame):
 
         layout.addStretch()
 
-        self.lbl_proto_val = QLabel("SQLITE_WAL_DURABLE")
+        self.lbl_proto_val = QLabel("OFFLINE BUFFER: READY")
         self.lbl_proto_val.setFont(QFont("Consolas", 8))
         self.lbl_proto_val.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
         layout.addWidget(self.lbl_proto_val)
@@ -621,7 +621,7 @@ class StatusStrip(QFrame):
         sep3.setStyleSheet(f"color: {COLOR_SURFACE_BORDER};")
         layout.addWidget(sep3)
 
-        lbl_gw = QLabel("US-EAST-1D GATEWAY")
+        lbl_gw = QLabel("CLOUD SYNCED")
         lbl_gw.setFont(QFont("Consolas", 8, QFont.Weight.Bold))
         lbl_gw.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY};")
         layout.addWidget(lbl_gw)
@@ -629,14 +629,14 @@ class StatusStrip(QFrame):
     def update_telemetry(
         self,
         engine_state: str = "ACTIVE",
-        proto_val: str = "SQLITE_WAL_DURABLE",
+        proto_val: str = "OFFLINE BUFFER: READY",
         latency_ms: float = 0.38,
         cpu_pct: float = 1.2,
         memory_mb: float = 42.0,
         load_level: str = "OPTIMAL",
     ):
         """Dynamically updates live process load and ingestion speed telemetry."""
-        self.lbl_engine.setText(f"STREAM ENGINE: {engine_state.upper()}")
+        self.lbl_engine.setText(f"CAPTURE ENGINE: {engine_state.upper()}")
         self.lbl_proto_val.setText(proto_val)
         self.lbl_lat_val.setText(f"{latency_ms:.2f}ms" if isinstance(latency_ms, (int, float)) else str(latency_ms))
         self.lbl_load_val.setText(f"{cpu_pct:.1f}% CPU ({load_level})")

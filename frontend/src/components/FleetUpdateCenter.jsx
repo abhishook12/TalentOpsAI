@@ -24,12 +24,12 @@ export default function FleetUpdateCenter() {
   const [showBroadcastModal, setShowBroadcastModal] = useState(false)
   const [broadcasting, setBroadcasting] = useState(false)
   const [broadcastForm, setBroadcastForm] = useState({
-    target_version: '2.9.0',
+    target_version: '',
     cohort: 'OUTDATED_ONLY',
     mandatory: false,
-    title: 'TalentOps Scout v2.9.0 Available',
-    message: 'A new version of TalentOps Scout (v2.9.0) is available with multi-platform extraction, sync pre-ping warmup, crash recovery, and offline queue indicators. Click to update.',
-    release_notes: 'v2.9.0: Multi-platform support (Glassdoor, Wellfound, Dice, Hired, Lever), Render sync pre-ping warmup, crash recovery wrapper, rotating logs, and offline queue indicator.'
+    title: '',
+    message: '',
+    release_notes: ''
   })
 
   // Active Broadcast Status Query
@@ -46,14 +46,14 @@ export default function FleetUpdateCenter() {
   const broadcastStatus = broadcastStatusData || { active: false, broadcast: null }
 
   const handleOpenBroadcastModal = (version) => {
-    const targetVer = version || '2.9.0'
+    const targetVer = version || latestVersion || '2.9.4'
     setBroadcastForm({
       target_version: targetVer,
       cohort: 'OUTDATED_ONLY',
       mandatory: false,
       title: `TalentOps Scout v${targetVer} Available`,
       message: `A new version of Scout (v${targetVer}) is ready. Click to restart and update to the latest release.`,
-      release_notes: 'v2.9.0: Multi-platform support (Glassdoor, Wellfound, Dice, Hired, Lever), Render sync pre-ping warmup, crash recovery wrapper, rotating logs, and offline queue indicator.',
+      release_notes: '',
     })
     setShowBroadcastModal(true)
   }
@@ -206,6 +206,9 @@ export default function FleetUpdateCenter() {
   const releases = data?.releases || []
   const circuitAlert = data?.circuit_breaker_alert
 
+  // Derive latest production version dynamically from releases data
+  const latestVersion = (releases.find(r => r?.is_current)?.version) || (releases[0]?.version) || '2.9.4'
+
   const handleRolloutChange = (version, percentage) => {
     rolloutMutation.mutate({ version, rollout_percentage: percentage })
   }
@@ -222,7 +225,7 @@ export default function FleetUpdateCenter() {
           <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <span>Scout Fleet Telemetry &amp; Node Operations</span>
             <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: '#0F1E36', color: '#38BDF8', border: '1px solid #1E3A5F', fontWeight: 700 }}>
-              v2.9.0 QUALITY GATE
+              v{latestVersion} QUALITY GATE
             </span>
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
@@ -231,7 +234,7 @@ export default function FleetUpdateCenter() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
-            onClick={() => handleOpenBroadcastModal('2.9.0')}
+            onClick={() => handleOpenBroadcastModal(latestVersion)}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -249,7 +252,7 @@ export default function FleetUpdateCenter() {
             title="Send real-time update notification to connected Scout Desktop nodes"
           >
             <Radio size={14} />
-            <span>Notify Fleet (v2.9.0)</span>
+            <span>Notify Fleet (v{latestVersion})</span>
           </button>
           <button
             onClick={handleOpenAddDevice}

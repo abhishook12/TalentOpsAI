@@ -277,10 +277,11 @@ def get_all_scout_users_intelligence(
             devices_sq.c.total_submitted,
             devices_sq.c.active_devices_count,
             devices_sq.c.latest_version
-        ).join(devices_sq, User.id == devices_sq.c.owner_user_id)\
+        ).outerjoin(devices_sq, User.id == devices_sq.c.owner_user_id)\
          .outerjoin(Role, User.role_id == Role.id)\
          .outerjoin(events_sq, User.id == events_sq.c.owner_user_id)\
-         .outerjoin(staging_sq, User.id == staging_sq.c.owner_user_id)
+         .outerjoin(staging_sq, User.id == staging_sq.c.owner_user_id)\
+         .filter((devices_sq.c.device_count > 0) | (events_sq.c.total_events > 0) | (staging_sq.c.total_staging > 0))
 
         rows = _safe_query(lambda: query.all(), [])
 
@@ -327,7 +328,7 @@ def get_all_scout_users_intelligence(
             )
 
             # Determine fine-grained lifecycle status
-            if device_count == 0 or active_devices_count == 0:
+            if device_count == 0 and total_events == 0 and total_staging == 0:
                 continue
 
             if hb_sec is not None and hb_sec <= 900:
@@ -611,8 +612,13 @@ def get_detailed_scout_user_profile(db: Session, user_id: int) -> Dict[str, Any]
     companies_set = set(e.company_name for e in events if e.company_name and e.company_name != "—")
     canonical_companies = len(companies_set)
 
+    def _to_utc(dt):
+        if dt is None:
+            return None
+        return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+
     # Last contribution time
-    last_contrib = max((e.created_at for e in events if e.created_at), default=None)
+    last_contrib = max((_to_utc(e.created_at) for e in events if e.created_at), default=None)
 
     # Quality scores
     quality_metrics = compute_contributor_quality_score(
@@ -652,49 +658,52 @@ def get_detailed_scout_user_profile(db: Session, user_id: int) -> Dict[str, Any]
     }
     for e in events:
         url = (e.source_url or "").lower()
-        if "linkedin.com" in url:
+        title = (e.source_page_title or "").lower()
+        src = (getattr(e, "extraction_source", "") or "").lower()
+
+        if "linkedin.com" in url or "linkedin" in title or "linkedin" in src:
             source_counts["LinkedIn"] += 1
-        elif "zoominfo.com" in url or "zi-lite" in url:
+        elif "zoominfo.com" in url or "zi-lite" in url or "zoominfo" in title or "zoominfo" in src:
             source_counts["ZoomInfo"] += 1
-        elif "apollo.io" in url:
+        elif "apollo.io" in url or "apollo" in title or "apollo" in src:
             source_counts["Apollo"] += 1
-        elif "glassdoor.com" in url:
+        elif "glassdoor.com" in url or "glassdoor" in title or "glassdoor" in src:
             source_counts["Glassdoor"] += 1
-        elif "wellfound.com" in url or "angel.co" in url:
+        elif "wellfound.com" in url or "angel.co" in url or "wellfound" in title or "wellfound" in src:
             source_counts["Wellfound"] += 1
-        elif "dice.com" in url:
+        elif "dice.com" in url or "dice" in title or "dice" in src:
             source_counts["Dice"] += 1
-        elif "hired.com" in url:
+        elif "hired.com" in url or "hired" in title or "hired" in src:
             source_counts["Hired"] += 1
-        elif "lever.co" in url:
+        elif "lever.co" in url or "lever" in title or "lever" in src:
             source_counts["Lever"] += 1
-        elif "greenhouse.io" in url:
+        elif "greenhouse.io" in url or "greenhouse" in title or "greenhouse" in src:
             source_counts["Greenhouse"] += 1
-        elif "ashbyhq.com" in url:
+        elif "ashbyhq.com" in url or "ashby" in title or "ashby" in src:
             source_counts["Ashby"] += 1
-        elif "workday.com" in url or "myworkday.com" in url:
+        elif "workday.com" in url or "myworkday.com" in url or "workday" in title or "workday" in src:
             source_counts["Workday"] += 1
-        elif "jobright.ai" in url:
+        elif "jobright.ai" in url or "jobright" in title or "jobright" in src:
             source_counts["Jobright"] += 1
-        elif "ziprecruiter.com" in url:
+        elif "ziprecruiter.com" in url or "ziprecruiter" in title or "ziprecruiter" in src:
             source_counts["ZipRecruiter"] += 1
-        elif "github.com" in url:
+        elif "github.com" in url or "github" in title or "github" in src:
             source_counts["GitHub"] += 1
-        elif "indeed.com" in url or "simplyhired.com" in url:
+        elif "indeed.com" in url or "simplyhired.com" in url or "indeed" in title or "simplyhired" in title or "indeed" in src:
             source_counts["Indeed"] += 1
-        elif "chat.google.com" in url:
+        elif "chat.google.com" in url or "google chat" in title or "- chat" in title or "google_chat" in src:
             source_counts["Google Chat"] += 1
-        elif "teams.microsoft.com" in url or "teams.live.com" in url:
+        elif "teams.microsoft.com" in url or "teams.live.com" in url or "teams" in title or "teams" in src:
             source_counts["Microsoft Teams"] += 1
-        elif "slack.com" in url:
+        elif "slack.com" in url or "slack" in title or "slack" in src:
             source_counts["Slack"] = source_counts.get("Slack", 0) + 1
-        elif "whatsapp.com" in url:
+        elif "whatsapp.com" in url or "whatsapp" in title or "whatsapp" in src:
             source_counts["WhatsApp"] = source_counts.get("WhatsApp", 0) + 1
-        elif "telegram.org" in url:
+        elif "telegram.org" in url or "telegram" in title or "telegram" in src:
             source_counts["Telegram"] = source_counts.get("Telegram", 0) + 1
-        elif "mail.google.com" in url:
+        elif "mail.google.com" in url or "gmail" in title or "gmail" in src:
             source_counts["Gmail"] = source_counts.get("Gmail", 0) + 1
-        elif "outlook" in url or "office.com" in url:
+        elif "outlook" in url or "office.com" in url or "outlook" in title or "outlook" in src:
             source_counts["Outlook"] = source_counts.get("Outlook", 0) + 1
         else:
             source_counts["Other"] += 1

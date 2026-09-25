@@ -1,7 +1,7 @@
 {
   "app_name": "TalentOps Scout Desktop",
-  "version": "2.9.4",
-  "extractor_version": "4.6.3",
+  "version": "2.10.0",
+  "extractor_version": "4.7.0",
   "environment": "LOCAL",
   "api_base": "https://talentopsai-1.onrender.com",
   "local_api_base": "http://localhost:8000",
@@ -29,5 +29,8 @@
   "user_email": "",
   "user_name": "",
   "installation_id": "",
-  "update_channel": "stable"
+  "update_channel": "stable",
+  "geo_filter_enabled": true,
+  "geo_allowed_regions": ["NORTH_AMERICA", "UK", "SOUTH_AMERICA"],
+  "geo_na_target_percent": 90
 }

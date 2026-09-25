@@ -269,3 +269,39 @@ def toggle_sweeper_force(
         "message": f"Sweeper force mode set to {autonomous_sweeper.force_active}",
     }
 
+
+# ── Signature Mining Flywheel Endpoint ───────────────────────────────────────
+
+class SignatureParseRequest(BaseModel):
+    raw_email_or_signature: str = Field(..., description="Raw text of email or signature block")
+    sender_email: Optional[str] = Field(None, description="Sender email address")
+    auto_stage: bool = Field(True, description="Whether to automatically ingest into DiscoveryStaging")
+
+
+@router.post("/parse-signature")
+def parse_and_mine_signature(
+    req: SignatureParseRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """
+    Extracts high-fidelity recruiter contact details from email signatures
+    and feeds the self-reinforcing recruitment data flywheel.
+    """
+    from ..services.email_signature_flywheel import email_signature_flywheel
+
+    sig_block = email_signature_flywheel.extract_signature_block(req.raw_email_or_signature)
+    parsed = email_signature_flywheel.parse_signature(sig_block, sender_email=req.sender_email)
+
+    stage_res = None
+    if req.auto_stage and parsed.get("name") and parsed.get("email"):
+        stage_res = email_signature_flywheel.ingest_signature_profile(parsed, db)
+
+    return {
+        "success": True,
+        "signature_block": sig_block,
+        "parsed_profile": parsed,
+        "staged": stage_res,
+    }
+
+

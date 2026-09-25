@@ -37,6 +37,7 @@ from scout_desktop.extractor.patterns import (
     GEO_INDICATORS,
     EMAIL_REGEX,
     PHONE_REGEX,
+    classify_location_region,
 )
 from scout_desktop.extractor.title_normalizer import classify_title
 
@@ -80,6 +81,7 @@ class FactorizedCandidate:
     previous_company: Optional[str] = None
     experience_history: List[Dict[str, str]] = field(default_factory=list)
     location: Optional[str] = None
+    geo_region: str = "UNKNOWN"
     education: Optional[str] = None
     education_history: List[Dict[str, str]] = field(default_factory=list)
     skills: List[str] = field(default_factory=list)
@@ -439,6 +441,7 @@ class SemanticFactorizer:
 
         # 6. Factorize Location
         location = self._factorize_location(zones["header"], clean_lines)
+        geo_region = classify_location_region(location) if location else "UNKNOWN"
 
         # 7. Factorize Education
         primary_edu, edu_history = self._factorize_education(zones["education"], clean_lines)
@@ -484,6 +487,7 @@ class SemanticFactorizer:
             previous_company=prev_comp,
             experience_history=exp_history,
             location=location,
+            geo_region=geo_region,
             education=primary_edu,
             education_history=edu_history,
             skills=skills,

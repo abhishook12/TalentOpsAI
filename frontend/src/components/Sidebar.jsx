@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link as NavLink, useLocation } from '@tanstack/react-router'
 import api, { clearStoredToken } from '../services/api'
-import { LayoutDashboard, Activity, Users, Map, BarChart2, Search, Eye, Radar, LogOut, ShieldCheck, Settings, UserCircle, HeartPulse, UserCog, Server, Shield, Mail, Layers, Laptop } from 'lucide-react'
+import { LayoutDashboard, Activity, Users, Map, BarChart2, Search, Eye, Radar, LogOut, ShieldCheck, Settings, UserCircle, HeartPulse, UserCog, Server, Shield, Mail, Layers, Laptop, Globe } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 export default function Sidebar() {
@@ -50,7 +50,7 @@ export default function Sidebar() {
     { to: '/directory', label: 'Directory', icon: Map, aliases: ['/states', '/companies'] },
     { to: '/analytics', label: 'Analytics', icon: BarChart2 },
     { to: '/search', label: 'Search', icon: Search },
-    { to: '/download-scout', label: 'Desktop Scout', icon: Laptop, badge: 'v2.9.4', badgeVariant: 'version' },
+    { to: '/download-scout', label: 'Desktop Scout', icon: Laptop, badge: 'v2.10.0', badgeVariant: 'version' },
     { isGroupHeader: true, label: 'Account' },
     { to: '/profile', label: 'Profile', icon: UserCircle },
     { to: '/settings', label: 'Settings', icon: Settings },
@@ -61,6 +61,7 @@ export default function Sidebar() {
     { to: '/admin', label: 'Overview', icon: LayoutDashboard },
     { to: '/admin/scout-contributors', label: 'Scout Contributors', icon: Users },
     { to: '/admin/staging', label: 'Staging Pipeline', icon: Layers },
+    { to: '/admin/web-harvest', label: 'Web Harvesting Engine', icon: Globe, badge: '24/7', badgeVariant: 'webharvest' },
     { to: '/sentinel', label: 'Data Quality', icon: HeartPulse },
     { to: '/review-queue', label: 'Review Queue', icon: Search },
     { to: '/mailintel', label: 'Mail Intel', icon: Mail },
@@ -196,9 +197,9 @@ export default function Sidebar() {
               <span style={{ flex: 1 }}>{label}</span>
               {item.badge && (
                 <div style={{
-                  background: item.badgeVariant === 'version' ? 'rgba(56, 189, 248, 0.15)' : 'var(--danger)',
-                  color: item.badgeVariant === 'version' ? '#38bdf8' : 'white',
-                  border: item.badgeVariant === 'version' ? '1px solid rgba(56, 189, 248, 0.3)' : 'none',
+                  background: item.badgeVariant === 'version' ? 'rgba(56, 189, 248, 0.15)' : item.badgeVariant === 'webharvest' ? 'rgba(20, 184, 166, 0.15)' : 'var(--danger)',
+                  color: item.badgeVariant === 'version' ? '#38bdf8' : item.badgeVariant === 'webharvest' ? '#14b8a6' : 'white',
+                  border: item.badgeVariant === 'version' ? '1px solid rgba(56, 189, 248, 0.3)' : item.badgeVariant === 'webharvest' ? '1px solid rgba(20, 184, 166, 0.3)' : 'none',
                   fontSize: '10px',
                   fontWeight: 600,
                   padding: '2px 6px',

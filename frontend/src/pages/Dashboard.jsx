@@ -219,6 +219,64 @@ export default function Dashboard() {
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
+      {/* 🌐 Autonomous WebHarvest Discovery Banner (Admin-Only) */}
+      {isAdmin && (
+        <div
+          style={{
+            background: 'linear-gradient(135deg, rgba(20, 184, 166, 0.08) 0%, rgba(13, 148, 136, 0.03) 100%)',
+            border: '1px solid rgba(20, 184, 166, 0.25)',
+            borderRadius: 8,
+            padding: '12px 18px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: 'pointer'
+          }}
+          onClick={() => navigate({ to: '/admin/web-harvest' })}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 20 }}>🌐</span>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                  WebHarvest Autonomous Discovery Engine
+                </span>
+                <span style={{
+                  fontSize: 10, fontWeight: 700,
+                  background: 'rgba(34, 197, 94, 0.15)',
+                  color: '#4ade80',
+                  padding: '2px 8px', borderRadius: 12,
+                  border: '1px solid rgba(34, 197, 94, 0.3)'
+                }}>
+                  ● 24/7 ADMIN BACKGROUND JOB ACTIVE
+                </span>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                Server-side crawler discovering & harvesting verified talent intelligence directly into the master database.
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Engine Status</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#14b8a6' }}>Autonomous Background Crawl</div>
+            </div>
+            <button style={{
+              background: 'rgba(20, 184, 166, 0.15)',
+              border: '1px solid rgba(20, 184, 166, 0.3)',
+              color: '#14b8a6',
+              borderRadius: 6,
+              padding: '6px 12px',
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}>
+              View Admin Harvesting Center →
+            </button>
+          </div>
+        </div>
+      )}
+
       {refreshError && !hasCoreData && (
         <ShellCard style={{ padding: 14, borderColor: 'rgba(196,58,50,0.2)', background: 'rgba(196,58,50,0.05)' }}>
           <div style={{ color: 'var(--danger)', fontSize: 13, fontWeight: 700 }}>{refreshError}</div>

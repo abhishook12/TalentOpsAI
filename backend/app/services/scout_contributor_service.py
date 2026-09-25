@@ -654,7 +654,7 @@ def get_detailed_scout_user_profile(db: Session, user_id: int) -> Dict[str, Any]
         "LinkedIn": 0, "ZoomInfo": 0, "Apollo": 0, "Google Chat": 0, "Microsoft Teams": 0,
         "Glassdoor": 0, "Wellfound": 0, "Dice": 0, "Hired": 0, "Lever": 0, "Greenhouse": 0,
         "Ashby": 0, "Workday": 0, "Jobright": 0, "ZipRecruiter": 0, "GitHub": 0, "Indeed": 0,
-        "Slack": 0, "WhatsApp": 0, "Telegram": 0, "Gmail": 0, "Outlook": 0, "Other": 0
+        "Slack": 0, "WhatsApp": 0, "Telegram": 0, "Gmail": 0, "Outlook": 0, "WebHarvest": 0, "Other": 0
     }
     for e in events:
         url = (e.source_url or "").lower()
@@ -705,8 +705,26 @@ def get_detailed_scout_user_profile(db: Session, user_id: int) -> Dict[str, Any]
             source_counts["Gmail"] = source_counts.get("Gmail", 0) + 1
         elif "outlook" in url or "office.com" in url or "outlook" in title or "outlook" in src:
             source_counts["Outlook"] = source_counts.get("Outlook", 0) + 1
+        elif "web_harvest" in src or "webharvest" in src or "web-harvest" in url or "webharvest" in url:
+            source_counts["WebHarvest"] = source_counts.get("WebHarvest", 0) + 1
         else:
             source_counts["Other"] += 1
+
+    # Geographic distribution from staging records
+    geo_distribution = {"NORTH_AMERICA": 0, "UK": 0, "SOUTH_AMERICA": 0, "OTHER": 0, "UNKNOWN": 0}
+    try:
+        from ..models.staging_models import DiscoveryStaging
+        geo_rows = db.query(
+            DiscoveryStaging.geo_region,
+            sqlfunc.count(DiscoveryStaging.id)
+        ).filter(
+            DiscoveryStaging.owner_user_id == user_id
+        ).group_by(DiscoveryStaging.geo_region).all()
+        for region, count in geo_rows:
+            if region and region in geo_distribution:
+                geo_distribution[region] = count
+    except Exception:
+        pass
 
     # Forensic Provenance Trail (Recent 20 events)
     provenance_trail = []
@@ -776,5 +794,6 @@ def get_detailed_scout_user_profile(db: Session, user_id: int) -> Dict[str, Any]
         },
         "timeline": timeline,
         "source_breakdown": source_counts,
+        "geo_distribution": geo_distribution,
         "provenance_trail": provenance_trail,
     }

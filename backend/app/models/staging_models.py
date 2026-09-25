@@ -59,6 +59,10 @@ class DiscoveryStaging(Base):
     field_confidence_json = Column(Text, nullable=True)
     evidence_json = Column(Text, nullable=True)
 
+    # Geographic Enforcement
+    geo_region = Column(String(30), nullable=True, index=True)  # NORTH_AMERICA, UK, SOUTH_AMERICA, OTHER, UNKNOWN
+    geo_confidence = Column(Float, nullable=True)
+
     created_at = Column(TIMESTAMP, server_default=func.now(), index=True)
     processed_at = Column(TIMESTAMP, nullable=True)
 

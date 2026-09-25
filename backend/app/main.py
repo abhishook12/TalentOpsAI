@@ -700,6 +700,14 @@ async def startup_event():
         except Exception as sweeper_err:
             logger.warning("Autonomous Profile Sweeper initialization warning: %s", sweeper_err)
 
+        # Launch WebHarvest Autonomous Web Discovery Engine
+        try:
+            from .services.web_harvest_engine import web_harvest_engine
+            web_harvest_engine.start()
+            logger.info("WebHarvest Autonomous Web Discovery Engine started (proactive web profile discovery).")
+        except Exception as harvest_err:
+            logger.warning("WebHarvest engine initialization warning: %s", harvest_err)
+
         logger.info("Background tasks initialized successfully.")
 
     asyncio.create_task(_async_background_init())
@@ -709,6 +717,11 @@ async def shutdown_event():
     try:
         from .services.autonomous_profile_sweeper import autonomous_sweeper
         autonomous_sweeper.stop()
+    except Exception:
+        pass
+    try:
+        from .services.web_harvest_engine import web_harvest_engine
+        web_harvest_engine.stop()
     except Exception:
         pass
     try:

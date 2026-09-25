@@ -6,6 +6,7 @@ and waterfall candidate profile enrichment.
 
 import json
 import logging
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -140,6 +141,7 @@ def enrich_single_profile(
             meta_dict["crm_system"] = enriched_data.get("crm_system")
             meta_dict["tech_stack"] = enriched_data.get("tech_stack", [])
             meta_dict["detected_tools"] = enriched_data.get("detected_tools", [])
+            meta_dict["nsr_profile"] = enriched_data.get("nsr_profile")
             meta_dict["enriched_at"] = enriched_data.get("enriched_at")
 
             rec_obj.metadata_json = json.dumps(meta_dict)
@@ -179,6 +181,7 @@ def enrich_single_profile(
             meta_dict["crm_system"] = enriched_data.get("crm_system")
             meta_dict["tech_stack"] = enriched_data.get("tech_stack", [])
             meta_dict["detected_tools"] = enriched_data.get("detected_tools", [])
+            meta_dict["nsr_profile"] = enriched_data.get("nsr_profile")
             meta_dict["enriched_at"] = enriched_data.get("enriched_at")
 
             old_score = parquet_rec.get("completeness_score") or 50
@@ -308,3 +311,491 @@ def get_supported_taxonomies(
         "cached_domains": len(TechStackFingerprinter._cache),
         "cached_identities": len(HashIdentityResolver._cache),
     }
+
+
+@router.get("/autonomous-engine-stats")
+def get_autonomous_engine_stats(
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """
+    Returns live real-time operational telemetry of the continuous 24/7 autonomous enrichment
+    and profile sweeper engine.
+    """
+    from ..services.autonomous_profile_sweeper import autonomous_sweeper
+    telemetry = autonomous_sweeper.get_telemetry()
+    return {
+        "success": True,
+        "autonomous_engine": telemetry,
+    }
+
+
+@router.get("/web-harvest-stats")
+def get_web_harvest_stats(
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """
+    Returns live real-time operational telemetry of the WebHarvest Autonomous
+    Web Discovery Engine — proactive web crawling for new profile discovery.
+    """
+    from ..services.web_harvest_engine import web_harvest_engine
+    telemetry = web_harvest_engine.get_telemetry()
+    return {
+        "success": True,
+        "web_harvest_engine": telemetry,
+    }
+
+
+@router.get("/web-harvest-reports")
+def get_web_harvest_reports(
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """
+    Returns granular forensic reports of all profiles and companies discovered
+    by the 24/7 autonomous WebHarvest background crawler.
+    Includes exact source URLs, extraction confidence, and database commit status.
+    """
+    from ..models.staging_models import DiscoveryStaging
+    valid_sources = [
+        "web_harvest", "search_xray", "ats_job_board",
+        "git_commit_mine", "email_signature_flywheel"
+    ]
+    records = (
+        db.query(DiscoveryStaging)
+        .filter(DiscoveryStaging.extraction_source.in_(valid_sources))
+        .order_by(DiscoveryStaging.id.desc())
+        .limit(limit)
+        .all()
+    )
+    
+    reports = []
+    for r in records:
+        meta = {}
+        if r.metadata_json:
+            try:
+                meta = json.loads(r.metadata_json)
+            except Exception:
+                meta = {}
+                
+        reports.append({
+            "id": r.id,
+            "discovery_id": r.discovery_id,
+            "name": r.raw_name,
+            "title": r.raw_title,
+            "company": r.raw_company,
+            "email": r.raw_email,
+            "phone": r.raw_phone,
+            "linkedin": r.raw_linkedin,
+            "location": r.raw_location,
+            "source_url": r.source_url,
+            "source_domain": meta.get("source_domain") or (r.source_url.split('/')[2] if r.source_url and '/' in r.source_url else "—"),
+            "quality_score": r.quality_score,
+            "dom_confidence": r.dom_confidence,
+            "processing_status": r.processing_status,
+            "decision": r.decision,
+            "decision_reason": r.decision_reason,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "processed_at": r.processed_at.isoformat() if r.processed_at else None,
+            "harvest_cycle": meta.get("harvest_cycle", 1),
+            "discovery_method": meta.get("discovery_method", "autonomous_web_crawl"),
+            "smtp_verification": meta.get("smtp_verification"),
+        })
+
+    return {
+        "success": True,
+        "total_reports": len(reports),
+        "reports": reports
+    }
+
+
+@router.post("/web-harvest-trigger")
+async def trigger_web_harvest_cycle(
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """
+    Manually triggers an immediate autonomous web harvest & crawl cycle in the background.
+    """
+    import asyncio
+    from ..services.web_harvest_engine import web_harvest_engine
+    
+    # Run cycle asynchronously in background thread
+    asyncio.create_task(asyncio.to_thread(web_harvest_engine._run_harvest_cycle))
+    
+    return {
+        "success": True,
+        "message": "Autonomous WebHarvest crawl cycle triggered successfully in the background.",
+        "triggered_at": datetime.now(timezone.utc).isoformat()
+    }
+
+
+# ── Multi-Source Web Intelligence & Staging Reconciliation Endpoints ─────────
+
+class CompanyTargetRequest(BaseModel):
+    company_name: str = Field(..., description="Target company name (e.g. 'Insight Global')")
+    domain: str = Field(..., description="Target company domain (e.g. 'insightglobal.com')")
+    max_profiles: Optional[int] = Field(5, ge=1, le=20)
+
+
+@router.post("/xray/harvest-company")
+def harvest_xray_company(
+    req: CompanyTargetRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """
+    Executes an autonomous Search Engine X-Ray Dorking pass to mine active recruiters
+    and talent acquisition leaders for a company, verifying deliverability via Port 25 SMTP.
+    """
+    from ..services.search_xray_harvester import search_xray_harvester
+    staged = search_xray_harvester.harvest_company(
+        company_name=req.company_name,
+        domain=req.domain,
+        db=db,
+        max_profiles=req.max_profiles,
+        owner_user_id=current_user.id
+    )
+    return {
+        "success": True,
+        "source": "search_xray",
+        "company": req.company_name,
+        "domain": req.domain,
+        "profiles_staged": len(staged),
+        "results": staged,
+        "stats": search_xray_harvester.stats,
+    }
+
+
+@router.post("/ats/scan-company")
+def scan_ats_company(
+    req: CompanyTargetRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """
+    Scans public corporate ATS boards (Greenhouse, Lever) for the target company
+    to extract active hiring managers, recruiters, and contact points.
+    """
+    from ..services.ats_board_harvester import ats_board_harvester
+    staged = ats_board_harvester.harvest_company(
+        company_name=req.company_name,
+        domain=req.domain,
+        db=db,
+        max_profiles=req.max_profiles,
+        owner_user_id=current_user.id
+    )
+    return {
+        "success": True,
+        "source": "ats_job_board",
+        "company": req.company_name,
+        "domain": req.domain,
+        "profiles_staged": len(staged),
+        "results": staged,
+        "stats": ats_board_harvester.stats,
+    }
+
+
+@router.post("/git/mine-commits")
+def mine_git_commits(
+    domain: str = Query(..., description="Target corporate domain (e.g. 'gitlab.com')"),
+    company_name: Optional[str] = Query(None, description="Optional company name"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """
+    Mines public git commit logs and author headers to discover 100% ground-truth
+    verified corporate emails, establishing locked CompanyEmailPatterns.
+    """
+    from ..services.git_commit_miner import git_commit_miner
+    comp_name = company_name or domain.split(".")[0].capitalize()
+    staged = git_commit_miner.mine_company_domain(
+        company_name=comp_name,
+        domain=domain,
+        db=db,
+        max_contacts=5,
+        owner_user_id=current_user.id
+    )
+    return {
+        "success": True,
+        "source": "git_commit_mine",
+        "domain": domain,
+        "contacts_staged": len(staged),
+        "results": staged,
+        "stats": git_commit_miner.stats,
+    }
+
+
+@router.post("/reconcile-staging")
+def reconcile_staging_pipeline(
+    batch_size: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """
+    Executes a safe, non-destructive reconciliation pass of discovery_staging:
+    - Enriches existing recruiters with missing fields (phone, title, LinkedIn, location)
+    - Runs Port 25 live SMTP verification on emails
+    - Safely promotes verified fresh talent into the master catalog
+    """
+    from ..services.db_auto_enricher import db_auto_enricher
+    result = db_auto_enricher.reconcile_staging_batch(db=db, limit=batch_size)
+    return {
+        "success": True,
+        "reconciliation": result,
+        "lifetime_stats": db_auto_enricher.stats,
+    }
+
+
+@router.get("/multi-source-stats")
+def get_multi_source_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """
+    Aggregated operational intelligence telemetry across all external data sources:
+    Search X-Ray, ATS Job Boards, Git Commit Mining, WebHarvest, and Email Signatures.
+    """
+    from ..models.staging_models import DiscoveryStaging
+    from ..services.search_xray_harvester import search_xray_harvester
+    from ..services.ats_board_harvester import ats_board_harvester
+    from ..services.git_commit_miner import git_commit_miner
+    from ..services.db_auto_enricher import db_auto_enricher
+
+    from sqlalchemy import func
+    counts_by_source = (
+        db.query(DiscoveryStaging.extraction_source, func.count(DiscoveryStaging.id))
+        .group_by(DiscoveryStaging.extraction_source)
+        .all()
+    )
+
+    breakdown = {src: cnt for src, cnt in counts_by_source}
+    total_staged = sum(breakdown.values())
+
+    return {
+        "success": True,
+        "total_staged_observations": total_staged,
+        "source_breakdown": breakdown,
+        "engine_telemetry": {
+            "search_xray": search_xray_harvester.stats,
+            "ats_harvester": ats_board_harvester.stats,
+            "git_commit_miner": git_commit_miner.stats,
+            "db_auto_enricher": db_auto_enricher.stats,
+        }
+    }
+
+
+class PriorityTargetRequest(BaseModel):
+    company_name: str
+    domain: Optional[str] = None
+
+
+@router.post("/priority-queue-target")
+def queue_priority_company_target(
+    payload: PriorityTargetRequest,
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """
+    Enqueues a high-priority company target into the WebHarvest & X-Ray engine
+    to be scraped and mined in the very next cycle.
+    """
+    from ..services.web_harvest_engine import web_harvest_engine
+    enqueued = web_harvest_engine.enqueue_priority_target(
+        company_name=payload.company_name,
+        domain=payload.domain,
+        source=f"admin_manual:{current_user.id}"
+    )
+    return {
+        "success": True,
+        "enqueued": enqueued,
+        "company_name": payload.company_name,
+        "queue_length": len(web_harvest_engine.priority_queue),
+        "priority_targets": web_harvest_engine.get_priority_targets(),
+    }
+
+
+@router.get("/priority-targets")
+def get_priority_targets(
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """Returns the list of currently queued priority targets."""
+    from ..services.web_harvest_engine import web_harvest_engine
+    return {
+        "success": True,
+        "count": len(web_harvest_engine.priority_queue),
+        "targets": web_harvest_engine.get_priority_targets(),
+    }
+
+
+@router.post("/sync-parquet")
+def sync_promoted_to_parquet(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """
+    Dual-Syncs newly promoted PostgreSQL recruiters into the DuckDB Parquet dataset.
+    """
+    from ..models.models import Recruiter
+    from ..services.parquet_writer import parquet_writer
+    from ..services.recruiter_store import PARQUET_FILE, recruiter_store
+    import duckdb
+
+    promoted_recs = db.query(Recruiter).filter(
+        Recruiter.data_source.like("web_intelligence:%")
+    ).all()
+
+    con = duckdb.connect()
+    p_path = PARQUET_FILE.replace("\\", "/")
+    existing_emails = set()
+    existing_ids = set()
+    try:
+        promoted_emails = [r.email.lower() for r in promoted_recs if r.email]
+        if promoted_emails:
+            escaped = [e.replace("'", "''") for e in promoted_emails]
+            in_clause = ", ".join(f"'{e}'" for e in escaped)
+            rows = con.execute(f"SELECT recruiter_id, lower(email) FROM read_parquet('{p_path}') WHERE lower(email) IN ({in_clause})").fetchall()
+            for r in rows:
+                if r[0] is not None:
+                    existing_ids.add(r[0])
+                if r[1]:
+                    existing_emails.add(r[1])
+    except Exception as e:
+        logger.warning("Error reading parquet in sync-parquet: %s", e)
+    finally:
+        con.close()
+
+    to_append = []
+    seen = set()
+    for r in promoted_recs:
+        r_email = (r.email or "").strip().lower()
+        if r.recruiter_id in existing_ids or (r_email and r_email in existing_emails) or (r_email and r_email in seen):
+            continue
+        if r_email:
+            seen.add(r_email)
+        to_append.append({
+            "recruiter_id": r.recruiter_id,
+            "recruiter_name": r.recruiter_name,
+            "title": r.title,
+            "company_id": r.company_id,
+            "email": r.email,
+            "phone": r.phone,
+            "linkedin": r.linkedin,
+            "location": r.location,
+            "state": getattr(r, "state", None),
+            "email_status": r.email_status,
+            "email_confidence": r.email_confidence,
+            "data_source": r.data_source,
+            "notes": r.notes,
+            "quality_score": r.email_confidence or 85,
+            "completeness_score": 85,
+            "is_active": True,
+            "created_at": r.created_at.isoformat() if r.created_at else datetime.utcnow().isoformat(),
+            "updated_at": r.updated_at.isoformat() if r.updated_at else datetime.utcnow().isoformat(),
+        })
+
+    appended_count = 0
+    if to_append:
+        appended_count = parquet_writer.append_records(to_append)
+
+    return {
+        "success": True,
+        "appended_to_parquet": appended_count,
+        "total_promoted_in_db": len(promoted_recs),
+        "already_in_parquet": len(existing_emails) or len(existing_ids),
+        "total_parquet_records": recruiter_store.get_stats().get("total_recruiters", 0),
+    }
+
+
+class PushToCampaignRequest(BaseModel):
+    campaign_id: int
+    recruiter_id: Optional[int] = None
+    staged_id: Optional[int] = None
+    email: Optional[str] = None
+    name: Optional[str] = None
+    title: Optional[str] = None
+    company: Optional[str] = None
+
+
+@router.post("/push-to-campaign")
+def push_recruiter_to_campaign(
+    payload: PushToCampaignRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_request),
+) -> Dict[str, Any]:
+    """
+    Direct 1-Click Outreach Bridge: Enrolls a discovered recruiter directly
+    into an active campaign sequence step.
+    """
+    from ..models.campaigns import Campaign, CampaignRecruiter, SequenceStep
+    from ..models.models import Recruiter
+    from sqlalchemy import func
+
+    campaign = db.query(Campaign).filter(
+        Campaign.campaign_id == payload.campaign_id,
+        Campaign.user_id == current_user.id
+    ).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    first_step = db.query(SequenceStep).filter(
+        SequenceStep.campaign_id == payload.campaign_id,
+        SequenceStep.is_active == True
+    ).order_by(SequenceStep.step_order.asc()).first()
+
+    recruiter = None
+    if payload.recruiter_id:
+        recruiter = db.query(Recruiter).filter(Recruiter.recruiter_id == payload.recruiter_id).first()
+    elif payload.email:
+        recruiter = db.query(Recruiter).filter(func.lower(Recruiter.email) == payload.email.lower()).first()
+
+    if not recruiter and payload.email:
+        recruiter = Recruiter(
+            user_id=current_user.id,
+            recruiter_name=payload.name or payload.email.split("@")[0],
+            email=payload.email.lower(),
+            title=payload.title or "Recruiter",
+            data_source="web_harvest_campaign_bridge",
+        )
+        db.add(recruiter)
+        db.flush()
+
+    if not recruiter:
+        raise HTTPException(status_code=400, detail="Could not resolve recruiter identity or email")
+
+    existing = db.query(CampaignRecruiter).filter(
+        CampaignRecruiter.campaign_id == campaign.campaign_id,
+        CampaignRecruiter.recruiter_id == recruiter.recruiter_id
+    ).first()
+
+    if existing:
+        return {
+            "success": True,
+            "already_enrolled": True,
+            "campaign_id": campaign.campaign_id,
+            "campaign_name": campaign.name,
+            "recruiter_id": recruiter.recruiter_id,
+            "message": f"{recruiter.recruiter_name} is already enrolled in '{campaign.name}'",
+        }
+
+    cr = CampaignRecruiter(
+        campaign_id=campaign.campaign_id,
+        recruiter_id=recruiter.recruiter_id,
+        current_step_id=first_step.step_id if first_step else None,
+        status="pending",
+        enrolled_at=datetime.now(timezone.utc),
+        next_send_at=campaign.start_at or datetime.now(timezone.utc),
+    )
+    db.add(cr)
+    db.commit()
+
+    return {
+        "success": True,
+        "already_enrolled": False,
+        "campaign_id": campaign.campaign_id,
+        "campaign_name": campaign.name,
+        "recruiter_id": recruiter.recruiter_id,
+        "recruiter_name": recruiter.recruiter_name,
+        "email": recruiter.email,
+        "message": f"Successfully enrolled {recruiter.recruiter_name} into '{campaign.name}'!",
+    }
+
+

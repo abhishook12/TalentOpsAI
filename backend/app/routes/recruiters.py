@@ -781,7 +781,21 @@ def search_recruiters(
         else:
             dedup_map[name] = rec
 
-    return list(dedup_map.values())
+    final_results = list(dedup_map.values())
+    if len(final_results) < 3 and (comp_str or (q and len(str(q).strip()) >= 3)):
+        try:
+            from ..services.web_harvest_engine import web_harvest_engine
+            target_co = comp_str or str(q).strip()
+            # Only queue if it looks like a company name
+            if not any(target_co.lower().startswith(p) for p in ("senior", "junior", "lead", "director", "vp", "recruiter")):
+                web_harvest_engine.enqueue_priority_target(
+                    company_name=target_co,
+                    source="user_search_demand"
+                )
+        except Exception:
+            pass
+
+    return final_results
 
 from sqlalchemy.orm import load_only
 from ..services.recruiter_store import METRO_HUBS

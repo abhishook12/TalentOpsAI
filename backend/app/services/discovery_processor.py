@@ -36,6 +36,8 @@ from ..utils.normalizer import (
 from ..utils.title_normalizer import classify_title
 from ..utils.state_recovery import infer_state_from_sources
 from .email_intelligence_service import email_intelligence
+from ..services.geographic_classifier import geo_classifier
+from ..config import GEO_FILTER_ENABLED
 
 logger = logging.getLogger('talentops.discovery_processor')
 
@@ -772,6 +774,23 @@ class DiscoveryProcessor:
         Determines the decision outcome:
         NEW, ENRICH, DUPLICATE, CONFLICT, REVIEW, or IGNORE.
         """
+        # ── Geographic Enforcement Gate ──
+        if GEO_FILTER_ENABLED:
+            geo_location = getattr(person, 'location', None)
+            geo_result = geo_classifier.classify(raw_location=geo_location)
+            if not geo_result.passes_filter:
+                logger.info(
+                    "[DISCOVERY] GEO_FILTERED: '%s' — region=%s, confidence=%.2f",
+                    getattr(person, 'canonical_name', 'unknown'),
+                    geo_result.region, geo_result.confidence,
+                )
+                return {
+                    'person': person,
+                    'recruiter': master_match,
+                    'decision': 'IGNORE',
+                    'reason': f'geo_filtered:{geo_result.region}'
+                }
+
         if person.identity_confidence < IGNORE_THRESHOLD and not (person.primary_email or person.linkedin_url or person.primary_phone):
             return {
                 'person': person,
@@ -1252,6 +1271,44 @@ class DiscoveryProcessor:
                     _update_state_metadata(new_recruiter, self.db)
                 except Exception as sme:
                     logger.debug("State metadata update note: %s", sme)
+
+                # Autonomous Multi-Source & NSR Enrichment Hook
+                try:
+                    from .zero_resource_enricher import zero_resource_enricher
+                    c_dom = None
+                    if new_recruiter.company and (new_recruiter.company.primary_domain or new_recruiter.company.website):
+                        c_dom = new_recruiter.company.primary_domain or new_recruiter.company.website
+                    auto_enr = zero_resource_enricher.enrich_profile(
+                        email=new_recruiter.email,
+                        name=new_recruiter.recruiter_name,
+                        company_name=clean_target_comp or person.current_company,
+                        domain=c_dom,
+                    )
+                    if auto_enr.get("avatar_url") and not new_recruiter.logo_url:
+                        new_recruiter.logo_url = auto_enr["avatar_url"]
+                    
+                    cur_meta = {}
+                    if new_recruiter.metadata_json:
+                        try:
+                            cur_meta = json.loads(new_recruiter.metadata_json)
+                        except Exception:
+                            cur_meta = {}
+                    if auto_enr.get("ats_system"):
+                        cur_meta["ats_system"] = auto_enr["ats_system"]
+                    if auto_enr.get("crm_system"):
+                        cur_meta["crm_system"] = auto_enr["crm_system"]
+                    if auto_enr.get("tech_stack"):
+                        cur_meta["tech_stack"] = auto_enr["tech_stack"]
+                    if auto_enr.get("detected_tools"):
+                        cur_meta["detected_tools"] = auto_enr["detected_tools"]
+                    if auto_enr.get("nsr_profile"):
+                        cur_meta["nsr_profile"] = auto_enr["nsr_profile"]
+                    cur_meta["auto_enriched_at"] = auto_enr.get("enriched_at")
+                    new_recruiter.metadata_json = json.dumps(cur_meta)
+                    new_recruiter.completeness_score = min(100, (new_recruiter.completeness_score or 65) + auto_enr.get("score_boost", 15))
+                except Exception as ae_err:
+                    logger.debug("Automatic discovery enrichment note: %s", ae_err)
+
                 self.db.flush()
 
                 # Create Audit Trail

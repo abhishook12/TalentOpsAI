@@ -1544,4 +1544,130 @@ def classify_semantic_entity(text: Optional[str]) -> Dict[str, Any]:
 
     return {"entity_type": "UNKNOWN", "confidence": 0.0, "details": "Unclassified text"}
 
+# ==============================================================================
+# GEOGRAPHIC CLASSIFICATION PATTERNS (for Desktop Scout geo enforcement)
+# ==============================================================================
+
+# US States (lowercase, full names)
+NA_STATES_SET = frozenset({
+    "alabama", "alaska", "arizona", "arkansas", "california", "colorado",
+    "connecticut", "delaware", "florida", "georgia", "hawaii", "idaho",
+    "illinois", "indiana", "iowa", "kansas", "kentucky", "louisiana",
+    "maine", "maryland", "massachusetts", "michigan", "minnesota",
+    "mississippi", "missouri", "montana", "nebraska", "nevada",
+    "new hampshire", "new jersey", "new mexico", "new york",
+    "north carolina", "north dakota", "ohio", "oklahoma", "oregon",
+    "pennsylvania", "rhode island", "south carolina", "south dakota",
+    "tennessee", "texas", "utah", "vermont", "virginia", "washington",
+    "west virginia", "wisconsin", "wyoming", "district of columbia",
+})
+
+# Canadian provinces
+CA_PROVINCES_SET = frozenset({
+    "ontario", "quebec", "british columbia", "alberta", "manitoba",
+    "saskatchewan", "nova scotia", "new brunswick", "prince edward island",
+    "newfoundland", "northwest territories", "yukon", "nunavut",
+})
+
+# Major NA cities
+NA_CITIES_SET = frozenset({
+    "new york", "los angeles", "chicago", "houston", "phoenix", "philadelphia",
+    "san antonio", "san diego", "dallas", "san jose", "austin", "san francisco",
+    "seattle", "denver", "washington", "nashville", "boston", "portland",
+    "las vegas", "miami", "atlanta", "minneapolis", "tampa", "detroit",
+    "toronto", "vancouver", "montreal", "calgary", "ottawa",
+})
+
+# UK regions and cities
+UK_REGIONS_SET = frozenset({
+    "england", "scotland", "wales", "northern ireland",
+    "london", "manchester", "birmingham", "leeds", "glasgow",
+    "liverpool", "bristol", "edinburgh", "cardiff", "belfast",
+    "newcastle", "nottingham", "cambridge", "oxford", "brighton",
+})
+
+# South American countries and cities
+SA_COUNTRIES_SET = frozenset({
+    "brazil", "brasil", "argentina", "colombia", "peru", "chile",
+    "venezuela", "ecuador", "bolivia", "paraguay", "uruguay",
+})
+SA_CITIES_SET = frozenset({
+    "são paulo", "sao paulo", "rio de janeiro", "buenos aires",
+    "bogotá", "bogota", "lima", "santiago", "caracas", "quito",
+    "montevideo", "medellín", "medellin",
+})
+
+# Country-level keywords
+NA_KEYWORDS_SET = frozenset({"united states", "usa", "america", "canada"})
+UK_KEYWORDS_SET = frozenset({"united kingdom", "great britain"})
+SA_KEYWORDS_SET = frozenset({"south america", "latin america", "latam"})
+
+
+def classify_location_region(location_text: Optional[str]) -> str:
+    """
+    Classifies a location string into a geographic region.
+    Returns: 'NORTH_AMERICA', 'UK', 'SOUTH_AMERICA', 'OTHER', or 'UNKNOWN'.
+    """
+    if not location_text or not isinstance(location_text, str):
+        return "UNKNOWN"
+    loc = location_text.strip().lower()
+    if len(loc) < 2:
+        return "UNKNOWN"
+
+    # Check standalone abbreviations with word boundaries
+    if re.search(r"\b(us|usa)\b", loc):
+        return "NORTH_AMERICA"
+    if re.search(r"\b(uk)\b", loc):
+        return "UK"
+
+    # Check NA
+    for kw in NA_KEYWORDS_SET:
+        if kw in loc:
+            return "NORTH_AMERICA"
+    for state in NA_STATES_SET:
+        if state in loc:
+            return "NORTH_AMERICA"
+    for city in NA_CITIES_SET:
+        if city in loc:
+            return "NORTH_AMERICA"
+    for prov in CA_PROVINCES_SET:
+        if prov in loc:
+            return "NORTH_AMERICA"
+    # US State postal code (e.g. "Dallas, TX")
+    if US_STATE_POSTAL_REGEX.match(location_text.strip()):
+        return "NORTH_AMERICA"
+
+    # Check UK
+    for kw in UK_KEYWORDS_SET:
+        if kw in loc:
+            return "UK"
+    for region in UK_REGIONS_SET:
+        if region in loc:
+            return "UK"
+
+    # Check SA
+    for kw in SA_KEYWORDS_SET:
+        if kw in loc:
+            return "SOUTH_AMERICA"
+    for country in SA_COUNTRIES_SET:
+        if country in loc:
+            return "SOUTH_AMERICA"
+    for city in SA_CITIES_SET:
+        if city in loc:
+            return "SOUTH_AMERICA"
+
+    # Known non-target regions
+    non_target = {
+        "india", "china", "japan", "korea", "singapore", "philippines",
+        "germany", "france", "netherlands", "spain", "italy",
+        "australia", "dubai", "uae", "israel", "russia", "poland",
+        "mumbai", "bangalore", "hyderabad", "pune", "chennai", "delhi",
+        "berlin", "paris", "amsterdam", "tokyo", "sydney", "melbourne",
+    }
+    for ind in non_target:
+        if ind in loc:
+            return "OTHER"
+
+    return "UNKNOWN"
+
 

@@ -1,14 +1,14 @@
 {
     "status": "running",
-    "records_processed": 437933,
-    "last_active": 1789767678.3095515,
-    "success_count": 377,
-    "current_phase": "active_batch_processing",
-    "rate_per_sec": 0,
+    "records_processed": 5000,
+    "last_active": 1790270344.5011363,
+    "success_count": 0,
+    "current_phase": "processed_0_records",
     "auto_pilot": {
         "enabled": true,
-        "interval_hours": 12,
-        "last_run_at": "2026-08-26T18:22:00.350148+00:00",
-        "next_run_in_seconds": 43200
-    }
+        "interval_hours": 6,
+        "last_run_at": "2026-09-24T17:19:00.930975+00:00",
+        "next_run_in_seconds": 21600
+    },
+    "rate_per_sec": 0
 }

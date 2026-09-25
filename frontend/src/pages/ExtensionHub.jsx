@@ -11,16 +11,18 @@ export default function ExtensionHub() {
   const [generating, setGenerating] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [harvestStats, setHarvestStats] = useState(null);
 
   const fetchAllData = async (silent = false) => {
     if (!silent) setLoading(true);
     else setIsRefreshing(true);
 
     try {
-      const [codesRes, summaryRes, feedRes] = await Promise.all([
+      const [codesRes, summaryRes, feedRes, harvestStatsRes] = await Promise.all([
         api.get('/recruiters/extension/codes').catch(() => ({ data: [] })),
         api.get('/recruiters/extension/live-summary').catch(() => ({ data: null })),
         api.get('/recruiters/extension/live-feed?limit=10').catch(() => ({ data: { feed: [] } })),
+        api.get('/api/enrichment/web-harvest-stats').catch(() => ({ data: null })),
       ]);
 
       const rawCodes = codesRes?.data;
@@ -32,6 +34,7 @@ export default function ExtensionHub() {
       setCodes(parsedCodes);
       if (summaryRes?.data && typeof summaryRes.data === 'object') setSummary(summaryRes.data);
       if (Array.isArray(feedRes?.data?.feed)) setLiveFeed(feedRes.data.feed);
+      if (harvestStatsRes?.data?.web_harvest_engine) setHarvestStats(harvestStatsRes.data.web_harvest_engine);
     } catch (e) {
       console.error('Error fetching extension hub data', e);
     } finally {
@@ -197,7 +200,7 @@ export default function ExtensionHub() {
             Pre-Configured Extension Package
           </h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.5, margin: 0 }}>
-            Your download is pre-loaded with your account credentials. When loaded in Chrome, it connects immediately with <b>zero code entry</b>. All candidate profiles you or your team encounter on LinkedIn, ZoomInfo, Apollo, Gmail, Outlook, or job portals stream into your shared database seamlessly.
+            Your download is pre-loaded with your account credentials. When loaded in Chrome, it connects immediately with <b>zero code entry</b>. All candidate profiles you or your team encounter on LinkedIn, ZoomInfo, Apollo, Gmail, Outlook, or job portals stream into your shared database seamlessly with built-in geographic enforcement (90% North America, 10% UK/South America) for targeted talent discovery.
           </p>
         </div>
 

@@ -43,6 +43,21 @@ ENABLE_SYNC_ENGINE = os.getenv("ENABLE_SYNC_ENGINE", "false").lower() in ("1", "
 ENABLE_TIMEOUT_SWEEP = os.getenv("ENABLE_TIMEOUT_SWEEP", "false").lower() in ("1", "true", "yes", "on")
 ENABLE_SYNC_MANAGER = os.getenv("ENABLE_SYNC_MANAGER", "false").lower() in ("1", "true", "yes", "on")
 
+# WebHarvest Autonomous Web Discovery Engine
+ENABLE_WEB_HARVEST = os.getenv("ENABLE_WEB_HARVEST", "true").lower() in ("1", "true", "yes", "on")
+WEB_HARVEST_INTERVAL = int(os.getenv("WEB_HARVEST_INTERVAL", "300"))  # seconds between cycles
+WEB_HARVEST_BATCH_SIZE = int(os.getenv("WEB_HARVEST_BATCH_SIZE", "10"))  # companies per cycle
+
+# ── Geographic Enforcement ──────────────────────────────────────────────────────
+# Controls the geographic filtering gate applied to all discovery pipelines.
+# 90% of discovered candidates MUST be from North America.
+# Remaining 10% may be from UK or South America ONLY. All other regions rejected.
+GEO_FILTER_ENABLED = os.getenv("GEO_FILTER_ENABLED", "true").lower() in ("1", "true", "yes", "on")
+GEO_NA_TARGET_PERCENT = int(os.getenv("GEO_NA_TARGET_PERCENT", "90"))
+GEO_ALLOWED_REGIONS = [r.strip() for r in os.getenv("GEO_ALLOWED_REGIONS", "NORTH_AMERICA,UK,SOUTH_AMERICA").split(",") if r.strip()]
+GEO_MIN_CONFIDENCE = float(os.getenv("GEO_MIN_CONFIDENCE", "0.3"))
+GEO_REJECT_UNKNOWN = os.getenv("GEO_REJECT_UNKNOWN", "false").lower() in ("1", "true", "yes", "on")
+
 
 SMTP_HOST = os.getenv("SMTP_HOST", "")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))

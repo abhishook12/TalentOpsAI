@@ -48,7 +48,7 @@ from .core.updater import AutoUpdater, CURRENT_VERSION
 from .core.intelligence_levels import IntelligenceRouter, FrameQueue, FrameContext
 from .core.context_memory import ContextMemory
 from .extractor.entity_extractor import EntityExtractor
-from .extractor.patterns import is_valid_person_name, is_valid_company_name
+from .extractor.patterns import is_valid_person_name, is_valid_company_name, classify_location_region
 from .extractor.grounding_gate import GroundingGate
 from .extractor.identity_resolver import IdentityResolver
 from .extractor.cross_channel_stitcher import CrossChannelStitcher
@@ -1592,6 +1592,12 @@ class ScoutDesktopApp:
                 staged_contact["candidate_gate_reasons"] = gate_res.reasons
                 staged_contact["field_confidence"] = gate_res.field_confidence
                 staged_contact["evidence_checklist"] = gate_res.audit_checklist
+
+                # Geographic enforcement gate
+                geo_region = getattr(c, 'geo_region', None) or classify_location_region(getattr(c, 'location', ''))
+                if geo_region == 'OTHER':
+                    logger.info('[SCOUT] GEO_REJECTED: %s — region=%s', getattr(c, 'canonical_name', 'unknown'), geo_region)
+                    continue
 
                 qid = self.local_queue.enqueue_cluster(staged_contact)
                 if qid != -1:

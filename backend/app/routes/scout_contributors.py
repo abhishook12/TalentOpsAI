@@ -51,6 +51,7 @@ def list_scout_users(
     search: Optional[str] = Query(None, description="Search by name or email"),
     sort: str = Query("most_active", description="Sorting: most_active, most_data, highest_quality, most_devices"),
     refresh: bool = Query(False, description="Bypass in-memory cache and force fresh database computation"),
+    region: Optional[str] = Query(None, description="Filter by geographic region (NORTH_AMERICA, UK, SOUTH_AMERICA)"),
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_current_user),
 ):
@@ -61,13 +62,21 @@ def list_scout_users(
     """
     _require_admin(current_user)
     try:
-        return get_all_scout_users_intelligence(
+        data = get_all_scout_users_intelligence(
             db=db,
             status_filter=status,
             search_query=search,
             sort_by=sort,
             force_refresh=refresh,
         )
+        if region:
+            filtered_users = []
+            for u in data["users"]:
+                prof = get_detailed_scout_user_profile(db=db, user_id=u["user_id"])
+                if prof and prof.get("geo_distribution", {}).get(region, 0) > 0:
+                    filtered_users.append(u)
+            data["users"] = filtered_users
+        return data
     except Exception as e:
         logger.error("Error in list_scout_users endpoint: %s", e)
         try:

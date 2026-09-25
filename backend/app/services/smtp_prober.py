@@ -82,7 +82,94 @@ class SmtpProber:
         self._catchall_cache: Dict[str, bool] = {}
         self._domain_last_probe: Dict[str, float] = {}
         self._lock = threading.Lock()
+        # ── Connection Pool (Speed Optimization) ──
+        self._connection_pool: Dict[str, smtplib.SMTP] = {}  # mx_host → live SMTP session
+        self._pool_last_used: Dict[str, float] = {}  # mx_host → last use timestamp
+        self._pool_lock = threading.Lock()
+        self._pool_max_idle = 30.0  # close connections idle > 30s
         self._load_caches()
+
+    # ─── Connection Pool Management ──────────────────────────────────────────
+
+    def _get_pooled_connection(self, mx_host: str) -> Optional[smtplib.SMTP]:
+        """Get a warm SMTP connection from the pool, or None if unavailable."""
+        with self._pool_lock:
+            conn = self._connection_pool.get(mx_host)
+            if conn:
+                # Check if connection is still alive with a NOOP
+                try:
+                    code, _ = conn.noop()
+                    if code == 250:
+                        self._pool_last_used[mx_host] = time.time()
+                        return conn
+                except Exception:
+                    pass
+                # Connection is dead, remove it
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+                del self._connection_pool[mx_host]
+                self._pool_last_used.pop(mx_host, None)
+        return None
+
+    def _create_and_pool_connection(self, mx_host: str) -> Optional[smtplib.SMTP]:
+        """Create a new SMTP connection, pool it, and return it."""
+        try:
+            server = smtplib.SMTP(timeout=PROBE_TIMEOUT)
+            server.connect(mx_host, 25)
+            server.ehlo(PROBE_EHLO_DOMAIN)
+            try:
+                server.starttls()
+                server.ehlo(PROBE_EHLO_DOMAIN)
+            except smtplib.SMTPNotSupportedError:
+                pass  # TLS not required
+            with self._pool_lock:
+                # Close any existing stale connection for this host
+                old = self._connection_pool.get(mx_host)
+                if old:
+                    try:
+                        old.close()
+                    except Exception:
+                        pass
+                self._connection_pool[mx_host] = server
+                self._pool_last_used[mx_host] = time.time()
+            return server
+        except Exception as e:
+            logger.debug(f"Failed to create pooled SMTP connection to {mx_host}: {e}")
+            return None
+
+    def _release_all_connections(self):
+        """Close all pooled SMTP connections."""
+        with self._pool_lock:
+            for mx_host, conn in list(self._connection_pool.items()):
+                try:
+                    conn.quit()
+                except Exception:
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+            self._connection_pool.clear()
+            self._pool_last_used.clear()
+
+    def _evict_idle_connections(self):
+        """Close connections that have been idle too long."""
+        now = time.time()
+        with self._pool_lock:
+            for mx_host in list(self._connection_pool.keys()):
+                last_used = self._pool_last_used.get(mx_host, 0)
+                if now - last_used > self._pool_max_idle:
+                    conn = self._connection_pool.pop(mx_host, None)
+                    self._pool_last_used.pop(mx_host, None)
+                    if conn:
+                        try:
+                            conn.quit()
+                        except Exception:
+                            try:
+                                conn.close()
+                            except Exception:
+                                pass
 
     # ─── Cache Management ────────────────────────────────────────────────────
 
@@ -199,7 +286,8 @@ class SmtpProber:
     def probe_mailbox(self, email: str, mx_host: Optional[str] = None) -> SmtpProbeResult:
         """
         Probe a single mailbox via SMTP RCPT TO handshake.
-        Returns a SmtpProbeResult with the SMTP response code and confidence delta.
+        Uses connection pooling — reuses warm TCP sessions to the same MX host
+        via RSET instead of opening a new socket per probe.
         """
         email = email.lower().strip()
         start_time = time.time()
@@ -236,6 +324,9 @@ class SmtpProber:
         # Rate limit
         self._wait_for_rate_limit(mx_host)
 
+        # Evict stale idle connections
+        self._evict_idle_connections()
+
         smtp_code = 0
         smtp_message = ""
         mailbox_exists = False
@@ -243,20 +334,30 @@ class SmtpProber:
         confidence_delta = 0
 
         try:
-            server = smtplib.SMTP(timeout=PROBE_TIMEOUT)
-            server.connect(mx_host, 25)
-            server.ehlo(PROBE_EHLO_DOMAIN)
-            try:
-                server.starttls()
-                server.ehlo(PROBE_EHLO_DOMAIN)
-            except smtplib.SMTPNotSupportedError:
-                pass
+            # Try pooled connection first (RSET reuse)
+            server = self._get_pooled_connection(mx_host)
+            used_pooled = server is not None
+
+            if server:
+                try:
+                    # RSET resets the envelope — ready for new MAIL FROM/RCPT TO
+                    server.rset()
+                except Exception:
+                    # Pooled connection is dead, create fresh
+                    server = None
+                    used_pooled = False
+
+            if not server:
+                # Create new connection and pool it for future reuse
+                server = self._create_and_pool_connection(mx_host)
+                if not server:
+                    raise smtplib.SMTPConnectError(0, "Failed to create connection")
 
             server.mail(PROBE_SENDER)
             code, msg = server.rcpt(email)
             smtp_code = code
             smtp_message = msg.decode('utf-8', errors='replace') if isinstance(msg, bytes) else str(msg)
-            server.quit()
+            # Do NOT quit — keep connection alive in pool for reuse
 
             if code == 250:
                 if is_catchall:
@@ -280,9 +381,16 @@ class SmtpProber:
         except smtplib.SMTPServerDisconnected:
             smtp_message = "Server disconnected"
             confidence_delta = 0
+            # Remove dead connection from pool
+            with self._pool_lock:
+                self._connection_pool.pop(mx_host, None)
+                self._pool_last_used.pop(mx_host, None)
         except socket.timeout:
             smtp_message = "Connection timed out"
             confidence_delta = 0
+            with self._pool_lock:
+                self._connection_pool.pop(mx_host, None)
+                self._pool_last_used.pop(mx_host, None)
         except Exception as e:
             smtp_message = str(e)
             confidence_delta = 0

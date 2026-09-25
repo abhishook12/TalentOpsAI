@@ -105,7 +105,38 @@ def is_human_name(name: str, company_name: str = "", existing_email: str = "") -
         
     parts = lower_name.replace('.', ' ').split()
     
-    strict_roles = {'admin', 'info', 'support', 'sales', 'billing', 'contact', 'hr'}
+    # Human recruiter name must have at least first and last name
+    if len(parts) < 2:
+        return False
+
+    strict_roles = {
+        'admin', 'administrator', 'webmaster', 'postmaster', 'hostmaster',
+        'info', 'information', 'contact', 'contactus', 'support', 'help',
+        'sales', 'marketing', 'media', 'press', 'billing', 'accounts',
+        'accounting', 'invoice', 'finance', 'hr', 'humanresources',
+        'careers', 'jobs', 'office', 'reception', 'general', 'queries',
+        'query', 'team', 'staff', 'operations', 'compliance', 'privacy',
+        'legal', 'security', 'corporate', 'experience', 'customer',
+        'department', 'dept', 'benefits', 'leave', 'leaverequest',
+        'claims', 'services', 'division', 'request', 'center', 'desk',
+        'management', 'inquiries', 'payroll', 'fmla', 'insurance', 'disability',
+        # Non-human website navigation, marketing copy, and UI buzzwords
+        'responsibility', 'contractor', 'studies', 'advancing', 'career',
+        'united', 'page', 'strategy', 'design', 'digital', 'industries',
+        'industry', 'workplace', 'partnerships', 'partnership', 'agile',
+        'risk', 'risks', 'sector', 'telecommunications', 'locations', 'location',
+        'papers', 'paper', 'about', 'who', 'events', 'social', 'leadership',
+        'tomorrow', 'actionable', 'trending', 'topics', 'sustainability',
+        'conduct', 'terms', 'activation', 'culture', 'process', 'outsourcing',
+        'strategic', 'solutions', 'solution', 'history', 'contact', 'us',
+        'preferences', 'preference', 'navigation', 'footer', 'header', 'menu',
+        'rights', 'consumer', 'share', 'timesheet', 'printout', 'accessibility',
+        'hire', 'someone', 'do', 'not', 'how', 'can', 'case', 'real', 'estate',
+        'data', 'cloud', 'centers', 'applied', 'logistics', 'manufacturing',
+        'blog', 'impact', 'functions', 'expense', 'approval', 'energy',
+        'policies', 'policy', 'internal', 'connect', 'thought', 'newsroom',
+        'resume', 'guidelines', 'statement', 'overview', 'mission', 'vision'
+    }
     if any(p in strict_roles for p in parts):
         return False
         

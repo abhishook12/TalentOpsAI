@@ -460,6 +460,7 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                     else if (src === 'Telegram' || src === 'TELEGRAM') { srcColor = '#229ed9'; srcBg = 'rgba(34, 158, 217, 0.15)'; }
                     else if (src === 'Gmail' || src === 'GMAIL') { srcColor = '#ea4335'; srcBg = 'rgba(234, 67, 53, 0.15)'; }
                     else if (src === 'Outlook' || src === 'OUTLOOK') { srcColor = '#0078d4'; srcBg = 'rgba(0, 120, 212, 0.15)'; }
+                    else if (src === 'WebHarvest' || src === 'web_harvest' || src === 'WEB_HARVEST') { srcColor = '#14b8a6'; srcBg = 'rgba(20, 184, 166, 0.15)'; }
                     return (
                       <div key={idx} style={{
                         padding: '14px 18px', background: 'var(--card-bg, #0e1526)', border: '1px solid var(--card-border, #232326)', borderRadius: 10,
@@ -482,6 +483,48 @@ export default function ScoutUserProfileDrawer({ userId, onClose, onRefreshList 
                       </div>
                     );
                   })}
+
+                  {/* Geographic Distribution */}
+                  {profile.geo_distribution && (
+                    <div style={{ marginTop: '16px' }}>
+                      <h4 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary, #a1a1aa)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Geographic Distribution
+                      </h4>
+                      {Object.entries(profile.geo_distribution).filter(([_, v]) => v > 0).map(([region, count]) => {
+                        const total = Object.values(profile.geo_distribution).reduce((a, b) => a + b, 0);
+                        const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                        const colors = {
+                          NORTH_AMERICA: '#3b82f6',
+                          UK: '#8b5cf6',
+                          SOUTH_AMERICA: '#f59e0b',
+                          OTHER: '#ef4444',
+                          UNKNOWN: '#6b7280',
+                        };
+                        const labels = {
+                          NORTH_AMERICA: 'North America',
+                          UK: 'United Kingdom',
+                          SOUTH_AMERICA: 'South America',
+                          OTHER: 'Other',
+                          UNKNOWN: 'Unknown',
+                        };
+                        return (
+                          <div key={region} style={{ marginBottom: '8px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                              <span style={{ fontSize: '12px', color: colors[region] || '#6b7280' }}>
+                                {labels[region] || region}
+                              </span>
+                              <span style={{ fontSize: '12px', color: 'var(--text-secondary, #a1a1aa)' }}>
+                                {count} ({pct}%)
+                              </span>
+                            </div>
+                            <div style={{ height: '4px', borderRadius: '2px', background: 'rgba(255,255,255,0.1)' }}>
+                              <div style={{ height: '100%', borderRadius: '2px', background: colors[region] || '#6b7280', width: `${pct}%`, transition: 'width 0.3s ease' }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 

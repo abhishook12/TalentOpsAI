@@ -30,6 +30,7 @@ Responsibilities:
 import os
 import re
 import sys
+import json
 import time
 import asyncio
 import logging
@@ -194,12 +195,13 @@ class AutonomousProfileSweeper:
 
     def __init__(self):
         self.running: bool = False
+        self.continuous_mode: bool = os.getenv("AUTONOMOUS_SWEEPER_CONTINUOUS", "true").lower() in ("1", "true", "yes", "on")
         self.force_active: bool = os.getenv("AUTONOMOUS_SWEEPER_FORCE_ACTIVE", "false").lower() in ("1", "true", "yes", "on")
         self.enabled: bool = os.getenv("AUTONOMOUS_SWEEPER_ENABLED", "true").lower() in ("1", "true", "yes", "on")
         self.batch_size: int = int(os.getenv("AUTONOMOUS_SWEEPER_BATCH_SIZE", "100"))
         self.batch_delay: float = float(os.getenv("AUTONOMOUS_SWEEPER_BATCH_DELAY", "1.0"))
         
-        # Schedule window settings (18:00 to 04:00 daily)
+        # Schedule window settings (18:00 to 04:00 daily or 24/7 continuous)
         self.start_hour: int = 18  # 6:00 PM
         self.end_hour: int = 4     # 4:00 AM
         
@@ -218,6 +220,7 @@ class AutonomousProfileSweeper:
             "profiles_enriched": 0,
             "ats_systems_detected": 0,
             "avatars_resolved": 0,
+            "nsr_profiles_verified": 0,
             "scores_recalculated": 0,
             "batches_processed": 0,
             "last_sweep_at": None,
@@ -239,8 +242,8 @@ class AutonomousProfileSweeper:
 
     @property
     def is_window_active(self) -> bool:
-        """Returns True if the engine is currently allowed to sweep."""
-        return self.force_active or self.is_in_sweep_window()
+        """Returns True if the engine is currently allowed to sweep (24/7 continuous or window)."""
+        return self.continuous_mode or self.force_active or self.is_in_sweep_window()
 
     def get_company_name_by_id(self, company_id: Any, db: Optional[Session] = None) -> Optional[str]:
         """Resolves company name from cache or DB."""
@@ -583,10 +586,11 @@ class AutonomousProfileSweeper:
         cur_logo = updated.get("logo_url")
         if cur_email and "@" in str(cur_email) and "missing" not in str(cur_email):
             try:
+                comp_name = self.get_company_name_by_id(updated.get("company_id"), db=db)
                 enr = zero_resource_enricher.enrich_profile(
                     email=str(cur_email),
                     name=str(cur_name) if cur_name else None,
-                    company_name=company_name,
+                    company_name=comp_name,
                 )
                 if enr.get("avatar_url") and (not cur_logo or "ui-avatars" in str(cur_logo) or str(cur_logo) == "None"):
                     updated["logo_url"] = enr["avatar_url"]
@@ -611,12 +615,16 @@ class AutonomousProfileSweeper:
                     if enr.get("tech_stack") and not existing_meta.get("tech_stack"):
                         existing_meta["tech_stack"] = enr["tech_stack"]
                         meta_changed = True
+                    if enr.get("nsr_profile") and not existing_meta.get("nsr_profile"):
+                        existing_meta["nsr_profile"] = enr["nsr_profile"]
+                        self.stats["nsr_profiles_verified"] += 1
+                        meta_changed = True
                     if meta_changed:
                         existing_meta["avatar_url"] = enr.get("avatar_url")
                         updated["metadata_json"] = json.dumps(existing_meta)
                         is_modified = True
                         self.stats["profiles_enriched"] += 1
-                        actions.append(f"ENRICHED_MULTI_SOURCE: ATS='{enr.get('ats_system')}' | CRM='{enr.get('crm_system')}'")
+                        actions.append(f"ENRICHED_MULTI_SOURCE: ATS='{enr.get('ats_system')}' | CRM='{enr.get('crm_system')}' | NSR='{enr.get('nsr_profile', {}).get('status')}'")
             except Exception as e:
                 logger.debug("Passive enrichment exception: %s", e)
 
@@ -820,8 +828,9 @@ class AutonomousProfileSweeper:
         return {
             "is_running": self.running,
             "is_window_active": self.is_window_active,
+            "continuous_mode": self.continuous_mode,
             "force_active": self.force_active,
-            "operating_window": f"{self.start_hour:02d}:00 to {self.end_hour:02d}:00 daily",
+            "operating_mode": "24/7 Continuous Background Mode" if self.continuous_mode else f"{self.start_hour:02d}:00 to {self.end_hour:02d}:00 daily",
             "server_local_time": now.strftime("%Y-%m-%d %H:%M:%S"),
             "current_hour": now.hour,
             "stats": dict(self.stats),

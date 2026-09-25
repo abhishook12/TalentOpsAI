@@ -41,6 +41,7 @@ from .patterns import (
     classify_semantic_entity,
     EMAIL_REGEX,
     PHONE_REGEX,
+    classify_location_region,
 )
 from .timeline_parser import TimelineParser
 from .title_normalizer import classify_title
@@ -476,16 +477,19 @@ class EntityExtractor:
                 for line in header_lines:
                     loc_candidate = clean_location_text(line)
                     if loc_candidate and is_valid_location(loc_candidate):
+                        geo_region = classify_location_region(loc_candidate)
                         cluster.add_observation(Observation(
                             semantic_type="PERSON",
                             subject=target_name,
                             predicate="LOCATED_IN",
                             object_value=loc_candidate,
+                            attributes={"geo_region": geo_region},
                             confidence=0.95,
                             evidence=line,
                             capture_id=capture_id,
                             source_url=source_url,
                         ))
+                        cluster.geo_region = geo_region
                         loc_found = True
                         break
 
@@ -496,16 +500,19 @@ class EntityExtractor:
                         break
                     loc_candidate = clean_location_text(line)
                     if loc_candidate and is_valid_location(loc_candidate):
+                        geo_region = classify_location_region(loc_candidate)
                         cluster.add_observation(Observation(
                             semantic_type="PERSON",
                             subject=target_name,
                             predicate="LOCATED_IN",
                             object_value=loc_candidate,
+                            attributes={"geo_region": geo_region},
                             confidence=0.90,
                             evidence=line,
                             capture_id=capture_id,
                             source_url=source_url,
                         ))
+                        cluster.geo_region = geo_region
                         break
 
         # Employment History (Robust Experience Parser)

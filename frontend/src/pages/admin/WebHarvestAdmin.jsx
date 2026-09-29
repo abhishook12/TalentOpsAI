@@ -292,44 +292,47 @@ export default function WebHarvestAdmin() {
         </div>
       </div>
 
-      {/* Smart Render Watchdog & Offline Buffer Panel */}
+      {/* Smart Render Watchdog & Offline Buffer Panel — v3 Circuit Breaker */}
       {offlineBuffer && (() => {
         const ob = offlineBuffer;
-        const isOnline = ob.render_online;
-        const isStable = ob.render_stable;
+        const cbState = ob.circuit_state || (ob.render_online ? (ob.render_stable ? 'STABLE' : 'WARMING') : 'OFFLINE');
+        const isStable  = cbState === 'STABLE';
+        const isWarming = cbState === 'WARMING';
+        const isOffline = cbState === 'OFFLINE';
         const secs = ob.seconds_until_reset ?? 0;
         const hh = Math.floor(secs / 3600);
         const mm = Math.floor((secs % 3600) / 60);
         const ss = secs % 60;
         const countdown = secs > 0
           ? `${hh}h ${String(mm).padStart(2,'0')}m ${String(ss).padStart(2,'0')}s`
-          : 'IMMINENT';
-        const pollLabel = ob.current_poll_interval_sec >= 60
+          : 'IMMINENT — monthly reset now';
+        const pollLabel = (ob.current_poll_interval_sec ?? 30) >= 60
           ? `${Math.floor(ob.current_poll_interval_sec / 60)}m`
-          : `${ob.current_poll_interval_sec}s`;
-        const healthColor = isOnline && isStable ? '#4ade80' : isOnline ? '#f59e0b' : '#ef4444';
-        const healthLabel = isOnline && isStable ? 'STABLE' : isOnline ? 'CONFIRMING' : 'OFFLINE';
+          : `${ob.current_poll_interval_sec ?? 30}s`;
+        const healthColor = isStable ? '#4ade80' : isWarming ? '#f59e0b' : '#ef4444';
+        const borderColor = isStable ? 'rgba(20,184,166,0.3)' : isWarming ? 'rgba(245,158,11,0.4)' : 'rgba(239,68,68,0.3)';
+        const bgColor = isStable ? 'rgba(20,184,166,0.05)' : isWarming ? 'rgba(245,158,11,0.06)' : 'rgba(239,68,68,0.07)';
 
         return (
-          <div style={{
-            background: isOnline ? 'rgba(20,184,166,0.05)' : 'rgba(239,68,68,0.07)',
-            border: `1px solid ${isOnline ? 'rgba(20,184,166,0.3)' : 'rgba(239,68,68,0.3)'}`,
-            borderRadius: 14, padding: '14px 20px', marginBottom: 20
-          }}>
+          <div style={{ background: bgColor, border: `1px solid ${borderColor}`, borderRadius: 14, padding: '14px 20px', marginBottom: 20 }}>
             {/* Header row */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                {isOnline ? <CloudUpload size={18} color="#14b8a6" /> : <CloudOff size={18} color="#ef4444" />}
+                {isStable ? <CloudUpload size={18} color="#14b8a6" /> : isWarming ? <CloudUpload size={18} color="#f59e0b" /> : <CloudOff size={18} color="#ef4444" />}
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: isOnline ? '#14b8a6' : '#ef4444' }}>
-                    {isOnline
-                      ? (isStable ? '● RENDER STABLE — Smart Auto-Sync Active' : '◐ RENDER RECOVERING — Confirming Stability...')
-                      : '⚠ RENDER SUSPENDED — Smart Offline Buffer Mode'}
+                  <div style={{ fontSize: 12, fontWeight: 800, color: healthColor }}>
+                    {isStable
+                      ? '● RENDER STABLE — Circuit Closed · Auto-Sync Active'
+                      : isWarming
+                      ? '◑ RENDER WARMING — Circuit Half-Open · Trial Batches Active'
+                      : '⚠ RENDER OFFLINE — Circuit Open · Buffer Mode Active'}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
-                    {isOnline
-                      ? `${ob.total_flushed ?? 0} profiles flushed · ${ob.flush_sessions ?? 0} flush sessions · ${ob.render_uptime_pct ?? 100}% uptime`
-                      : `${ob.pending_buffered ?? 0} profiles queued · Adaptive poll every ${pollLabel} · Render resets in ${countdown}`
+                    {isStable
+                      ? `${ob.total_flushed ?? 0} profiles flushed · ${ob.flush_sessions ?? 0} sessions · ${ob.render_uptime_pct ?? 100}% uptime`
+                      : isWarming
+                      ? `Trial flushing 5 records/cycle · Confirming stability · ${ob.pending_buffered ?? 0} queued`
+                      : `${ob.pending_buffered ?? 0} queued · Poll every ${pollLabel} · Next reset ${countdown}`
                     }
                   </div>
                 </div>

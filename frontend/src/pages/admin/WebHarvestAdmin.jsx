@@ -14,7 +14,10 @@ import {
   Search,
   Activity,
   Radio,
-  Clock
+  Clock,
+  CloudOff,
+  CloudUpload,
+  Database
 } from 'lucide-react';
 
 export default function WebHarvestAdmin() {
@@ -25,6 +28,11 @@ export default function WebHarvestAdmin() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Offline buffer state
+  const [offlineBuffer, setOfflineBuffer] = useState(null);
+  const [isFlushing, setIsFlushing] = useState(false);
+  const [flushResult, setFlushResult] = useState(null);
 
   // Demand-Driven Priority Queue State
   const [priorityTargetInput, setPriorityTargetInput] = useState('');
@@ -42,10 +50,11 @@ export default function WebHarvestAdmin() {
     else setIsRefreshing(true);
 
     try {
-      const [statsRes, reportsRes, multiRes] = await Promise.all([
+      const [statsRes, reportsRes, multiRes, bufferRes] = await Promise.all([
         api.get('/api/enrichment/web-harvest-stats').catch(() => ({ data: null })),
         api.get('/api/enrichment/web-harvest-reports?limit=100').catch(() => ({ data: { reports: [] } })),
         api.get('/api/enrichment/multi-source-stats').catch(() => ({ data: null })),
+        api.get('/api/enrichment/offline-buffer-status').catch(() => ({ data: null })),
       ]);
 
       if (statsRes?.data?.web_harvest_engine) {
@@ -57,11 +66,31 @@ export default function WebHarvestAdmin() {
       if (multiRes?.data?.source_breakdown) {
         setMultiSourceStats(multiRes.data);
       }
+      if (bufferRes?.data?.offline_buffer) {
+        setOfflineBuffer(bufferRes.data.offline_buffer);
+      }
     } catch (err) {
       console.error('Error fetching WebHarvest admin data:', err);
     } finally {
       setLoading(false);
       setIsRefreshing(false);
+    }
+  };
+
+  const handleManualFlush = async () => {
+    setIsFlushing(true);
+    setFlushResult(null);
+    try {
+      const res = await api.post('/api/enrichment/offline-buffer-flush');
+      if (res?.data?.success) {
+        setFlushResult(res.data);
+        await fetchTelemetryAndReports(true);
+      }
+    } catch (err) {
+      setFlushResult({ success: false, message: 'Flush failed: ' + (err?.response?.data?.detail || err.message) });
+    } finally {
+      setIsFlushing(false);
+      setTimeout(() => setFlushResult(null), 5000);
     }
   };
 
@@ -263,7 +292,178 @@ export default function WebHarvestAdmin() {
         </div>
       </div>
 
+      {/* Smart Render Watchdog & Offline Buffer Panel */}
+      {offlineBuffer && (() => {
+        const ob = offlineBuffer;
+        const isOnline = ob.render_online;
+        const isStable = ob.render_stable;
+        const secs = ob.seconds_until_reset ?? 0;
+        const hh = Math.floor(secs / 3600);
+        const mm = Math.floor((secs % 3600) / 60);
+        const ss = secs % 60;
+        const countdown = secs > 0
+          ? `${hh}h ${String(mm).padStart(2,'0')}m ${String(ss).padStart(2,'0')}s`
+          : 'IMMINENT';
+        const pollLabel = ob.current_poll_interval_sec >= 60
+          ? `${Math.floor(ob.current_poll_interval_sec / 60)}m`
+          : `${ob.current_poll_interval_sec}s`;
+        const healthColor = isOnline && isStable ? '#4ade80' : isOnline ? '#f59e0b' : '#ef4444';
+        const healthLabel = isOnline && isStable ? 'STABLE' : isOnline ? 'CONFIRMING' : 'OFFLINE';
 
+        return (
+          <div style={{
+            background: isOnline ? 'rgba(20,184,166,0.05)' : 'rgba(239,68,68,0.07)',
+            border: `1px solid ${isOnline ? 'rgba(20,184,166,0.3)' : 'rgba(239,68,68,0.3)'}`,
+            borderRadius: 14, padding: '14px 20px', marginBottom: 20
+          }}>
+            {/* Header row */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {isOnline ? <CloudUpload size={18} color="#14b8a6" /> : <CloudOff size={18} color="#ef4444" />}
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: isOnline ? '#14b8a6' : '#ef4444' }}>
+                    {isOnline
+                      ? (isStable ? '● RENDER STABLE — Smart Auto-Sync Active' : '◐ RENDER RECOVERING — Confirming Stability...')
+                      : '⚠ RENDER SUSPENDED — Smart Offline Buffer Mode'}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                    {isOnline
+                      ? `${ob.total_flushed ?? 0} profiles flushed · ${ob.flush_sessions ?? 0} flush sessions · ${ob.render_uptime_pct ?? 100}% uptime`
+                      : `${ob.pending_buffered ?? 0} profiles queued · Adaptive poll every ${pollLabel} · Render resets in ${countdown}`
+                    }
+                  </div>
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button
+                  onClick={handleManualFlush}
+                  disabled={isFlushing || (ob.pending_buffered ?? 0) === 0}
+                  style={{
+                    padding: '7px 13px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                    background: (ob.pending_buffered ?? 0) === 0 ? 'rgba(148,163,184,0.08)' : 'rgba(20,184,166,0.15)',
+                    color: (ob.pending_buffered ?? 0) === 0 ? '#64748b' : '#14b8a6',
+                    border: `1px solid ${(ob.pending_buffered ?? 0) === 0 ? 'rgba(148,163,184,0.15)' : 'rgba(20,184,166,0.3)'}`,
+                    display: 'flex', alignItems: 'center', gap: 5
+                  }}
+                >
+                  <Database size={11} />
+                  {isFlushing ? 'Flushing...' : 'Force Flush'}
+                </button>
+              </div>
+            </div>
+
+            {/* Metrics row */}
+            <div style={{ display: 'flex', gap: 20, marginTop: 14, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+              {/* Pending */}
+              <div style={{ textAlign: 'center', minWidth: 60 }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: (ob.pending_buffered ?? 0) > 0 ? '#f59e0b' : '#4ade80' }}>
+                  {ob.pending_buffered ?? 0}
+                </div>
+                <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Pending</div>
+              </div>
+
+              {/* In Retry Cooldown */}
+              <div style={{ textAlign: 'center', minWidth: 60 }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: (ob.in_retry_cooldown ?? 0) > 0 ? '#a78bfa' : '#52525b' }}>
+                  {ob.in_retry_cooldown ?? 0}
+                </div>
+                <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>In Backoff</div>
+              </div>
+
+              {/* Flushed */}
+              <div style={{ textAlign: 'center', minWidth: 60 }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#4ade80' }}>
+                  {ob.total_flushed ?? 0}
+                </div>
+                <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Flushed</div>
+              </div>
+
+              {/* DLQ / Failed */}
+              <div style={{ textAlign: 'center', minWidth: 60 }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: (ob.total_failed ?? 0) > 0 ? '#f87171' : '#52525b' }}>
+                  {ob.total_failed ?? 0}
+                </div>
+                <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>DLQ</div>
+              </div>
+
+              <div style={{ width: 1, background: 'var(--card-border)', alignSelf: 'stretch' }} />
+
+              {/* Render Health */}
+              <div style={{ textAlign: 'center', minWidth: 60 }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: healthColor }}>{healthLabel}</div>
+                <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Health</div>
+              </div>
+
+              {/* Probe latency */}
+              <div style={{ textAlign: 'center', minWidth: 60 }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: (ob.render_probe_ms ?? 0) > 2000 ? '#f59e0b' : '#94a3b8' }}>
+                  {ob.render_probe_ms > 0 ? `${ob.render_probe_ms}ms` : '—'}
+                </div>
+                <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Probe RT</div>
+              </div>
+
+              {/* Uptime */}
+              <div style={{ textAlign: 'center', minWidth: 60 }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#94a3b8' }}>{ob.render_uptime_pct ?? 100}%</div>
+                <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Uptime</div>
+              </div>
+
+              {/* Adaptive poll interval */}
+              <div style={{ textAlign: 'center', minWidth: 60 }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#94a3b8' }}>{pollLabel}</div>
+                <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Poll Rate</div>
+              </div>
+
+              {/* DB size */}
+              <div style={{ textAlign: 'center', minWidth: 60 }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#94a3b8' }}>{ob.buffer_db_size_kb ?? 0} KB</div>
+                <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Buffer DB</div>
+              </div>
+
+              {/* Oct 1 countdown */}
+              {!isOnline && secs > 0 && (
+                <>
+                  <div style={{ width: 1, background: 'var(--card-border)', alignSelf: 'stretch' }} />
+                  <div style={{ textAlign: 'center', minWidth: 80 }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: '#f59e0b', fontVariantNumeric: 'tabular-nums' }}>
+                      {countdown}
+                    </div>
+                    <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
+                      Until Reset (Oct 1)
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Source tier breakdown */}
+            {(ob.tier_breakdown ?? []).length > 0 && (
+              <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, alignSelf: 'center' }}>PRIORITY QUEUE:</span>
+                {(ob.tier_breakdown ?? []).map(t => (
+                  <span key={t.tier} style={{
+                    fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
+                    background: t.tier === 1 ? 'rgba(251,191,36,0.15)' : t.tier === 2 ? 'rgba(56,189,248,0.12)' : 'rgba(148,163,184,0.1)',
+                    color: t.tier === 1 ? '#fbbf24' : t.tier === 2 ? '#38bdf8' : '#94a3b8',
+                    border: `1px solid ${t.tier === 1 ? 'rgba(251,191,36,0.3)' : t.tier === 2 ? 'rgba(56,189,248,0.2)' : 'rgba(148,163,184,0.15)'}`,
+                  }}>
+                    {t.tier === 1 ? '🔴 Tier 1 (Scout)' : t.tier === 2 ? '🟡 Tier 2 (X-Ray)' : '⚪ Tier 3 (Web)'}: {t.count}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Flush feedback */}
+            {flushResult && (
+              <div style={{ fontSize: 11, fontWeight: 600, marginTop: 8, color: flushResult.success ? '#4ade80' : '#f87171' }}>
+                {flushResult.message}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Multi-Source Intelligence Ingestion Breakdown */}
       <div style={{

@@ -45,6 +45,17 @@ DORK_TITLES = [
     "Head of People",
     "VP People Operations",
     "Chief People Officer",
+    # Expanded titles — mid-level & specialist roles (common on LinkedIn)
+    "IT Recruiter",
+    "Campus Recruiter",
+    "Executive Recruiter",
+    "Sourcing Specialist",
+    "Recruitment Consultant",
+    "Talent Partner",
+    "People Operations Manager",
+    "Staffing Specialist",
+    "Contract Recruiter",
+    "Recruiting Coordinator",
 ]
 
 # Geographic location qualifiers appended to dork queries for NA-biased discovery
@@ -324,15 +335,26 @@ class SearchXRayHarvester:
         logger.info("[SEARCH_XRAY] Starting X-Ray harvest for '%s' (%s)", company_name, domain)
         clean_dom = domain.lower().replace("www.", "").strip()
 
-        # Rotating dork persona across cycles for maximum title diversity
-        title_idx = abs(hash(company_name + str(int(time.time() // 120)))) % len(DORK_TITLES)
-        target_role = DORK_TITLES[title_idx]
-        
-        # Add geographic qualifier for NA-biased discovery (rotate through qualifiers)
-        geo_idx = abs(hash(company_name + str(int(time.time() // 300)))) % len(GEO_DORK_QUALIFIERS)
-        geo_qualifier = GEO_DORK_QUALIFIERS[geo_idx]
-        dork_query = f'site:linkedin.com/in/ "{company_name}" "{target_role}" {geo_qualifier}'
-        raw_cards = self.execute_dork(dork_query, max_results=max_profiles * 2)
+        # Run 3 dork variations per company — different title + geo each time.
+        # Each variation is cached for 2h so re-runs don't incur browser cost.
+        # 3 dorks × 5 results = up to 15 profiles per company vs the old 1 dork × 5 = 5.
+        dork_queries = []
+        for i in range(3):
+            title_idx = abs(hash(company_name + str(int(time.time() // 120)) + str(i))) % len(DORK_TITLES)
+            geo_idx = abs(hash(company_name + str(int(time.time() // 300)) + str(i))) % len(GEO_DORK_QUALIFIERS)
+            target_role = DORK_TITLES[title_idx]
+            geo_qualifier = GEO_DORK_QUALIFIERS[geo_idx]
+            dork_queries.append(f'site:linkedin.com/in/ "{company_name}" "{target_role}" {geo_qualifier}')
+
+        raw_cards = []
+        seen_links: set = set()
+        for dork_query in dork_queries:
+            cards = self.execute_dork(dork_query, max_results=max_profiles * 2)
+            for c in cards:
+                link = c.get("link", "")
+                if link and link not in seen_links:
+                    seen_links.add(link)
+                    raw_cards.append(c)
 
         discovered_candidates = []
         seen_names = set()

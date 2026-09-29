@@ -57,10 +57,20 @@ USER_AGENTS = [
 ]
 
 # Pages on company websites likely to contain team member info
+# Ordered by real-world hit rate — most agencies use /about/team or /team first
 TEAM_PAGE_PATHS = [
-    "/team", "/our-team", "/leadership",
-    "/people", "/staff", "/about/team",
-    "/company/team", "/who-we-are", "/meet-the-team",
+    "/about/team",        # Most common for mid-size agencies
+    "/team",              # Startup/boutique agencies
+    "/our-team",          # Common variant
+    "/leadership",        # C-suite / exec-focused pages
+    "/people",            # Tech companies
+    "/company/team",      # Staffing firms
+    "/staff",             # Traditional firms
+    "/about/people",      # Variant
+    "/about-us",          # Many agencies embed staff bios here
+    "/who-we-are",        # Agency landing variant
+    "/meet-the-team",     # Boutique agencies
+    "/about",             # Last resort — many embeds staff here
 ]
 
 # Regex patterns for entity extraction
@@ -533,7 +543,7 @@ class WebHarvestEngine:
         """
         all_profiles = []
         pages_tried = 0
-        max_pages = 2  # Max pages to try per domain
+        max_pages = 4  # Try up to 4 paths per domain (was 2 — too few for modern agency sites)
 
         for path in TEAM_PAGE_PATHS:
             if pages_tried >= max_pages:
@@ -841,14 +851,16 @@ class WebHarvestEngine:
                     self.stats["quality_gate_rejections"] += 1
                     continue
 
-                # Quality Gate 2.5: Must have a valid recruiter title (not website marketing text)
+                # Quality Gate 2.5: Title check — valid recruiter title boosts confidence,
+                # but absence does NOT hard-reject. Most web pages don't put title text
+                # near the email/name anchor — only about 20% of spider profiles have titles
+                # extracted. We still get high-precision profiles without it via name+email+SMTP.
                 raw_title = profile.get("raw_title")
-                if not self._is_valid_recruiter_title(raw_title):
-                    self.stats["quality_gate_rejections"] += 1
-                    continue
+                has_valid_title = self._is_valid_recruiter_title(raw_title)
 
                 # Quality Gate 3: Confidence scoring
-                confidence = self._calculate_confidence(profile)
+                # Title adds 20pt bonus; name+email alone scores 60 (gate minimum).
+                confidence = self._calculate_confidence(profile, has_valid_title)
                 if confidence < 60:
                     self.stats["quality_gate_rejections"] += 1
                     continue
@@ -953,6 +965,32 @@ class WebHarvestEngine:
                     db.add(staging_record)
                     db.commit()
                     staged_count += 1
+
+                    # ── Offline Buffer Mirror ─────────────────────────────────
+                    # Mirror this profile into the offline SQLite buffer so that
+                    # when Render (cloud) is suspended, the watchdog will auto-flush
+                    # it to production the moment Render comes back online.
+                    try:
+                        from .offline_buffer import offline_buffer
+                        offline_buffer.buffer_profile({
+                            "discovery_id": discovery_id,
+                            "raw_name": raw_name,
+                            "raw_title": profile.get("raw_title", ""),
+                            "raw_company": raw_company,
+                            "raw_email": raw_email,
+                            "raw_phone": profile.get("raw_phone"),
+                            "raw_linkedin": profile.get("raw_linkedin"),
+                            "raw_location": profile.get("raw_location"),
+                            "source_url": profile.get("source_url", ""),
+                            "extraction_source": "web_harvest",
+                            "quality_score": confidence / 100.0,
+                            "dom_confidence": confidence / 100.0,
+                            "geo_region": profile.get("geo_region"),
+                            "geo_confidence": profile.get("geo_confidence"),
+                            "owner_user_id": owner_id,
+                        })
+                    except Exception:
+                        pass  # Buffer is best-effort — don't fail the primary staging
 
                     self._log_action(
                         f"Staged: {raw_name} ({raw_email or 'no email'}) from {profile.get('domain', '')}"
@@ -1113,26 +1151,55 @@ class WebHarvestEngine:
         )
         if any(p in c_lower for p in banned_phrases):
             return False
-        # Must match a known recruiter keyword
+        # Must match a known recruiter keyword (expanded to cover all DORK_TITLES variants)
         return bool(re.search(
-            r'\b(recruiter|sourcer|talent acquisition|staffing specialist|headhunter|'
-            r'recruiting manager|talent partner|talent lead|technical recruiter|executive recruiter|'
-            r'recruitment consultant|people partner)\b',
+            r'\b(recruiter|sourcer|sourcing\s*specialist|talent\s*acquisition|staffing\s*specialist|'
+            r'headhunter|recruiting\s*manager|talent\s*partner|talent\s*lead|technical\s*recruiter|'
+            r'it\s*recruiter|campus\s*recruiter|executive\s*recruiter|contract\s*recruiter|'
+            r'recruiting\s*coordinator|recruitment\s*consultant|people\s*partner|'
+            r'people\s*operations|talent\s*operations)\b',
             c_lower
         ))
 
-    def _calculate_confidence(self, profile: Dict[str, Any]) -> int:
-        """Calculates a confidence score (0-100) for an extracted profile."""
+    def _calculate_confidence(self, profile: Dict[str, Any], has_valid_title: bool = False) -> int:
+        """
+        Calculates a confidence score (0-100) for an extracted profile.
+
+        Scoring breakdown (max 100 before SMTP boost):
+          - name (2+ words, 4+ chars): 25 pts  (required)
+          - email on a corporate domain: 35 pts  (required → together = 60, gate minimum)
+          - verified recruiter title:    20 pts  (bonus, not required)
+          - phone number present:        10 pts  (bonus)
+          - LinkedIn URL present:        15 pts  (bonus)
+
+        SMTP verification adds +15 pts (applied after this method in the gate loop).
+        A profile with ONLY name+email scores exactly 60 — passes the gate.
+        A profile with name+email+title scores 80 — high confidence.
+        A profile with all five signals scores 105 → capped at 100.
+        """
         score = 0
 
-        if profile.get("raw_name") and len(profile["raw_name"]) >= 4:
-            score += 30
-        if profile.get("raw_email"):
-            score += 30
-        if profile.get("raw_title"):
-            score += 15
+        # Name: must be multi-word and at least 4 chars total
+        name = profile.get("raw_name", "")
+        if name and len(name) >= 4 and len(name.split()) >= 2:
+            score += 25
+
+        # Email: must be present on a non-free domain
+        email = profile.get("raw_email", "")
+        if email and "@" in email:
+            domain = email.split("@")[1].lower()
+            if domain not in FREE_EMAIL_DOMAINS and domain not in BLOCKED_DOMAINS:
+                score += 35
+
+        # Title: valid recruiter designation (bonus only)
+        if has_valid_title:
+            score += 20
+
+        # Phone (bonus)
         if profile.get("raw_phone"):
             score += 10
+
+        # LinkedIn URL (bonus)
         if profile.get("raw_linkedin"):
             score += 15
 

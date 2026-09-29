@@ -17,7 +17,8 @@ import {
   Clock,
   CloudOff,
   CloudUpload,
-  Database
+  Database,
+  TrendingUp
 } from 'lucide-react';
 
 export default function WebHarvestAdmin() {
@@ -44,6 +45,9 @@ export default function WebHarvestAdmin() {
   const [selectedCampaignId, setSelectedCampaignId] = useState('');
   const [isPushingCampaign, setIsPushingCampaign] = useState(false);
   const [campaignFeedback, setCampaignFeedback] = useState(null);
+
+  // Hover state for table rows
+  const [hoveredRow, setHoveredRow] = useState(null);
 
   const fetchTelemetryAndReports = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -241,14 +245,58 @@ export default function WebHarvestAdmin() {
         </div>
       </header>
 
+      {/* 1. Cycle health ticker */}
+      <div style={{ display: 'flex', gap: 20, padding: '10px 18px', background: 'rgba(20,184,166,0.06)', border: '1px solid rgba(20,184,166,0.15)', borderRadius: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: stats?.is_running ? '#22c55e' : '#eab308', boxShadow: stats?.is_running ? '0 0 8px #22c55e' : 'none', display: 'inline-block' }} />
+          <span style={{ fontSize: 12, fontWeight: 700, color: stats?.is_running ? '#4ade80' : '#eab308' }}>
+            {stats?.is_running ? 'ENGINE RUNNING' : 'ENGINE IDLE'}
+          </span>
+        </div>
+        <span style={{ color: 'var(--card-border)', fontSize: 18 }}>|</span>
+        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+          <strong style={{ color: 'var(--text-primary)' }}>{stats?.stats?.harvest_cycles ?? 0}</strong> cycles run
+        </span>
+        <span style={{ color: 'var(--card-border)', fontSize: 18 }}>|</span>
+        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+          Last cycle: <strong style={{ color: 'var(--text-primary)' }}>
+            {stats?.recent_actions?.[0]?.timestamp 
+              ? (() => { const diff = Math.floor((Date.now() - new Date(stats.recent_actions[0].timestamp)) / 1000); return diff < 60 ? `${diff}s ago` : `${Math.floor(diff / 60)}m ago`; })()
+              : 'Active'
+            }
+          </strong>
+        </span>
+        <span style={{ color: 'var(--card-border)', fontSize: 18 }}>|</span>
+        {(() => {
+          const disc = stats?.stats?.profiles_discovered ?? 0;
+          const promoted = stats?.stats?.profiles_promoted ?? 0;
+          const rate = disc > 0 ? Math.round((promoted / disc) * 100) : 0;
+          const color = rate >= 40 ? '#4ade80' : rate >= 20 ? '#f59e0b' : '#ef4444';
+          return (
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+              Promotion rate: <strong style={{ color }}>{rate}%</strong>
+              {rate < 20 && <span style={{ fontSize: 10, color: '#ef4444', marginLeft: 4 }}>(low — check quality gates)</span>}
+            </span>
+          );
+        })()}
+        <span style={{ color: 'var(--card-border)', fontSize: 18 }}>|</span>
+        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+          Outreach ready: <strong style={{ color: '#4ade80' }}>
+            {reports.filter(r => r.smtp_verification?.smtp_status === 'DELIVERABLE').length}
+          </strong>
+        </span>
+      </div>
+
       {/* KPI Overview Metrics */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginBottom: 28 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
         <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '16px 14px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Cycles Run</div>
           <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>
             {stats?.stats?.harvest_cycles ?? 0}
           </div>
-          <span style={{ fontSize: 11, color: '#14b8a6', fontWeight: 600 }}>● Continuous loops</span>
+          <span style={{ fontSize: 11, color: '#14b8a6', fontWeight: 600 }}>
+            avg {Math.round((stats?.stats?.profiles_discovered ?? 0) / Math.max(stats?.stats?.harvest_cycles ?? 1, 1))} per cycle
+          </span>
         </div>
 
         <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '16px 14px' }}>
@@ -256,7 +304,9 @@ export default function WebHarvestAdmin() {
           <div style={{ fontSize: 24, fontWeight: 800, color: '#4ade80' }}>
             {stats?.stats?.profiles_discovered ?? 0}
           </div>
-          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Mined from web</span>
+          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+            avg {Math.round((stats?.stats?.profiles_discovered ?? 0) / Math.max(stats?.stats?.harvest_cycles ?? 1, 1))} per cycle
+          </span>
         </div>
 
         <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '16px 14px' }}>
@@ -264,7 +314,9 @@ export default function WebHarvestAdmin() {
           <div style={{ fontSize: 24, fontWeight: 800, color: '#2dd4bf' }}>
             {stats?.stats?.profiles_staged ?? 0}
           </div>
-          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Passed quality gates</span>
+          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+            {((stats?.stats?.profiles_staged ?? 0) / Math.max(stats?.stats?.profiles_discovered ?? 1, 1) * 100).toFixed(0)}% pass rate
+          </span>
         </div>
 
         <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '16px 14px' }}>
@@ -272,7 +324,13 @@ export default function WebHarvestAdmin() {
           <div style={{ fontSize: 24, fontWeight: 800, color: '#38bdf8' }}>
             {stats?.stats?.profiles_promoted ?? 0}
           </div>
-          <span style={{ fontSize: 11, color: '#38bdf8', fontWeight: 600 }}>● Auto-reconciled</span>
+          {(() => {
+            const disc = stats?.stats?.profiles_discovered ?? 0;
+            const promoted = stats?.stats?.profiles_promoted ?? 0;
+            const rate = disc > 0 ? Math.round((promoted / disc) * 100) : 0;
+            const color = rate >= 40 ? '#4ade80' : rate >= 20 ? '#f59e0b' : '#ef4444';
+            return <span style={{ fontSize: 11, color, fontWeight: 600 }}>{rate}% promotion rate</span>;
+          })()}
         </div>
 
         <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '16px 14px' }}>
@@ -280,7 +338,9 @@ export default function WebHarvestAdmin() {
           <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>
             {stats?.stats?.domains_scraped ?? 0}
           </div>
-          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Company sites audited</span>
+          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+            of {stats?.stats?.domains_queued ?? 0} queued
+          </span>
         </div>
 
         <div style={{ background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 12, padding: '16px 14px' }}>
@@ -288,9 +348,63 @@ export default function WebHarvestAdmin() {
           <div style={{ fontSize: 24, fontWeight: 800, color: '#a1a1aa' }}>
             {(stats?.stats?.quality_gate_rejections ?? 0) + (stats?.stats?.dedup_rejections ?? 0)}
           </div>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Rejected at gate</span>
+          {(() => {
+            const rejected = (stats?.stats?.quality_gate_rejections ?? 0) + (stats?.stats?.dedup_rejections ?? 0);
+            const disc = stats?.stats?.profiles_discovered ?? 0;
+            const isLow = disc > 0 && (rejected / disc) < 0.05;
+            return (
+              <span style={{ fontSize: 11, color: isLow ? '#f59e0b' : 'var(--text-muted)', fontWeight: isLow ? 600 : 400 }}>
+                {isLow ? '⚠ Low rejection rate' : 'Rejected at gate'}
+              </span>
+            );
+          })()}
         </div>
       </div>
+
+      {/* Pipeline Funnel */}
+      {(stats?.stats?.profiles_discovered ?? 0) > 0 && (() => {
+        const disc = stats.stats.profiles_discovered;
+        const staged = stats.stats.profiles_staged ?? 0;
+        const promoted = stats.stats.profiles_promoted ?? 0;
+        const stagedPct = Math.round(staged / disc * 100);
+        const promotedPct = Math.round(promoted / disc * 100);
+        const geoRejected = stats.stats?.geo_rejections ?? 0;
+        const qualityRejected = stats.stats?.quality_gate_rejections ?? 0;
+        const dedupRejected = stats.stats?.dedup_rejections ?? 0;
+        return (
+          <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 12, padding: '14px 20px', marginBottom: 20 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 10 }}>Pipeline Funnel — Discovery → Staging → Catalog</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+              {/* Discovered bar */}
+              <div style={{ flex: disc, background: 'rgba(74,222,128,0.2)', border: '1px solid rgba(74,222,128,0.4)', borderRadius: '6px 0 0 6px', padding: '6px 10px', textAlign: 'center' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#4ade80' }}>{disc}</div>
+                <div style={{ fontSize: 9, color: '#4ade80', fontWeight: 700 }}>DISCOVERED</div>
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', padding: '0 4px' }}>→</div>
+              {/* Staged */}
+              <div style={{ flex: staged, background: 'rgba(45,212,191,0.2)', border: '1px solid rgba(45,212,191,0.4)', padding: '6px 10px', textAlign: 'center', minWidth: 60 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#2dd4bf' }}>{staged}</div>
+                <div style={{ fontSize: 9, color: '#2dd4bf', fontWeight: 700 }}>STAGED ({stagedPct}%)</div>
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', padding: '0 4px' }}>→</div>
+              {/* Promoted */}
+              <div style={{ flex: promoted, background: 'rgba(56,189,248,0.2)', border: '1px solid rgba(56,189,248,0.4)', borderRadius: '0 6px 6px 0', padding: '6px 10px', textAlign: 'center', minWidth: 60 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#38bdf8' }}>{promoted}</div>
+                <div style={{ fontSize: 9, color: '#38bdf8', fontWeight: 700 }}>PROMOTED ({promotedPct}%)</div>
+              </div>
+              {/* Drop-off reasons */}
+              {(geoRejected + qualityRejected + dedupRejected) > 0 && (
+                <div style={{ marginLeft: 16, fontSize: 11, color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)' }}>Drop-offs:</span>
+                  {geoRejected > 0 && <span>🌍 Geo gate: {geoRejected}</span>}
+                  {qualityRejected > 0 && <span>⚡ Quality gate: {qualityRejected}</span>}
+                  {dedupRejected > 0 && <span>🔁 Dedup: {dedupRejected}</span>}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Smart Render Watchdog & Offline Buffer Panel — v3 Circuit Breaker */}
       {offlineBuffer && (() => {
@@ -299,6 +413,9 @@ export default function WebHarvestAdmin() {
         const isStable  = cbState === 'STABLE';
         const isWarming = cbState === 'WARMING';
         const isOffline = cbState === 'OFFLINE';
+        const isOnline = isStable || isWarming;
+        const healthLabel = isStable ? 'STABLE' : isWarming ? 'WARMING' : 'OFFLINE';
+        
         const secs = ob.seconds_until_reset ?? 0;
         const hh = Math.floor(secs / 3600);
         const mm = Math.floor((secs % 3600) / 60);
@@ -468,51 +585,49 @@ export default function WebHarvestAdmin() {
         );
       })()}
 
-      {/* Multi-Source Intelligence Ingestion Breakdown */}
-      <div style={{
-        background: 'var(--card-bg, #121214)', border: '1px solid var(--card-border, #232326)', borderRadius: 14,
-        padding: '16px 20px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        flexWrap: 'wrap', gap: 12
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      {/* Multi-Source Intelligence Ingestion Breakdown — upgraded */}
+      <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 14, padding: '16px 20px', marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
           <Layers size={16} color="#38bdf8" />
-          <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Multi-Source Web Intelligence Breakdown:
-          </span>
+          <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Multi-Source Intelligence Breakdown</span>
+          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>Total Staged: <strong style={{ color: 'var(--text-primary)' }}>{multiSourceStats?.total_staged_observations ?? 0}</strong></span>
         </div>
-
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={{
-            fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20,
-            background: 'rgba(56, 189, 248, 0.12)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.25)'
-          }}>
-            Search X-Ray Dorking: {multiSourceStats?.source_breakdown?.search_xray ?? 5}
-          </span>
-          <span style={{
-            fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20,
-            background: 'rgba(34, 197, 94, 0.12)', color: '#4ade80', border: '1px solid rgba(34, 197, 94, 0.25)'
-          }}>
-            WebHarvest Spider: {multiSourceStats?.source_breakdown?.web_harvest ?? 2}
-          </span>
-          <span style={{
-            fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20,
-            background: 'rgba(168, 85, 247, 0.12)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.25)'
-          }}>
-            Email Signature Flywheel: {multiSourceStats?.source_breakdown?.email_signature_flywheel ?? 4}
-          </span>
-          <span style={{
-            fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20,
-            background: 'rgba(245, 158, 11, 0.12)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.25)'
-          }}>
-            ATS Boards: {multiSourceStats?.source_breakdown?.ats_job_board ?? 0}
-          </span>
-          <span style={{
-            fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20,
-            background: 'rgba(148, 163, 184, 0.12)', color: '#cbd5e1', border: '1px solid rgba(148, 163, 184, 0.25)'
-          }}>
-            Total Staged: {multiSourceStats?.total_staged_observations ?? 150}
-          </span>
-        </div>
+        {(() => {
+          const total = Math.max(multiSourceStats?.total_staged_observations ?? 1, 1);
+          const sources = [
+            { label: 'Search X-Ray Dorking', key: 'search_xray', count: multiSourceStats?.source_breakdown?.search_xray ?? 0, color: '#38bdf8', icon: '🔍' },
+            { label: 'WebHarvest Spider', key: 'web_harvest', count: multiSourceStats?.source_breakdown?.web_harvest ?? 0, color: '#4ade80', icon: '🕷' },
+            { label: 'Email Signature Flywheel', key: 'email_signature', count: multiSourceStats?.source_breakdown?.email_signature_flywheel ?? 0, color: '#c084fc', icon: '✉️' },
+            { label: 'ATS Boards', key: 'ats_boards', count: multiSourceStats?.source_breakdown?.ats_job_board ?? 0, color: '#fbbf24', icon: '📋', warnIfZero: true },
+          ];
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {sources.map(src => {
+                const pct = Math.round((src.count / total) * 100);
+                const isZero = src.count === 0;
+                const isDead = isZero && src.warnIfZero;
+                return (
+                  <div key={src.key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 13, minWidth: 20 }}>{src.icon}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: isDead ? '#ef4444' : 'var(--text-secondary)', minWidth: 180 }}>
+                      {src.label}
+                      {isDead && <span style={{ fontSize: 9, color: '#ef4444', marginLeft: 6, fontWeight: 800 }}>⚠ INACTIVE</span>}
+                    </span>
+                    <div style={{ flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: 4, height: 6, overflow: 'hidden' }}>
+                      <div style={{ width: `${Math.max(pct, 0)}%`, height: '100%', background: isDead ? '#374151' : src.color, borderRadius: 4, transition: 'width 0.5s ease' }} />
+                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: isDead ? '#6b7280' : src.color, minWidth: 40, textAlign: 'right' }}>
+                      {src.count}
+                    </span>
+                    <span style={{ fontSize: 10, color: 'var(--text-muted)', minWidth: 36, textAlign: 'right' }}>
+                      {isZero ? '—' : `${pct}%`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Demand-Driven Priority Harvest Queue */}
@@ -533,29 +648,44 @@ export default function WebHarvestAdmin() {
             </div>
           </div>
 
-          <form onSubmit={handleQueuePriorityTarget} style={{ display: 'flex', gap: 8 }}>
-            <input
-              type="text"
-              placeholder="e.g. Stripe, Datadog, Databricks..."
-              value={priorityTargetInput}
-              onChange={(e) => setPriorityTargetInput(e.target.value)}
-              style={{
-                background: 'var(--input-bg, #1c1c1f)', border: '1px solid var(--card-border, #2d2d30)',
-                color: 'var(--text-primary)', padding: '7px 12px', borderRadius: 8, fontSize: 12, outline: 'none', width: 240
-              }}
-            />
-            <button
-              type="submit"
-              disabled={isQueueing || !priorityTargetInput.trim()}
-              style={{
-                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#fff',
-                border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 700,
-                cursor: (isQueueing || !priorityTargetInput.trim()) ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', gap: 6
-              }}
-            >
-              <span>{isQueueing ? 'Queueing...' : '+ Queue Target'}</span>
-            </button>
+          <form onSubmit={handleQueuePriorityTarget} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', alignSelf: 'center' }}>Quick targets:</span>
+              {['Stripe', 'Databricks', 'Snowflake', 'Notion', 'Linear', 'Figma', 'Vercel'].map(co => (
+                <button
+                  type="button"
+                  key={co}
+                  onClick={() => setPriorityTargetInput(co)}
+                  style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--panel-bg)', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600 }}
+                >
+                  {co}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                type="text"
+                placeholder="e.g. Stripe, Datadog, Databricks..."
+                value={priorityTargetInput}
+                onChange={(e) => setPriorityTargetInput(e.target.value)}
+                style={{
+                  background: 'var(--input-bg, #1c1c1f)', border: '1px solid var(--card-border, #2d2d30)',
+                  color: 'var(--text-primary)', padding: '7px 12px', borderRadius: 8, fontSize: 12, outline: 'none', width: 240
+                }}
+              />
+              <button
+                type="submit"
+                disabled={isQueueing || !priorityTargetInput.trim()}
+                style={{
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#fff',
+                  border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 700,
+                  cursor: (isQueueing || !priorityTargetInput.trim()) ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 6
+                }}
+              >
+                <span>{isQueueing ? 'Queueing...' : '+ Queue Target'}</span>
+              </button>
+            </div>
           </form>
         </div>
 
@@ -604,10 +734,24 @@ export default function WebHarvestAdmin() {
             </span>
           </div>
 
-          <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-muted)' }}>
+          <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-muted)', alignItems: 'center' }}>
+            {(() => {
+              const discovered = stats?.stats?.profiles_discovered ?? 0;
+              const cycles = stats?.stats?.harvest_cycles ?? 1;
+              const perCycle = cycles > 0 ? (discovered / cycles).toFixed(1) : 0;
+              const healthScore = perCycle >= 10 ? 'EXCELLENT' : perCycle >= 5 ? 'GOOD' : perCycle >= 2 ? 'FAIR' : 'LOW';
+              const healthColor = perCycle >= 10 ? '#4ade80' : perCycle >= 5 ? '#2dd4bf' : perCycle >= 2 ? '#f59e0b' : '#ef4444';
+              return (
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  Yield: <strong style={{ color: healthColor }}>{perCycle}/cycle</strong>
+                  <span style={{ marginLeft: 6, fontSize: 10, padding: '1px 6px', borderRadius: 4, background: `rgba(${healthColor === '#4ade80' ? '74,222,128' : healthColor === '#2dd4bf' ? '45,212,191' : healthColor === '#f59e0b' ? '245,158,11' : '239,68,68'},0.12)`, color: healthColor }}>{healthScore}</span>
+                </div>
+              );
+            })()}
+            <span style={{ color: 'var(--card-border)' }}>|</span>
             <div>
               <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Queued Targets:</span>{' '}
-              <strong style={{ color: '#38bdf8' }}>{stats?.stats?.domains_queued ?? 60}</strong>
+              <strong style={{ color: '#38bdf8' }}>{stats?.stats?.domains_queued ?? 0}</strong>
             </div>
             <div>
               <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Active Crawled:</span>{' '}
@@ -623,23 +767,32 @@ export default function WebHarvestAdmin() {
         {/* Action Feed */}
         <div style={{
           background: 'rgba(0, 0, 0, 0.25)', borderRadius: 10, padding: '12px 16px',
-          border: '1px solid rgba(255, 255, 255, 0.05)', maxHeight: 150, overflowY: 'auto'
+          border: '1px solid rgba(255, 255, 255, 0.05)', maxHeight: 220, overflowY: 'auto'
         }}>
           {Array.isArray(stats?.recent_actions) && stats.recent_actions.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {stats.recent_actions.slice(0, 5).map((act, idx) => (
-                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12 }}>
-                  <span style={{
-                    fontSize: 10, color: 'var(--text-muted)', fontFamily: 'monospace',
-                    background: 'rgba(255, 255, 255, 0.04)', padding: '2px 6px', borderRadius: 4
-                  }}>
-                    {act.timestamp ? new Date(act.timestamp).toLocaleTimeString() : 'Recent'}
-                  </span>
-                  <span style={{ color: idx === 0 ? '#4ade80' : 'var(--text-secondary)', fontWeight: idx === 0 ? 600 : 400 }}>
-                    {act.action}
-                  </span>
-                </div>
-              ))}
+              {stats.recent_actions.slice(0, 10).map((act, idx) => {
+                const text = (act.action || '').toLowerCase();
+                let color = 'var(--text-secondary)';
+                if (text.includes('xray') || text.includes('dorking')) color = '#38bdf8';
+                else if (text.includes('spider')) color = '#4ade80';
+                else if (text.includes('completed')) color = '#2dd4bf';
+                else if (text.includes('error') || text.includes('failed')) color = '#ef4444';
+
+                return (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12 }}>
+                    <span style={{
+                      fontSize: 10, color: 'var(--text-muted)', fontFamily: 'monospace',
+                      background: 'rgba(255, 255, 255, 0.04)', padding: '2px 6px', borderRadius: 4, minWidth: 64, textAlign: 'center'
+                    }}>
+                      {act.timestamp ? new Date(act.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Recent'}
+                    </span>
+                    <span style={{ color, fontWeight: idx === 0 ? 600 : 400 }}>
+                      {act.action}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 12 }}>
@@ -719,8 +872,8 @@ export default function WebHarvestAdmin() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, textAlign: 'left' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase' }}>
-                  <th style={{ padding: '10px 14px' }}>Candidate & Title</th>
-                  <th style={{ padding: '10px 14px' }}>Company & Domain</th>
+                  <th style={{ padding: '10px 14px' }}>Candidate & Title ({filteredReports.length})</th>
+                  <th style={{ padding: '10px 14px' }}>Company & Geo</th>
                   <th style={{ padding: '10px 14px' }}>Contact Intelligence</th>
                   <th style={{ padding: '10px 14px' }}>Provenance & Source URL</th>
                   <th style={{ padding: '10px 14px' }}>Quality / Decision</th>
@@ -734,9 +887,19 @@ export default function WebHarvestAdmin() {
                   const isPending = row.processing_status === 'pending';
                   const badgeColor = isCommitted ? '#4ade80' : isPending ? '#38bdf8' : '#f59e0b';
                   const badgeBg = isCommitted ? 'rgba(34, 197, 94, 0.15)' : isPending ? 'rgba(56, 189, 248, 0.15)' : 'rgba(245, 158, 11, 0.15)';
+                  const geo = row.geo_region || 'NA';
 
                   return (
-                    <tr key={idx} style={{ borderBottom: '1px solid var(--card-border)' }}>
+                    <tr 
+                      key={idx} 
+                      onMouseEnter={() => setHoveredRow(idx)}
+                      onMouseLeave={() => setHoveredRow(null)}
+                      style={{ 
+                        borderBottom: '1px solid var(--card-border)',
+                        background: hoveredRow === idx ? 'rgba(255,255,255,0.02)' : 'transparent',
+                        transition: 'background 0.2s ease'
+                      }}
+                    >
                       {/* Candidate Name & Title */}
                       <td style={{ padding: '12px 14px' }}>
                         <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 13 }}>
@@ -750,17 +913,25 @@ export default function WebHarvestAdmin() {
                         </div>
                       </td>
 
-                      {/* Company & Domain */}
+                      {/* Company & Geo */}
                       <td style={{ padding: '12px 14px' }}>
                         <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                           {row.company || 'Direct Agency'}
                         </div>
-                        <span style={{
-                          display: 'inline-block', fontSize: 10, background: 'rgba(20, 184, 166, 0.12)',
-                          color: '#14b8a6', padding: '1px 6px', borderRadius: 4, marginTop: 4
-                        }}>
-                          {row.source_domain}
-                        </span>
+                        <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                          <span style={{
+                            display: 'inline-block', fontSize: 10, background: 'rgba(20, 184, 166, 0.12)',
+                            color: '#14b8a6', padding: '1px 6px', borderRadius: 4
+                          }}>
+                            {row.source_domain}
+                          </span>
+                          <span style={{
+                            display: 'inline-block', fontSize: 10, background: 'rgba(255, 255, 255, 0.1)',
+                            color: 'var(--text-secondary)', padding: '1px 6px', borderRadius: 4, fontWeight: 700
+                          }}>
+                            {geo}
+                          </span>
+                        </div>
                       </td>
 
                       {/* Contact Info */}
@@ -850,17 +1021,25 @@ export default function WebHarvestAdmin() {
                       </td>
 
                       {/* Quality & Decision */}
-                      <td style={{ padding: '12px 14px' }}>
+                      <td style={{ padding: '12px 14px', minWidth: 140 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{
                             fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
                             background: badgeBg, color: badgeColor, border: `1px solid ${badgeColor}40`
                           }}>
-                            {isCommitted ? 'COMMITTED (MASTER DB)' : row.processing_status.toUpperCase()}
+                            {isCommitted ? 'COMMITTED (MASTER DB)' : (row.processing_status || '').toUpperCase()}
                           </span>
                         </div>
-                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 4 }}>
-                          Quality: <strong style={{ color: '#4ade80' }}>{row.quality_score}%</strong> (Score)
+                        <div style={{ marginTop: 6 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                            <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>Quality</span>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: (row.quality_score ?? 0) >= 80 ? '#4ade80' : (row.quality_score ?? 0) >= 60 ? '#f59e0b' : '#ef4444' }}>
+                              {row.quality_score ?? 0}%
+                            </span>
+                          </div>
+                          <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 4, height: 3 }}>
+                            <div style={{ width: `${row.quality_score ?? 0}%`, height: '100%', background: (row.quality_score ?? 0) >= 80 ? '#4ade80' : (row.quality_score ?? 0) >= 60 ? '#f59e0b' : '#ef4444', borderRadius: 4 }} />
+                          </div>
                         </div>
                       </td>
 

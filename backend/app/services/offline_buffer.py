@@ -57,6 +57,34 @@ from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
+import zlib
+import base64
+
+def _compress_meta(meta: dict) -> str:
+    """Compresses metadata dict with zlib for compact SQLite storage."""
+    try:
+        raw = json.dumps(meta, separators=(',', ':')).encode('utf-8')
+        return base64.b85encode(zlib.compress(raw, level=6)).decode('ascii')
+    except Exception:
+        return json.dumps(meta or {})
+
+def _decompress_meta(stored: str) -> dict:
+    """Decompresses zlib+b85 metadata, falls back to plain JSON."""
+    if not stored:
+        return {}
+    try:
+        if stored and not stored.startswith('{'):
+            return json.loads(zlib.decompress(base64.b85decode(stored.encode('ascii'))))
+        return json.loads(stored)
+    except Exception:
+        return {}
+
+def _next_render_reset() -> datetime:
+    """Dynamically computes the next Render free-tier monthly reset (1st of next month, 00:00 UTC)."""
+    now = datetime.now(timezone.utc)
+    if now.month == 12:
+        return now.replace(year=now.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    return now.replace(month=now.month + 1, day=1, hour=0, minute=0, second=0, microsecond=0)
 
 logger = logging.getLogger("talentops.offline_buffer")
 
@@ -77,8 +105,13 @@ MIN_STABLE_PINGS       = 3       # consecutive sub-3s pings before "ready"
 HEALTHY_PROBE_MS       = 3000    # max acceptable response time (ms) to count as "stable"
 VACUUM_THRESHOLD       = 500     # vacuum DB after N flushed rows accumulate
 
-# Known Render free-tier reset timestamp (Oct 1 2026 00:00 UTC)
-RENDER_RESET_UTC = datetime(2026, 10, 1, 0, 0, 0, tzinfo=timezone.utc)
+CB_OFFLINE = "OFFLINE"
+CB_WARMING = "WARMING"
+CB_STABLE  = "STABLE"
+WARMING_SUCCESS_THRESHOLD = 3   # successes needed to go WARMING→STABLE
+WARMING_FAIL_THRESHOLD    = 2   # failures to push WARMING→OFFLINE
+WARMING_BATCH_SIZE        = 5   # records to flush per cycle while WARMING
+WEBHOOK_URL = os.getenv("TALENTOPS_WEBHOOK_URL", "")
 
 # Source priority tiers (lower number = flush first)
 SOURCE_PRIORITY = {
@@ -172,11 +205,33 @@ class OfflineHarvestBuffer:
         # Adaptive polling state
         self._poll_interval        = RENDER_POLL_BASE_SEC
         self._consecutive_fails    = 0
+        self._cb_state            = CB_STABLE  # optimistic startup
+        self._warming_successes   = 0
+        self._warming_failures    = 0
 
         self._init_db()
         self._recover_state()
 
     # ── DB Setup ──────────────────────────────────────────────────────────────
+
+    def _send_webhook(self, event_type: str, detail: str):
+        """Fires a Discord/Slack-compatible webhook on key buffer events."""
+        if not WEBHOOK_URL:
+            return
+        def _post():
+            try:
+                color = 0x22c55e if any(k in event_type for k in ("ONLINE", "STABLE", "FLUSH", "WAKEUP")) else 0xef4444
+                requests.post(WEBHOOK_URL, json={
+                    "embeds": [{
+                        "title": f"TalentOps Buffer — {event_type}",
+                        "description": detail,
+                        "color": color,
+                        "footer": {"text": f"TalentOpsAI | {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"}
+                    }]
+                }, timeout=5)
+            except Exception:
+                pass
+        threading.Thread(target=_post, daemon=True).start()
 
     @contextmanager
     def _get_conn(self):
@@ -336,7 +391,7 @@ class OfflineHarvestBuffer:
                     profile.get("geo_region"),
                     profile.get("geo_confidence"),
                     int(profile.get("owner_user_id", 1)),
-                    json.dumps(profile.get("metadata_json") or {}),
+                    _compress_meta(profile.get("metadata_json") or {}),
                     content_hash,
                     source_tier,
                     time.time(),
@@ -387,14 +442,15 @@ class OfflineHarvestBuffer:
         current_downtime = (now - self._offline_since) if self._offline_since else 0
 
         return {
+            "circuit_state":       self._cb_state,
             "render_online":       self._render_online,
             "render_stable":       self.health.is_stable,
             "render_url":          RENDER_URL,
             "render_uptime_pct":   self.health.uptime_pct,
             "render_probe_ms":     round(self.health.last_probe_ms, 1),
             "render_avg_probe_ms": round(self.health.avg_probe_ms, 1),
-            "render_reset_utc":    RENDER_RESET_UTC.isoformat(),
-            "seconds_until_reset": max(0, int((RENDER_RESET_UTC - datetime.now(timezone.utc)).total_seconds())),
+            "render_reset_utc":    _next_render_reset().isoformat(),
+            "seconds_until_reset": max(0, int((_next_render_reset() - datetime.now(timezone.utc)).total_seconds())),
             "pending_buffered":    pending,
             "in_retry_cooldown":   in_retry,
             "total_flushed":       flushed,
@@ -410,7 +466,7 @@ class OfflineHarvestBuffer:
 
     # ── Smart Flush Engine ────────────────────────────────────────────────────
 
-    def flush_pending_to_production(self, throttle_ms: float = 0) -> Dict[str, int]:
+    def flush_pending_to_production(self, throttle_ms: float = 0, batch_size_override: Optional[int] = None) -> Dict[str, int]:
         """
         Flushes pending buffered profiles to Supabase in priority order:
           source_tier ASC (Desktop Scout first), then quality_score DESC.
@@ -425,6 +481,7 @@ class OfflineHarvestBuffer:
 
         result = {"flushed": 0, "skipped": 0, "failed": 0, "dlq": 0}
         now = time.time()
+        batch_size = batch_size_override or FLUSH_BATCH_SIZE
 
         try:
             with self._get_conn() as conn:
@@ -433,7 +490,7 @@ class OfflineHarvestBuffer:
                     WHERE status = 'PENDING' AND retry_after <= ?
                     ORDER BY source_tier ASC, quality_score DESC
                     LIMIT ?
-                """, (now, FLUSH_BATCH_SIZE)).fetchall()
+                """, (now, batch_size)).fetchall()
         except Exception as e:
             logger.error("[SMART_BUFFER] Cannot read pending records: %s", e)
             return result
@@ -442,7 +499,29 @@ class OfflineHarvestBuffer:
             return result
 
         logger.info("[SMART_BUFFER] Flushing %d profiles (priority-ordered)...", len(rows))
+
+        # Batch dedup: pre-check which content_hashes already exist in staging
+        try:
+            from sqlalchemy import text as sa_text
+            content_hashes = [row["content_hash"] for row in rows if row["content_hash"]]
+            already_staged = set()
+            if content_hashes:
+                with SessionLocal() as db:
+                    # Use ANY with cast for PostgreSQL
+                    rows_found = db.execute(
+                        sa_text("SELECT content_hash FROM discovery_staging WHERE content_hash = ANY(CAST(:hashes AS TEXT[]))"),
+                        {"hashes": "{"+",".join(content_hashes)+"}"}
+                    ).fetchall()
+                    already_staged = {r[0] for r in rows_found}
+        except Exception as _dedup_err:
+            already_staged = set()  # If batch dedup fails, fall back to per-record dedup
+
         for row in rows:
+            # Skip if already confirmed in batch pre-check
+            if row["content_hash"] in already_staged:
+                self._mark_status(row["id"], "FLUSHED", "batch_dedup")
+                result["skipped"] += 1
+                continue
             try:
                 with SessionLocal() as db:
                     # Dedup against live staging table
@@ -479,7 +558,7 @@ class OfflineHarvestBuffer:
                         geo_region       = row["geo_region"],
                         geo_confidence   = row["geo_confidence"],
                         owner_user_id    = row["owner_user_id"] or 1,
-                        metadata_json    = row["metadata_json"] or "{}",
+                        metadata_json    = json.dumps(_decompress_meta(row["metadata_json"] or "{}")),
                         processing_status= "pending",
                         created_at       = datetime.now(timezone.utc),
                     )
@@ -607,11 +686,11 @@ class OfflineHarvestBuffer:
         then probes every 10 seconds for 5 minutes to detect the exact
         moment Render comes back online (fast-path, bypasses backoff).
         """
+        reset_dt = _next_render_reset()
         now = datetime.now(timezone.utc)
-        if now >= RENDER_RESET_UTC:
-            return  # Already past reset time, no need to schedule
-
-        sleep_sec = (RENDER_RESET_UTC - now).total_seconds()
+        if now >= reset_dt:
+            return
+        sleep_sec = (reset_dt - now).total_seconds()
         logger.info(
             "[SMART_BUFFER] Render reset scheduler: will activate in %.0f seconds "
             "(Oct 1 2026 00:00 UTC).", sleep_sec
@@ -629,6 +708,7 @@ class OfflineHarvestBuffer:
             is_online, ms = self._probe_render()
             if is_online:
                 logger.info("[SMART_BUFFER] SCHEDULED WAKEUP: Render detected online! (%.0fms)", ms)
+                self._send_webhook("SCHEDULED_WAKEUP", f"Render monthly reset detected. Starting flush.")
                 self._handle_render_recovery(ms)
                 self._poll_interval = RENDER_POLL_BASE_SEC
                 return
@@ -659,6 +739,7 @@ class OfflineHarvestBuffer:
             "Flushing %d buffered profiles...",
             self.health.avg_probe_ms, self.health.uptime_pct, pending
         )
+        self._send_webhook("RENDER_STABLE", f"Flushing {pending} buffered profiles.")
 
         if pending == 0:
             logger.info("[SMART_BUFFER] Buffer is empty — nothing to flush.")
@@ -680,6 +761,7 @@ class OfflineHarvestBuffer:
             "[SMART_BUFFER] Full flush complete. %d records remain (retry cooldown).",
             self.get_pending_count()
         )
+        self._send_webhook("FLUSH_COMPLETE", f"{self.get_pending_count()} remain after flush.")
 
     # ── Main Watchdog Loop ────────────────────────────────────────────────────
 
@@ -697,12 +779,13 @@ class OfflineHarvestBuffer:
 
         # Scheduled wakeup (Oct 1 reset)
         now = datetime.now(timezone.utc)
-        if now < RENDER_RESET_UTC:
+        reset_dt = _next_render_reset()
+        if now < reset_dt:
             self._scheduler_thread = threading.Thread(
                 target=self._run_scheduler, daemon=True, name="RenderScheduler"
             )
             self._scheduler_thread.start()
-            secs_left = int((RENDER_RESET_UTC - now).total_seconds())
+            secs_left = int((reset_dt - now).total_seconds())
             logger.info(
                 "[SMART_BUFFER] Watchdog + Scheduler started. "
                 "Render resets in %dh %dm (Oct 1 00:00 UTC).",
@@ -726,6 +809,7 @@ class OfflineHarvestBuffer:
         else:
             self.health.record_failure()
             self._render_online = False
+            self._cb_state = CB_OFFLINE
             self._offline_since = time.time()
             self._downtime_events += 1
             logger.warning(
@@ -740,42 +824,47 @@ class OfflineHarvestBuffer:
 
                 if is_online:
                     self.health.record_success(probe_ms)
-
-                    if not self._render_online:
-                        # Transitioning offline → recovering
-                        logger.info(
-                            "[SMART_BUFFER] Render responding (%.0fms). "
-                            "Confirming stability (%d/%d pings)...",
-                            probe_ms, self.health.consecutive_successes, MIN_STABLE_PINGS
-                        )
-                        if self.health.is_stable:
-                            # Render confirmed stable — trigger flush
+                    if self._cb_state == CB_OFFLINE:
+                        self._cb_state = CB_WARMING
+                        self._warming_successes = 1
+                        self._warming_failures = 0
+                        logger.info("[SMART_BUFFER] Circuit WARMING — confirming stability...")
+                        # Flush small trial batch
+                        self.flush_pending_to_production(throttle_ms=100, batch_size_override=WARMING_BATCH_SIZE)
+                    elif self._cb_state == CB_WARMING:
+                        self._warming_successes += 1
+                        if self._warming_successes >= WARMING_SUCCESS_THRESHOLD:
+                            self._cb_state = CB_STABLE
+                            self._render_online = True
+                            logger.info("[SMART_BUFFER] Circuit STABLE — initiating full flush.")
                             self._handle_render_recovery(probe_ms)
-
-                    else:
-                        # Already online — opportunistic flush of any lingering PENDING
+                        else:
+                            # Still warming — flush another small batch
+                            self.flush_pending_to_production(throttle_ms=50, batch_size_override=WARMING_BATCH_SIZE)
+                    elif self._cb_state == CB_STABLE:
+                        # Already stable — opportunistic flush
                         pending = self.get_pending_count()
                         if pending > 0:
-                            logger.info(
-                                "[SMART_BUFFER] Opportunistic flush: %d pending records.", pending
-                            )
                             self.flush_pending_to_production(throttle_ms=0)
                 else:
                     self.health.record_failure()
-
-                    if self._render_online:
-                        # Transitioning online → offline
-                        self._render_online = False
-                        self._offline_since = time.time()
-                        self._downtime_events += 1
-                        self.health.reset_stability()
-                        self._log_event("RENDER_OFFLINE", f"probe_ms={probe_ms:.0f}")
-                        logger.warning(
-                            "[SMART_BUFFER] ⚠ Render OFFLINE. Offline buffer mode active. "
-                            "Poll backoff starting."
-                        )
-
-                    self._consecutive_fails += 1
+                    if self._cb_state == CB_STABLE:
+                        self._cb_state = CB_WARMING  # give it a chance before declaring OFFLINE
+                        self._warming_failures = 1
+                        self._warming_successes = 0
+                    elif self._cb_state == CB_WARMING:
+                        self._warming_failures += 1
+                        if self._warming_failures >= WARMING_FAIL_THRESHOLD:
+                            self._cb_state = CB_OFFLINE
+                            self._render_online = False
+                            if not self._offline_since:
+                                self._offline_since = time.time()
+                                self._downtime_events += 1
+                                self.health.reset_stability()
+                                self._send_webhook("RENDER_OFFLINE", f"{self.get_pending_count()} profiles buffered. Adaptive polling active.")
+                                logger.warning("[SMART_BUFFER] Circuit OFFLINE — buffer mode active.")
+                    elif self._cb_state == CB_OFFLINE:
+                        self._consecutive_fails += 1
 
                 self._poll_interval = self._compute_poll_interval()
 

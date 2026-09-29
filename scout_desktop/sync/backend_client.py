@@ -245,6 +245,79 @@ class BackendClient:
             pass
         return False
 
+    def _buffer_contacts_to_shared_sqlite(self, contacts: List[Dict[str, Any]]) -> int:
+        """
+        Last-resort fallback: writes Scout profiles directly into the shared
+        offline harvest buffer SQLite DB (backend/app/offline_harvest_buffer.db)
+        when BOTH Render AND local backend are unreachable.
+        Records stored as source_tier=1 (Scout = highest priority).
+        Auto-flushed when backend restarts.
+        """
+        import sqlite3 as _sq
+        import hashlib as _hh
+        import uuid as _uu
+        import time as _tm
+        import json as _js
+
+        # Compute path: scout_desktop/ -> TalentOpsAI/ -> backend/app/offline_harvest_buffer.db
+        _scout_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        _buf_db = os.path.join(
+            os.path.dirname(_scout_dir), "backend", "app", "offline_harvest_buffer.db"
+        )
+
+        if not os.path.exists(os.path.dirname(_buf_db)):
+            return 0
+
+        _conn = _sq.connect(_buf_db, timeout=10.0)
+        _conn.execute("PRAGMA journal_mode=WAL;")
+        buffered = 0
+        try:
+            for contact in contacts:
+                raw_name     = (contact.get("name") or contact.get("raw_name") or "").strip()
+                raw_email    = (contact.get("email") or contact.get("raw_email") or "").strip()
+                raw_linkedin = (contact.get("linkedin_url") or contact.get("raw_linkedin") or "").strip()
+
+                li_key = raw_linkedin.lower()
+                if "linkedin.com/in/" in li_key:
+                    li_key = li_key.split("linkedin.com/in/")[-1].rstrip("/")
+                fp = f"{raw_name.lower()}|{raw_email.lower()}|{li_key}"
+                content_hash = _hh.sha256(fp.encode("utf-8")).hexdigest()[:40]
+                discovery_id = f"SCOUT-BUF-{_uu.uuid4().hex[:12].upper()}"
+
+                _conn.execute("""
+                    INSERT OR IGNORE INTO offline_profiles (
+                        discovery_id, raw_name, raw_title, raw_company,
+                        raw_email, raw_phone, raw_linkedin, raw_location,
+                        source_url, extraction_source,
+                        quality_score, dom_confidence,
+                        owner_user_id, metadata_json,
+                        content_hash, source_tier, status, buffered_at, retry_after
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'desktop_scout', ?, ?, 1, '{}', ?, 1, 'PENDING', ?, 0)
+                """, (
+                    discovery_id,
+                    raw_name,
+                    (contact.get("title") or contact.get("raw_title") or "").strip(),
+                    (contact.get("company") or contact.get("raw_company") or "").strip(),
+                    raw_email or None,
+                    (contact.get("phone") or "").strip() or None,
+                    raw_linkedin or None,
+                    (contact.get("location") or "").strip() or None,
+                    contact.get("source_url") or contact.get("page_url") or "",
+                    float(contact.get("quality_score") or 0.85),
+                    float(contact.get("confidence") or 0.85),
+                    content_hash,
+                    _tm.time(),
+                ))
+                buffered += 1
+            _conn.commit()
+            if buffered > 0:
+                logger.info("[SCOUT_BUFFER] %d profiles saved to shared offline buffer (Tier 1).", buffered)
+        except Exception as _e:
+            logger.warning("[SCOUT_BUFFER] Write error: %s", _e)
+        finally:
+            _conn.close()
+        return buffered
+
     @property
     def current_user_email(self) -> str:
         """Returns the email of the currently bound user, or 'Not Connected'."""
@@ -796,6 +869,11 @@ class BackendClient:
                         return True, data
                 except Exception:
                     pass
+            # ULTIMATE FALLBACK: Direct write to shared offline buffer DB
+            try:
+                self._buffer_contacts_to_shared_sqlite(contacts)
+            except Exception as _buf_err:
+                logger.debug("[SCOUT_BUFFER] Shared buffer write failed: %s", _buf_err)
             self.last_response_status = "NETWORK ERROR"
             self.last_db_write_result = f"FAILED: {e}"
             logger.warning("Batch sync network error: %s", e)

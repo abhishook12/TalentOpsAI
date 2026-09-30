@@ -45,7 +45,7 @@ class DatabaseAutoEnricher:
         """
         pending_records = db.query(DiscoveryStaging).filter(
             DiscoveryStaging.processing_status == "pending"
-        ).order_by(DiscoveryStaging.id.asc()).limit(limit).all()
+        ).order_by(DiscoveryStaging.id.desc()).limit(limit).all()
 
         results = {
             "processed_count": len(pending_records),
@@ -144,7 +144,7 @@ class DatabaseAutoEnricher:
                         clean_dom = raw_email.split("@")[1]
                     company = Company(
                         company_name=raw_company,
-                        normalized_name=raw_company.lower().strip(),
+                        normalized_company_name=raw_company.lower().strip(),
                         primary_domain=clean_dom,
                     )
                     db.add(company)

@@ -230,6 +230,20 @@ class SearchXRayHarvester:
         if any(t.lower() in blacklist for t in name_tokens):
             return None
 
+        # Check against spam, adult, and blackhat SEO patterns
+        spam_phrases = {"gái gọi", "viet nam", "việt nam", "casino", "poker", "escort", "massage", "bắn cá", "kèo nhà cái", "soi cầu", "seo agency"}
+        lower_raw = raw_name.lower()
+        if any(sp in lower_raw for sp in spam_phrases):
+            return None
+
+        # Verify genuine human name against dictionary
+        try:
+            from .scraper import is_human_name
+            if not is_human_name(raw_name, target_company):
+                return None
+        except Exception:
+            pass
+
         raw_title = parts[1].strip()
         # Remove trailing "at Company ..." or "..."
         raw_title = re.sub(r"\s*\.{2,}.*", "", raw_title)

@@ -364,6 +364,7 @@ class SearchXRayHarvester:
         max_profiles: int = 5,
         owner_user_id: int = 1,
         geo_tracker: Optional['GeoQuotaTracker'] = None,
+        num_dorks: int = 1,
     ) -> List[Dict[str, Any]]:
         """
         Runs X-Ray dorks for a specific company, extracts profiles,
@@ -373,11 +374,11 @@ class SearchXRayHarvester:
         logger.info("[SEARCH_XRAY] Starting X-Ray harvest for '%s' (%s)", company_name, domain)
         clean_dom = domain.lower().replace("www.", "").strip()
 
-        # Run 3 dork variations per company — different title + geo each time.
+        # Run 1-3 dork variations per company (default 1 for fast cycle cadence).
         # Each variation is cached for 2h so re-runs don't incur browser cost.
-        # 3 dorks × 5 results = up to 15 profiles per company vs the old 1 dork × 5 = 5.
         dork_queries = []
-        for i in range(3):
+        dork_count = max(1, min(num_dorks, 3))
+        for i in range(dork_count):
             title_idx = abs(hash(company_name + str(int(time.time() // 120)) + str(i))) % len(DORK_TITLES)
             geo_idx = abs(hash(company_name + str(int(time.time() // 300)) + str(i))) % len(GEO_DORK_QUALIFIERS)
             target_role = DORK_TITLES[title_idx]
@@ -393,6 +394,8 @@ class SearchXRayHarvester:
                 if link and link not in seen_links:
                     seen_links.add(link)
                     raw_cards.append(c)
+            if len(raw_cards) >= max_profiles * 2:
+                break
 
         discovered_candidates = []
         seen_names = set()

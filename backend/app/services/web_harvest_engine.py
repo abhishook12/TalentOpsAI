@@ -150,15 +150,15 @@ class WebHarvestEngine:
 
         # Configuration & Environment Adaptation
         self.is_render = bool(os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID") or os.getenv("IS_PRODUCTION", "false").lower() == "true")
-        default_interval = "120" if self.is_render else "60"
+        default_interval = "90" if self.is_render else "45"
         self.harvest_interval = int(os.getenv("WEB_HARVEST_INTERVAL", default_interval))
-        self.batch_size = int(os.getenv("WEB_HARVEST_BATCH_SIZE", "2" if self.is_render else "3"))
-        self.min_batch_size = 2 if self.is_render else 3
-        self.max_batch_size = 4 if self.is_render else 7
-        self.target_cycle_time = 40.0  # target duration buffer per cycle (seconds)
-        self.max_profiles_per_cycle = 30 if self.is_render else 50  # safety cap
+        self.batch_size = int(os.getenv("WEB_HARVEST_BATCH_SIZE", "2"))
+        self.min_batch_size = 1
+        self.max_batch_size = 3 if self.is_render else 4
+        self.target_cycle_time = 35.0  # target duration buffer per cycle (seconds)
+        self.max_profiles_per_cycle = 20 if self.is_render else 35  # safety cap
         self.cooldown_hours = 24  # don't re-scrape same domain within this window
-        self.request_delay = (0.8, 1.5) if self.is_render else (0.5, 1.2)  # optimized delay range between requests (seconds)
+        self.request_delay = (0.5, 1.2) if self.is_render else (0.3, 0.8)  # optimized delay range between requests (seconds)
         self.request_timeout = 4.0  # tighter HTTP timeout per request
 
         # State tracking
@@ -169,6 +169,9 @@ class WebHarvestEngine:
         # Statistics
         self.stats = {
             "start_time": None,
+            "heartbeat_at": None,
+            "current_activity": "Idle",
+            "current_target": None,
             "harvest_cycles": 0,
             "profiles_discovered": 0,
             "profiles_staged": 0,
@@ -252,14 +255,19 @@ class WebHarvestEngine:
 
         while self.running:
             try:
+                self.stats["heartbeat_at"] = datetime.now(timezone.utc).isoformat()
+                self.stats["current_activity"] = "Starting harvest cycle"
                 cycle_start = time.time()
                 result = await asyncio.to_thread(self._run_harvest_cycle)
                 cycle_duration = round(time.time() - cycle_start, 1)
 
                 self.stats["harvest_cycles"] += 1
                 self.stats["last_cycle_at"] = datetime.now(timezone.utc).isoformat()
+                self.stats["heartbeat_at"] = self.stats["last_cycle_at"]
                 self.stats["last_cycle_profiles"] = result.get("profiles_staged", 0)
                 self.stats["last_cycle_duration_sec"] = cycle_duration
+                self.stats["current_activity"] = f"Cycle #{self.stats['harvest_cycles']} complete (Pacing {self.harvest_interval}s)"
+                self.stats["current_target"] = None
 
                 # Auto-tune batch size based on cycle velocity
                 self._adjust_batch_size(cycle_duration)
@@ -418,6 +426,9 @@ class WebHarvestEngine:
         audit_result = {"profiles": [], "domains_scraped": 0, "xray_staged": 0}
 
         try:
+            self.stats["heartbeat_at"] = datetime.now(timezone.utc).isoformat()
+            self.stats["current_activity"] = f"Auditing {domain} ({company_name})"
+            self.stats["current_target"] = domain
             self._log_action(f"Auditing team directories for {domain} ({company_name})...")
             profiles = self._scrape_company_website(domain, company_name)
             audit_result["profiles"].extend(profiles)
@@ -426,19 +437,23 @@ class WebHarvestEngine:
 
             # X-Ray Dorking for actual active recruiters
             try:
+                self.stats["heartbeat_at"] = datetime.now(timezone.utc).isoformat()
+                self.stats["current_activity"] = f"X-Ray Dorking {company_name}"
                 from .search_xray_harvester import search_xray_harvester
                 with SessionLocal() as s_db:
                     xray_res = search_xray_harvester.harvest_company(
                         company_name=company_name,
                         domain=domain,
                         db=s_db,
-                        max_profiles=5,
+                        max_profiles=3,
                         owner_user_id=1,
-                        geo_tracker=quota_tracker
+                        geo_tracker=quota_tracker,
+                        num_dorks=1
                     )
                     if xray_res:
                         self._log_action(f"X-Ray Dorking mined {len(xray_res)} verified recruiters for {company_name}")
                         audit_result["xray_staged"] = len(xray_res)
+                self.stats["heartbeat_at"] = datetime.now(timezone.utc).isoformat()
             except Exception as xray_err:
                 logger.debug("[WEBHARVEST] X-Ray harvest error: %s", xray_err)
 

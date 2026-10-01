@@ -248,10 +248,15 @@ export default function WebHarvestAdmin() {
       {/* 1. Cycle health ticker */}
       <div style={{ display: 'flex', gap: 20, padding: '10px 18px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: stats?.is_running ? '#ffffff' : '#a1a1aa', boxShadow: stats?.is_running ? '0 0 8px #ffffff' : 'none', display: 'inline-block' }} />
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: stats?.is_running ? '#22c55e' : '#a1a1aa', boxShadow: stats?.is_running ? '0 0 8px #22c55e' : 'none', display: 'inline-block' }} />
           <span style={{ fontSize: 12, fontWeight: 700, color: stats?.is_running ? '#ffffff' : '#a1a1aa' }}>
-            {stats?.is_running ? 'ENGINE RUNNING' : 'ENGINE IDLE'}
+            {stats?.is_running ? 'AUTONOMOUS ENGINE ACTIVE (24/7)' : 'ENGINE IDLE'}
           </span>
+          {stats?.stats?.current_activity && stats?.is_running && (
+            <span style={{ fontSize: 11, color: '#38bdf8', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.2)', padding: '2px 8px', borderRadius: 6, fontWeight: 500 }}>
+              {stats.stats.current_activity}
+            </span>
+          )}
         </div>
         <span style={{ color: 'var(--card-border)', fontSize: 18 }}>|</span>
         <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
@@ -428,30 +433,30 @@ export default function WebHarvestAdmin() {
         const pollLabel = (ob.current_poll_interval_sec ?? 30) >= 60
           ? `${Math.floor(ob.current_poll_interval_sec / 60)}m`
           : `${ob.current_poll_interval_sec ?? 30}s`;
-        const healthColor = isStable ? '#ffffff' : isWarming ? '#d4d4d8' : '#ef4444';
-        const borderColor = isStable ? 'rgba(255, 255, 255, 0.15)' : isWarming ? 'rgba(255, 255, 255, 0.06)' : 'rgba(239,68,68,0.3)';
-        const bgColor = isStable ? 'rgba(255, 255, 255, 0.06)' : isWarming ? 'rgba(255, 255, 255, 0.06)' : 'rgba(239,68,68,0.07)';
+        const healthColor = isStable ? '#ffffff' : isWarming ? '#d4d4d8' : '#f59e0b';
+        const borderColor = isStable ? 'rgba(255, 255, 255, 0.15)' : isWarming ? 'rgba(255, 255, 255, 0.06)' : 'rgba(245, 158, 11, 0.25)';
+        const bgColor = isStable ? 'rgba(255, 255, 255, 0.06)' : isWarming ? 'rgba(255, 255, 255, 0.06)' : 'rgba(245, 158, 11, 0.05)';
 
         return (
           <div style={{ background: bgColor, border: `1px solid ${borderColor}`, borderRadius: 14, padding: '14px 20px', marginBottom: 20 }}>
             {/* Header row */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                {isStable ? <CloudUpload size={18} color="#ffffff" /> : isWarming ? <CloudUpload size={18} color="#d4d4d8" /> : <CloudOff size={18} color="#ef4444" />}
+                {isStable ? <CloudUpload size={18} color="#ffffff" /> : isWarming ? <CloudUpload size={18} color="#d4d4d8" /> : <CloudOff size={18} color="#f59e0b" />}
                 <div>
                   <div style={{ fontSize: 12, fontWeight: 800, color: healthColor }}>
                     {isStable
-                      ? '● RENDER STABLE — Circuit Closed · Auto-Sync Active'
+                      ? '● CLOUD SYNC ACTIVE — Direct PostgreSQL Auto-Flush'
                       : isWarming
-                      ? '◑ RENDER WARMING — Circuit Half-Open · Trial Batches Active'
-                      : '⚠ RENDER OFFLINE — Circuit Open · Buffer Mode Active'}
+                      ? '◑ CLOUD SYNC WARMING — Circuit Half-Open · Trial Batches Active'
+                      : '⚡ LOCAL BUFFER MODE ACTIVE — Harvester Running 24/7 (Zero-Data-Loss SQLite Buffer)'}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
                     {isStable
                       ? `${ob.total_flushed ?? 0} profiles flushed · ${ob.flush_sessions ?? 0} sessions · ${ob.render_uptime_pct ?? 100}% uptime`
                       : isWarming
-                      ? `Trial flushing 5 records/cycle · Confirming stability · ${ob.pending_buffered ?? 0} queued`
-                      : `${ob.pending_buffered ?? 0} queued · Poll every ${pollLabel} · Next reset ${countdown}`
+                      ? `Trial flushing ${ob.warming_batch_size || 10} records/cycle · Confirming stability · ${ob.pending_buffered ?? 0} queued`
+                      : `Harvester running uninterrupted 24/7 · ${ob.pending_buffered ?? 0} profiles buffered locally · Auto-flushing on cloud reconnect`
                     }
                   </div>
                 </div>

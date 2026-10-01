@@ -45,7 +45,7 @@ CATCHALL_CACHE_FILE = os.path.join(DATA_DIR, "catchall_domain_cache.json")
 
 PROBE_SENDER = "probe@talentops.ai"
 PROBE_EHLO_DOMAIN = "talentops.ai"
-PROBE_TIMEOUT = 10  # seconds per connection
+PROBE_TIMEOUT = 4   # seconds per connection (fast-fail if port 25 blocked)
 MAX_CONCURRENT_PROBES = 50
 RATE_LIMIT_PER_DOMAIN = 0.5  # seconds between probes to same MX host
 

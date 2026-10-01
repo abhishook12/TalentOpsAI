@@ -101,16 +101,16 @@ RENDER_URL = os.getenv("RENDER_BACKEND_URL", "https://talentopsai-1.onrender.com
 RENDER_POLL_BASE_SEC   = int(os.getenv("RENDER_POLL_BASE", "30"))
 RENDER_POLL_MAX_SEC    = int(os.getenv("RENDER_POLL_MAX", "600"))    # 10 min ceiling
 FLUSH_BATCH_SIZE       = int(os.getenv("RENDER_FLUSH_BATCH_SIZE", "50"))
-MIN_STABLE_PINGS       = 3       # consecutive sub-3s pings before "ready"
-HEALTHY_PROBE_MS       = 3000    # max acceptable response time (ms) to count as "stable"
+MIN_STABLE_PINGS       = 2       # consecutive pings before "ready"
+HEALTHY_PROBE_MS       = 8000    # max acceptable response time (ms) to count as "stable" (Render free-tier latency is 1.5s - 4.5s)
 VACUUM_THRESHOLD       = 500     # vacuum DB after N flushed rows accumulate
 
 CB_OFFLINE = "OFFLINE"
 CB_WARMING = "WARMING"
 CB_STABLE  = "STABLE"
-WARMING_SUCCESS_THRESHOLD = 3   # successes needed to go WARMING→STABLE
-WARMING_FAIL_THRESHOLD    = 2   # failures to push WARMING→OFFLINE
-WARMING_BATCH_SIZE        = 5   # records to flush per cycle while WARMING
+WARMING_SUCCESS_THRESHOLD = 2   # successes needed to go WARMING→STABLE
+WARMING_FAIL_THRESHOLD    = 5   # failures to push WARMING→OFFLINE (requires sustained outage, prevents flapping)
+WARMING_BATCH_SIZE        = 10  # records to flush per cycle while WARMING
 WEBHOOK_URL = os.getenv("TALENTOPS_WEBHOOK_URL", "")
 
 # Source priority tiers (lower number = flush first)
@@ -651,21 +651,31 @@ class OfflineHarvestBuffer:
 
     def _probe_render(self) -> Tuple[bool, float]:
         """
-        Probes Render /ping endpoint.
+        Probes Render /ping endpoint with timeout resilience and inline retry.
         Returns (is_online: bool, response_time_ms: float).
         """
-        start = time.monotonic()
-        try:
-            r = requests.get(
-                f"{RENDER_URL}/ping",
-                timeout=10,
-                headers={"User-Agent": "TalentOpsAI-WatchdogV2/1.0"}
-            )
-            elapsed_ms = (time.monotonic() - start) * 1000
-            return r.status_code == 200, elapsed_ms
-        except Exception:
-            elapsed_ms = (time.monotonic() - start) * 1000
-            return False, elapsed_ms
+        elapsed_ms = 0.0
+        for attempt in range(2):
+            start = time.monotonic()
+            try:
+                r = requests.get(
+                    f"{RENDER_URL}/ping",
+                    timeout=25,
+                    headers={
+                        "User-Agent": "TalentOpsAI-WatchdogV2/1.0",
+                        "Connection": "keep-alive"
+                    }
+                )
+                elapsed_ms = (time.monotonic() - start) * 1000
+                if r.status_code == 200:
+                    return True, elapsed_ms
+                elif attempt == 0:
+                    time.sleep(1.5)
+            except Exception:
+                elapsed_ms = (time.monotonic() - start) * 1000
+                if attempt == 0:
+                    time.sleep(1.5)
+        return False, elapsed_ms
 
     def _compute_poll_interval(self) -> float:
         """
@@ -900,3 +910,4 @@ class OfflineHarvestBuffer:
 # ── Module-Level Singleton ────────────────────────────────────────────────────
 
 offline_buffer = OfflineHarvestBuffer()
+smart_buffer = offline_buffer

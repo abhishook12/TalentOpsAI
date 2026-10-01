@@ -24,7 +24,7 @@ from typing import Dict, Any
 logger = logging.getLogger("talentops.immunity_sentinel")
 
 class EngineImmunitySentinel:
-    def __init__(self, check_interval_sec: int = 30, stagnation_threshold_sec: int = 240):
+    def __init__(self, check_interval_sec: int = 30, stagnation_threshold_sec: int = 360):
         self.check_interval_sec = check_interval_sec
         self.stagnation_threshold_sec = stagnation_threshold_sec
         self.running = False
@@ -75,11 +75,23 @@ class EngineImmunitySentinel:
                 return
 
             # Rule 2: Anti-Stagnation Heartbeat
+            heartbeat_str = web_harvest_engine.stats.get("heartbeat_at")
             last_cycle_str = web_harvest_engine.stats.get("last_cycle_at")
-            if last_cycle_str:
+            now_dt = datetime.now(timezone.utc)
+
+            # If heartbeat is fresh (<120s), worker is actively progressing through a cycle
+            is_active_heartbeat = False
+            if heartbeat_str:
+                try:
+                    hb_dt = datetime.fromisoformat(heartbeat_str)
+                    if (now_dt - hb_dt).total_seconds() < 120:
+                        is_active_heartbeat = True
+                except Exception:
+                    pass
+
+            if not is_active_heartbeat and last_cycle_str:
                 try:
                     last_dt = datetime.fromisoformat(last_cycle_str)
-                    now_dt = datetime.now(timezone.utc)
                     elapsed = (now_dt - last_dt).total_seconds()
 
                     if elapsed > self.stagnation_threshold_sec:
@@ -115,10 +127,10 @@ class EngineImmunitySentinel:
     def _verify_offline_buffer(self):
         """Ensures offline harvest buffer watchdog is alive."""
         try:
-            from .offline_buffer import smart_buffer
-            if hasattr(smart_buffer, "is_alive") and not smart_buffer.is_alive():
+            from .offline_buffer import offline_buffer
+            if not getattr(offline_buffer, "_running", False):
                 logger.warning("[IMMUNITY_SENTINEL] ALERT: Offline buffer watchdog was not alive. Re-launching watchdog...")
-                smart_buffer.start_watchdog()
+                offline_buffer.start_watchdog()
                 self.total_revivals += 1
         except Exception as e:
             logger.debug("[IMMUNITY_SENTINEL] Offline buffer check note: %s", e)

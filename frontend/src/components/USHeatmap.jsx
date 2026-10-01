@@ -40,7 +40,14 @@ export default function USHeatmap() {
     queryKey: ["recruiters-by-state"],
     queryFn: async () => {
       const res = await api.get("/analytics/recruiters-by-state");
+      try { localStorage.setItem("dashboard_recruiters_by_state", JSON.stringify(res.data)); } catch {}
       return res.data;
+    },
+    initialData: () => {
+      try {
+        const cached = localStorage.getItem("dashboard_recruiters_by_state");
+        return cached ? JSON.parse(cached) : undefined;
+      } catch { return undefined; }
     },
     staleTime: 60000,
   });
